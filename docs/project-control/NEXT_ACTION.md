@@ -73,3 +73,10 @@ Z.AI is in **STOP** state, awaiting ChatGPT's final Phase 3 acceptance decision.
 
 ### ChatGPT takeover update — 2026-10-04
 Before Phase 3 acceptance, perform runtime verification of the corrected migration. The latest code commit is 64daa53a3643bb14c530522ccaa3504cca72434f. Verify PostgreSQL migration syntax and owner/RLS behavior in CI or an equivalent PostgreSQL runtime. Do not authorize Phase 4 until evidence is green.
+
+
+actor: "ChatGPT"
+action: "Continue sequential product implementation without waiting for CI/Vercel validation"
+then: "Complete provider adapters, sync/queue workers, Clara intelligence/RAG, agent tools/authorization, WhatsApp, scheduling, chat, realtime voice, observability/security, E2E, deployment, and final validation"
+validation_policy: "Deferred until development completion by explicit project-controller instruction on 2026-10-04"
+phase_4: "active"
