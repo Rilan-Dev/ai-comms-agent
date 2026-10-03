@@ -117,7 +117,10 @@ Never write "Phase complete" without evidence.
 
 ### Commit
 
-(populated after `git commit` and `git push` — see `PROJECT_STATE.md` `current_commit`)
+- Initial Phase 1 commit: `2bacba0bf55efbdf4c9221f2bcb63da3782c9708` (34 files, all Phase 1 deliverables).
+- Push verified: local and remote HEAD matched at `2bacba0`. Force-push was used to override GitHub's auto-generated initial commit (which only contained the Node `.gitignore` template, superseded by our comprehensive `.gitignore`).
+- Follow-up commit: `ba5c81962d7da8220bdeeb4eddea5f2cf3d3e451` (recorded the commit SHA in `PROJECT_STATE.md` and `VERIFICATION_STATE.md`, plus push verification and continuity self-test result).
+- Final remote HEAD: `ba5c81962d7da8220bdeeb4eddea5f2cf3d3e451` — https://github.com/Rilan-Dev/ai-comms-agent/commit/ba5c81962d7da8220bdeeb4eddea5f2cf3d3e451
 
 ### Review result
 
@@ -182,7 +185,7 @@ Project-control documents created: 10 (PROJECT_STATE, RULES, CURRENT_PHASE, NEXT
 Development roadmap created:    Yes — 19-phase plan in docs/plans/ROADMAP.md
 Open architectural questions:   7 (listed above)
 Open risks:                     6 (RSK-001 through RSK-006; listed above)
-Commit SHA:                     (populated after push — see PROJECT_STATE.md current_commit)
+Commit SHA:                     ba5c81962d7da8220bdeeb4eddea5f2cf3d3e451 (https://github.com/Rilan-Dev/ai-comms-agent/commit/ba5c81962d7da8220bdeeb4eddea5f2cf3d3e451)
 Verification performed:         Continuity check passed; no application code/migrations/deployment to verify (Phase 1 is documentation-only)
 Recommended next phase:         Phase 2 — Application Foundation and Approved Project Template (only after ChatGPT approves Phase 1)
 ```
