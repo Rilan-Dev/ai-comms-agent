@@ -7,7 +7,7 @@
  * vertical slice is in apps/worker/src/email/mock-adapter.ts.
  */
 
-export type EmailProviderType = "gmail" | "imap_smtp" | "zoho";
+export type EmailProviderType = "gmail" | "imap_smtp" | "zoho" | "microsoft_graph";
 
 export type EmailProviderCapability =
   | "folders"
@@ -38,7 +38,7 @@ export interface EmailAccount {
   email_address: string;
   display_name?: string;
   capabilities: CapabilitySet;
-  status: "active" | "expired" | "revoked" | "error" | "disconnected";
+  status: "connected" | "pending" | "revoked" | "error" | "disconnected";
   last_sync_at?: string;
   created_at: string;
   updated_at: string;
