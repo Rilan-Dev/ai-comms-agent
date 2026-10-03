@@ -384,7 +384,7 @@ takeover:
   primary_implementer: "ChatGPT"
   previous_implementer: "Z.AI"
   takeover_date: "2026-10-04"
-  current_commit: "64daa53a3643bb14c530522ccaa3504cca72434f"
+  current_commit: "f785e3ab8783fd9718fc383744a0d1c855db16b2"
   latest_change:
     migration_owner_invariant: "Deferred constraint trigger now validates affected existing organizations directly, including final-owner DELETE where membership rows become empty."
     migration_tests: "Added static assertions for TG_OP/OLD/NEW affected-organization handling and zero-owner detection."
@@ -395,8 +395,16 @@ takeover:
 
 
 ### Latest ChatGPT verification update — 2026-10-04
-- Latest code: 64daa53a3643bb14c530522ccaa3504cca72434f.
+- Latest code: f785e3ab8783fd9718fc383744a0d1c855db16b2.
 - Corrected invalid single-dollar PostgreSQL function delimiters and added a static regression guard.
 - Runtime migration execution is still pending; GitHub workflow results are not yet exposed by the current commit-run endpoint.
 - Latest Vercel attempts are rate-limited/canceled; the previously READY deployment at commit 4289e53 is not evidence for the latest code.
 - **Acceptance: PENDING. Phase 4: NOT AUTHORIZED.**
+
+
+### Control synchronization — 2026-10-04
+- Current main commit: f785e3ab8783fd9718fc383744a0d1c855db16b2.
+- CI now contains a disposable PostgreSQL 17 runtime migration gate plus an expected-failure ownerless-organization check.
+- The verification gate has not yet produced connector-visible GitHub Actions results. This is an evidence limitation, not a pass.
+- Vercel remains rate-limited/canceled for the latest rapid commits; no latest READY claim.
+- **Phase 3 acceptance: PENDING. Phase 4: NOT AUTHORIZED.**
