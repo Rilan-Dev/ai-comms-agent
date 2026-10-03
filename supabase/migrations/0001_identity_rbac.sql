@@ -150,12 +150,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS permissions_name_uniq
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $$$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS organizations_updated_at ON organizations;
 CREATE TRIGGER organizations_updated_at BEFORE UPDATE ON organizations
@@ -207,7 +207,7 @@ CREATE TRIGGER organization_memberships_updated_at BEFORE UPDATE ON organization
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION enforce_owner_status_active()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $$$
 BEGIN
   -- An owner membership must be active (cannot be invited/suspended).
   -- This is safe to enforce immediately because it never conflicts with
@@ -218,7 +218,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS organization_memberships_owner_status ON organization_memberships;
 CREATE TRIGGER organization_memberships_owner_status
@@ -235,7 +235,7 @@ CREATE TRIGGER organization_memberships_owner_status
 -- DEFERRED.
 
 CREATE OR REPLACE FUNCTION enforce_exactly_one_owner()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $$$
 DECLARE
   affected_org_id uuid;
   owner_count integer;
@@ -359,7 +359,7 @@ BEGIN
 
   RETURN NULL;
 END;
-$$ LANGUAGE plpgsql;
+$$$ LANGUAGE plpgsql;
 
 -- CONSTRAINT TRIGGER with DEFERRABLE INITIALLY DEFERRED:
 -- This fires at COMMIT, not at each statement. This allows ownership transfer
@@ -378,7 +378,7 @@ CREATE CONSTRAINT TRIGGER organization_memberships_owner_count
 -- organization with zero memberships/owners. The membership trigger above
 -- still validates membership INSERT/UPDATE/DELETE and ownership transfers.
 CREATE OR REPLACE FUNCTION enforce_organization_has_owner()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 DECLARE
   owner_count integer;
 BEGIN
@@ -404,7 +404,7 @@ BEGIN
 
   RETURN NULL;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS organizations_owner_count ON organizations;
 CREATE CONSTRAINT TRIGGER organizations_owner_count
@@ -443,7 +443,7 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 
-AS $
+AS $$
   SELECT EXISTS (
     SELECT 1
     FROM organization_memberships m
@@ -451,7 +451,7 @@ AS $
       AND m.user_id = p_user_id
       AND m.status = 'active'
   );
-$;
+$$;
 
 CREATE OR REPLACE FUNCTION is_active_organization_admin_or_owner(
   p_organization_id uuid,
@@ -463,7 +463,7 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 
-AS $
+AS $$
   SELECT EXISTS (
     SELECT 1
     FROM organization_memberships m
@@ -472,7 +472,7 @@ AS $
       AND m.status = 'active'
       AND m.role IN ('owner', 'admin')
   );
-$;
+$$;
 
 CREATE POLICY organizations_member_visibility ON organizations
   FOR SELECT USING (
