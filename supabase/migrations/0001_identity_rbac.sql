@@ -271,7 +271,11 @@ BEGIN
         AND role = 'owner'
         AND status = 'active';
 
-      IF owner_count != 1 THEN
+      IF owner_count = 0 THEN
+        RAISE EXCEPTION 'Organization % has no active owner at commit (exactly one required)',
+          affected_org_id
+          USING ERRCODE = 'check_violation';
+      ELSIF owner_count > 1 THEN
         RAISE EXCEPTION 'Organization % has % active owners at commit (exactly one required)',
           affected_org_id, owner_count
           USING ERRCODE = 'check_violation';
@@ -292,7 +296,11 @@ BEGIN
         AND role = 'owner'
         AND status = 'active';
 
-      IF owner_count != 1 THEN
+      IF owner_count = 0 THEN
+        RAISE EXCEPTION 'Organization % has no active owner at commit (exactly one required)',
+          affected_org_id
+          USING ERRCODE = 'check_violation';
+      ELSIF owner_count > 1 THEN
         RAISE EXCEPTION 'Organization % has % active owners at commit (exactly one required)',
           affected_org_id, owner_count
           USING ERRCODE = 'check_violation';
@@ -315,7 +323,11 @@ BEGIN
         AND role = 'owner'
         AND status = 'active';
 
-      IF owner_count != 1 THEN
+      IF owner_count = 0 THEN
+        RAISE EXCEPTION 'Organization % has no active owner at commit (exactly one required)',
+          affected_org_id
+          USING ERRCODE = 'check_violation';
+      ELSIF owner_count > 1 THEN
         RAISE EXCEPTION 'Organization % has % active owners at commit (exactly one required)',
           affected_org_id, owner_count
           USING ERRCODE = 'check_violation';
