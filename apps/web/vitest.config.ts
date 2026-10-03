@@ -1,0 +1,17 @@
+import { defineConfig } from "vitest/config";
+import path from "node:path";
+
+export default defineConfig({
+  test: {
+    environment: "node",
+    include: ["tests/**/*.test.ts"],
+    globals: false,
+  },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      "@ai-comms-agent/shared": path.resolve(__dirname, "../../packages/shared/src"),
+      "@ai-comms-agent/db": path.resolve(__dirname, "../../packages/db/src"),
+    },
+  },
+});

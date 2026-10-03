@@ -52,3 +52,36 @@ export type {
   TemplateParams,
   MessagingCapabilitySet,
 } from "./messaging/channel";
+
+// Identity, organization, and RBAC types (Phase 3)
+export type {
+  UserId,
+  OrganizationId,
+  MembershipId,
+  RoleId,
+  PermissionId,
+  MembershipRole,
+  MembershipStatus,
+  UserStatus,
+  OrganizationStatus,
+  User,
+  Organization,
+  OrganizationMembership,
+  Role,
+  Permission,
+  PermissionName,
+  AuthSubject,
+  IdentityAdapter,
+} from "./identity/types";
+
+export {
+  asUserId,
+  asOrganizationId,
+  asMembershipId,
+  asRoleId,
+  asPermissionId,
+  PERMISSION_CATALOGUE,
+  SYSTEM_ROLE_PERMISSIONS,
+  UnauthorizedError,
+  ForbiddenError,
+} from "./identity/types";

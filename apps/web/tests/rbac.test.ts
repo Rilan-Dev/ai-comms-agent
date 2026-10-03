@@ -1,0 +1,284 @@
+/**
+ * RBAC and permission enforcement tests.
+ *
+ * Per Phase 3 handoff §19:
+ * - OWNER permissions
+ * - ADMIN permissions
+ * - MEMBER permissions
+ * - VIEWER permissions
+ * - permitted operation succeeds
+ * - missing permission rejected
+ * - role changes affect authorization
+ * - suspended/revoked memberships are rejected
+ * - unknown permissions fail safely
+ * - unknown roles fail safely
+ */
+
+import { describe, it, expect, beforeEach } from "vitest";
+import {
+  ForbiddenError,
+  asOrganizationId,
+  asMembershipId,
+  type PermissionName,
+} from "@ai-comms-agent/shared";
+import { DevIdentityAdapter } from "@/lib/identity/dev-adapter";
+import {
+  requireOrganizationMember,
+  requirePermission,
+  requireRole,
+  authorize,
+} from "@/lib/identity/authorization";
+import { createTestFixture, createAuthedRequest } from "./fixtures";
+
+describe("RBAC and permissions", () => {
+  let fixture: Awaited<ReturnType<typeof createTestFixture>>;
+  let adapter: DevIdentityAdapter;
+
+  beforeEach(async () => {
+    fixture = await createTestFixture();
+    adapter = new DevIdentityAdapter(fixture.repo);
+  });
+
+  // -------------------------------------------------------------------
+  // Role-based permission tests
+  // -------------------------------------------------------------------
+
+  it("OWNER has all permissions (organization.read, members.read, members.manage, settings.manage, audit.read)", async () => {
+    const request = createAuthedRequest(fixture.ownerA);
+    const subject = await requireOrganizationMember(
+      request,
+      asOrganizationId(fixture.orgA),
+      adapter,
+      fixture.repo,
+    );
+    expect(subject.permissions.has("organization.read")).toBe(true);
+    expect(subject.permissions.has("organization.members.read")).toBe(true);
+    expect(subject.permissions.has("organization.members.manage")).toBe(true);
+    expect(subject.permissions.has("settings.manage")).toBe(true);
+    expect(subject.permissions.has("audit.read")).toBe(true);
+    expect(subject.permissions.has("users.read")).toBe(true);
+    expect(subject.permissions.has("users.manage")).toBe(true);
+  });
+
+  it("ADMIN has read + settings.manage but NOT members.manage or organization.update", async () => {
+    // Promote memberA to admin
+    const memberships = await fixture.repo.getMembershipsForOrg(asOrganizationId(fixture.orgA));
+    const memberMembership = memberships.find((m) => m.userId === fixture.memberA);
+    await fixture.repo.updateMembershipRole(asMembershipId(memberMembership!.id), "admin");
+
+    const request = createAuthedRequest(fixture.memberA);
+    const subject = await requireOrganizationMember(
+      request,
+      asOrganizationId(fixture.orgA),
+      adapter,
+      fixture.repo,
+    );
+    expect(subject.membership?.role).toBe("admin");
+    expect(subject.permissions.has("organization.read")).toBe(true);
+    expect(subject.permissions.has("organization.members.read")).toBe(true);
+    expect(subject.permissions.has("settings.manage")).toBe(true);
+    expect(subject.permissions.has("audit.read")).toBe(true);
+    expect(subject.permissions.has("organization.members.manage")).toBe(false);
+    expect(subject.permissions.has("organization.update")).toBe(false);
+  });
+
+  it("MEMBER has organization.read and users.read but NOT members.read or settings.manage", async () => {
+    const request = createAuthedRequest(fixture.memberA);
+    const subject = await requireOrganizationMember(
+      request,
+      asOrganizationId(fixture.orgA),
+      adapter,
+      fixture.repo,
+    );
+    expect(subject.membership?.role).toBe("member");
+    expect(subject.permissions.has("organization.read")).toBe(true);
+    expect(subject.permissions.has("users.read")).toBe(true);
+    expect(subject.permissions.has("organization.members.read")).toBe(false);
+    expect(subject.permissions.has("settings.manage")).toBe(false);
+    expect(subject.permissions.has("audit.read")).toBe(false);
+  });
+
+  it("VIEWER has only organization.read (least privilege)", async () => {
+    const request = createAuthedRequest(fixture.viewerA);
+    const subject = await requireOrganizationMember(
+      request,
+      asOrganizationId(fixture.orgA),
+      adapter,
+      fixture.repo,
+    );
+    expect(subject.membership?.role).toBe("viewer");
+    expect(subject.permissions.has("organization.read")).toBe(true);
+    expect(subject.permissions.size).toBe(1); // ONLY organization.read
+    expect(subject.permissions.has("users.read")).toBe(false);
+    expect(subject.permissions.has("organization.members.read")).toBe(false);
+    expect(subject.permissions.has("audit.read")).toBe(false);
+  });
+
+  // -------------------------------------------------------------------
+  // Permission enforcement
+  // -------------------------------------------------------------------
+
+  it("permits operation when user has the required permission", async () => {
+    const request = createAuthedRequest(fixture.ownerA);
+    const subject = await requireOrganizationMember(
+      request,
+      asOrganizationId(fixture.orgA),
+      adapter,
+      fixture.repo,
+    );
+    expect(() => requirePermission(subject, "organization.members.manage")).not.toThrow();
+  });
+
+  it("rejects operation when user lacks the required permission", async () => {
+    const request = createAuthedRequest(fixture.viewerA);
+    const subject = await requireOrganizationMember(
+      request,
+      asOrganizationId(fixture.orgA),
+      adapter,
+      fixture.repo,
+    );
+    expect(() => requirePermission(subject, "organization.members.manage" as PermissionName)).toThrow(
+      ForbiddenError,
+    );
+  });
+
+  it("rejects VIEWER attempting to read members (least privilege enforced)", async () => {
+    const request = createAuthedRequest(fixture.viewerA);
+    await expect(
+      authorize(
+        request,
+        { organizationId: asOrganizationId(fixture.orgA), permission: "organization.members.read" },
+        adapter,
+        fixture.repo,
+      ),
+    ).rejects.toThrow(ForbiddenError);
+  });
+
+  it("allows OWNER to read members", async () => {
+    const request = createAuthedRequest(fixture.ownerA);
+    const subject = await authorize(
+      request,
+      { organizationId: asOrganizationId(fixture.orgA), permission: "organization.members.read" },
+      adapter,
+      fixture.repo,
+    );
+    expect(subject.user.id).toBe(fixture.ownerA);
+  });
+
+  // -------------------------------------------------------------------
+  // Role changes affect authorization
+  // -------------------------------------------------------------------
+
+  it("role change from MEMBER to ADMIN grants additional permissions", async () => {
+    // Initially memberA is a member — cannot read members
+    const request1 = createAuthedRequest(fixture.memberA);
+    await expect(
+      authorize(
+        request1,
+        { organizationId: asOrganizationId(fixture.orgA), permission: "organization.members.read" },
+        adapter,
+        fixture.repo,
+      ),
+    ).rejects.toThrow(ForbiddenError);
+
+    // Promote to admin
+    const memberships = await fixture.repo.getMembershipsForOrg(asOrganizationId(fixture.orgA));
+    const memberMembership = memberships.find((m) => m.userId === fixture.memberA);
+    await fixture.repo.updateMembershipRole(asMembershipId(memberMembership!.id), "admin");
+
+    // Now can read members
+    const request2 = createAuthedRequest(fixture.memberA);
+    const subject = await authorize(
+      request2,
+      { organizationId: asOrganizationId(fixture.orgA), permission: "organization.members.read" },
+      adapter,
+      fixture.repo,
+    );
+    expect(subject.membership?.role).toBe("admin");
+  });
+
+  it("role change from OWNER to VIEWER removes permissions", async () => {
+    // Initially ownerA can manage members
+    const request1 = createAuthedRequest(fixture.ownerA);
+    const subject1 = await authorize(
+      request1,
+      { organizationId: asOrganizationId(fixture.orgA), permission: "organization.members.manage" },
+      adapter,
+      fixture.repo,
+    );
+    expect(subject1.membership?.role).toBe("owner");
+
+    // Demote to viewer
+    const memberships = await fixture.repo.getMembershipsForOrg(asOrganizationId(fixture.orgA));
+    const ownerMembership = memberships.find((m) => m.userId === fixture.ownerA);
+    await fixture.repo.updateMembershipRole(asMembershipId(ownerMembership!.id), "viewer");
+
+    // Now cannot manage members
+    const request2 = createAuthedRequest(fixture.ownerA);
+    await expect(
+      authorize(
+        request2,
+        { organizationId: asOrganizationId(fixture.orgA), permission: "organization.members.manage" },
+        adapter,
+        fixture.repo,
+      ),
+    ).rejects.toThrow(ForbiddenError);
+  });
+
+  // -------------------------------------------------------------------
+  // Suspended membership
+  // -------------------------------------------------------------------
+
+  it("suspended membership is rejected even if user previously had permissions", async () => {
+    const request = createAuthedRequest(fixture.suspendedA);
+    await expect(
+      authorize(
+        request,
+        { organizationId: asOrganizationId(fixture.orgA), permission: "organization.read" },
+        adapter,
+        fixture.repo,
+      ),
+    ).rejects.toThrow(ForbiddenError);
+  });
+
+  // -------------------------------------------------------------------
+  // Unknown permissions / roles fail safely
+  // -------------------------------------------------------------------
+
+  it("unknown permission fails safely (denied, not error)", async () => {
+    const request = createAuthedRequest(fixture.ownerA);
+    const subject = await requireOrganizationMember(
+      request,
+      asOrganizationId(fixture.orgA),
+      adapter,
+      fixture.repo,
+    );
+    // Owner has all PERMISSION_CATALOGUE entries, but an unknown permission
+    // string should be denied (not in the set)
+    expect(() =>
+      requirePermission(subject, "nonexistent.permission" as PermissionName),
+    ).toThrow(ForbiddenError);
+  });
+
+  it("requireRole rejects when subject has insufficient role", async () => {
+    const request = createAuthedRequest(fixture.viewerA);
+    const subject = await requireOrganizationMember(
+      request,
+      asOrganizationId(fixture.orgA),
+      adapter,
+      fixture.repo,
+    );
+    expect(() => requireRole(subject, "owner", "admin")).toThrow(ForbiddenError);
+  });
+
+  it("requireRole accepts when subject has one of the required roles", async () => {
+    const request = createAuthedRequest(fixture.memberA);
+    const subject = await requireOrganizationMember(
+      request,
+      asOrganizationId(fixture.orgA),
+      adapter,
+      fixture.repo,
+    );
+    expect(() => requireRole(subject, "member", "viewer")).not.toThrow();
+  });
+});

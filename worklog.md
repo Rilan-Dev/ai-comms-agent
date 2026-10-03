@@ -654,3 +654,92 @@ Phase 3 authorization: NOT AUTHORIZED
 ```
 
 Z.AI is in STOP state. Awaiting ChatGPT final Phase 2 acceptance decision.
+
+---
+
+## Task ID: 5
+## Phase: 3 — Identity, Organization, Users, Roles & RBAC
+
+- **Status**: implementation_complete_awaiting_chatgpt_acceptance
+- **Objective**: Establish the production-grade identity, organization, user, membership, role, permission, and authorization foundation.
+- **Architect**: ChatGPT (Chief Architect — external)
+- **Developer**: Z.AI (implementer)
+- **Start date**: 2026-10-03
+- **Completion date**: 2026-10-03
+- **Starting commit**: daca8e58aed159982f309e6c72cf047722371666
+- **Final commit**: (populated after commit)
+
+### Work Log
+
+- Received Phase 3 authorization. Read governance docs. Verified git state: branch main, HEAD daca8e5, clean working tree.
+- Reviewed approved architecture: DATA-MODEL.md §1 (identity/tenancy), DOMAIN_MODEL.md §2 (identity & tenancy context), SECURITY_MODEL.md §4 (RBAC), ROADMAP.md Phase 3 scope.
+- Designed identity model per Phase 3 handoff: identity abstraction (not real auth), explicit organization membership (not user.organizationId), RBAC with owner/admin/member/viewer, server-side authorization, dev-only identity stub.
+- Created SQL migration (`supabase/migrations/0001_identity_rbac.sql`): organizations, users, organization_memberships, roles, permissions, role_permissions tables. Unique constraints (slug, email, membership), FK relationships, RLS policies, system permission catalogue seed (9 permissions). Schema artifact only — no production DB provisioning.
+- Created shared identity types (`packages/shared/src/identity/types.ts`): branded IDs (UserId, OrganizationId, MembershipId, RoleId, PermissionId), entity interfaces (User, Organization, OrganizationMembership, Role, Permission), permission catalogue (9 entries), SYSTEM_ROLE_PERMISSIONS mapping (owner=all, admin=read+settings, member=org.read+users.read, viewer=org.read only), AuthSubject, IdentityAdapter interface, UnauthorizedError, ForbiddenError.
+- Created DB layer (`packages/db/src/identity/`): IdentityRepository interface (getUserById, getUserByEmail, createUser, getOrganizationById, getOrganizationBySlug, createOrganization, getMembership, getMembershipsForUser, getMembershipsForOrg, createMembership, updateMembershipStatus, updateMembershipRole, getPermissionsForRole) + InMemoryIdentityRepository implementation (enforces same constraints as SQL migration: unique slug, unique email, unique membership per org+user).
+- Created authorization API (`apps/web/src/lib/identity/authorization.ts`): requireAuthenticatedUser (throws UnauthorizedError), requireOrganizationMember (authenticates → checks membership → checks active status → resolves permissions; throws ForbiddenError for not_member/suspended), requirePermission (throws ForbiddenError for missing_permission), requireRole (throws ForbiddenError for insufficient_role), authorize (combined: authenticate → org context → membership → permission/role check), authorizationErrorToResponse (maps errors to HTTP 401/403 responses). Organization ID from URL path, NOT request body.
+- Created dev-only identity stub (`apps/web/src/lib/identity/dev-adapter.ts`): DevIdentityAdapter implements IdentityAdapter. Reads x-dev-user-id header. **Production guard: throws if NODE_ENV === "production"** (structurally impossible to use in production). Clearly marked with ⚠️⚠️⚠️ warnings. seedDevUser helper also throws in production.
+- Created repository singleton (`apps/web/src/lib/identity/repository.ts`): getIdentityRepository (InMemoryIdentityRepository singleton), getIdentityAdapter (DevIdentityAdapter singleton), ensureDevSeed (creates dev org + dev user with owner role; idempotent; throws in production).
+- Created API routes: GET /api/organizations/[id] (requires organization.read), GET /api/organizations/[id]/members (requires organization.members.read), POST /api/dev/seed (dev-only, throws in production). All enforce server-side authorization per Phase 3 handoff §17.
+- Installed vitest. Created vitest config. Created test fixtures (createTestFixture: 2 orgs, 5 users, 6 memberships with owner/member/viewer/suspended/cross-org). Created 5 test files:
+  - auth.test.ts (4 tests): unauthenticated rejected, authenticated resolved, unknown user rejected, suspended user path.
+  - organization-isolation.test.ts (7 tests): valid member allowed, non-member denied (IDOR), cross-org denied, unauthenticated rejected, suspended membership denied, unknown org rejected, body orgId cannot bypass.
+  - rbac.test.ts (14 tests): OWNER has all permissions, ADMIN has read+settings but not members.manage, MEMBER has org.read+users.read, VIEWER has only org.read (least privilege), permitted operation succeeds, missing permission rejected, VIEWER denied members.read, OWNER allowed members.read, role change grants permissions, role change removes permissions, suspended membership rejected, unknown permission fails safely, requireRole rejects insufficient role, requireRole accepts sufficient role.
+  - database-constraints.test.ts (10 tests): unique org slug, case-insensitive unique slug, unique user email, case-insensitive unique email, membership uniqueness, same user in different orgs allowed, permission catalogue unique names, SYSTEM_ROLE_PERMISSIONS maps 4 roles, viewer least privilege, owner has most permissions.
+  - dev-adapter-guard.test.ts (5 tests): works in development, throws in production, seedDevUser throws in production, returns null unauthenticated in dev, returns null for unknown user in dev.
+- Fixed two typecheck issues: (1) packages/db needed @ai-comms-agent/shared as workspace dependency; (2) tests/dev-adapter-guard.test.ts NODE_ENV assignment needed cast for TypeScript readonly.
+- Verification: typecheck 5/5 pass (clara-core, db, shared, web, worker), web build success (7 routes: /, /mail/inbox, /api/health, /api/dev/seed, /api/organizations/[id], /api/organizations/[id]/members, /_not-found), worker build success, 40/40 tests pass, secret scan clean.
+- Security review: IDOR protection (orgId from URL, not body; membership checked server-side), cross-org denial tested, privilege escalation tested (role change affects permissions), suspended membership denied, unknown permissions/roles fail safely, dev-adapter throws in production, no secrets in browser code, no service-role credentials exposed.
+- No Clara source modification. No Phase 4 work. No production Supabase provisioning.
+
+### Files created (this task)
+
+- supabase/migrations/0001_identity_rbac.sql
+- packages/shared/src/identity/types.ts
+- packages/db/src/identity/repository.ts
+- packages/db/src/identity/in-memory.ts
+- apps/web/src/lib/identity/authorization.ts
+- apps/web/src/lib/identity/dev-adapter.ts
+- apps/web/src/lib/identity/repository.ts
+- apps/web/src/app/api/organizations/[id]/route.ts
+- apps/web/src/app/api/organizations/[id]/members/route.ts
+- apps/web/src/app/api/dev/seed/route.ts
+- apps/web/tests/fixtures.ts
+- apps/web/tests/auth.test.ts
+- apps/web/tests/organization-isolation.test.ts
+- apps/web/tests/rbac.test.ts
+- apps/web/tests/database-constraints.test.ts
+- apps/web/tests/dev-adapter-guard.test.ts
+- apps/web/vitest.config.ts
+
+### Files changed (this task)
+
+- packages/shared/src/index.ts (added identity type re-exports)
+- packages/db/src/index.ts (added identity repository re-exports)
+- packages/db/package.json (added @ai-comms-agent/shared workspace dependency)
+- apps/web/package.json (added vitest devDependency + test scripts)
+- pnpm-lock.yaml (vitest dependencies)
+- docs/project-control/PROJECT_STATE.md
+- docs/project-control/CURRENT_PHASE.md
+- docs/project-control/NEXT_ACTION.md
+- worklog.md (this section)
+
+### Verification
+
+- **Typecheck**: 5/5 packages pass (clara-core structural, db, shared, web, worker).
+- **Web build**: success — 7 routes (/, /mail/inbox, /api/health, /api/dev/seed, /api/organizations/[id], /api/organizations/[id]/members, /_not-found).
+- **Worker build**: success.
+- **Tests**: 40/40 pass (5 test files: auth 4, organization-isolation 7, rbac 14, database-constraints 10, dev-adapter-guard 5).
+- **Secret scan**: clean.
+- **Security review**: IDOR protection ✓, cross-org denial ✓, privilege escalation ✓, suspended membership ✓, unknown perm/role fail-safe ✓, dev-adapter production guard ✓, no secrets in browser ✓.
+
+### Governance state
+
+```text
+Phase 3 implementation: COMPLETE
+Developer verification: COMPLETE
+ChatGPT acceptance: PENDING
+Phase 4 authorization: NOT AUTHORIZED
+```
+
+Z.AI is in STOP state. Awaiting ChatGPT Phase 3 acceptance decision.
