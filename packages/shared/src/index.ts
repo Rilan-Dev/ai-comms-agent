@@ -86,3 +86,5 @@ export {
   UnauthorizedError,
   ForbiddenError,
 } from "./identity/types";
+
+export { EmailProviderRegistry, type EmailProviderFactory } from "./email/registry";
