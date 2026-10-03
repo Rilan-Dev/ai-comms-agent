@@ -1027,3 +1027,14 @@ Phase 3 is still pending final ChatGPT acceptance. Phase 4 remains unauthorized.
 
 ### Gate
 Runtime CI evidence is now the required next acceptance evidence. Phase 4 remains NOT AUTHORIZED until CI and deployment verification are green.
+
+
+## Task ID: 12
+## Phase: 3 — Disposable PostgreSQL Runtime Verification Gate
+
+- **Status**: implemented — awaiting CI execution
+- **Owner**: ChatGPT
+- Added a PostgreSQL 17 service to CI.
+- Added `scripts/verify-phase3-migration.sql` covering organization+owner creation, transaction-safe ownership transfer, final exactly-one-owner state, and SECURITY DEFINER helper presence.
+- Added `scripts/verify-phase3-migration-fail.sql` and CI assertion that direct ownerless organization creation is rejected at commit.
+- Phase 4 remains unauthorized until CI runtime evidence is green.
