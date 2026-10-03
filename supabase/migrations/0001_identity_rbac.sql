@@ -386,14 +386,58 @@ ALTER TABLE permissions ENABLE ROW LEVEL SECURITY;
 -- RLS policies: users can see organizations they are a member of.
 -- The application layer (authorization API) enforces fine-grained permissions.
 -- Service-role bypasses RLS (workers only); anon/authenticated use these policies.
+--
+-- IMPORTANT: policies must not directly query organization_memberships because
+-- that table is itself protected by RLS. Direct/self-referential policy
+-- subqueries can recurse (SQLSTATE 42P17). The membership checks therefore
+-- live in SECURITY DEFINER helpers with a pinned search_path. The functions
+-- are read-only and reproduce the exact membership predicate required by the
+-- policies while bypassing RLS for their internal membership lookup.
+
+CREATE OR REPLACE FUNCTION is_active_organization_member(
+  p_organization_id uuid,
+  p_user_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $
+  SELECT EXISTS (
+    SELECT 1
+    FROM organization_memberships m
+    WHERE m.organization_id = p_organization_id
+      AND m.user_id = p_user_id
+      AND m.status = 'active'
+  );
+$;
+
+CREATE OR REPLACE FUNCTION is_active_organization_admin_or_owner(
+  p_organization_id uuid,
+  p_user_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $
+  SELECT EXISTS (
+    SELECT 1
+    FROM organization_memberships m
+    WHERE m.organization_id = p_organization_id
+      AND m.user_id = p_user_id
+      AND m.status = 'active'
+      AND m.role IN ('owner', 'admin')
+  );
+$;
 
 CREATE POLICY organizations_member_visibility ON organizations
   FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM organization_memberships m
-      WHERE m.organization_id = organizations.id
-        AND m.user_id = current_setting('app.user_id', true)::uuid
-        AND m.status = 'active'
+    is_active_organization_member(
+      organizations.id,
+      current_setting('app.user_id', true)::uuid
     )
   );
 
@@ -405,12 +449,9 @@ CREATE POLICY users_self_visibility ON users
 CREATE POLICY memberships_member_visibility ON organization_memberships
   FOR SELECT USING (
     user_id = current_setting('app.user_id', true)::uuid
-    OR EXISTS (
-      SELECT 1 FROM organization_memberships m2
-      WHERE m2.organization_id = organization_memberships.organization_id
-        AND m2.user_id = current_setting('app.user_id', true)::uuid
-        AND m2.status = 'active'
-        AND m2.role IN ('owner', 'admin')
+    OR is_active_organization_admin_or_owner(
+      organization_memberships.organization_id,
+      current_setting('app.user_id', true)::uuid
     )
   );
 
