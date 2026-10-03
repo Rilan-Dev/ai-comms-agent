@@ -19,6 +19,7 @@ import {
   ForbiddenError,
   asOrganizationId,
   asMembershipId,
+  asUserId,
   type PermissionName,
 } from "@ai-comms-agent/shared";
 import { DevIdentityAdapter } from "@/lib/identity/dev-adapter";
@@ -197,7 +198,7 @@ describe("RBAC and permissions", () => {
     expect(subject.membership?.role).toBe("admin");
   });
 
-  it("role change from OWNER to VIEWER removes permissions", async () => {
+  it("role change from OWNER to non-owner removes permissions (after ownership transfer)", async () => {
     // Initially ownerA can manage members
     const request1 = createAuthedRequest(fixture.ownerA);
     const subject1 = await authorize(
@@ -208,12 +209,16 @@ describe("RBAC and permissions", () => {
     );
     expect(subject1.membership?.role).toBe("owner");
 
-    // Demote to viewer
-    const memberships = await fixture.repo.getMembershipsForOrg(asOrganizationId(fixture.orgA));
-    const ownerMembership = memberships.find((m) => m.userId === fixture.ownerA);
-    await fixture.repo.updateMembershipRole(asMembershipId(ownerMembership!.id), "viewer");
+    // Transfer ownership from ownerA to memberA, demoting ownerA to viewer.
+    // This is the only valid way to remove owner permissions — direct demotion
+    // of the final owner is rejected by the owner invariant (tested separately).
+    await fixture.repo.transferOwnership(
+      asOrganizationId(fixture.orgA),
+      asUserId(fixture.memberA),
+      "viewer",
+    );
 
-    // Now cannot manage members
+    // ownerA is now a viewer — cannot manage members
     const request2 = createAuthedRequest(fixture.ownerA);
     await expect(
       authorize(
@@ -223,6 +228,16 @@ describe("RBAC and permissions", () => {
         fixture.repo,
       ),
     ).rejects.toThrow(ForbiddenError);
+
+    // memberA is now the owner — can manage members
+    const request3 = createAuthedRequest(fixture.memberA);
+    const subject3 = await authorize(
+      request3,
+      { organizationId: asOrganizationId(fixture.orgA), permission: "organization.members.manage" },
+      adapter,
+      fixture.repo,
+    );
+    expect(subject3.membership?.role).toBe("owner");
   });
 
   // -------------------------------------------------------------------

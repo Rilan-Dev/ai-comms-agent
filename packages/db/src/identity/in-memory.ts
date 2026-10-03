@@ -36,6 +36,25 @@ interface InMemoryUser extends User {}
 interface InMemoryOrganization extends Organization {}
 interface InMemoryMembership extends OrganizationMembership {}
 
+/**
+ * Thrown when a membership operation would violate the owner invariant
+ * (per DOMAIN_MODEL.md §2.1: "An organization must have exactly one owner
+ * at all times").
+ *
+ * Two violation types:
+ *   - "multiple_owners": attempting to add/promote a second active owner
+ *   - "no_owner": attempting to demote/suspend/revoke the final active owner
+ */
+export class OwnerInvariantError extends Error {
+  constructor(
+    public readonly violation: "multiple_owners" | "no_owner",
+    message?: string,
+  ) {
+    super(message ?? `Owner invariant violated: ${violation}`);
+    this.name = "OwnerInvariantError";
+  }
+}
+
 export class InMemoryIdentityRepository implements IdentityRepository {
   private users = new Map<UserId, InMemoryUser>();
   private organizations = new Map<OrganizationId, InMemoryOrganization>();
@@ -158,6 +177,19 @@ export class InMemoryIdentityRepository implements IdentityRepository {
     if (this.orgUserIndex.has(key)) {
       throw new Error("User is already a member of this organization");
     }
+
+    // Owner invariant (per DOMAIN_MODEL.md §2.1): an organization must have
+    // exactly one owner at all times. Adding a second active owner is rejected.
+    if (input.role === "owner" && (input.status ?? "active") === "active") {
+      const existingOwner = await this.getActiveOwner(input.organizationId);
+      if (existingOwner) {
+        throw new OwnerInvariantError(
+          "multiple_owners",
+          "Organization already has an active owner. Transfer ownership instead of adding a second owner.",
+        );
+      }
+    }
+
     const id = asMembershipId(crypto.randomUUID());
     const now = new Date().toISOString();
     const membership: InMemoryMembership = {
@@ -177,6 +209,18 @@ export class InMemoryIdentityRepository implements IdentityRepository {
   async updateMembershipStatus(id: MembershipId, status: MembershipStatus): Promise<OrganizationMembership | null> {
     const m = this.memberships.get(id);
     if (!m) return null;
+
+    // Owner invariant: cannot suspend/revoke the final active owner.
+    if (m.role === "owner" && m.status === "active" && status !== "active") {
+      const owners = await this.getActiveOwners(m.organizationId);
+      if (owners.length <= 1) {
+        throw new OwnerInvariantError(
+          "no_owner",
+          "Cannot suspend or revoke the final active owner. Transfer ownership first.",
+        );
+      }
+    }
+
     m.status = status;
     m.updatedAt = new Date().toISOString();
     return m;
@@ -185,9 +229,94 @@ export class InMemoryIdentityRepository implements IdentityRepository {
   async updateMembershipRole(id: MembershipId, role: MembershipRole): Promise<OrganizationMembership | null> {
     const m = this.memberships.get(id);
     if (!m) return null;
+
+    // Owner invariant: cannot demote the final active owner to a non-owner role.
+    if (m.role === "owner" && role !== "owner" && m.status === "active") {
+      const owners = await this.getActiveOwners(m.organizationId);
+      if (owners.length <= 1) {
+        throw new OwnerInvariantError(
+          "no_owner",
+          "Cannot demote the final active owner. Transfer ownership to another member first.",
+        );
+      }
+    }
+
+    // Owner invariant: cannot promote a second member to owner if an active owner exists.
+    if (role === "owner" && m.role !== "owner" && m.status === "active") {
+      const existingOwner = await this.getActiveOwner(m.organizationId);
+      if (existingOwner && existingOwner.id !== m.id) {
+        throw new OwnerInvariantError(
+          "multiple_owners",
+          "Organization already has an active owner. Transfer ownership instead of promoting a second owner.",
+        );
+      }
+    }
+
     m.role = role;
     m.updatedAt = new Date().toISOString();
     return m;
+  }
+
+  // -------------------------------------------------------------------
+  // Owner invariant helpers (private)
+  // -------------------------------------------------------------------
+
+  /** Get the single active owner of an organization, or null if none. */
+  private async getActiveOwner(orgId: OrganizationId): Promise<OrganizationMembership | null> {
+    const owners = await this.getActiveOwners(orgId);
+    return owners[0] ?? null;
+  }
+
+  /** Get all active owners of an organization. */
+  private async getActiveOwners(orgId: OrganizationId): Promise<OrganizationMembership[]> {
+    const result: OrganizationMembership[] = [];
+    for (const m of this.memberships.values()) {
+      if (m.organizationId === orgId && m.role === "owner" && m.status === "active") {
+        result.push(m);
+      }
+    }
+    return result;
+  }
+
+  // -------------------------------------------------------------------
+  // Ownership transfer (atomic, preserves exactly-one-owner invariant)
+  // -------------------------------------------------------------------
+
+  async transferOwnership(
+    orgId: OrganizationId,
+    newOwnerId: UserId,
+    newOwnerRole: MembershipRole = "admin",
+  ): Promise<OrganizationMembership[]> {
+    // Validate target is an active member
+    const targetMembership = await this.getMembership(orgId, newOwnerId);
+    if (!targetMembership) {
+      throw new OwnerInvariantError("no_owner", "Target user is not a member of this organization.");
+    }
+    if (targetMembership.status !== "active") {
+      throw new OwnerInvariantError("no_owner", `Target membership is ${targetMembership.status}.`);
+    }
+
+    // Validate there is a current active owner
+    const currentOwner = await this.getActiveOwner(orgId);
+    if (!currentOwner) {
+      throw new OwnerInvariantError("no_owner", "Organization has no active owner (invalid state).");
+    }
+
+    // If target is already the owner, no-op
+    if (targetMembership.role === "owner") {
+      return [targetMembership];
+    }
+
+    // Atomic transfer: demote current owner, promote target
+    // Both operations are performed without the invariant checks (private field access)
+    // because this is the one operation that legitimately transitions ownership.
+    const now = new Date().toISOString();
+    currentOwner.role = newOwnerRole;
+    currentOwner.updatedAt = now;
+    targetMembership.role = "owner";
+    targetMembership.updatedAt = now;
+
+    return [currentOwner, targetMembership];
   }
 
   // -------------------------------------------------------------------

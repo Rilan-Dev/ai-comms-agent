@@ -251,6 +251,28 @@ System-defined permissions (per `SECURITY.md §2`):
 - `audit.read`
 - `org.members.read`, `org.members.write`
 
+### 4.2a Phase 3 permission catalogue boundary
+
+Per Phase 3 correction Finding C: Phase 3 implements the identity and organization RBAC foundation permissions only.
+
+**Phase 3 permissions (implemented):**
+- `organization.read`, `organization.update`, `organization.members.read`, `organization.members.manage`
+- `users.read`, `users.manage`
+- `audit.read`
+- `settings.read`, `settings.manage`
+
+**Feature-domain permissions (deferred to feature phases):**
+- `agent.read`, `agent.write`, `agent.deploy` — introduced in Phase 11 (Agent runtime)
+- `email_account.read`, `email_account.write`, `email_account.delete` — introduced in Phase 5/9
+- `email.send`, `email.delete`, `email.modify_bulk` — introduced in Phase 12 (Approval system)
+- `messaging.send`, `messaging.read` — introduced in Phase 13 (WhatsApp)
+- `schedule.read`, `schedule.write` — introduced in Phase 14 (Scheduling)
+
+Feature-domain permissions are introduced with their respective feature phases and must not be treated as missing Phase 3 functionality. The Phase 3 permission catalogue is intentionally limited to identity/organization RBAC foundation permissions.
+
+**RBAC persistence (Phase 3 correction Finding A — Option A):**
+Phase 3 uses four immutable system roles (`owner`, `admin`, `member`, `viewer`) resolved via the TypeScript `SYSTEM_ROLE_PERMISSIONS` mapping. The persisted `roles` and `role_permissions` tables are deferred to a later phase when custom per-organization roles are introduced. The `permissions` catalogue table is retained as a reference table but is not consulted at runtime — the TypeScript `PERMISSION_CATALOGUE` is the authoritative source.
+
 ### 4.3 Permission enforcement
 
 Every API route checks (per `SECURITY.md §2`):

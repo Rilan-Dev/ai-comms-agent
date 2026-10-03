@@ -743,3 +743,69 @@ Phase 4 authorization: NOT AUTHORIZED
 ```
 
 Z.AI is in STOP state. Awaiting ChatGPT Phase 3 acceptance decision.
+
+---
+
+## Task ID: 6
+## Phase: 3 — Correction Pass (RBAC invariants and governance)
+
+- **Status**: corrections_implemented_awaiting_chatgpt_acceptance
+- **Objective**: Correct the 4 Phase 3 acceptance findings (A: RBAC persistence, B: owner invariant, C: permission catalogue docs, D: governance sync).
+- **Architect**: ChatGPT (Chief Architect — external)
+- **Developer**: Z.AI (implementer)
+- **Start date**: 2026-10-03
+- **Completion date**: 2026-10-03
+- **Starting commit**: 224751a89f189980b4dd14f61f12ecc38818973d
+
+### Work Log
+
+- Received Phase 3 correction handoff with 4 findings. Read governance docs. Verified git state: branch main, HEAD 224751a, clean working tree.
+- Inspected Phase 3 diff (daca8e5..224751a) directly — did not trust previous developer summaries.
+- **Finding A (RBAC persistence)**: Inspected DATA-MODEL.md §1, DOMAIN_MODEL.md §2.3, SECURITY_MODEL.md §4.1, ROADMAP Phase 3. All say "Custom roles (per-org) are optional (Phase 3)". The persisted `roles`/`role_permissions` tables were disconnected dead data — runtime used `SYSTEM_ROLE_PERMISSIONS` (TypeScript). Decision: **Option A** (defer custom-role tables). Removed `roles` and `role_permissions` tables, indexes, and RLS policies from `supabase/migrations/0001_identity_rbac.sql`. Retained `permissions` catalogue table as a reference table. Documented the decision in the migration with explicit comments. The TypeScript `SYSTEM_ROLE_PERMISSIONS` is the single authoritative RBAC model for Phase 3.
+- **Finding B (Owner invariant)**: Added `OwnerInvariantError` class to `packages/db/src/identity/in-memory.ts` (with `violation: "multiple_owners" | "no_owner"`). Enforced the exactly-one-owner invariant in: (1) `createMembership` — rejects adding a second active owner; (2) `updateMembershipRole` — rejects demoting the final active owner and rejects promoting a second active owner; (3) `updateMembershipStatus` — rejects suspending/revoking the final active owner. Added `transferOwnership(orgId, newOwnerId, newOwnerRole?)` method for atomic ownership transfer — the only valid way to change ownership. Added `getActiveOwner`/`getActiveOwners` private helpers. Exported `OwnerInvariantError` from `packages/db/src/index.ts`. Added `transferOwnership` to the `IdentityRepository` interface.
+- **Finding C (Permission catalogue documentation)**: Added §4.2a to `docs/architecture/SECURITY_MODEL.md` documenting the Phase 3 permission catalogue boundary: Phase 3 implements identity/RBAC foundation permissions only (9 permissions); feature-domain permissions (agent.*, email.*, whatsapp.*, schedule.*) are deferred to their respective feature phases and must not be treated as missing Phase 3 functionality. Also documented the RBAC persistence decision (Option A).
+- **Finding D (Governance sync)**: Updated `docs/project-control/PROJECT_STATE.md`: removed stale Phase 2 language ("Get Phase 2 application foundation approved...", "Awaiting ChatGPT Phase 2 review..."); set current_phase=3, phase_status="correction required — awaiting ChatGPT acceptance", last_completed_phase=2 (APPROVED), current_commit=224751a, last_verified_commit="pending_chatgpt_acceptance". Updated open_blockers, required_decision, next_action to reference Phase 3 correction review. Added change-log entries for Phase 3 implementation + ChatGPT correction request.
+- Fixed existing `rbac.test.ts` test "role change from OWNER to VIEWER removes permissions" — it demoted the final owner, which now violates the invariant. Rewrote to use `transferOwnership` (transfer from ownerA to memberA, demoting ownerA to viewer). The test now verifies both the old owner loses permissions AND the new owner gains them.
+- Created `apps/web/tests/owner-invariant.test.ts` (14 tests): organization starts with exactly one owner, rejects adding second active owner, rejects promoting second member to owner, rejects demoting final owner to admin/member/viewer, rejects suspending final owner, valid transfer preserves exactly one owner, after transfer old owner can be demoted, rejects transfer to non-member, rejects transfer to suspended member, transfer to existing owner is no-op, OwnerInvariantError violation types correct.
+- Created `apps/web/tests/rbac-persistence-consistency.test.ts` (8 tests): SYSTEM_ROLE_PERMISSIONS is authoritative, getPermissionsForRole returns from TypeScript mapping, PERMISSION_CATALOGUE contains only Phase 3 permissions (explicitly NOT agent.*/email.*/whatsapp.*/schedule.*), authorization decisions consistent across orgs with same role, Phase 3 does not reference deferred tables at runtime, viewer least privilege, permission hierarchy, all SYSTEM_ROLE_PERMISSIONS entries in PERMISSION_CATALOGUE.
+- Fixed typecheck errors: (1) `owners[0]` / `result[0]` possibly undefined (noUncheckedIndexedAccess) — added non-null assertions; (2) added `asUserId` import to rbac.test.ts.
+- Verification: typecheck 5/5 pass, web build success (7 routes), worker build success, 62/62 tests pass (7 files: auth 4, organization-isolation 7, rbac 14, database-constraints 10, dev-adapter-guard 5, owner-invariant 14, rbac-persistence-consistency 8), secret scan clean, Clara submodule unchanged.
+- No Clara source modification. No Phase 4 work. No production Supabase provisioning.
+
+### Files changed (this task)
+
+- `supabase/migrations/0001_identity_rbac.sql` — removed `roles` and `role_permissions` tables/indexes/RLS policies; documented Option A decision
+- `packages/db/src/identity/in-memory.ts` — added `OwnerInvariantError`, owner invariant enforcement in createMembership/updateMembershipRole/updateMembershipStatus, `transferOwnership` method, `getActiveOwner`/`getActiveOwners` helpers
+- `packages/db/src/identity/repository.ts` — added `transferOwnership` to interface
+- `packages/db/src/index.ts` — exported `OwnerInvariantError`
+- `apps/web/tests/rbac.test.ts` — fixed ownership-transfer test to use `transferOwnership`; added `asUserId` import
+- `docs/architecture/SECURITY_MODEL.md` — added §4.2a (Phase 3 permission catalogue boundary)
+- `docs/project-control/PROJECT_STATE.md` — synchronized with Phase 3 correction state (Finding D)
+- `docs/project-control/CURRENT_PHASE.md` — added correction summary
+- `docs/project-control/NEXT_ACTION.md` — Phase 3 correction review action
+- `worklog.md` — this section
+
+### Files created (this task)
+
+- `apps/web/tests/owner-invariant.test.ts` (14 tests)
+- `apps/web/tests/rbac-persistence-consistency.test.ts` (8 tests)
+
+### Verification
+
+- **Typecheck**: 5/5 packages pass.
+- **Web build**: success — 7 routes (/, /mail/inbox, /api/health, /api/dev/seed, /api/organizations/[id], /api/organizations/[id]/members, /_not-found).
+- **Worker build**: success.
+- **Tests**: 62/62 pass (7 files: auth 4, organization-isolation 7, rbac 14, database-constraints 10, dev-adapter-guard 5, owner-invariant 14, rbac-persistence-consistency 8).
+- **Secret scan**: clean.
+- **Clara**: submodule unchanged at b47e587.
+
+### Governance state
+
+```text
+Phase 3 implementation: COMPLETE
+Developer verification: COMPLETE
+ChatGPT acceptance: PENDING
+Phase 4 authorization: NOT AUTHORIZED
+```
+
+Z.AI is in STOP state. Awaiting ChatGPT Phase 3 acceptance decision.

@@ -13,11 +13,11 @@ visibility: private
 
 current_phase: 3
 current_phase_name: "Identity, Organization, Users, Roles & RBAC"
-phase_status: "implementation complete — awaiting ChatGPT review"
+phase_status: "correction required — awaiting ChatGPT acceptance"
 
 last_completed_phase: 2
 last_completed_phase_status: "APPROVED (2026-10-03)"
-current_objective: "Get Phase 2 application foundation approved by ChatGPT so Phase 3 (auth/RBAC) can be authorized"
+current_objective: "Get Phase 3 corrections accepted by ChatGPT so Phase 4 (database foundation) can be authorized"
 
 architect: "ChatGPT (Chief Architect — external to this Z.AI session)"
 developer: "Z.AI (implementer of this Phase 2 deliverable)"
@@ -28,24 +28,24 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "(populated after Phase 3 commit — see git log)"
-current_commit_short: "(populated after commit)"
+current_commit: "224751a89f189980b4dd14f61f12ecc38818973d (before correction; will be updated after correction commit)"
+current_commit_short: "224751a (before correction)"
 current_commit_url: "(populated after commit)"
 last_verified_commit: "pending_chatgpt_acceptance"
 
 open_blockers:
-  - "Awaiting ChatGPT Phase 2 review of application foundation"
+  - "Awaiting ChatGPT Phase 3 correction review (RBAC persistence, owner invariant, permission catalogue docs, governance)"
 open_risks:
   - "Clara manifest has 2 SHA typos (Clara library issue, not file mutations — see CLARA-INTEGRATION.md §8a)"
   - "Supabase project not yet provisioned; PostgreSQL/Supabase remains approved infrastructure (ADR-009); provisioning deferred to Phase 4 (RSK-001)"
   - "Worker host not yet selected (ISS-004 / ADR-007) — blocks Phase 9"
 required_decision:
-  - "ChatGPT must review and approve/reject/correct Phase 2 application foundation before Phase 3 begins"
+  - "ChatGPT must review the Phase 3 correction set (Findings A-D) before Phase 4 begins"
 
 next_action:
   actor: "ChatGPT"
-  action: "Review Phase 2 application foundation; approve, reject, or issue correction handoff"
-  then: "If approved, issue Phase 3 Z.AI_HANDOFF (authentication / organization / users / RBAC)"
+  action: "Review Phase 3 correction set (RBAC persistence Option A, owner invariant, permission catalogue boundary, governance sync)"
+  then: "If accepted, issue Phase 4 Z.AI_HANDOFF (Database Foundation and Migrations)"
 
 phase2_summary:
   status: "implementation_complete_awaiting_review"
@@ -125,4 +125,6 @@ monorepo_layout:
 | 2026-10-03 | 2 | Z.AI | Phase 2 application foundation implemented: monorepo (apps/web, apps/worker, packages/{clara-core,shared,db}), Clara git submodule, local Docker infra, foundation vertical slice, all verification passing. Clara deep audit completed (106/108 verifier pass; claraRuntime export corrected; ISS-005 refined). Awaiting ChatGPT Phase 2 review. |
 | 2026-10-03 | 2 | ChatGPT | Phase 2 review: implementation substantially complete; **CORRECTION REQUIRED** for stale/contradictory project-control records. Control-state correction authorized. No Phase 3. |
 | 2026-10-03 | 2 | Z.AI | Control-state correction: recorded actual Phase 2 commit SHA (13835dd); implemented minimum CI workflow (.github/workflows/ci.yml) per ROADMAP.md Phase 2 scope; resolved ISS-002, retired RSK-002; corrected ISSUES/RISKS/CURRENT_PHASE/NEXT_ACTION/VERIFICATION_STATE/worklog. Awaiting ChatGPT final Phase 2 acceptance. |
+| 2026-10-03 | 3 | Z.AI | Phase 3 identity/RBAC implemented (commits 11aa13c, 224751a). Identity abstraction, org/membership/RBAC model, server-side authorization, dev-only identity stub, 40 tests. Awaiting ChatGPT acceptance. |
+| 2026-10-03 | 3 | ChatGPT | Phase 3 review: CORRECTION REQUIRED. Findings: A (RBAC persistence disconnected), B (owner invariant not enforced), C (permission catalogue boundary undocumented), D (PROJECT_STATE stale). |
 | 2026-10-03 | 2 | Z.AI | Vercel deployment fix: root cause was framework=None + rootDirectory=None causing Vercel to look for nonexistent public/ output. Fixed via Vercel project settings (rootDirectory=apps/web, framework=nextjs, nodeVersion=24.x). Fixed health check to be production-safe (removed development-time file-existence checks). Deployment READY at https://ai-comms-agent.vercel.app. All 3 routes verified PASS (commit c286867). |

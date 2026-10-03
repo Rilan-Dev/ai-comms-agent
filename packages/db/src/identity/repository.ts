@@ -47,4 +47,18 @@ export interface IdentityRepository {
 
   // Permissions
   getPermissionsForRole(orgId: OrganizationId, role: MembershipRole): Promise<PermissionName[]>;
+
+  // Owner invariant (per DOMAIN_MODEL.md §2.1: "exactly one owner at all times")
+  /**
+   * Atomically transfer ownership from the current owner to a new member.
+   * The current owner is demoted to `newOwnerRole` (default: "admin") and
+   * the target member is promoted to "owner". This is the only way to change
+   * ownership without violating the exactly-one-owner invariant.
+   *
+   * Throws OwnerInvariantError if:
+   *   - the target member is not an active member of the organization
+   *   - the target member is already the owner
+   *   - there is no current active owner (invalid state)
+   */
+  transferOwnership(orgId: OrganizationId, newOwnerId: UserId, newOwnerRole?: MembershipRole): Promise<OrganizationMembership[]>;
 }

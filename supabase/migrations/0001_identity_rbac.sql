@@ -126,38 +126,24 @@ CREATE UNIQUE INDEX IF NOT EXISTS permissions_name_uniq
   ON permissions (name);
 
 -- ============================================================================
--- Roles (per-organization role definitions, per DATA-MODEL.md §1)
+-- Roles & Role-Permissions: DEFERRED (Phase 3 correction — Option A)
 -- ============================================================================
-
-CREATE TABLE IF NOT EXISTS roles (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  name            text NOT NULL,
-  description     text,
-  is_system_role  boolean NOT NULL DEFAULT false,
-  created_at      timestamptz NOT NULL DEFAULT now()
-);
-
--- Role name uniqueness within an organization
-CREATE UNIQUE INDEX IF NOT EXISTS roles_org_name_uniq
-  ON roles (organization_id, name);
-
-CREATE INDEX IF NOT EXISTS roles_org_idx
-  ON roles (organization_id);
-
--- ============================================================================
--- Role-Permission Mapping (many-to-many, per DATA-MODEL.md §1)
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS role_permissions (
-  role_id       uuid NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-  permission_id uuid NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
-  created_at    timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (role_id, permission_id)
-);
-
-CREATE INDEX IF NOT EXISTS role_permissions_permission_idx
-  ON role_permissions (permission_id);
+--
+-- Phase 3 uses four immutable system roles (owner, admin, member, viewer)
+-- resolved via the TypeScript SYSTEM_ROLE_PERMISSIONS mapping in
+-- packages/shared/src/identity/types.ts. The persisted `roles` and
+-- `role_permissions` tables are NOT needed for system-role authorization
+-- and would create a disconnected competing RBAC model (dead data).
+--
+-- Per DATA-MODEL.md §1, the `roles`/`role_permissions` tables are the
+-- target schema for when custom per-organization roles are introduced.
+-- Custom roles are explicitly "optional (Phase 3)" per DOMAIN_MODEL.md §2.3
+-- and ROADMAP.md Phase 3 scope. They are deferred to a later phase.
+--
+-- The `permissions` catalogue table below is retained as a reference
+-- table (it documents the system permission catalogue and is harmless),
+-- but it is NOT consulted at runtime — the TypeScript PERMISSION_CATALOGUE
+-- is the authoritative source for Phase 3.
 
 -- ============================================================================
 -- updated_at triggers
@@ -191,9 +177,7 @@ CREATE TRIGGER organization_memberships_updated_at BEFORE UPDATE ON organization
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organization_memberships ENABLE ROW LEVEL SECURITY;
-ALTER TABLE roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE permissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE role_permissions ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies: users can see organizations they are a member of.
 -- The application layer (authorization API) enforces fine-grained permissions.
@@ -226,65 +210,56 @@ CREATE POLICY memberships_member_visibility ON organization_memberships
     )
   );
 
--- Roles/permissions are visible to members of the owning organization
-CREATE POLICY roles_member_visibility ON roles
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM organization_memberships m
-      WHERE m.organization_id = roles.organization_id
-        AND m.user_id = current_setting('app.user_id', true)::uuid
-        AND m.status = 'active'
-    )
-  );
-
 -- Permissions catalogue is globally readable (it's a system reference table)
 CREATE POLICY permissions_global_read ON permissions
   FOR SELECT USING (true);
 
--- Role-permissions visible when the role's org is visible
-CREATE POLICY role_permissions_member_visibility ON role_permissions
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM roles r
-      JOIN organization_memberships m ON m.organization_id = r.organization_id
-      WHERE r.id = role_permissions.role_id
-        AND m.user_id = current_setting('app.user_id', true)::uuid
-        AND m.status = 'active'
-    )
-  );
-
 -- ============================================================================
--- Seed: System permission catalogue (per SECURITY_MODEL.md §4.2)
--- Only permissions required by the Phase 3 authorization foundation are seeded.
--- Future feature permissions are defined as planned but NOT seeded as existing.
+-- Seed: System permission catalogue (Phase 3 identity/RBAC foundation only)
 -- ============================================================================
+--
+-- Per Phase 3 correction Finding C: Phase 3 implements the identity and
+-- organization RBAC foundation permissions only. Feature-domain permissions
+-- (agent.*, email.*, whatsapp.*, schedule.*) are introduced with their
+-- respective feature phases and must not be treated as missing Phase 3
+-- functionality.
+--
+-- The TypeScript PERMISSION_CATALOGUE in packages/shared/src/identity/types.ts
+-- is the authoritative source. This SQL seed is a reference/documentation
+-- artifact; runtime authorization uses SYSTEM_ROLE_PERMISSIONS (TypeScript).
 
 INSERT INTO permissions (name, description) VALUES
-  -- Organization
+  -- Organization (Phase 3)
   ('organization.read',          'View organization details'),
   ('organization.update',        'Update organization settings'),
   ('organization.members.read',  'View organization members'),
   ('organization.members.manage', 'Invite, remove, or change member roles'),
-  -- Users
+  -- Users (Phase 3)
   ('users.read',                 'View user profiles within the organization'),
   ('users.manage',               'Manage user accounts'),
-  -- Audit
+  -- Audit (Phase 3)
   ('audit.read',                 'View audit log'),
-  -- Settings
+  -- Settings (Phase 3)
   ('settings.read',              'View organization settings'),
   ('settings.manage',            'Manage organization settings')
 ON CONFLICT (name) DO NOTHING;
 
 -- ============================================================================
--- Seed: System role templates (created per-organization via application layer)
--- The application layer creates owner/admin/member/viewer roles for each org
--- and assigns the appropriate permissions. This is done in the repository
--- layer, not in this migration, to keep the migration idempotent.
+-- System role → permission mapping (authoritative: TypeScript, documented here)
 -- ============================================================================
-
--- Role permission mapping (documented here, applied by application layer):
 --
--- owner:   all permissions (organization.*, users.*, audit.*, settings.*)
--- admin:   organization.read, organization.members.read, users.read, audit.read, settings.read, settings.manage
--- member:  organization.read, users.read
--- viewer:  organization.read
+-- The authoritative role-permission mapping for Phase 3 is the TypeScript
+-- constant SYSTEM_ROLE_PERMISSIONS in packages/shared/src/identity/types.ts.
+-- It is NOT persisted in the database because system roles are immutable.
+--
+--   owner:  all 9 Phase 3 permissions
+--   admin:  organization.read, organization.members.read, users.read,
+--           audit.read, settings.read, settings.manage (6 permissions)
+--   member: organization.read, users.read (2 permissions)
+--   viewer: organization.read (1 permission — least privilege)
+--
+-- Custom per-organization roles (with persisted role_permissions) are
+-- deferred to a later phase. When introduced, a new migration will create
+-- the `roles` and `role_permissions` tables and the application layer will
+-- consult them for custom roles while continuing to use SYSTEM_ROLE_PERMISSIONS
+-- for the four system roles.

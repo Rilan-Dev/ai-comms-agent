@@ -5,7 +5,7 @@
 ```yaml
 phase: 3
 phase_name: "Identity, Organization, Users, Roles & RBAC"
-status: "implementation_complete_developer_verification_complete_chatgpt_acceptance_pending"
+status: "correction_required_awaiting_chatgpt_acceptance"
 start_date: 2026-10-03
 implementation_completion_date: 2026-10-03
 architect: "ChatGPT (external)"
@@ -95,3 +95,12 @@ All Phase 3 objectives completed. The identity/organization/RBAC foundation is i
 Verification: typecheck 5/5 pass, web build success (7 routes), worker build success, 40/40 tests pass, secret scan clean.
 
 Phase 3 awaits ChatGPT acceptance review. Phase 4 NOT authorized.
+
+**Phase 3 correction pass (2026-10-03):**
+ChatGPT review found 4 corrections required:
+- **Finding A (RBAC persistence)**: Removed disconnected `roles` and `role_permissions` tables from migration (Option A — defer custom-role persistence). Phase 3 uses the TypeScript `SYSTEM_ROLE_PERMISSIONS` mapping as the single authoritative RBAC model. The `permissions` catalogue table is retained as a reference table.
+- **Finding B (Owner invariant)**: Enforced exactly-one-owner invariant in `InMemoryIdentityRepository`. `createMembership`, `updateMembershipRole`, and `updateMembershipStatus` now reject operations that would produce zero or multiple owners. Added `transferOwnership` method for atomic ownership transfer. Added `OwnerInvariantError` class.
+- **Finding C (Permission catalogue documentation)**: Added §4.2a to `SECURITY_MODEL.md` documenting that Phase 3 implements identity/RBAC foundation permissions only; feature-domain permissions (agent.*, email.*, etc.) are deferred to their respective feature phases.
+- **Finding D (Governance sync)**: Updated `PROJECT_STATE.md` to reflect Phase 3 correction state (removed stale Phase 2 language).
+
+Tests added: 14 owner-invariant tests + 8 RBAC-persistence-consistency tests = 22 new tests. Total: 62 tests (7 files), all pass.
