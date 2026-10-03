@@ -809,3 +809,63 @@ Phase 4 authorization: NOT AUTHORIZED
 ```
 
 Z.AI is in STOP state. Awaiting ChatGPT Phase 3 acceptance decision.
+
+---
+
+## Task ID: 7
+## Phase: 3 — Final Correction (owner invariant, atomic creation, transferOwnership safety)
+
+- **Status**: final_correction_complete_awaiting_chatgpt_acceptance
+- **Objective**: Correct the 4 remaining Phase 3 items: SQL owner invariant, atomic org creation, transferOwnership type safety, governance.
+- **Architect**: ChatGPT (Chief Architect — external)
+- **Developer**: Z.AI (implementer)
+- **Start date**: 2026-10-03
+- **Completion date**: 2026-10-03
+- **Starting commit**: bf8dea716b334c8695cc4d677e91da9c9db0a0df
+- **Final commit**: d4aa08b03edb0bb007a1249c79169654af09c095
+
+### Work Log
+
+- Received Phase 3 final correction handoff with 4 items. Read governance docs. Verified git state: branch main, HEAD bf8dea7, clean working tree. Inspected actual implementation files (repository.ts, in-memory.ts, types.ts, migration, tests) directly.
+- **Correction 2 (SQL owner invariant)**: Added PostgreSQL trigger `enforce_owner_invariant()` to `supabase/migrations/0001_identity_rbac.sql`. The trigger fires BEFORE INSERT OR UPDATE on `organization_memberships` and enforces: (1) at most one active owner per org (INSERT check), (2) owner membership must be active — rejects invited/suspended (Rule 2), (3) final active owner cannot be demoted or suspended (UPDATE check), (4) promoting a second active owner is rejected (UPDATE check). Uses `RAISE EXCEPTION ... USING ERRCODE = 'check_violation'`. Documented that organization creation uses `createOrganizationWithOwner()` (application layer) which inserts org + owner in a single transaction. Schema-level invariant for production; Phase 3 does not apply migration.
+- **Correction 3 (Atomic org creation)**: Added `createOrganizationWithOwner(input: { name, slug, ownerId })` to `IdentityRepository` interface and `InMemoryIdentityRepository` implementation. The method: (1) validates the owner user exists, (2) creates the organization (reuses `createOrganization` for slug uniqueness), (3) creates the initial active owner membership atomically. Returns `{ organization, ownerMembership }`. No window where organization exists without owner. Added `OrganizationWithOwner` interface to repository.ts.
+- **Correction 4 (transferOwnership type safety)**: Added `NonOwnerRole` type to `packages/shared/src/identity/types.ts` (`Exclude<MembershipRole, "owner">` = `"admin" | "member" | "viewer"`). Changed `transferOwnership` parameter `newOwnerRole` from `MembershipRole` to `NonOwnerRole` in both the interface and implementation. Default remains `"admin"`. Added a runtime guard that rejects `"owner"` (defensive against type-unsafe escape hatches). Exported `NonOwnerRole` from `packages/shared/src/index.ts`.
+- **Owner membership status enforcement**: Updated `createMembership` in `InMemoryIdentityRepository` to reject owner memberships with non-active status (status='invited' or status='suspended'). Throws `OwnerInvariantError` with violation="no_owner". This matches SQL trigger Rule 2.
+- Added 7 new tests to `apps/web/tests/owner-invariant.test.ts`: (1) createOrganizationWithOwner produces exactly one active owner, (2) createOrganizationWithOwner rejects non-existent owner user, (3) rejects owner membership with status='invited', (4) rejects owner membership with status='suspended', (5) transferOwnership rejects newOwnerRole='owner' (type-safe runtime guard), (6) transferOwnership with 'admin' demotion leaves old owner as admin + target as sole owner, (7) transferOwnership with 'viewer' demotion leaves old owner as viewer.
+- All 69 tests pass (7 files: auth 4, organization-isolation 7, rbac 14, database-constraints 10, dev-adapter-guard 5, owner-invariant 21, rbac-persistence-consistency 8). Typecheck 5/5 pass. Web build success (7 routes). Worker build success. Secret scan clean. Clara submodule unchanged at b47e587.
+- Vercel deployment: auto-deployed commit d4aa08b. State: READY. UID: dpl_iBWryx25cRAqRFXmgTuwcMcjVtgY. All routes verified: / 200, /mail/inbox 200, /api/health 200, /api/dev/seed 403 (production guard).
+- Updated governance docs: PROJECT_STATE.md (final commit SHA d4aa08b, phase_status, change log), CURRENT_PHASE.md (final correction summary, 69 tests), NEXT_ACTION.md (final acceptance review action), worklog.md (this section).
+
+### Files changed (this task)
+
+- `supabase/migrations/0001_identity_rbac.sql` — added `enforce_owner_invariant()` trigger function + trigger
+- `packages/shared/src/identity/types.ts` — added `NonOwnerRole` type
+- `packages/shared/src/index.ts` — exported `NonOwnerRole`
+- `packages/db/src/identity/repository.ts` — `transferOwnership` uses `NonOwnerRole`; added `createOrganizationWithOwner` + `OrganizationWithOwner`
+- `packages/db/src/identity/in-memory.ts` — `transferOwnership` uses `NonOwnerRole` + runtime guard; added `createOrganizationWithOwner`; `createMembership` rejects non-active owner status
+- `apps/web/tests/owner-invariant.test.ts` — 7 new tests (21 total in this file)
+- `docs/project-control/PROJECT_STATE.md` — final commit SHA + change log
+- `docs/project-control/CURRENT_PHASE.md` — final correction summary
+- `docs/project-control/NEXT_ACTION.md` — final acceptance review action
+- `worklog.md` — this section
+
+### Verification
+
+- **Typecheck**: 5/5 packages pass.
+- **Tests**: 69/69 pass (7 files).
+- **Web build**: success (7 routes).
+- **Worker build**: success.
+- **Secret scan**: clean.
+- **Clara**: submodule unchanged at b47e5871f0587ed76f6cce68f91c667d235bc1e1.
+- **Vercel**: READY (commit d4aa08b, UID dpl_iBWryx25cRAqRFXmgTuwcMcjVtgY). Routes: / 200, /mail/inbox 200, /api/health 200, /api/dev/seed 403.
+
+### Governance state
+
+```text
+Phase 3 implementation: COMPLETE
+Developer verification: COMPLETE
+ChatGPT acceptance: PENDING
+Phase 4 authorization: NOT AUTHORIZED
+```
+
+Z.AI is in STOP state. Awaiting ChatGPT final Phase 3 acceptance decision.

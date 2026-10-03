@@ -5,7 +5,7 @@
 ```yaml
 phase: 3
 phase_name: "Identity, Organization, Users, Roles & RBAC"
-status: "correction_required_awaiting_chatgpt_acceptance"
+status: "final_correction_complete_awaiting_chatgpt_acceptance"
 start_date: 2026-10-03
 implementation_completion_date: 2026-10-03
 architect: "ChatGPT (external)"
@@ -96,11 +96,20 @@ Verification: typecheck 5/5 pass, web build success (7 routes), worker build suc
 
 Phase 3 awaits ChatGPT acceptance review. Phase 4 NOT authorized.
 
-**Phase 3 correction pass (2026-10-03):**
+**Phase 3 correction pass 1 (2026-10-03, commit bf8dea7):**
 ChatGPT review found 4 corrections required:
 - **Finding A (RBAC persistence)**: Removed disconnected `roles` and `role_permissions` tables from migration (Option A — defer custom-role persistence). Phase 3 uses the TypeScript `SYSTEM_ROLE_PERMISSIONS` mapping as the single authoritative RBAC model. The `permissions` catalogue table is retained as a reference table.
 - **Finding B (Owner invariant)**: Enforced exactly-one-owner invariant in `InMemoryIdentityRepository`. `createMembership`, `updateMembershipRole`, and `updateMembershipStatus` now reject operations that would produce zero or multiple owners. Added `transferOwnership` method for atomic ownership transfer. Added `OwnerInvariantError` class.
 - **Finding C (Permission catalogue documentation)**: Added §4.2a to `SECURITY_MODEL.md` documenting that Phase 3 implements identity/RBAC foundation permissions only; feature-domain permissions (agent.*, email.*, etc.) are deferred to their respective feature phases.
 - **Finding D (Governance sync)**: Updated `PROJECT_STATE.md` to reflect Phase 3 correction state (removed stale Phase 2 language).
 
-Tests added: 14 owner-invariant tests + 8 RBAC-persistence-consistency tests = 22 new tests. Total: 62 tests (7 files), all pass.
+**Phase 3 final correction pass (2026-10-03, commit d4aa08b):**
+ChatGPT review found 4 remaining items:
+- **Correction 2 (SQL owner invariant)**: Added PostgreSQL trigger `enforce_owner_invariant()` to migration — enforces at most one active owner, owner must be active, final owner cannot be demoted/suspended. Schema-level invariant for production.
+- **Correction 3 (Atomic org creation)**: Added `createOrganizationWithOwner()` to repository interface + in-memory implementation. Atomically creates organization + initial active owner. No window where org exists without owner.
+- **Correction 4 (transferOwnership type safety)**: Changed `newOwnerRole` type from `MembershipRole` to `NonOwnerRole` (= `Exclude<MembershipRole, "owner">`). Compile-time error to pass "owner". Added runtime guard. Default remains "admin".
+- **Owner membership status**: `createMembership` now rejects owner memberships with non-active status (matches SQL trigger Rule 2).
+
+Tests: 69 total (7 files) — 40 original + 14 owner-invariant + 8 RBAC-persistence-consistency + 7 final-correction. All pass.
+
+RBAC persistence: Option A (system roles via TypeScript SYSTEM_ROLE_PERMISSIONS; `roles`/`role_permissions` tables deferred). Permission catalogue: 9 Phase 3 identity/RBAC foundation permissions only (feature-domain permissions deferred to feature phases).

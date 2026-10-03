@@ -13,7 +13,7 @@ visibility: private
 
 current_phase: 3
 current_phase_name: "Identity, Organization, Users, Roles & RBAC"
-phase_status: "correction required — awaiting ChatGPT acceptance"
+phase_status: "final correction complete — awaiting ChatGPT acceptance"
 
 last_completed_phase: 2
 last_completed_phase_status: "APPROVED (2026-10-03)"
@@ -28,13 +28,13 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "224751a89f189980b4dd14f61f12ecc38818973d (before correction; will be updated after correction commit)"
-current_commit_short: "224751a (before correction)"
-current_commit_url: "(populated after commit)"
+current_commit: "d4aa08b03edb0bb007a1249c79169654af09c095"
+current_commit_short: "d4aa08b"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/d4aa08b03edb0bb007a1249c79169654af09c095"
 last_verified_commit: "pending_chatgpt_acceptance"
 
 open_blockers:
-  - "Awaiting ChatGPT Phase 3 correction review (RBAC persistence, owner invariant, permission catalogue docs, governance)"
+  - "Awaiting ChatGPT Phase 3 final acceptance (owner invariant SQL trigger, atomic org creation, transferOwnership type safety)"
 open_risks:
   - "Clara manifest has 2 SHA typos (Clara library issue, not file mutations — see CLARA-INTEGRATION.md §8a)"
   - "Supabase project not yet provisioned; PostgreSQL/Supabase remains approved infrastructure (ADR-009); provisioning deferred to Phase 4 (RSK-001)"
@@ -127,4 +127,7 @@ monorepo_layout:
 | 2026-10-03 | 2 | Z.AI | Control-state correction: recorded actual Phase 2 commit SHA (13835dd); implemented minimum CI workflow (.github/workflows/ci.yml) per ROADMAP.md Phase 2 scope; resolved ISS-002, retired RSK-002; corrected ISSUES/RISKS/CURRENT_PHASE/NEXT_ACTION/VERIFICATION_STATE/worklog. Awaiting ChatGPT final Phase 2 acceptance. |
 | 2026-10-03 | 3 | Z.AI | Phase 3 identity/RBAC implemented (commits 11aa13c, 224751a). Identity abstraction, org/membership/RBAC model, server-side authorization, dev-only identity stub, 40 tests. Awaiting ChatGPT acceptance. |
 | 2026-10-03 | 3 | ChatGPT | Phase 3 review: CORRECTION REQUIRED. Findings: A (RBAC persistence disconnected), B (owner invariant not enforced), C (permission catalogue boundary undocumented), D (PROJECT_STATE stale). |
+| 2026-10-03 | 3 | Z.AI | Phase 3 correction pass (commit bf8dea7): Option A RBAC persistence, owner invariant in-memory, permission catalogue docs, governance sync. 62 tests. |
+| 2026-10-03 | 3 | ChatGPT | Phase 3 review: FINAL CORRECTION required. 4 items: SQL owner invariant, atomic org creation, transferOwnership type safety, governance. |
+| 2026-10-03 | 3 | Z.AI | Phase 3 final correction (commit d4aa08b): PostgreSQL owner-invariant trigger, createOrganizationWithOwner, NonOwnerRole type, 69 tests. Vercel READY. Awaiting acceptance. |
 | 2026-10-03 | 2 | Z.AI | Vercel deployment fix: root cause was framework=None + rootDirectory=None causing Vercel to look for nonexistent public/ output. Fixed via Vercel project settings (rootDirectory=apps/web, framework=nextjs, nodeVersion=24.x). Fixed health check to be production-safe (removed development-time file-existence checks). Deployment READY at https://ai-comms-agent.vercel.app. All 3 routes verified PASS (commit c286867). |
