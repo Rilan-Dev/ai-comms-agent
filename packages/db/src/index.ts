@@ -9,7 +9,7 @@
  * PostgreSQL/Supabase remains approved infrastructure (ADR-009).
  */
 
-export { createSupabaseClient, type SupabaseConfig } from "./client";
+export { createSupabaseClient, createSupabaseServiceClient, type SupabaseConfig } from "./client";
 export { isSupabaseConfigured, getSupabaseConfigFromEnv } from "./client";
 
 // Phase 3: identity repository
