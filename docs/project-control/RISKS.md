@@ -2,31 +2,33 @@
 
 Open risks that may affect the project. Each risk has an ID, date identified, likelihood, impact, owner, mitigation, and status.
 
-Statuses: `identified`, `mitigating`, `materialized`, `retired`.
+Statuses: `identified`, `mitigating`, `materialized`, `retired`, `accepted`.
 
 ---
 
-## RSK-001 — Supabase project not provisioned; database design is documentation-only
+## RSK-001 — Supabase project not provisioned; database implementation deferred to Phase 4
 
 - **Identified:** 2026-10-03
 - **Likelihood:** high (will materialize if not addressed before Phase 4)
 - **Impact:** high (blocks all database work)
 - **Owner:** User (provisioning) + Z.AI (schema implementation)
 - **Status:** identified
-- **Description:** PostgreSQL/Supabase remains approved infrastructure (ADR-009, ADR-002). Phase 1 is documentation-only by design — no database implementation during Phase 1. The data model is fully documented in `docs/architecture/DATA-MODEL.md` and `docs/architecture/DOMAIN_MODEL.md`, but no Supabase project exists yet. Provisioning requires Supabase credentials (URL, anon key, service-role key) which the user has not yet provided for this project. The Prima service token in the chat is for Z.AI's own backend, not for Supabase.
-- **Mitigation:** Before Phase 4, the user provisions a Supabase project and provides the connection strings via Vercel project env vars (not in the repo). Z.AI then inspects the project (per `RULES.md §11`) before applying any migration. The phrase "No Supabase" is deprecated (per ADR-009); the canonical phrasing is "No database implementation during Phase 1. PostgreSQL/Supabase remains approved infrastructure."
+- **Description:** PostgreSQL/Supabase remains approved infrastructure (ADR-009, ADR-002). Phase 2 is foundation-only — no database implementation during Phase 2. The data model is fully documented in `docs/architecture/DATA-MODEL.md` and `docs/architecture/DOMAIN_MODEL.md`, and the `packages/db/` package provides the Supabase client factory, but no Supabase project exists yet. Provisioning requires Supabase credentials (URL, anon key, service-role key) which the user has not yet provided for this project. The Prima service token in the chat is for Z.AI's own backend, not for Supabase.
+- **Mitigation:** Before Phase 4, the user provisions a Supabase project and provides the connection strings via Vercel project env vars (not in the repo). Z.AI then inspects the project (per `RULES.md §11`) before applying any migration. The phrase "No Supabase" is deprecated (per ADR-009); the canonical phrasing is "No database implementation during Phase 2. PostgreSQL/Supabase remains approved infrastructure."
 
 ---
 
-## RSK-002 — Clara library deep audit deferred to Phase 2
+## RSK-002 — Clara library deep audit (RETIRED in Phase 2)
 
 - **Identified:** 2026-10-03
-- **Likelihood:** medium
-- **Impact:** medium (integration seams may surface surprises)
+- **Retired:** 2026-10-03
+- **Likelihood:** (was: medium)
+- **Impact:** (was: medium — integration seams may surface surprises)
 - **Owner:** Z.AI
-- **Status:** mitigating (tracked in ISS-002)
-- **Description:** Phase 1 used a depth-1 clone and read Clara's high-level docs + spot-checked key type files. Some integration seams (e.g., exact adapter signatures, host-boundary files that need wrapping) may not be visible without a deeper read.
-- **Mitigation:** Phase 2 begins with a full clone and runs Clara's `verify-extraction.mjs`. The Clara integration plan (`docs/architecture/CLARA-INTEGRATION.md`) explicitly flags every "adapter" and "host-boundary" item that needs Phase 2 validation.
+- **Status:** retired
+- **Description (original):** Phase 1 used a depth-1 clone and read Clara's high-level docs + spot-checked key type files. Some integration seams (e.g., exact adapter signatures, host-boundary files that need wrapping) may not be visible without a deeper read.
+- **Retirement reason:** Phase 2 deep Clara audit completed (2026-10-03). Full clone performed; extraction manifest inspected; target-side verification performed (106/108 manifest checks passed; two failures identified as manifest SHA recording errors, not file content mutations); `claraRuntime` export verified (`export const claraRuntime = { ... } as const`); narrow `rag_search` tool interface verified; no generic standalone application ToolRegistry/MCP framework found; no hidden coupling found in the audited extracted source. The remaining two verifier failures are manifest recording defects (upstream Clara library issue), not integration risks. This risk is retired. See ISS-002 (resolved) for full audit findings.
+- **Historical note:** This risk was recorded in Phase 1 and mitigated by the Phase 2 deep audit. It is retained here for historical continuity per the append-only audit trail principle.
 
 ---
 
@@ -74,7 +76,7 @@ Statuses: `identified`, `mitigating`, `materialized`, `retired`.
 - **Owner:** ChatGPT
 - **Status:** accepted
 - **Description:** The 19-phase roadmap is long. Each phase has a ChatGPT review gate. This is by design (master operating prompt §26) but means real user-visible features do not appear until Phase 5+.
-- **Mitigation:** Phase 2 will produce a thin end-to-end vertical slice (auth + one read-only email view) to de-risk the architecture early. Detailed in `docs/plans/ROADMAP.md` Phase 2 exit criteria.
+- **Mitigation:** Phase 2 produced a thin end-to-end vertical slice (web renders, worker boots, mock email view) to de-risk the architecture early. Detailed in `docs/plans/ROADMAP.md` Phase 2 exit criteria. Phase 2 is now complete and awaiting ChatGPT acceptance.
 
 ---
 
@@ -82,4 +84,4 @@ Statuses: `identified`, `mitigating`, `materialized`, `retired`.
 
 | ID | Date identified | Date retired | Summary |
 |---|---|---|---|
-| (none retired yet) | | | |
+| RSK-002 | 2026-10-03 | 2026-10-03 | Clara deep audit completed in Phase 2; no hidden coupling found; 2 manifest SHA typos are upstream Clara defects, not integration risks. Risk retired. |

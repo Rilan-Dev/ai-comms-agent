@@ -5,11 +5,96 @@ Machine-readable verification record. The goal is to distinguish "developer says
 ---
 
 ```yaml
-# Verification state — as of Phase 2 commit
+# Verification state — as of Phase 2 control-state correction
 schema_version: 1
 project: ai-comms-agent
 phase: 2
 phase_name: "Application Foundation and Approved Template"
+phase_2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
+phase_2_control_state_correction_commit: "(populated after this commit — see git log)"
+
+# ============================================================
+# DEVELOPER VERIFICATION (performed by Z.AI)
+# ============================================================
+# These are checks Z.AI ran locally. They are NOT architect acceptance.
+
+developer_verification:
+  clara_audit:
+    status: complete
+    performed_by: "Z.AI"
+    date: "2026-10-03"
+    method: "full clone of Rilan-Dev/ai-reusable-libraries; target-side verifier; full read of clara-runtime.ts; tool/MCP search; import tracing"
+    result:
+      verifier_pass: 106
+      verifier_fail: 2
+      verifier_fail_nature: "manifest SHA recording errors (typos), not file content mutations"
+      clara_runtime_export: "export const claraRuntime = { ... } as const (const object, not class)"
+      tools_finding: "narrow host-binding runtime tool interface (rag_search only); no generic standalone tool/MCP framework"
+      hidden_coupling: "none found in audited extracted source"
+
+  typecheck:
+    status: pass
+    performed_by: "Z.AI"
+    date: "2026-10-03"
+    result: "5/5 packages passed (clara-core structural, db, shared, web, worker)"
+
+  web_build:
+    status: pass
+    performed_by: "Z.AI"
+    date: "2026-10-03"
+    result: "success — routes: /, /mail/inbox, /api/health; First Load JS 103 kB"
+
+  worker_build:
+    status: pass
+    performed_by: "Z.AI"
+    date: "2026-10-03"
+    result: "success — dist/index.js produced"
+
+  browser_verification:
+    status: pass
+    performed_by: "Z.AI"
+    date: "2026-10-03"
+    result: "home 200 OK; mail/inbox 200 OK; health 200 healthy; no blank screen; no console errors; navigation renders"
+
+  worker_smoke_test:
+    status: pass
+    performed_by: "Z.AI"
+    date: "2026-10-03"
+    result: "boots, all checks ok, graceful shutdown"
+
+  secret_scan:
+    status: pass
+    performed_by: "Z.AI"
+    date: "2026-10-03"
+    result: "clean — no ghp_*, vcp_*, JWT prefixes; no private keys; no .env files (only .env.example with placeholder values); service-role key server-only"
+
+  continuity_self_test:
+    status: pass
+    performed_by: "Z.AI"
+    date: "2026-10-03"
+    result: "all 7 recovery answers determinable from the repository alone"
+
+  ci_workflow:
+    status: implemented_not_yet_triggered
+    performed_by: "Z.AI"
+    date: "2026-10-03"
+    result: ".github/workflows/ci.yml created; valid YAML; all steps pass locally; not yet triggered on GitHub Actions (will trigger on next push to main)"
+
+# ============================================================
+# ARCHITECT ACCEPTANCE (performed by ChatGPT)
+# ============================================================
+# These are NOT developer checks. Only ChatGPT can accept a phase.
+
+architect_acceptance:
+  phase_2:
+    status: pending
+    note: |
+      ChatGPT reviewed the Phase 2 implementation (commit 13835dd) and
+      identified stale/contradictory project-control records. A control-state
+      correction was authorized and implemented (this commit). ChatGPT will
+      perform the final Phase 2 acceptance decision after reviewing the
+      corrected control-state. Developer verification is NOT architect
+      acceptance.
 
 implementation_status:
   status: foundation_complete
@@ -26,10 +111,13 @@ tests_status:
     verification performed instead. Unit tests begin in Phase 3.
 
 review_status:
-  status: pending_chatgpt_review
+  status: pending_chatgpt_acceptance
   note: |
-    Phase 2 application foundation is complete and committed. Awaiting
-    ChatGPT architect review.
+    Phase 2 application foundation is complete and committed (13835dd).
+    Developer verification is complete. ChatGPT reviewed and required
+    control-state corrections (implemented in this commit). ChatGPT final
+    Phase 2 acceptance is PENDING. Developer verification is NOT architect
+    acceptance.
 
 database_status:
   status: not_applicable_for_phase_2

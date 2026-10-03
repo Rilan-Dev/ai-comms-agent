@@ -11,52 +11,39 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Acceptance Gatekeeper
 
 action: |
-  Review the Phase 2 application foundation. Decide one of:
-    (a) APPROVE — Phase 2 is accepted; issue the Phase 3 Z.AI_HANDOFF.
+  Perform the final Phase 2 acceptance review of the corrected control-state.
+  Decide one of:
+    (a) ACCEPT — Phase 2 is accepted; issue the Phase 3 Z.AI_HANDOFF.
     (b) REJECT  — Phase 2 has fundamental gaps; issue a correction handoff.
     (c) CORRECT — Phase 2 is mostly accepted but specific corrections are required.
 
+context:
+  phase_2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
+  phase_2_control_state_correction: "this commit (see git log)"
+  developer_verification: "complete (typecheck, build, browser verification, security scan all pass)"
+  chatgpt_acceptance: "pending"
+
 artifacts_to_review:
-  # New application foundation
-  - package.json
-  - pnpm-workspace.yaml
-  - tsconfig.base.json
-  - .gitmodules
-  - .npmrc
-  - .env.example
-  - apps/web/ (Next.js 15 App Router + TypeScript + Tailwind v4)
-  - apps/worker/ (Node.js worker — health-check loop)
-  - packages/clara-core/ (Clara integration boundary)
-  - packages/shared/ (shared types: agent, email, messaging)
-  - packages/db/ (Supabase client factory)
-  - vendor/clara/ (Clara git submodule, pinned to b47e587)
-  - infra/docker-compose.yml (local Postgres, Redis, RabbitMQ, Qdrant)
-
-  # Updated architecture docs (Clara audit results)
-  - docs/architecture/CLARA_REUSE_MAP.md (§2.3 corrected: claraRuntime const, not class; §2.4 refined: narrow rag_search tool interface; §2.5 clarified)
-  - docs/architecture/CLARA-INTEGRATION.md (§8a added: Phase 2 deep-audit results)
-
-  # Updated project-control
-  - docs/project-control/PROJECT_STATE.md
-  - docs/project-control/CURRENT_PHASE.md
-  - docs/project-control/NEXT_ACTION.md (this file)
-  - docs/project-control/VERIFICATION_STATE.md
-  - docs/project-control/ISSUES.md (ISS-005 refined)
-  - worklog.md
+  # Control-state correction (this commit)
+  - docs/project-control/PROJECT_STATE.md (commit SHA recorded; status = awaiting ChatGPT acceptance)
+  - docs/project-control/CURRENT_PHASE.md (Phase 2 complete, developer verification complete, ChatGPT acceptance pending, Phase 3 NOT authorized)
+  - docs/project-control/NEXT_ACTION.md (this file — sole action = ChatGPT final Phase 2 acceptance review)
+  - docs/project-control/VERIFICATION_STATE.md (developer verification distinguished from architect acceptance)
+  - docs/project-control/ISSUES.md (ISS-001 Phase 2 blocker; ISS-002 resolved; ISS-003 resolved with CI; ISS-005 precise finding kept)
+  - docs/project-control/RISKS.md (RSK-002 retired; others reviewed)
+  - worklog.md (Phase 2 commit SHA recorded; ChatGPT review = CORRECTION REQUIRED)
+  # New: minimum CI workflow (per ROADMAP.md Phase 2 scope)
+  - .github/workflows/ci.yml
 
 review_dimensions:
-  - "Does the monorepo structure match the approved Phase 1 architecture?"
-  - "Is the Clara integration boundary correct (git submodule + packages/clara-core adapter)?"
-  - "Is Clara source immutability preserved (no modifications to vendor/clara/)?"
-  - "Does the foundation vertical slice validate the architecture (web renders, worker boots, packages resolve)?"
-  - "Is the Clara deep audit complete and accurate (verifier result, claraRuntime export, tools/MCP finding)?"
-  - "Are the CLARA_REUSE_MAP corrections accurate per the audit?"
-  - "Is security verified (no secrets, no client-side keys, no .env committed)?"
-  - "Is local infrastructure configuration valid (docker-compose)?"
-  - "Is the project ready for Phase 3 (auth/RBAC) authorization?"
+  - "Is the control-state correction accurate and complete?"
+  - "Does the project-control documentation consistently distinguish developer verification from architect acceptance?"
+  - "Is the Clara integration documentation consistent (claraRuntime const, rag_search tool, MCP wording)?"
+  - "Is the minimum CI workflow acceptable for Phase 2?"
+  - "Is Phase 2 ready for final acceptance?"
 
 after_decision:
-  if_approved: |
+  if_accepted: |
     Issue the Phase 3 Z.AI_HANDOFF with the full handoff template
     (see docs/project-control/RULES.md §7). Phase 3 = "Authentication /
     Organization / Users / RBAC" — see docs/plans/ROADMAP.md for the
@@ -70,15 +57,20 @@ after_decision:
 
 ---
 
-## What Z.AI must NOT do next
+## STOP instruction
 
-- Z.AI must not start Phase 3 implementation.
-- Z.AI must not create authentication, RBAC, or organization management code.
-- Z.AI must not create database migrations.
-- Z.AI must not provision production Supabase.
-- Z.AI must not modify the architecture without ChatGPT approval.
+**Z.AI must STOP after this correction commit.**
 
-Z.AI is in **STOP** state, awaiting ChatGPT's Phase 2 review decision.
+Z.AI must NOT:
+- start Phase 3 implementation
+- implement authentication, organizations, users, or RBAC
+- create database migrations
+- provision production Supabase
+- deploy production
+- modify Clara source or the Clara submodule contents
+- make any unrelated code changes
+
+Z.AI is in **STOP** state, awaiting ChatGPT's final Phase 2 acceptance decision.
 
 ---
 
@@ -90,4 +82,6 @@ Z.AI is in **STOP** state, awaiting ChatGPT's Phase 2 review decision.
 | 2026-10-03 | ChatGPT issued CONDITIONAL APPROVAL with 8 required corrections |
 | 2026-10-03 | Z.AI implemented all 8 corrections. Next action: ChatGPT to re-review. |
 | 2026-10-03 | ChatGPT granted FINAL Phase 1 approval. Phase 2 authorized. |
-| 2026-10-03 | Z.AI implemented Phase 2 application foundation (this commit). Next action: ChatGPT to review Phase 2. |
+| 2026-10-03 | Z.AI implemented Phase 2 application foundation (commit 13835dd). Next action: ChatGPT to review Phase 2. |
+| 2026-10-03 | ChatGPT reviewed Phase 2: implementation substantially complete; CORRECTION REQUIRED for stale/contradictory project-control records. Control-state correction authorized. |
+| 2026-10-03 | Z.AI implemented control-state correction (this commit). Next action: ChatGPT performs final Phase 2 acceptance review. Z.AI must STOP. |

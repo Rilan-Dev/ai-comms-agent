@@ -466,11 +466,13 @@ Z.AI is in STOP state. Waiting for the next ChatGPT architect instruction.
 
 ### Commit
 
-(populated after `git commit` and `git push` — see `PROJECT_STATE.md` `current_commit`)
+- Phase 2 implementation commit: `13835dd8be5d608ccad3f4839e52c2a486f8bb41` (https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41)
+- Push verified: local and remote HEAD matched at `13835dd`. Fast-forward push (no force-push, no history rewrite). All Phase 1 commits preserved.
 
 ### Review result
 
-(awaiting ChatGPT Phase 2 review)
+- Implementation verification: performed by Z.AI (typecheck 5/5 pass, web build success, worker build success, browser verification pass, worker smoke test pass, security scan clean, continuity self-test pass).
+- ChatGPT review: **CORRECTION REQUIRED** — ChatGPT identified stale/contradictory project-control records. Control-state correction authorized (this commit). ChatGPT final Phase 2 acceptance is **pending**.
 
 ### Issues found
 
@@ -529,7 +531,9 @@ Wait for ChatGPT architect instruction. Z.AI is in STOP state per the user's exp
 ```text
 Repository:                     Rilan-Dev/ai-comms-agent
 Branch:                         main
-Commit SHA:                     (populated after push — see PROJECT_STATE.md current_commit)
+Commit SHA:                     13835dd8be5d608ccad3f4839e52c2a486f8bb41 (https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41)
+  - Phase 2 implementation commit (13835dd) — application foundation, Clara audit, all verification passing.
+  - Control-state correction commit (this commit) — finalizes project-control records for ChatGPT acceptance review.
 Phase 1 approved baseline:      c8b2f2c02c2231ea4e5fdb5b9fa48124b383bdc6
 
 Files created:                  40+ (monorepo root, apps/{web,worker}, packages/{clara-core,shared,db}, infra/docker-compose.yml, .gitmodules, .env.example)
@@ -569,7 +573,7 @@ Risks:
   - RSK-005: Worker host not selected (ISS-004)
   - RSK-006: Long delivery timeline (accepted)
 
-Exact proposed next task:       ChatGPT reviews Phase 2; if approved, issues Phase 3 Z.AI_HANDOFF (Authentication / Organization / Users / RBAC)
+Exact proposed next task:       ChatGPT performs final Phase 2 acceptance review of the corrected control-state.
 ```
 
-Z.AI is in STOP state. Waiting for ChatGPT architect review.
+Z.AI is in STOP state. ChatGPT will perform the final Phase 2 acceptance decision after the control-state correction commit. Do NOT begin Phase 3.

@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Typecheck, Lint, Build, Secret Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Build web
+        run: pnpm --filter @ai-comms-agent/web build
+
+      - name: Build worker
+        run: pnpm --filter @ai-comms-agent/worker build
+
+      - name: Secret scan
+        run: |
+          set -e
+          if grep -rnE 'ghp_[A-Za-z0-9]{36}|vcp_[A-Za-z0-9]{40,}' \
+            --include='*.ts' --include='*.tsx' --include='*.json' --include='*.yml' --include='*.yaml' --include='*.md' --include='*.mjs' --include='*.js' \
+            . \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=vendor --exclude-dir=.next --exclude-dir=dist; then
+            echo "ERROR: Token pattern detected in tracked files"
+            exit 1
+          fi
+          echo "Secret scan: clean"

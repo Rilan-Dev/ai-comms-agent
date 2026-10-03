@@ -24,10 +24,12 @@ developer: "Z.AI (implementer of this Phase 2 deliverable)"
 
 phase1_approved_baseline: "c8b2f2c02c2231ea4e5fdb5b9fa48124b383bdc6"
 phase1_state_recording_commit: "f32616a487ba09bfaa782c39226b19f38d7b18e3"
-current_commit: "(populated after this Phase 2 commit — see git log)"
+phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
+phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
+current_commit: "(populated after the control-state correction commit — see git log)"
 current_commit_short: "(populated after commit)"
 current_commit_url: "(populated after commit)"
-last_verified_commit: "(pending ChatGPT Phase 2 verification)"
+last_verified_commit: "pending_chatgpt_acceptance"
 
 open_blockers:
   - "Awaiting ChatGPT Phase 2 review of application foundation"
@@ -113,3 +115,5 @@ monorepo_layout:
 | 2026-10-03 | 1 | Z.AI | Recorded corrections commit SHA in project-control state (commit f32616a). |
 | 2026-10-03 | 1 | ChatGPT | **FINAL APPROVAL** issued. Phase 2 authorized. Approved baseline: c8b2f2c. |
 | 2026-10-03 | 2 | Z.AI | Phase 2 application foundation implemented: monorepo (apps/web, apps/worker, packages/{clara-core,shared,db}), Clara git submodule, local Docker infra, foundation vertical slice, all verification passing. Clara deep audit completed (106/108 verifier pass; claraRuntime export corrected; ISS-005 refined). Awaiting ChatGPT Phase 2 review. |
+| 2026-10-03 | 2 | ChatGPT | Phase 2 review: implementation substantially complete; **CORRECTION REQUIRED** for stale/contradictory project-control records. Control-state correction authorized. No Phase 3. |
+| 2026-10-03 | 2 | Z.AI | Control-state correction: recorded actual Phase 2 commit SHA (13835dd); implemented minimum CI workflow (.github/workflows/ci.yml) per ROADMAP.md Phase 2 scope; resolved ISS-002, retired RSK-002; corrected ISSUES/RISKS/CURRENT_PHASE/NEXT_ACTION/VERIFICATION_STATE/worklog. Awaiting ChatGPT final Phase 2 acceptance. |

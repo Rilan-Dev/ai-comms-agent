@@ -5,11 +5,14 @@
 ```yaml
 phase: 2
 phase_name: "Application Foundation and Approved Template"
-status: "implementation_complete_awaiting_chatgpt_review"
+status: "implementation_complete_developer_verification_complete_chatgpt_acceptance_pending"
 start_date: 2026-10-03
-completion_date: 2026-10-03
+implementation_completion_date: 2026-10-03
+control_state_correction_date: 2026-10-03
 architect: "ChatGPT (external)"
 developer: "Z.AI"
+chatgpt_acceptance: "pending"
+phase_3_authorized: false
 approved_scope: |
   Create the production-grade application foundation that follows the approved
   Phase 1 architecture. The application template must emerge from the architecture.
@@ -116,4 +119,10 @@ Verification:
 - Worker smoke test: boots, all checks ok, graceful shutdown.
 - Security scan: clean (no secrets, no private keys, no .env files committed — only .env.example with placeholder values).
 
-Phase 2 now awaits ChatGPT architect review. Per the user's STOP instruction, Z.AI must not start Phase 3.
+Phase 2 now awaits ChatGPT final acceptance review. Per the user's STOP instruction, Z.AI must not start Phase 3.
+
+**Status summary (control-state correction, 2026-10-03):**
+- Phase 2 implementation: **complete** (commit `13835dd`).
+- Developer verification: **complete** (typecheck 5/5 pass, web build success, worker build success, browser verification pass, worker smoke test pass, security scan clean, continuity self-test pass).
+- ChatGPT acceptance: **pending** — ChatGPT reviewed the Phase 2 implementation and identified stale/contradictory project-control records; a control-state correction was authorized and implemented (this commit). ChatGPT will perform the final Phase 2 acceptance decision after reviewing the corrected control-state.
+- Phase 3: **NOT authorized**. Z.AI must STOP after this correction commit.

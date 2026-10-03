@@ -6,36 +6,56 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 
 ---
 
-## ISS-001 — Awaiting ChatGPT architect review of Phase 1 documentation package
+## ISS-001 — Awaiting ChatGPT final Phase 2 acceptance
 
-- **Opened:** 2026-10-03
-- **Severity:** blocker (gates Phase 2)
+- **Opened:** 2026-10-03 (originally opened for Phase 1 review; repurposed for Phase 2 on 2026-10-03)
+- **Severity:** blocker (gates Phase 3)
 - **Owner:** ChatGPT
 - **Status:** open
-- **Description:** Phase 1 documentation is complete and committed, but per the master operating prompt §26, only ChatGPT can authorize a phase transition. Z.AI is in STOP state.
-- **Resolution plan:** ChatGPT reviews the artifacts listed in `NEXT_ACTION.md`. Outcome is one of: approve (issue Phase 2 handoff), reject (issue correction handoff for fundamental gaps), or correct (issue correction handoff for specific changes). After the decision, update `PROJECT_STATE.md`, `VERIFICATION_STATE.md`, `CURRENT_PHASE.md`, and `NEXT_ACTION.md`.
+- **Description:** Phase 1 review is complete (FINAL APPROVAL issued 2026-10-03). Phase 2 implementation is complete (commit `13835dd`) and developer verification is complete (typecheck, build, browser verification, security scan all pass). ChatGPT reviewed the Phase 2 implementation and identified stale/contradictory project-control records; a control-state correction was authorized and implemented. The current blocker is awaiting ChatGPT's **final Phase 2 acceptance** decision after reviewing the corrected control-state.
+- **Resolution plan:** ChatGPT reviews the corrected Phase 2 state (this commit). Outcome is one of: (a) ACCEPT — Phase 2 accepted; issue Phase 3 Z.AI_HANDOFF; (b) REJECT — fundamental gaps; issue correction handoff; (c) CORRECT — specific corrections; issue correction handoff. After the decision, update `PROJECT_STATE.md`, `VERIFICATION_STATE.md`, `CURRENT_PHASE.md`, and `NEXT_ACTION.md`.
 
 ---
 
-## ISS-002 — Clara library inspected shallowly (depth-1 clone)
+## ISS-002 — Clara library deep audit (RESOLVED in Phase 2)
 
 - **Opened:** 2026-10-03
-- **Severity:** medium
+- **Resolved:** 2026-10-03
+- **Severity:** medium (was: Phase 2 dependency)
 - **Owner:** Z.AI (Phase 2)
-- **Status:** open
-- **Description:** The Clara library at `Rilan-Dev/ai-reusable-libraries` was cloned with `--depth 1` for Phase 1 inspection. The high-level structure, AGENTS.md, REFERENCE-MAP.md, and IMPLEMENTATION-PLAYBOOK.md were read in full, plus spot-reads of `ai-core/types.ts`, `voice-core/types.ts`, `ai-governance/core/types.ts`, and `doable-source/AI_RAG_ARCHITECTURE.md`. A deep dependency audit (every file, every import, every test) was deferred to Phase 2.
-- **Resolution plan:** In Phase 2 (or earlier if ChatGPT directs), do a full clone and run Clara's `scripts/verify-extraction.mjs` to validate the immutable extraction manifest. Cross-reference every capability the architecture references against the actual Clara source.
+- **Status:** resolved
+- **Description (original):** The Clara library at `Rilan-Dev/ai-reusable-libraries` was cloned with `--depth 1` for Phase 1 inspection. A deep dependency audit was deferred to Phase 2.
+- **Resolution:** Phase 2 deep Clara audit completed. Findings:
+  - Full clone of `Rilan-Dev/ai-reusable-libraries` completed (42 commits, 108 extracted files — not depth-1).
+  - Extraction manifest (`clara-core/extraction-manifest.json`) inspected: 108 entries, schema_version 1, immutable: true.
+  - Target-side verification performed (the original `verify-extraction.mjs` requires the Clara-AI-Platform source repo; a target-side verifier was written that checks every `target_path` exists in HEAD and its blob SHA matches `source_blob_sha`).
+  - **106/108 manifest checks passed.** Two failures identified as manifest SHA recording errors (typos in `source_blob_sha`), NOT file content mutations:
+    - `clara-core/source/src/modules/rag/knowledge-topics.ts`: manifest SHA is 41 chars (malformed — SHA-1 is 40 chars); actual git blob SHA is the 40-char prefix.
+    - `clara-core/source/src/modules/language-core/config-types.ts`: manifest SHA differs from actual at 1 hex position (39 chars vs 40 chars).
+  - `claraRuntime` export verified: `export const claraRuntime = { ... } as const;` (a const object literal, not a class).
+  - Narrow `rag_search` tool interface verified: `claraRuntime.tools.list()` returns `[{ name: "rag_search", ... }]`; `claraRuntime.tools.invoke()` supports `rag_search` only.
+  - No generic standalone application ToolRegistry/MCP framework found in the audited extracted Clara source.
+  - No hidden coupling found in the audited extracted source. The `doable-source/engine-resolver.ts` (which has SQL coupling per `AI_RAG_ARCHITECTURE.md`) is NOT in the extracted `clara-core/source/` and is NOT used by our integration.
+- **Note:** The two manifest SHA recording errors have NOT been fixed in Clara (they are upstream Clara library defects). They are not file content mutations and do not affect our integration. They should be reported upstream to `Rilan-Dev/ai-reusable-libraries`.
 
 ---
 
-## ISS-003 — `.github/` directory exists but is intentionally empty
+## ISS-003 — CI workflow (RESOLVED in Phase 2 control-state correction)
 
 - **Opened:** 2026-10-03
-- **Severity:** low
+- **Resolved:** 2026-10-03
+- **Severity:** low (was: Phase 2 scope item)
 - **Owner:** Z.AI (Phase 2)
-- **Status:** open
-- **Description:** The `.github/` directory was created during scaffolding for future CI workflows. It is intentionally empty — CI design is part of Phase 2's "application foundation" scope (per `docs/plans/ROADMAP.md`).
-- **Resolution plan:** In Phase 2, add `.github/workflows/ci.yml` covering typecheck, lint, unit tests, build. Do not add release/deploy workflows until Phase 19.
+- **Status:** resolved
+- **Description (original):** The `.github/` directory was created during scaffolding for future CI workflows. It was intentionally empty — CI design was part of Phase 2's "application foundation" scope (per `docs/plans/ROADMAP.md` line 31: "CI workflow (`.github/workflows/ci.yml`): typecheck, lint, unit tests, build, secret scan" and line 37: "`npm run build` succeeds in CI").
+- **Resolution:** Inspected the canonical Phase 2 scope (`docs/plans/ROADMAP.md`, Phase 1 approved baseline). CI workflow IS listed as Phase 2 scope and as an exit criterion ("`npm run build` succeeds in CI"). The Phase 2 handoff did not defer CI. Therefore, the minimum approved CI workflow was implemented in the control-state correction commit:
+  - `.github/workflows/ci.yml` created.
+  - Triggers: push to main, pull request to main.
+  - Steps: checkout (with submodules), setup pnpm + Node 20, `pnpm install --frozen-lockfile`, `pnpm -r typecheck`, `pnpm --filter @ai-comms-agent/web build`, `pnpm --filter @ai-comms-agent/worker build`, secret scan (grep for `ghp_*`, `vcp_*` patterns across tracked files).
+  - No unit tests in CI (none exist in Phase 2 — unit tests begin in Phase 3).
+  - No release/deploy workflows (those are Phase 19).
+  - CI workflow verified locally: valid YAML, all steps pass locally (typecheck 5/5, web build success, worker build success, secret scan clean).
+- **Note:** The CI workflow has not yet been triggered on GitHub Actions (it will trigger on the next push to main). Local verification of all CI steps was performed.
 
 ---
 
@@ -53,17 +73,17 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 ## ISS-005 — Clara has no generic standalone tool/MCP framework (narrow `rag_search` only)
 
 - **Opened:** 2026-10-03
-- **Severity:** medium (affects Phase 11 tool registry design)
+- **Severity:** low (informational; affects Phase 11 tool registry design but is NOT a blocker for Phase 2)
 - **Owner:** Z.AI (Phase 11 implementation)
 - **Status:** open — **refined in Phase 2 deep audit**
 - **Description:** The Phase 2 deep audit (full clone of `Rilan-Dev/ai-reusable-libraries`, reading `clara-core/source/src/modules/ai-platform-core/clara-runtime.ts` in full) refined the Phase 1 finding. The precise current finding is:
-  - Clara has **no generic standalone application tool/MCP framework**.
-  - Clara **does have a narrow host-binding runtime tool interface**: the `claraRuntime.tools` property, with `list()` and `invoke(ctx, name, input)` methods.
-  - The **only observed Clara tool capability is `rag_search`** — a thin wrapper around `claraRuntime.retrieve()` that calls `groundClaraContext()` for KB retrieval.
-  - Any other tool name passed to `claraRuntime.tools.invoke()` throws `"Unsupported Clara tool: " + name`.
+  - Clara has `claraRuntime.tools` — a narrow host-binding runtime tool interface with `list()` and `invoke(ctx, name, input)` methods.
+  - The observed supported tool is `rag_search` — a thin wrapper around `claraRuntime.retrieve()` that calls `groundClaraContext()` for KB retrieval.
+  - Clara does **not** provide the generic application `ToolRegistry` needed by ai-comms-agent (for email, WhatsApp, scheduling, approvals, etc.).
+  - The host owns the application `ToolRegistry` (per `TOOL-CONTRACTS.md`). The host `kb.search` tool wraps `claraRuntime.retrieve()` for KB retrieval with host-owned authorization and audit.
   - The `enableMcp: boolean` flag exists in `rag/config.ts` (line 12, parsed from `ENABLE_MCP` env var, default `false`) but has **no backing MCP client/server implementation** in the extracted source.
-  - **ai-comms-agent still owns its application `ToolRegistry`** for email, WhatsApp, scheduling, approvals, etc. (per `TOOL-CONTRACTS.md`). The host `kb.search` tool wraps `claraRuntime.retrieve()` for KB retrieval with host-owned authorization and audit.
-- **Resolution plan:** Phase 11 implements the application-specific `ToolRegistry`. The host `kb.search` tool calls `claraRuntime.retrieve()` directly. Clara's `rag_search` is not exposed to the LLM as a passthrough — the host's `kb.search` tool wraps the same capability. MCP is revisited as a separate architectural decision (record in `DECISIONS.md`) if/when Clara extracts an MCP runtime or if business requirements demand it.
+  - MCP is not implemented by ai-comms-agent in Phase 2.
+- **Resolution plan:** Phase 11 implements the application-specific `ToolRegistry`. The host `kb.search` tool calls `claraRuntime.retrieve()` directly. Clara's `rag_search` is not exposed to the LLM as a passthrough — the host's `kb.search` tool wraps the same capability. MCP is revisited as a separate architectural decision (record in `DECISIONS.md`) if/when Clara extracts an MCP runtime or if business requirements demand it. This issue is NOT a blocker for Phase 2 acceptance.
 
 ---
 
@@ -71,4 +91,5 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 
 | ID | Date opened | Date resolved | Summary |
 |---|---|---|---|
-| (none resolved yet) | | | |
+| ISS-002 | 2026-10-03 | 2026-10-03 | Clara deep audit completed in Phase 2; 106/108 manifest checks pass; 2 manifest SHA typos identified (upstream Clara issue); claraRuntime export verified; no hidden coupling. |
+| ISS-003 | 2026-10-03 | 2026-10-03 | CI workflow implemented in Phase 2 control-state correction (.github/workflows/ci.yml); minimum approved workflow per ROADMAP.md Phase 2 scope. |
