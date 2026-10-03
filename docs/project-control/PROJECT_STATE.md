@@ -13,7 +13,7 @@ visibility: private
 
 current_phase: 3
 current_phase_name: "Identity, Organization, Users, Roles & RBAC"
-phase_status: "final deletion-invariant correction — awaiting ChatGPT acceptance"
+phase_status: "final migration hardening — runtime verification pending"
 
 last_completed_phase: 2
 last_completed_phase_status: "APPROVED (2026-10-03)"
