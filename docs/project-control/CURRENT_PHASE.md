@@ -132,3 +132,12 @@ RBAC persistence: Option A (system roles via TypeScript SYSTEM_ROLE_PERMISSIONS;
 ## ChatGPT takeover — runtime verification gate (2026-10-04)
 
 The migration is now backed by disposable PostgreSQL 17 CI runtime verification. Phase 3 is still gated: do not authorize Phase 4 until the workflow proves the migration executes successfully and the owner invariant behaves correctly at transaction commit.
+
+
+## Phase 4 — Database Foundation and Domain Schema
+
+**Status: IMPLEMENTATION IN PROGRESS.** ChatGPT is primary implementer. Per explicit project-controller instruction on 2026-10-04, development continues without waiting for GitHub Actions/Vercel validation jobs. Validation remains a mandatory final gate after feature development is substantially complete.
+
+Implemented so far: forward-only Phase 4 domain migration covering agents/versioning/deployments, multi-provider email accounts and mailbox data, sync state/events, WhatsApp, agent policies/tools, conversations, approvals, schedules, summaries, audit, AI usage, and realtime voice telemetry, with organization-scoped RLS and server-only credential/webhook policies.
+
+UI implementation is also proceeding as a first-class product surface: modern workspace shell, dashboard, agents, mail accounts/inbox/threads/drafts, WhatsApp, automations, schedules, AI & Voice, Knowledge, Activity, Audit, and Settings workspaces.
