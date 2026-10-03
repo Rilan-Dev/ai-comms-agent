@@ -928,3 +928,27 @@ Phase 4 authorization: NOT AUTHORIZED
 ```
 
 Z.AI is in STOP state. Awaiting ChatGPT final Phase 3 acceptance decision.
+
+
+## Task ID: 9
+## Phase: 3 — ChatGPT Takeover / Final Owner-Delete Correction
+
+- **Status**: correction_implemented_awaiting_final_verification
+- **Objective**: Take primary development ownership from Z.AI, close the remaining PostgreSQL owner-invariant gap, strengthen regression verification, and preserve the existing roadmap/control system.
+- **Architect / Developer**: ChatGPT
+- **Start date**: 2026-10-04
+- **Starting commit**: 5c409c83aae14bbc40ff6567798328ac734144f1
+
+### Work Log
+
+- Created `docs/superpowers/plans/2026-10-04-phase-3-acceptance-and-phase-4.md` as the takeover execution plan.
+- Inspected the actual PostgreSQL migration and identified that the deferred function still iterated only organizations with membership rows. Therefore deleting the final membership could leave an existing organization with zero owners without any organization being checked.
+- Corrected `enforce_exactly_one_owner()` to validate the affected organization directly for INSERT, UPDATE, and DELETE, using OLD/NEW organization IDs as appropriate and skipping only organizations that themselves no longer exist.
+- Preserved the immediate owner-status trigger and the DEFERRABLE INITIALLY DEFERRED constraint trigger.
+- Added static migration regression tests for final-owner DELETE, OLD/NEW organization IDs, direct organization existence lookup, and zero-owner detection.
+- Strengthened CI to run the web test suite and aligned CI Node.js with the Vercel Node 24 runtime.
+- No Phase 4 implementation was started. Clara remains untouched.
+
+### Governance
+
+Phase 3 remains pending ChatGPT acceptance until final verification evidence is complete. Phase 4 remains unauthorized.
