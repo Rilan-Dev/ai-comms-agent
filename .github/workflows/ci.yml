@@ -66,6 +66,22 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/verify-phase3-migration.sql
 
+      - name: Verify PostgreSQL ownerless-organization rejection
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
+        run: |
+          set +e
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/verify-phase3-migration-fail.sql > /tmp/phase3-ownerless.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/phase3-ownerless.log
+          if [ "$status" -eq 0 ]; then
+            echo "ERROR: ownerless organization unexpectedly committed"
+            exit 1
+          fi
+          grep -q "has no active owner at commit" /tmp/phase3-ownerless.log
+          echo "Ownerless organization rejection: PASS"
+
       - name: Secret scan
         run: |
           set -e
