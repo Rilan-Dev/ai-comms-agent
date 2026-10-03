@@ -55,6 +55,23 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
       expect(migrationSql).toContain("active owners at commit");
     });
 
+    it("handles the final-owner DELETE even when no memberships remain", () => {
+      expect(migrationSql).toContain("TG_OP = 'DELETE'");
+      expect(migrationSql).toContain("OLD.organization_id");
+      expect(migrationSql).toContain("has no active owner at commit");
+    });
+
+    it("validates UPDATEs against both OLD and NEW organization IDs", () => {
+      expect(migrationSql).toContain("OLD.organization_id IS DISTINCT FROM NEW.organization_id");
+      expect(migrationSql).toContain("NEW.organization_id");
+    });
+
+    it("checks the affected organization directly rather than iterating only existing memberships", () => {
+      expect(migrationSql).toContain("SELECT EXISTS (");
+      expect(migrationSql).toContain("FROM organizations WHERE id = affected_org_id");
+      expect(migrationSql).toContain("owner_count = 0");
+    });
+
     it("rejects non-active owner status (invited/suspended)", () => {
       expect(migrationSql).toContain("Owner membership must have status active");
     });
