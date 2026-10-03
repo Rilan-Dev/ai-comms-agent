@@ -1,0 +1,79 @@
+# .gitignore — ai-comms-agent
+# Node / Next.js template (repo was created with the GitHub Node.gitignore template).
+# Extended with explicit secrets protection — see "Secrets" section below.
+
+# ---- Dependencies ----
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+.yarn/cache
+.yarn/unplugged
+
+# ---- Build outputs ----
+.next/
+out/
+build/
+dist/
+.turbo/
+.vercel/
+
+# ---- Testing / coverage ----
+coverage/
+*.lcov
+.nyc_output/
+
+# ---- Logs ----
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ---- Environment / local config ----
+.env
+.env.*
+!.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# ---- Secrets (FORBIDDEN in repo — listed here as a safety net) ----
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+secrets/
+credentials/
+service-account*.json
+gcp-service-account*.json
+*.service-account.json
+# GitHub PATs / Vercel tokens / Supabase keys / Prima JWTs — never commit
+ghp_*
+vcp_*
+vck_*
+supabase-service-role*
+prima-service-token*
+
+# ---- Editor / OS ----
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+*.bak
+
+# ---- TypeScript ----
+*.tsbuildinfo
+next-env.d.ts
+
+# ---- Misc ----
+.cache/
+.eslintcache
+.stylelintcache
+*.tgz
