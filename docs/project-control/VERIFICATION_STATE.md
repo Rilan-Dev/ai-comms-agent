@@ -173,7 +173,9 @@ evidence:
   continuity_test_result: "Self-administered continuity check passed: a fresh reader following AGENTS.md §3 reading order can recover full project state from the repository alone."
   initial_commit_sha: "2bacba0bf55efbdf4c9221f2bcb63da3782c9708"
   initial_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/2bacba0bf55efbdf4c9221f2bcb63da3782c9708"
-  corrections_commit_sha: "(populated after this commit — see git log)"
+  corrections_commit_sha: "c8b2f2c02c2231ea4e5fdb5b9fa48124b383bdc6"
+  corrections_commit_short: "c8b2f2c"
+  corrections_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/c8b2f2c02c2231ea4e5fdb5b9fa48124b383bdc6"
   push_verified: true
   push_notes: |
     Initial Phase 1 pushed 2026-10-03 (commits 2bacba0, ba5c819, 99c3109).
