@@ -18,6 +18,7 @@ import type {
   OrganizationId,
   MembershipId,
   MembershipRole,
+  NonOwnerRole,
   MembershipStatus,
   User,
   Organization,
@@ -30,7 +31,7 @@ import {
   asMembershipId,
   SYSTEM_ROLE_PERMISSIONS,
 } from "@ai-comms-agent/shared";
-import type { IdentityRepository } from "./repository";
+import type { IdentityRepository, OrganizationWithOwner } from "./repository";
 
 interface InMemoryUser extends User {}
 interface InMemoryOrganization extends Organization {}
@@ -140,6 +141,40 @@ export class InMemoryIdentityRepository implements IdentityRepository {
     return org;
   }
 
+  async createOrganizationWithOwner(input: {
+    name: string;
+    slug: string;
+    ownerId: UserId;
+  }): Promise<OrganizationWithOwner> {
+    // Validate owner user exists
+    const owner = await this.getUserById(input.ownerId);
+    if (!owner) {
+      throw new Error(`User ${input.ownerId} does not exist. CreateUser before createOrganizationWithOwner.`);
+    }
+
+    // Create the organization (reuses createOrganization for slug uniqueness check)
+    const organization = await this.createOrganization({ name: input.name, slug: input.slug });
+
+    // Create the initial active owner membership atomically.
+    // This bypasses the createMembership "second owner" check because the
+    // organization is brand new (no existing owner).
+    const membershipId = asMembershipId(crypto.randomUUID());
+    const now = new Date().toISOString();
+    const ownerMembership: InMemoryMembership = {
+      id: membershipId,
+      organizationId: organization.id,
+      userId: input.ownerId,
+      role: "owner",
+      status: "active",
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.memberships.set(membershipId, ownerMembership);
+    this.orgUserIndex.set(`${organization.id}:${input.ownerId}`, membershipId);
+
+    return { organization, ownerMembership };
+  }
+
   // -------------------------------------------------------------------
   // Memberships
   // -------------------------------------------------------------------
@@ -180,7 +215,15 @@ export class InMemoryIdentityRepository implements IdentityRepository {
 
     // Owner invariant (per DOMAIN_MODEL.md §2.1): an organization must have
     // exactly one owner at all times. Adding a second active owner is rejected.
-    if (input.role === "owner" && (input.status ?? "active") === "active") {
+    // Also: an owner membership must be active (cannot be invited/suspended).
+    if (input.role === "owner") {
+      const status = input.status ?? "active";
+      if (status !== "active") {
+        throw new OwnerInvariantError(
+          "no_owner",
+          `Owner membership must be active (got status: ${status}).`,
+        );
+      }
       const existingOwner = await this.getActiveOwner(input.organizationId);
       if (existingOwner) {
         throw new OwnerInvariantError(
@@ -285,8 +328,17 @@ export class InMemoryIdentityRepository implements IdentityRepository {
   async transferOwnership(
     orgId: OrganizationId,
     newOwnerId: UserId,
-    newOwnerRole: MembershipRole = "admin",
+    newOwnerRole: NonOwnerRole = "admin",
   ): Promise<OrganizationMembership[]> {
+    // Runtime guard: even though the type system prevents passing "owner",
+    // a runtime check ensures safety against any type-unsafe escape hatch.
+    if (newOwnerRole === ("owner" as NonOwnerRole)) {
+      throw new OwnerInvariantError(
+        "multiple_owners",
+        "transferOwnership newOwnerRole cannot be 'owner' — this would create multiple owners.",
+      );
+    }
+
     // Validate target is an active member
     const targetMembership = await this.getMembership(orgId, newOwnerId);
     if (!targetMembership) {

@@ -201,4 +201,114 @@ describe("Owner invariant (exactly one owner at all times)", () => {
       expect((error as OwnerInvariantError).violation).toBe("no_owner");
     }
   });
+
+  // -------------------------------------------------------------------
+  // Phase 3 final correction: createOrganizationWithOwner
+  // -------------------------------------------------------------------
+
+  it("createOrganizationWithOwner produces exactly one active owner", async () => {
+    const newUser = await fixture.repo.createUser({ email: "new-owner@test.local", name: "New Owner" });
+    const result = await fixture.repo.createOrganizationWithOwner({
+      name: "New Org",
+      slug: "new-org",
+      ownerId: asUserId(newUser.id),
+    });
+
+    expect(result.organization.slug).toBe("new-org");
+    expect(result.ownerMembership.role).toBe("owner");
+    expect(result.ownerMembership.status).toBe("active");
+    expect(result.ownerMembership.userId).toBe(newUser.id);
+
+    // Verify exactly one active owner
+    const memberships = await fixture.repo.getMembershipsForOrg(asOrganizationId(result.organization.id));
+    const owners = memberships.filter((m) => m.role === "owner" && m.status === "active");
+    expect(owners.length).toBe(1);
+  });
+
+  it("createOrganizationWithOwner rejects non-existent owner user", async () => {
+    const nonExistentId = asUserId("00000000-0000-0000-0000-000000000000");
+    await expect(
+      fixture.repo.createOrganizationWithOwner({
+        name: "Org With Bad Owner",
+        slug: "bad-owner-org",
+        ownerId: nonExistentId,
+      }),
+    ).rejects.toThrow(/does not exist/);
+  });
+
+  // -------------------------------------------------------------------
+  // Phase 3 final correction: owner membership cannot be invited/suspended
+  // -------------------------------------------------------------------
+
+  it("rejects creating an owner membership with status='invited'", async () => {
+    const newUser = await fixture.repo.createUser({ email: "invited-owner@test.local" });
+    await expect(
+      fixture.repo.createMembership({
+        organizationId: asOrganizationId(fixture.orgB),
+        userId: asUserId(newUser.id),
+        role: "owner",
+        status: "invited",
+      }),
+    ).rejects.toThrow(OwnerInvariantError);
+  });
+
+  it("rejects creating an owner membership with status='suspended'", async () => {
+    const newUser = await fixture.repo.createUser({ email: "suspended-owner@test.local" });
+    await expect(
+      fixture.repo.createMembership({
+        organizationId: asOrganizationId(fixture.orgB),
+        userId: asUserId(newUser.id),
+        role: "owner",
+        status: "suspended",
+      }),
+    ).rejects.toThrow(OwnerInvariantError);
+  });
+
+  // -------------------------------------------------------------------
+  // Phase 3 final correction: transferOwnership cannot specify 'owner' as demotion role
+  // -------------------------------------------------------------------
+
+  it("transferOwnership rejects newOwnerRole='owner' (type-safe, cannot create multiple owners)", async () => {
+    // Attempt to pass "owner" as the demotion role — this should be rejected.
+    // The TypeScript type prevents this at compile time, but we also test the
+    // runtime guard for safety against type-unsafe escape hatches.
+    await expect(
+      fixture.repo.transferOwnership(
+        asOrganizationId(fixture.orgA),
+        asUserId(fixture.memberA),
+        "owner" as "admin" | "member" | "viewer",
+      ),
+    ).rejects.toThrow(OwnerInvariantError);
+  });
+
+  it("transferOwnership with explicit 'admin' demotion leaves old owner as admin, target as sole owner", async () => {
+    const result = await fixture.repo.transferOwnership(
+      asOrganizationId(fixture.orgA),
+      asUserId(fixture.memberA),
+      "admin",
+    );
+
+    expect(result.length).toBe(2);
+    const oldOwner = result.find((m) => m.userId === fixture.ownerA);
+    const newOwner = result.find((m) => m.userId === fixture.memberA);
+    expect(oldOwner?.role).toBe("admin");
+    expect(newOwner?.role).toBe("owner");
+
+    // Verify exactly one active owner
+    const memberships = await fixture.repo.getMembershipsForOrg(asOrganizationId(fixture.orgA));
+    const owners = memberships.filter((m) => m.role === "owner" && m.status === "active");
+    expect(owners.length).toBe(1);
+    expect(owners[0]!.userId).toBe(fixture.memberA);
+  });
+
+  it("transferOwnership with 'viewer' demotion leaves old owner as viewer", async () => {
+    const result = await fixture.repo.transferOwnership(
+      asOrganizationId(fixture.orgA),
+      asUserId(fixture.memberA),
+      "viewer",
+    );
+
+    const oldOwner = result.find((m) => m.userId === fixture.ownerA);
+    expect(oldOwner?.role).toBe("viewer");
+  });
 });

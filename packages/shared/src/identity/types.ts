@@ -32,6 +32,12 @@ export const asPermissionId = (s: string): PermissionId => s as PermissionId;
 
 export type MembershipRole = "owner" | "admin" | "member" | "viewer";
 
+/**
+ * A role that is NOT "owner". Used by transferOwnership to make it
+ * type-safe — the compiler rejects passing "owner" as the demotion role.
+ */
+export type NonOwnerRole = Exclude<MembershipRole, "owner">;
+
 export type MembershipStatus = "active" | "suspended" | "invited";
 
 export type UserStatus = "active" | "suspended" | "deleted";

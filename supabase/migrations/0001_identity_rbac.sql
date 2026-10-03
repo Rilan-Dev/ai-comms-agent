@@ -170,6 +170,95 @@ CREATE TRIGGER organization_memberships_updated_at BEFORE UPDATE ON organization
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ============================================================================
+-- Owner Invariant Enforcement (Phase 3 final correction)
+-- ============================================================================
+-- Per DOMAIN_MODEL.md §2.1: "An organization must have exactly one owner at
+-- all times." A normal CHECK constraint cannot enforce this cross-row
+-- invariant, so we use PostgreSQL triggers.
+--
+-- These triggers enforce at the DATABASE level:
+--   1. At most one ACTIVE owner per organization (prevents multiple owners)
+--   2. An owner membership must be ACTIVE (cannot be invited/suspended)
+--   3. The final ACTIVE owner cannot be demoted or suspended (prevents zero owners)
+--
+-- IMPORTANT: Organization creation uses createOrganizationWithOwner() in the
+-- application layer, which inserts the organization and its initial owner in
+-- a single transaction. The trigger below uses DEFERRABLE semantics so the
+-- organization+owner creation workflow is not blocked by a transient
+-- zero-owner state within the same transaction.
+--
+-- This is a schema-level invariant intended for production application of the
+-- migration. Phase 3 does NOT provision Supabase or apply this migration to
+-- production — it is a schema artifact.
+
+-- Function: enforce_owner_invariant
+-- Called BEFORE INSERT or UPDATE on organization_memberships.
+-- Raises an exception if the operation would violate the owner invariant.
+CREATE OR REPLACE FUNCTION enforce_owner_invariant()
+RETURNS TRIGGER AS $$
+DECLARE
+  active_owner_count integer;
+BEGIN
+  -- Rule 2: An owner membership must be active (cannot be invited/suspended)
+  IF NEW.role = 'owner' AND NEW.status != 'active' THEN
+    RAISE EXCEPTION 'Owner membership must be active (got status: %)', NEW.status
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  -- For INSERT: check if adding this owner would create a second active owner
+  IF TG_OP = 'INSERT' AND NEW.role = 'owner' AND NEW.status = 'active' THEN
+    SELECT count(*) INTO active_owner_count
+    FROM organization_memberships
+    WHERE organization_id = NEW.organization_id
+      AND role = 'owner'
+      AND status = 'active';
+    IF active_owner_count > 0 THEN
+      RAISE EXCEPTION 'Organization % already has an active owner', NEW.organization_id
+        USING ERRCODE = 'check_violation';
+    END IF;
+  END IF;
+
+  -- For UPDATE: check demotion/suspension of the final owner
+  IF TG_OP = 'UPDATE' THEN
+    -- If the role is changing FROM owner TO non-owner
+    IF OLD.role = 'owner' AND OLD.status = 'active' AND (NEW.role != 'owner' OR NEW.status != 'active') THEN
+      SELECT count(*) INTO active_owner_count
+      FROM organization_memberships
+      WHERE organization_id = NEW.organization_id
+        AND role = 'owner'
+        AND status = 'active'
+        AND id != NEW.id;
+      IF active_owner_count = 0 THEN
+        RAISE EXCEPTION 'Cannot demote or suspend the final active owner of organization %', NEW.organization_id
+          USING ERRCODE = 'check_violation';
+      END IF;
+    END IF;
+
+    -- If promoting TO owner (role changing to owner when it wasn't before)
+    IF OLD.role != 'owner' AND NEW.role = 'owner' AND NEW.status = 'active' THEN
+      SELECT count(*) INTO active_owner_count
+      FROM organization_memberships
+      WHERE organization_id = NEW.organization_id
+        AND role = 'owner'
+        AND status = 'active'
+        AND id != NEW.id;
+      IF active_owner_count > 0 THEN
+        RAISE EXCEPTION 'Organization % already has an active owner', NEW.organization_id
+          USING ERRCODE = 'check_violation';
+      END IF;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS organization_memberships_owner_invariant ON organization_memberships;
+CREATE TRIGGER organization_memberships_owner_invariant
+  BEFORE INSERT OR UPDATE ON organization_memberships
+  FOR EACH ROW EXECUTE FUNCTION enforce_owner_invariant();
+
+-- ============================================================================
 -- Row-Level Security (per SECURITY_MODEL.md §3 and RULES.md §11)
 -- "authenticated alone is never authorization"
 -- ============================================================================

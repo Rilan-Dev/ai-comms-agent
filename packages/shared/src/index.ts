@@ -61,6 +61,7 @@ export type {
   RoleId,
   PermissionId,
   MembershipRole,
+  NonOwnerRole,
   MembershipStatus,
   UserStatus,
   OrganizationStatus,
