@@ -23,7 +23,7 @@ export function Sidebar() {
   return (
     <aside className="hidden w-[252px] shrink-0 flex-col border-r bg-background/95 md:flex">
       <div className="flex h-[72px] items-center gap-3 border-b px-5">
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-foreground text-sm font-bold text-background">C</div>
+        <div className="grid h-9 w-9 place-items-center rounded-xl bg-foreground text-sm font-bold text-background shadow-sm">C</div>
         <div><p className="text-sm font-semibold tracking-tight">Clara Comms</p><p className="text-[11px] text-muted-foreground">AI communications</p></div>
       </div>
       <nav className="flex-1 overflow-y-auto px-3 py-4">
@@ -32,19 +32,22 @@ export function Sidebar() {
           {NAV_ITEMS.map((item) => {
             const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
             return <li key={item.href}>
-              <a href={item.href} className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${active ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"}`}>
-                <span className={`grid h-7 w-7 place-items-center rounded-lg text-sm ${active ? "bg-background" : "bg-transparent"}`}>{item.icon}</span><span>{item.label}</span>
+              <a href={item.href} aria-current={active ? "page" : undefined} className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${active ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"}`}>
+                <span className={`grid h-7 w-7 place-items-center rounded-lg text-sm ${active ? "bg-background/15" : "bg-transparent"}`}>{item.icon}</span><span>{item.label}</span>
               </a>
               {"children" in item && item.children && active && <ul className="ml-9 mt-1 space-y-0.5 border-l pl-2">{item.children.map((child) => {
                 const childActive = pathname === child.href;
-                return <li key={child.href}><a href={child.href} className={`block rounded-lg px-3 py-2 text-xs transition ${childActive ? "bg-muted font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}`}>{child.label}</a></li>;
+                return <li key={child.href}><a href={child.href} aria-current={childActive ? "page" : undefined} className={`block rounded-lg px-3 py-2 text-xs transition ${childActive ? "bg-muted font-semibold text-foreground" : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"}`}>{child.label}</a></li>;
               })}</ul>}
             </li>;
           })}
         </ul>
       </nav>
       <div className="border-t p-3">
-        <div className="rounded-xl bg-muted/60 p-3"><div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-500"/><span className="text-xs font-medium">Platform healthy</span></div><p className="mt-1 text-[11px] text-muted-foreground">AI runtime connected · 4 services</p></div>
+        <div className="rounded-xl border bg-muted/40 p-3">
+          <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-500"/><span className="text-xs font-medium">Core online</span></div>
+          <p className="mt-1 text-[11px] text-muted-foreground">AI, email and messaging workspace</p>
+        </div>
       </div>
     </aside>
   );
