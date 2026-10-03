@@ -869,3 +869,62 @@ Phase 4 authorization: NOT AUTHORIZED
 ```
 
 Z.AI is in STOP state. Awaiting ChatGPT final Phase 3 acceptance decision.
+
+---
+
+## Task ID: 8
+## Phase: 3 — Transaction-Safe Owner Invariant
+
+- **Status**: transaction_safe_owner_invariant_complete_awaiting_chatgpt_acceptance
+- **Objective**: Replace statement-level BEFORE trigger with DEFERRABLE constraint trigger; cover DELETE; make createOrganization internal.
+- **Architect**: ChatGPT (Chief Architect — external)
+- **Developer**: Z.AI (implementer)
+- **Start date**: 2026-10-03
+- **Completion date**: 2026-10-03
+- **Starting commit**: f808eddb6c2ca3ca9dc9c6d26026b36f6ce4c1dc
+- **Final commit**: 4289e537a14b3b5a57b7677eea690b604f767fb5
+
+### Work Log
+
+- Received Phase 3 transaction-safe owner invariant correction handoff. Read governance docs. Verified git state: HEAD f808edd, clean working tree. Inspected actual migration trigger, repository interface, and test files directly.
+- **Root cause identified**: The previous `enforce_owner_invariant()` was a statement-level `BEFORE INSERT OR UPDATE` trigger. This blocked valid ownership transfers (the transient zero-owner state between "old owner -> admin" and "target -> owner" would be rejected at statement 1). It also didn't cover DELETE. The migration comments claimed "DEFERRABLE semantics" but the trigger was NOT actually deferrable.
+- **Correction 2 (SQL owner invariant — transaction-safe)**: Replaced the single statement-level trigger with a two-layer mechanism:
+  - **Layer 1 (immediate)**: `enforce_owner_status_active()` — BEFORE INSERT OR UPDATE, per-row. Checks `role = 'owner' => status = 'active'`. This is safe to enforce immediately because it never conflicts with ownership transfer (an owner is always active).
+  - **Layer 2 (deferred)**: `enforce_exactly_one_owner()` — CONSTRAINT TRIGGER AFTER INSERT OR UPDATE OR DELETE, `DEFERRABLE INITIALLY DEFERRED`. Fires at transaction COMMIT. Iterates all organizations with memberships and checks each has exactly one active owner. Allows transient intermediate states within a transaction (ownership transfer). Covers DELETE (cannot delete final owner — at COMMIT, the org would have zero owners).
+- **Correction 3 (Organization creation boundary)**: Marked `createOrganization` as `@internal` in the `IdentityRepository` interface with explicit JSDoc warning that it must not be called directly. `createOrganizationWithOwner` is the sole public organization-creation workflow. No two equally valid public creation paths.
+- **Test fixture update**: Updated `apps/web/tests/fixtures.ts` to use `createOrganizationWithOwner` (not `createOrganization` + separate `createMembership` for the owner). This ensures test setup itself follows the correct creation workflow.
+- **Migration static verification tests**: Created `apps/web/tests/migration-verification.test.ts` (21 tests) that read the migration file as a string and verify: DEFERRABLE constraint trigger exists, covers INSERT/UPDATE/DELETE, `enforce_owner_invariant` (old name) is absent, `enforce_exactly_one_owner` and `enforce_owner_status_active` are present, `roles`/`role_permissions` tables absent (Option A), `permissions` catalogue present, Phase 3 permissions seeded, feature-domain permissions NOT seeded, core tables exist, RLS policies exist, transaction-safety documented.
+- **Added transfer-to-member test**: Added test for `transferOwnership` with `'member'` demotion role (verifies old owner becomes member, exactly one active owner remains). The handoff required tests for admin, member, and viewer demotion roles — all three now have explicit tests.
+- Verification: typecheck 5/5 pass, 91/91 tests pass (8 files), web build success (7 routes), worker build success, secret scan clean, Clara submodule unchanged at b47e587.
+- Vercel: auto-deployed commit 4289e53. State: READY. UID: dpl_AJFdApXHyP5Ufb5mpxoZChE6WtNo. All routes verified: / 200, /mail/inbox 200, /api/health 200, /api/dev/seed 403.
+- Updated governance docs: PROJECT_STATE.md (commit SHA 4289e53, phase_status, change log), CURRENT_PHASE.md (transaction-safe correction summary, 91 tests), NEXT_ACTION.md (final acceptance action), worklog.md (this section).
+
+### Files changed
+
+- `supabase/migrations/0001_identity_rbac.sql` — replaced statement-level trigger with two-layer mechanism (immediate + deferred constraint trigger)
+- `packages/db/src/identity/repository.ts` — `createOrganization` marked `@internal`
+- `apps/web/tests/fixtures.ts` — uses `createOrganizationWithOwner`
+- `apps/web/tests/owner-invariant.test.ts` — added transfer-to-member test (22 total)
+- `apps/web/tests/migration-verification.test.ts` — NEW (21 tests, static migration verification)
+- `docs/project-control/PROJECT_STATE.md`, `CURRENT_PHASE.md`, `NEXT_ACTION.md`, `worklog.md` — governance updates
+
+### Verification
+
+- Typecheck: 5/5 pass
+- Tests: 91/91 pass (8 files)
+- Web build: success
+- Worker build: success
+- Secret scan: clean
+- Clara: unchanged at b47e5871f0587ed76f6cce68f91c667d235bc1e1
+- Vercel: READY (commit 4289e53, UID dpl_AJFdApXHyP5Ufb5mpxoZChE6WtNo)
+
+### Governance state
+
+```text
+Phase 3 implementation: COMPLETE
+Developer verification: COMPLETE
+ChatGPT acceptance: PENDING
+Phase 4 authorization: NOT AUTHORIZED
+```
+
+Z.AI is in STOP state. Awaiting ChatGPT final Phase 3 acceptance decision.

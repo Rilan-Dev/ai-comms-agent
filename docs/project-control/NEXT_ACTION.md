@@ -17,41 +17,37 @@ action: |
     (c) CORRECT — specific corrections still required.
 
 context:
-  phase_3_final_correction_commit: "d4aa08b03edb0bb007a1249c79169654af09c095"
-  developer_verification: "complete (typecheck 5/5, 69/69 tests, build pass, secret scan clean)"
-  vercel_deployment: "READY (commit d4aa08b, UID dpl_iBWryx25cRAqRFXmgTuwcMcjVtgY)"
+  phase_3_transaction_safe_commit: "4289e537a14b3b5a57b7677eea690b604f767fb5"
+  developer_verification: "complete (typecheck 5/5, 91/91 tests, build pass, secret scan clean)"
+  vercel_deployment: "READY (commit 4289e53, UID dpl_AJFdApXHyP5Ufb5mpxoZChE6WtNo)"
   chatgpt_acceptance: "pending"
 
-corrections_implemented:
-  final_correction:
-    - "Correction 2: PostgreSQL trigger enforce_owner_invariant() in migration (at most one active owner, owner must be active, final owner cannot be demoted/suspended)"
-    - "Correction 3: createOrganizationWithOwner() — atomic org + initial owner creation"
-    - "Correction 4: transferOwnership newOwnerRole typed as NonOwnerRole (admin|member|viewer); runtime guard; default 'admin'"
-    - "Owner membership status enforcement: createMembership rejects non-active owner memberships"
-  prior_correction:
-    - "Finding A: Option A RBAC persistence (roles/role_permissions deferred; SYSTEM_ROLE_PERMISSIONS authoritative)"
-    - "Finding B: Owner invariant in-memory (createMembership, updateMembershipRole, updateMembershipStatus, transferOwnership)"
-    - "Finding C: Permission catalogue boundary documented (SECURITY_MODEL.md §4.2a)"
-    - "Finding D: PROJECT_STATE.md synchronized"
+owner_invariant_mechanism:
+  layer_1: "enforce_owner_status_active() — BEFORE INSERT OR UPDATE, per-row, immediate"
+  layer_2: "enforce_exactly_one_owner() — CONSTRAINT TRIGGER AFTER INSERT OR UPDATE OR DELETE, DEFERRABLE INITIALLY DEFERRED, fires at COMMIT"
+  coverage: "INSERT + UPDATE + DELETE"
+  transaction_safe: true
+  create_organization_boundary: "createOrganizationWithOwner is the public creation workflow; createOrganization is @internal"
 
 tests:
-  total: 69
-  files: 7
+  total: 91
+  files: 8
   breakdown:
     auth: 4
     organization-isolation: 7
     rbac: 14
     database-constraints: 10
     dev-adapter-guard: 5
-    owner-invariant: 21
+    owner-invariant: 22
     rbac-persistence-consistency: 8
+    migration-verification: 21
 ```
 
 ---
 
 ## STOP instruction
 
-**Z.AI must STOP after this final correction commit.**
+**Z.AI must STOP after this correction commit.**
 
 Z.AI must NOT:
 - start Phase 4 implementation
@@ -71,6 +67,8 @@ Z.AI is in **STOP** state, awaiting ChatGPT's final Phase 3 acceptance decision.
 | 2026-10-03 | Phase 1 → FINAL APPROVAL. Phase 2 → APPROVED. |
 | 2026-10-03 | Phase 3 identity/RBAC implemented (commits 11aa13c, 224751a). |
 | 2026-10-03 | ChatGPT review: CORRECTION REQUIRED (Findings A-D). |
-| 2026-10-03 | Z.AI implemented Phase 3 correction pass 1 (commit bf8dea7). 62 tests. |
+| 2026-10-03 | Z.AI correction pass 1 (commit bf8dea7). 62 tests. |
 | 2026-10-03 | ChatGPT review: FINAL CORRECTION required (4 items). |
-| 2026-10-03 | Z.AI implemented Phase 3 final correction (commit d4aa08b). 69 tests. Vercel READY. Next action: ChatGPT final Phase 3 acceptance. Z.AI must STOP. |
+| 2026-10-03 | Z.AI final correction (commit d4aa08b). 69 tests. |
+| 2026-10-03 | ChatGPT review: owner trigger not transaction-safe; DELETE not covered; createOrganization public. |
+| 2026-10-03 | Z.AI transaction-safe owner invariant (commit 4289e53). 91 tests. Vercel READY. Next: ChatGPT final acceptance. Z.AI must STOP. |

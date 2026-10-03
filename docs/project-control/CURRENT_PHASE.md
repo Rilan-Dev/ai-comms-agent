@@ -5,7 +5,7 @@
 ```yaml
 phase: 3
 phase_name: "Identity, Organization, Users, Roles & RBAC"
-status: "final_correction_complete_awaiting_chatgpt_acceptance"
+status: "transaction_safe_owner_invariant_awaiting_chatgpt_acceptance"
 start_date: 2026-10-03
 implementation_completion_date: 2026-10-03
 architect: "ChatGPT (external)"
@@ -110,6 +110,14 @@ ChatGPT review found 4 remaining items:
 - **Correction 4 (transferOwnership type safety)**: Changed `newOwnerRole` type from `MembershipRole` to `NonOwnerRole` (= `Exclude<MembershipRole, "owner">`). Compile-time error to pass "owner". Added runtime guard. Default remains "admin".
 - **Owner membership status**: `createMembership` now rejects owner memberships with non-active status (matches SQL trigger Rule 2).
 
-Tests: 69 total (7 files) — 40 original + 14 owner-invariant + 8 RBAC-persistence-consistency + 7 final-correction. All pass.
+**Phase 3 transaction-safe owner invariant (2026-10-03, commit 4289e53):**
+ChatGPT review found the statement-level BEFORE trigger was not transaction-safe (blocked valid ownership transfers, didn't cover DELETE). Corrected:
+- **Layer 1 (immediate)**: `enforce_owner_status_active()` BEFORE INSERT OR UPDATE — per-row check that owner status must be active. Does not conflict with transfers.
+- **Layer 2 (deferred)**: `enforce_exactly_one_owner()` CONSTRAINT TRIGGER AFTER INSERT OR UPDATE OR DELETE, DEFERRABLE INITIALLY DEFERRED — fires at COMMIT. Checks every org with memberships has exactly one active owner. Allows transient intermediate states within a transaction (ownership transfer). Covers DELETE (cannot delete final owner).
+- **Organization creation boundary**: `createOrganization` marked `@internal`; `createOrganizationWithOwner` is the sole public creation workflow.
+- **Test fixture**: uses `createOrganizationWithOwner` (not `createOrganization` + separate `createMembership`).
+- **Migration static verification**: added `migration-verification.test.ts` (21 tests) verifying DEFERRABLE constraint trigger exists, covers INSERT/UPDATE/DELETE, roles/role_permissions absent, permissions catalogue present.
+
+Tests: 91 total (8 files) — 40 original + 22 owner-invariant + 8 RBAC-persistence-consistency + 21 migration-verification. All pass.
 
 RBAC persistence: Option A (system roles via TypeScript SYSTEM_ROLE_PERMISSIONS; `roles`/`role_permissions` tables deferred). Permission catalogue: 9 Phase 3 identity/RBAC foundation permissions only (feature-domain permissions deferred to feature phases).
