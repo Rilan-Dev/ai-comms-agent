@@ -35,10 +35,9 @@ export type {
   SentMessageRef,
   SearchQuery,
   ListOptions,
-  CapabilityNotSupported,
 } from "./email/provider";
 
-export { CapabilityNotSupported as CapabilityNotSupportedError } from "./email/provider";
+export { CapabilityNotSupported, CapabilityNotSupported as CapabilityNotSupportedError } from "./email/provider";
 
 // Messaging channel types
 export type {
