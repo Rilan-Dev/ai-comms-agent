@@ -81,6 +81,10 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
 
     it("rejects non-active owner status (invited/suspended)", () => {
       expect(migrationSql).toContain("Owner membership must have status active");
+    });\n\n    it("uses valid PostgreSQL dollar-quoted function bodies", () => {
+      expect(migrationSql).not.toMatch(/\\bAS \\$(?!\\$)/);
+      expect(migrationSql).not.toMatch(/^\\$ LANGUAGE /m);
+      expect(migrationSql).toContain("RETURNS TRIGGER AS $");
     });
   });
 
