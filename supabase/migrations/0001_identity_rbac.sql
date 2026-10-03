@@ -170,93 +170,130 @@ CREATE TRIGGER organization_memberships_updated_at BEFORE UPDATE ON organization
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ============================================================================
--- Owner Invariant Enforcement (Phase 3 final correction)
+-- Owner Invariant Enforcement (Phase 3 — transaction-safe final correction)
 -- ============================================================================
 -- Per DOMAIN_MODEL.md §2.1: "An organization must have exactly one owner at
--- all times." A normal CHECK constraint cannot enforce this cross-row
--- invariant, so we use PostgreSQL triggers.
+-- all times." This is a CROSS-ROW, CROSS-STATEMENT invariant that cannot be
+-- enforced by a simple CHECK constraint or a statement-level BEFORE trigger.
 --
--- These triggers enforce at the DATABASE level:
---   1. At most one ACTIVE owner per organization (prevents multiple owners)
---   2. An owner membership must be ACTIVE (cannot be invited/suspended)
---   3. The final ACTIVE owner cannot be demoted or suspended (prevents zero owners)
+-- A valid ownership transfer requires a transient intermediate state within
+-- a single transaction:
+--   Statement 1: old owner -> admin (temporarily zero owners)
+--   Statement 2: target member -> owner (back to one owner)
+--   COMMIT -> invariant satisfied
 --
--- IMPORTANT: Organization creation uses createOrganizationWithOwner() in the
--- application layer, which inserts the organization and its initial owner in
--- a single transaction. The trigger below uses DEFERRABLE semantics so the
--- organization+owner creation workflow is not blocked by a transient
--- zero-owner state within the same transaction.
+-- A statement-level BEFORE trigger would reject statement 1, making transfers
+-- impossible. Therefore we use a two-layer mechanism:
+--
+-- Layer 1 (immediate, BEFORE INSERT OR UPDATE):
+--   enforce_owner_status_active() — a per-row check that owner memberships
+--   must have status='active'. This does NOT conflict with ownership transfer
+--   because the status of an owner is always 'active' (you cannot have an
+--   invited or suspended owner).
+--
+-- Layer 2 (deferred, CONSTRAINT TRIGGER AFTER INSERT OR UPDATE OR DELETE,
+--   DEFERRABLE INITIALLY DEFERRED):
+--   enforce_exactly_one_owner() — fires at transaction COMMIT. Checks every
+--   organization that was touched by the transaction has exactly one active
+--   owner. This allows transient intermediate states within the transaction
+--   while guaranteeing the invariant at COMMIT.
 --
 -- This is a schema-level invariant intended for production application of the
 -- migration. Phase 3 does NOT provision Supabase or apply this migration to
 -- production — it is a schema artifact.
 
--- Function: enforce_owner_invariant
--- Called BEFORE INSERT or UPDATE on organization_memberships.
--- Raises an exception if the operation would violate the owner invariant.
-CREATE OR REPLACE FUNCTION enforce_owner_invariant()
+-- ---------------------------------------------------------------------------
+-- Layer 1: Immediate per-row check — owner status must be active
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION enforce_owner_status_active()
 RETURNS TRIGGER AS $$
-DECLARE
-  active_owner_count integer;
 BEGIN
-  -- Rule 2: An owner membership must be active (cannot be invited/suspended)
+  -- An owner membership must be active (cannot be invited/suspended).
+  -- This is safe to enforce immediately because it never conflicts with
+  -- ownership transfer — an owner is always active.
   IF NEW.role = 'owner' AND NEW.status != 'active' THEN
-    RAISE EXCEPTION 'Owner membership must be active (got status: %)', NEW.status
+    RAISE EXCEPTION 'Owner membership must have status active (got: %)', NEW.status
       USING ERRCODE = 'check_violation';
   END IF;
-
-  -- For INSERT: check if adding this owner would create a second active owner
-  IF TG_OP = 'INSERT' AND NEW.role = 'owner' AND NEW.status = 'active' THEN
-    SELECT count(*) INTO active_owner_count
-    FROM organization_memberships
-    WHERE organization_id = NEW.organization_id
-      AND role = 'owner'
-      AND status = 'active';
-    IF active_owner_count > 0 THEN
-      RAISE EXCEPTION 'Organization % already has an active owner', NEW.organization_id
-        USING ERRCODE = 'check_violation';
-    END IF;
-  END IF;
-
-  -- For UPDATE: check demotion/suspension of the final owner
-  IF TG_OP = 'UPDATE' THEN
-    -- If the role is changing FROM owner TO non-owner
-    IF OLD.role = 'owner' AND OLD.status = 'active' AND (NEW.role != 'owner' OR NEW.status != 'active') THEN
-      SELECT count(*) INTO active_owner_count
-      FROM organization_memberships
-      WHERE organization_id = NEW.organization_id
-        AND role = 'owner'
-        AND status = 'active'
-        AND id != NEW.id;
-      IF active_owner_count = 0 THEN
-        RAISE EXCEPTION 'Cannot demote or suspend the final active owner of organization %', NEW.organization_id
-          USING ERRCODE = 'check_violation';
-      END IF;
-    END IF;
-
-    -- If promoting TO owner (role changing to owner when it wasn't before)
-    IF OLD.role != 'owner' AND NEW.role = 'owner' AND NEW.status = 'active' THEN
-      SELECT count(*) INTO active_owner_count
-      FROM organization_memberships
-      WHERE organization_id = NEW.organization_id
-        AND role = 'owner'
-        AND status = 'active'
-        AND id != NEW.id;
-      IF active_owner_count > 0 THEN
-        RAISE EXCEPTION 'Organization % already has an active owner', NEW.organization_id
-          USING ERRCODE = 'check_violation';
-      END IF;
-    END IF;
-  END IF;
-
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS organization_memberships_owner_invariant ON organization_memberships;
-CREATE TRIGGER organization_memberships_owner_invariant
+DROP TRIGGER IF EXISTS organization_memberships_owner_status ON organization_memberships;
+CREATE TRIGGER organization_memberships_owner_status
   BEFORE INSERT OR UPDATE ON organization_memberships
-  FOR EACH ROW EXECUTE FUNCTION enforce_owner_invariant();
+  FOR EACH ROW EXECUTE FUNCTION enforce_owner_status_active();
+
+-- ---------------------------------------------------------------------------
+-- Layer 2: Deferred constraint trigger — exactly one active owner at COMMIT
+-- ---------------------------------------------------------------------------
+
+-- Collects all organizations touched by the current transaction (via INSERT,
+-- UPDATE, or DELETE on organization_memberships) and verifies each has
+-- exactly one active owner. Fires at COMMIT due to DEFERRABLE INITIALLY
+-- DEFERRED.
+
+CREATE OR REPLACE FUNCTION enforce_exactly_one_owner()
+RETURNS TRIGGER AS $$
+DECLARE
+  org_record RECORD;
+  owner_count integer;
+  has_memberships boolean;
+BEGIN
+  -- Build a set of organization_ids to check. We check all organizations
+  -- that have at least one membership row (organizations with zero rows
+  -- are newly created and may not have their owner inserted yet within
+  -- the same transaction — but createOrganizationWithOwner inserts both
+  -- in the same transaction, so at COMMIT the owner exists).
+  --
+  -- We check organizations that have memberships but zero active owners.
+  -- We also check for organizations with more than one active owner.
+  FOR org_record IN
+    SELECT DISTINCT organization_id FROM organization_memberships
+  LOOP
+    SELECT count(*) INTO owner_count
+    FROM organization_memberships
+    WHERE organization_id = org_record.organization_id
+      AND role = 'owner'
+      AND status = 'active';
+
+    IF owner_count = 0 THEN
+      -- Check if the org has any memberships at all (if zero rows, it's
+      -- a brand-new org within a createOrganizationWithOwner transaction
+      — the owner should have been inserted; if not, this is a violation)
+      SELECT count(*) > 0 INTO has_memberships
+      FROM organization_memberships
+      WHERE organization_id = org_record.organization_id;
+
+      IF has_memberships THEN
+        RAISE EXCEPTION 'Organization % has no active owner at commit (exactly one required)',
+          org_record.organization_id
+          USING ERRCODE = 'check_violation';
+      END IF;
+    END IF;
+
+    IF owner_count > 1 THEN
+      RAISE EXCEPTION 'Organization % has % active owners at commit (exactly one required)',
+        org_record.organization_id, owner_count
+        USING ERRCODE = 'check_violation';
+    END IF;
+  END LOOP;
+
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- CONSTRAINT TRIGGER with DEFERRABLE INITIALLY DEFERRED:
+-- This fires at COMMIT, not at each statement. This allows ownership transfer
+-- transactions (old owner -> admin, then target -> owner) to have a transient
+-- zero-owner state between statements, as long as the final committed state
+-- has exactly one active owner.
+DROP CONSTRAINT TRIGGER IF EXISTS organization_memberships_owner_count ON organization_memberships;
+CREATE CONSTRAINT TRIGGER organization_memberships_owner_count
+  AFTER INSERT OR UPDATE OR DELETE ON organization_memberships
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION enforce_exactly_one_owner();
 
 -- ============================================================================
 -- Row-Level Security (per SECURITY_MODEL.md §3 and RULES.md §11)

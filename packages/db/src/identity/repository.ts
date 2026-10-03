@@ -36,15 +36,26 @@ export interface IdentityRepository {
   // Organizations
   getOrganizationById(id: OrganizationId): Promise<Organization | null>;
   getOrganizationBySlug(slug: string): Promise<Organization | null>;
+
+  /**
+   * INTERNAL: creates an organization row without an owner.
+   *
+   * This method is NOT the public organization-creation workflow. It exists
+   * only as an internal helper for `createOrganizationWithOwner`. Application
+   * code MUST NOT call this directly — it would produce an organization with
+   * zero owners, violating the DOMAIN_MODEL.md §2.1 invariant.
+   *
+   * @internal
+   */
   createOrganization(input: { name: string; slug: string }): Promise<Organization>;
 
   /**
    * Atomically create an organization AND its initial active owner membership.
    *
-   * Per DOMAIN_MODEL.md §2.1: "An organization must have exactly one owner
-   * at all times." This method ensures the invariant is satisfied from the
-   * moment of creation — there is no window where an organization exists
-   * without an owner.
+   * This is the PUBLIC organization-creation workflow. Per DOMAIN_MODEL.md
+   * §2.1: "An organization must have exactly one owner at all times." This
+   * method ensures the invariant is satisfied from the moment of creation —
+   * there is no window where an organization exists without an owner.
    *
    * The owner user must already exist (created via createUser first).
    * Returns the organization and the owner membership.

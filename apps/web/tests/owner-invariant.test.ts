@@ -311,4 +311,21 @@ describe("Owner invariant (exactly one owner at all times)", () => {
     const oldOwner = result.find((m) => m.userId === fixture.ownerA);
     expect(oldOwner?.role).toBe("viewer");
   });
+
+  it("transferOwnership with 'member' demotion leaves old owner as member", async () => {
+    const result = await fixture.repo.transferOwnership(
+      asOrganizationId(fixture.orgA),
+      asUserId(fixture.memberA),
+      "member",
+    );
+
+    const oldOwner = result.find((m) => m.userId === fixture.ownerA);
+    expect(oldOwner?.role).toBe("member");
+
+    // Verify exactly one active owner
+    const memberships = await fixture.repo.getMembershipsForOrg(asOrganizationId(fixture.orgA));
+    const owners = memberships.filter((m) => m.role === "owner" && m.status === "active");
+    expect(owners.length).toBe(1);
+    expect(owners[0]!.userId).toBe(fixture.memberA);
+  });
 });
