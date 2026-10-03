@@ -11,15 +11,12 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Acceptance Gatekeeper
 
 action: |
-  Perform the final Phase 3 acceptance review. Decide one of:
-    (a) ACCEPT — Phase 3 is accepted; issue the Phase 4 Z.AI_HANDOFF.
-    (b) REJECT  — Phase 3 has fundamental gaps; issue another correction handoff.
-    (c) CORRECT — specific corrections still required.
+  Complete final Phase 3 verification and acceptance. If all evidence is green, accept Phase 3 and issue the Phase 4 database-foundation implementation plan under ChatGPT ownership. Do not start Phase 4 until acceptance is recorded.
 
 context:
-  phase_3_transaction_safe_commit: "4289e537a14b3b5a57b7677eea690b604f767fb5"
+  phase_3_transaction_safe_commit: "967639b5eed41115ecf8021c88c1de060aad7700"
   developer_verification: "complete (typecheck 5/5, 91/91 tests, build pass, secret scan clean)"
-  vercel_deployment: "READY (commit 4289e53, UID dpl_AJFdApXHyP5Ufb5mpxoZChE6WtNo)"
+  vercel_deployment: "pending verification for latest takeover commit"
   chatgpt_acceptance: "pending"
 
 owner_invariant_mechanism:
