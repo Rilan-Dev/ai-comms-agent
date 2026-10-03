@@ -973,3 +973,26 @@ Phase 3 remains pending ChatGPT acceptance until final verification evidence is 
 ### Governance
 
 Phase 3 is still pending final ChatGPT acceptance. Phase 4 remains unauthorized. No Clara source or submodule changes.
+
+
+## Task ID: 12
+## Phase: 3 — Disposable PostgreSQL Runtime Gate
+
+- **Status**: verification_infrastructure_complete_awaiting_execution
+- **Objective**: Make Phase 3 migration syntax and transaction invariants executable in CI instead of relying only on static inspection.
+- **Architect / Developer**: ChatGPT
+- **Date**: 2026-10-04
+
+### Work completed
+
+- Added a disposable PostgreSQL 17 service to GitHub Actions.
+- Added `scripts/verify-phase3-migration.sql` to apply the Phase 3 migration and verify a valid organization creation, transaction-safe ownership transfer, exactly-one-owner final state, and RLS helper functions.
+- Added `scripts/verify-phase3-migration-fail.sql` to prove a direct ownerless organization INSERT is rejected at commit.
+- CI now runs both the positive runtime verification and the expected-failure verification.
+- A temporary PR (#2) was opened to obtain PR-triggered workflow evidence, but the connector currently does not expose a workflow run for the verification commit. The PR will not be treated as acceptance evidence.
+
+### Acceptance state
+
+- Latest main code/control commit before this log entry: `d18045bc6e82eceeb6096e5040d6860f53307e1d`.
+- Runtime verification is still pending authoritative CI evidence.
+- Phase 3 remains unaccepted; Phase 4 remains unauthorized.
