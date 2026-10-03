@@ -237,48 +237,113 @@ CREATE TRIGGER organization_memberships_owner_status
 CREATE OR REPLACE FUNCTION enforce_exactly_one_owner()
 RETURNS TRIGGER AS $$
 DECLARE
-  org_record RECORD;
+  affected_org_id uuid;
   owner_count integer;
-  has_memberships boolean;
+  org_exists boolean;
 BEGIN
-  -- Build a set of organization_ids to check. We check all organizations
-  -- that have at least one membership row (organizations with zero rows
-  -- are newly created and may not have their owner inserted yet within
-  -- the same transaction — but createOrganizationWithOwner inserts both
-  -- in the same transaction, so at COMMIT the owner exists).
-  --
-  -- We check organizations that have memberships but zero active owners.
-  -- We also check for organizations with more than one active owner.
-  FOR org_record IN
-    SELECT DISTINCT organization_id FROM organization_memberships
-  LOOP
-    SELECT count(*) INTO owner_count
-    FROM organization_memberships
-    WHERE organization_id = org_record.organization_id
-      AND role = 'owner'
-      AND status = 'active';
+  /*
+   * This is a deferred constraint trigger, so this function observes the
+   * transaction's final state. We validate every organization whose
+   * membership rows were affected by this trigger invocation.
+   *
+   * INSERT: NEW organization is affected.
+   * DELETE: OLD organization is affected, including the final membership
+   *         deletion that leaves no membership rows to iterate over.
+   * UPDATE: NEW organization is affected; if organization_id is ever changed,
+   *         OLD is also affected so the old organization cannot become
+   *         ownerless.
+   *
+   * An organization being deleted itself is intentionally skipped: its
+   * membership rows may be removed by ON DELETE CASCADE, but the organization
+   * no longer exists and therefore does not violate the invariant.
+   */
+  IF TG_OP = 'INSERT' THEN
+    affected_org_id := NEW.organization_id;
 
-    IF owner_count = 0 THEN
-      -- Check if the org has any memberships at all (if zero rows, it's
-      -- a brand-new org within a createOrganizationWithOwner transaction
-      — the owner should have been inserted; if not, this is a violation)
-      SELECT count(*) > 0 INTO has_memberships
+    SELECT EXISTS (
+      SELECT 1 FROM organizations WHERE id = affected_org_id
+    ) INTO org_exists;
+
+    IF org_exists THEN
+      SELECT count(*) INTO owner_count
       FROM organization_memberships
-      WHERE organization_id = org_record.organization_id;
+      WHERE organization_id = affected_org_id
+        AND role = 'owner'
+        AND status = 'active';
 
-      IF has_memberships THEN
-        RAISE EXCEPTION 'Organization % has no active owner at commit (exactly one required)',
-          org_record.organization_id
+      IF owner_count != 1 THEN
+        RAISE EXCEPTION 'Organization % has % active owners at commit (exactly one required)',
+          affected_org_id, owner_count
           USING ERRCODE = 'check_violation';
       END IF;
     END IF;
 
-    IF owner_count > 1 THEN
-      RAISE EXCEPTION 'Organization % has % active owners at commit (exactly one required)',
-        org_record.organization_id, owner_count
-        USING ERRCODE = 'check_violation';
+  ELSIF TG_OP = 'DELETE' THEN
+    affected_org_id := OLD.organization_id;
+
+    SELECT EXISTS (
+      SELECT 1 FROM organizations WHERE id = affected_org_id
+    ) INTO org_exists;
+
+    IF org_exists THEN
+      SELECT count(*) INTO owner_count
+      FROM organization_memberships
+      WHERE organization_id = affected_org_id
+        AND role = 'owner'
+        AND status = 'active';
+
+      IF owner_count != 1 THEN
+        RAISE EXCEPTION 'Organization % has % active owners at commit (exactly one required)',
+          affected_org_id, owner_count
+          USING ERRCODE = 'check_violation';
+      END IF;
     END IF;
-  END LOOP;
+
+  ELSE
+    -- UPDATE: validate NEW organization and, defensively, OLD organization
+    -- when organization_id changes in the same row update.
+    affected_org_id := NEW.organization_id;
+
+    SELECT EXISTS (
+      SELECT 1 FROM organizations WHERE id = affected_org_id
+    ) INTO org_exists;
+
+    IF org_exists THEN
+      SELECT count(*) INTO owner_count
+      FROM organization_memberships
+      WHERE organization_id = affected_org_id
+        AND role = 'owner'
+        AND status = 'active';
+
+      IF owner_count != 1 THEN
+        RAISE EXCEPTION 'Organization % has % active owners at commit (exactly one required)',
+          affected_org_id, owner_count
+          USING ERRCODE = 'check_violation';
+      END IF;
+    END IF;
+
+    IF OLD.organization_id IS DISTINCT FROM NEW.organization_id THEN
+      affected_org_id := OLD.organization_id;
+
+      SELECT EXISTS (
+        SELECT 1 FROM organizations WHERE id = affected_org_id
+      ) INTO org_exists;
+
+      IF org_exists THEN
+        SELECT count(*) INTO owner_count
+        FROM organization_memberships
+        WHERE organization_id = affected_org_id
+          AND role = 'owner'
+          AND status = 'active';
+
+        IF owner_count != 1 THEN
+          RAISE EXCEPTION 'Organization % has % active owners at commit (exactly one required)',
+            affected_org_id, owner_count
+            USING ERRCODE = 'check_violation';
+        END IF;
+      END IF;
+    END IF;
+  END IF;
 
   RETURN NULL;
 END;
@@ -287,8 +352,9 @@ $$ LANGUAGE plpgsql;
 -- CONSTRAINT TRIGGER with DEFERRABLE INITIALLY DEFERRED:
 -- This fires at COMMIT, not at each statement. This allows ownership transfer
 -- transactions (old owner -> admin, then target -> owner) to have a transient
--- zero-owner state between statements, as long as the final committed state
--- has exactly one active owner.
+-- zero-owner state, while still rejecting a transaction that commits with
+-- zero or multiple active owners. DELETE is included so removing the final
+-- membership cannot leave an existing organization ownerless.
 DROP CONSTRAINT TRIGGER IF EXISTS organization_memberships_owner_count ON organization_memberships;
 CREATE CONSTRAINT TRIGGER organization_memberships_owner_count
   AFTER INSERT OR UPDATE OR DELETE ON organization_memberships
