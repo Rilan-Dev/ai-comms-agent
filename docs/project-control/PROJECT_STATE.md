@@ -13,14 +13,14 @@ visibility: private
 
 current_phase: 3
 current_phase_name: "Identity, Organization, Users, Roles & RBAC"
-phase_status: "transaction-safe owner invariant — awaiting ChatGPT acceptance"
+phase_status: "final deletion-invariant correction — awaiting ChatGPT acceptance"
 
 last_completed_phase: 2
 last_completed_phase_status: "APPROVED (2026-10-03)"
-current_objective: "Get Phase 3 corrections accepted by ChatGPT so Phase 4 (database foundation) can be authorized"
+current_objective: "Complete Phase 3 acceptance, then execute the approved roadmap sequentially under ChatGPT ownership"
 
-architect: "ChatGPT (Chief Architect — external to this Z.AI session)"
-developer: "Z.AI (implementer of this Phase 2 deliverable)"
+architect: "ChatGPT (Chief Architect / Project Controller)"
+developer: "ChatGPT (primary implementer and verifier; Z.AI no longer required)"
 
 phase1_approved_baseline: "c8b2f2c02c2231ea4e5fdb5b9fa48124b383bdc6"
 phase1_state_recording_commit: "f32616a487ba09bfaa782c39226b19f38d7b18e3"
@@ -28,13 +28,13 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "4289e537a14b3b5a57b7677eea690b604f767fb5"
-current_commit_short: "4289e53"
+current_commit: "967639b5eed41115ecf8021c88c1de060aad7700"
+current_commit_short: "967639b"
 current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/4289e537a14b3b5a57b7677eea690b604f767fb5"
-last_verified_commit: "pending_chatgpt_acceptance"
+last_verified_commit: "pending_final_chatgpt_acceptance"
 
 open_blockers:
-  - "Awaiting ChatGPT Phase 3 final acceptance (owner invariant SQL trigger, atomic org creation, transferOwnership type safety)"
+  - "Awaiting ChatGPT Phase 3 final acceptance after final-owner DELETE invariant correction"
 open_risks:
   - "Clara manifest has 2 SHA typos (Clara library issue, not file mutations — see CLARA-INTEGRATION.md §8a)"
   - "Supabase project not yet provisioned; PostgreSQL/Supabase remains approved infrastructure (ADR-009); provisioning deferred to Phase 4 (RSK-001)"
@@ -132,4 +132,5 @@ monorepo_layout:
 | 2026-10-03 | 3 | Z.AI | Phase 3 final correction (commit d4aa08b): PostgreSQL owner-invariant trigger, createOrganizationWithOwner, NonOwnerRole type, 69 tests. Vercel READY. Awaiting acceptance. |
 | 2026-10-03 | 3 | ChatGPT | Phase 3 review: owner trigger is statement-level, not transaction-safe; createOrganization is public (violates invariant); DELETE not covered. |
 | 2026-10-03 | 3 | Z.AI | Phase 3 transaction-safe owner invariant (commit 4289e53): replaced BEFORE trigger with DEFERRABLE constraint trigger (AFTER INSERT/UPDATE/DELETE); createOrganization marked @internal; 91 tests. Vercel READY. Awaiting acceptance. |
+| 2026-10-04 | 3 | ChatGPT | Took over primary implementation. Corrected the remaining PostgreSQL owner-invariant gap for final membership deletion, strengthened migration static verification, and upgraded CI to run tests on Node 24. Phase 3 remains pending formal acceptance until runtime evidence is complete. |
 | 2026-10-03 | 2 | Z.AI | Vercel deployment fix: root cause was framework=None + rootDirectory=None causing Vercel to look for nonexistent public/ output. Fixed via Vercel project settings (rootDirectory=apps/web, framework=nextjs, nodeVersion=24.x). Fixed health check to be production-safe (removed development-time file-existence checks). Deployment READY at https://ai-comms-agent.vercel.app. All 3 routes verified PASS (commit c286867). |
