@@ -996,3 +996,16 @@ Phase 3 is still pending final ChatGPT acceptance. Phase 4 remains unauthorized.
 - Latest main code/control commit before this log entry: `d18045bc6e82eceeb6096e5040d6860f53307e1d`.
 - Runtime verification is still pending authoritative CI evidence.
 - Phase 3 remains unaccepted; Phase 4 remains unauthorized.
+
+
+## Task ID: 12
+## Phase: 3 — PostgreSQL Runtime Verification Gate
+
+- **Status**: implemented, awaiting GitHub Actions execution
+- **Owner**: ChatGPT
+- Added a disposable PostgreSQL 17 service to CI.
+- Added `scripts/verify-phase3-migration.sql` covering migration runtime, owner creation, ownership transfer, and RLS helper presence.
+- Added `scripts/verify-phase3-migration-fail.sql` covering expected rejection of direct ownerless organization creation.
+- Corrected all remaining single-dollar PostgreSQL function delimiters in `0001_identity_rbac.sql` and added static regression coverage.
+- Current code commit: `dd4167d8e9da98688c17f0dfe6ea176d64ee83d7`.
+- CI workflow result is not yet exposed by the GitHub connector; Vercel is independently rate-limited. Phase 3 acceptance remains blocked until runtime evidence is green.
