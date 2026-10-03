@@ -80,6 +80,31 @@ developer_verification:
     date: "2026-10-03"
     result: ".github/workflows/ci.yml created; valid YAML; all steps pass locally; not yet triggered on GitHub Actions (will trigger on next push to main)"
 
+  vercel_remote_deployment:
+    status: pass
+    performed_by: "Z.AI"
+    date: "2026-10-03"
+    deployed_commit: "c2868671c97af727b624b12a218d288fee936020"
+    deployment_uid: "dpl_4i1g2mxMSEU4xAGA4odFAz4wPNen"
+    deployment_state: "READY"
+    production_url: "https://ai-comms-agent.vercel.app"
+    vercel_project_settings:
+      framework: "nextjs"
+      root_directory: "apps/web"
+      node_version: "24.x"
+    routes_verified:
+      home: "GET / → HTTP 200 (renders sidebar + top bar + overview dashboard; 18556 bytes)"
+      mail_inbox: "GET /mail/inbox → HTTP 200 (renders mock email table + threads; 12830 bytes)"
+      health: "GET /api/health → HTTP 200 ({ status: healthy, all checks ok })"
+    notes: |
+      Root cause of prior failure: Vercel project had framework=None and
+      rootDirectory=None, causing Vercel to treat the repo root as a generic
+      static deployment and look for nonexistent public/ output directory.
+      Fixed via Vercel project settings (rootDirectory=apps/web, framework=nextjs).
+      Health check also fixed to be production-safe (removed development-time
+      file-existence checks that don't work in Vercel's serverless runtime).
+      Developer verification is NOT architect acceptance.
+
 # ============================================================
 # ARCHITECT ACCEPTANCE (performed by ChatGPT)
 # ============================================================

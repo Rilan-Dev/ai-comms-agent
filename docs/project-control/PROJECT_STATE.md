@@ -26,9 +26,11 @@ phase1_approved_baseline: "c8b2f2c02c2231ea4e5fdb5b9fa48124b383bdc6"
 phase1_state_recording_commit: "f32616a487ba09bfaa782c39226b19f38d7b18e3"
 phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
-current_commit: "(populated after the control-state correction commit — see git log)"
-current_commit_short: "(populated after commit)"
-current_commit_url: "(populated after commit)"
+phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
+phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
+current_commit: "c2868671c97af727b624b12a218d288fee936020"
+current_commit_short: "c286867"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/c2868671c97af727b624b12a218d288fee936020"
 last_verified_commit: "pending_chatgpt_acceptance"
 
 open_blockers:
@@ -78,6 +80,12 @@ deployment:
   vercel_project_id: prj_VdO5pwIma53uGKqtt5EzRiry7JtG
   vercel_team_id: team_UQKWM8HLJvyr4sBGNHIidVwH
   vercel_production_branch: main
+  vercel_root_directory: "apps/web"
+  vercel_framework: "nextjs"
+  vercel_node_version: "24.x"
+  vercel_production_url: "https://ai-comms-agent.vercel.app"
+  vercel_latest_deployment: "READY (commit c286867, 2026-10-03)"
+  vercel_remote_verification: "PASS (/ 200, /mail/inbox 200, /api/health 200 healthy)"
   supabase_project: "(not provisioned — Phase 4; PostgreSQL/Supabase remains approved infrastructure per ADR-009)"
 
 reference_library:
@@ -117,3 +125,4 @@ monorepo_layout:
 | 2026-10-03 | 2 | Z.AI | Phase 2 application foundation implemented: monorepo (apps/web, apps/worker, packages/{clara-core,shared,db}), Clara git submodule, local Docker infra, foundation vertical slice, all verification passing. Clara deep audit completed (106/108 verifier pass; claraRuntime export corrected; ISS-005 refined). Awaiting ChatGPT Phase 2 review. |
 | 2026-10-03 | 2 | ChatGPT | Phase 2 review: implementation substantially complete; **CORRECTION REQUIRED** for stale/contradictory project-control records. Control-state correction authorized. No Phase 3. |
 | 2026-10-03 | 2 | Z.AI | Control-state correction: recorded actual Phase 2 commit SHA (13835dd); implemented minimum CI workflow (.github/workflows/ci.yml) per ROADMAP.md Phase 2 scope; resolved ISS-002, retired RSK-002; corrected ISSUES/RISKS/CURRENT_PHASE/NEXT_ACTION/VERIFICATION_STATE/worklog. Awaiting ChatGPT final Phase 2 acceptance. |
+| 2026-10-03 | 2 | Z.AI | Vercel deployment fix: root cause was framework=None + rootDirectory=None causing Vercel to look for nonexistent public/ output. Fixed via Vercel project settings (rootDirectory=apps/web, framework=nextjs, nodeVersion=24.x). Fixed health check to be production-safe (removed development-time file-existence checks). Deployment READY at https://ai-comms-agent.vercel.app. All 3 routes verified PASS (commit c286867). |
