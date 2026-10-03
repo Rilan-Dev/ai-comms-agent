@@ -1009,3 +1009,21 @@ Phase 3 is still pending final ChatGPT acceptance. Phase 4 remains unauthorized.
 - Corrected all remaining single-dollar PostgreSQL function delimiters in `0001_identity_rbac.sql` and added static regression coverage.
 - Current code commit: `dd4167d8e9da98688c17f0dfe6ea176d64ee83d7`.
 - CI workflow result is not yet exposed by the GitHub connector; Vercel is independently rate-limited. Phase 3 acceptance remains blocked until runtime evidence is green.
+
+
+## Task ID: 12
+## Phase: 3 — PostgreSQL Runtime Verification Gate
+
+- **Status**: verification_infrastructure_implemented
+- **Owner**: ChatGPT
+- **Date**: 2026-10-04
+
+### Completed
+- Added a disposable PostgreSQL 17 service to CI.
+- CI now applies `supabase/migrations/0001_identity_rbac.sql` before runtime verification.
+- Added runtime checks for one-owner enforcement, ownership transfer inside a transaction, and RLS helper presence.
+- Added an expected-failure check proving direct ownerless organization creation is rejected at commit.
+- Latest code commit: `1d1723037794609f93cdd63157ec638f4ed62a2b`.
+
+### Gate
+Runtime CI evidence is now the required next acceptance evidence. Phase 4 remains NOT AUTHORIZED until CI and deployment verification are green.
