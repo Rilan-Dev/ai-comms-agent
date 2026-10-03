@@ -1,4 +1,5 @@
 name: CI
+# Phase 3 runtime verification gate: disposable PostgreSQL migration execution.
 
 on:
   push:
