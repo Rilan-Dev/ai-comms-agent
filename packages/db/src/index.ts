@@ -15,3 +15,5 @@ export { isSupabaseConfigured, getSupabaseConfigFromEnv } from "./client";
 // Phase 3: identity repository
 export { type IdentityRepository } from "./identity/repository";
 export { InMemoryIdentityRepository, OwnerInvariantError } from "./identity/in-memory";
+
+export { SupabaseIdentityRepository } from "./identity/supabase";
