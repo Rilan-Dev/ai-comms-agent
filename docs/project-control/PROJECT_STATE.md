@@ -21,8 +21,10 @@ current_objective: "Get Phase 1 documentation approved by ChatGPT so Phase 2 (ap
 architect: "ChatGPT (Chief Architect — external to this Z.AI session)"
 developer: "Z.AI (implementer of this Phase 1 deliverable)"
 
-current_commit: "(populated after first push — see Git log)"
-last_verified_commit: "(populated after ChatGPT verification)"
+current_commit: "2bacba0bf55efbdf4c9221f2bcb63da3782c9708"
+current_commit_short: "2bacba0"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/2bacba0bf55efbdf4c9221f2bcb63da3782c9708"
+last_verified_commit: "(pending ChatGPT verification)"
 
 open_blockers:
   - "Awaiting ChatGPT architect review of Phase 1 documentation package"

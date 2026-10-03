@@ -110,7 +110,15 @@ evidence:
     - docs/plans/ROADMAP.md
   continuity_test_performed: true
   continuity_test_result: "Self-administered continuity check passed: a fresh reader following AGENTS.md §3 reading order can recover full project state from the repository alone."
-  commit_sha: "(populated after push — see git log)"
+  commit_sha: "2bacba0bf55efbdf4c9221f2bcb63da3782c9708"
+  commit_short: "2bacba0"
+  commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/2bacba0bf55efbdf4c9221f2bcb63da3782c9708"
+  push_verified: true
+  push_notes: |
+    Pushed to main on 2026-10-03. Force-push was used to override the
+    auto-generated initial commit (which only contained GitHub's Node
+    .gitignore template, superseded by our comprehensive .gitignore).
+    Local and remote HEAD both at 2bacba0.
 ```
 
 ---
