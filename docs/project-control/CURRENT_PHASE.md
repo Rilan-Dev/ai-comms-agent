@@ -5,7 +5,7 @@
 ```yaml
 phase: 3
 phase_name: "Identity, Organization, Users, Roles & RBAC"
-status: "final_owner_delete_correction_awaiting_chatgpt_acceptance"
+status: "schema_hardening_awaiting_final_chatgpt_acceptance"
 start_date: 2026-10-03
 implementation_completion_date: 2026-10-03
 architect: "ChatGPT"
@@ -124,3 +124,6 @@ RBAC persistence: Option A (system roles via TypeScript SYSTEM_ROLE_PERMISSIONS;
 
 
 **Takeover update (2026-10-04):** ChatGPT is now the primary implementer. The final PostgreSQL owner-invariant correction validates the affected organization directly for INSERT/UPDATE/DELETE, including the final-owner deletion case where no membership rows remain. CI now executes the web test suite and uses Node 24 to match the deployed runtime. Phase 3 acceptance remains pending until final verification evidence is complete.
+
+
+**Latest acceptance findings (2026-10-04):** direct SQL organization INSERTs are now covered by a deferred organization-level owner trigger, and RLS membership checks now use pinned SECURITY DEFINER helpers to avoid recursive policy evaluation. Phase 4 remains unauthorized.
