@@ -91,3 +91,8 @@
 - [ ] Verify deployment.
 - [ ] Record Phase 4 acceptance state.
 - [ ] Prepare the next phase handoff without starting Phase 5 prematurely.
+
+
+## Verification Run
+
+- [ ] GitHub Actions CI passes on this branch before Phase 3 acceptance.
