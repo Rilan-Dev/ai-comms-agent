@@ -28,13 +28,13 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "967639b5eed41115ecf8021c88c1de060aad7700"
-current_commit_short: "967639b"
-current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/4289e537a14b3b5a57b7677eea690b604f767fb5"
+current_commit: "406c31c0f7d461eb203d67dbb049a83f5860dded"
+current_commit_short: "406c31c"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/406c31c0f7d461eb203d67dbb049a83f5860dded"
 last_verified_commit: "pending_final_chatgpt_acceptance"
 
 open_blockers:
-  - "Awaiting ChatGPT Phase 3 final acceptance after final-owner DELETE invariant correction"
+  - "Awaiting ChatGPT Phase 3 final acceptance after ownerless-organization and RLS recursion hardening"
 open_risks:
   - "Clara manifest has 2 SHA typos (Clara library issue, not file mutations — see CLARA-INTEGRATION.md §8a)"
   - "Supabase project not yet provisioned; PostgreSQL/Supabase remains approved infrastructure (ADR-009); provisioning deferred to Phase 4 (RSK-001)"
