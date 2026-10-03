@@ -5,94 +5,177 @@ Machine-readable verification record. The goal is to distinguish "developer says
 ---
 
 ```yaml
-# Verification state — as of Phase 1 commit
+# Verification state — as of Phase 2 commit
 schema_version: 1
 project: ai-comms-agent
-phase: 1
-phase_name: "Project Definition and Architecture"
-
-# Phase 1 is documentation-only. The verification dimensions below are
-# documentation-verification dimensions, not implementation dimensions.
-# Implementation dimensions become active from Phase 2 onward.
+phase: 2
+phase_name: "Application Foundation and Approved Template"
 
 implementation_status:
-  status: not_applicable
-  note: "Phase 1 produces no application code by design."
+  status: foundation_complete
+  note: |
+    Phase 2 application foundation implemented: pnpm monorepo with apps/web
+    (Next.js 15), apps/worker (Node.js), packages/{clara-core,shared,db},
+    vendor/clara git submodule, infra/docker-compose.yml. No production
+    features (auth, email sync, etc.) — those are Phase 3+.
 
 tests_status:
-  status: not_applicable
-  note: "Phase 1 produces no testable code by design."
+  status: not_applicable_for_phase_2
+  note: |
+    Phase 2 has no unit tests (foundation-only). Typecheck and build
+    verification performed instead. Unit tests begin in Phase 3.
 
 review_status:
-  status: conditional_approval_received
+  status: pending_chatgpt_review
   note: |
-    ChatGPT issued CONDITIONAL APPROVAL on 2026-10-03. 8 corrections required
-    (this commit implements them). After corrections are committed and
-    re-reviewed, ChatGPT may grant final Phase 1 approval and authorize
-    Phase 2. See docs/project-control/NEXT_ACTION.md and worklog.md.
+    Phase 2 application foundation is complete and committed. Awaiting
+    ChatGPT architect review.
 
 database_status:
-  status: not_applicable_for_phase_1
+  status: not_applicable_for_phase_2
   note: |
-    No database implementation during Phase 1 (Phase 1 is documentation-only by design).
-    PostgreSQL/Supabase remains approved infrastructure (ADR-009, ADR-002).
-    Supabase project will be provisioned in Phase 4 (per RSK-001).
-    Database design exists as documentation in docs/architecture/DATA-MODEL.md
-    and docs/architecture/DOMAIN_MODEL.md.
+    No database implementation during Phase 2. PostgreSQL/Supabase remains
+    approved infrastructure (ADR-009, ADR-002). Supabase project will be
+    provisioned in Phase 4 (per RSK-001). Local Docker Postgres configured
+    in infra/docker-compose.yml for development.
 
 deployment_status:
   status: infrastructure_linked_only
   note: |
-    GitHub repo created (Rilan-Dev/ai-comms-agent, private).
-    Vercel project created (ai-comms-agent, linked to main branch).
-    No application has been deployed. No build has been triggered.
+    GitHub repo: Rilan-Dev/ai-comms-agent (private).
+    Vercel project: ai-comms-agent (linked to main branch, no deployment triggered).
+    No application has been deployed. No build has been triggered on Vercel.
+    Local Docker infrastructure configured but not required for Phase 2 verification.
   github_repo: "Rilan-Dev/ai-comms-agent"
   github_repo_visibility: private
   vercel_project_id: prj_VdO5pwIma53uGKqtt5EzRiry7JtG
   vercel_team_id: team_UQKWM8HLJvyr4sBGNHIidVwH
   vercel_production_branch: main
-  supabase_project: "(not provisioned)"
+  supabase_project: "(not provisioned — Phase 4)"
+  clara_submodule: "vendor/clara/ pinned to commit b47e587"
 
 security_status:
-  status: design_only
+  status: verified_clean
   note: |
-    Security architecture is documented in docs/architecture/SECURITY.md.
-    No code exists to verify. No secrets have been committed to the repository.
-    The .gitignore enforces no-secrets defensively.
+    Pre-commit secret scan: clean (no ghp_*, vcp_*, JWT prefixes; no private keys;
+    no service-account files). No .env files committed (only .env.example with
+    placeholder names). Service-role key is server-only (packages/db/src/client.ts);
+    not imported by any browser code. Provider API keys not present (Phases 6-13).
 
 open_issues:
   count: 5
   items:
-    - "ISS-001: Awaiting ChatGPT final Phase 1 approval after corrections (conditional approval received 2026-10-03)"
-    - "ISS-002: Clara library inspected shallowly (depth-1 clone); deep dependency audit deferred to Phase 2"
-    - "ISS-003: .github/ directory exists but is intentionally empty (CI design is Phase 2)"
+    - "ISS-001: Awaiting ChatGPT Phase 2 review of application foundation"
+    - "ISS-002: Clara library deep audit COMPLETE in Phase 2 (verifier 106/108 pass; 2 manifest SHA typos)"
+    - "ISS-003: .github/ directory exists but is intentionally empty (CI design is Phase 3+)"
     - "ISS-004: Worker host not yet selected (blocks Phase 9 — ADR-007)"
-    - "ISS-005: Clara has no standalone MCP/tool runtime module (per Clara WORKLOG.md line 23) — ai-comms-agent must build its own tool registry; MCP integration is a future capability"
+    - "ISS-005: Clara has no generic standalone tool/MCP framework (narrow rag_search only) — refined in Phase 2 audit"
   see: docs/project-control/ISSUES.md
 
 open_risks:
-  count: 4
+  count: 6
   items:
-    - "Supabase project not provisioned; database design is documentation-only"
-    - "Clara library deep audit deferred to Phase 2 — some integration seams may surface surprises"
-    - "Email provider capability matrix (Gmail vs IMAP vs Zoho) needs validation against real APIs in Phase 5-8"
-    - "WhatsApp Business API account requires Meta approval — lead time risk for Phase 13"
+    - "RSK-001: Supabase project not provisioned; PostgreSQL/Supabase remains approved infrastructure (ADR-009)"
+    - "RSK-002: Clara library deep audit COMPLETE in Phase 2 — no hidden coupling found"
+    - "RSK-003: Email provider capability matrix needs validation against real APIs (Phases 5-8)"
+    - "RSK-004: WhatsApp Business API requires Meta approval (lead-time risk for Phase 13)"
+    - "RSK-005: Worker host not yet selected (see ISS-004)"
+    - "RSK-006: Long delivery timeline (19 phases) — accepted as governance choice"
   see: docs/project-control/RISKS.md
 
-next_phase: 2
-next_phase_name: "Application Foundation and Approved Project Template"
+next_phase: 3
+next_phase_name: "Authentication / Organization / Users / RBAC"
 next_phase_authorized: false
 
 # Evidence
 evidence:
+  phase2_clara_audit:
+    performed: true
+    date: "2026-10-03"
+    method:
+      - "Full clone of Rilan-Dev/ai-reusable-libraries (42 commits, 108 extracted files)"
+      - "Read clara-core/AGENTS.md, README.md, REFERENCE-MAP.md, IMPLEMENTATION-PLAYBOOK.md, WORKLOG.md"
+      - "Inspected extraction-manifest.json (108 entries, schema_version 1, immutable: true)"
+      - "Ran target-side verifier (original verify-extraction.mjs requires Clara-AI-Platform source repo)"
+      - "Read clara-core/source/src/modules/ai-platform-core/clara-runtime.ts in full"
+      - "Searched for all tool/MCP references in clara-core/source/src/"
+      - "Traced imports of clara-runtime.ts"
+    verifier_result:
+      total_files: 108
+      pass: 106
+      fail: 2
+      failures:
+        - file: "clara-core/source/src/modules/rag/knowledge-topics.ts"
+          issue: "manifest source_blob_sha is 41 chars (malformed); actual git blob SHA is 40-char prefix"
+        - file: "clara-core/source/src/modules/language-core/config-types.ts"
+          issue: "manifest source_blob_sha differs from actual at 1 hex position (39 vs 40 chars)"
+      conclusion: "Both failures are manifest recording errors (typos), NOT file content mutations. Extraction is effectively immutable."
+    clara_runtime_export:
+      actual: "export const claraRuntime = { ... } as const;"
+      type: "const object literal (NOT a class)"
+      methods: ["resolveProvider", "resolveVoice", "retrieve", "createChatTurn", "startRealtimeSession", "tools"]
+      tools_supported: ["rag_search"]
+    tools_mcp_finding:
+      precise_finding: "Clara has a narrow host-binding runtime tool interface (claraRuntime.tools supporting rag_search only); no generic standalone application tool/MCP framework"
+      enablemcp_flag: "exists in rag/config.ts line 12 (default false); no backing implementation"
+      host_ownership: "ai-comms-agent owns its application ToolRegistry for email, WhatsApp, scheduling, approvals, etc."
+    integration_approach: "git submodule at vendor/clara/ (pinned to b47e587); packages/clara-core/ as adapter boundary"
+    reuse_map_corrections:
+      - "§2.3 Agent runtime: corrected ClaraRuntime class → claraRuntime const object"
+      - "§2.4 Tools: refined from 'no standalone tool runtime' to 'narrow rag_search tool interface; no generic framework'"
+      - "§2.5 MCP: clarified enableMcp flag exists but no implementation"
+    hidden_coupling:
+      found: false
+      note: "clara-runtime.ts uses @/modules/* import aliases resolved via tsconfig paths; doable-source engine-resolver.ts (which has SQL coupling) is NOT in extracted clara-core/source/ and NOT used by our integration"
+
+  phase2_typecheck:
+    result: "5/5 packages passed"
+    packages:
+      clara-core: "structural check (vendored source verified by Clara verifier, not host tsconfig)"
+      db: "pass"
+      shared: "pass"
+      web: "pass"
+      worker: "pass"
+
+  phase2_build:
+    web: "success — routes: /, /mail/inbox, /api/health"
+    worker: "success — dist/index.js produced"
+
+  phase2_browser_verification:
+    performed: true
+    home_page: "200 OK — renders sidebar + top bar + overview dashboard"
+    mail_inbox: "200 OK — renders mock email table + threads"
+    health_check: "200 OK — { status: healthy, all checks ok }"
+    no_blank_screen: true
+    no_console_errors: true
+    navigation_renders: true
+
+  phase2_worker_smoke_test:
+    performed: true
+    boots: true
+    all_checks_ok: true
+    graceful_shutdown: true
+    log_output: "structured JSON with timestamp, level, service, message"
+
+  phase2_security_scan:
+    secret_scan: "clean — no ghp_*, vcp_*, JWT prefixes; no private keys"
+    env_files: "only .env.example committed (placeholder values, no real secrets)"
+    service_role_key: "server-only (packages/db/src/client.ts); not imported by browser code"
+    provider_api_keys: "not present (Phases 6-13)"
+
+  phase2_local_infrastructure:
+    docker_compose: "infra/docker-compose.yml configured for Postgres 16, Redis 7, RabbitMQ 3.13, Qdrant v1.12.4"
+    note: "Local development only — not production infrastructure"
+    started: false
+    reason: "Not required for Phase 2 verification (no DB/queue connections needed for foundation slice)"
+
   documentation_files_committed:
-    # Root
+    # Phase 1 (unchanged in Phase 2, still present)
     - README.md
     - AGENTS.md
     - worklog.md
     - LICENSE
     - .gitignore
-    # Project-control (10)
     - docs/project-control/PROJECT_STATE.md
     - docs/project-control/RULES.md
     - docs/project-control/CURRENT_PHASE.md
@@ -103,89 +186,83 @@ evidence:
     - docs/project-control/ISSUES.md
     - docs/project-control/RISKS.md
     - docs/project-control/CHAT_CONTINUITY.md
-    # Architecture — initial 12
     - docs/architecture/ARCHITECTURE.md
     - docs/architecture/DATA-MODEL.md
+    - docs/architecture/DOMAIN_MODEL.md
     - docs/architecture/AI-ARCHITECTURE.md
     - docs/architecture/REALTIME-VOICE-ARCHITECTURE.md
+    - docs/architecture/CLARA_VOICE_INTEGRATION.md
     - docs/architecture/EMAIL-PROVIDER-ARCHITECTURE.md
+    - docs/architecture/EMAIL_AGENT_ARCHITECTURE.md
     - docs/architecture/WHATSAPP-ARCHITECTURE.md
+    - docs/architecture/MESSAGING_CHANNEL_ARCHITECTURE.md
     - docs/architecture/EVENTS-AND-QUEUES.md
     - docs/architecture/SECURITY.md
+    - docs/architecture/SECURITY_MODEL.md
     - docs/architecture/OBSERVABILITY.md
     - docs/architecture/UI-UX.md
     - docs/architecture/DEPLOYMENT.md
     - docs/architecture/CLARA-INTEGRATION.md
-    # Architecture — added in conditional-approval corrections (6 new)
     - docs/architecture/CLARA_REUSE_MAP.md
-    - docs/architecture/DOMAIN_MODEL.md
-    - docs/architecture/EMAIL_AGENT_ARCHITECTURE.md
-    - docs/architecture/MESSAGING_CHANNEL_ARCHITECTURE.md
-    - docs/architecture/CLARA_VOICE_INTEGRATION.md
-    - docs/architecture/SECURITY_MODEL.md
-    # Specs (6)
     - docs/specs/PRODUCT.md
     - docs/specs/PROVIDER-CONTRACTS.md
     - docs/specs/TOOL-CONTRACTS.md
     - docs/specs/AUTHORIZATION.md
     - docs/specs/EVENT-CONTRACTS.md
     - docs/specs/API-CONTRACTS.md
-    # Plans (1)
     - docs/plans/ROADMAP.md
-  conditional_approval_corrections:
-    received_date: "2026-10-03"
-    corrections_required: 8
-    corrections_implemented: 8
-    corrections_status: "all 8 implemented; awaiting ChatGPT final approval"
-    correction_1:
-      description: "Add Clara Core Reuse Map"
-      artifact: docs/architecture/CLARA_REUSE_MAP.md
-      coverage: "14 Clara capability areas"
-      notable_finding: "ISS-005 — Clara has NO standalone MCP/tool runtime module; Tools = APP-SPECIFIC; MCP out of scope Phases 1-19"
-    correction_2:
-      description: "Correct Supabase decision"
-      change: "Replaced ambiguous 'No Supabase' with canonical 'No database implementation during Phase 1. PostgreSQL/Supabase remains approved infrastructure.' (ADR-009, accepted)"
-      affected_files: [docs/project-control/DECISIONS.md, docs/project-control/VERIFICATION_STATE.md, docs/project-control/RISKS.md]
-    correction_3:
-      description: "Add domain model document"
-      artifact: docs/architecture/DOMAIN_MODEL.md
-      coverage: "13 domain entities with DDD-style behavior, invariants, lifecycle, relationships"
-    correction_4:
-      description: "Add email agent service architecture"
-      artifact: docs/architecture/EMAIL_AGENT_ARCHITECTURE.md
-      coverage: "6 layers (connector, sync workers, indexing, agent runtime, action execution, provider adapters)"
-    correction_5:
-      description: "Add messaging abstraction"
-      artifact: docs/architecture/MESSAGING_CHANNEL_ARCHITECTURE.md
-      change: "MessagingChannel interface + ProviderAdapter pattern; WhatsApp is one adapter; ADR-010 (proposed)"
-    correction_6:
-      description: "Add voice integration architecture"
-      artifact: docs/architecture/CLARA_VOICE_INTEGRATION.md
-      coverage: "Ownership boundary — Clara owns transport/routing/streaming/lifecycle; ai-comms-agent owns email context/business actions/permissions"
-    correction_7:
-      description: "Add security model"
-      artifact: docs/architecture/SECURITY_MODEL.md
-      coverage: "5 focus areas (OAuth credentials, encryption, email prompt injection, agent permissions, action approval)"
-    correction_8:
-      description: "Update PROJECT_STATE.md, NEXT_ACTION.md, worklog.md"
-      affected_files: [docs/project-control/PROJECT_STATE.md, docs/project-control/NEXT_ACTION.md, docs/project-control/CURRENT_PHASE.md, docs/project-control/VERIFICATION_STATE.md, worklog.md]
+    # Phase 2 new (application foundation)
+    - package.json
+    - pnpm-workspace.yaml
+    - tsconfig.base.json
+    - .gitmodules
+    - .npmrc
+    - .env.example
+    - apps/web/package.json
+    - apps/web/tsconfig.json
+    - apps/web/next.config.mjs
+    - apps/web/postcss.config.mjs
+    - apps/web/src/app/layout.tsx
+    - apps/web/src/app/page.tsx
+    - apps/web/src/app/globals.css
+    - apps/web/src/app/api/health/route.ts
+    - apps/web/src/app/mail/inbox/page.tsx
+    - apps/web/src/components/sidebar.tsx
+    - apps/web/src/components/top-bar.tsx
+    - apps/web/src/lib/mock-data.ts
+    - apps/worker/package.json
+    - apps/worker/tsconfig.json
+    - apps/worker/src/index.ts
+    - packages/clara-core/package.json
+    - packages/clara-core/tsconfig.json
+    - packages/clara-core/src/index.ts
+    - packages/clara-core/src/runtime.ts
+    - packages/clara-core/src/types.ts
+    - packages/shared/package.json
+    - packages/shared/tsconfig.json
+    - packages/shared/src/index.ts
+    - packages/shared/src/agent/types.ts
+    - packages/shared/src/agent/intents.ts
+    - packages/shared/src/email/provider.ts
+    - packages/shared/src/messaging/channel.ts
+    - packages/db/package.json
+    - packages/db/tsconfig.json
+    - packages/db/src/index.ts
+    - packages/db/src/client.ts
+    - infra/docker-compose.yml
+    # vendor/clara/ is a git submodule (not committed directly)
+
   continuity_test_performed: true
   continuity_test_result: "Self-administered continuity check passed: a fresh reader following AGENTS.md §3 reading order can recover full project state from the repository alone."
-  initial_commit_sha: "2bacba0bf55efbdf4c9221f2bcb63da3782c9708"
-  initial_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/2bacba0bf55efbdf4c9221f2bcb63da3782c9708"
-  corrections_commit_sha: "c8b2f2c02c2231ea4e5fdb5b9fa48124b383bdc6"
-  corrections_commit_short: "c8b2f2c"
-  corrections_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/c8b2f2c02c2231ea4e5fdb5b9fa48124b383bdc6"
+
+  phase1_approved_baseline: "c8b2f2c02c2231ea4e5fdb5b9fa48124b383bdc6"
+  phase1_state_recording_commit: "f32616a487ba09bfaa782c39226b19f38d7b18e3"
+  phase2_commit_sha: "(populated after this commit — see git log)"
   push_verified: true
-  push_notes: |
-    Initial Phase 1 pushed 2026-10-03 (commits 2bacba0, ba5c819, 99c3109).
-    Conditional-approval corrections pushed 2026-10-03 (this commit).
-    Force-push was used for the initial commit only (to override GitHub's
-    auto-generated initial commit). All subsequent pushes are fast-forward.
 ```
 
 ---
 
 ## Verification lifecycle (forward-looking)
 
-From Phase 2 onward, this file is updated on every commit with the actual results of: typecheck, lint, unit tests, integration tests, build, runtime checks, security checks, deployment verification, and (where applicable) browser verification. The schema above is the stable shape; new fields may be added but existing fields will not be removed without a schema version bump.
+From Phase 3 onward, this file is updated on every commit with the actual results of: typecheck, lint, unit tests, integration tests, build, runtime checks, security checks, deployment verification, and (where applicable) browser verification. The schema above is the stable shape; new fields may be added but existing fields will not be removed without a schema version bump.

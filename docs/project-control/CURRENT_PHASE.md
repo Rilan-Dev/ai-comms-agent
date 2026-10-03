@@ -3,109 +3,117 @@
 ---
 
 ```yaml
-phase: 1
-phase_name: "Project Definition and Architecture"
-status: "conditional_approval_corrections_implemented_awaiting_final_approval"
+phase: 2
+phase_name: "Application Foundation and Approved Template"
+status: "implementation_complete_awaiting_chatgpt_review"
 start_date: 2026-10-03
-completion_date: 2026-10-03 (initial); 2026-10-03 (corrections)
+completion_date: 2026-10-03
 architect: "ChatGPT (external)"
 developer: "Z.AI"
 approved_scope: |
-  Phase 1 is the architectural/documentation/project-foundation phase.
-  No application development. No database migrations. No deployment.
-  Complete project definition before Phase 2 implementation begins.
+  Create the production-grade application foundation that follows the approved
+  Phase 1 architecture. The application template must emerge from the architecture.
+  Includes: deep Clara audit, monorepo setup, local infrastructure, Clara
+  integration boundary, foundation vertical slice, testing, security verification,
+  documentation updates. No Phase 3 work (auth/RBAC).
 
 phase_objective: |
-  By the end of Phase 1, another developer or another ChatGPT conversation
-  must be able to understand the complete project without needing this
-  conversation. Phase 1 must document product, architecture, data model,
-  provider contracts, AI architecture, security, observability, UI/UX
-  (document only), deployment, and the phase-by-phase development roadmap.
+  Produce a bootable application foundation that validates the Phase 1 architecture:
+  web app renders, worker boots, shared packages resolve, DB package resolves,
+  local infrastructure configuration is valid, Clara integration boundary is
+  importable without violating source immutability. A read-only mock email view
+  serves as the architecture validation slice.
 
-phase_1_review:
-  initial_review_date: 2026-10-03
-  initial_review_result: "CONDITIONAL APPROVAL"
-  corrections_required: 8
-  corrections_implemented: 8
-  corrections_implemented_date: 2026-10-03
-  final_approval: "PENDING — awaiting ChatGPT re-review of corrections"
+phase_2_tasks:
+  total: 9
+  completed: 9
+  tasks:
+    1: "Read project control + architecture + specs docs"
+    2: "Deep Clara audit (full clone, verifier, REUSE_MAP validation, clara-runtime export, tools/MCP re-check)"
+    3: "Application foundation (apps/web, apps/worker, packages/{clara-core,shared,db})"
+    4: "Local infrastructure (docker-compose for Postgres/Redis/RabbitMQ/Qdrant)"
+    5: "Clara integration boundary (packages/clara-core; git submodule at vendor/clara/)"
+    6: "Foundation vertical slice (web renders, worker boots, mock email view, health check)"
+    7: "Testing (typecheck, build, browser verification)"
+    8: "Security verification (no secrets, no client-side keys, no .env committed)"
+    9: "Documentation updates (CLARA_REUSE_MAP, CLARA-INTEGRATION, project-control, worklog)"
 
 deliverables:
-  # Root
-  - README.md
-  - AGENTS.md
-  - worklog.md
-  - LICENSE
-  - .gitignore
-  # Project-control
-  - docs/project-control/PROJECT_STATE.md
-  - docs/project-control/RULES.md
-  - docs/project-control/CURRENT_PHASE.md
-  - docs/project-control/NEXT_ACTION.md
-  - docs/project-control/ZAI_HANDOFF.md
-  - docs/project-control/VERIFICATION_STATE.md
-  - docs/project-control/DECISIONS.md
-  - docs/project-control/ISSUES.md
-  - docs/project-control/RISKS.md
-  - docs/project-control/CHAT_CONTINUITY.md
-  # Architecture (initial 12)
-  - docs/architecture/ARCHITECTURE.md
-  - docs/architecture/DATA-MODEL.md
-  - docs/architecture/AI-ARCHITECTURE.md
-  - docs/architecture/REALTIME-VOICE-ARCHITECTURE.md
-  - docs/architecture/EMAIL-PROVIDER-ARCHITECTURE.md
-  - docs/architecture/WHATSAPP-ARCHITECTURE.md
-  - docs/architecture/EVENTS-AND-QUEUES.md
-  - docs/architecture/SECURITY.md
-  - docs/architecture/OBSERVABILITY.md
-  - docs/architecture/UI-UX.md
-  - docs/architecture/DEPLOYMENT.md
-  - docs/architecture/CLARA-INTEGRATION.md
-  # Architecture (added in conditional-approval corrections — 6 new)
-  - docs/architecture/CLARA_REUSE_MAP.md          # correction #1
-  - docs/architecture/DOMAIN_MODEL.md             # correction #3
-  - docs/architecture/EMAIL_AGENT_ARCHITECTURE.md # correction #4
-  - docs/architecture/MESSAGING_CHANNEL_ARCHITECTURE.md  # correction #5
-  - docs/architecture/CLARA_VOICE_INTEGRATION.md  # correction #6
-  - docs/architecture/SECURITY_MODEL.md           # correction #7
-  # Specs
-  - docs/specs/PRODUCT.md
-  - docs/specs/PROVIDER-CONTRACTS.md
-  - docs/specs/TOOL-CONTRACTS.md
-  - docs/specs/AUTHORIZATION.md
-  - docs/specs/EVENT-CONTRACTS.md
-  - docs/specs/API-CONTRACTS.md
-  # Plans
-  - docs/plans/ROADMAP.md
+  # Root configuration
+  - package.json
+  - pnpm-workspace.yaml
+  - tsconfig.base.json
+  - .gitmodules
+  - .npmrc
+  - .env.example
+  # Apps
+  - apps/web/ (Next.js 15 App Router + TypeScript + Tailwind v4)
+  - apps/worker/ (Node.js worker — health-check loop)
+  # Packages
+  - packages/clara-core/ (Clara integration boundary)
+  - packages/shared/ (shared types: agent, email, messaging)
+  - packages/db/ (Supabase client factory)
+  # Vendor
+  - vendor/clara/ (Clara git submodule, pinned to b47e587)
+  # Infrastructure
+  - infra/docker-compose.yml (local Postgres, Redis, RabbitMQ, Qdrant)
+  # Updated docs
+  - docs/architecture/CLARA_REUSE_MAP.md (corrected per audit)
+  - docs/architecture/CLARA-INTEGRATION.md (§8a audit results added)
 
-forbidden_in_phase_1:
-  - "Application feature implementation"
-  - "Final application template (Next.js scaffold, package.json, etc.)"
+forbidden_in_phase_2:
   - "Gmail / IMAP / SMTP / Zoho implementation"
-  - "WhatsApp implementation"
-  - "Voice implementation"
-  - "AI runtime implementation"
-  - "Database migrations"
+  - "WhatsApp / Meta webhooks implementation"
+  - "Email synchronization / indexing"
+  - "Production RAG ingestion"
+  - "Production agent tools"
+  - "Production scheduling / automation"
+  - "Production realtime voice / chat"
+  - "Production database migrations"
   - "Production deployment"
-  - "Beginning Phase 2"
+  - "Beginning Phase 3 (auth/RBAC)"
 
 exit_criteria:
-  - "All deliverables above are committed to the repository"
-  - "A fresh ChatGPT session can recover full project state from the repository alone (continuity test passed)"
-  - "ChatGPT architect reviews and explicitly approves Phase 1 (CONDITIONAL APPROVAL received; corrections implemented; FINAL APPROVAL pending)"
-  - "ChatGPT issues the Phase 2 Z.AI_HANDOFF"
+  - "Application boots (web + worker)"
+  - "Web application renders (browser verification: pages load, no blank screen, no console errors)"
+  - "Worker boots (smoke test: all health checks ok)"
+  - "Shared package resolves"
+  - "DB package resolves"
+  - "Local infrastructure configuration is valid (docker-compose)"
+  - "Clara integration boundary importable without violating source immutability"
+  - "Deep Clara audit complete; CLARA_REUSE_MAP and CLARA-INTEGRATION updated"
+  - "Typecheck pass, build pass, security scan clean"
+  - "ChatGPT architect reviews and explicitly approves Phase 2"
 
-next_phase_if_approved: 2  # Application foundation and approved project template
+next_phase_if_approved: 3  # Authentication / Organization / Users / RBAC
 ```
 
 ---
 
-## Phase 1 status narrative
+## Phase 2 status narrative
 
-All Phase 1 deliverables have been authored and committed. The documentation covers product purpose, all four communication surfaces (email, WhatsApp, chat, voice), scheduling and automation, the complete data model, provider abstraction contracts (email adapter model, WhatsApp, AI providers), the agent runtime architecture (intent → context → policy → authorization → execution → audit), event and queue topology, security architecture, observability, UI/UX navigation (documented, not built), deployment architecture (Vercel + Supabase), and the Clara integration plan that distinguishes reused vs adapted vs application-specific code.
+All 9 Phase 2 tasks completed. The application foundation is a pnpm monorepo with:
 
-The development roadmap in `docs/plans/ROADMAP.md` defines 19 phases from this Phase 1 through deployment and production verification. Each subsequent phase has a stated objective, scope, exit criteria, and dependencies.
+- **`apps/web`** — Next.js 15 App Router with TypeScript and Tailwind CSS v4. Renders the operational navigation shell (sidebar + top bar per `UI-UX.md`) and a read-only mock email inbox (architecture validation slice per Task 6). Health check endpoint at `/api/health` verifies package resolution and Clara boundary.
+- **`apps/worker`** — Node.js worker process. Phase 2 scope: health-check loop only (no queue consumption yet — that's Phase 9+). Boots, verifies shared/db/clara-core packages resolve, verifies vendored Clara source exists, logs structured JSON, graceful shutdown.
+- **`packages/clara-core`** — Clara integration boundary. Re-exports `claraRuntime` and types from the vendored submodule via tsconfig path aliases. Clara source is NOT modified.
+- **`packages/shared`** — Shared types: `AgentRequest`, `Tool`, `EmailProvider` interface, `MessagingChannel` interface, intent taxonomy.
+- **`packages/db`** — Supabase client factory with anon-key (RLS-enforced) and service-role (server-only) clients.
+- **`vendor/clara`** — Git submodule pinned to commit `b47e587` (the Clara reusable library).
+- **`infra/docker-compose.yml`** — Local development infrastructure: PostgreSQL 16, Redis 7, RabbitMQ 3.13 (with management UI), Qdrant v1.12.4.
 
-The repository has been initialized on `main`, the GitHub repo `Rilan-Dev/ai-comms-agent` has been created (private), and the Vercel project `ai-comms-agent` has been linked to the repo's `main` branch. No application code, no migrations, no deployments have been performed — by design.
+The deep Clara audit (Task 2) completed with key findings:
+- Verifier: 106/108 PASS (2 manifest SHA typos — Clara library issue, not file mutations).
+- `clara-runtime.ts` actual export is `export const claraRuntime = { ... } as const;` (a const object, NOT a `ClaraRuntime` class). CLARA_REUSE_MAP §2.3 corrected.
+- Tools/MCP finding refined: Clara has a narrow host-binding runtime tool interface (`claraRuntime.tools` supporting `rag_search` only); no generic standalone tool/MCP framework. CLARA_REUSE_MAP §2.4 and §2.5 corrected. ISS-005 refined.
+- Integration approach: git submodule at `vendor/clara/` with `packages/clara-core/` as the adapter boundary.
 
-Phase 1 now awaits ChatGPT architect review. Per the master operating prompt, Z.AI must STOP after Phase 1 documentation is committed and wait for the next architect instruction.
+Verification:
+- Typecheck: 5/5 packages pass.
+- Web build: success (routes: `/`, `/mail/inbox`, `/api/health`).
+- Worker build: success (dist/index.js produced).
+- Browser verification: pages load 200 OK, no blank screen, navigation renders, health check returns 200 healthy.
+- Worker smoke test: boots, all checks ok, graceful shutdown.
+- Security scan: clean (no secrets, no private keys, no .env files committed — only .env.example with placeholder values).
+
+Phase 2 now awaits ChatGPT architect review. Per the user's STOP instruction, Z.AI must not start Phase 3.

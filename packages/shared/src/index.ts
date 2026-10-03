@@ -1,0 +1,54 @@
+/**
+ * @ai-comms-agent/shared — shared types, schemas, and domain primitives
+ *
+ * This package is the canonical source for cross-app types (web + worker).
+ * Per docs/architecture/DOMAIN_MODEL.md and docs/specs/TOOL-CONTRACTS.md.
+ */
+
+// Agent runtime types
+export type {
+  AgentRequest,
+  AgentResponse,
+  ToolSensitivity,
+  Tool,
+  ToolContext,
+  ToolResult,
+  Intent,
+} from "./agent/types";
+
+export { INTENT_TAXONOMY } from "./agent/intents";
+
+// Email provider types
+export type {
+  EmailProvider,
+  EmailProviderCapability,
+  CapabilitySet,
+  EmailFolder,
+  EmailLabel,
+  EmailMessage,
+  EmailThread,
+  EmailAccount,
+  SyncState,
+  SyncResult,
+  DraftParams,
+  DraftRef,
+  SentMessageRef,
+  SearchQuery,
+  ListOptions,
+  CapabilityNotSupported,
+} from "./email/provider";
+
+export { CapabilityNotSupported as CapabilityNotSupportedError } from "./email/provider";
+
+// Messaging channel types
+export type {
+  MessagingChannel,
+  MessagingCapability,
+  MessagingCredentials,
+  InboundWebhookEvent,
+  OutboundMessage,
+  Contact,
+  Template,
+  TemplateParams,
+  MessagingCapabilitySet,
+} from "./messaging/channel";

@@ -1,0 +1,3 @@
+[submodule "vendor/clara"]
+	path = vendor/clara
+	url = https://github.com/Rilan-Dev/ai-reusable-libraries.git

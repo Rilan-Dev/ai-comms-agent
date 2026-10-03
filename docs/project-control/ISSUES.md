@@ -50,17 +50,20 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 
 ---
 
-## ISS-005 — Clara has no standalone MCP/tool runtime module
+## ISS-005 — Clara has no generic standalone tool/MCP framework (narrow `rag_search` only)
 
 - **Opened:** 2026-10-03
 - **Severity:** medium (affects Phase 11 tool registry design)
-- **Owner:** Z.AI (Phase 2 deep audit + Phase 11 implementation)
-- **Status:** open
-- **Description:** Clara's own `WORKLOG.md` line 23 states: "Generic MCP/tool runtime still has no standalone Clara implementation to extract." The `rag/config.ts` file has an `enableMcp` flag, and Clara's `AGENTS.md` lists "tools, MCP, integrations, webhook" as a search procedure category, but no standalone MCP/tool runtime module exists in `clara-core/source/src/modules/`. This means:
-  - The ai-comms-agent **Tool Registry** (per `docs/specs/TOOL-CONTRACTS.md`) must be **application-specific** (APP-SPECIFIC, not REUSE or ADAPTER).
-  - **MCP integration** is a future capability. It may come from Clara (when extracted) or be built app-specifically. Until then, MCP is out of scope.
-  - The `CLARA_REUSE_MAP.md` reflects this honestly in its "Tools" and "MCP" rows.
-- **Resolution plan:** Phase 2 deep audit (per `CLARA-INTEGRATION.md §8`) re-verifies this finding against a full clone. If Clara has added a tool/MCP module by then, the REUSE_MAP is updated. Phase 11 implements the application-specific Tool Registry; MCP is revisited as a separate architectural decision (record in `DECISIONS.md`) if/when Clara provides it or if business requirements demand it.
+- **Owner:** Z.AI (Phase 11 implementation)
+- **Status:** open — **refined in Phase 2 deep audit**
+- **Description:** The Phase 2 deep audit (full clone of `Rilan-Dev/ai-reusable-libraries`, reading `clara-core/source/src/modules/ai-platform-core/clara-runtime.ts` in full) refined the Phase 1 finding. The precise current finding is:
+  - Clara has **no generic standalone application tool/MCP framework**.
+  - Clara **does have a narrow host-binding runtime tool interface**: the `claraRuntime.tools` property, with `list()` and `invoke(ctx, name, input)` methods.
+  - The **only observed Clara tool capability is `rag_search`** — a thin wrapper around `claraRuntime.retrieve()` that calls `groundClaraContext()` for KB retrieval.
+  - Any other tool name passed to `claraRuntime.tools.invoke()` throws `"Unsupported Clara tool: " + name`.
+  - The `enableMcp: boolean` flag exists in `rag/config.ts` (line 12, parsed from `ENABLE_MCP` env var, default `false`) but has **no backing MCP client/server implementation** in the extracted source.
+  - **ai-comms-agent still owns its application `ToolRegistry`** for email, WhatsApp, scheduling, approvals, etc. (per `TOOL-CONTRACTS.md`). The host `kb.search` tool wraps `claraRuntime.retrieve()` for KB retrieval with host-owned authorization and audit.
+- **Resolution plan:** Phase 11 implements the application-specific `ToolRegistry`. The host `kb.search` tool calls `claraRuntime.retrieve()` directly. Clara's `rag_search` is not exposed to the LLM as a passthrough — the host's `kb.search` tool wraps the same capability. MCP is revisited as a separate architectural decision (record in `DECISIONS.md`) if/when Clara extracts an MCP runtime or if business requirements demand it.
 
 ---
 

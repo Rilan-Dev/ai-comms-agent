@@ -1,0 +1,74 @@
+# Docker Compose for local development infrastructure
+# Per docs/architecture/DEPLOYMENT.md and Phase 2 scope.
+#
+# This is LOCAL DEVELOPMENT ONLY. Do not use for production.
+# Production infrastructure is provisioned separately (Phase 4+ for Supabase,
+# Phase 9+ for worker host / RabbitMQ / Redis / Qdrant).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aca-postgres
+    environment:
+      POSTGRES_USER: aca
+      POSTGRES_PASSWORD: aca_local_dev
+      POSTGRES_DB: aca
+    ports:
+      - "5432:5432"
+    volumes:
+      - aca-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aca"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: aca-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - aca-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: aca-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: aca
+      RABBITMQ_DEFAULT_PASS: aca_local_dev
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - aca-rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    container_name: aca-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - aca-qdrant-data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:6333/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  aca-postgres-data:
+  aca-redis-data:
+  aca-rabbitmq-data:
+  aca-qdrant-data:

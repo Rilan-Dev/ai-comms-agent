@@ -223,6 +223,79 @@ The deep audit is a Phase 2 task (or earlier if ChatGPT directs).
 
 ---
 
+## 8a. Phase 2 deep-audit results (2026-10-03)
+
+The Phase 2 deep audit was performed on 2026-10-03. Results:
+
+### Audit method
+
+- Full clone of `Rilan-Dev/ai-reusable-libraries` (42 commits, 108 extracted files).
+- Read `clara-core/AGENTS.md`, `README.md`, `REFERENCE-MAP.md`, `IMPLEMENTATION-PLAYBOOK.md`, `WORKLOG.md` in full.
+- Inspected `clara-core/extraction-manifest.json` (108 entries, schema_version 1, immutable: true, status: in_progress).
+- Ran a target-side verifier (the original `verify-extraction.mjs` requires the Clara-AI-Platform source repo, which we don't have; our verifier checks that every `target_path` exists in HEAD and its blob SHA matches `source_blob_sha`).
+- Read `clara-core/source/src/modules/ai-platform-core/clara-runtime.ts` in full.
+- Searched for all tool/MCP references in `clara-core/source/src/`.
+- Traced imports of `clara-runtime.ts`.
+
+### Verifier result
+
+- **106/108 PASS** (target blob SHA matches manifest).
+- **2/108 FAIL** — both are manifest recording errors (typos in `source_blob_sha`), NOT file content mutations:
+  - `clara-core/source/src/modules/rag/knowledge-topics.ts`: manifest SHA is 41 chars (malformed — SHA-1 is 40 chars); actual git blob SHA is the 40-char prefix.
+  - `clara-core/source/src/modules/language-core/config-types.ts`: manifest SHA differs from actual at 1 hex position (39 chars vs 40 chars).
+- Conclusion: the extracted files are present and have valid git blob SHAs. The 2 mismatches are Clara library manifest typos to report upstream. The extraction is effectively immutable.
+
+### Key finding: `clara-runtime.ts` actual export
+
+The original `CLARA_REUSE_MAP.md §2.3` described the export as a `ClaraRuntime` class. This was **incorrect**. The actual export is:
+
+```typescript
+export const claraRuntime = {
+  async resolveProvider(ctx, surface = "chat") { ... },
+  async resolveVoice(ctx) { ... },
+  async retrieve(ctx, query, options?) { ... },
+  async createChatTurn(request): Promise<ClaraAgentTurn> { ... },
+  async startRealtimeSession(ctx) { ... },
+  tools: {
+    list() { return [{ name: "rag_search", description: "..." }]; },
+    async invoke(ctx, name, input) {
+      if (name !== "rag_search") throw new Error("Unsupported Clara tool: " + name);
+      // delegates to claraRuntime.retrieve()
+    },
+  },
+} as const;
+```
+
+This is a **const object literal**, not a class. The `CLARA_REUSE_MAP.md §2.3` has been corrected.
+
+### Key finding: Tools and MCP (ISS-005 refined)
+
+The original `CLARA_REUSE_MAP.md §2.4` stated Clara has "no standalone tool runtime". This was imprecise. The accurate finding:
+
+- Clara has a **narrow host-binding runtime tool interface** (`claraRuntime.tools`) supporting `rag_search` only.
+- There is **no generic standalone application tool/MCP framework**.
+- The `enableMcp: boolean` flag exists in `rag/config.ts` but has no backing implementation.
+- ai-comms-agent owns its application `ToolRegistry` for email, WhatsApp, scheduling, approvals, etc.
+- The host `kb.search` tool wraps `claraRuntime.retrieve()` for KB retrieval.
+
+`CLARA_REUSE_MAP.md §2.4` and `§2.5` have been corrected. `ISS-005` has been refined.
+
+### Integration approach chosen (Phase 2)
+
+Clara is integrated as a **git submodule** at `vendor/clara/` (pinned to commit `b47e587`). The `packages/clara-core/` package is the host adapter boundary — it re-exports Clara's `claraRuntime` and types via tsconfig path aliases (`@/modules/*` → `vendor/clara/clara-core/source/src/modules/*`). Clara source files are **not modified** (per `clara-core/AGENTS.md §4`).
+
+### Hidden coupling identified
+
+- `clara-runtime.ts` uses `@/modules/*` import aliases — these are resolved via tsconfig `paths` in `packages/clara-core/tsconfig.json`. The host's `apps/web` and `apps/worker` do NOT directly import Clara source; they import from `@ai-comms-agent/clara-core` (the adapter package). This keeps the coupling boundary clean.
+- `doable-source/AI_RAG_ARCHITECTURE.md` notes that `engine-resolver.ts` directly imports Doable SQL — this file is NOT in the extracted `clara-core/source/` and is NOT used by our integration. We use `claraRuntime` (the host-binding layer) which is "intentionally outside the extracted Doable source" per the file's own comment.
+
+### Audit artifacts
+
+- Target-side verifier script: `/home/z/my-project/scripts/clara-verify-target.py` (preserved in the Z.AI workspace, not committed to the repo).
+- Full clone: `/home/z/my-project/work/clara-lib-full/` (preserved for reference; the committed integration uses the git submodule at `vendor/clara/`).
+
+---
+
 ## 9. Decision authority
 
 Any change to this integration plan (e.g., "we need to recreate capability X because Clara's version doesn't fit") is an architectural decision. Z.AI proposes; ChatGPT approves/rejects/corrects; Z.AI implements. The decision is recorded in `DECISIONS.md`.

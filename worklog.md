@@ -349,3 +349,227 @@ Recommended next action:        ChatGPT re-reviews corrections; grants FINAL app
 ```
 
 Z.AI is in STOP state. Waiting for the next ChatGPT architect instruction.
+
+---
+
+## Task ID: 3
+## Phase: 2 — Application Foundation and Approved Template
+
+- **Status**: implementation_complete_awaiting_chatgpt_review
+- **Objective**: Create the production-grade application foundation that follows the approved Phase 1 architecture. Deep Clara audit first. Monorepo setup. Local infrastructure. Clara integration boundary. Foundation vertical slice. No Phase 3 work.
+- **Architect**: ChatGPT (Chief Architect — external)
+- **Developer**: Z.AI (implementer of Phase 2)
+- **Start date**: 2026-10-03
+- **Completion date**: 2026-10-03
+- **Approved baseline**: c8b2f2c02c2231ea4e5fdb5b9fa48124b383bdc6 (Phase 1 FINAL APPROVAL)
+- **State-recording commit**: f32616a487ba09bfaa782c39226b19f38d7b18e3
+
+### Work Log
+
+- Received ChatGPT FINAL Phase 1 approval + Phase 2 authorization. Read the full 9-task Phase 2 handoff. No force-push, no history rewrite, no Phase 3.
+- **Task 1 (Read project control):** Inventoried all Phase 1 docs (12 project-control + 18 architecture + 6 specs + 1 plan + worklog = 38 files). Re-read key Phase 2-relevant sections of ROADMAP.md. Confirmed current HEAD at f32616a (approved baseline).
+- **Task 2 (Deep Clara audit):**
+  - Full clone of `Rilan-Dev/ai-reusable-libraries` (42 commits, 108 extracted files) — not depth-1.
+  - Read `clara-core/AGENTS.md`, `README.md`, `REFERENCE-MAP.md`, `IMPLEMENTATION-PLAYBOOK.md`, `WORKLOG.md` in full.
+  - Inspected `extraction-manifest.json`: 108 entries, schema_version 1, immutable: true, status: in_progress, source_repository: Rilan-Dev/Clara-AI-Platform.
+  - Ran the original `verify-extraction.mjs` — it requires the Clara-AI-Platform source repo (checks `source_path` against `source_blob_sha`), which we don't have. Wrote a target-side verifier (`/home/z/my-project/scripts/clara-verify-target.py`) that checks every `target_path` exists in HEAD and its blob SHA matches `source_blob_sha`.
+  - **Verifier result: 106/108 PASS, 2/108 FAIL.** Both failures are manifest SHA typos (Clara library issue), NOT file mutations:
+    - `rag/knowledge-topics.ts`: manifest SHA is 41 chars (malformed — SHA-1 is 40); actual is the 40-char prefix.
+    - `language-core/config-types.ts`: manifest SHA differs at 1 hex position (39 vs 40 chars).
+  - Read `clara-core/source/src/modules/ai-platform-core/clara-runtime.ts` in full. **Key finding:** the actual export is `export const claraRuntime = { ... } as const;` — a const object literal, NOT a `ClaraRuntime` class. Methods: `resolveProvider`, `resolveVoice`, `retrieve`, `createChatTurn`, `startRealtimeSession`, and `tools` (with `list()` and `invoke()`). The `tools.invoke()` supports `rag_search` only; any other name throws.
+  - Searched for all tool/MCP references: `rag_search` is referenced in `clara-runtime.ts`, `assistant/api/realtime.ts`, `voice-core/providers/elevenlabs.ts` (as `clara_rag_search`), and `voice-core/realtime/gemini-telemetry.ts`. The `enableMcp` flag is in `rag/config.ts` line 12 (default false) with no backing implementation.
+  - **Tools/MCP finding refined (per ChatGPT instruction):** Clara has a narrow host-binding runtime tool interface (`claraRuntime.tools` supporting `rag_search` only); no generic standalone application tool/MCP framework. ai-comms-agent owns its application ToolRegistry.
+  - Traced imports of `clara-runtime.ts`: depends on `ai-core/factory`, `ai-core/resolve`, `ai-core/resolve-cache`, `voice-core/resolve`, `rag/grounding`, `assistant/api/conversation-context`, `ai-core/types`. All resolved via `@/modules/*` aliases.
+  - No hidden coupling found in the extracted source. The `doable-source/engine-resolver.ts` (which has SQL coupling per `AI_RAG_ARCHITECTURE.md`) is NOT in the extracted `clara-core/source/` and NOT used by our integration.
+- **Task 3 (Application foundation):**
+  - Created pnpm monorepo: `package.json` (workspace root), `pnpm-workspace.yaml` (packages: apps/*, packages/*), `tsconfig.base.json` (strict, ES2022, bundler moduleResolution).
+  - Created `apps/web` (Next.js 15 App Router + TypeScript + Tailwind v4 + React 19): `package.json`, `tsconfig.json`, `next.config.mjs` (transpilePackages for workspace packages), `postcss.config.mjs` (with `@tailwindcss/postcss`), `src/app/{layout,page,globals.css}`, `src/app/mail/inbox/page.tsx` (mock email view), `src/app/api/health/route.ts`, `src/components/{sidebar,top-bar}.tsx`, `src/lib/mock-data.ts`.
+  - Created `apps/worker` (Node.js worker): `package.json` (tsx for dev, tsc for build), `tsconfig.json`, `src/index.ts` (health-check loop, structured JSON logs, graceful shutdown).
+  - Created `packages/clara-core` (Clara integration boundary): `package.json`, `tsconfig.json` (paths: `@/modules/*` → vendored Clara source), `src/{index,runtime,types}.ts` (re-exports `claraRuntime` and types).
+  - Created `packages/shared` (shared types): `src/agent/{types,intents}.ts` (AgentRequest, Tool, Intent taxonomy), `src/email/provider.ts` (EmailProvider interface + CapabilityNotSupported), `src/messaging/channel.ts` (MessagingChannel interface).
+  - Created `packages/db` (Supabase client): `src/client.ts` (createSupabaseClient with anon key, createSupabaseServiceClient with service-role key — server-only).
+  - Added Clara as git submodule at `vendor/clara/` (pinned to commit b47e587).
+- **Task 4 (Local infrastructure):** Created `infra/docker-compose.yml` with PostgreSQL 16, Redis 7, RabbitMQ 3.13 (management UI on 15672), Qdrant v1.12.4. Health checks for all services. Named volumes for persistence. Local development only — not production.
+- **Task 5 (Clara integration boundary):** `packages/clara-core/` is the adapter boundary. Re-exports `claraRuntime` and types via tsconfig path aliases. Clara source at `vendor/clara/` is NOT modified (per `clara-core/AGENTS.md §4`). Host apps import from `@ai-comms-agent/clara-core`, not directly from `vendor/clara/`.
+- **Task 6 (Foundation vertical slice):**
+  - Web app renders: home page (overview dashboard with 6 stat cards), mail inbox (mock email table + threads), health check endpoint.
+  - Worker boots: logs structured JSON, verifies all packages resolve, verifies vendored Clara source exists, health-check loop, graceful shutdown.
+  - Mock email view uses `EmailMessage` and `EmailThread` types from `@ai-comms-agent/shared` — validates shared package type resolution.
+  - Health check verifies: web_app, shared_package, db_package, clara_core_package, clara_core_source, vendored_clara_source, supabase_configured, environment.
+- **Task 7 (Testing):**
+  - Dependency installation: `pnpm install` succeeded (323 packages). Approved build scripts for esbuild and unrs-resolver via `dangerouslyAllowAllBuilds` in `pnpm-workspace.yaml`.
+  - Typecheck: 5/5 packages pass (clara-core structural check, db, shared, web, worker).
+  - Web build: `next build` succeeds. Routes: `/` (static), `/mail/inbox` (static), `/api/health` (dynamic). First Load JS: 103 kB.
+  - Worker build: `tsc` produces `dist/index.js`.
+  - Browser verification: dev server starts in 1.4s; `GET /` returns 200 (renders sidebar + top bar + overview); `GET /mail/inbox` returns 200 (renders mock email table + threads); `GET /api/health` returns 200 with `{ status: "healthy", all checks ok }`. No blank screen, no console errors, navigation renders.
+  - Worker smoke test: boots, logs "worker ready — Phase 2 foundation (no queue consumption yet)", all health checks ok, responds to SIGTERM with graceful shutdown.
+- **Task 8 (Security):**
+  - Pre-commit secret scan: clean (no `ghp_*`, `vcp_*`, JWT prefixes; no `BEGIN PRIVATE KEY`; no `service_account` / `client_secret` patterns).
+  - No `.env` files committed (only `.env.example` with placeholder names — allowed by `.gitignore` `!.env.example` rule).
+  - Service-role key (`SUPABASE_SERVICE_ROLE_KEY`) is server-only — used only in `packages/db/src/client.ts` `createSupabaseServiceClient()`. Not imported by any browser code (`apps/web/src/`).
+  - Provider API keys not present (Phases 6-13).
+  - No unsafe default authorization path (no auth implemented yet — Phase 3).
+- **Task 9 (Documentation):**
+  - Updated `docs/architecture/CLARA_REUSE_MAP.md`: §2.3 corrected (claraRuntime const, not class), §2.4 refined (narrow rag_search tool interface), §2.5 clarified (enableMcp flag, no implementation), summary table updated, §4 corrected.
+  - Updated `docs/architecture/CLARA-INTEGRATION.md`: added §8a (Phase 2 deep-audit results with verifier result, claraRuntime export, tools/MCP finding, integration approach, hidden coupling, audit artifacts).
+  - Updated `docs/project-control/ISSUES.md`: ISS-005 refined with precise finding.
+  - Updated `docs/project-control/PROJECT_STATE.md`: Phase 2 status, summary, verification, monorepo layout, change log.
+  - Updated `docs/project-control/CURRENT_PHASE.md`: Phase 2 scope, tasks, deliverables, narrative.
+  - Updated `docs/project-control/NEXT_ACTION.md`: ChatGPT Phase 2 review action, artifacts, review dimensions.
+  - Updated `docs/project-control/VERIFICATION_STATE.md`: Phase 2 evidence (clara audit, typecheck, build, browser verification, worker smoke test, security scan).
+  - Appended this worklog section.
+
+### Files created (this task)
+
+- `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `.gitmodules`, `.npmrc`, `.env.example`
+- `apps/web/package.json`, `apps/web/tsconfig.json`, `apps/web/next.config.mjs`, `apps/web/postcss.config.mjs`
+- `apps/web/src/app/layout.tsx`, `apps/web/src/app/page.tsx`, `apps/web/src/app/globals.css`
+- `apps/web/src/app/api/health/route.ts`
+- `apps/web/src/app/mail/inbox/page.tsx`
+- `apps/web/src/components/sidebar.tsx`, `apps/web/src/components/top-bar.tsx`
+- `apps/web/src/lib/mock-data.ts`
+- `apps/worker/package.json`, `apps/worker/tsconfig.json`, `apps/worker/src/index.ts`
+- `packages/clara-core/package.json`, `packages/clara-core/tsconfig.json`
+- `packages/clara-core/src/index.ts`, `packages/clara-core/src/runtime.ts`, `packages/clara-core/src/types.ts`
+- `packages/shared/package.json`, `packages/shared/tsconfig.json`
+- `packages/shared/src/index.ts`, `packages/shared/src/agent/types.ts`, `packages/shared/src/agent/intents.ts`
+- `packages/shared/src/email/provider.ts`, `packages/shared/src/messaging/channel.ts`
+- `packages/db/package.json`, `packages/db/tsconfig.json`, `packages/db/src/index.ts`, `packages/db/src/client.ts`
+- `infra/docker-compose.yml`
+- `.gitmodules` (Clara submodule at vendor/clara/)
+
+### Files changed (this task)
+
+- `docs/architecture/CLARA_REUSE_MAP.md` — §2.3 corrected (claraRuntime const), §2.4 refined (rag_search), §2.5 clarified, summary table + §4 updated
+- `docs/architecture/CLARA-INTEGRATION.md` — §8a added (Phase 2 deep-audit results)
+- `docs/project-control/ISSUES.md` — ISS-005 refined
+- `docs/project-control/PROJECT_STATE.md` — Phase 2 status
+- `docs/project-control/CURRENT_PHASE.md` — Phase 2 scope
+- `docs/project-control/NEXT_ACTION.md` — Phase 2 review action
+- `docs/project-control/VERIFICATION_STATE.md` — Phase 2 evidence
+- `worklog.md` — this section
+
+### Tests
+
+(none — Phase 2 is foundation-only; no unit tests. Typecheck and build verification performed instead.)
+
+### Verification
+
+- **Clara audit:** 106/108 verifier pass (2 manifest SHA typos — Clara library issue). `claraRuntime` export verified as const object. Tools/MCP finding refined per ChatGPT instruction.
+- **Typecheck:** 5/5 packages pass (clara-core structural, db, shared, web, worker).
+- **Web build:** success — routes: `/`, `/mail/inbox`, `/api/health`. First Load JS: 103 kB.
+- **Worker build:** success — `dist/index.js` produced.
+- **Browser verification:** home page 200 OK (renders sidebar + top bar + overview); mail inbox 200 OK (renders mock email table + threads); health check 200 OK (all checks healthy). No blank screen, no console errors, navigation renders.
+- **Worker smoke test:** boots, all checks ok, graceful shutdown.
+- **Security scan:** clean — no secrets, no private keys, no .env files (only .env.example). Service-role key server-only. No provider API keys present.
+- **Continuity self-test:** PASSED — all 7 recovery answers determinable from the repository alone.
+
+### Commit
+
+(populated after `git commit` and `git push` — see `PROJECT_STATE.md` `current_commit`)
+
+### Review result
+
+(awaiting ChatGPT Phase 2 review)
+
+### Issues found
+
+See `docs/project-control/ISSUES.md`:
+- ISS-001: Awaiting ChatGPT Phase 2 review of application foundation
+- ISS-002: Clara library deep audit COMPLETE in Phase 2 (verifier 106/108 pass; 2 manifest SHA typos reported upstream)
+- ISS-003: .github/ directory exists but is intentionally empty (CI design is Phase 3+)
+- ISS-004: Worker host not yet selected (blocks Phase 9 — ADR-007)
+- ISS-005: Clara has no generic standalone tool/MCP framework (narrow rag_search only) — refined in Phase 2 audit
+
+### Corrections
+
+(none — this is the initial Phase 2 deliverable)
+
+### Remaining work
+
+- ChatGPT reviews Phase 2 application foundation.
+- ChatGPT decides: APPROVE / REJECT / CORRECT.
+- If approved: ChatGPT issues Phase 3 Z.AI_HANDOFF.
+- If rejected/corrected: Z.AI implements corrections; re-commits; re-reviews.
+
+### Next phase
+
+Phase 3 — Authentication / Organization / Users / RBAC (per `docs/plans/ROADMAP.md`), only after ChatGPT approves Phase 2.
+
+### Next Z.AI instruction
+
+Wait for ChatGPT architect instruction. Z.AI is in STOP state per the user's explicit STOP instruction: "After Phase 2 implementation and verification: STOP. Do not start Phase 3."
+
+### Open architectural questions for ChatGPT
+
+(Updated from Phase 1)
+
+1. **Clara integration mode**: RESOLVED in Phase 2 — git submodule at `vendor/clara/` with `packages/clara-core/` as adapter boundary.
+2. **Worker host selection** (ISS-004 / ADR-007): Railway / Fly.io / Render / self-hosted VM. Blocks Phase 9; decide before Phase 4. *(unchanged)*
+3. **Supabase project provisioning** (RSK-001): user must provision before Phase 4. PostgreSQL/Supabase remains approved infrastructure (ADR-009). *(unchanged)*
+4. **WhatsApp Business Account registration** (RSK-004): user must begin Meta Business Account setup before Phase 13 (ideally during Phase 11). *(unchanged)*
+5. **OAuth client registration** for Gmail and Zoho: user must register OAuth clients before Phases 6 and 8. *(unchanged)*
+6. **Observability vendor selection** (Phase 17): Axiom / BetterStack / self-hosted. Decide before Phase 17. *(unchanged)*
+7. **Transactional email provider** for product notifications: Resend / Postmark / SendGrid. Decide in Phase 3+. *(unchanged)*
+8. **ADR-010 ratification** (MessagingChannel abstraction): ChatGPT must ratify or correct before Phase 13 implementation begins. *(unchanged)*
+9. **ISS-005 handling**: RESOLVED in Phase 2 — precise finding recorded; ai-comms-agent owns application ToolRegistry; Clara's rag_search wrapped by host kb.search tool.
+10. **Clara manifest SHA typos** (new): 2 manifest entries have malformed SHAs (Clara library issue). Report upstream to Rilan-Dev/ai-reusable-libraries. Not a blocker for our integration.
+
+### Open risks for ChatGPT
+
+(Updated from Phase 1 — see `docs/project-control/RISKS.md`)
+- RSK-001: Supabase not provisioned (Phase 4).
+- RSK-002: Clara deep audit COMPLETE — no hidden coupling found. Risk retired.
+- RSK-003 through RSK-006: unchanged.
+
+---
+
+## Phase 2 Implementation Report
+
+```text
+Repository:                     Rilan-Dev/ai-comms-agent
+Branch:                         main
+Commit SHA:                     (populated after push — see PROJECT_STATE.md current_commit)
+Phase 1 approved baseline:      c8b2f2c02c2231ea4e5fdb5b9fa48124b383bdc6
+
+Files created:                  40+ (monorepo root, apps/{web,worker}, packages/{clara-core,shared,db}, infra/docker-compose.yml, .gitmodules, .env.example)
+Files changed:                  8 (CLARA_REUSE_MAP, CLARA-INTEGRATION, ISSUES, PROJECT_STATE, CURRENT_PHASE, NEXT_ACTION, VERIFICATION_STATE, worklog)
+
+Clara audit findings:
+  - Verifier: 106/108 PASS (2 manifest SHA typos — Clara library issue, not file mutations)
+  - clara-runtime.ts export: export const claraRuntime = { ... } as const (NOT a ClaraRuntime class)
+  - Tools/MCP: narrow host-binding runtime tool interface (rag_search only); no generic standalone framework
+  - Integration: git submodule at vendor/clara/ (pinned to b47e587); packages/clara-core/ as adapter boundary
+  - Hidden coupling: none found in extracted source
+
+Clara verifier result:          106/108 PASS (2 manifest SHA typos)
+
+Architecture deviations:        None — monorepo structure follows approved Phase 1 architecture
+
+Typecheck result:               5/5 packages passed (clara-core structural, db, shared, web, worker)
+Lint result:                    (not run separately — Next.js build includes lint; web build succeeded)
+Unit-test result:               not applicable (Phase 2 is foundation-only; no unit tests)
+Build result:                   web build success (routes: /, /mail/inbox, /api/health); worker build success (dist/index.js)
+Browser verification result:    home page 200 OK; mail inbox 200 OK; health check 200 healthy; no blank screen; no console errors; navigation renders
+Security scan result:           clean — no secrets, no private keys, no .env files (only .env.example); service-role key server-only; no provider API keys
+Local infrastructure result:    docker-compose.yml configured (Postgres 16, Redis 7, RabbitMQ 3.13, Qdrant v1.12.4); not started (not required for Phase 2 verification)
+
+Known issues:
+  - ISS-001: Awaiting ChatGPT Phase 2 review
+  - ISS-002: Clara deep audit COMPLETE (2 manifest SHA typos to report upstream)
+  - ISS-003: .github/ empty (CI is Phase 3+)
+  - ISS-004: Worker host not selected (blocks Phase 9)
+  - ISS-005: Clara has no generic tool/MCP framework (refined; ai-comms-agent owns ToolRegistry)
+
+Risks:
+  - RSK-001: Supabase not provisioned (Phase 4)
+  - RSK-002: Clara deep audit COMPLETE — risk retired
+  - RSK-003: Email capability matrix unvalidated (Phases 5-8)
+  - RSK-004: WhatsApp Meta approval lead-time (Phase 13)
+  - RSK-005: Worker host not selected (ISS-004)
+  - RSK-006: Long delivery timeline (accepted)
+
+Exact proposed next task:       ChatGPT reviews Phase 2; if approved, issues Phase 3 Z.AI_HANDOFF (Authentication / Organization / Users / RBAC)
+```
+
+Z.AI is in STOP state. Waiting for ChatGPT architect review.

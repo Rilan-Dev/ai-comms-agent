@@ -11,51 +11,65 @@ branch: main
 default_branch: main
 visibility: private
 
-current_phase: 1
-current_phase_name: "Project Definition and Architecture"
-phase_status: "CONDITIONAL APPROVAL received — corrections implemented; awaiting ChatGPT final approval"
+current_phase: 2
+current_phase_name: "Application Foundation and Approved Template"
+phase_status: "implementation complete — awaiting ChatGPT review"
 
-last_completed_phase: "(none — Phase 1 is the first phase)"
-current_objective: "Get Phase 1 documentation FINALLY approved by ChatGPT so Phase 2 (application foundation) can be authorized"
+last_completed_phase: 1
+last_completed_phase_status: "FINAL APPROVAL (2026-10-03)"
+current_objective: "Get Phase 2 application foundation approved by ChatGPT so Phase 3 (auth/RBAC) can be authorized"
 
 architect: "ChatGPT (Chief Architect — external to this Z.AI session)"
-developer: "Z.AI (implementer of this Phase 1 deliverable)"
+developer: "Z.AI (implementer of this Phase 2 deliverable)"
 
-current_commit: "c8b2f2c02c2231ea4e5fdb5b9fa48124b383bdc6"
-current_commit_short: "c8b2f2c"
-current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/c8b2f2c02c2231ea4e5fdb5b9fa48124b383bdc6"
-last_verified_commit: "(pending ChatGPT final approval)"
-previous_commit: "99c310962d7da8220bdeeb4eddea5f2cf3d3e451 (initial Phase 1 deliverable, 2026-10-03)"
+phase1_approved_baseline: "c8b2f2c02c2231ea4e5fdb5b9fa48124b383bdc6"
+phase1_state_recording_commit: "f32616a487ba09bfaa782c39226b19f38d7b18e3"
+current_commit: "(populated after this Phase 2 commit — see git log)"
+current_commit_short: "(populated after commit)"
+current_commit_url: "(populated after commit)"
+last_verified_commit: "(pending ChatGPT Phase 2 verification)"
 
 open_blockers:
-  - "Awaiting ChatGPT final Phase 1 approval after conditional-approval corrections (this commit implements them)"
+  - "Awaiting ChatGPT Phase 2 review of application foundation"
 open_risks:
-  - "Clara library was inspected shallowly (depth-1 clone); deep dependency audit deferred to Phase 2 (ISS-002)"
+  - "Clara manifest has 2 SHA typos (Clara library issue, not file mutations — see CLARA-INTEGRATION.md §8a)"
   - "Supabase project not yet provisioned; PostgreSQL/Supabase remains approved infrastructure (ADR-009); provisioning deferred to Phase 4 (RSK-001)"
-  - "Clara has no standalone MCP/tool runtime module (ISS-005) — ai-comms-agent builds its own tool registry; MCP is out of scope for Phases 1-19"
+  - "Worker host not yet selected (ISS-004 / ADR-007) — blocks Phase 9"
 required_decision:
-  - "ChatGPT must give FINAL approval of Phase 1 (after reviewing the 8 corrections) before Phase 2 begins"
-  - "ChatGPT must ratify ADR-010 (MessagingChannel abstraction) before Phase 13 implementation begins"
+  - "ChatGPT must review and approve/reject/correct Phase 2 application foundation before Phase 3 begins"
 
 next_action:
   actor: "ChatGPT"
-  action: "Re-review the 8 conditional-approval corrections; grant FINAL approval OR issue further corrections"
-  then: "If finally approved, issue Phase 2 Z.AI_HANDOFF (application foundation + approved project template)"
+  action: "Review Phase 2 application foundation; approve, reject, or issue correction handoff"
+  then: "If approved, issue Phase 3 Z.AI_HANDOFF (authentication / organization / users / RBAC)"
 
-phase1_review:
-  status: "CONDITIONAL APPROVAL"
-  date: "2026-10-03"
-  corrections_required: 8
-  corrections_implemented: 8
-  corrections:
-    - "✅ #1: Created docs/architecture/CLARA_REUSE_MAP.md (14 Clara capability areas)"
-    - "✅ #2: Corrected Supabase decision — 'No database implementation during Phase 1. PostgreSQL/Supabase remains approved infrastructure.' (ADR-009)"
-    - "✅ #3: Created docs/architecture/DOMAIN_MODEL.md (13 domain entities)"
-    - "✅ #4: Created docs/architecture/EMAIL_AGENT_ARCHITECTURE.md (6 layers)"
-    - "✅ #5: Created docs/architecture/MESSAGING_CHANNEL_ARCHITECTURE.md (MessagingChannel + ProviderAdapter; ADR-010)"
-    - "✅ #6: Created docs/architecture/CLARA_VOICE_INTEGRATION.md (Clara vs ai-comms-agent ownership boundary)"
-    - "✅ #7: Created docs/architecture/SECURITY_MODEL.md (5 focus areas)"
-    - "✅ #8: Updated PROJECT_STATE.md, NEXT_ACTION.md, worklog.md (this commit)"
+phase2_summary:
+  status: "implementation_complete_awaiting_review"
+  tasks_completed: 9
+  tasks:
+    - "✅ Task 1: Read all project-control + architecture + specs docs"
+    - "✅ Task 2: Deep Clara audit (full clone, target-side verifier, REUSE_MAP validation, clara-runtime export verified, tools/MCP re-checked)"
+    - "✅ Task 3: Application foundation (monorepo: apps/web, apps/worker, packages/{clara-core,shared,db})"
+    - "✅ Task 4: Local infrastructure (docker-compose for Postgres/Redis/RabbitMQ/Qdrant)"
+    - "✅ Task 5: Clara integration boundary (packages/clara-core; git submodule at vendor/clara/)"
+    - "✅ Task 6: Foundation vertical slice (web renders, worker boots, mock email view, health check)"
+    - "✅ Task 7: Testing (typecheck 5/5 pass, web build success, worker build success, browser verification pass)"
+    - "✅ Task 8: Security verification (no secrets, no client-side keys, no .env committed, .env.example only)"
+    - "✅ Task 9: Documentation updates (CLARA_REUSE_MAP corrected, CLARA-INTEGRATION audit results, project-control updated, worklog appended)"
+
+  clara_audit:
+    verifier_result: "106/108 PASS (2 manifest SHA typos — Clara library issue, not file mutations)"
+    clara_runtime_export: "export const claraRuntime = { ... } as const (NOT a ClaraRuntime class)"
+    tools_finding: "Narrow host-binding runtime tool interface (rag_search only); no generic standalone tool/MCP framework"
+    integration_approach: "git submodule at vendor/clara/ (pinned to b47e587); packages/clara-core/ as adapter boundary"
+
+  verification:
+    typecheck: "5/5 packages passed (clara-core structural, db, shared, web, worker)"
+    web_build: "success — routes: /, /mail/inbox, /api/health"
+    worker_build: "success — dist/index.js produced"
+    browser_verification: "pages load 200 OK, no blank screen, navigation renders, health check 200 healthy"
+    worker_smoke_test: "boots, all checks ok, graceful shutdown"
+    security_scan: "clean — no secrets, no private keys, no .env files (only .env.example)"
 
 deployment:
   vercel_project: ai-comms-agent
@@ -69,14 +83,21 @@ reference_library:
   repo: Rilan-Dev/ai-reusable-libraries
   visibility: public
   role: "Clara reusable AI core — AI, RAG, voice, agent runtime, usage, governance"
+  integration: "git submodule at vendor/clara/ (pinned to commit b47e587)"
 
-documentation_inventory:
-  root_files: [README.md, AGENTS.md, LICENSE, .gitignore, worklog.md]
-  project_control: 10 files (PROJECT_STATE, RULES, CURRENT_PHASE, NEXT_ACTION, ZAI_HANDOFF, VERIFICATION_STATE, DECISIONS, ISSUES, RISKS, CHAT_CONTINUITY)
-  architecture: 18 files (ARCHITECTURE, DATA-MODEL, DOMAIN_MODEL, AI-ARCHITECTURE, REALTIME-VOICE-ARCHITECTURE, CLARA_VOICE_INTEGRATION, EMAIL-PROVIDER-ARCHITECTURE, EMAIL_AGENT_ARCHITECTURE, WHATSAPP-ARCHITECTURE, MESSAGING_CHANNEL_ARCHITECTURE, EVENTS-AND-QUEUES, SECURITY, SECURITY_MODEL, OBSERVABILITY, UI-UX, DEPLOYMENT, CLARA-INTEGRATION, CLARA_REUSE_MAP)
-  specs: 6 files (PRODUCT, PROVIDER-CONTRACTS, TOOL-CONTRACTS, AUTHORIZATION, EVENT-CONTRACTS, API-CONTRACTS)
-  plans: 1 file (ROADMAP)
-  adrs: 10 (ADR-001 through ADR-010; ADR-009 accepted, ADR-010 proposed)
+monorepo_layout:
+  root: [package.json, pnpm-workspace.yaml, tsconfig.base.json, .gitignore, .gitmodules, .npmrc, .env.example]
+  apps:
+    web: "Next.js 15 App Router + TypeScript + Tailwind v4 (apps/web/)"
+    worker: "Node.js worker — RabbitMQ consumer framework (apps/worker/)"
+  packages:
+    clara-core: "Clara integration boundary — re-exports claraRuntime + types (packages/clara-core/)"
+    shared: "Shared types, schemas, domain primitives (packages/shared/)"
+    db: "Supabase client factory (packages/db/)"
+  vendor:
+    clara: "Clara reusable library git submodule (vendor/clara/)"
+  infra:
+    docker_compose: "Local dev infrastructure — Postgres, Redis, RabbitMQ, Qdrant (infra/docker-compose.yml)"
 ```
 
 ---
@@ -88,4 +109,7 @@ documentation_inventory:
 | 2026-10-03 | 1 | Z.AI | Initial Phase 1 documentation created and committed (commit 2bacba0). Awaiting ChatGPT review. |
 | 2026-10-03 | 1 | Z.AI | Recorded commit SHA + push verification + continuity self-test (commits ba5c819, 99c3109). |
 | 2026-10-03 | 1 | ChatGPT | **CONDITIONAL APPROVAL** issued. 8 corrections required. Z.AI must NOT start Phase 2. |
-| 2026-10-03 | 1 | Z.AI | Implemented all 8 conditional-approval corrections: 6 new architecture docs (CLARA_REUSE_MAP, DOMAIN_MODEL, EMAIL_AGENT_ARCHITECTURE, MESSAGING_CHANNEL_ARCHITECTURE, CLARA_VOICE_INTEGRATION, SECURITY_MODEL), Supabase decision corrected (ADR-009), 2 new ADRs (ADR-009 accepted, ADR-010 proposed). Awaiting ChatGPT final approval. |
+| 2026-10-03 | 1 | Z.AI | Implemented all 8 conditional-approval corrections (commit c8b2f2c). 6 new architecture docs, 2 new ADRs, ISS-005 added. |
+| 2026-10-03 | 1 | Z.AI | Recorded corrections commit SHA in project-control state (commit f32616a). |
+| 2026-10-03 | 1 | ChatGPT | **FINAL APPROVAL** issued. Phase 2 authorized. Approved baseline: c8b2f2c. |
+| 2026-10-03 | 2 | Z.AI | Phase 2 application foundation implemented: monorepo (apps/web, apps/worker, packages/{clara-core,shared,db}), Clara git submodule, local Docker infra, foundation vertical slice, all verification passing. Clara deep audit completed (106/108 verifier pass; claraRuntime export corrected; ISS-005 refined). Awaiting ChatGPT Phase 2 review. |

@@ -54,15 +54,17 @@ Per the master operating prompt §4, Clara is the permanent reference for AI, RA
 
 | Field | Value |
 |---|---|
-| **Capability** | Agent runtime — the core orchestration loop that turns an `AgentRequest` into an `AgentResponse` |
+| **Capability** | Agent runtime — the core orchestration loop that turns chat messages into a streamed response with RAG grounding |
 | **Source path** | `modules/ai-platform-core/clara-runtime.ts` |
-| **Implementation entry point** | `modules/ai-platform-core/clara-runtime.ts` → `ClaraRuntime` class |
-| **Public API / contracts** | `ClaraRuntime`, `RuntimeRequest`, `RuntimeResponse`, `RuntimeTurn` |
-| **Dependencies** | `modules/ai-core/` (provider calls), `modules/rag/grounding.ts` (RAG), `modules/assistant/core/config.ts` (assistant config), `modules/ai-governance/` (usage tracking) |
-| **Adapter requirement** | **ADAPTER** — host wraps `ClaraRuntime` with a thin `AgentRuntimeAdapter` that injects: host auth subject, host organization context, host tool registry (per `TOOL-CONTRACTS.md`), host audit emitter. The host does NOT reimplement the runtime loop. |
-| **ai-comms-agent usage** | Phase 11 instantiates `ClaraRuntime` per agent turn. The adapter feeds the `AgentRequest` (per `AI-ARCHITECTURE.md §2`) and consumes the streamed `RuntimeResponse`. Intent classification, context assembly, and audit are host-owned; the LLM call loop, streaming, and tool-call marshalling are Clara-owned. |
+| **Implementation entry point** | `modules/ai-platform-core/clara-runtime.ts` → `export const claraRuntime = { ... } as const;` (a const object, **NOT** a `ClaraRuntime` class) |
+| **Public API / contracts** | `claraRuntime` const object with methods: `resolveProvider(ctx, surface?)`, `resolveVoice(ctx)`, `retrieve(ctx, query, options?)`, `createChatTurn(request)`, `startRealtimeSession(ctx)`, and `tools` (with `list()` and `invoke(ctx, name, input)`). Types: `ClaraRuntimeContext`, `ClaraAgentTurnRequest`, `ClaraAgentTurn`. |
+| **Dependencies** | `modules/ai-core/factory.ts` (`ProviderFactory`), `modules/ai-core/resolve.ts` (`toProviderConfig`, `resolveAIConfigCached`), `modules/ai-core/resolve-cache.ts`, `modules/voice-core/resolve.ts` (`resolveVoiceConfigCached`), `modules/rag/grounding.ts` (`groundClaraContext`), `modules/assistant/api/conversation-context.ts` (`buildConversationAwareSearchQuery`, `buildRecentConversationContextBlock`, `recentMessages`), `modules/ai-core/types.ts` (`ChatMessage`) |
+| **Adapter requirement** | **ADAPTER** — host wraps `claraRuntime` with a thin `AgentRuntimeAdapter` that injects: host auth subject, host organization context, host tool registry (per `TOOL-CONTRACTS.md`), host audit emitter. The host does NOT reimplement the runtime loop. The host calls `claraRuntime.createChatTurn(request)` for chat turns and `claraRuntime.startRealtimeSession(ctx)` for voice. |
+| **ai-comms-agent usage** | Phase 11 calls `claraRuntime.createChatTurn()` per agent turn. The adapter feeds a `ClaraAgentTurnRequest` (mapped from our `AgentRequest` per `AI-ARCHITECTURE.md §2`) and consumes the streamed `ClaraAgentTurn.stream` (an `AsyncGenerator<string>`). Intent classification, context assembly, policy engine, and audit are host-owned; the LLM call loop, RAG grounding, and streaming are Clara-owned. |
 
-> **Note on intent/policy/authorization:** Clara's runtime handles the LLM call loop and tool-call marshalling. The **intent taxonomy, policy engine, and authorization flow** (per `AI-ARCHITECTURE.md §3-5` and `AUTHORIZATION.md`) are **application-specific** — they sit in the host adapter, not in Clara. Clara's runtime proposes tool calls; the host adapter validates them against the policy engine before Clara executes. This boundary is documented in `CLARA_VOICE_INTEGRATION.md §3` (the same pattern applies to chat/WhatsApp).
+> **Phase 2 audit correction (2026-10-03):** The original REUSE_MAP entry incorrectly described the export as a `ClaraRuntime` class. The actual export is `export const claraRuntime = { ... } as const;` — a const object literal. This was verified by reading `vendor/clara/clara-core/source/src/modules/ai-platform-core/clara-runtime.ts` during the Phase 2 deep audit. The entry above is now accurate.
+
+> **Note on intent/policy/authorization:** Clara's runtime handles the LLM call loop, RAG grounding, and streaming. The **intent taxonomy, policy engine, and authorization flow** (per `AI-ARCHITECTURE.md §3-5` and `AUTHORIZATION.md`) are **application-specific** — they sit in the host adapter, not in Clara. Clara's runtime does not propose application tool calls (email.send, whatsapp.send, etc.) — it provides `rag_search` only (see §2.4 below). The host adapter owns all application tool execution. This boundary is documented in `CLARA_VOICE_INTEGRATION.md §3` (the same pattern applies to chat/WhatsApp).
 
 ---
 
@@ -70,13 +72,15 @@ Per the master operating prompt §4, Clara is the permanent reference for AI, RA
 
 | Field | Value |
 |---|---|
-| **Capability** | Tool registry — register, validate, and execute agent tools |
-| **Source path** | *(none — Clara does not provide a standalone tool runtime; see ISS-005)* |
-| **Implementation entry point** | *(none)* |
-| **Public API / contracts** | *(none — Clara's `WORKLOG.md` line 23: "Generic MCP/tool runtime still has no standalone Clara implementation to extract.")* |
-| **Dependencies** | n/a |
-| **Adapter requirement** | **APP-SPECIFIC** — ai-comms-agent builds its own `ToolRegistry` per `docs/specs/TOOL-CONTRACTS.md`. The registry integrates with Clara's runtime via the host adapter (the adapter validates tool calls against the registry before Clara executes). |
-| **ai-comms-agent usage** | Phase 11 implements `ToolRegistry`, `Tool` contract, and the initial tool catalogue (email, WhatsApp, schedule, summary, kb, conversation tools). The registry is the single source of truth for what tools exist, their schemas, sensitivity, and required permissions. |
+| **Capability** | Narrow host-binding runtime tool interface — Clara provides a limited `tools` property on `claraRuntime` that supports `rag_search`. There is **no generic standalone application tool/MCP framework** in Clara. |
+| **Source path** | `modules/ai-platform-core/clara-runtime.ts` (the `tools` property on the `claraRuntime` const object) |
+| **Implementation entry point** | `claraRuntime.tools.list()` returns `[{ name: "rag_search", description: "..." }]`; `claraRuntime.tools.invoke(ctx, name, input)` supports `name === "rag_search"` and delegates to `claraRuntime.retrieve(ctx, query, options)`. Any other tool name throws `"Unsupported Clara tool: " + name`. |
+| **Public API / contracts** | `claraRuntime.tools.list()` → `Array<{ name: string; description: string }>`; `claraRuntime.tools.invoke(ctx: ClaraRuntimeContext, name: string, input: unknown)` → `Promise<GroundedContext>`. The only supported tool is `rag_search` (retrieves tenant-bound evidence from the active KB). |
+| **Dependencies** | `modules/rag/grounding.ts` (`groundClaraContext`) — the `rag_search` tool is a thin wrapper around RAG retrieval |
+| **Adapter requirement** | **APP-SPECIFIC for application tools** — ai-comms-agent builds its own `ToolRegistry` per `docs/specs/TOOL-CONTRACTS.md` for email, WhatsApp, scheduling, approvals, etc. The host registry does NOT replace `claraRuntime.tools` — the two coexist: Clara's `rag_search` handles KB retrieval; the host registry handles application actions. The host adapter may expose `rag_search` to the LLM as a passthrough tool (calling `claraRuntime.tools.invoke`), or may handle KB search via its own `kb.search` tool that calls `claraRuntime.retrieve` directly. |
+| **ai-comms-agent usage** | Phase 11 implements the host `ToolRegistry` (email.read, email.send, whatsapp.send, schedule.create, etc.). KB search is exposed via the host `kb.search` tool, which internally calls `claraRuntime.retrieve()`. Clara's `rag_search` is not directly exposed to the LLM in our host — the host's `kb.search` tool wraps the same capability with host-owned authorization and audit. |
+
+> **Phase 2 audit correction (2026-10-03):** The original REUSE_MAP entry stated Clara has "no standalone tool runtime". This was imprecise. The accurate finding (per the deep audit of `clara-runtime.ts`): Clara has a **narrow host-binding runtime tool interface** (`claraRuntime.tools`) that supports `rag_search` only. There is **no generic standalone application tool/MCP framework** — ai-comms-agent owns its application `ToolRegistry` for email, WhatsApp, scheduling, approvals, etc. ISS-005 is updated to reflect this precise finding.
 
 ---
 
@@ -85,11 +89,11 @@ Per the master operating prompt §4, Clara is the permanent reference for AI, RA
 | Field | Value |
 |---|---|
 | **Capability** | MCP integration — connect external MCP servers as tool sources |
-| **Source path** | *(none — Clara has an `enableMcp` flag in `modules/rag/config.ts` but no standalone MCP runtime; see ISS-005)* |
+| **Source path** | *(none — Clara has an `enableMcp: boolean` flag in `modules/rag/config.ts` but no MCP client/server module in `clara-core/source/src/modules/`)* |
 | **Implementation entry point** | *(none)* |
-| **Public API / contracts** | `enableMcp: boolean` flag in `RagConfig` (`modules/rag/config.ts`); no MCP client/server module in `clara-core/source/src/modules/` |
+| **Public API / contracts** | `enableMcp: boolean` flag in `RagConfig` (`modules/rag/config.ts`, line 12; parsed from `ENABLE_MCP` env var, default `false`). No MCP client or server module exists in the extracted Clara source. |
 | **Dependencies** | n/a (flag only; no implementation) |
-| **Adapter requirement** | **APP-SPECIFIC (future)** — MCP is out of scope for Phases 1-19. If/when Clara extracts an MCP runtime, this map is updated and MCP becomes ADAPTER. If business requirements demand MCP before Clara provides it, a new ADR (in `DECISIONS.md`) records the decision to build app-specifically. |
+| **Adapter requirement** | **APP-SPECIFIC (future)** — MCP is out of scope for Phases 1-19. The `enableMcp` flag exists in Clara's RAG config but has no backing implementation in the extracted source. If/when Clara extracts an MCP runtime, this map is updated and MCP becomes ADAPTER. If business requirements demand MCP before Clara provides it, a new ADR (in `DECISIONS.md`) records the decision to build app-specifically. |
 | **ai-comms-agent usage** | Not used in Phases 1-19. The `enableMcp` flag in Clara's RAG config is set to `false` (the default). |
 
 ---
@@ -229,8 +233,8 @@ Per the master operating prompt §4, Clara is the permanent reference for AI, RA
 | 2.1 | AI provider registry | ADAPTER | `apps/worker/src/adapters/ai-provider-registry.ts` |
 | 2.2 | Model resolution | ADAPTER | `apps/worker/src/adapters/model-resolver.ts` |
 | 2.3 | Agent runtime | ADAPTER | `apps/worker/src/adapters/agent-runtime.ts` |
-| 2.4 | Tools | **APP-SPECIFIC** | `packages/shared/src/agent/registry.ts` (per `TOOL-CONTRACTS.md`) |
-| 2.5 | MCP | **APP-SPECIFIC (future)** | *(out of scope Phases 1-19; see ISS-005)* |
+| 2.4 | Tools (application) | **APP-SPECIFIC** (Clara provides narrow `rag_search` only; no generic tool framework) | `packages/shared/src/agent/registry.ts` (per `TOOL-CONTRACTS.md`) |
+| 2.5 | MCP | **APP-SPECIFIC (future)** | *(out of scope Phases 1-19; `enableMcp` flag exists but no implementation; see ISS-005)* |
 | 2.6 | RAG | ADAPTER | `apps/worker/src/adapters/rag.ts` |
 | 2.7 | Embeddings | REUSE | (used directly by `email.index` and KB ingest workers) |
 | 2.8 | Chat | ADAPTER | `apps/web/lib/chat-adapter.ts` + `apps/worker/src/adapters/chat.ts` |
@@ -249,8 +253,8 @@ Per the master operating prompt §4, Clara is the permanent reference for AI, RA
 
 Per the master operating prompt §4 and this map:
 
-1. **Tools** — Clara has no standalone tool runtime (ISS-005). ai-comms-agent builds its own `ToolRegistry` per `TOOL-CONTRACTS.md`.
-2. **MCP** — Clara has an `enableMcp` flag but no MCP runtime (ISS-005). MCP is out of scope for Phases 1-19.
+1. **Application tools** — Clara has a narrow host-binding runtime tool interface (`claraRuntime.tools` supporting `rag_search` only), but **no generic standalone application tool/MCP framework** (ISS-005, corrected in Phase 2 audit). ai-comms-agent builds its own `ToolRegistry` per `TOOL-CONTRACTS.md` for email, WhatsApp, scheduling, approvals, etc. The host `kb.search` tool wraps `claraRuntime.retrieve()` for KB retrieval.
+2. **MCP** — Clara has an `enableMcp: boolean` flag in `rag/config.ts` but no MCP client/server module in the extracted source (ISS-005). MCP is out of scope for Phases 1-19.
 3. **Email provider integration** (Gmail, IMAP/SMTP, Zoho) — Clara does not provide email. We build the `EmailProvider` adapter model per `EMAIL-PROVIDER-ARCHITECTURE.md` and `EMAIL_AGENT_ARCHITECTURE.md`.
 4. **Messaging channel integration** (WhatsApp, future channels) — Clara does not provide messaging. We build the `MessagingChannel` abstraction per `MESSAGING_CHANNEL_ARCHITECTURE.md`.
 5. **Scheduling** — Clara does not provide durable scheduled jobs. We build `scheduled_jobs` per `DATA-MODEL.md §6`.

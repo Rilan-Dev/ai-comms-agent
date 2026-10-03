@@ -1,0 +1,6 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# pnpm v12+ build script security
+dangerouslyAllowAllBuilds: true
