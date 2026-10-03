@@ -50,6 +50,20 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 
 ---
 
+## ISS-005 — Clara has no standalone MCP/tool runtime module
+
+- **Opened:** 2026-10-03
+- **Severity:** medium (affects Phase 11 tool registry design)
+- **Owner:** Z.AI (Phase 2 deep audit + Phase 11 implementation)
+- **Status:** open
+- **Description:** Clara's own `WORKLOG.md` line 23 states: "Generic MCP/tool runtime still has no standalone Clara implementation to extract." The `rag/config.ts` file has an `enableMcp` flag, and Clara's `AGENTS.md` lists "tools, MCP, integrations, webhook" as a search procedure category, but no standalone MCP/tool runtime module exists in `clara-core/source/src/modules/`. This means:
+  - The ai-comms-agent **Tool Registry** (per `docs/specs/TOOL-CONTRACTS.md`) must be **application-specific** (APP-SPECIFIC, not REUSE or ADAPTER).
+  - **MCP integration** is a future capability. It may come from Clara (when extracted) or be built app-specifically. Until then, MCP is out of scope.
+  - The `CLARA_REUSE_MAP.md` reflects this honestly in its "Tools" and "MCP" rows.
+- **Resolution plan:** Phase 2 deep audit (per `CLARA-INTEGRATION.md §8`) re-verifies this finding against a full clone. If Clara has added a tool/MCP module by then, the REUSE_MAP is updated. Phase 11 implements the application-specific Tool Registry; MCP is revisited as a separate architectural decision (record in `DECISIONS.md`) if/when Clara provides it or if business requirements demand it.
+
+---
+
 ## Issue history
 
 | ID | Date opened | Date resolved | Summary |

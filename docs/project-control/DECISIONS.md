@@ -94,6 +94,28 @@ Statuses: `proposed` (recorded by Z.AI, awaiting ChatGPT), `accepted` (ratified 
 
 ---
 
+## ADR-009 — PostgreSQL/Supabase remains approved infrastructure; Phase 1 defers database implementation only
+
+- **Date:** 2026-10-03
+- **Status:** accepted (ratified by ChatGPT Phase 1 conditional approval, 2026-10-03)
+- **Authority:** ChatGPT Phase 1 review — correction #2
+- **Context:** During Phase 1 setup, the user was asked about guardrails and selected an option labelled "No Supabase" (meaning "do not provision or inspect any Supabase project in this run"). This was a **phase-scope deferral**, not an infrastructure de-selection. The master operating prompt §14 and §33 explicitly identify PostgreSQL/Supabase as the authoritative store and Supabase as the database infrastructure. ADR-002 already records PostgreSQL (Supabase) as the authoritative application state. The "No Supabase" label was ambiguous and risked being misread as "Supabase is no longer approved".
+- **Decision:** PostgreSQL/Supabase remains approved infrastructure for `ai-comms-agent`. The corrected statement is: **"No database implementation during Phase 1. PostgreSQL/Supabase remains approved infrastructure."** Phase 1 is documentation-only by design (per `RULES.md §6`); no schema, no migrations, no provisioning. Phase 4 (Database foundation and migrations) provisions and implements the Supabase project. RSK-001 tracks the provisioning dependency.
+- **Consequences:** No change to ADR-002 (PostgreSQL/Supabase as authoritative store) or ADR-007 (Next.js on Vercel + Supabase + worker host). The phrase "No Supabase" is removed from project-control vocabulary; the canonical phrasing is "No database implementation during Phase 1" (a phase-scope statement) paired with "PostgreSQL/Supabase remains approved infrastructure" (an infrastructure statement). Any future document that references database deferral must use this corrected phrasing.
+
+---
+
+## ADR-010 — Messaging channels use a provider-neutral MessagingChannel abstraction (WhatsApp is one adapter)
+
+- **Date:** 2026-10-03
+- **Status:** proposed (recorded by Z.AI during Phase 1 conditional-correction work; awaiting ChatGPT ratification)
+- **Authority:** ChatGPT Phase 1 conditional review — correction #5 ("Add messaging abstraction: MessagingChannel, ProviderAdapter. Do not couple directly to WhatsApp.")
+- **Context:** The master operating prompt §7 specifies WhatsApp as the first messaging channel. The original Phase 1 documentation (`WHATSAPP-ARCHITECTURE.md`, `DATA-MODEL.md §4`, `TOOL-CONTRACTS.md §3.2`, `EVENT-CONTRACTS.md §10-11`, `API-CONTRACTS.md §8, §15`) coupled the runtime, schema, tools, events, and API directly to WhatsApp. This would require duplicating the entire inbound/outbound/rate-limit/template/approval flow for each future channel (SMS, Telegram, Messenger, Slack, Teams).
+- **Decision:** Introduce a provider-neutral `MessagingChannel` interface with a `ProviderAdapter` pattern (per `docs/architecture/MESSAGING_CHANNEL_ARCHITECTURE.md`). WhatsApp is the first concrete implementation (Phase 13). Future channels are added as new adapters — the runtime, tool registry, agent pipeline, and approval workflow do not change. ADR-004 (one WhatsApp account per agent) generalizes to "one messaging channel instance per `channelType` per agent" — enforced by a unique constraint on `(agent_id, channel_type)` in `agent_messaging_assignments`. The WhatsApp-specific tables in `DATA-MODEL.md §4` are generalized to `messaging_*` tables in Phase 13 (forward-only migration, preserves existing data). The `whatsapp.*` tools are aliased to `messaging.*` tools for backward compatibility.
+- **Consequences:** `WHATSAPP-ARCHITECTURE.md` is now the WhatsApp-adapter implementation reference (sub-document of `MESSAGING_CHANNEL_ARCHITECTURE.md`). The generalized naming (`messaging_*` tables, `messaging.*` tools, `messaging.inbound` / `messaging.outbound` queues, `/api/webhooks/messaging/{channelType}` router) is the canonical shape from Phase 13 onward. Phase 13 migration renames WhatsApp-specific tables to generalized names. Future channels (post-Phase 19) require only a new adapter file + enum migration + capability validation — no runtime/schema/tool/API changes. This ADR must be ratified by ChatGPT before Phase 13 implementation begins.
+
+---
+
 ## How to add a new decision
 
 1. Append a new ADR section with the next sequential ID.

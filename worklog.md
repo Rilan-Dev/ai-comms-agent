@@ -191,3 +191,157 @@ Recommended next phase:         Phase 2 — Application Foundation and Approved 
 ```
 
 Z.AI is in STOP state. Waiting for the next ChatGPT architect instruction.
+
+---
+
+## Task ID: 2
+## Phase: 1 — Project Definition and Architecture (conditional-approval corrections)
+
+- **Status**: corrections_implemented_awaiting_final_approval
+- **Objective**: Implement the 8 corrections required by ChatGPT's CONDITIONAL APPROVAL (issued 2026-10-03). Do NOT start Phase 2.
+- **Architect**: ChatGPT (Chief Architect — external)
+- **Developer**: Z.AI (implementer of corrections)
+- **Start date**: 2026-10-03
+- **Completion date**: 2026-10-03
+- **Approved scope**: 8 specific corrections (listed below). No application code. No Phase 2.
+
+### Work Log
+
+- Received ChatGPT CONDITIONAL APPROVAL with 8 required corrections. Read the full correction list.
+- **Correction #1 (CLARA_REUSE_MAP):** Before authoring, grep'd the Clara library (`clara-core/source/`) for MCP/tool-related files. Critical finding: Clara's own `WORKLOG.md` line 23 states "Generic MCP/tool runtime still has no standalone Clara implementation to extract." The `rag/config.ts` has an `enableMcp` flag but no standalone MCP runtime module exists. This means the "Tools" and "MCP" rows of the REUSE_MAP must honestly reflect that Tools are APP-SPECIFIC and MCP is out of scope. Created `ISS-005` in `ISSUES.md` to track this. Authored `docs/architecture/CLARA_REUSE_MAP.md` covering all 14 mandated Clara capability areas (AI provider registry, model resolution, agent runtime, tools, MCP, RAG, embeddings, chat, realtime voice, conversation state, telemetry, usage tracking, streaming events, plus agent versioning as a supporting capability). Each area has: source path, implementation entry point, public API/contracts, dependencies, adapter requirement, ai-comms-agent usage. Summary table: 1 REUSE, 12 ADAPTER, 1 APP-SPECIFIC (tools), 1 APP-SPECIFIC-future (MCP).
+- **Correction #2 (Supabase decision):** Searched the repo for "No Supabase" references — the phrase doesn't literally appear in any tracked file (it was an option label in the earlier AskUserQuestion). The user wants the *decision* clarified. Added `ADR-009` to `DECISIONS.md` (status: accepted, ratified by ChatGPT conditional approval) with the canonical phrasing: "No database implementation during Phase 1. PostgreSQL/Supabase remains approved infrastructure." Updated `VERIFICATION_STATE.md` `database_status` to use the corrected phrasing. Updated `RSK-001` in `RISKS.md` to clarify it's a phase deferral, not an infrastructure de-selection.
+- **Correction #3 (DOMAIN_MODEL):** Authored `docs/architecture/DOMAIN_MODEL.md` as a DDD-style complement to `DATA-MODEL.md` (which is the persistence schema). Defined all 13 mandated domain entities: Organization, Agent, User, Email Account, Email Message, Thread, Attachment, Memory, Embedding, Automation, Scheduled Task, WhatsApp Connection, Conversation. Each entity has: purpose, identity, behavior, invariants, lifecycle, relationships. Organized into 6 bounded contexts (Identity & Tenancy, Agent Runtime, Email, Knowledge & Memory, Scheduling & Automation, Messaging). Cross-references to `DATA-MODEL.md` persistence tables.
+- **Correction #4 (EMAIL_AGENT_ARCHITECTURE):** Authored `docs/architecture/EMAIL_AGENT_ARCHITECTURE.md` with 6 layers: (1) Connector Layer — OAuth flows, IMAP form, credential storage, capability discovery, webhook receivers; (2) Synchronization Workers — email.sync/parse/attachments workers with idempotency, retry, DLQ, token refresh; (3) Indexing & Intelligence — email.index (Qdrant embeddings via Clara), email.classify (importance/action-required), full-text + semantic + hybrid search, summary generation; (4) Action Execution — email.draft (safe), email.send (sensitive, after approval), email.action (sensitive, after approval), approval workflow; (5) Agent Runtime — email-specific view (intent taxonomy, tools, capability gating, context assembly, policy engine, email-as-untrusted-input); (6) Provider Adapters — GmailAdapter, ImapSmtpAdapter, ZohoAdapter with capability discovery. End-to-end flow example included.
+- **Correction #5 (MESSAGING_CHANNEL_ARCHITECTURE):** Authored `docs/architecture/MESSAGING_CHANNEL_ARCHITECTURE.md` with a provider-neutral `MessagingChannel` interface + `ProviderAdapter` pattern. WhatsApp is one concrete implementation. Capability matrix covers 15 messaging capabilities × 4 channels (WhatsApp, SMS, Telegram, Messenger). Generalizes ADR-004 (1:1 agent→WhatsApp) to "one messaging channel instance per `channelType` per agent". Generalizes WhatsApp-specific tables/tools/events/API to `messaging_*` naming for Phase 13. Added `ADR-010` (proposed) to `DECISIONS.md` recording this architectural decision, pending ChatGPT ratification before Phase 13.
+- **Correction #6 (CLARA_VOICE_INTEGRATION):** Authored `docs/architecture/CLARA_VOICE_INTEGRATION.md` as the focused ownership boundary (complementing `REALTIME-VOICE-ARCHITECTURE.md` which is the full system view). Explicitly documents: Clara owns realtime transport, provider routing, streaming, conversation lifecycle, generation coordination, latency tracking, reconnect policy, metering, provider auth. ai-comms-agent owns email context, business actions, permissions, authorization, tool registry, intent classification, context assembly, audit, voice session persistence, browser UI, authn/authz. The AgentRequest bridge is the only point of contact. End-to-end session lifecycle diagram. Failure-mode ownership table.
+- **Correction #7 (SECURITY_MODEL):** Authored `docs/architecture/SECURITY_MODEL.md` as the focused security model (complementing `SECURITY.md` which is comprehensive). Covers all 5 mandated areas: (1) OAuth credentials — what we hold, client registration, token lifecycle, refresh, revocation, security invariants; (2) Encryption — envelope encryption at rest, transport encryption, database encryption, cookie security, encryption invariants; (3) Email prompt injection — the threat, 6-layer defense (sanitization, content wrapping, deterministic policy engine, tool-call validation, output validation, audit), test cases, invariants; (4) Agent permissions — RBAC, permission catalogue, enforcement, per-agent tool allowlist, per-agent security policy, invariants; (5) Action approval — what requires approval, the approval flow, approval scope, standing rules, "the LLM never authorizes" invariant, audit, invariants.
+- **Correction #8 (Update project-control):** Updated `PROJECT_STATE.md` (new phase_status, phase1_review block with all 8 corrections listed, documentation_inventory with 18 architecture files, change log extended), `NEXT_ACTION.md` (new action: ChatGPT re-review of corrections, full corrections_to_review block with all 8 items detailed, history table), `CURRENT_PHASE.md` (new status, phase_1_review block, deliverables list extended with 6 new architecture docs), `VERIFICATION_STATE.md` (review_status updated, conditional_approval_corrections evidence block with all 8 corrections detailed, evidence list extended with 6 new architecture files). Appending this worklog section.
+- Pre-commit secret scan: verified no `ghp_*`, `vcp_*`, `eyJ...` JWT prefixes, no `BEGIN PRIVATE KEY`, no `service_account`, no `client_secret` patterns in any staged file.
+- Committed and pushed (see Commit section below).
+- Re-ran continuity self-test: all 7 recovery answers still determinable from the repository alone. New documents are properly linked from `AGENTS.md` (architecture document map) and cross-referenced between themselves.
+
+### Files created (this task)
+
+- `docs/architecture/CLARA_REUSE_MAP.md` (correction #1)
+- `docs/architecture/DOMAIN_MODEL.md` (correction #3)
+- `docs/architecture/EMAIL_AGENT_ARCHITECTURE.md` (correction #4)
+- `docs/architecture/MESSAGING_CHANNEL_ARCHITECTURE.md` (correction #5)
+- `docs/architecture/CLARA_VOICE_INTEGRATION.md` (correction #6)
+- `docs/architecture/SECURITY_MODEL.md` (correction #7)
+
+### Files changed (this task)
+
+- `docs/project-control/DECISIONS.md` — added ADR-009 (accepted) and ADR-010 (proposed)
+- `docs/project-control/ISSUES.md` — added ISS-005 (Clara has no standalone MCP/tool runtime)
+- `docs/project-control/RISKS.md` — clarified RSK-001 (Supabase phase deferral, not de-selection)
+- `docs/project-control/VERIFICATION_STATE.md` — updated review_status, database_status, open_issues, evidence (conditional_approval_corrections block)
+- `docs/project-control/PROJECT_STATE.md` — updated phase_status, current_objective, open_blockers, required_decision, next_action, phase1_review block, documentation_inventory, change log
+- `docs/project-control/NEXT_ACTION.md` — new action (ChatGPT re-review), corrections_to_review block, history
+- `docs/project-control/CURRENT_PHASE.md` — updated status, phase_1_review block, deliverables list
+- `worklog.md` — this section
+
+### Tests
+
+(none — Phase 1 is documentation-only by design)
+
+### Verification
+
+- All 8 corrections implemented as specified.
+- Pre-commit secret scan: clean (no secrets in any tracked file).
+- Continuity self-test: PASSED — all 7 recovery answers determinable from the repository alone.
+- New documents are cross-referenced and consistent with existing docs.
+- ISS-005 (Clara has no standalone MCP/tool runtime) honestly recorded in CLARA_REUSE_MAP, ISSUES, and VERIFICATION_STATE.
+- ADR-009 (Supabase) accepted; ADR-010 (MessagingChannel) proposed pending ChatGPT ratification.
+
+### Commit
+
+(populated after `git commit` and `git push` — see `PROJECT_STATE.md` `current_commit`)
+
+### Review result
+
+(awaiting ChatGPT final Phase 1 approval after re-reviewing the 8 corrections)
+
+### Issues found
+
+See `docs/project-control/ISSUES.md`:
+- ISS-001: Awaiting ChatGPT final Phase 1 approval after corrections (conditional approval received 2026-10-03; corrections implemented 2026-10-03)
+- ISS-002: Clara library inspected shallowly (depth-1 clone); deep dependency audit deferred to Phase 2
+- ISS-003: .github/ directory exists but is intentionally empty (CI design is Phase 2)
+- ISS-004: Worker host not yet selected (blocks Phase 9 — ADR-007)
+- ISS-005: Clara has no standalone MCP/tool runtime module (per Clara WORKLOG.md line 23) — ai-comms-agent must build its own tool registry; MCP integration is a future capability
+
+### Corrections
+
+(none — this task IS the corrections; further corrections await ChatGPT re-review)
+
+### Remaining work
+
+- ChatGPT re-reviews the 8 corrections.
+- ChatGPT decides: FINAL APPROVAL / further corrections.
+- If finally approved: ChatGPT issues Phase 2 Z.AI_HANDOFF.
+- If further corrections: Z.AI implements; re-commits; re-reviews.
+
+### Next phase
+
+Phase 2 — Application Foundation and Approved Project Template (per `docs/plans/ROADMAP.md`), only after ChatGPT grants FINAL Phase 1 approval.
+
+### Next Z.AI instruction
+
+Wait for ChatGPT architect instruction. Z.AI is in STOP state per the master operating prompt §25 step 10 and the user's explicit instruction "STOP after documentation update. Do not create application code. Do not begin Phase 2."
+
+### Open architectural questions for ChatGPT
+
+(Updated from Task 1 — some resolved, some new)
+
+1. **Clara integration mode**: package dependency vs git submodule vs vendored copy. Phase 2 deep audit (ISS-002) will inform this. *(unchanged from Task 1)*
+2. **Worker host selection** (ISS-004 / ADR-007): Railway / Fly.io / Render / self-hosted VM. Blocks Phase 9; decide before Phase 4. *(unchanged from Task 1)*
+3. **Supabase project provisioning** (RSK-001): user must provision before Phase 4. PostgreSQL/Supabase remains approved infrastructure (ADR-009). *(clarified)*
+4. **WhatsApp Business Account registration** (RSK-004): user must begin Meta Business Account setup before Phase 13 (ideally during Phase 11). *(unchanged from Task 1)*
+5. **OAuth client registration** for Gmail and Zoho: user must register OAuth clients before Phases 6 and 8. *(unchanged from Task 1)*
+6. **Observability vendor selection** (Phase 17): Axiom / BetterStack / self-hosted. Decide before Phase 17. *(unchanged from Task 1)*
+7. **Transactional email provider** for product notifications: Resend / Postmark / SendGrid. Decide in Phase 2. *(unchanged from Task 1)*
+8. **ADR-010 ratification** (MessagingChannel abstraction): ChatGPT must ratify or correct before Phase 13 implementation begins. *(new — from correction #5)*
+9. **ISS-005 handling**: Confirm that Tools being APP-SPECIFIC and MCP being out-of-scope-for-Phases-1-19 is acceptable, or direct a different approach. *(new — from correction #1)*
+
+### Open risks for ChatGPT
+
+(Updated from Task 1 — see `docs/project-control/RISKS.md`)
+- RSK-001 through RSK-006 (unchanged; RSK-001 clarified per ADR-009).
+
+---
+
+## Phase 1 Conditional-Approval Corrections Report
+
+```text
+Corrections required:           8
+Corrections implemented:        8
+Corrections status:             all 8 implemented; awaiting ChatGPT final approval
+
+New architecture documents:     6
+  - docs/architecture/CLARA_REUSE_MAP.md          (14 Clara capability areas; ISS-005 finding)
+  - docs/architecture/DOMAIN_MODEL.md             (13 domain entities, DDD view)
+  - docs/architecture/EMAIL_AGENT_ARCHITECTURE.md (6 layers, end-to-end flow)
+  - docs/architecture/MESSAGING_CHANNEL_ARCHITECTURE.md (MessagingChannel + ProviderAdapter; ADR-010)
+  - docs/architecture/CLARA_VOICE_INTEGRATION.md  (Clara vs ai-comms-agent ownership boundary)
+  - docs/architecture/SECURITY_MODEL.md           (5 focus areas, multi-layer defense)
+
+New ADRs:                       2
+  - ADR-009 (accepted) — PostgreSQL/Supabase remains approved infrastructure; Phase 1 defers DB implementation only
+  - ADR-010 (proposed) — MessagingChannel abstraction (WhatsApp is one adapter)
+
+New issues:                     1
+  - ISS-005 — Clara has no standalone MCP/tool runtime module
+
+Updated project-control:       5 files
+  - PROJECT_STATE.md, NEXT_ACTION.md, CURRENT_PHASE.md, VERIFICATION_STATE.md, worklog.md
+
+Updated decisions:              1 file (DECISIONS.md — ADR-009 + ADR-010)
+Updated issues:                 1 file (ISSUES.md — ISS-005)
+Updated risks:                  1 file (RISKS.md — RSK-001 clarified)
+
+Commit SHA:                     (populated after push — see PROJECT_STATE.md current_commit)
+Verification performed:         Continuity self-test PASSED; secret scan clean; all 8 corrections implemented as specified
+Recommended next action:        ChatGPT re-reviews corrections; grants FINAL approval OR issues further corrections
+```
+
+Z.AI is in STOP state. Waiting for the next ChatGPT architect instruction.

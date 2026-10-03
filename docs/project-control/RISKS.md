@@ -11,10 +11,10 @@ Statuses: `identified`, `mitigating`, `materialized`, `retired`.
 - **Identified:** 2026-10-03
 - **Likelihood:** high (will materialize if not addressed before Phase 4)
 - **Impact:** high (blocks all database work)
-- **Owner:** ChatGPT (provisioning decision) + Z.AI (schema implementation)
+- **Owner:** User (provisioning) + Z.AI (schema implementation)
 - **Status:** identified
-- **Description:** The data model is fully documented in `docs/architecture/DATA-MODEL.md`, but no Supabase project exists. Provisioning requires Supabase credentials (URL, anon key, service-role key) which the user has not yet provided for this project. The Prima service token in the chat is for Z.AI's own backend, not for Supabase.
-- **Mitigation:** Before Phase 4, the user provisions a Supabase project and provides the connection strings via Vercel project env vars (not in the repo). Z.AI then inspects the project (per `RULES.md §11`) before applying any migration.
+- **Description:** PostgreSQL/Supabase remains approved infrastructure (ADR-009, ADR-002). Phase 1 is documentation-only by design — no database implementation during Phase 1. The data model is fully documented in `docs/architecture/DATA-MODEL.md` and `docs/architecture/DOMAIN_MODEL.md`, but no Supabase project exists yet. Provisioning requires Supabase credentials (URL, anon key, service-role key) which the user has not yet provided for this project. The Prima service token in the chat is for Z.AI's own backend, not for Supabase.
+- **Mitigation:** Before Phase 4, the user provisions a Supabase project and provides the connection strings via Vercel project env vars (not in the repo). Z.AI then inspects the project (per `RULES.md §11`) before applying any migration. The phrase "No Supabase" is deprecated (per ADR-009); the canonical phrasing is "No database implementation during Phase 1. PostgreSQL/Supabase remains approved infrastructure."
 
 ---
 

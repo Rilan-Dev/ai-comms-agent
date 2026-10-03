@@ -170,17 +170,23 @@ The full phase sequence is in [`docs/plans/ROADMAP.md`](docs/plans/ROADMAP.md).
 | Document | Scope |
 |---|---|
 | `docs/architecture/ARCHITECTURE.md` | Overall system: frontend, backend, worker, queue, db, vector, cache, provider, AI, realtime, security, observability |
-| `docs/architecture/DATA-MODEL.md` | All entities and relationships (org, users, roles, agents, email, WhatsApp, conversations, schedules, audit, AI usage, voice) |
+| `docs/architecture/DATA-MODEL.md` | Persistence schema: all tables, columns, indexes, RLS (Phase 4 implements) |
+| `docs/architecture/DOMAIN_MODEL.md` | DDD view: 13 domain entities with behavior, invariants, lifecycle, relationships (correction #3) |
 | `docs/architecture/AI-ARCHITECTURE.md` | Agent runtime: intent, context, policy, tool registry, authorization, execution, audit |
-| `docs/architecture/REALTIME-VOICE-ARCHITECTURE.md` | Clara voice reuse, transport, cancellation, telemetry |
+| `docs/architecture/REALTIME-VOICE-ARCHITECTURE.md` | Full voice system view: Clara voice reuse, transport, cancellation, telemetry |
+| `docs/architecture/CLARA_VOICE_INTEGRATION.md` | Focused voice ownership boundary: Clara owns transport/routing/streaming/lifecycle; ai-comms-agent owns email context/business actions/permissions (correction #6) |
 | `docs/architecture/EMAIL-PROVIDER-ARCHITECTURE.md` | EmailProvider adapter model and capability discovery |
-| `docs/architecture/WHATSAPP-ARCHITECTURE.md` | One WhatsApp Business account per agent; webhook + outbound |
+| `docs/architecture/EMAIL_AGENT_ARCHITECTURE.md` | 6-layer email agent service: connector, sync workers, indexing, agent runtime, action execution, provider adapters (correction #4) |
+| `docs/architecture/WHATSAPP-ARCHITECTURE.md` | WhatsApp Business Cloud API integration (now sub-document of MESSAGING_CHANNEL_ARCHITECTURE) |
+| `docs/architecture/MESSAGING_CHANNEL_ARCHITECTURE.md` | Provider-neutral MessagingChannel interface + ProviderAdapter pattern; WhatsApp is one adapter (correction #5; ADR-010) |
 | `docs/architecture/EVENTS-AND-QUEUES.md` | RabbitMQ topology, event contracts, idempotency, DLQ |
-| `docs/architecture/SECURITY.md` | Auth, RBAC, credential encryption, prompt injection, SSRF, HTML sanitization, audit |
+| `docs/architecture/SECURITY.md` | Comprehensive security: auth, RBAC, credential encryption, prompt injection, SSRF, HTML sanitization, audit |
+| `docs/architecture/SECURITY_MODEL.md` | Focused security model: OAuth credentials, encryption, email prompt injection, agent permissions, action approval (correction #7) |
 | `docs/architecture/OBSERVABILITY.md` | Metrics, traces, structured logs, latency budgets |
 | `docs/architecture/UI-UX.md` | Navigation and major screens (document only — do not build in Phase 1) |
 | `docs/architecture/DEPLOYMENT.md` | Vercel + Supabase deployment architecture |
-| `docs/architecture/CLARA-INTEGRATION.md` | What is reused vs adapted vs application-specific |
+| `docs/architecture/CLARA-INTEGRATION.md` | What is reused vs adapted vs application-specific (high-level integration plan) |
+| `docs/architecture/CLARA_REUSE_MAP.md` | Detailed Clara capability reuse map: 14 areas with source paths, entry points, contracts, dependencies, adapter requirements, usage (correction #1) |
 
 ---
 

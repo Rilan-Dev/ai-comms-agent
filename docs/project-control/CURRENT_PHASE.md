@@ -5,9 +5,9 @@
 ```yaml
 phase: 1
 phase_name: "Project Definition and Architecture"
-status: "documentation_complete_awaiting_review"
+status: "conditional_approval_corrections_implemented_awaiting_final_approval"
 start_date: 2026-10-03
-completion_date: 2026-10-03
+completion_date: 2026-10-03 (initial); 2026-10-03 (corrections)
 architect: "ChatGPT (external)"
 developer: "Z.AI"
 approved_scope: |
@@ -22,12 +22,22 @@ phase_objective: |
   provider contracts, AI architecture, security, observability, UI/UX
   (document only), deployment, and the phase-by-phase development roadmap.
 
+phase_1_review:
+  initial_review_date: 2026-10-03
+  initial_review_result: "CONDITIONAL APPROVAL"
+  corrections_required: 8
+  corrections_implemented: 8
+  corrections_implemented_date: 2026-10-03
+  final_approval: "PENDING — awaiting ChatGPT re-review of corrections"
+
 deliverables:
+  # Root
   - README.md
   - AGENTS.md
   - worklog.md
   - LICENSE
   - .gitignore
+  # Project-control
   - docs/project-control/PROJECT_STATE.md
   - docs/project-control/RULES.md
   - docs/project-control/CURRENT_PHASE.md
@@ -38,6 +48,7 @@ deliverables:
   - docs/project-control/ISSUES.md
   - docs/project-control/RISKS.md
   - docs/project-control/CHAT_CONTINUITY.md
+  # Architecture (initial 12)
   - docs/architecture/ARCHITECTURE.md
   - docs/architecture/DATA-MODEL.md
   - docs/architecture/AI-ARCHITECTURE.md
@@ -50,12 +61,21 @@ deliverables:
   - docs/architecture/UI-UX.md
   - docs/architecture/DEPLOYMENT.md
   - docs/architecture/CLARA-INTEGRATION.md
+  # Architecture (added in conditional-approval corrections — 6 new)
+  - docs/architecture/CLARA_REUSE_MAP.md          # correction #1
+  - docs/architecture/DOMAIN_MODEL.md             # correction #3
+  - docs/architecture/EMAIL_AGENT_ARCHITECTURE.md # correction #4
+  - docs/architecture/MESSAGING_CHANNEL_ARCHITECTURE.md  # correction #5
+  - docs/architecture/CLARA_VOICE_INTEGRATION.md  # correction #6
+  - docs/architecture/SECURITY_MODEL.md           # correction #7
+  # Specs
   - docs/specs/PRODUCT.md
   - docs/specs/PROVIDER-CONTRACTS.md
   - docs/specs/TOOL-CONTRACTS.md
   - docs/specs/AUTHORIZATION.md
   - docs/specs/EVENT-CONTRACTS.md
   - docs/specs/API-CONTRACTS.md
+  # Plans
   - docs/plans/ROADMAP.md
 
 forbidden_in_phase_1:
@@ -72,7 +92,7 @@ forbidden_in_phase_1:
 exit_criteria:
   - "All deliverables above are committed to the repository"
   - "A fresh ChatGPT session can recover full project state from the repository alone (continuity test passed)"
-  - "ChatGPT architect reviews and explicitly approves Phase 1"
+  - "ChatGPT architect reviews and explicitly approves Phase 1 (CONDITIONAL APPROVAL received; corrections implemented; FINAL APPROVAL pending)"
   - "ChatGPT issues the Phase 2 Z.AI_HANDOFF"
 
 next_phase_if_approved: 2  # Application foundation and approved project template
