@@ -428,3 +428,11 @@ takeover:
 - Verification covers successful organization+owner creation, transaction-safe ownership transfer, exactly-one-owner result, SECURITY DEFINER helper presence, and expected rejection of direct ownerless organization creation.
 - Current code verification commit: ede90e43f1d106206657f85b0f09efe7b5521785.
 - **Phase 3 acceptance remains PENDING until CI provides a green runtime result. Phase 4 remains NOT AUTHORIZED.**
+
+
+takeover_execution_policy:
+  development: "continue without waiting for GitHub Actions or Vercel validation jobs"
+  validation: "deferred until feature development is substantially complete"
+  phase_4_authorized: true
+  authorized_by: "explicit project-controller instruction 2026-10-04"
+  latest_product_work: "Phase 4 domain schema + modern communications workspace UI"
