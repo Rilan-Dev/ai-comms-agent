@@ -1074,3 +1074,18 @@ Runtime CI evidence is now the required next acceptance evidence. Phase 4 remain
 - No billing/subscription/marketplace features.
 - No production database provisioning.
 - No false CI/Vercel success claims.
+
+
+## Task ID: 13
+## Phase: 4/5 — Persistence + Provider Runtime Foundation
+
+- **Status**: implementation_in_progress
+- Added cross-tenant agent-account integrity migration and transactional ownership-transfer/create-organization RPCs.
+- Added production Supabase identity repository adapter and exported server-only Supabase service client.
+- Expanded email provider contract with Microsoft Graph readiness and normalized persisted status vocabulary.
+- Added provider registry and a deterministic MockEmailProvider.
+- Implemented Gmail REST adapter foundation covering capability discovery, folders/labels, full/incremental sync state, search, threads, drafts, send, reply/forward, labels/read/archive/move and attachments.
+- Gmail implementation follows Google's REST resources and incremental-history model; provider scopes remain intentionally configurable and least-privilege. citeturn0search0turn0search1turn0search8
+- UI modernization continued on navigation, dashboard metric styling, inbox, and accessibility focus states.
+
+Development continues without waiting for CI/Vercel results. Formal verification is deferred to the feature-complete milestone.
