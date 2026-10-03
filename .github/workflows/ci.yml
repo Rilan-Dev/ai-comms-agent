@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   verify:
-    name: Typecheck, Lint, Build, Secret Scan
+    name: Typecheck, Test, Build, Secret Scan
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -29,7 +29,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
@@ -37,6 +37,9 @@ jobs:
 
       - name: Typecheck
         run: pnpm -r typecheck
+
+      - name: Test
+        run: pnpm --filter @ai-comms-agent/web test
 
       - name: Build web
         run: pnpm --filter @ai-comms-agent/web build
