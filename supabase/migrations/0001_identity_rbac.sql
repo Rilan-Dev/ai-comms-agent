@@ -373,6 +373,45 @@ CREATE CONSTRAINT TRIGGER organization_memberships_owner_count
   DEFERRABLE INITIALLY DEFERRED
   FOR EACH ROW EXECUTE FUNCTION enforce_exactly_one_owner();
 
+-- An INSERT into organizations does not fire the membership trigger. Add a
+-- deferred trigger on organizations so direct SQL cannot commit an existing
+-- organization with zero memberships/owners. The membership trigger above
+-- still validates membership INSERT/UPDATE/DELETE and ownership transfers.
+CREATE OR REPLACE FUNCTION enforce_organization_has_owner()
+RETURNS TRIGGER AS $
+DECLARE
+  owner_count integer;
+BEGIN
+  -- For INSERT/UPDATE, the organization exists at deferred execution time.
+  -- DELETE is intentionally not included: deleting the organization itself
+  -- removes the invariant's subject, and membership rows are removed by the
+  -- organization_memberships FK cascade.
+  SELECT count(*) INTO owner_count
+  FROM organization_memberships
+  WHERE organization_id = NEW.id
+    AND role = 'owner'
+    AND status = 'active';
+
+  IF owner_count = 0 THEN
+    RAISE EXCEPTION 'Organization % has no active owner at commit (exactly one required)',
+      NEW.id
+      USING ERRCODE = 'check_violation';
+  ELSIF owner_count > 1 THEN
+    RAISE EXCEPTION 'Organization % has % active owners at commit (exactly one required)',
+      NEW.id, owner_count
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  RETURN NULL;
+END;
+$ LANGUAGE plpgsql;
+
+DROP CONSTRAINT TRIGGER IF EXISTS organizations_owner_count ON organizations;
+CREATE CONSTRAINT TRIGGER organizations_owner_count
+  AFTER INSERT OR UPDATE ON organizations
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION enforce_organization_has_owner();
+
 -- ============================================================================
 -- Row-Level Security (per SECURITY_MODEL.md §3 and RULES.md §11)
 -- "authenticated alone is never authorization"
