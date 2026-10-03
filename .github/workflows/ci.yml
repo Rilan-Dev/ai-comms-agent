@@ -47,6 +47,12 @@ jobs:
       - name: Build worker
         run: pnpm --filter @ai-comms-agent/worker build
 
+
+      - name: Verify PostgreSQL migration runtime
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/verify-phase3-migration.sql
+
       - name: Secret scan
         run: |
           set -e
