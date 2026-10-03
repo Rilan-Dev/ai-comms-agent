@@ -127,3 +127,8 @@ RBAC persistence: Option A (system roles via TypeScript SYSTEM_ROLE_PERMISSIONS;
 
 
 **Latest acceptance findings (2026-10-04):** direct SQL organization INSERTs are now covered by a deferred organization-level owner trigger, and RLS membership checks now use pinned SECURITY DEFINER helpers to avoid recursive policy evaluation. Phase 4 remains unauthorized.
+
+
+## ChatGPT takeover — runtime verification gate (2026-10-04)
+
+The migration is now backed by disposable PostgreSQL 17 CI runtime verification. Phase 3 is still gated: do not authorize Phase 4 until the workflow proves the migration executes successfully and the owner invariant behaves correctly at transaction commit.
