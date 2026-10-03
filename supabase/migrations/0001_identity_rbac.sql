@@ -367,7 +367,7 @@ $$ LANGUAGE plpgsql;
 -- zero-owner state, while still rejecting a transaction that commits with
 -- zero or multiple active owners. DELETE is included so removing the final
 -- membership cannot leave an existing organization ownerless.
-DROP CONSTRAINT TRIGGER IF EXISTS organization_memberships_owner_count ON organization_memberships;
+DROP TRIGGER IF EXISTS organization_memberships_owner_count ON organization_memberships;
 CREATE CONSTRAINT TRIGGER organization_memberships_owner_count
   AFTER INSERT OR UPDATE OR DELETE ON organization_memberships
   DEFERRABLE INITIALLY DEFERRED
@@ -406,7 +406,7 @@ BEGIN
 END;
 $ LANGUAGE plpgsql;
 
-DROP CONSTRAINT TRIGGER IF EXISTS organizations_owner_count ON organizations;
+DROP TRIGGER IF EXISTS organizations_owner_count ON organizations;
 CREATE CONSTRAINT TRIGGER organizations_owner_count
   AFTER INSERT OR UPDATE ON organizations
   DEFERRABLE INITIALLY DEFERRED
