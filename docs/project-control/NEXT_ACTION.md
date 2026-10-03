@@ -14,7 +14,7 @@ action: |
   Complete final Phase 3 verification and acceptance. If all evidence is green, accept Phase 3 and issue the Phase 4 database-foundation implementation plan under ChatGPT ownership. Do not start Phase 4 until acceptance is recorded.
 
 context:
-  phase_3_transaction_safe_commit: "ceef688bdbc482644820e927e6d05f6178177c3a"
+  phase_3_transaction_safe_commit: "64daa53a3643bb14c530522ccaa3504cca72434f"
   developer_verification: "complete (typecheck 5/5, 91/91 tests, build pass, secret scan clean)"
   vercel_deployment: "blocked/pending — Vercel build-rate-limit surfaced during rapid takeover commits; no latest READY deployment claimed"
   chatgpt_acceptance: "pending"
@@ -69,3 +69,7 @@ Z.AI is in **STOP** state, awaiting ChatGPT's final Phase 3 acceptance decision.
 | 2026-10-03 | Z.AI final correction (commit d4aa08b). 69 tests. |
 | 2026-10-03 | ChatGPT review: owner trigger not transaction-safe; DELETE not covered; createOrganization public. |
 | 2026-10-03 | Z.AI transaction-safe owner invariant (commit 4289e53). 91 tests. Vercel READY. Next: ChatGPT final acceptance. Z.AI must STOP. |
+
+
+### ChatGPT takeover update — 2026-10-04
+Before Phase 3 acceptance, perform runtime verification of the corrected migration. The latest code commit is 64daa53a3643bb14c530522ccaa3504cca72434f. Verify PostgreSQL migration syntax and owner/RLS behavior in CI or an equivalent PostgreSQL runtime. Do not authorize Phase 4 until evidence is green.
