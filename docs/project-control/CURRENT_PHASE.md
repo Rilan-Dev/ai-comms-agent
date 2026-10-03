@@ -5,11 +5,11 @@
 ```yaml
 phase: 3
 phase_name: "Identity, Organization, Users, Roles & RBAC"
-status: "transaction_safe_owner_invariant_awaiting_chatgpt_acceptance"
+status: "final_owner_delete_correction_awaiting_chatgpt_acceptance"
 start_date: 2026-10-03
 implementation_completion_date: 2026-10-03
-architect: "ChatGPT (external)"
-developer: "Z.AI"
+architect: "ChatGPT"
+developer: "ChatGPT"
 chatgpt_acceptance: "pending"
 phase_4_authorized: false
 
@@ -121,3 +121,6 @@ ChatGPT review found the statement-level BEFORE trigger was not transaction-safe
 Tests: 91 total (8 files) — 40 original + 22 owner-invariant + 8 RBAC-persistence-consistency + 21 migration-verification. All pass.
 
 RBAC persistence: Option A (system roles via TypeScript SYSTEM_ROLE_PERMISSIONS; `roles`/`role_permissions` tables deferred). Permission catalogue: 9 Phase 3 identity/RBAC foundation permissions only (feature-domain permissions deferred to feature phases).
+
+
+**Takeover update (2026-10-04):** ChatGPT is now the primary implementer. The final PostgreSQL owner-invariant correction validates the affected organization directly for INSERT/UPDATE/DELETE, including the final-owner deletion case where no membership rows remain. CI now executes the web test suite and uses Node 24 to match the deployed runtime. Phase 3 acceptance remains pending until final verification evidence is complete.
