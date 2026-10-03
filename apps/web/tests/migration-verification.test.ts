@@ -72,6 +72,13 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
       expect(migrationSql).toContain("owner_count = 0");
     });
 
+    it("guards direct organization INSERTs with a deferred owner-count trigger", () => {
+      expect(migrationSql).toContain("enforce_organization_has_owner");
+      expect(migrationSql).toContain("CREATE CONSTRAINT TRIGGER organizations_owner_count");
+      expect(migrationSql).toContain("AFTER INSERT OR UPDATE ON organizations");
+      expect(migrationSql).toContain("DEFERRABLE INITIALLY DEFERRED");
+    });
+
     it("rejects non-active owner status (invited/suspended)", () => {
       expect(migrationSql).toContain("Owner membership must have status active");
     });
@@ -108,6 +115,22 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
       expect(migrationSql).not.toContain("'email.send'");
       expect(migrationSql).not.toContain("'whatsapp.send'");
       expect(migrationSql).not.toContain("'schedule.read'");
+    });
+  });
+
+  describe("RLS recursion safety", () => {
+    it("uses SECURITY DEFINER membership helpers", () => {
+      expect(migrationSql).toContain("is_active_organization_member");
+      expect(migrationSql).toContain("is_active_organization_admin_or_owner");
+      expect(migrationSql).toContain("SECURITY DEFINER");
+    });
+
+    it("pins the SECURITY DEFINER helper search_path", () => {
+      expect(migrationSql).toContain("SET search_path = public");
+    });
+
+    it("does not self-query organization_memberships directly from its RLS policy", () => {
+      expect(migrationSql).not.toContain("SELECT 1 FROM organization_memberships m2");
     });
   });
 
