@@ -150,5 +150,12 @@ export function authorizationErrorToResponse(error: unknown): NextResponse {
       { status: 403 },
     );
   }
-  throw error; // Unexpected errors propagate
+  // Unexpected errors: return 500 without leaking internal details.
+  // In production, this includes the DevIdentityAdapter production guard
+  // throw (which signals a configuration error — dev adapter used in production).
+  console.error("[authorization] unexpected error:", error);
+  return NextResponse.json(
+    { error: "internal_server_error" },
+    { status: 500 },
+  );
 }
