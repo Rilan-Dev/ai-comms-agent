@@ -952,3 +952,24 @@ Z.AI is in STOP state. Awaiting ChatGPT final Phase 3 acceptance decision.
 ### Governance
 
 Phase 3 remains pending ChatGPT acceptance until final verification evidence is complete. Phase 4 remains unauthorized.
+
+
+## Task ID: 10
+## Phase: 3 — PostgreSQL Invariant and RLS Hardening
+
+- **Status**: correction_implemented_awaiting_final_verification
+- **Objective**: Close two additional schema-level gaps found during ChatGPT acceptance review: direct ownerless organization creation and recursive RLS membership policies.
+- **Architect / Developer**: ChatGPT
+- **Starting commit**: 3e621c5940a7212b68bb85cc034b90532aabcced
+
+### Findings and corrections
+
+- The membership deferred trigger alone could not detect a direct INSERT into `organizations` with no membership row because no membership trigger would fire. Added `enforce_organization_has_owner()` plus a deferred constraint trigger on organization INSERT/UPDATE.
+- The original RLS policies queried `organization_memberships` from policies protecting `organization_memberships` itself and from the organization policy, creating a recursive RLS evaluation path. Replaced direct policy subqueries with SECURITY DEFINER, STABLE helper functions using `SET search_path = public`.
+- Corrected invalid PostgreSQL trigger-drop syntax from `DROP CONSTRAINT TRIGGER` to `DROP TRIGGER`.
+- Expanded migration static verification for direct organization creation and RLS recursion safety.
+- PostgreSQL documentation confirms constraint triggers are AFTER ROW triggers and may be DEFERRABLE/INITIALLY DEFERRED, and RLS policy expressions execute under the invoking user's privileges; SECURITY DEFINER functions are the appropriate mechanism for protected lookup tables. 
+
+### Governance
+
+Phase 3 is still pending final ChatGPT acceptance. Phase 4 remains unauthorized. No Clara source or submodule changes.
