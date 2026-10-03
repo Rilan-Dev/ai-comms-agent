@@ -408,3 +408,9 @@ takeover:
 - The verification gate has not yet produced connector-visible GitHub Actions results. This is an evidence limitation, not a pass.
 - Vercel remains rate-limited/canceled for the latest rapid commits; no latest READY claim.
 - **Phase 3 acceptance: PENDING. Phase 4: NOT AUTHORIZED.**
+
+
+### 2026-10-04 CI runtime-verification hardening
+- CI now provisions disposable PostgreSQL 17 and executes the Phase 3 migration runtime verification script.
+- CI also executes an expected-failure check proving direct ownerless organization creation is rejected at commit.
+- Migration static and runtime verification remain the acceptance gate; Phase 4 is still not authorized until CI provides green evidence.
