@@ -5,11 +5,11 @@ Machine-readable verification record. The goal is to distinguish "developer says
 ---
 
 ```yaml
-# Verification state — as of Phase 2 control-state correction
+# Verification state — updated during ChatGPT takeover on 2026-10-04
 schema_version: 1
 project: ai-comms-agent
-phase: 2
-phase_name: "Application Foundation and Approved Template"
+phase: 3
+phase_name: "Identity, Organization, Users, Roles & RBAC"
 phase_2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase_2_control_state_correction_commit: "(populated after this commit — see git log)"
 
@@ -379,3 +379,16 @@ evidence:
 ## Verification lifecycle (forward-looking)
 
 From Phase 3 onward, this file is updated on every commit with the actual results of: typecheck, lint, unit tests, integration tests, build, runtime checks, security checks, deployment verification, and (where applicable) browser verification. The schema above is the stable shape; new fields may be added but existing fields will not be removed without a schema version bump.
+
+takeover:
+  primary_implementer: "ChatGPT"
+  previous_implementer: "Z.AI"
+  takeover_date: "2026-10-04"
+  current_commit: "967639b5eed41115ecf8021c88c1de060aad7700"
+  latest_change:
+    migration_owner_invariant: "Deferred constraint trigger now validates affected existing organizations directly, including final-owner DELETE where membership rows become empty."
+    migration_tests: "Added static assertions for TG_OP/OLD/NEW affected-organization handling and zero-owner detection."
+    ci: "Web tests added to CI; Node 24 aligned with Vercel runtime."
+  execution_status:
+    phase_3: "awaiting_final_chatgpt_acceptance"
+    phase_4_authorized: false
