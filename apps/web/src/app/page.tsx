@@ -1,8 +1,8 @@
 const metrics = [
-  { label: "Unread mail", value: "24", delta: "+8 today", tone: "blue" },
-  { label: "Needs action", value: "7", delta: "3 high priority", tone: "amber" },
-  { label: "AI conversations", value: "18", delta: "12 voice · 6 chat", tone: "violet" },
-  { label: "Automations", value: "12", delta: "11 healthy", tone: "green" },
+  { label: "Unread mail", value: "24", delta: "+8 today", dot: "bg-sky-500" },
+  { label: "Needs action", value: "7", delta: "3 high priority", dot: "bg-amber-500" },
+  { label: "AI conversations", value: "18", delta: "12 voice · 6 chat", dot: "bg-violet-500" },
+  { label: "Automations", value: "12", delta: "11 healthy", dot: "bg-emerald-500" },
 ] as const;
 
 const activity = [
@@ -43,7 +43,7 @@ export default function HomePage() {
             <div key={metric.label} className="group rounded-2xl border bg-background/85 p-5 shadow-[0_8px_30px_rgba(15,23,42,.04)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-lg">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{metric.label}</span>
-                <span className={`h-2 w-2 rounded-full bg-${metric.tone}-500`} />
+                <span className={`h-2 w-2 rounded-full ${metric.dot}`} />
               </div>
               <div className="mt-4 flex items-end gap-3">
                 <span className="text-3xl font-semibold tracking-tight">{metric.value}</span>
