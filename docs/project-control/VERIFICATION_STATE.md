@@ -421,3 +421,10 @@ takeover:
 - CI now provisions disposable PostgreSQL 17, applies the Phase 3 migration, then exercises owner transfer and ownerless-organization rejection.
 - **Acceptance remains PENDING until CI produces green runtime evidence.**
 - **Phase 4 remains NOT AUTHORIZED.**
+
+
+### Runtime verification gate — 2026-10-04
+- CI now provisions disposable PostgreSQL 17 and executes the Phase 3 migration verification script.
+- Verification covers successful organization+owner creation, transaction-safe ownership transfer, exactly-one-owner result, SECURITY DEFINER helper presence, and expected rejection of direct ownerless organization creation.
+- Current code verification commit: ede90e43f1d106206657f85b0f09efe7b5521785.
+- **Phase 3 acceptance remains PENDING until CI provides a green runtime result. Phase 4 remains NOT AUTHORIZED.**
