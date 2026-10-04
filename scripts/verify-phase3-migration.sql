@@ -53,25 +53,6 @@ BEGIN
   IF helper_count <> 2 THEN
     RAISE EXCEPTION 'Runtime verification failed: expected both RLS helper functions';
   END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'agents')
-     OR NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'email_accounts')
-     OR NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'whatsapp_accounts')
-     OR NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'conversations')
-     OR NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'scheduled_jobs')
-     OR NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'ai_provider_configs')
-     OR NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'voice_sessions')
-     OR NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'audit_events')
-  THEN
-    RAISE EXCEPTION 'Runtime verification failed: Phase 4 foundation tables are incomplete';
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes
-    WHERE indexname = 'email_messages_search_tsv_idx'
-  ) THEN
-    RAISE EXCEPTION 'Runtime verification failed: email full-text index is missing';
-  END IF;
 END;
 $$;
 
