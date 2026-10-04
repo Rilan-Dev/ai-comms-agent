@@ -1,14 +1,18 @@
-import { createSupabaseServiceClient } from "../client";
+import { query } from "../client";
 import { decryptCredential, encryptCredential } from "../security";
-import type {
-  CapabilitySet,
-  EmailAccount,
-  EmailProviderType,
-} from "@ai-comms-agent/shared";
+import type { CapabilitySet, EmailAccount, EmailProviderType } from "@ai-comms-agent/shared";
 
 type Row = Record<string, unknown>;
 
-function decodeBytea(value: unknown): Buffer {\n  if (Buffer.isBuffer(value)) return value;\n  if (value instanceof Uint8Array) return Buffer.from(value);\n  if (typeof value !== "string") throw new Error("Encrypted credential payload is not byte data");\n  if (value.startsWith("\\\\x")) return Buffer.from(value.slice(2), "hex");\n  return Buffer.from(value, "base64");\n}\n\nfunction account(row: Row): EmailAccount {
+function decodeBytea(value: unknown): Buffer {
+  if (Buffer.isBuffer(value)) return value;
+  if (value instanceof Uint8Array) return Buffer.from(value);
+  if (typeof value !== "string") throw new Error("Encrypted credential payload is not byte data");
+  if (value.startsWith("\\x")) return Buffer.from(value.slice(2), "hex");
+  return Buffer.from(value, "base64");
+}
+
+function account(row: Row): EmailAccount {
   const status = String(row.status);
   const mappedStatus =
     status === "active" ? "connected" :
@@ -39,84 +43,60 @@ export interface CreateEmailAccountInput {
   capabilities: CapabilitySet;
 }
 
-export class SupabaseEmailAccountRepository {
-  private readonly db = createSupabaseServiceClient();
-
+export class PostgresEmailAccountRepository {
   async create(input: CreateEmailAccountInput): Promise<EmailAccount> {
-    const { data, error } = await this.db
-      .from("email_accounts")
-      .insert({
-        organization_id: input.organizationId,
-        provider: input.provider,
-        email_address: input.emailAddress,
-        display_name: input.displayName ?? null,
-        connection_config: input.connectionConfig ?? {},
-        capabilities: input.capabilities,
-        status: "active",
-      })
-      .select("*")
-      .single();
-
-    if (error) throw error;
-    return account(data);
+    const r = await query<Row>(
+      `INSERT INTO email_accounts
+       (organization_id, provider, email_address, display_name, connection_config, capabilities, status)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, 'active')
+       RETURNING *`,
+      [
+        input.organizationId,
+        input.provider,
+        input.emailAddress,
+        input.displayName ?? null,
+        JSON.stringify(input.connectionConfig ?? {}),
+        JSON.stringify(input.capabilities),
+      ],
+    );
+    return account(r.rows[0]);
   }
 
   async getById(id: string): Promise<EmailAccount | null> {
-    const { data, error } = await this.db
-      .from("email_accounts")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data ? account(data) : null;
+    const r = await query<Row>("SELECT * FROM email_accounts WHERE id = $1", [id]);
+    return r.rows[0] ? account(r.rows[0]) : null;
   }
 
   async listForOrganization(organizationId: string): Promise<EmailAccount[]> {
-    const { data, error } = await this.db
-      .from("email_accounts")
-      .select("*")
-      .eq("organization_id", organizationId)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    return (data ?? []).map(account);
+    const r = await query<Row>(
+      "SELECT * FROM email_accounts WHERE organization_id = $1 ORDER BY created_at DESC",
+      [organizationId],
+    );
+    return r.rows.map(account);
   }
 
   async updateCapabilities(id: string, capabilities: CapabilitySet): Promise<EmailAccount | null> {
-    const { data, error } = await this.db
-      .from("email_accounts")
-      .update({ capabilities })
-      .eq("id", id)
-      .select("*")
-      .maybeSingle();
-
-    if (error) throw error;
-    return data ? account(data) : null;
+    const r = await query<Row>(
+      "UPDATE email_accounts SET capabilities = $1::jsonb WHERE id = $2 RETURNING *",
+      [JSON.stringify(capabilities), id],
+    );
+    return r.rows[0] ? account(r.rows[0]) : null;
   }
 
   async updateSyncState(id: string, lastSyncAt: string): Promise<EmailAccount | null> {
-    const { data, error } = await this.db
-      .from("email_accounts")
-      .update({ last_sync_at: lastSyncAt, status: "active" })
-      .eq("id", id)
-      .select("*")
-      .maybeSingle();
-
-    if (error) throw error;
-    return data ? account(data) : null;
+    const r = await query<Row>(
+      "UPDATE email_accounts SET last_sync_at = $1, status = 'active' WHERE id = $2 RETURNING *",
+      [lastSyncAt, id],
+    );
+    return r.rows[0] ? account(r.rows[0]) : null;
   }
 
   async updateStatus(id: string, status: "active" | "expired" | "revoked" | "error"): Promise<EmailAccount | null> {
-    const { data, error } = await this.db
-      .from("email_accounts")
-      .update({ status, last_error_at: status === "error" ? new Date().toISOString() : null })
-      .eq("id", id)
-      .select("*")
-      .maybeSingle();
-
-    if (error) throw error;
-    return data ? account(data) : null;
+    const r = await query<Row>(
+      "UPDATE email_accounts SET status = $1, last_error_at = CASE WHEN $1 = 'error' THEN now() ELSE NULL END WHERE id = $2 RETURNING *",
+      [status, id],
+    );
+    return r.rows[0] ? account(r.rows[0]) : null;
   }
 
   async saveCredentials(
@@ -126,29 +106,30 @@ export class SupabaseEmailAccountRepository {
     masterKey: Buffer,
   ): Promise<void> {
     const encrypted = encryptCredential(JSON.stringify(payload), masterKey);
-    const { error } = await this.db
-      .from("email_account_credentials")
-      .upsert({
-        email_account_id: accountId,
-        credential_type: credentialType,
-        encrypted_payload: encrypted,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "email_account_id" });
-
-    if (error) throw error;
+    await query(
+      `INSERT INTO email_account_credentials
+       (email_account_id, credential_type, encrypted_payload, updated_at)
+       VALUES ($1, $2, $3, now())
+       ON CONFLICT (email_account_id)
+       DO UPDATE SET credential_type = EXCLUDED.credential_type,
+                     encrypted_payload = EXCLUDED.encrypted_payload,
+                     updated_at = now()`,
+      [accountId, credentialType, encrypted],
+    );
   }
 
   async loadCredentials(accountId: string, masterKey: Buffer): Promise<Record<string, unknown> | null> {
-    const { data, error } = await this.db
-      .from("email_account_credentials")
-      .select("encrypted_payload")
-      .eq("email_account_id", accountId)
-      .maybeSingle();
-
-    if (error) throw error;
-    if (!data?.encrypted_payload) return null;
-
-    const raw = decryptCredential(decodeBytea(data.encrypted_payload), masterKey).toString("utf8");
+    const r = await query<Row>(
+      "SELECT encrypted_payload FROM email_account_credentials WHERE email_account_id = $1",
+      [accountId],
+    );
+    if (!r.rows[0]?.encrypted_payload) return null;
+    const raw = decryptCredential(
+      decodeBytea(r.rows[0].encrypted_payload),
+      masterKey,
+    ).toString("utf8");
     return JSON.parse(raw) as Record<string, unknown>;
   }
 }
+
+export { PostgresEmailAccountRepository as SupabaseEmailAccountRepository };
