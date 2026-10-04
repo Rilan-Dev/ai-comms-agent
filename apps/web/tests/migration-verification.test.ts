@@ -183,3 +183,72 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
     });
   });
 });
+
+
+describe("Phase 4 database foundation migration", () => {
+  const foundationPath = resolve(__dirname, "../../../supabase/migrations/0002_database_foundation.sql");
+  const foundationSql = readFileSync(foundationPath, "utf8");
+
+  const requiredTables = [
+    "agents","agent_versions","agent_deployments","agent_email_accounts","agent_whatsapp_accounts",
+    "agent_ai_settings","ai_provider_configs","email_accounts","email_account_credentials",
+    "email_folders","email_labels","email_threads","email_messages","email_attachments",
+    "email_sync_states","email_sync_events","whatsapp_accounts","whatsapp_contacts",
+    "whatsapp_messages","whatsapp_webhook_events","conversations","conversation_messages",
+    "conversation_turns","scheduled_jobs","scheduled_job_runs","automation_rules","automation_runs",
+    "email_actions","email_action_approvals","summaries","summary_sources","ai_usage_events",
+    "voice_sessions","voice_telemetry","audit_events","api_keys",
+  ];
+
+  it("declares every Phase 4 target table", () => {
+    for (const table of requiredTables) {
+      expect(foundationSql).toMatch(new RegExp("CREATE TABLE IF NOT EXISTS " + table + "\\b"));
+    }
+  });
+
+  it("enables RLS for every direct tenant table", () => {
+    for (const table of [
+      "agents","ai_provider_configs","email_accounts","whatsapp_accounts","conversations",
+      "scheduled_jobs","automation_rules","email_actions","summaries","ai_usage_events",
+      "voice_sessions","audit_events","api_keys",
+    ]) {
+      expect(foundationSql).toContain("ALTER TABLE " + table + " ENABLE ROW LEVEL SECURITY");
+    }
+  });
+
+  it("protects child-domain tables through their organization-owning parent", () => {
+    expect(foundationSql).toContain("agent_versions_org_member");
+    expect(foundationSql).toContain("email_messages_org_member");
+    expect(foundationSql).toContain("whatsapp_messages_org_member");
+    expect(foundationSql).toContain("conversation_messages_org_member");
+    expect(foundationSql).toContain("scheduled_job_runs_org_member");
+    expect(foundationSql).toContain("summary_sources_org_member");
+    expect(foundationSql).toContain("voice_telemetry_org_member");
+  });
+
+  it("stores provider credentials as ciphertext bytea", () => {
+    expect(foundationSql).toContain("encrypted_payload bytea NOT NULL");
+    expect(foundationSql).toContain("encrypted_api_key bytea");
+    expect(foundationSql).toContain("encrypted_credentials bytea NOT NULL");
+    expect(foundationSql).toContain("hashed_key text NOT NULL");
+  });
+
+  it("provides full-text search and idempotency indexes", () => {
+    expect(foundationSql).toContain("search_tsv tsvector GENERATED ALWAYS");
+    expect(foundationSql).toContain("USING gin(search_tsv)");
+    expect(foundationSql).toContain("email_messages_provider_id_uniq");
+    expect(foundationSql).toContain("whatsapp_webhook_events");
+    expect(foundationSql).toContain("UNIQUE(scheduled_job_id, fire_at)");
+  });
+
+  it("makes audit updates and deletes fail closed through RLS", () => {
+    expect(foundationSql).toContain("audit_events_update_deny");
+    expect(foundationSql).toContain("audit_events_delete_deny");
+    expect(foundationSql).toContain("USING (false) WITH CHECK (false)");
+  });
+
+  it("does not reintroduce custom role persistence", () => {
+    expect(foundationSql).not.toMatch(/CREATE\\s+TABLE.*\\broles\\b/i);
+    expect(foundationSql).not.toMatch(/CREATE\\s+TABLE.*\\brole_permissions\\b/i);
+  });
+});
