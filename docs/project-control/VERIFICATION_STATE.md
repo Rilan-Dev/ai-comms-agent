@@ -492,3 +492,11 @@ Latest synchronization: Docker/manual verification tooling is committed at 271bd
 - **CI:** GitHub Actions uses its own disposable PostgreSQL service for runtime migration checks; this is CI infrastructure, not deployment provisioning.
 - **Latest known Vercel status:** the Vercel status for the latest code is `failure` due to build-rate-limit; no READY claim is made.
 - **Phase 4:** remains the active development phase under the project-owner development-first instruction. Runtime validation remains a release/acceptance gate, not a source-development blocker.
+
+
+### 2026-10-05 ChatGPT takeover verification checkpoint
+- Latest migration correction commit: `477cf8793111555cd33d00230c936a7617bd23d3`.
+- Local Docker verification previously exposed invalid PostgreSQL function terminators; all remaining single-dollar terminators are now corrected.
+- GitHub Actions rerun still terminates immediately with a generic failure and exposes no usable job log through the connected API. This is not treated as a passing runtime result.
+- **Required acceptance evidence:** run `git pull --ff-only origin main` followed by `bash scripts/verify-docker.sh` locally. Expected final line: `Disposable PostgreSQL verification: PASS`.
+- Phase 3 acceptance remains pending until that runtime check passes. Phase 4 remains NOT AUTHORIZED.
