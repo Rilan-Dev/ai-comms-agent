@@ -457,7 +457,7 @@ Development-first mode is active by explicit project-owner instruction. Database
 
 
 ### Runtime gate update — 2026-10-04
-- Latest main baseline: `adcaf0fc627a087a16099820d095ae918de9c7ff`.
+- Latest main baseline: `9fd34d1d69417302f2c8e31d0a453a0836533e27`.
 - CI now applies `supabase/migrations/0001_identity_rbac.sql` to PostgreSQL 17 before executing owner-invariant/runtime checks.
 - GitHub Actions returned **zero workflow runs** for the dedicated verification PR, so no runtime PASS is claimed.
 - Static migration inspection is clean for function quoting, deferred triggers, affected-org DELETE handling, direct organization INSERT protection, and SECURITY DEFINER RLS helpers.
@@ -510,3 +510,10 @@ Latest synchronization: Docker/manual verification tooling is committed at 271bd
 - Added static regression coverage for bootstrap quoting and helper namespace bridging.
 - Latest code commit: `c9cdf7ecfc9b21f757c71646dda94e8bd91230d3`.
 - **Runtime verification remains PENDING until the local disposable PostgreSQL run completes successfully.**
+
+
+### 2026-10-05 — Phase 4 migration-chain correction
+- Local disposable PostgreSQL verification exposed a real schema defect: `0002_agent_foundation.sql` and `0002_application_foundation.sql` both defined `agents`, `agent_versions`, and related objects with incompatible columns. The application migration attempted to add `agents_current_version_fk` against a column that did not exist on the already-created table.
+- Corrective action: `0002_application_foundation.sql` is now the single authoritative Phase 4 application/agent foundation migration. The richer agent version/deployment/policy fields were consolidated into it, and the duplicate `0002_agent_foundation.sql` migration was removed before production application.
+- Latest correction commit: `9fd34d1d69417302f2c8e31d0a453a0836533e27`.
+- Required next verification: pull `main` and rerun `bash scripts/verify-docker.sh`; then inspect CI runtime result. Do not claim Phase 4 acceptance until the full migration chain passes.
