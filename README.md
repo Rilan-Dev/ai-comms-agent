@@ -5,7 +5,7 @@
 **Repository:** `Rilan-Dev/ai-comms-agent` (private)
 **Vercel project:** `ai-comms-agent` (linked to this repo, production branch `main`)
 **Effective date:** 2026-10-03
-**Current phase:** Phase 1 — Project Definition and Architecture (documentation only)
+**Current phase:** Phase 4 — Database Foundation and Domain Schema
 
 ---
 
@@ -43,14 +43,14 @@ GITHUB — Authoritative project state
      │
      ├───────────────┐
      ▼               ▼
- VERCEL          SUPABASE
-deployment       database / infrastructure
+ VERCEL        SELF-HOSTED DOCKER
+deployment    PostgreSQL / Redis / RabbitMQ / Qdrant
 ```
 
 - **ChatGPT** leads architecture, phase boundaries, review, acceptance, and correction.
 - **Z.AI** implements approved work only. Z.AI does not take architectural ownership.
 - **GitHub** is the source of truth. No conversation history is required to recover the project.
-- **Vercel** deploys. **Supabase** persists. **Tests provide evidence.**
+- **Vercel** remains a supported web deployment target. **Self-hosted Docker + PostgreSQL** is the current reference runtime. **Tests provide evidence.**
 
 Z.AI must not silently convert a proposal into an architectural decision. The rule is always: propose → ChatGPT reviews → ChatGPT approves/rejects/corrects → Z.AI implements.
 
@@ -69,7 +69,31 @@ Last commit | See `docs/project-control/PROJECT_STATE.md`
 Open blockers | See `docs/project-control/ISSUES.md`
 Next action | See `docs/project-control/NEXT_ACTION.md`
 
-Phase 1 deliberately produces **no application code**. The application template will emerge from the architecture in Phase 2, only after ChatGPT approves Phase 1.
+The project is now in active implementation. The project-control documents are the source of truth for phase, verification, blockers, and next action.
+
+---
+
+## 4. Self-hosted Docker quick start
+
+The repository does not require Supabase. Any PostgreSQL 15+ deployment is supported.
+
+For the included Docker stack:
+
+```bash
+cp .env.docker.example .env.docker
+# Replace CREDENTIALS_MASTER_KEY and SESSION_SIGNING_KEY with real random values.
+bash scripts/manual-up.sh
+```
+
+The stack starts PostgreSQL (`postgres-db`), Redis, RabbitMQ, Qdrant, the Next.js web service, and the worker. Migrations are applied before the application containers start.
+
+For verification:
+
+```bash
+bash scripts/verify.sh
+```
+
+Real `.env` / `.env.docker` files are intentionally ignored by Git. Never commit credentials.
 
 ---
 
