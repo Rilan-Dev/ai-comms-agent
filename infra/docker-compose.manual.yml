@@ -2,6 +2,7 @@
 # This is for development/verification only; self-hosted Docker deployment path.
 services:
   postgres-db:
+    profiles: ["local-infra"]
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: aca
@@ -16,11 +17,13 @@ services:
       retries: 15
 
   redis:
+    profiles: ["local-infra"]
     image: redis:7-alpine
     ports: ["6379:6379"]
     volumes: [aca-manual-redis:/data]
 
   rabbitmq:
+    profiles: ["local-infra"]
     image: rabbitmq:3.13-management-alpine
     environment:
       RABBITMQ_DEFAULT_USER: aca
@@ -29,11 +32,13 @@ services:
     volumes: [aca-manual-rabbitmq:/var/lib/rabbitmq]
 
   qdrant:
+    profiles: ["local-infra"]
     image: qdrant/qdrant:v1.12.4
     ports: ["6333:6333", "6334:6334"]
     volumes: [aca-manual-qdrant:/qdrant/storage]
 
   migrate:
+    profiles: ["local-infra"]
     image: postgres:17-alpine
     environment:
       DATABASE_URL: postgresql://postgres:postgres456@postgres-db:5432/aca
