@@ -384,11 +384,11 @@ takeover:
   primary_implementer: "ChatGPT"
   previous_implementer: "Z.AI"
   takeover_date: "2026-10-04"
-  current_commit: "035379ba23ec5b863905fe7be9f8d33d05ba6f47"
+  current_commit: "c56b07dbaf807ce5ecdbf87e73ac05b674f5a84"
   latest_change:
-    migration_owner_invariant: "Deferred constraint trigger now validates affected existing organizations directly, including final-owner DELETE where membership rows become empty."
-    migration_tests: "Added static assertions for TG_OP/OLD/NEW affected-organization handling and zero-owner detection."
-    ci: "Web tests added to CI; Node 24 aligned with Vercel runtime."
+    migration_owner_invariant: "Deferred constraint triggers validate affected organizations for membership and direct organization changes."
+    migration_tests: "Static migration checks now cover owner invariants, RLS recursion helpers, and PostgreSQL dollar-quote syntax."
+    ci: "CI provisions PostgreSQL 17 and executes the Phase 3 migration verification scripts."
   execution_status:
     phase_3: "awaiting_final_chatgpt_acceptance — Vercel latest deployment pending/rate-limited"
     phase_4_authorized: false
