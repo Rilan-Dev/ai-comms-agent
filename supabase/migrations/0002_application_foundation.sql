@@ -68,9 +68,11 @@ CREATE TABLE IF NOT EXISTS agent_versions (
   UNIQUE (agent_id, version_number)
 );
 
-ALTER TABLE agents
-  ADD CONSTRAINT agents_current_version_fk
-  FOREIGN KEY (current_version_id) REFERENCES agent_versions(id) ON DELETE SET NULL;
+DO $ BEGIN
+  ALTER TABLE agents
+    ADD CONSTRAINT agents_current_version_fk
+    FOREIGN KEY (current_version_id) REFERENCES agent_versions(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object THEN NULL; END $;
 
 CREATE TABLE IF NOT EXISTS agent_deployments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -82,9 +84,11 @@ CREATE TABLE IF NOT EXISTS agent_deployments (
   retired_at timestamptz
 );
 
-ALTER TABLE agents
-  ADD CONSTRAINT agents_current_deployment_fk
-  FOREIGN KEY (current_deployment_id) REFERENCES agent_deployments(id) ON DELETE SET NULL;
+DO $ BEGIN
+  ALTER TABLE agents
+    ADD CONSTRAINT agents_current_deployment_fk
+    FOREIGN KEY (current_deployment_id) REFERENCES agent_deployments(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object THEN NULL; END $;
 
 CREATE TABLE IF NOT EXISTS email_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -438,9 +442,11 @@ CREATE TABLE IF NOT EXISTS ai_provider_configs (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-ALTER TABLE agent_ai_settings
-  ADD CONSTRAINT agent_ai_settings_provider_fk
-  FOREIGN KEY (ai_provider_config_id) REFERENCES ai_provider_configs(id) ON DELETE SET NULL;
+DO $ BEGIN
+  ALTER TABLE agent_ai_settings
+    ADD CONSTRAINT agent_ai_settings_provider_fk
+    FOREIGN KEY (ai_provider_config_id) REFERENCES ai_provider_configs(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object THEN NULL; END $;
 
 CREATE TABLE IF NOT EXISTS ai_usage_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
