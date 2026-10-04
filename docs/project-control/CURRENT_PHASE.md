@@ -14,14 +14,14 @@ chatgpt_acceptance_phase_3: "deferred while development proceeds by explicit pro
 phase_4_authorized: true
 
 phase_4_scope_authorized: |
-  Stand up the complete PostgreSQL/Supabase schema and migration foundation, including tenant RLS, indexes, constraints, credential encryption primitives, storage configuration, and typed database contracts. CI verification is intentionally deferred until the implementation set is complete.
+  Stand up the complete PostgreSQL/PostgreSQL schema and migration foundation, including tenant RLS, indexes, constraints, credential encryption primitives, storage configuration, and typed database contracts. CI verification is intentionally deferred until the implementation set is complete.
 
 phase_3_historical_scope: |
   Establish the production-grade identity, organization, user, membership,
   role, permission, and authorization foundation. Identity abstraction
   (not real auth provider). Organization/membership/RBAC model. Server-side
   authorization API. Dev-only identity stub (clearly marked). No production
-  Supabase. No Phase 4 work.
+  PostgreSQL. No Phase 4 work.
 
 phase_3_objectives_completed:
   - "User model (id, email, name, status, timestamps)"
@@ -34,13 +34,13 @@ phase_3_objectives_completed:
   - "Dev-only identity stub (DevIdentityAdapter — throws in production)"
   - "Server-side authorization API (requireAuthenticatedUser, requireOrganizationMember, requirePermission, requireRole, authorize)"
   - "Organization isolation enforced (membership check, not client-supplied orgId)"
-  - "SQL migration artifact (supabase/migrations/0001_identity_rbac.sql)"
+  - "SQL migration artifact (postgresql/migrations/0001_identity_rbac.sql)"
   - "In-memory identity repository (for tests + dev)"
   - "40 automated tests (auth, org isolation, RBAC, constraints, dev-adapter guard)"
 
 deliverables:
   schema:
-    - supabase/migrations/0001_identity_rbac.sql
+    - postgresql/migrations/0001_identity_rbac.sql
   shared_types:
     - packages/shared/src/identity/types.ts
   db_layer:
@@ -62,7 +62,7 @@ deliverables:
     - apps/web/tests/dev-adapter-guard.test.ts (5 tests)
 
 forbidden_in_phase_3:
-  - "Phase 4 database work (production Supabase provisioning, full data model)"
+  - "Phase 4 database work (production PostgreSQL provisioning, full data model)"
   - "Email/WhatsApp/agent/scheduling/voice implementation"
   - "Production authentication (password storage, OAuth, MFA)"
   - "Clara source modification"
@@ -157,7 +157,7 @@ current_commit: "9a1cdd99c8d230d138fbbcb6711ba918f05cf690"
 
 - `0002_database_foundation.sql` implements the full approved domain schema.
 - `0003_database_security_hardening.sql` hardens helper exposure and secret-bearing RLS.
-- `supabase/config.toml` defines private attachment and knowledge-document buckets.
+- `postgresql/config.toml` defines private attachment and knowledge-document buckets.
 - `packages/db/src/security/envelope.ts` implements AES-256-GCM envelope encryption primitives.
 - Automatic CI triggers are temporarily disabled by explicit project-owner instruction; manual verification remains required before acceptance.
 
@@ -168,3 +168,11 @@ current_commit: "9a1cdd99c8d230d138fbbcb6711ba918f05cf690"
 - GitHub Actions currently exposes no workflow run for the verification PR; therefore runtime execution is **PENDING**, not PASS.
 - Vercel's latest production deployment for this commit was canceled by the project's ignored-build/build-rate-limit path; no latest READY claim is made.
 - **Phase 3 acceptance: PENDING. Phase 4: NOT AUTHORIZED.**
+
+
+### PostgreSQL-native continuation — 2026-10-05
+- Database runtime is provider-neutral PostgreSQL 15+; Supabase is not required.
+- Added the application foundation migration covering agents, email, WhatsApp, conversations, scheduling, automations, approvals, summaries, AI provider configuration, usage, voice, and audit.
+- Added tenant RLS helpers and append-only audit enforcement.
+- Replaced the DB runtime boundary with node-postgres and self-hosted Docker PostgreSQL.
+- Real secrets remain outside Git; `.env.docker.example` is the committed host template and `.env.docker` is intentionally ignored.
