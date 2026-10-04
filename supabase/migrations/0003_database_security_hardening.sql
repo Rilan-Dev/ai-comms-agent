@@ -9,7 +9,7 @@ STABLE
 SECURITY INVOKER
 SET search_path = public
 AS $$
-  SELECT public.is_active_organization_member(p_organization_id, (SELECT auth.uid()));
+  SELECT public.is_active_organization_member(p_organization_id, NULLIF(current_setting('app.user_id', true), '')::uuid);
 $$;
 
 CREATE OR REPLACE FUNCTION public.can_manage_organization(p_organization_id uuid)
@@ -19,7 +19,7 @@ STABLE
 SECURITY INVOKER
 SET search_path = public
 AS $$
-  SELECT public.is_active_organization_admin_or_owner(p_organization_id, (SELECT auth.uid()));
+  SELECT public.is_active_organization_admin_or_owner(p_organization_id, NULLIF(current_setting('app.user_id', true), '')::uuid);
 $$;
 
 REVOKE EXECUTE ON FUNCTION public.can_access_organization(uuid) FROM PUBLIC;
