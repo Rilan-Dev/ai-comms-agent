@@ -146,6 +146,28 @@ Local development does not connect to production providers. Test email accounts 
 
 ---
 
+
+## 6A. Local Docker manual verification and testing
+
+The repository now provides a reproducible Docker path for manual testing without relying on GitHub Actions. This is **not production deployment** and does not provision Supabase.
+
+- `infra/docker-compose.verify.yml`: disposable PostgreSQL 17 used for migration/runtime verification.
+- `scripts/migrate.sh`: applies all forward migrations in lexical order and records SHA-256 checksums; an already-applied migration that changes fails closed.
+- `scripts/migration-changes.sh`: detects migration drift against the local migration ledger.
+- `scripts/verify-docker.sh`: starts PostgreSQL, applies/checks migrations, verifies the Phase 3 owner invariant, and verifies direct ownerless organization creation is rejected.
+- `scripts/verify.sh`: the complete local gate — Docker DB verification, workspace typecheck, web tests/build, and worker build.
+- `infra/docker-compose.manual.yml`: full manual stack (Next.js web, worker, PostgreSQL, Redis, RabbitMQ, Qdrant). The `migrate` service automatically applies migrations before web/worker start.
+- `scripts/manual-up.sh` / `scripts/manual-down.sh`: start/stop the manual stack.
+
+Typical manual verification:
+
+```bash
+bash scripts/verify.sh
+bash scripts/manual-up.sh
+```
+
+The CI workflow delegates to `scripts/verify.sh`, keeping local and CI verification on the same implementation rather than maintaining two independent test procedures.
+
 ## 7. Deployment verification (Phase 19)
 
 Per the master operating prompt §32:
