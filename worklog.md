@@ -1150,3 +1150,17 @@ Development continues without waiting for CI/Vercel results. Formal verification
 - Added `scripts/verify.sh` as the single local verification entry point: Docker DB verification, workspace typecheck, web tests/build, worker build.
 - Simplified GitHub Actions to delegate to the same verification script instead of maintaining a second verification implementation.
 - No production Supabase provisioning, no Phase 4 implementation, and no Clara source changes.
+
+
+## Task ID: 13
+## Phase: 3 — Docker Verification Hardening
+## Date: 2026-10-05
+
+- **Owner:** ChatGPT
+- Added a full manual Docker application stack with web + worker + PostgreSQL + Redis + RabbitMQ + Qdrant.
+- Added an explicit `migrate` service so manual web/worker startup waits for successful migration application.
+- Added Docker-only Phase 3 verification so host PostgreSQL client installation is not required.
+- Added Docker build context exclusions.
+- CI continues to call the same `scripts/verify.sh` entry point; no second verification implementation was introduced.
+- Runtime execution remains pending because the current ChatGPT execution environment cannot reach Docker/GitHub networking.
+- Phase 4 remains unauthorized.
