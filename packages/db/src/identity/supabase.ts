@@ -105,14 +105,15 @@ export class PostgresIdentityRepository implements IdentityRepository {
         "INSERT INTO organizations (name, slug) VALUES ($1, $2) RETURNING *",
         [input.name, input.slug],
       );
+      const organizationRow = requiredRow(org.rows[0], "organization");
       const membershipRow = await client.query<Row>(
         `INSERT INTO organization_memberships (organization_id, user_id, role, status)
          VALUES ($1, $2, 'owner', 'active')
          RETURNING *`,
-        [org.rows[0].id, input.ownerId],
+        [organizationRow.id, input.ownerId],
       );
       return {
-        organization: organization(org.rows[0]),
+        organization: organization(organizationRow),
         ownerMembership: membership(requiredRow(membershipRow.rows[0], "owner membership")),
       };
     });
@@ -186,21 +187,23 @@ export class PostgresIdentityRepository implements IdentityRepository {
       if (current.rows.length !== 1) {
         throw new Error("Owner invariant violated: expected exactly one active owner");
       }
+      const currentOwner = requiredRow(current.rows[0], "current owner");
 
       const target = await client.query<Row>(
         "SELECT * FROM organization_memberships WHERE organization_id = $1 AND user_id = $2 AND status = 'active' FOR UPDATE",
         [orgId, newOwnerId],
       );
-      if (!target.rows[0]) throw new Error("New owner must be an active organization member");
-      if (target.rows[0].role === "owner") return [membership(target.rows[0])];
+      const targetMember = target.rows[0];
+      if (!targetMember) throw new Error("New owner must be an active organization member");
+      if (targetMember.role === "owner") return [membership(targetMember)];
 
       await client.query(
         "UPDATE organization_memberships SET role = $1 WHERE id = $2",
-        [newOwnerRole, current.rows[0].id],
+        [newOwnerRole, currentOwner.id],
       );
       await client.query(
         "UPDATE organization_memberships SET role = 'owner' WHERE id = $1",
-        [target.rows[0].id],
+        [targetMember.id],
       );
 
       const result = await client.query<Row>(
