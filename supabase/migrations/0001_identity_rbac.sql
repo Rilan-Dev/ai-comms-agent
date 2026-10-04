@@ -518,7 +518,9 @@ ALTER TABLE permissions ENABLE ROW LEVEL SECURITY;
 -- are read-only and reproduce the exact membership predicate required by the
 -- policies while bypassing RLS for their internal membership lookup.
 
-CREATE OR REPLACE FUNCTION is_active_organization_member(
+CREATE SCHEMA IF NOT EXISTS private;
+
+CREATE OR REPLACE FUNCTION private.is_active_organization_member(
   p_organization_id uuid,
   p_user_id uuid
 )
@@ -526,18 +528,18 @@ RETURNS boolean
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
   SELECT EXISTS (
     SELECT 1
-    FROM organization_memberships m
+    FROM public.organization_memberships m
     WHERE m.organization_id = p_organization_id
       AND m.user_id = p_user_id
       AND m.status = 'active'
   );
 $$;
 
-CREATE OR REPLACE FUNCTION is_active_organization_admin_or_owner(
+CREATE OR REPLACE FUNCTION private.is_active_organization_admin_or_owner(
   p_organization_id uuid,
   p_user_id uuid
 )
@@ -545,12 +547,11 @@ RETURNS boolean
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
-
+SET search_path = ''
 AS $$
   SELECT EXISTS (
     SELECT 1
-    FROM organization_memberships m
+    FROM public.organization_memberships m
     WHERE m.organization_id = p_organization_id
       AND m.user_id = p_user_id
       AND m.status = 'active'
@@ -558,9 +559,23 @@ AS $$
   );
 $$;
 
+REVOKE EXECUTE ON FUNCTION private.is_active_organization_member(uuid, uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION private.is_active_organization_admin_or_owner(uuid, uuid) FROM PUBLIC;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    GRANT USAGE ON SCHEMA private TO authenticated;
+    GRANT EXECUTE ON FUNCTION private.is_active_organization_member(uuid, uuid) TO authenticated;
+    GRANT EXECUTE ON FUNCTION private.is_active_organization_admin_or_owner(uuid, uuid) TO authenticated;
+  END IF;
+END;
+$$;
+
+
 CREATE POLICY organizations_member_visibility ON organizations
   FOR SELECT USING (
-    is_active_organization_member(
+    private.is_active_organization_member(
       organizations.id,
       current_setting('app.user_id', true)::uuid
     )
@@ -574,7 +589,7 @@ CREATE POLICY users_self_visibility ON users
 CREATE POLICY memberships_member_visibility ON organization_memberships
   FOR SELECT USING (
     user_id = current_setting('app.user_id', true)::uuid
-    OR is_active_organization_admin_or_owner(
+    OR private.is_active_organization_admin_or_owner(
       organization_memberships.organization_id,
       current_setting('app.user_id', true)::uuid
     )
