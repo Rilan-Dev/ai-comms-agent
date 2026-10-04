@@ -8,36 +8,20 @@ The single exact next authorized action. Update this file on every commit.
 
 ```yaml
 actor: ChatGPT
-role: Chief Architect / Project Controller / Acceptance Gatekeeper
+role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Complete final Phase 3 verification and acceptance. If all evidence is green, accept Phase 3 and issue the Phase 4 database-foundation implementation plan under ChatGPT ownership. Do not start Phase 4 until acceptance is recorded.
+  Continue Phase 4 PostgreSQL-native implementation. Complete schema/runtime contracts,
+  self-hosted Docker verification, and database access migration. Then proceed to Phase 5
+  email provider abstraction without waiting for hosted infrastructure.
 
-context:
-  phase_3_transaction_safe_commit: "c391f71ff70841db28b12de45ae3c98a23017db3"
-  developer_verification: "complete (typecheck 5/5, 91/91 tests, build pass, secret scan clean)"
-  vercel_deployment: "blocked/pending — Vercel build-rate-limit surfaced during rapid takeover commits; no latest READY deployment claimed"
-  chatgpt_acceptance: "pending"
-
-owner_invariant_mechanism:
-  layer_1: "enforce_owner_status_active() — BEFORE INSERT OR UPDATE, per-row, immediate"
-  layer_2: "enforce_exactly_one_owner() — CONSTRAINT TRIGGER AFTER INSERT OR UPDATE OR DELETE, DEFERRABLE INITIALLY DEFERRED, fires at COMMIT"
-  coverage: "INSERT + UPDATE + DELETE"
-  transaction_safe: true
-  create_organization_boundary: "createOrganizationWithOwner is the public creation workflow; createOrganization is @internal"
-
-tests:
-  total: 91
-  files: 8
-  breakdown:
-    auth: 4
-    organization-isolation: 7
-    rbac: 14
-    database-constraints: 10
-    dev-adapter-guard: 5
-    owner-invariant: 22
-    rbac-persistence-consistency: 8
-    migration-verification: 21
+constraints:
+  database: "PostgreSQL 15+; no Supabase runtime dependency"
+  secrets: "Never commit .env/.env.docker; use committed example templates only"
+  source_of_truth: "GitHub main"
+  clara: "Reuse Clara Core; do not modify Clara source"
+  deployment: "Self-hosted Docker is the current deployment path"
+  validation: "Run authoritative Docker/CI verification after the current implementation set"
 ```
 
 ---
