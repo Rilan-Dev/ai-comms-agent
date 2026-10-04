@@ -3,17 +3,20 @@
 ---
 
 ```yaml
-phase: 3
-phase_name: "Identity, Organization, Users, Roles & RBAC"
-status: "schema_hardening_awaiting_final_chatgpt_acceptance"
+phase: 4
+phase_name: "Database Foundation and Migrations"
+status: "implementation_in_progress"
 start_date: 2026-10-03
-implementation_completion_date: 2026-10-03
+phase_3_completion_date: 2026-10-04
 architect: "ChatGPT"
 developer: "ChatGPT"
-chatgpt_acceptance: "pending"
-phase_4_authorized: false
+chatgpt_acceptance_phase_3: "deferred while development proceeds by explicit project-owner instruction"
+phase_4_authorized: true
 
-approved_scope: |
+phase_4_scope_authorized: |
+  Stand up the complete PostgreSQL/Supabase schema and migration foundation, including tenant RLS, indexes, constraints, credential encryption primitives, storage configuration, and typed database contracts. CI verification is intentionally deferred until the implementation set is complete.
+
+phase_3_historical_scope: |
   Establish the production-grade identity, organization, user, membership,
   role, permission, and authorization foundation. Identity abstraction
   (not real auth provider). Organization/membership/RBAC model. Server-side
@@ -149,3 +152,11 @@ Phase 4 is now the active development phase under the explicit development-first
 
 current_commit: "9a1cdd99c8d230d138fbbcb6711ba918f05cf690"
 \n\n### Phase 4 development authorization — 2026-10-04\nChatGPT has begun Phase 4 database-foundation implementation per the project owner's explicit instruction to continue development without waiting for CI verification. GitHub Actions automatic push/PR triggers are temporarily disabled; the workflow remains available via manual dispatch. Phase acceptance remains gated on later runtime verification.\n
+
+## Active Phase 4 implementation record
+
+- `0002_database_foundation.sql` implements the full approved domain schema.
+- `0003_database_security_hardening.sql` hardens helper exposure and secret-bearing RLS.
+- `supabase/config.toml` defines private attachment and knowledge-document buckets.
+- `packages/db/src/security/envelope.ts` implements AES-256-GCM envelope encryption primitives.
+- Automatic CI triggers are temporarily disabled by explicit project-owner instruction; manual verification remains required before acceptance.
