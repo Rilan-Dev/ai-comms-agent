@@ -1,23 +1,33 @@
 /**
- * @ai-comms-agent/db — database access layer
+ * @ai-comms-agent/db — PostgreSQL database access layer.
  *
- * Phase 2 scope: client factory + configuration.
- * Phase 3 scope: identity repository interface + in-memory implementation.
- *
- * No production migrations applied (per Phase 3 handoff §14-15). The SQL
- * migration (supabase/migrations/0001_identity_rbac.sql) is a schema artifact.
- * PostgreSQL/Supabase remains approved infrastructure (ADR-009).
+ * PostgreSQL is the authoritative store. This package intentionally has no
+ * Supabase runtime dependency; it works with self-hosted or managed PostgreSQL.
  */
 
-export { createSupabaseClient, createSupabaseServiceClient, type SupabaseConfig } from "./client";
-export { isSupabaseConfigured, getSupabaseConfigFromEnv } from "./client";
+export {
+  getPostgresPool,
+  getPostgresConfigFromEnv,
+  isPostgresConfigured,
+  query,
+  withTransaction,
+  closePostgresPool,
+  type PostgresConfig,
+} from "./client";
 
-// Phase 3: identity repository
 export { type IdentityRepository } from "./identity/repository";
 export { InMemoryIdentityRepository, OwnerInvariantError } from "./identity/in-memory";
+export { PostgresIdentityRepository, SupabaseIdentityRepository } from "./identity/supabase";
 
-export { SupabaseIdentityRepository } from "./identity/supabase";
+export {
+  decryptCredential,
+  encryptCredential,
+  parseCredentialsMasterKey,
+  type EncryptedEnvelope,
+} from "./security";
 
-export { decryptCredential, encryptCredential, parseCredentialsMasterKey, type EncryptedEnvelope } from "./security";
-
-export { SupabaseEmailAccountRepository, type CreateEmailAccountInput } from "./email/repository";
+export {
+  PostgresEmailAccountRepository,
+  SupabaseEmailAccountRepository,
+  type CreateEmailAccountInput,
+} from "./email/repository";
