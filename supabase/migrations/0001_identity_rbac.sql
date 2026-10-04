@@ -456,6 +456,10 @@ DECLARE
   v_current_owner organization_memberships;
   v_target organization_memberships;
 BEGIN
+  IF p_new_owner_role = 'owner' THEN
+    RAISE EXCEPTION 'New owner replacement role must be non-owner';
+  END IF;
+
   SELECT * INTO v_current_owner
   FROM organization_memberships
   WHERE organization_id = p_organization_id
