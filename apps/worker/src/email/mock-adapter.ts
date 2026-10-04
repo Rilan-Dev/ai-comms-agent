@@ -25,7 +25,7 @@ const ALL_CAPABILITIES: CapabilitySet = {
 };
 
 export class MockEmailProvider implements EmailProvider {
-  readonly providerId = "gmail" as const;
+  readonly providerId = "imap_smtp" as const;
   private connected = false;
   private readonly messages: EmailMessage[] = [];
   private readonly drafts = new Map<string, DraftParams>();
