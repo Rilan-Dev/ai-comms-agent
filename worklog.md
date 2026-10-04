@@ -1210,3 +1210,20 @@ Finish database runtime verification, correct any migration/runtime findings, th
 
 ### Boundary
 No Gmail, Zoho, IMAP/SMTP credentials, external API calls, or production provider registration have been introduced. Those remain provider-specific implementation work after the abstraction gate.
+
+
+## Task ID: 12 — External infrastructure deployment correction and final Phase 3 hardening
+**Date:** 2026-10-05  
+**Owner:** ChatGPT
+
+- Removed the tracked local `.env`; no environment secrets/configuration are kept in Git.
+- Replaced `.env.example` with an external-service contract for PostgreSQL, Redis, RabbitMQ, and Qdrant.
+- Added `local-infra` Compose profiles to PostgreSQL, Redis, RabbitMQ, and Qdrant services so a normal Compose invocation does not start them.
+- Updated the manual local stack launcher to explicitly opt into the profile.
+- Updated deployment documentation to make externally provisioned infrastructure the default.
+- Verified Vercel project environment inventory: currently zero configured variables. No fake or guessed external credentials were added.
+- Corrected remaining malformed PostgreSQL function dollar quoting.
+- Hardened SQL ownership transfer so the previous owner's replacement role cannot be `owner`.
+- Moved SECURITY DEFINER RLS helpers into a non-exposed `private` schema, pinned `search_path = ''`, revoked PUBLIC execute, and conditionally granted access to `authenticated`.
+- CI now starts disposable PostgreSQL 17, applies migrations, then executes Phase 3 runtime checks.
+- **Acceptance remains pending** until CI/runtime evidence is available. Phase 4 remains unauthorized.
