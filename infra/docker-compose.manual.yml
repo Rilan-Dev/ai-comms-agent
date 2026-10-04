@@ -36,7 +36,7 @@ services:
   migrate:
     image: postgres:17-alpine
     environment:
-      DATABASE_URL: postgresql://aca:aca_local_dev@postgres-db:5432/aca
+      DATABASE_URL: postgresql://postgres:postgres456@postgres-db:5432/aca
     volumes:
       - ..:/workspace:ro
     working_dir: /workspace
@@ -57,7 +57,7 @@ services:
       - ../.env.docker
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://aca:aca_local_dev@postgres-db:5432/aca
+      DATABASE_URL: postgresql://postgres:postgres456@postgres-db:5432/aca
       REDIS_URL: redis://redis:6379
       RABBITMQ_URL: amqp://aca:aca_local_dev@rabbitmq:5672
       QDRANT_URL: http://qdrant:6333
@@ -83,7 +83,7 @@ services:
       - ../.env.docker
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://aca:aca_local_dev@postgres-db:5432/aca
+      DATABASE_URL: postgresql://postgres:postgres456@postgres-db:5432/aca
       REDIS_URL: redis://redis:6379
       RABBITMQ_URL: amqp://aca:aca_local_dev@rabbitmq:5672
       QDRANT_URL: http://qdrant:6333

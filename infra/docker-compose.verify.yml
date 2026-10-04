@@ -19,7 +19,7 @@ services:
   migrate:
     image: postgres:17-alpine
     environment:
-      DATABASE_URL: postgresql://aca:aca_local_dev@postgres:5432/aca_verify
+      DATABASE_URL: postgresql://postgres:postgres456@postgres-db:5432/aca_verify
     volumes:
       - ..:/workspace:ro
     working_dir: /workspace
