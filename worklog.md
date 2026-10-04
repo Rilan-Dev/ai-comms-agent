@@ -1237,3 +1237,29 @@ No Gmail, Zoho, IMAP/SMTP credentials, external API calls, or production provide
 - **CI:** GitHub Actions uses its own disposable PostgreSQL service for runtime migration checks; this is CI infrastructure, not deployment provisioning.
 - **Latest known Vercel status:** the Vercel status for the latest code is `failure` due to build-rate-limit; no READY claim is made.
 - **Phase 4:** remains the active development phase under the project-owner development-first instruction. Runtime validation remains a release/acceptance gate, not a source-development blocker.
+
+
+## Task ID: 12
+## Phase: 4 — PostgreSQL Docker Verification Blocker Correction
+
+- **Status**: implementation corrected; runtime verification pending
+- **Owner**: ChatGPT
+- **Date**: 2026-10-05
+
+### Findings
+- Local disposable PostgreSQL container exited with code 3 during `scripts/verify-docker.sh`.
+- Bootstrap SQL used invalid single-dollar DO-block delimiters.
+- The application foundation migration contained the same PostgreSQL quoting defect.
+- Phase 4 security migration referenced public membership helper functions that Phase 3 had intentionally placed in `private`.
+
+### Corrections
+- Fixed `infra/postgres-init/00-supabase-roles.sql` dollar quoting.
+- Fixed invalid `DO $ BEGIN ... END $;` blocks in `0002_application_foundation.sql`.
+- Added public SECURITY INVOKER helper wrappers in `0003_database_security_hardening.sql` delegating to the private SECURITY DEFINER helpers.
+- Added regression tests for bootstrap SQL quoting and helper namespace bridging.
+
+### Gate
+- Latest code: `c9cdf7ecfc9b21f757c71646dda94e8bd91230d3`.
+- No production database provisioning.
+- No Clara source changes.
+- Runtime Docker verification is the next authoritative evidence step.
