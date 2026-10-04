@@ -29,6 +29,34 @@ GRANT EXECUTE ON FUNCTION public.can_manage_organization(uuid) TO authenticated;
 
 -- Existing membership helpers are required by policies but must not be a
 -- privileged public API callable by anonymous clients.
+-- Existing membership helpers live in the private schema in 0001. Expose
+-- controlled SECURITY INVOKER wrappers in public for the Phase 4 policy layer.
+CREATE OR REPLACE FUNCTION public.is_active_organization_member(
+  p_organization_id uuid,
+  p_user_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = public
+AS $
+  SELECT private.is_active_organization_member(p_organization_id, p_user_id);
+$;
+
+CREATE OR REPLACE FUNCTION public.is_active_organization_admin_or_owner(
+  p_organization_id uuid,
+  p_user_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = public
+AS $
+  SELECT private.is_active_organization_admin_or_owner(p_organization_id, p_user_id);
+$;
+
 REVOKE EXECUTE ON FUNCTION public.is_active_organization_member(uuid, uuid) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.is_active_organization_admin_or_owner(uuid, uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_active_organization_member(uuid, uuid) TO authenticated;
