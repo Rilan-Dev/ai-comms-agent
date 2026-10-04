@@ -1130,7 +1130,7 @@ Development continues without waiting for CI/Vercel results. Formal verification
 
 ## 2026-10-04 — ChatGPT runtime verification gate
 
-- Main baseline: `adcaf0fc627a087a16099820d095ae918de9c7ff`.
+- Main baseline: `9fd34d1d69417302f2c8e31d0a453a0836533e27`.
 - CI now provisions PostgreSQL 17, applies the Phase 3 migration, executes a successful-owner/transfer runtime script, and executes a negative ownerless-organization check.
 - A dedicated PR was opened solely to trigger the verification workflow, but GitHub exposed zero workflow runs. The PR was closed without merge because it could not provide runtime evidence.
 - Static inspection found the migration's PostgreSQL function quoting valid and the owner/RLS mechanisms structurally correct.
@@ -1263,3 +1263,10 @@ No Gmail, Zoho, IMAP/SMTP credentials, external API calls, or production provide
 - No production database provisioning.
 - No Clara source changes.
 - Runtime Docker verification is the next authoritative evidence step.
+
+
+### 2026-10-05 — Phase 4 migration-chain correction
+- Local disposable PostgreSQL verification exposed a real schema defect: `0002_agent_foundation.sql` and `0002_application_foundation.sql` both defined `agents`, `agent_versions`, and related objects with incompatible columns. The application migration attempted to add `agents_current_version_fk` against a column that did not exist on the already-created table.
+- Corrective action: `0002_application_foundation.sql` is now the single authoritative Phase 4 application/agent foundation migration. The richer agent version/deployment/policy fields were consolidated into it, and the duplicate `0002_agent_foundation.sql` migration was removed before production application.
+- Latest correction commit: `9fd34d1d69417302f2c8e31d0a453a0836533e27`.
+- Required next verification: pull `main` and rerun `bash scripts/verify-docker.sh`; then inspect CI runtime result. Do not claim Phase 4 acceptance until the full migration chain passes.
