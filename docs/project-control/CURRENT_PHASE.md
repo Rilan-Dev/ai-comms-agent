@@ -145,3 +145,6 @@ UI implementation is also proceeding as a first-class product surface: modern wo
 
 ### Development-first continuation update — 2026-10-04
 Phase 4 is now the active development phase under the explicit development-first directive. The database foundation has been implemented as forward-only migrations 0002–0011 covering agents, email, WhatsApp, conversations, scheduling, automation, summaries, actions/approvals, AI usage, voice telemetry, audit, API keys, knowledge/storage metadata, cross-tenant integrity, RLS helper hardening, and server identity transaction RPCs. UI/UX modernization is continuing in parallel where it consumes stable host contracts. Do not claim Phase 4 acceptance until staging/runtime verification is completed.
+
+
+current_commit: "9a1cdd99c8d230d138fbbcb6711ba918f05cf690"
