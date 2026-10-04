@@ -60,14 +60,14 @@ Z.AI must not silently convert a proposal into an architectural decision. The ru
 
 | Field | Value |
 |---|---|
-| Phase | 1 — Project Definition and Architecture |
-| Phase status | Documentation complete; awaiting ChatGPT architect review |
-| Application code | None (Phase 1 is documentation-only by design) |
-| Database migrations | None |
-| Deployments | None |
-| Last commit | See `docs/project-control/PROJECT_STATE.md` |
-| Open blockers | See `docs/project-control/ISSUES.md` |
-| Next action | See `docs/project-control/NEXT_ACTION.md` |
+Current Phase | Phase 3 — Identity, Organization, Users, Roles & RBAC
+Phase status | Correction implemented; final runtime acceptance pending
+Application code | Foundation + Phase 3 identity/RBAC implemented
+Database migrations | Phase 3 migration artifact + Docker verification tooling
+Deployments | Previous Phase 3 deployment READY; latest code requires fresh verification
+Last commit | See `docs/project-control/PROJECT_STATE.md`
+Open blockers | See `docs/project-control/ISSUES.md`
+Next action | See `docs/project-control/NEXT_ACTION.md`
 
 Phase 1 deliberately produces **no application code**. The application template will emerge from the architecture in Phase 2, only after ChatGPT approves Phase 1.
 
