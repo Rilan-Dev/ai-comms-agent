@@ -48,6 +48,11 @@ The DB package exposes typed server-side repositories behind interfaces. Route h
 - Child tables inherit tenant access through their parent organization boundary.
 - Audit updates/deletes are denied through RLS.
 
+### 0003/0004 — Security and agent policy corrections
+- least-privilege credential/API-key RLS
+- restricted execution of membership helper functions
+- persisted per-agent security policy and tool bindings
+
 ## Remaining Phase 4 implementation
 1. Add static schema regression coverage for the complete table inventory, RLS enablement, credential ciphertext columns, indexes, and audit immutability.
 2. Expand the DB repository layer where application services need typed persistence.
@@ -67,3 +72,13 @@ The DB package exposes typed server-side repositories behind interfaces. Route h
 - Staging Supabase is provisioned/applied and runtime RLS is verified before Phase 4 acceptance.
 
 Development continues without waiting for CI; verification remains the final acceptance gate.
+
+
+## Downstream implementation already started
+
+Per explicit project-owner instruction to complete code changes before verification, implementation has also begun on the next provider layers without claiming Phase 4 acceptance:
+- normalized email capability helpers
+- Gmail REST adapter
+- Gmail OAuth PKCE/token refresh client
+- email provider registry/service
+- Supabase email-account repository with encrypted credential storage
