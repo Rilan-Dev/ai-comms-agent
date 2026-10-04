@@ -474,3 +474,12 @@ Latest synchronization: Docker/manual verification tooling is committed at 271bd
 - Runtime/static verification scripts updated to apply all migrations and validate foundation tables, owner invariant, and RLS helper presence.
 - Email provider runtime capability gate and worker tests added.
 - Automated runtime evidence is still pending; the available Vercel status is rate-limited/failing and is not used as evidence for the Docker deployment path.
+\n 
+
+### 2026-10-05 infrastructure/deployment correction
+- Local Docker PostgreSQL/Redis/RabbitMQ/Qdrant services are profile-gated under `local-infra`; they are not started by default.
+- `.env` was removed from the repository. `.env.example` now contains external PostgreSQL/Redis/RabbitMQ/Qdrant connection contracts.
+- Vercel environment inventory currently reports zero configured variables. External credentials therefore remain a deployment prerequisite; no placeholder secrets were added.
+- CI now provisions a disposable PostgreSQL service, applies migrations, then executes Phase 3 runtime verification.
+- Latest code commit: fca6f3ffa603006876c64f607043fb27137ae35d.
+- Phase 3 acceptance: PENDING runtime evidence. Phase 4: NOT AUTHORIZED.
