@@ -252,3 +252,35 @@ describe("Phase 4 database foundation migration", () => {
     expect(foundationSql).not.toMatch(/CREATE\\s+TABLE.*\\brole_permissions\\b/i);
   });
 });
+
+
+describe("Phase 4 database security hardening migration", () => {
+  const securityPath = resolve(__dirname, "../../../supabase/migrations/0003_database_security_hardening.sql");
+  const securitySql = readFileSync(securityPath, "utf8");
+
+  it("keeps policy wrappers SECURITY INVOKER", () => {
+    expect(securitySql).toContain("SECURITY INVOKER");
+    expect(securitySql).toContain("SELECT public.is_active_organization_member");
+    expect(securitySql).toContain("SELECT public.is_active_organization_admin_or_owner");
+  });
+
+  it("revokes public execution of privileged membership helpers", () => {
+    expect(securitySql).toContain("REVOKE EXECUTE ON FUNCTION public.is_active_organization_member(uuid, uuid) FROM PUBLIC");
+    expect(securitySql).toContain("REVOKE EXECUTE ON FUNCTION public.is_active_organization_admin_or_owner(uuid, uuid) FROM PUBLIC");
+    expect(securitySql).toContain("GRANT EXECUTE ON FUNCTION public.is_active_organization_member(uuid, uuid) TO authenticated");
+  });
+
+  it("restricts secret-bearing tables to organization admins/owners", () => {
+    expect(securitySql).toContain("email_account_credentials_admin");
+    expect(securitySql).toContain("ai_provider_configs_admin");
+    expect(securitySql).toContain("api_keys_admin");
+    expect(securitySql).toContain("can_manage_organization");
+  });
+
+  it("uses restrictive audit deny policies so permissive member policies cannot override them", () => {
+    expect(securitySql).toContain("AS RESTRICTIVE FOR UPDATE");
+    expect(securitySql).toContain("AS RESTRICTIVE FOR DELETE");
+    expect(securitySql).toContain("audit_events_update_deny");
+    expect(securitySql).toContain("audit_events_delete_deny");
+  });
+});
