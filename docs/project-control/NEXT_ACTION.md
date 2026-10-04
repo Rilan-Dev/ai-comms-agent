@@ -95,3 +95,10 @@ Manual verification is now reproducible without relying on GitHub Actions:
 
 ### 2026-10-05 continuation state
 The next implementation target is Phase 5 Email Provider Abstraction completion: persist account connection state through the PostgreSQL repository, then implement Gmail/IMAP-SMTP/Zoho adapters sequentially. Runtime verification of the full migration set remains a required evidence gate, but it must not block source implementation under the current project-owner instruction.
+\n 
+
+### 2026-10-05 continuation
+1. Wait for/inspect GitHub Actions runtime verification of the latest migration against PostgreSQL 17.
+2. Confirm ownerless organization rejection, ownership transfer, final-owner deletion, and RLS helper creation in runtime evidence.
+3. Configure Vercel external environment variables only from the user's real provider credentials; current Vercel project has zero environment variables, so do not deploy a false-configured runtime.
+4. After Phase 3 acceptance, authorize Phase 4 database foundation work. Until then, Phase 4 remains NOT AUTHORIZED.
