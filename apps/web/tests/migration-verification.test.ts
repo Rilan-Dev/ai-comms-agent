@@ -258,6 +258,11 @@ describe("Phase 4 database security hardening migration", () => {
   const securityPath = resolve(__dirname, "../../../supabase/migrations/0003_database_security_hardening.sql");
   const securitySql = readFileSync(securityPath, "utf8");
 
+  it("uses the repository app.user_id context instead of a second auth identity contract", () => {
+    expect(securitySql).toContain("current_setting('app.user_id', true)");
+    expect(securitySql).not.toContain("auth.uid()");
+  });
+
   it("keeps policy wrappers SECURITY INVOKER", () => {
     expect(securitySql).toContain("SECURITY INVOKER");
     expect(securitySql).toContain("SELECT public.is_active_organization_member");
