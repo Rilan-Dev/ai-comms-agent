@@ -1,7 +1,7 @@
 # Manual local application stack.
-# This is for development/verification only; production remains Vercel/Supabase.
+# This is for development/verification only; self-hosted Docker deployment path.
 services:
-  postgres:
+  postgres-db:
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: aca
@@ -36,12 +36,12 @@ services:
   migrate:
     image: postgres:17-alpine
     environment:
-      DATABASE_URL: postgresql://aca:aca_local_dev@postgres:5432/aca
+      DATABASE_URL: postgresql://aca:aca_local_dev@postgres-db:5432/aca
     volumes:
       - ..:/workspace:ro
     working_dir: /workspace
     depends_on:
-      postgres:
+      postgres-db:
         condition: service_healthy
     command:
       - sh
@@ -53,15 +53,17 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: web
+    env_file:
+      - ../.env.docker
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://aca:aca_local_dev@postgres:5432/aca
+      DATABASE_URL: postgresql://aca:aca_local_dev@postgres-db:5432/aca
       REDIS_URL: redis://redis:6379
       RABBITMQ_URL: amqp://aca:aca_local_dev@rabbitmq:5672
       QDRANT_URL: http://qdrant:6333
     ports: ["3000:3000"]
     depends_on:
-      postgres:
+      postgres-db:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -79,12 +81,12 @@ services:
       target: worker
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://aca:aca_local_dev@postgres:5432/aca
+      DATABASE_URL: postgresql://aca:aca_local_dev@postgres-db:5432/aca
       REDIS_URL: redis://redis:6379
       RABBITMQ_URL: amqp://aca:aca_local_dev@rabbitmq:5672
       QDRANT_URL: http://qdrant:6333
     depends_on:
-      postgres:
+      postgres-db:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
