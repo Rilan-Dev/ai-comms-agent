@@ -1,87 +1,88 @@
 /**
- * Supabase client factory
+ * Generic PostgreSQL connection factory.
  *
- * Creates a Supabase client from environment variables. In local development,
- * these point to the Docker Compose Postgres. In production (Phase 4+), these
- * point to the provisioned Supabase project.
- *
- * Security:
- * - The service-role key is NEVER exposed to the browser. It is used only by
- *   the worker and server-side API routes.
- * - The anon key is safe for the browser (RLS-enforced).
- * - Both are read from environment variables, never from the repo.
+ * The application is PostgreSQL-native and does not require Supabase.
+ * DATABASE_URL is the runtime connection; DIRECT_URL may be supplied for
+ * migration/session-mode operations.
  */
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from "pg";
 
-export interface SupabaseConfig {
-  url: string;
-  anonKey: string;
-  serviceRoleKey?: string;
+export interface PostgresConfig {
+  connectionString: string;
+  max?: number;
+  idleTimeoutMillis?: number;
+  connectionTimeoutMillis?: number;
+  ssl?: boolean | { rejectUnauthorized: boolean };
 }
 
-/**
- * Get Supabase configuration from environment variables.
- * Returns null if not configured (e.g., during Phase 2 before provisioning).
- */
-export function getSupabaseConfigFromEnv(): SupabaseConfig | null {
-  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+let pool: Pool | undefined;
 
-  if (!url || !anonKey) {
-    return null;
-  }
+export function getPostgresConfigFromEnv(): PostgresConfig | null {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) return null;
 
-  return { url, anonKey, serviceRoleKey };
+  return {
+    connectionString,
+    max: Number(process.env.DATABASE_POOL_MAX ?? 10),
+    idleTimeoutMillis: Number(process.env.DATABASE_IDLE_TIMEOUT_MS ?? 30_000),
+    connectionTimeoutMillis: Number(process.env.DATABASE_CONNECT_TIMEOUT_MS ?? 10_000),
+    ssl: process.env.DATABASE_SSL === "true"
+      ? { rejectUnauthorized: process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false" }
+      : false,
+  };
 }
 
-/**
- * Check if Supabase is configured (non-null env vars).
- * Used by the health check to report database readiness.
- */
-export function isSupabaseConfigured(): boolean {
-  return getSupabaseConfigFromEnv() !== null;
-}
+export function getPostgresPool(config?: PostgresConfig): Pool {
+  if (config) return new Pool(config);
+  if (pool) return pool;
 
-/**
- * Create a Supabase client with the anon key (RLS-enforced).
- * Safe for browser use. Use this in the web app.
- */
-export function createSupabaseClient(config?: SupabaseConfig): SupabaseClient {
-  const resolved = config ?? getSupabaseConfigFromEnv();
+  const resolved = getPostgresConfigFromEnv();
   if (!resolved) {
-    throw new Error(
-      "Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY environment variables.",
-    );
+    throw new Error("PostgreSQL is not configured. Set DATABASE_URL.");
   }
-  return createClient(resolved.url, resolved.anonKey, {
-    auth: {
-      persistSession: false,
-    },
+
+  pool = new Pool(resolved);
+  pool.on("error", (error) => {
+    console.error("[db] PostgreSQL pool error", error);
   });
+  return pool;
 }
 
-/**
- * Create a Supabase client with the service-role key (bypasses RLS).
- * SERVER-ONLY — never expose to the browser. Use this in the worker and
- * server-side API routes that need privileged access.
- */
-export function createSupabaseServiceClient(config?: SupabaseConfig): SupabaseClient {
-  const resolved = config ?? getSupabaseConfigFromEnv();
-  if (!resolved) {
-    throw new Error(
-      "Supabase is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.",
-    );
+export function isPostgresConfigured(): boolean {
+  return getPostgresConfigFromEnv() !== null;
+}
+
+export async function query<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  values: unknown[] = [],
+): Promise<QueryResult<T>> {
+  return getPostgresPool().query<T>(text, values);
+}
+
+export async function withTransaction<T>(
+  callback: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await getPostgresPool().connect();
+  try {
+    await client.query("BEGIN");
+    const result = await callback(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // Preserve the original transaction error.
+    }
+    throw error;
+  } finally {
+    client.release();
   }
-  if (!resolved.serviceRoleKey) {
-    throw new Error(
-      "Supabase service-role key is not configured. Set SUPABASE_SERVICE_ROLE_KEY environment variable.",
-    );
-  }
-  return createClient(resolved.url, resolved.serviceRoleKey, {
-    auth: {
-      persistSession: false,
-    },
-  });
+}
+
+export async function closePostgresPool(): Promise<void> {
+  if (!pool) return;
+  await pool.end();
+  pool = undefined;
 }
