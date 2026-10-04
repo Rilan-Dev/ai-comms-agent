@@ -413,6 +413,87 @@ CREATE CONSTRAINT TRIGGER organizations_owner_count
   FOR EACH ROW EXECUTE FUNCTION enforce_organization_has_owner();
 
 -- ============================================================================
+-- Atomic application operations
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION create_organization_with_owner(
+  p_name text,
+  p_slug text,
+  p_owner_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $
+DECLARE
+  v_org organizations;
+  v_membership organization_memberships;
+BEGIN
+  INSERT INTO organizations (name, slug)
+  VALUES (p_name, p_slug)
+  RETURNING * INTO v_org;
+
+  INSERT INTO organization_memberships (organization_id, user_id, role, status)
+  VALUES (v_org.id, p_owner_id, 'owner', 'active')
+  RETURNING * INTO v_membership;
+
+  RETURN jsonb_build_object('organization', to_jsonb(v_org), 'membership', to_jsonb(v_membership));
+END;
+$;
+
+CREATE OR REPLACE FUNCTION transfer_organization_ownership(
+  p_organization_id uuid,
+  p_new_owner_id uuid,
+  p_new_owner_role membership_role DEFAULT 'admin'
+)
+RETURNS SETOF organization_memberships
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $
+DECLARE
+  v_current_owner organization_memberships;
+  v_target organization_memberships;
+BEGIN
+  SELECT * INTO v_current_owner
+  FROM organization_memberships
+  WHERE organization_id = p_organization_id
+    AND role = 'owner'
+    AND status = 'active'
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Organization % must have exactly one active owner', p_organization_id;
+  END IF;
+
+  SELECT * INTO v_target
+  FROM organization_memberships
+  WHERE organization_id = p_organization_id
+    AND user_id = p_new_owner_id
+    AND status = 'active'
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'New owner must be an active organization member';
+  END IF;
+
+  IF v_target.id = v_current_owner.id THEN
+    RETURN QUERY SELECT v_current_owner;
+    RETURN;
+  END IF;
+
+  UPDATE organization_memberships SET role = p_new_owner_role WHERE id = v_current_owner.id;
+  UPDATE organization_memberships SET role = 'owner' WHERE id = v_target.id;
+
+  RETURN QUERY
+  SELECT * FROM organization_memberships
+  WHERE organization_id = p_organization_id
+  ORDER BY created_at ASC;
+END;
+$;
+
+-- ============================================================================
 -- Row-Level Security (per SECURITY_MODEL.md §3 and RULES.md §11)
 -- "authenticated alone is never authorization"
 -- ============================================================================
