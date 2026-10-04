@@ -10,7 +10,7 @@ This file is the navigation and rules document for any AI agent (ChatGPT archite
 - **Product:** Multi-channel AI communications agent (email + WhatsApp + chat + voice)
 - **Reference library:** `Rilan-Dev/ai-reusable-libraries` (Clara reusable AI core)
 - **Deployment:** Vercel (project name `ai-comms-agent`, linked to `main` branch)
-- **Database:** Supabase (Phase 4 onwards — not provisioned yet)
+- **Database:** PostgreSQL 15+ (self-hosted or managed; Docker is the reference deployment path)
 - **Effective date:** 2026-10-03
 
 ---
