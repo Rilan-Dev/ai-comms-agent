@@ -1126,3 +1126,12 @@ Development continues without waiting for CI/Vercel results. Formal verification
 - Added Phase 4 security correction migration for RLS helper execution and secret-bearing tables.
 - Added a dedicated Linux worker-host architectural decision so long-lived queue consumers are not forced onto Vercel.
 - No production DB or provider credentials were provisioned.
+
+
+## 2026-10-04 — ChatGPT runtime verification gate
+
+- Main baseline: `adcaf0fc627a087a16099820d095ae918de9c7ff`.
+- CI now provisions PostgreSQL 17, applies the Phase 3 migration, executes a successful-owner/transfer runtime script, and executes a negative ownerless-organization check.
+- A dedicated PR was opened solely to trigger the verification workflow, but GitHub exposed zero workflow runs. The PR was closed without merge because it could not provide runtime evidence.
+- Static inspection found the migration's PostgreSQL function quoting valid and the owner/RLS mechanisms structurally correct.
+- **Phase 3 acceptance remains pending runtime evidence. Phase 4 remains unauthorized.**
