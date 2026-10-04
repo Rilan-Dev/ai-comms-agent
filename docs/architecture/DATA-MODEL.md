@@ -159,7 +159,7 @@ Logical conversation thread (cross-folder, deduplicated by provider thread id wh
 - index on `(email_account_id, received_at desc)`, `(thread_id, received_at)`, `(search_tsv gin)`, `(importance_score desc)`
 
 ### `email_attachments`
-- `id`, `email_message_id`, `filename`, `mime_type`, `size_bytes`, `storage_url` (Supabase Storage), `content_hash` (sha256), `virus_scan_status` (enum: `pending`, `clean`, `infected`, `skipped`), `created_at`
+- `id`, `email_message_id`, `filename`, `mime_type`, `size_bytes`, `storage_url` (S3-compatible/object storage), `content_hash` (sha256), `virus_scan_status` (enum: `pending`, `clean`, `infected`, `skipped`), `created_at`
 
 ### `email_sync_states`
 Per-account sync cursor.
@@ -297,6 +297,6 @@ Immutable, append-only audit log. Every sensitive operation, every auth event, e
 
 ## 13. Migration strategy
 
-Migrations are produced in Phase 4. They are forward-only, named `NNNN_description.sql` (e.g., `0001_init_organizations.sql`), applied via Supabase migrations tooling. Every migration is reviewed by ChatGPT before applying. No destructive operation is performed casually (per `RULES.md §11`).
+Migrations are produced in Phase 4. They are forward-only, named `NNNN_description.sql` (e.g., `0001_init_organizations.sql`), applied by the repository's PostgreSQL migration runner. Every migration is reviewed by ChatGPT before applying. No destructive operation is performed casually (per `RULES.md §11`).
 
 The exact column types, constraint names, index names, and RLS policy text are produced in Phase 4 and recorded as a separate `db/migrations/` directory in the application repository (created in Phase 2).
