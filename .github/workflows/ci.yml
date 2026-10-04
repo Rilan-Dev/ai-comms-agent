@@ -47,8 +47,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Full verification
-        run: bash scripts/verify.sh
+      - name: Full source verification
+        run: pnpm run verify
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
 
       - name: Apply PostgreSQL migrations
         env:
