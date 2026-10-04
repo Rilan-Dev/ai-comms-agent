@@ -1101,3 +1101,16 @@ Development continues without waiting for CI/Vercel results. Formal verification
 - Added AES-256-GCM envelope encryption primitives for provider credentials.
 - Corrected the RLS identity context to the repository's existing \`app.user_id\` contract instead of introducing a second auth identity mechanism.
 - CI remains temporarily manual-only until implementation is complete.
+
+
+## Task ID: 14
+## Phase: 5/6 — Email Provider Foundation and Gmail
+## Status: implementation_in_progress
+## Date: 2026-10-04
+
+- Added normalized email capability helpers and contract tests.
+- Implemented a Gmail REST adapter using OAuth bearer credentials, server-side search, labels/folders, drafts, send, reply/forward, read/unread, archive, move, labels, attachments, and history-based incremental sync.
+- Added server-side Gmail OAuth PKCE authorization URL, authorization-code exchange, and refresh-token client.
+- Added Gmail adapter/OAuth tests using mocked fetch; no real provider credentials were committed.
+- Corrected Gmail initial sync to persist the history cursor from the Gmail profile response.
+- Phase 4 runtime verification and CI remain intentionally deferred while implementation continues.
