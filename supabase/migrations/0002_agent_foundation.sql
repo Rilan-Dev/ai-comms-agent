@@ -176,19 +176,19 @@ ALTER TABLE agent_policies ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY agents_member_visibility ON agents
 FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())));
+USING (private.is_active_organization_member(organization_id, (select auth.uid())));
 
 CREATE POLICY agents_member_write ON agents
 FOR ALL TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())))
-WITH CHECK (is_active_organization_member(organization_id, (select auth.uid())));
+USING (private.is_active_organization_member(organization_id, (select auth.uid())))
+WITH CHECK (private.is_active_organization_member(organization_id, (select auth.uid())));
 
 CREATE POLICY agent_versions_member_visibility ON agent_versions
 FOR SELECT TO authenticated
 USING (EXISTS (
   SELECT 1 FROM agents a
   WHERE a.id = agent_versions.agent_id
-    AND is_active_organization_member(a.organization_id, (select auth.uid()))
+    AND private.is_active_organization_member(a.organization_id, (select auth.uid()))
 ));
 
 CREATE POLICY agent_versions_member_write ON agent_versions
@@ -196,12 +196,12 @@ FOR ALL TO authenticated
 USING (EXISTS (
   SELECT 1 FROM agents a
   WHERE a.id = agent_versions.agent_id
-    AND is_active_organization_member(a.organization_id, (select auth.uid()))
+    AND private.is_active_organization_member(a.organization_id, (select auth.uid()))
 ))
 WITH CHECK (EXISTS (
   SELECT 1 FROM agents a
   WHERE a.id = agent_versions.agent_id
-    AND is_active_organization_member(a.organization_id, (select auth.uid()))
+    AND private.is_active_organization_member(a.organization_id, (select auth.uid()))
 ));
 
 CREATE POLICY agent_deployments_member_visibility ON agent_deployments
@@ -209,7 +209,7 @@ FOR SELECT TO authenticated
 USING (EXISTS (
   SELECT 1 FROM agents a
   WHERE a.id = agent_deployments.agent_id
-    AND is_active_organization_member(a.organization_id, (select auth.uid()))
+    AND private.is_active_organization_member(a.organization_id, (select auth.uid()))
 ));
 
 CREATE POLICY agent_deployments_admin_write ON agent_deployments
@@ -217,42 +217,42 @@ FOR ALL TO authenticated
 USING (EXISTS (
   SELECT 1 FROM agents a
   WHERE a.id = agent_deployments.agent_id
-    AND is_active_organization_admin_or_owner(a.organization_id, (select auth.uid()))
+    AND private.is_active_organization_admin_or_owner(a.organization_id, (select auth.uid()))
 ))
 WITH CHECK (EXISTS (
   SELECT 1 FROM agents a
   WHERE a.id = agent_deployments.agent_id
-    AND is_active_organization_admin_or_owner(a.organization_id, (select auth.uid()))
+    AND private.is_active_organization_admin_or_owner(a.organization_id, (select auth.uid()))
 ));
 
 CREATE POLICY agent_email_accounts_member_visibility ON agent_email_accounts
 FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())));
+USING (private.is_active_organization_member(organization_id, (select auth.uid())));
 CREATE POLICY agent_email_accounts_member_write ON agent_email_accounts
 FOR ALL TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())))
-WITH CHECK (is_active_organization_member(organization_id, (select auth.uid())));
+USING (private.is_active_organization_member(organization_id, (select auth.uid())))
+WITH CHECK (private.is_active_organization_member(organization_id, (select auth.uid())));
 
 CREATE POLICY agent_whatsapp_accounts_member_visibility ON agent_whatsapp_accounts
 FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())));
+USING (private.is_active_organization_member(organization_id, (select auth.uid())));
 CREATE POLICY agent_whatsapp_accounts_member_write ON agent_whatsapp_accounts
 FOR ALL TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())))
-WITH CHECK (is_active_organization_member(organization_id, (select auth.uid())));
+USING (private.is_active_organization_member(organization_id, (select auth.uid())))
+WITH CHECK (private.is_active_organization_member(organization_id, (select auth.uid())));
 
 CREATE POLICY agent_ai_settings_member_visibility ON agent_ai_settings
 FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())));
+USING (private.is_active_organization_member(organization_id, (select auth.uid())));
 CREATE POLICY agent_ai_settings_member_write ON agent_ai_settings
 FOR ALL TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())))
-WITH CHECK (is_active_organization_member(organization_id, (select auth.uid())));
+USING (private.is_active_organization_member(organization_id, (select auth.uid())))
+WITH CHECK (private.is_active_organization_member(organization_id, (select auth.uid())));
 
 CREATE POLICY agent_policies_admin_write ON agent_policies
 FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())));
+USING (private.is_active_organization_member(organization_id, (select auth.uid())));
 CREATE POLICY agent_policies_admin_manage ON agent_policies
 FOR ALL TO authenticated
-USING (is_active_organization_admin_or_owner(organization_id, (select auth.uid())))
-WITH CHECK (is_active_organization_admin_or_owner(organization_id, (select auth.uid())));
+USING (private.is_active_organization_admin_or_owner(organization_id, (select auth.uid())))
+WITH CHECK (private.is_active_organization_admin_or_owner(organization_id, (select auth.uid())));
