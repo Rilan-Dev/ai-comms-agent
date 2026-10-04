@@ -50,31 +50,15 @@ jobs:
       - name: Full verification
         run: bash scripts/verify.sh
 
-      - name: Apply Phase 3 PostgreSQL migration
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
-        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/0001_identity_rbac.sql
-
       - name: Apply PostgreSQL migrations
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
         run: bash scripts/migrate.sh
 
-      - name: Apply PostgreSQL migrations
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
-        run: bash scripts/migrate.sh
-
-      - name: Apply PostgreSQL migration
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
-        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/0001_identity_rbac.sql
-
-      - name: Verify PostgreSQL migration runtime
+      - name: Verify Phase 3 PostgreSQL runtime
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/verify-phase3-migration.sql
-
 
       - name: Verify ownerless organization rejection
         env:
