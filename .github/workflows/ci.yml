@@ -55,6 +55,11 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/0001_identity_rbac.sql
 
+      - name: Apply PostgreSQL migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
+        run: bash scripts/migrate.sh
+
       - name: Verify PostgreSQL migration runtime
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
