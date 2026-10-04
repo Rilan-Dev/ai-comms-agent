@@ -152,3 +152,7 @@ Recent implementation commits include: 5083c4a (Phase 4 plan), 4d33248 (agent fo
 - credential encryption: `packages/db/src/security/envelope.ts`
 - static verification: `apps/web/tests/migration-verification.test.ts`
 - CI: temporarily manual-only by project-owner instruction
+
+
+### 2026-10-04 takeover verification update
+Runtime verification scripts are now committed on main and CI is configured with PostgreSQL 17. GitHub's commit workflow-run endpoint reports no workflow runs for the verification PR, so runtime execution remains unproven. No Phase 4 authorization has been issued.
