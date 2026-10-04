@@ -9,6 +9,7 @@ export {
   getPostgresPool,
   getPostgresConfigFromEnv,
   isPostgresConfigured,
+  isPostgresConfigured as isSupabaseConfigured,
   query,
   withTransaction,
   closePostgresPool,
