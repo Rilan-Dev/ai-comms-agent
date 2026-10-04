@@ -119,3 +119,7 @@ The next implementation target is Phase 5 Email Provider Abstraction completion:
 - GitHub Actions rerun still terminates immediately with a generic failure and exposes no usable job log through the connected API. This is not treated as a passing runtime result.
 - **Required acceptance evidence:** run `git pull --ff-only origin main` followed by `bash scripts/verify-docker.sh` locally. Expected final line: `Disposable PostgreSQL verification: PASS`.
 - Phase 3 acceptance remains pending until that runtime check passes. Phase 4 remains NOT AUTHORIZED.
+
+
+### 2026-10-05 — Immediate runtime gate
+Pull latest `main` and rerun `bash scripts/verify-docker.sh`. The previous exit-code-3 bootstrap failure has been corrected. If it fails again, preserve the PostgreSQL logs before any further schema changes.
