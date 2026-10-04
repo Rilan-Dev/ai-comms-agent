@@ -384,7 +384,7 @@ takeover:
   primary_implementer: "ChatGPT"
   previous_implementer: "Z.AI"
   takeover_date: "2026-10-04"
-  current_commit: "c1f2a078c80f7a52774061cd75b4d5bc907a90f1"
+  current_commit: "c391f71ff70841db28b12de45ae3c98a23017db3"
   latest_change:
     migration_owner_invariant: "Deferred constraint trigger now validates affected existing organizations directly, including final-owner DELETE where membership rows become empty."
     migration_tests: "Added static assertions for TG_OP/OLD/NEW affected-organization handling and zero-owner detection."
