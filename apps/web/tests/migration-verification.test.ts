@@ -289,3 +289,27 @@ describe("Phase 4 database security hardening migration", () => {
     expect(securitySql).toContain("audit_events_delete_deny");
   });
 });
+
+
+describe("Phase 4 agent policy configuration migration", () => {
+  const policyPath = resolve(__dirname, "../../../supabase/migrations/0004_agent_policy_configuration.sql");
+  const policySql = readFileSync(policyPath, "utf8");
+
+  it("persists per-agent security policy and allowed tool configuration", () => {
+    expect(policySql).toContain("CREATE TABLE IF NOT EXISTS agent_policies");
+    expect(policySql).toContain("security_policy jsonb");
+    expect(policySql).toContain("allowed_tools text[]");
+    expect(policySql).toContain("rate_limits jsonb");
+  });
+
+  it("persists explicit tool bindings without making the registry dynamic", () => {
+    expect(policySql).toContain("CREATE TABLE IF NOT EXISTS agent_tool_bindings");
+    expect(policySql).toContain("UNIQUE(agent_id, tool_name)");
+    expect(policySql).toContain("enabled boolean");
+  });
+
+  it("requires organization management permission for policy writes", () => {
+    expect(policySql).toContain("WITH CHECK");
+    expect(policySql).toContain("can_manage_organization(a.organization_id)");
+  });
+});
