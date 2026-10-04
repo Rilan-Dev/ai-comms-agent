@@ -87,3 +87,5 @@ export {
 } from "./identity/types";
 
 export { EmailProviderRegistry, type EmailProviderFactory } from "./email/registry";
+
+export { EMAIL_CAPABILITIES, emptyCapabilitySet, normalizeCapabilitySet, assertCapability } from "./email/capabilities";
