@@ -1192,3 +1192,21 @@ A real `.env.docker` / `.env` containing deployment secrets is intentionally NOT
 
 ### Next
 Finish database runtime verification, correct any migration/runtime findings, then proceed to Phase 5 Email Provider Abstraction and the first production-grade email connector contracts.
+
+
+## Task ID: 13
+## Phase: 4 → Phase 5 implementation groundwork — Email Provider Runtime
+
+- **Status**: implementation_in_progress
+- **Owner**: ChatGPT
+- **Date**: 2026-10-05
+
+### Implemented
+- Added capability-enforced `EmailProviderRuntime` so provider operations are blocked deterministically when the provider does not advertise the required capability.
+- Bootstrapped a provider registry with the mock adapter for contract testing.
+- Corrected the mock adapter identity from `gmail` to `imap_smtp`; it is a test adapter and no longer masquerades as a real provider.
+- Added worker-level Node test coverage for provider capability discovery and sensitive capability rejection.
+- CI now includes the worker provider runtime test.
+
+### Boundary
+No Gmail, Zoho, IMAP/SMTP credentials, external API calls, or production provider registration have been introduced. Those remain provider-specific implementation work after the abstraction gate.
