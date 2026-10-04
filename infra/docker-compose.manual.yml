@@ -39,6 +39,7 @@ services:
       DATABASE_URL: postgresql://aca:aca_local_dev@postgres:5432/aca
     volumes:
       - ..:/workspace:ro
+    working_dir: /workspace
     depends_on:
       postgres:
         condition: service_healthy
