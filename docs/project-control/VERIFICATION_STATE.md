@@ -384,7 +384,7 @@ takeover:
   primary_implementer: "ChatGPT"
   previous_implementer: "Z.AI"
   takeover_date: "2026-10-04"
-  current_commit: "9a1cdd99c8d230d138fbbcb6711ba918f05cf690"
+  current_commit: "c1f2a078c80f7a52774061cd75b4d5bc907a90f1"
   latest_change:
     migration_owner_invariant: "Deferred constraint trigger now validates affected existing organizations directly, including final-owner DELETE where membership rows become empty."
     migration_tests: "Added static assertions for TG_OP/OLD/NEW affected-organization handling and zero-owner detection."
@@ -395,7 +395,7 @@ takeover:
 
 
 ### Latest ChatGPT verification update — 2026-10-04
-- Latest code: f785e3ab8783fd9718fc383744a0d1c855db16b2.
+- latest code: c1f2a078c80f7a52774061cd75b4d5bc907a90f1.
 - Corrected invalid single-dollar PostgreSQL function delimiters and added a static regression guard.
 - Runtime migration execution is still pending; GitHub workflow results are not yet exposed by the current commit-run endpoint.
 - Latest Vercel attempts are rate-limited/canceled; the previously READY deployment at commit 4289e53 is not evidence for the latest code.
