@@ -1164,3 +1164,31 @@ Development continues without waiting for CI/Vercel results. Formal verification
 - CI continues to call the same `scripts/verify.sh` entry point; no second verification implementation was introduced.
 - Runtime execution remains pending because the current ChatGPT execution environment cannot reach Docker/GitHub networking.
 - Phase 4 remains unauthorized.
+
+
+## Task ID: 12
+## Phase: 4 — PostgreSQL-native Database Foundation
+
+- **Status**: implementation_in_progress
+- **Owner**: ChatGPT
+- **Date**: 2026-10-05
+
+### Project-owner direction
+The deployment target is self-hosted Docker and PostgreSQL. Supabase is not a required runtime/database provider. The repository must accept a standard PostgreSQL connection contract such as `DATABASE_URL=postgresql://user:password@postgres-db:5432/ai_comms_agent` and an optional `DIRECT_URL` for migration/session operations.
+
+### Implemented
+- Replaced the database runtime client boundary with `pg.Pool` and transaction helpers.
+- Replaced Supabase-specific identity/email repository calls with PostgreSQL queries; compatibility class exports are retained only to avoid breaking existing imports.
+- Added provider-neutral Phase 4 application schema migration covering agents, versions/deployments, multi-account email, credentials, folders/labels/messages/threads/sync, one WhatsApp account per agent, conversations, scheduling/automation, approvals, summaries, AI provider configs/usage, voice telemetry, and audit.
+- Added tenant RLS helpers using `app.organization_id` and active membership checks.
+- Added append-only audit protection.
+- Updated Docker manual deployment to use a `postgres-db` service and the committed `.env.docker.example` contract.
+- Hardened `.gitignore` so real `.env*` files cannot be committed.
+- Updated health checks and architecture/control docs to report generic PostgreSQL.
+- Added runtime/static migration verification for the Phase 4 foundation.
+
+### Important constraint
+A real `.env.docker` / `.env` containing deployment secrets is intentionally NOT committed. The repository contains safe example templates only. The operator creates the real file on the Docker host.
+
+### Next
+Finish database runtime verification, correct any migration/runtime findings, then proceed to Phase 5 Email Provider Abstraction and the first production-grade email connector contracts.
