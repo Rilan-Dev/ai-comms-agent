@@ -150,8 +150,8 @@ UI implementation is also proceeding as a first-class product surface: modern wo
 Phase 4 is now the active development phase under the explicit development-first directive. The database foundation has been implemented as forward-only migrations 0002–0011 covering agents, email, WhatsApp, conversations, scheduling, automation, summaries, actions/approvals, AI usage, voice telemetry, audit, API keys, knowledge/storage metadata, cross-tenant integrity, RLS helper hardening, and server identity transaction RPCs. UI/UX modernization is continuing in parallel where it consumes stable host contracts. Do not claim Phase 4 acceptance until staging/runtime verification is completed.
 
 
-current_commit: "9a1cdd99c8d230d138fbbcb6711ba918f05cf690"
-\n\n### Phase 4 development authorization — 2026-10-04\nChatGPT has begun Phase 4 database-foundation implementation per the project owner's explicit instruction to continue development without waiting for CI verification. GitHub Actions automatic push/PR triggers are temporarily disabled; the workflow remains available via manual dispatch. Phase acceptance remains gated on later runtime verification.\n
+current_commit: "9fd34d1d69417302f2c8e31d0a453a0836533e27"
+\n\n### Phase 4 development authorization — 2026-10-04\nChatGPT has begun Phase 4 database-foundation implementation per the project owner's explicit instruction to continue development without waiting for CI verification. GitHub Actions push/PR triggers are enabled and include disposable PostgreSQL runtime verification. Phase acceptance remains gated on later runtime verification.\n
 
 ## Active Phase 4 implementation record
 
@@ -159,11 +159,11 @@ current_commit: "9a1cdd99c8d230d138fbbcb6711ba918f05cf690"
 - `0003_database_security_hardening.sql` hardens helper exposure and secret-bearing RLS.
 - `postgresql/config.toml` defines private attachment and knowledge-document buckets.
 - `packages/db/src/security/envelope.ts` implements AES-256-GCM envelope encryption primitives.
-- Automatic CI triggers are temporarily disabled by explicit project-owner instruction; manual verification remains required before acceptance.
+- Automatic CI triggers are enabled; runtime verification remains mandatory before acceptance.
 
 
 ### Runtime gate update — 2026-10-04
-- Main code baseline: `adcaf0fc627a087a16099820d095ae918de9c7ff`.
+- Main code baseline: `9fd34d1d69417302f2c8e31d0a453a0836533e27`.
 - Added disposable PostgreSQL runtime migration verification and ownerless-organization negative test to CI.
 - GitHub Actions currently exposes no workflow run for the verification PR; therefore runtime execution is **PENDING**, not PASS.
 - Vercel's latest production deployment for this commit was canceled by the project's ignored-build/build-rate-limit path; no latest READY claim is made.
@@ -190,3 +190,10 @@ current_commit: "9a1cdd99c8d230d138fbbcb6711ba918f05cf690"
 - **CI:** GitHub Actions uses its own disposable PostgreSQL service for runtime migration checks; this is CI infrastructure, not deployment provisioning.
 - **Latest known Vercel status:** the Vercel status for the latest code is `failure` due to build-rate-limit; no READY claim is made.
 - **Phase 4:** remains the active development phase under the project-owner development-first instruction. Runtime validation remains a release/acceptance gate, not a source-development blocker.
+
+
+### 2026-10-05 — Phase 4 migration-chain correction
+- Local disposable PostgreSQL verification exposed a real schema defect: `0002_agent_foundation.sql` and `0002_application_foundation.sql` both defined `agents`, `agent_versions`, and related objects with incompatible columns. The application migration attempted to add `agents_current_version_fk` against a column that did not exist on the already-created table.
+- Corrective action: `0002_application_foundation.sql` is now the single authoritative Phase 4 application/agent foundation migration. The richer agent version/deployment/policy fields were consolidated into it, and the duplicate `0002_agent_foundation.sql` migration was removed before production application.
+- Latest correction commit: `9fd34d1d69417302f2c8e31d0a453a0836533e27`.
+- Required next verification: pull `main` and rerun `bash scripts/verify-docker.sh`; then inspect CI runtime result. Do not claim Phase 4 acceptance until the full migration chain passes.
