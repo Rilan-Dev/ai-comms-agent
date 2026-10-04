@@ -384,7 +384,7 @@ takeover:
   primary_implementer: "ChatGPT"
   previous_implementer: "Z.AI"
   takeover_date: "2026-10-04"
-  current_commit: "c391f71ff70841db28b12de45ae3c98a23017db3"
+  current_commit: "271bd648875ce086a52aaedd7953e63bbc89421e"
   latest_change:
     migration_owner_invariant: "Deferred constraint trigger now validates affected existing organizations directly, including final-owner DELETE where membership rows become empty."
     migration_tests: "Added static assertions for TG_OP/OLD/NEW affected-organization handling and zero-owner detection."
@@ -462,3 +462,6 @@ Development-first mode is active by explicit project-owner instruction. Database
 - GitHub Actions returned **zero workflow runs** for the dedicated verification PR, so no runtime PASS is claimed.
 - Static migration inspection is clean for function quoting, deferred triggers, affected-org DELETE handling, direct organization INSERT protection, and SECURITY DEFINER RLS helpers.
 - **Acceptance remains PENDING; Phase 4 remains NOT AUTHORIZED.**
+
+
+Latest synchronization: Docker/manual verification tooling is committed at 271bd648875ce086a52aaedd7953e63bbc89421e. Runtime acceptance remains pending because this environment cannot execute Docker and GitHub Actions has not yet supplied a fresh run result.
