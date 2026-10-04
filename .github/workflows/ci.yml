@@ -58,19 +58,7 @@ jobs:
       - name: Initialize Supabase-compatible test roles
         env:
           PGPASSWORD: postgres
-        run: |
-          psql "postgresql://postgres@127.0.0.1:5432/ai_comms_agent_test" -v ON_ERROR_STOP=1 <<'SQL'
-          DO $
-          BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
-              CREATE ROLE authenticated NOLOGIN;
-            END IF;
-            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
-              CREATE ROLE anon NOLOGIN;
-            END IF;
-          END
-          $;
-          SQL
+        run: psql "postgresql://postgres@127.0.0.1:5432/ai_comms_agent_test" -v ON_ERROR_STOP=1 -f infra/postgres-init/00-supabase-roles.sql
 
       - name: Apply PostgreSQL migrations
         env:
