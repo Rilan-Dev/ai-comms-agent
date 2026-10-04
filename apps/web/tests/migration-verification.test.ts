@@ -284,6 +284,13 @@ describe("Phase 4 database security hardening migration", () => {
     expect(securitySql).not.toContain("auth.uid()");
   });
 
+  it("defines public membership helper wrappers over the Phase 3 private helpers", () => {
+    expect(securitySql).toContain("CREATE OR REPLACE FUNCTION public.is_active_organization_member");
+    expect(securitySql).toContain("private.is_active_organization_member(p_organization_id, p_user_id)");
+    expect(securitySql).toContain("CREATE OR REPLACE FUNCTION public.is_active_organization_admin_or_owner");
+    expect(securitySql).toContain("private.is_active_organization_admin_or_owner(p_organization_id, p_user_id)");
+  });
+
   it("keeps policy wrappers SECURITY INVOKER", () => {
     expect(securitySql).toContain("SECURITY INVOKER");
     expect(securitySql).toContain("SELECT public.is_active_organization_member");
