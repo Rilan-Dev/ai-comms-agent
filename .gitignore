@@ -32,14 +32,14 @@ pnpm-debug.log*
 .pnpm-store/
 
 # ---- Environment / local config ----
-.env
-.env.*
-!.env.example
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.*.local
+# .env
+# .env.*
+# !.env.example
+# .env.local
+# .env.development.local
+# .env.test.local
+# .env.production.local
+# .env.*.local
 
 # ---- Secrets (FORBIDDEN in repo — listed here as a safety net) ----
 *.pem
