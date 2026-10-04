@@ -10,10 +10,7 @@ AS $$
   SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
 $$;
 
-GRANT USAGE ON SCHEMA auth TO authenticated, anon;
-GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated, anon;
-
-DO $$
+DO $
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
     CREATE ROLE authenticated NOLOGIN;
@@ -22,4 +19,7 @@ BEGIN
     CREATE ROLE anon NOLOGIN;
   END IF;
 END
-$$;
+$;
+
+GRANT USAGE ON SCHEMA auth TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated, anon;
