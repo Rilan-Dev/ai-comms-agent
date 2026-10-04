@@ -28,9 +28,9 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "9a1cdd99c8d230d138fbbcb6711ba918f05cf690"
-current_commit_short: "ea0a8cb3"
-current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/ea0a8cb3f77c1e08ef2ef28e796759fdd3dfc8ff"
+current_commit: "c1f2a078c80f7a52774061cd75b4d5bc907a90f1"
+current_commit_short: "c1f2a07"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/c1f2a078c80f7a52774061cd75b4d5bc907a90f1"
 last_verified_commit: "validation deferred by explicit project-controller instruction"
 
 open_blockers:
