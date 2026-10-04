@@ -54,3 +54,5 @@ END;
 $$;
 
 SELECT 'phase3 migration runtime verification passed' AS result;
+
+-- CI gate: runtime migration verification is intentionally disposable.
