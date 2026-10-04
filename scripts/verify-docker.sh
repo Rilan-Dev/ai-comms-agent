@@ -7,9 +7,9 @@ trap 'docker compose -f "$COMPOSE_FILE" down -v' EXIT
 export DATABASE_URL="$DB_URL"
 docker compose -f "$COMPOSE_FILE" run --rm migrate
 
-docker compose -f "$COMPOSE_FILE" exec -T postgres psql -v ON_ERROR_STOP=1 -f /workspace/scripts/verify-phase3-migration.sql
+docker compose -f "$COMPOSE_FILE" run --rm --entrypoint sh migrate -c 'psql -v ON_ERROR_STOP=1 -f /workspace/scripts/verify-phase3-migration.sql'
 set +e
-docker compose -f "$COMPOSE_FILE" exec -T postgres psql -v ON_ERROR_STOP=1 -f /workspace/scripts/verify-phase3-migration-fail.sql >/tmp/aca-ownerless.log 2>&1
+docker compose -f "$COMPOSE_FILE" run --rm --entrypoint sh migrate -c 'psql -v ON_ERROR_STOP=1 -f /workspace/scripts/verify-phase3-migration-fail.sql' >/tmp/aca-ownerless.log 2>&1
 status=$?
 set -e
 cat /tmp/aca-ownerless.log
