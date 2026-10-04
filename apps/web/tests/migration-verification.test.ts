@@ -18,6 +18,8 @@ import { resolve } from "node:path";
 
 const migrationPath = resolve(__dirname, "../../../supabase/migrations/0001_identity_rbac.sql");
 const migrationSql = readFileSync(migrationPath, "utf8");
+const foundationPath = resolve(__dirname, "../../../supabase/migrations/0002_application_foundation.sql");
+const foundationSql = readFileSync(foundationPath, "utf8");
 
 describe("Migration static verification (0001_identity_rbac.sql)", () => {
   describe("Owner invariant mechanism", () => {
@@ -311,5 +313,42 @@ describe("Phase 4 agent policy configuration migration", () => {
   it("requires organization management permission for policy writes", () => {
     expect(policySql).toContain("WITH CHECK");
     expect(policySql).toContain("can_manage_organization(a.organization_id)");
+  });
+});
+
+
+describe("Application database foundation static verification (0002_application_foundation.sql)", () => {
+  it("defines the core application domains", () => {
+    for (const table of [
+      "agents", "agent_versions", "agent_deployments", "email_accounts",
+      "email_account_credentials", "email_messages", "email_threads",
+      "whatsapp_accounts", "whatsapp_messages", "conversations",
+      "scheduled_jobs", "automation_rules", "email_actions", "summaries",
+      "ai_provider_configs", "ai_usage_events", "voice_sessions", "voice_telemetry",
+      "audit_events",
+    ]) {
+      expect(foundationSql).toContain(`CREATE TABLE IF NOT EXISTS ${table}`);
+    }
+  });
+
+  it("enforces one WhatsApp account per agent", () => {
+    expect(foundationSql).toContain("agent_id uuid NOT NULL UNIQUE REFERENCES agents");
+  });
+
+  it("defines email full-text indexing", () => {
+    expect(foundationSql).toContain("search_tsv tsvector GENERATED ALWAYS");
+    expect(foundationSql).toContain("email_messages_search_tsv_idx");
+  });
+
+  it("defines tenant RLS fail-closed through PostgreSQL settings", () => {
+    expect(foundationSql).toContain("current_app_organization_id");
+    expect(foundationSql).toContain("tenant_access");
+    expect(foundationSql).toContain("SET search_path = public");
+  });
+
+  it("makes audit events append-only", () => {
+    expect(foundationSql).toContain("audit_events_insert");
+    expect(foundationSql).toContain("audit_events_read");
+    expect(foundationSql).toContain("audit_events is append-only");
   });
 });
