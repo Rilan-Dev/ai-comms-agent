@@ -91,3 +91,7 @@ Manual verification is now reproducible without relying on GitHub Actions:
 - `scripts/verify-docker.sh` runs migration, drift, owner-invariant runtime checks, and expected ownerless-org rejection.
 - `scripts/verify.sh` adds typecheck, tests, and both builds.
 - CI delegates to the same `scripts/verify.sh` path, so local and CI verification share one implementation.
+
+
+### 2026-10-05 continuation state
+The next implementation target is Phase 5 Email Provider Abstraction completion: persist account connection state through the PostgreSQL repository, then implement Gmail/IMAP-SMTP/Zoho adapters sequentially. Runtime verification of the full migration set remains a required evidence gate, but it must not block source implementation under the current project-owner instruction.
