@@ -14,7 +14,7 @@ action: |
   Complete final Phase 3 verification and acceptance. If all evidence is green, accept Phase 3 and issue the Phase 4 database-foundation implementation plan under ChatGPT ownership. Do not start Phase 4 until acceptance is recorded.
 
 context:
-  phase_3_transaction_safe_commit: "9a1cdd99c8d230d138fbbcb6711ba918f05cf690"
+  phase_3_transaction_safe_commit: "c391f71ff70841db28b12de45ae3c98a23017db3"
   developer_verification: "complete (typecheck 5/5, 91/91 tests, build pass, secret scan clean)"
   vercel_deployment: "blocked/pending — Vercel build-rate-limit surfaced during rapid takeover commits; no latest READY deployment claimed"
   chatgpt_acceptance: "pending"
@@ -97,3 +97,13 @@ Continue implementing the database foundation and security hardening. CI is inte
 - A dedicated PR was opened solely to trigger the verification workflow, but GitHub exposed zero workflow runs. The PR was closed without merge because it could not provide runtime evidence.
 - Static inspection found the migration's PostgreSQL function quoting valid and the owner/RLS mechanisms structurally correct.
 - **Phase 3 acceptance remains pending runtime evidence. Phase 4 remains unauthorized.**
+
+
+### Docker verification tooling — 2026-10-05
+Manual verification is now reproducible without relying on GitHub Actions: 
+- `infra/docker-compose.verify.yml` provides disposable PostgreSQL 17.
+- `scripts/migrate.sh` applies migrations and records SHA-256 checksums; modified applied migrations fail closed.
+- `scripts/migration-changes.sh` checks applied migration files for drift.
+- `scripts/verify-docker.sh` runs migration, drift, owner-invariant runtime checks, and expected ownerless-org rejection.
+- `scripts/verify.sh` adds typecheck, tests, and both builds.
+- CI delegates to the same `scripts/verify.sh` path, so local and CI verification share one implementation.
