@@ -27,9 +27,9 @@ This document is the canonical phase-by-phase implementation plan for `ai-comms-
   - `apps/web` (Next.js App Router, TypeScript, Tailwind, shadcn/ui).
   - `apps/worker` (Node, RabbitMQ consumer framework).
   - `packages/shared` (types, schemas, utilities).
-  - `packages/db` (Supabase client, migration framework, RLS helpers).
+  - `packages/db` (PostgreSQL client, migration framework, RLS helpers).
   - CI workflow (`.github/workflows/ci.yml`): typecheck, lint, unit tests, build, secret scan.
-  - Local development setup (Docker Compose for Supabase, RabbitMQ, Redis, Qdrant).
+  - Local development setup (Docker Compose for PostgreSQL, RabbitMQ, Redis, Qdrant).
   - Deep audit of Clara library (per `CLARA-INTEGRATION.md §8`).
   - Clara integration (package dependency or submodule).
   - Thin end-to-end vertical slice: auth stub + one read-only email view (mock data) to de-risk the architecture.
@@ -72,12 +72,12 @@ This document is the canonical phase-by-phase implementation plan for `ai-comms-
 - **Scope**:
   - Provision or connect any PostgreSQL 15+ deployment (self-hosted Docker is supported and preferred for the current environment).
   - Forward-only migration framework (`supabase migration`).
-  - All migrations for Phase 1-3 entities (organizations, users, memberships, roles, permissions, api_keys, agents, agent_versions, agent_deployments, agent_email_accounts, agent_whatsapp_accounts, agent_ai_settings).
+  - All migrations for Phase 1-3 entities plus the full application domain schema on PostgreSQL.
   - All migrations for email/WhatsApp/conversation/schedule/automation/summary/usage/voice/audit entities.
   - RLS policies on every tenant-scoped table.
   - Indexes (per `DATA-MODEL.md`).
   - PostgreSQL-compatible object-storage adapter boundary for attachments/KB documents; local filesystem/S3-compatible storage is selected by deployment.
-  - PgBouncer / connection pooling verification.
+  - `pg.Pool` connection pooling and optional PgBouncer verification.
   - Worker host selection and provisioning (per ADR-007 / ISS-004 — ChatGPT decides before Phase 4 starts).
   - RabbitMQ / Redis / Qdrant provisioning (worker host).
 - **Exit criteria**:
