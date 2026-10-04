@@ -176,3 +176,8 @@ current_commit: "9a1cdd99c8d230d138fbbcb6711ba918f05cf690"
 - Added tenant RLS helpers and append-only audit enforcement.
 - Replaced the DB runtime boundary with node-postgres and self-hosted Docker PostgreSQL.
 - Real secrets remain outside Git; `.env.docker.example` is the committed host template and `.env.docker` is intentionally ignored.
+\n
+
+**External infrastructure correction (2026-10-05):** PostgreSQL, Redis, RabbitMQ, and Qdrant are no longer treated as automatically provisioned development services. Docker Compose services are explicitly gated behind the `local-infra` profile. The application/deployment contract uses externally provisioned connection URLs. The tracked local `.env` was removed; `.env.example` now documents external-service variables only.
+
+**Additional migration hardening:** corrected remaining malformed PostgreSQL dollar-quote terminators, rejected `owner` as the previous owner's replacement role in SQL ownership transfer, and moved SECURITY DEFINER RLS helpers into a non-exposed `private` schema with pinned empty search_path and restricted EXECUTE grants.
