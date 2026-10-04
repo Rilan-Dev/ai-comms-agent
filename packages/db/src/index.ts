@@ -17,3 +17,5 @@ export { type IdentityRepository } from "./identity/repository";
 export { InMemoryIdentityRepository, OwnerInvariantError } from "./identity/in-memory";
 
 export { SupabaseIdentityRepository } from "./identity/supabase";
+
+export { decryptCredential, encryptCredential, parseCredentialsMasterKey, type EncryptedEnvelope } from "./security";
