@@ -1135,3 +1135,18 @@ Development continues without waiting for CI/Vercel results. Formal verification
 - A dedicated PR was opened solely to trigger the verification workflow, but GitHub exposed zero workflow runs. The PR was closed without merge because it could not provide runtime evidence.
 - Static inspection found the migration's PostgreSQL function quoting valid and the owner/RLS mechanisms structurally correct.
 - **Phase 3 acceptance remains pending runtime evidence. Phase 4 remains unauthorized.**
+
+
+## Task ID: 12
+## Phase: 3 — Reproducible Docker Verification
+## Date: 2026-10-05
+
+- **Owner:** ChatGPT
+- **Status:** implemented; runtime execution pending in an environment with Docker
+- Added disposable PostgreSQL 17 verification compose at `infra/docker-compose.verify.yml`.
+- Added checksum-protected migration runner `scripts/migrate.sh`.
+- Added applied-migration drift checker `scripts/migration-changes.sh`.
+- Added `scripts/verify-docker.sh` for migration application, drift detection, owner-invariant runtime checks, and expected ownerless-organization rejection.
+- Added `scripts/verify.sh` as the single local verification entry point: Docker DB verification, workspace typecheck, web tests/build, worker build.
+- Simplified GitHub Actions to delegate to the same verification script instead of maintaining a second verification implementation.
+- No production Supabase provisioning, no Phase 4 implementation, and no Clara source changes.
