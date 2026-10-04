@@ -454,3 +454,11 @@ Development-first mode is active by explicit project-owner instruction. Database
 - Automatic CI: disabled temporarily by explicit project-owner instruction.
 - Runtime verification: deferred until implementation is complete.
 - Formal Phase 4 acceptance: pending.
+
+
+### Runtime gate update — 2026-10-04
+- Latest main baseline: `adcaf0fc627a087a16099820d095ae918de9c7ff`.
+- CI now applies `supabase/migrations/0001_identity_rbac.sql` to PostgreSQL 17 before executing owner-invariant/runtime checks.
+- GitHub Actions returned **zero workflow runs** for the dedicated verification PR, so no runtime PASS is claimed.
+- Static migration inspection is clean for function quoting, deferred triggers, affected-org DELETE handling, direct organization INSERT protection, and SECURITY DEFINER RLS helpers.
+- **Acceptance remains PENDING; Phase 4 remains NOT AUTHORIZED.**
