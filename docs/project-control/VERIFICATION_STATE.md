@@ -500,3 +500,13 @@ Latest synchronization: Docker/manual verification tooling is committed at 271bd
 - GitHub Actions rerun still terminates immediately with a generic failure and exposes no usable job log through the connected API. This is not treated as a passing runtime result.
 - **Required acceptance evidence:** run `git pull --ff-only origin main` followed by `bash scripts/verify-docker.sh` locally. Expected final line: `Disposable PostgreSQL verification: PASS`.
 - Phase 3 acceptance remains pending until that runtime check passes. Phase 4 remains NOT AUTHORIZED.
+
+
+### 2026-10-05 — Docker bootstrap/migration-chain correction
+- Local operator reported `bash scripts/verify-docker.sh` failed because the PostgreSQL verification container exited with code 3.
+- Root cause 1: `infra/postgres-init/00-supabase-roles.sql` had invalid `DO $ ... END $;` quoting. Corrected to `DO $$ ... END $$;`.
+- Root cause 2: `0002_application_foundation.sql` contained the same invalid dollar-quote form in its exception blocks. Corrected.
+- Root cause 3: Phase 4 security migration referenced public membership helpers that were not defined by Phase 3. Added controlled public SECURITY INVOKER wrappers over the private SECURITY DEFINER helpers.
+- Added static regression coverage for bootstrap quoting and helper namespace bridging.
+- Latest code commit: `c9cdf7ecfc9b21f757c71646dda94e8bd91230d3`.
+- **Runtime verification remains PENDING until the local disposable PostgreSQL run completes successfully.**
