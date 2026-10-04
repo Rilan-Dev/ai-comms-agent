@@ -97,6 +97,12 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
       expect(migrationSql).toContain("Owner membership must have status active");
     });
 
+    it("contains no single-dollar DO blocks", () => {
+      const singleDollarDo = /DO \\$ (?!\\$)/g;
+      expect(migrationSql).not.toMatch(singleDollarDo);
+      expect(migrationSql).not.toMatch(/END \\$;/g);
+    });
+
     it("uses valid PostgreSQL dollar-quoted function bodies", () => {
       expect(migrationSql).not.toMatch(/\\bAS \\$(?!\\$)/);
       expect(migrationSql).not.toMatch(/^\\$ LANGUAGE /m);
