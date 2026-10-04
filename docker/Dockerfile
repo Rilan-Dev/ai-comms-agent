@@ -7,7 +7,7 @@ COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
 COPY apps ./apps
 COPY packages ./packages
 COPY vendor ./vendor
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 FROM base AS web
 RUN pnpm --filter @ai-comms-agent/web build
