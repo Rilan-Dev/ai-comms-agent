@@ -6,7 +6,12 @@ set -euo pipefail
 COMPOSE_FILE="infra/docker-compose.verify.yml"
 export DATABASE_URL="${DATABASE_URL:-postgresql://aca:aca_local_dev@127.0.0.1:55432/aca_verify}"
 
-docker compose --profile local-infra -f "$COMPOSE_FILE" up -d --wait postgres
+if ! docker compose --profile local-infra -f "$COMPOSE_FILE" up -d --wait postgres; then
+  echo "PostgreSQL bootstrap failed; container logs follow:" >&2
+  docker compose --profile local-infra -f "$COMPOSE_FILE" logs postgres >&2 || true
+  docker compose --profile local-infra -f "$COMPOSE_FILE" down -v || true
+  exit 1
+fi
 trap 'docker compose --profile local-infra -f "$COMPOSE_FILE" down -v' EXIT
 
 docker compose --profile local-infra -f "$COMPOSE_FILE" run --rm migrate
