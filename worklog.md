@@ -1227,3 +1227,13 @@ No Gmail, Zoho, IMAP/SMTP credentials, external API calls, or production provide
 - Moved SECURITY DEFINER RLS helpers into a non-exposed `private` schema, pinned `search_path = ''`, revoked PUBLIC execute, and conditionally granted access to `authenticated`.
 - CI now starts disposable PostgreSQL 17, applies migrations, then executes Phase 3 runtime checks.
 - **Acceptance remains pending** until CI/runtime evidence is available. Phase 4 remains unauthorized.
+
+
+## 2026-10-05 — Infrastructure boundary and verification correction
+
+- **Deployment infrastructure policy:** PostgreSQL, Redis, RabbitMQ, and Qdrant are external runtime dependencies; Docker Compose services are opt-in under the `local-infra` profile and are never started by the normal source verification path.
+- **Verification policy:** `pnpm run verify` / `scripts/verify.sh` performs source/type/test/build checks only. `scripts/verify-docker.sh` is explicit opt-in disposable PostgreSQL verification.
+- **Latest infrastructure correction:** `infra/docker-compose.verify.yml` now uses the actual `postgres` service hostname.
+- **CI:** GitHub Actions uses its own disposable PostgreSQL service for runtime migration checks; this is CI infrastructure, not deployment provisioning.
+- **Latest known Vercel status:** the Vercel status for the latest code is `failure` due to build-rate-limit; no READY claim is made.
+- **Phase 4:** remains the active development phase under the project-owner development-first instruction. Runtime validation remains a release/acceptance gate, not a source-development blocker.
