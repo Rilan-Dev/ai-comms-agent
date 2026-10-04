@@ -5,7 +5,7 @@
 **Repository:** `Rilan-Dev/ai-comms-agent` (private)
 **Vercel project:** `ai-comms-agent` (linked to this repo, production branch `main`)
 **Effective date:** 2026-10-03
-**Current phase:** Phase 4 — Database Foundation and Domain Schema
+**Current phase:** Phase 3 — Identity, Organization, Users, Roles & RBAC
 
 ---
 
@@ -75,9 +75,17 @@ The project is now in active implementation. The project-control documents are t
 
 ## 4. Self-hosted Docker quick start
 
-The repository does not require Supabase. Any PostgreSQL 15+ deployment is supported.
+The application uses externally provisioned infrastructure in development and deployment. PostgreSQL, Redis, RabbitMQ, and Qdrant are not started automatically by the application or Vercel.
 
-For the included Docker stack:
+Local infrastructure is opt-in only. The default development/deployment path uses external services configured through environment variables.
+
+If you intentionally want the disposable local infrastructure for verification, enable it explicitly:
+
+```bash
+docker compose -f infra/docker-compose.yml --profile local-infra up -d
+```
+
+For the full manual Docker stack, which is also opt-in:
 
 ```bash
 cp .env.docker.example .env.docker
@@ -85,7 +93,7 @@ cp .env.docker.example .env.docker
 bash scripts/manual-up.sh
 ```
 
-The stack starts PostgreSQL (`postgres-db`), Redis, RabbitMQ, Qdrant, the Next.js web service, and the worker. Migrations are applied before the application containers start.
+Normal web development does not start PostgreSQL, Redis, RabbitMQ, or Qdrant automatically.
 
 For verification:
 
