@@ -40,7 +40,7 @@ open_risks:
   - "Supabase project not yet provisioned; PostgreSQL/Supabase remains approved infrastructure (ADR-009); provisioning deferred to Phase 4 (RSK-001)"
   - "Worker host not yet selected (ISS-004 / ADR-007) — blocks Phase 9"
 required_decision:
-  - "ChatGPT must review the Phase 3 correction set (Findings A-D) before Phase 4 begins"
+  - "Complete Phase 4 implementation, then run CI/runtime verification and perform ChatGPT acceptance"
 
 next_action:
   actor: "ChatGPT"
@@ -144,3 +144,11 @@ Phase 3 is treated as development-complete for continuation purposes; formal acc
 
 Recent implementation commits include: 5083c4a (Phase 4 plan), 4d33248 (agent foundation), 462a312 (email domain), 2b60905 (messaging), 8435b4d (conversations/scheduling), a63924a (actions/AI/voice/audit), 39ba02e (API keys/knowledge/storage), 995e9c7 (RLS helper hardening), plus UI/CI improvements.
 \n\n### 2026-10-04 — Development-first execution\nChatGPT has explicitly proceeded into Phase 4 database-foundation implementation at the project owner's direction. CI automatic triggers are temporarily disabled so implementation can proceed without waiting for GitHub Actions. No acceptance or runtime verification is claimed.\n
+
+### Phase 4 implementation baseline
+- schema: `0002_database_foundation.sql`
+- security correction: `0003_database_security_hardening.sql`
+- storage config: `supabase/config.toml`
+- credential encryption: `packages/db/src/security/envelope.ts`
+- static verification: `apps/web/tests/migration-verification.test.ts`
+- CI: temporarily manual-only by project-owner instruction
