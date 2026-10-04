@@ -55,6 +55,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
+      - name: Initialize Supabase-compatible test roles
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@127.0.0.1:5432/ai_comms_agent_test" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+              CREATE ROLE authenticated NOLOGIN;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+              CREATE ROLE anon NOLOGIN;
+            END IF;
+          END
+          $;
+          SQL
+
       - name: Apply PostgreSQL migrations
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
