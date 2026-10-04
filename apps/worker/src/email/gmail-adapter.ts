@@ -144,7 +144,18 @@ export class GmailAdapter implements EmailProvider {
     }
     const data = await this.request("/messages?maxResults=100&labelIds=INBOX");
     const added = (data.messages ?? []).map((m: any) => ({ message_id: m.id, provider_message_id: m.id }));
-    return { added, updated: [], deleted: [], new_state: { ...state, history_token: data.historyId, last_sync_at: new Date().toISOString(), sync_mode: "incremental" } };
+    const profile = await this.request("/profile");
+    return {
+      added,
+      updated: [],
+      deleted: [],
+      new_state: {
+        ...state,
+        history_token: profile.historyId,
+        last_sync_at: new Date().toISOString(),
+        sync_mode: "incremental",
+      },
+    };
   }
 
   async listMessages(folderId: string, opts: ListOptions): Promise<EmailMessage[]> {
