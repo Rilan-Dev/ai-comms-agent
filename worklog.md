@@ -1090,3 +1090,14 @@ Runtime CI evidence is now the required next acceptance evidence. Phase 4 remain
 
 Development continues without waiting for CI/Vercel results. Formal verification is deferred to the feature-complete milestone.
 \n\n## Task ID: 12\n## Phase: 4 — Database Foundation\n## Status: implementation_in_progress\n## Date: 2026-10-04\n\n### Work completed\n- Temporarily disabled automatic GitHub Actions push/PR triggers; workflow remains manually dispatchable.\n- Added \`supabase/migrations/0002_database_foundation.sql\` covering the full approved domain persistence foundation: agents, email, WhatsApp, conversations, scheduling/automation, approvals, summaries, AI usage, voice, audit, and API keys.\n- Added tenant-aware RLS, parent-inherited child policies, search/idempotency indexes, ciphertext credential columns, append-only audit policies, and schema sanity checks.\n- Added Phase 4 migration regression coverage.\n- Synchronized the Phase 4 execution plan and project-control state.\n\n### Verification state\nDevelopment intentionally continues before CI/runtime verification. No Phase 4 acceptance is claimed.\n
+
+## Task ID: 13
+## Phase: 4 — Database Foundation
+## Status: implementation_in_progress
+## Date: 2026-10-04
+
+- Continued Phase 4 directly under ChatGPT ownership as requested.
+- Added database security hardening after reviewing current Supabase/PostgreSQL RLS guidance: policy wrappers are invoker-side, privileged membership helpers have restricted execution, secret-bearing tables are admin/owner restricted, and audit deny rules are restrictive so permissive policies cannot override them.
+- Added AES-256-GCM envelope encryption primitives for provider credentials.
+- Corrected the RLS identity context to the repository's existing \`app.user_id\` contract instead of introducing a second auth identity mechanism.
+- CI remains temporarily manual-only until implementation is complete.
