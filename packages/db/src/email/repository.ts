@@ -12,6 +12,11 @@ function decodeBytea(value: unknown): Buffer {
   return Buffer.from(value, "base64");
 }
 
+function requiredRow(row: Row | undefined, entity: string): Row {
+  if (!row) throw new Error(`${entity} query returned no row`);
+  return row;
+}
+
 function account(row: Row): EmailAccount {
   const status = String(row.status);
   const mappedStatus =
@@ -59,7 +64,7 @@ export class PostgresEmailAccountRepository {
         JSON.stringify(input.capabilities),
       ],
     );
-    return account(r.rows[0]);
+    return account(requiredRow(r.rows[0], "email account"));
   }
 
   async getById(id: string): Promise<EmailAccount | null> {
