@@ -28,10 +28,10 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "75eab04e9ddc78e46374880c33e2de62df0fbbd1"
-current_commit_short: "75eab04e"
-current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/75eab04e9ddc78e46374880c33e2de62df0fbbd1"
-last_verified_commit: "validation deferred by explicit project-controller instruction"
+current_commit: "57079b6283187d48e6eb999d02b9bf470468ddbc4"
+current_commit_short: "57079b62"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/57079b6283187d48e6eb999d02b9bf470468ddbc4"
+last_verified_commit: "runtime validation pending; development continuation explicitly authorized"
 
 open_blockers:
   - "Runtime verification still pending for the PostgreSQL migration set; development continuation is explicitly authorized"
@@ -159,3 +159,11 @@ Runtime verification scripts are now committed on main and CI is configured with
 
 
 Latest synchronization: Docker/manual verification tooling is committed at 271bd648875ce086a52aaedd7953e63bbc89421e. Runtime acceptance remains pending because this environment cannot execute Docker and GitHub Actions has not yet supplied a fresh run result.
+
+
+### 2026-10-05 takeover update
+- PostgreSQL is now the canonical runtime database abstraction; Supabase is not required.
+- Self-hosted Docker is the active deployment path.
+- Phase 4 application schema foundation and tenant RLS are implemented in 0002_application_foundation.sql.
+- Email provider capability runtime groundwork is implemented; Phase 5 provider-specific adapters remain next after database verification.
+- No real credentials or .env files are committed.
