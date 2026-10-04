@@ -384,7 +384,7 @@ takeover:
   primary_implementer: "ChatGPT"
   previous_implementer: "Z.AI"
   takeover_date: "2026-10-04"
-  current_commit: "c56b07dbaf807ce5ecdbf87e73ac05b674f5a84"
+  current_commit: "d20813dd26e6b760db61a6182091753d18ce6a4e"
   latest_change:
     migration_owner_invariant: "Deferred constraint triggers validate affected organizations for membership and direct organization changes."
     migration_tests: "Static migration checks now cover owner invariants, RLS recursion helpers, and PostgreSQL dollar-quote syntax."
@@ -465,3 +465,12 @@ Development-first mode is active by explicit project-owner instruction. Database
 
 
 Latest synchronization: Docker/manual verification tooling is committed at 271bd648875ce086a52aaedd7953e63bbc89421e. Runtime acceptance remains pending because this environment cannot execute Docker and GitHub Actions has not yet supplied a fresh run result.
+
+
+### 2026-10-05 PostgreSQL/self-hosted continuation
+- Database runtime boundary: PostgreSQL via node-postgres; no Supabase runtime client.
+- Docker reference database service: `postgres-db`.
+- Application foundation migration: `0002_application_foundation.sql`.
+- Runtime/static verification scripts updated to apply all migrations and validate foundation tables, owner invariant, and RLS helper presence.
+- Email provider runtime capability gate and worker tests added.
+- Automated runtime evidence is still pending; the available Vercel status is rate-limited/failing and is not used as evidence for the Docker deployment path.
