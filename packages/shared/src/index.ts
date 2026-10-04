@@ -21,6 +21,7 @@ export { INTENT_TAXONOMY } from "./agent/intents";
 // Email provider types
 export type {
   EmailProvider,
+  EmailProviderType,
   EmailProviderCapability,
   CapabilitySet,
   EmailFolder,
