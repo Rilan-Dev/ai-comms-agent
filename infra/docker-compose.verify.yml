@@ -15,5 +15,20 @@ services:
       interval: 2s
       timeout: 5s
       retries: 15
+
+  migrate:
+    image: postgres:17-alpine
+    environment:
+      DATABASE_URL: postgresql://aca:aca_local_dev@postgres:5432/aca_verify
+    volumes:
+      - ..:/workspace:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - apk add --no-cache bash coreutils >/dev/null && bash /workspace/scripts/migrate.sh && bash /workspace/scripts/migration-changes.sh
+
 volumes:
   aca-postgres-verify:
