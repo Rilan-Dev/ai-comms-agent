@@ -12,7 +12,7 @@ This is a Phase 1 document. Concrete deployment configurations are produced in P
 |---|---|---|---|
 | Web UI + API (Next.js) | Node 20+ | Vercel | Phase 2 (already linked) |
 | Worker processes (Node) | Node 20+ | Worker host (TBD — see ADR-007) | Phase 4 (infra setup) |
-| PostgreSQL | Supabase | Supabase | Phase 4 |
+| PostgreSQL | PostgreSQL | PostgreSQL | Phase 4 |
 | Qdrant | Self-hosted on worker host OR Qdrant Cloud | TBD | Phase 10 |
 | Redis | Upstash | Upstash | Phase 4 |
 | RabbitMQ | CloudAMQP OR self-hosted on worker host | TBD | Phase 4 |
@@ -37,7 +37,7 @@ The worker host (single host running workers, RabbitMQ, Qdrant, ClamAV, voice re
 - **Node version**: 20 (set in `package.json` `engines` or Vercel project settings)
 - **Functions**: default Vercel function config; some routes may need `maxDuration` increase (e.g., voice session token issuance, webhook processing) — set per-route in `next.config.js`
 - **Environment variables** (server-only, never exposed to the browser bundle):
-  - `DATABASE_URL` (Supabase connection string)
+  - `DATABASE_URL` (PostgreSQL connection string)
   - `SUPABASE_SERVICE_ROLE_KEY` (server-only — workers use this; API uses anon+RLS where possible)
   - `SUPABASE_ANON_KEY` (safe for browser)
   - `SUPABASE_URL`
@@ -56,7 +56,7 @@ The worker host (single host running workers, RabbitMQ, Qdrant, ClamAV, voice re
   - `CLAMAV_HOST` (worker host; not needed on Vercel)
   - `NEXT_PUBLIC_*` (browser-safe): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_APP_URL`
 
-Vercel preview deploys get the same env vars (no separate staging env in Phase 1; Phase 17 may add a staging Supabase project).
+Vercel preview deploys get the same env vars (no separate staging env in Phase 1; Phase 17 may add a staging PostgreSQL project).
 
 ---
 
@@ -94,21 +94,21 @@ Vercel preview deploys get the same env vars (no separate staging env in Phase 1
 
 ---
 
-## 4. Supabase project configuration
+## 4. PostgreSQL project configuration
 
 - **Project name**: `ai-comms-agent` (or `ai-comms-agent-prod` if separate staging)
 - **Region**: same as Vercel deployment region (lowest latency)
 - **Plan**: Pro (for backups, PITR)
-- **Database**: PostgreSQL 15+ (Supabase default)
+- **Database**: PostgreSQL 15+ (PostgreSQL default)
 - **Extensions**: `pgcrypto` (UUID), `pg_trgm` (trigram search), `unaccent` (accent-insensitive search), `citext` (case-insensitive text)
-- **Auth**: Supabase Auth (optional — we may use our own auth; decided in Phase 3)
-- **Storage**: Supabase Storage (for email attachments, KB documents)
+- **Auth**: PostgreSQL Auth (optional — we may use our own auth; decided in Phase 3)
+- **Storage**: PostgreSQL Storage (for email attachments, KB documents)
 - **RLS**: enabled on every tenant-scoped table
-- **Migrations**: forward-only, named `NNNN_description.sql`, applied via `supabase migration` CLI
-- **Backups**: daily (Supabase Pro default), PITR enabled
-- **Connection pooling**: PgBouncer (Supabase default), connection limit monitored
+- **Migrations**: forward-only, named `NNNN_description.sql`, applied via `postgresql migration` CLI
+- **Backups**: daily (PostgreSQL Pro default), PITR enabled
+- **Connection pooling**: PgBouncer (PostgreSQL default), connection limit monitored
 
-Supabase project is provisioned by the user before Phase 4 (per RSK-001).
+PostgreSQL project is provisioned by the user before Phase 4 (per RSK-001).
 
 ---
 
@@ -132,15 +132,15 @@ CI is added in Phase 2 (`.github/workflows/ci.yml`). The pipeline:
    - Build artifact
    - (Optional) publish to worker host
 
-Migration application is **manual** (not auto-applied in CI) — per `RULES.md §11`, no destructive database operation should be performed casually. Migrations are reviewed by ChatGPT and applied by an admin via `supabase migration apply`.
+Migration application is **manual** (not auto-applied in CI) — per `RULES.md §11`, no destructive database operation should be performed casually. Migrations are reviewed by ChatGPT and applied by an admin via `postgresql migration apply`.
 
 ---
 
 ## 6. Environment strategy
 
-- **Production**: Vercel production deployment + production Supabase + production worker host.
-- **Preview**: Vercel preview deployment per branch + production Supabase (read-only where possible) + production worker host (shared). Preview deploys do not run their own workers — they share the production worker host. (Phase 17 may add a staging Supabase if needed.)
-- **Local development**: Vercel dev + local Supabase (Docker) + local RabbitMQ (Docker) + local Redis (Docker) + local Qdrant (Docker). Setup script in Phase 2.
+- **Production**: Vercel production deployment + production PostgreSQL + production worker host.
+- **Preview**: Vercel preview deployment per branch + production PostgreSQL (read-only where possible) + production worker host (shared). Preview deploys do not run their own workers — they share the production worker host. (Phase 17 may add a staging PostgreSQL if needed.)
+- **Local development**: Vercel dev + local PostgreSQL (Docker) + local RabbitMQ (Docker) + local Redis (Docker) + local Qdrant (Docker). Setup script in Phase 2.
 
 Local development does not connect to production providers. Test email accounts (Gmail test accounts, Meta test number) are used.
 
@@ -149,7 +149,7 @@ Local development does not connect to production providers. Test email accounts 
 
 ## 6A. Local Docker manual verification and testing
 
-The repository now provides a reproducible Docker path for manual testing without relying on GitHub Actions. This is **not production deployment** and does not provision Supabase.
+The repository now provides a reproducible Docker path for manual testing without relying on GitHub Actions. This is **not production deployment** and does not provision PostgreSQL.
 
 - `infra/docker-compose.verify.yml`: disposable PostgreSQL 17 used for migration/runtime verification.
 - `scripts/migrate.sh`: applies all forward migrations in lexical order and records SHA-256 checksums; an already-applied migration that changes fails closed.
@@ -173,19 +173,19 @@ The CI workflow delegates to `scripts/verify.sh`, keeping local and CI verificat
 Per the master operating prompt §32:
 
 ```text
-Z.AI implementation → ChatGPT review → Vercel/Supabase operations → deployment → runtime verification → production acceptance
+Z.AI implementation → ChatGPT review → Vercel/PostgreSQL operations → deployment → runtime verification → production acceptance
 ```
 
 Phase 19 verifies:
 
 1. **Build**: `npm run build` succeeds in CI.
 2. **Vercel deploy**: production deployment succeeds; deployment URL responds 200.
-3. **Supabase migrations**: all migrations applied; schema verified; RLS policies verified; advisors run.
+3. **PostgreSQL migrations**: all migrations applied; schema verified; RLS policies verified; advisors run.
 4. **Smoke tests**: auth flow, agent creation, email account connection (test Gmail account), WhatsApp send (Meta test number), chat turn, voice session start, scheduled job fire.
 5. **Observability**: logs flow to aggregator; metrics scrape; traces export; alerts route.
 6. **Security**: pen test (internal); secret scan; RLS bypass attempts; prompt injection attempts.
 7. **Performance**: load test (representative traffic); p95 latencies within budgets.
-8. **Backup/restore**: Supabase backup verified; restore tested in staging.
+8. **Backup/restore**: PostgreSQL backup verified; restore tested in staging.
 
 Each verification produces evidence (logs, screenshots, test reports) committed to the repo under `docs/verification/phase-19/`.
 
@@ -194,7 +194,7 @@ Each verification produces evidence (logs, screenshots, test reports) committed 
 ## 8. Rollback
 
 - **Vercel**: instant rollback to previous deployment (one click in Vercel dashboard).
-- **Supabase migrations**: forward-only — rollback is a forward migration that reverses the change. No `down.sql` files. (Per `RULES.md §11`, no destructive database operation should be performed casually — rollback migrations are reviewed like forward migrations.)
+- **PostgreSQL migrations**: forward-only — rollback is a forward migration that reverses the change. No `down.sql` files. (Per `RULES.md §11`, no destructive database operation should be performed casually — rollback migrations are reviewed like forward migrations.)
 - **Worker host**: previous container image redeployed (if using Docker) or previous binary restarted.
 - **Clara library**: pinned version in `package.json`; upgrades are explicit and reviewed.
 
@@ -207,7 +207,7 @@ Phase 17 produces runbooks for:
 - On-call rotation and escalation
 - DLQ message investigation and replay
 - Provider outage response (Gmail, WhatsApp, AI providers)
-- Supabase incident response
+- PostgreSQL incident response
 - Worker host incident response
 - Secret rotation (KEK, provider keys, session signing key)
 - Audit log export
@@ -220,7 +220,7 @@ Runbooks live in `docs/runbooks/` (created in Phase 17).
 ## 10. Cost management
 
 - **Vercel**: Pro plan (per user). Bandwidth and function execution monitored.
-- **Supabase**: Pro plan (per project). Database size and egress monitored.
+- **PostgreSQL**: Pro plan (per project). Database size and egress monitored.
 - **Upstash**: pay-as-you-go. Redis commands per day monitored.
 - **CloudAMQP**: pay-as-you-go or fixed tier. Queue depth and message rate monitored.
 - **Worker host**: per-instance. CPU/memory monitored.
