@@ -8,7 +8,7 @@ import type {
 
 type Row = Record<string, unknown>;
 
-function account(row: Row): EmailAccount {
+function decodeBytea(value: unknown): Buffer {\n  if (Buffer.isBuffer(value)) return value;\n  if (value instanceof Uint8Array) return Buffer.from(value);\n  if (typeof value !== "string") throw new Error("Encrypted credential payload is not byte data");\n  if (value.startsWith("\\\\x")) return Buffer.from(value.slice(2), "hex");\n  return Buffer.from(value, "base64");\n}\n\nfunction account(row: Row): EmailAccount {
   const status = String(row.status);
   const mappedStatus =
     status === "active" ? "connected" :
@@ -148,7 +148,7 @@ export class SupabaseEmailAccountRepository {
     if (error) throw error;
     if (!data?.encrypted_payload) return null;
 
-    const raw = decryptCredential(Buffer.from(data.encrypted_payload), masterKey).toString("utf8");
+    const raw = decryptCredential(decodeBytea(data.encrypted_payload), masterKey).toString("utf8");
     return JSON.parse(raw) as Record<string, unknown>;
   }
 }
