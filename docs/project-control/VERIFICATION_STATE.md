@@ -447,3 +447,4 @@ Development-first mode is active by explicit project-owner instruction. Database
 - CI also verifies that a direct ownerless organization INSERT is rejected at transaction commit.
 - Latest code/control commit: 70679cdef67056338338629371d3b723c785a73b.
 - Phase 3 acceptance remains pending until the resulting GitHub Actions run is green.
+\n\n### Development-first execution — 2026-10-04\n- CI automatic triggers: temporarily disabled by explicit project-owner instruction; workflow remains manual-only.\n- Phase 4 schema migration \`0002_database_foundation.sql\`: implemented.\n- Phase 4 static migration coverage: expanded.\n- Runtime verification: intentionally deferred until the implementation set is complete.\n- Phase 4 acceptance: NOT COMPLETE.\n
