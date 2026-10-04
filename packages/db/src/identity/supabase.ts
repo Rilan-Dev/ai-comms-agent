@@ -12,6 +12,11 @@ import {
 
 type Row = Record<string, unknown>;
 
+function requiredRow(row: Row | undefined, entity: string): Row {
+  if (!row) throw new Error(`${entity} query returned no row`);
+  return row;
+}
+
 function user(row: Row): User {
   return {
     id: asUserId(String(row.id)),
@@ -69,7 +74,7 @@ export class PostgresIdentityRepository implements IdentityRepository {
       "INSERT INTO users (email, name) VALUES ($1, $2) RETURNING *",
       [input.email, input.name ?? null],
     );
-    return user(r.rows[0]);
+    return user(requiredRow(r.rows[0], "user"));
   }
 
   async getOrganizationById(id: OrganizationId): Promise<Organization | null> {
@@ -100,7 +105,7 @@ export class PostgresIdentityRepository implements IdentityRepository {
         "INSERT INTO organizations (name, slug) VALUES ($1, $2) RETURNING *",
         [input.name, input.slug],
       );
-      const membership = await client.query<Row>(
+      const membershipRow = await client.query<Row>(
         `INSERT INTO organization_memberships (organization_id, user_id, role, status)
          VALUES ($1, $2, 'owner', 'active')
          RETURNING *`,
@@ -108,7 +113,7 @@ export class PostgresIdentityRepository implements IdentityRepository {
       );
       return {
         organization: organization(org.rows[0]),
-        ownerMembership: membership(membership.rows[0]),
+        ownerMembership: membership(requiredRow(membershipRow.rows[0], "owner membership")),
       };
     });
   }
@@ -145,7 +150,7 @@ export class PostgresIdentityRepository implements IdentityRepository {
        VALUES ($1, $2, $3, $4) RETURNING *`,
       [input.organizationId, input.userId, input.role, input.status ?? "active"],
     );
-    return membership(r.rows[0]);
+    return membership(requiredRow(r.rows[0], "membership"));
   }
 
   async updateMembershipStatus(id: MembershipId, status: MembershipStatus): Promise<OrganizationMembership | null> {
