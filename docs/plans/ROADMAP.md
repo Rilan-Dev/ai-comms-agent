@@ -70,13 +70,13 @@ This document is the canonical phase-by-phase implementation plan for `ai-comms-
 
 - **Objective**: Stand up the full database schema and migration pipeline.
 - **Scope**:
-  - Provision Supabase project (user-provided).
+  - Provision or connect any PostgreSQL 15+ deployment (self-hosted Docker is supported and preferred for the current environment).
   - Forward-only migration framework (`supabase migration`).
   - All migrations for Phase 1-3 entities (organizations, users, memberships, roles, permissions, api_keys, agents, agent_versions, agent_deployments, agent_email_accounts, agent_whatsapp_accounts, agent_ai_settings).
   - All migrations for email/WhatsApp/conversation/schedule/automation/summary/usage/voice/audit entities.
   - RLS policies on every tenant-scoped table.
   - Indexes (per `DATA-MODEL.md`).
-  - Supabase Storage buckets (attachments, KB documents).
+  - PostgreSQL-compatible object-storage adapter boundary for attachments/KB documents; local filesystem/S3-compatible storage is selected by deployment.
   - PgBouncer / connection pooling verification.
   - Worker host selection and provisioning (per ADR-007 / ISS-004 — ChatGPT decides before Phase 4 starts).
   - RabbitMQ / Redis / Qdrant provisioning (worker host).
