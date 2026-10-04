@@ -14,6 +14,19 @@ jobs:
     name: Full local verification
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ai_comms_agent_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d ai_comms_agent_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,6 +49,16 @@ jobs:
 
       - name: Full verification
         run: bash scripts/verify.sh
+
+      - name: Apply Phase 3 PostgreSQL migration
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/0001_identity_rbac.sql
+
+      - name: Verify PostgreSQL migration runtime
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/verify-phase3-migration.sql
 
       - name: Secret scan
         run: |
