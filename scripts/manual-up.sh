@@ -7,7 +7,7 @@ if [[ ! -f .env.docker ]]; then
   echo "Edit .env.docker and replace CREDENTIALS_MASTER_KEY and SESSION_SIGNING_KEY before production use."
 fi
 
-docker compose -f infra/docker-compose.manual.yml up -d --build
+docker compose -f infra/docker-compose.manual.yml --profile local-infra up -d --build
 echo "Self-hosted stack is starting."
 echo "Web:      http://localhost:3000"
 echo "RabbitMQ: http://localhost:15672"
