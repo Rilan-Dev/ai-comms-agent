@@ -6,7 +6,9 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "citext";
 
 DO $$ BEGIN CREATE TYPE agent_status AS ENUM ('draft','active','paused','archived'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE deployment_environment AS ENUM ('production','preview'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $ BEGIN CREATE TYPE deployment_environment AS ENUM ('production','preview'); EXCEPTION WHEN duplicate_object THEN NULL; END $;
+DO $ BEGIN CREATE TYPE agent_version_status AS ENUM ('draft','published','archived'); EXCEPTION WHEN duplicate_object THEN NULL; END $;
+DO $ BEGIN CREATE TYPE agent_deployment_status AS ENUM ('pending','active','paused','failed','retired'); EXCEPTION WHEN duplicate_object THEN NULL; END $;
 DO $$ BEGIN CREATE TYPE email_account_provider AS ENUM ('gmail','imap_smtp','zoho'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE email_account_status AS ENUM ('active','expired','revoked','error'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE email_credential_type AS ENUM ('oauth_token','password','app_password'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -49,8 +51,11 @@ CREATE TABLE IF NOT EXISTS agents (
   slug text NOT NULL,
   description text,
   status agent_status NOT NULL DEFAULT 'draft',
+  system_prompt text,
+  settings jsonb NOT NULL DEFAULT '{}'::jsonb,
   current_version_id uuid,
   current_deployment_id uuid,
+  deleted_at timestamptz,
   created_by uuid REFERENCES users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
@@ -61,9 +66,14 @@ CREATE TABLE IF NOT EXISTS agent_versions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   agent_id uuid NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
   version_number integer NOT NULL CHECK (version_number > 0),
+  status agent_version_status NOT NULL DEFAULT 'draft',
+  system_prompt text,
   config jsonb NOT NULL DEFAULT '{}'::jsonb,
+  tools jsonb NOT NULL DEFAULT '[]'::jsonb,
+  change_summary text,
   created_by uuid REFERENCES users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
+  published_at timestamptz,
   diff_from_previous jsonb,
   UNIQUE (agent_id, version_number)
 );
@@ -78,6 +88,7 @@ CREATE TABLE IF NOT EXISTS agent_deployments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   agent_id uuid NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
   version_id uuid NOT NULL REFERENCES agent_versions(id) ON DELETE RESTRICT,
+  status agent_deployment_status NOT NULL DEFAULT 'pending',
   environment deployment_environment NOT NULL,
   deployed_by uuid REFERENCES users(id) ON DELETE SET NULL,
   deployed_at timestamptz NOT NULL DEFAULT now(),
@@ -89,6 +100,20 @@ DO $$ BEGIN
     ADD CONSTRAINT agents_current_deployment_fk
     FOREIGN KEY (current_deployment_id) REFERENCES agent_deployments(id) ON DELETE SET NULL;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS agent_policies (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  agent_id uuid NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+  allowed_tools jsonb NOT NULL DEFAULT '[]'::jsonb,
+  sensitive_actions jsonb NOT NULL DEFAULT '{}'::jsonb,
+  allowed_senders jsonb NOT NULL DEFAULT '[]'::jsonb,
+  blocked_senders jsonb NOT NULL DEFAULT '[]'::jsonb,
+  rate_limits jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(agent_id)
+);
 
 CREATE TABLE IF NOT EXISTS email_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -577,7 +602,7 @@ DECLARE
   table_name text;
 BEGIN
   FOREACH table_name IN ARRAY ARRAY[
-    'api_keys','agents','email_accounts','whatsapp_accounts','conversations',
+    'api_keys','agents','agent_policies','email_accounts','whatsapp_accounts','conversations',
     'scheduled_jobs','ai_provider_configs','ai_usage_events','voice_sessions','audit_events'
   ] LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', table_name);
@@ -772,6 +797,11 @@ $$;
 DROP TRIGGER IF EXISTS audit_events_no_update ON audit_events;
 CREATE TRIGGER audit_events_no_update BEFORE UPDATE OR DELETE ON audit_events
 FOR EACH ROW EXECUTE FUNCTION deny_audit_mutation();
+
+ALTER TABLE agent_policies ENABLE ROW LEVEL SECURITY;
+CREATE POLICY agent_policies_tenant_access ON agent_policies
+  FOR ALL USING (tenant_access(organization_id))
+  WITH CHECK (tenant_access(organization_id));
 
 -- One WhatsApp account per agent is enforced by the UNIQUE(agent_id) constraint
 -- on agent_whatsapp_accounts.
