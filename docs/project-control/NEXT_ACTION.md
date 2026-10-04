@@ -72,7 +72,7 @@ Z.AI is in **STOP** state, awaiting ChatGPT's final Phase 3 acceptance decision.
 
 
 ### ChatGPT takeover update — 2026-10-04
-Before Phase 3 acceptance, perform runtime verification of the corrected migration. The latest code commit is 64daa53a3643bb14c530522ccaa3504cca72434f. Verify PostgreSQL migration syntax and owner/RLS behavior in CI or an equivalent PostgreSQL runtime. Do not authorize Phase 4 until evidence is green.
+Before Phase 3 acceptance, perform runtime verification of the corrected migration. The latest code commit is adcaf0fc627a087a16099820d095ae918de9c7ff. Verify PostgreSQL migration syntax and owner/RLS behavior in CI or an equivalent PostgreSQL runtime. Do not authorize Phase 4 until evidence is green.
 
 
 actor: "ChatGPT"
@@ -88,3 +88,12 @@ Continue development-first execution. Next implementation focus: complete provid
 
 ### Current Phase 4 action
 Continue implementing the database foundation and security hardening. CI is intentionally disabled for automatic triggers. Do not stop implementation for CI; re-enable it only after the code-change set is complete.
+
+
+## 2026-10-04 — ChatGPT runtime verification gate
+
+- Main baseline: `adcaf0fc627a087a16099820d095ae918de9c7ff`.
+- CI now provisions PostgreSQL 17, applies the Phase 3 migration, executes a successful-owner/transfer runtime script, and executes a negative ownerless-organization check.
+- A dedicated PR was opened solely to trigger the verification workflow, but GitHub exposed zero workflow runs. The PR was closed without merge because it could not provide runtime evidence.
+- Static inspection found the migration's PostgreSQL function quoting valid and the owner/RLS mechanisms structurally correct.
+- **Phase 3 acceptance remains pending runtime evidence. Phase 4 remains unauthorized.**
