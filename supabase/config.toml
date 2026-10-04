@@ -1,0 +1,16 @@
+project_id = "ai-comms-agent"
+
+[storage]
+enabled = true
+
+[storage.buckets.email-attachments]
+public = false
+file_size_limit = "50MiB"
+allowed_mime_types = ["application/pdf", "image/png", "image/jpeg", "text/plain", "application/zip"]
+objects_path = "./storage/email-attachments"
+
+[storage.buckets.knowledge-documents]
+public = false
+file_size_limit = "100MiB"
+allowed_mime_types = ["application/pdf", "text/plain", "text/markdown", "application/json", "text/csv"]
+objects_path = "./storage/knowledge-documents"
