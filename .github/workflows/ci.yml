@@ -15,7 +15,7 @@ jobs:
     name: Typecheck, Test, Build, Secret Scan
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    services:
+    # PostgreSQL service validates the migration itself, not just static strings.\n    services:
       postgres:
         image: postgres:17
         env:
