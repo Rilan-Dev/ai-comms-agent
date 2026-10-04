@@ -160,3 +160,11 @@ current_commit: "9a1cdd99c8d230d138fbbcb6711ba918f05cf690"
 - `supabase/config.toml` defines private attachment and knowledge-document buckets.
 - `packages/db/src/security/envelope.ts` implements AES-256-GCM envelope encryption primitives.
 - Automatic CI triggers are temporarily disabled by explicit project-owner instruction; manual verification remains required before acceptance.
+
+
+### Runtime gate update — 2026-10-04
+- Main code baseline: `adcaf0fc627a087a16099820d095ae918de9c7ff`.
+- Added disposable PostgreSQL runtime migration verification and ownerless-organization negative test to CI.
+- GitHub Actions currently exposes no workflow run for the verification PR; therefore runtime execution is **PENDING**, not PASS.
+- Vercel's latest production deployment for this commit was canceled by the project's ignored-build/build-rate-limit path; no latest READY claim is made.
+- **Phase 3 acceptance: PENDING. Phase 4: NOT AUTHORIZED.**
