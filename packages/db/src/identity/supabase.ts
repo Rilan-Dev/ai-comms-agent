@@ -1,13 +1,13 @@
-import { createSupabaseServiceClient } from "../client";
+import { query, withTransaction } from "../client";
 import type {
-  IdentityRepository, OrganizationWithOwner
+  IdentityRepository, OrganizationWithOwner,
 } from "./repository";
 import type {
   UserId, OrganizationId, MembershipId, MembershipRole, NonOwnerRole,
-  MembershipStatus, User, Organization, OrganizationMembership, PermissionName
+  MembershipStatus, User, Organization, OrganizationMembership, PermissionName,
 } from "@ai-comms-agent/shared";
 import {
-  asUserId, asOrganizationId, asMembershipId, SYSTEM_ROLE_PERMISSIONS
+  asUserId, asOrganizationId, asMembershipId, SYSTEM_ROLE_PERMISSIONS,
 } from "@ai-comms-agent/shared";
 
 type Row = Record<string, unknown>;
@@ -48,114 +48,163 @@ function membership(row: Row): OrganizationMembership {
 }
 
 /**
- * Production identity repository.
+ * PostgreSQL implementation of the identity repository.
  *
- * This adapter intentionally uses the Supabase server/service client. API
- * authorization remains mandatory before calling it; the service client is
- * never exported to browser code.
+ * The file name is retained for compatibility with the Phase 3 export surface;
+ * the implementation is no longer Supabase-specific.
  */
-export class SupabaseIdentityRepository implements IdentityRepository {
-  private readonly db = createSupabaseServiceClient();
-
+export class PostgresIdentityRepository implements IdentityRepository {
   async getUserById(id: UserId): Promise<User | null> {
-    const { data, error } = await this.db.from("users").select("*").eq("id", id).maybeSingle();
-    if (error) throw error;
-    return data ? user(data) : null;
+    const r = await query<Row>("SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL", [id]);
+    return r.rows[0] ? user(r.rows[0]) : null;
   }
 
   async getUserByEmail(email: string): Promise<User | null> {
-    const { data, error } = await this.db.from("users").select("*").ilike("email", email).is("deleted_at", null).maybeSingle();
-    if (error) throw error;
-    return data ? user(data) : null;
+    const r = await query<Row>("SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL", [email]);
+    return r.rows[0] ? user(r.rows[0]) : null;
   }
 
   async createUser(input: { email: string; name?: string | null }): Promise<User> {
-    const { data, error } = await this.db.from("users").insert({ email: input.email, name: input.name ?? null }).select("*").single();
-    if (error) throw error;
-    return user(data);
+    const r = await query<Row>(
+      "INSERT INTO users (email, name) VALUES ($1, $2) RETURNING *",
+      [input.email, input.name ?? null],
+    );
+    return user(r.rows[0]);
   }
 
   async getOrganizationById(id: OrganizationId): Promise<Organization | null> {
-    const { data, error } = await this.db.from("organizations").select("*").eq("id", id).is("deleted_at", null).maybeSingle();
-    if (error) throw error;
-    return data ? organization(data) : null;
+    const r = await query<Row>(
+      "SELECT * FROM organizations WHERE id = $1 AND deleted_at IS NULL",
+      [id],
+    );
+    return r.rows[0] ? organization(r.rows[0]) : null;
   }
 
   async getOrganizationBySlug(slug: string): Promise<Organization | null> {
-    const { data, error } = await this.db.from("organizations").select("*").eq("slug", slug).is("deleted_at", null).maybeSingle();
-    if (error) throw error;
-    return data ? organization(data) : null;
+    const r = await query<Row>(
+      "SELECT * FROM organizations WHERE slug = $1 AND deleted_at IS NULL",
+      [slug],
+    );
+    return r.rows[0] ? organization(r.rows[0]) : null;
   }
 
-  async createOrganization(input: { name: string; slug: string }): Promise<Organization> {
-    throw new Error("createOrganization is internal and disabled in the production repository; use createOrganizationWithOwner");
+  async createOrganization(): Promise<Organization> {
+    throw new Error("createOrganization is internal and disabled; use createOrganizationWithOwner");
   }
 
   async createOrganizationWithOwner(input: {
     name: string; slug: string; ownerId: UserId;
   }): Promise<OrganizationWithOwner> {
-    const { data, error } = await this.db.rpc("create_organization_with_owner", {
-      p_name: input.name, p_slug: input.slug, p_owner_id: input.ownerId,
+    return withTransaction(async (client) => {
+      const org = await client.query<Row>(
+        "INSERT INTO organizations (name, slug) VALUES ($1, $2) RETURNING *",
+        [input.name, input.slug],
+      );
+      const membership = await client.query<Row>(
+        `INSERT INTO organization_memberships (organization_id, user_id, role, status)
+         VALUES ($1, $2, 'owner', 'active')
+         RETURNING *`,
+        [org.rows[0].id, input.ownerId],
+      );
+      return {
+        organization: organization(org.rows[0]),
+        ownerMembership: membership(membership.rows[0]),
+      };
     });
-    if (error) throw error;
-    const result = data as { organization: Row; membership: Row };
-    return { organization: organization(result.organization), ownerMembership: membership(result.membership) };
   }
 
   async getMembership(orgId: OrganizationId, userId: UserId): Promise<OrganizationMembership | null> {
-    const { data, error } = await this.db.from("organization_memberships").select("*").eq("organization_id", orgId).eq("user_id", userId).maybeSingle();
-    if (error) throw error;
-    return data ? membership(data) : null;
+    const r = await query<Row>(
+      "SELECT * FROM organization_memberships WHERE organization_id = $1 AND user_id = $2",
+      [orgId, userId],
+    );
+    return r.rows[0] ? membership(r.rows[0]) : null;
   }
 
   async getMembershipsForUser(userId: UserId): Promise<OrganizationMembership[]> {
-    const { data, error } = await this.db.from("organization_memberships").select("*").eq("user_id", userId);
-    if (error) throw error;
-    return (data ?? []).map(membership);
+    const r = await query<Row>(
+      "SELECT * FROM organization_memberships WHERE user_id = $1 ORDER BY created_at ASC",
+      [userId],
+    );
+    return r.rows.map(membership);
   }
 
   async getMembershipsForOrg(orgId: OrganizationId): Promise<OrganizationMembership[]> {
-    const { data, error } = await this.db.from("organization_memberships").select("*").eq("organization_id", orgId);
-    if (error) throw error;
-    return (data ?? []).map(membership);
+    const r = await query<Row>(
+      "SELECT * FROM organization_memberships WHERE organization_id = $1 ORDER BY created_at ASC",
+      [orgId],
+    );
+    return r.rows.map(membership);
   }
 
   async createMembership(input: {
     organizationId: OrganizationId; userId: UserId; role: MembershipRole; status?: MembershipStatus;
   }): Promise<OrganizationMembership> {
-    const { data, error } = await this.db.from("organization_memberships").insert({
-      organization_id: input.organizationId,
-      user_id: input.userId,
-      role: input.role,
-      status: input.status ?? "active",
-    }).select("*").single();
-    if (error) throw error;
-    return membership(data);
+    const r = await query<Row>(
+      `INSERT INTO organization_memberships (organization_id, user_id, role, status)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [input.organizationId, input.userId, input.role, input.status ?? "active"],
+    );
+    return membership(r.rows[0]);
   }
 
   async updateMembershipStatus(id: MembershipId, status: MembershipStatus): Promise<OrganizationMembership | null> {
-    const { data, error } = await this.db.from("organization_memberships").update({ status }).eq("id", id).select("*").maybeSingle();
-    if (error) throw error;
-    return data ? membership(data) : null;
+    const r = await query<Row>(
+      "UPDATE organization_memberships SET status = $1 WHERE id = $2 RETURNING *",
+      [status, id],
+    );
+    return r.rows[0] ? membership(r.rows[0]) : null;
   }
 
   async updateMembershipRole(id: MembershipId, role: MembershipRole): Promise<OrganizationMembership | null> {
-    const { data, error } = await this.db.from("organization_memberships").update({ role }).eq("id", id).select("*").maybeSingle();
-    if (error) throw error;
-    return data ? membership(data) : null;
+    const r = await query<Row>(
+      "UPDATE organization_memberships SET role = $1 WHERE id = $2 RETURNING *",
+      [role, id],
+    );
+    return r.rows[0] ? membership(r.rows[0]) : null;
   }
 
   async getPermissionsForRole(_orgId: OrganizationId, role: MembershipRole): Promise<PermissionName[]> {
     return [...SYSTEM_ROLE_PERMISSIONS[role]];
   }
 
-  async transferOwnership(orgId: OrganizationId, newOwnerId: UserId, newOwnerRole: NonOwnerRole = "admin"): Promise<OrganizationMembership[]> {
-    const { data, error } = await this.db.rpc("transfer_organization_ownership", {
-      p_organization_id: orgId,
-      p_new_owner_id: newOwnerId,
-      p_new_owner_role: newOwnerRole,
+  async transferOwnership(
+    orgId: OrganizationId,
+    newOwnerId: UserId,
+    newOwnerRole: NonOwnerRole = "admin",
+  ): Promise<OrganizationMembership[]> {
+    return withTransaction(async (client) => {
+      const current = await client.query<Row>(
+        "SELECT * FROM organization_memberships WHERE organization_id = $1 AND role = 'owner' AND status = 'active' FOR UPDATE",
+        [orgId],
+      );
+      if (current.rows.length !== 1) {
+        throw new Error("Owner invariant violated: expected exactly one active owner");
+      }
+
+      const target = await client.query<Row>(
+        "SELECT * FROM organization_memberships WHERE organization_id = $1 AND user_id = $2 AND status = 'active' FOR UPDATE",
+        [orgId, newOwnerId],
+      );
+      if (!target.rows[0]) throw new Error("New owner must be an active organization member");
+      if (target.rows[0].role === "owner") return [membership(target.rows[0])];
+
+      await client.query(
+        "UPDATE organization_memberships SET role = $1 WHERE id = $2",
+        [newOwnerRole, current.rows[0].id],
+      );
+      await client.query(
+        "UPDATE organization_memberships SET role = 'owner' WHERE id = $1",
+        [target.rows[0].id],
+      );
+
+      const result = await client.query<Row>(
+        "SELECT * FROM organization_memberships WHERE organization_id = $1 ORDER BY created_at ASC",
+        [orgId],
+      );
+      return result.rows.map(membership);
     });
-    if (error) throw error;
-    return (data ?? []).map(membership);
   }
 }
+
+export { PostgresIdentityRepository as SupabaseIdentityRepository };
