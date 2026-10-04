@@ -1,4 +1,5 @@
 name: CI
+# Phase 3 runtime migration verification is exercised on every PR.
 
 on:
   push:
