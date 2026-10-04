@@ -18,8 +18,20 @@ import { resolve } from "node:path";
 
 const migrationPath = resolve(__dirname, "../../../supabase/migrations/0001_identity_rbac.sql");
 const migrationSql = readFileSync(migrationPath, "utf8");
+const initPath = resolve(__dirname, "../../../infra/postgres-init/00-supabase-roles.sql");
+const initSql = readFileSync(initPath, "utf8");
+
 const foundationPath = resolve(__dirname, "../../../supabase/migrations/0002_application_foundation.sql");
 const foundationSql = readFileSync(foundationPath, "utf8");
+
+describe("Disposable PostgreSQL bootstrap static verification", () => {
+  it("uses valid dollar-quoted DO blocks", () => {
+    expect(initSql).toContain("DO $");
+    expect(initSql).toContain("END\n$;");
+    expect(initSql).not.toMatch(/^DO \$(?!\$)/m);
+    expect(initSql).not.toMatch(/^\$/m);
+  });
+});
 
 describe("Migration static verification (0001_identity_rbac.sql)", () => {
   describe("Owner invariant mechanism", () => {
@@ -83,11 +95,15 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
 
     it("rejects non-active owner status (invited/suspended)", () => {
       expect(migrationSql).toContain("Owner membership must have status active");
-    });\n\n    it("uses valid PostgreSQL dollar-quoted function bodies", () => {
+    });
+
+    it("uses valid PostgreSQL dollar-quoted function bodies", () => {
       expect(migrationSql).not.toMatch(/\\bAS \\$(?!\\$)/);
       expect(migrationSql).not.toMatch(/^\\$ LANGUAGE /m);
       expect(migrationSql).toContain("RETURNS TRIGGER AS $");
-    });\n\n    it("uses valid PostgreSQL dollar-quoted function bodies", () => {
+    });
+
+    it("uses valid PostgreSQL dollar-quoted function bodies", () => {
       expect(migrationSql).not.toMatch(/\\bAS \\$(?!\\$)/);
       expect(migrationSql).not.toMatch(/^\\$ LANGUAGE /m);
       expect(migrationSql).toContain("RETURNS TRIGGER AS $");
