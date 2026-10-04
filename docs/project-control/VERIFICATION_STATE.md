@@ -448,3 +448,9 @@ Development-first mode is active by explicit project-owner instruction. Database
 - Latest code/control commit: 70679cdef67056338338629371d3b723c785a73b.
 - Phase 3 acceptance remains pending until the resulting GitHub Actions run is green.
 \n\n### Development-first execution — 2026-10-04\n- CI automatic triggers: temporarily disabled by explicit project-owner instruction; workflow remains manual-only.\n- Phase 4 schema migration \`0002_database_foundation.sql\`: implemented.\n- Phase 4 static migration coverage: expanded.\n- Runtime verification: intentionally deferred until the implementation set is complete.\n- Phase 4 acceptance: NOT COMPLETE.\n
+
+### Phase 4 implementation state
+- Current implementation: database foundation + security hardening + encryption primitives.
+- Automatic CI: disabled temporarily by explicit project-owner instruction.
+- Runtime verification: deferred until implementation is complete.
+- Formal Phase 4 acceptance: pending.
