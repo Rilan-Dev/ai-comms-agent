@@ -170,3 +170,12 @@ Latest synchronization: Docker/manual verification tooling is committed at 271bd
 \n- Latest takeover hardening: external infrastructure is now the default runtime contract; local Docker services are profile-gated; migration SQL/RLS helpers received final security hardening.
 - Latest code commit: fca6f3ffa603006876c64f607043fb27137ae35d.
 - Vercel project currently has no configured environment variables, so external runtime configuration is not yet present there. No credentials are being invented or copied from local files.
+
+## 2026-10-05 — Infrastructure boundary and verification correction
+
+- **Deployment infrastructure policy:** PostgreSQL, Redis, RabbitMQ, and Qdrant are external runtime dependencies; Docker Compose services are opt-in under the `local-infra` profile and are never started by the normal source verification path.
+- **Verification policy:** `pnpm run verify` / `scripts/verify.sh` performs source/type/test/build checks only. `scripts/verify-docker.sh` is explicit opt-in disposable PostgreSQL verification.
+- **Latest infrastructure correction:** `infra/docker-compose.verify.yml` now uses the actual `postgres` service hostname.
+- **CI:** GitHub Actions uses its own disposable PostgreSQL service for runtime migration checks; this is CI infrastructure, not deployment provisioning.
+- **Latest known Vercel status:** the Vercel status for the latest code is `failure` due to build-rate-limit; no READY claim is made.
+- **Phase 4:** remains the active development phase under the project-owner development-first instruction. Runtime validation remains a release/acceptance gate, not a source-development blocker.
