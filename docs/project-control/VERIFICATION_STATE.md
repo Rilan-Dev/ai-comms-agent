@@ -440,3 +440,10 @@ takeover_execution_policy:
 
 ### Development-first continuation update — 2026-10-04
 Development-first mode is active by explicit project-owner instruction. Database and UI implementation is proceeding without waiting for CI/Vercel jobs. Runtime verification remains pending and no unverified deployment or migration result is represented as passed. Latest implementation includes Phase 4 migrations through 0011 and continued UI/provider work.
+
+
+### CI runtime verification hardening — 2026-10-04
+- CI now provisions disposable PostgreSQL 17, applies `supabase/migrations/0001_identity_rbac.sql`, then executes owner-transfer/RLS-helper runtime checks.
+- CI also verifies that a direct ownerless organization INSERT is rejected at transaction commit.
+- Latest code/control commit: 70679cdef67056338338629371d3b723c785a73b.
+- Phase 3 acceptance remains pending until the resulting GitHub Actions run is green.
