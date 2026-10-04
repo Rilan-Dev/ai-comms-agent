@@ -130,13 +130,16 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
 
   describe("RLS recursion safety", () => {
     it("uses SECURITY DEFINER membership helpers", () => {
-      expect(migrationSql).toContain("is_active_organization_member");
-      expect(migrationSql).toContain("is_active_organization_admin_or_owner");
+      expect(migrationSql).toContain("private.is_active_organization_member");
+      expect(migrationSql).toContain("private.is_active_organization_admin_or_owner");
       expect(migrationSql).toContain("SECURITY DEFINER");
+      expect(migrationSql).toContain("CREATE SCHEMA IF NOT EXISTS private");
     });
 
     it("pins the SECURITY DEFINER helper search_path", () => {
-      expect(migrationSql).toContain("SET search_path = public");
+      expect(migrationSql).toContain("SET search_path = ''");
+      expect(migrationSql).toContain("REVOKE EXECUTE ON FUNCTION private.is_active_organization_member(uuid, uuid) FROM PUBLIC");
+      expect(migrationSql).toContain("REVOKE EXECUTE ON FUNCTION private.is_active_organization_admin_or_owner(uuid, uuid) FROM PUBLIC");
     });
 
     it("does not self-query organization_memberships directly from its RLS policy", () => {
