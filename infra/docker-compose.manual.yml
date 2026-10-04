@@ -33,6 +33,20 @@ services:
     ports: ["6333:6333", "6334:6334"]
     volumes: [aca-manual-qdrant:/qdrant/storage]
 
+  migrate:
+    image: postgres:17-alpine
+    environment:
+      DATABASE_URL: postgresql://aca:aca_local_dev@postgres:5432/aca
+    volumes:
+      - ..:/workspace:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - apk add --no-cache bash coreutils >/dev/null && bash /workspace/scripts/migrate.sh
+
   web:
     build:
       context: ..
@@ -48,6 +62,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_started
       rabbitmq:
