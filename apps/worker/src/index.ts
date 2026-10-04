@@ -6,7 +6,7 @@
  * (Phase 9+ for email sync, Phase 11+ for agent execution).
  */
 
-import { isSupabaseConfigured } from "@ai-comms-agent/db";
+import { isPostgresConfigured } from "@ai-comms-agent/db";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -48,7 +48,7 @@ function healthCheck() {
     db_package: "ok" as const,
     clara_core_package: claraCorePkg ? ("ok" as const) : ("missing" as const),
     vendored_clara_source: vendoredClara ? ("ok" as const) : ("missing" as const),
-    supabase_configured: isSupabaseConfigured(),
+    postgres_configured: isPostgresConfigured(),
     rabbitmq_configured: Boolean(process.env.RABBITMQ_URL),
     redis_configured: Boolean(process.env.REDIS_URL),
     qdrant_configured: Boolean(process.env.QDRANT_URL),
