@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isSupabaseConfigured } from "@ai-comms-agent/db";
+import { isPostgresConfigured } from "@ai-comms-agent/db";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,7 @@ export async function GET() {
   // The fact that this route responds proves:
   //   - web_app: ok (Next.js serverless function is running)
   //   - shared_package: ok (imports resolve at build time; bundled)
-  //   - db_package: ok (isSupabaseConfigured is callable; bundled)
+  //   - db_package: ok (isPostgresConfigured is callable; bundled)
   //
   // The Clara integration boundary (packages/clara-core) is also bundled via
   // transpilePackages. Actual Clara runtime calls are Phase 11+; for Phase 2
@@ -29,13 +29,13 @@ export async function GET() {
     shared_package: "ok" as const,
     db_package: "ok" as const,
     clara_core_package: "ok" as const,
-    supabase_configured: isSupabaseConfigured(),
+    postgres_configured: isPostgresConfigured(),
     environment: process.env.NODE_ENV ?? "development",
     timestamp: new Date().toISOString(),
   };
 
   // Phase 2: the app is healthy if the serverless function executes and
-  // responds. Infrastructure dependencies (Supabase, Redis, RabbitMQ,
+  // responds. Infrastructure dependencies (PostgreSQL, Redis, RabbitMQ,
   // Qdrant) are not provisioned in Phase 2 and are reported as informational,
   // not as health failures.
   const status = 200;
