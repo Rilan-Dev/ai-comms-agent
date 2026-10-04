@@ -425,7 +425,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY INVOKER
 SET search_path = public
-AS $
+AS $$
 DECLARE
   v_org organizations;
   v_membership organization_memberships;
@@ -451,7 +451,7 @@ RETURNS SETOF organization_memberships
 LANGUAGE plpgsql
 SECURITY INVOKER
 SET search_path = public
-AS $
+AS $$
 DECLARE
   v_current_owner organization_memberships;
   v_target organization_memberships;
@@ -523,7 +523,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
-AS $
+AS $$
   SELECT EXISTS (
     SELECT 1
     FROM organization_memberships m
