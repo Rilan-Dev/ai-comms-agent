@@ -1,6 +1,6 @@
 # DATA-MODEL.md — Entity Definitions and Relationships
 
-This document defines the data model for `ai-comms-agent`. PostgreSQL (Supabase) is the authoritative store. The model below is the **target schema** — exact column types, constraints, indexes, and migrations are produced in Phase 4 (Database foundation). RLS (Row-Level Security) enforces organization isolation; `authenticated` alone is never authorization.
+This document defines the data model for `ai-comms-agent`. PostgreSQL is the authoritative store; the application is provider-neutral and does not require Supabase. The model below is the **target schema** — exact column types, constraints, indexes, and migrations are produced in Phase 4 (Database foundation). RLS (Row-Level Security) enforces organization isolation; `authenticated` alone is never authorization.
 
 The model is grouped into domains: identity/tenancy, agents, email, WhatsApp, conversations, scheduling/automation, actions/approvals, AI/usage, voice, and audit.
 
