@@ -12,10 +12,10 @@ This is a Phase 1 document. Concrete deployment configurations are produced in P
 |---|---|---|---|
 | Web UI + API (Next.js) | Node 20+ | Vercel | Phase 2 (already linked) |
 | Worker processes (Node) | Node 20+ | Worker host (TBD — see ADR-007) | Phase 4 (infra setup) |
-| PostgreSQL | PostgreSQL | PostgreSQL | Phase 4 |
-| Qdrant | Self-hosted on worker host OR Qdrant Cloud | TBD | Phase 10 |
-| Redis | Upstash | Upstash | Phase 4 |
-| RabbitMQ | CloudAMQP OR self-hosted on worker host | TBD | Phase 4 |
+| PostgreSQL | Managed/external PostgreSQL (Supabase-compatible supported) | External provider | Phase 4 |
+| Qdrant | Qdrant Cloud / externally provisioned Qdrant | External provider | Phase 10 |
+| Redis | Upstash or equivalent managed Redis | External provider | Phase 4 |
+| RabbitMQ | CloudAMQP or equivalent managed RabbitMQ | External provider | Phase 4 |
 | ClamAV (attachment scan) | Worker host | Worker host | Phase 9 |
 | Relay (Sarvam/Gemini voice) | Worker host | Worker host | Phase 16 |
 
@@ -104,7 +104,7 @@ Vercel preview deploys get the same env vars (no separate staging env in Phase 1
 - **Backups**: operator-managed; production must have scheduled backups and restore verification.
 - **Connection pooling**: application `pg.Pool`; PgBouncer may be inserted in front of PostgreSQL for higher concurrency.
 
-The current reference deployment is the repository's Docker PostgreSQL service.
+The current reference deployment uses an external PostgreSQL service. The repository's Docker PostgreSQL service is verification/local-only and requires explicit Compose profile activation.
 
 ---
 
@@ -136,7 +136,7 @@ Migration application is **manual** (not auto-applied in CI) — per `RULES.md �
 
 - **Production**: Vercel production deployment + production PostgreSQL + production worker host.
 - **Preview**: Vercel preview deployment per branch + production PostgreSQL (read-only where possible) + production worker host (shared). Preview deploys do not run their own workers — they share the production worker host. (Phase 17 may add a staging PostgreSQL if needed.)
-- **Local development**: Vercel dev + local PostgreSQL (Docker) + local RabbitMQ (Docker) + local Redis (Docker) + local Qdrant (Docker). Setup script in Phase 2.
+- **Local development**: application process + externally provisioned PostgreSQL, Redis, RabbitMQ, and Qdrant supplied through `.env.local`. Docker infrastructure is opt-in under the `local-infra` Compose profile and is never started automatically.
 
 Local development does not connect to production providers. Test email accounts (Gmail test accounts, Meta test number) are used.
 
@@ -235,3 +235,12 @@ Cost dashboards are part of the admin observability dashboard (Phase 17).
 - Concrete deployment verification execution.
 
 Phase 19 is the final phase before production acceptance. ChatGPT review gates every step.
+
+
+## 6B. External infrastructure is the default
+
+The application must not assume that PostgreSQL, Redis, RabbitMQ, or Qdrant are co-located with the Next.js process. Vercel receives connection URLs through encrypted project environment variables; it does not run Docker Compose or provision these dependencies.
+
+Required external connection variables are documented in `.env.example`: DATABASE_URL, optional DIRECT_URL, REDIS_URL, RABBITMQ_URL, QDRANT_URL, and QDRANT_API_KEY where applicable. No committed `.env` file is permitted.
+
+The Docker Compose infrastructure files are intentionally profile-gated with `local-infra`. A plain `docker compose up` must not create these four services. The full manual stack opts in explicitly via `scripts/manual-up.sh`.
