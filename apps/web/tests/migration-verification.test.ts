@@ -26,8 +26,8 @@ const foundationSql = readFileSync(foundationPath, "utf8");
 
 describe("Disposable PostgreSQL bootstrap static verification", () => {
   it("uses valid dollar-quoted DO blocks", () => {
-    expect(initSql).toContain("DO $");
-    expect(initSql).toContain("END\n$;");
+    expect(initSql).toContain("DO $$");
+    expect(initSql).toContain("END\n$$;");
     expect(initSql).not.toMatch(/^DO \$(?!\$)/m);
     expect(initSql).not.toMatch(/^\$/m);
   });
