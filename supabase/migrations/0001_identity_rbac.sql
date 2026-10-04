@@ -440,7 +440,7 @@ BEGIN
 
   RETURN jsonb_build_object('organization', to_jsonb(v_org), 'membership', to_jsonb(v_membership));
 END;
-$;
+$$;
 
 CREATE OR REPLACE FUNCTION transfer_organization_ownership(
   p_organization_id uuid,
@@ -495,7 +495,7 @@ BEGIN
   WHERE organization_id = p_organization_id
   ORDER BY created_at ASC;
 END;
-$;
+$$;
 
 -- ============================================================================
 -- Row-Level Security (per SECURITY_MODEL.md §3 and RULES.md §11)
