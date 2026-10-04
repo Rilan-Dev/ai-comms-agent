@@ -122,3 +122,15 @@ Statuses: `proposed` (recorded by Z.AI, awaiting ChatGPT), `accepted` (ratified 
 2. Status starts as `proposed` if recorded by Z.AI. ChatGPT ratification upgrades it to `accepted`.
 3. If a decision supersedes an earlier one, mark the earlier one as `superseded by ADR-N` and reference it in the new decision's context.
 4. Update `worklog.md` to record the decision.
+
+
+---
+
+## ADR-011 — Dedicated Linux worker host for async runtime and infrastructure services
+
+- **Date:** 2026-10-04
+- **Status:** accepted
+- **Authority:** ChatGPT, Phase 4 architecture decision
+- **Context:** Vercel is appropriate for the Next.js web/API surface but is not the long-lived execution environment for RabbitMQ consumers, scheduled workers, sync loops, and realtime background processing. The application also requires RabbitMQ, Redis, and Qdrant.
+- **Decision:** Production async workers run on a dedicated Linux VM/container host independent of Vercel. RabbitMQ, Redis, and Qdrant may run as isolated containers on that host initially, with persistent volumes and TLS/private-network controls. The host is not exposed directly to browsers; Vercel API/webhooks communicate through authenticated service endpoints or the queue's secured ingress. Supabase remains the authoritative database.
+- **Consequences:** The platform has a deliberate split: Vercel for web/API, Supabase for PostgreSQL/Auth/Storage, dedicated Linux for long-lived workers and supporting infrastructure. Production provisioning and sizing remain deployment-phase work; the decision does not authorize exposing unauthenticated RabbitMQ/Redis/Qdrant endpoints.
