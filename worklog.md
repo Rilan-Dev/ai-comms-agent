@@ -1114,3 +1114,15 @@ Development continues without waiting for CI/Vercel results. Formal verification
 - Added Gmail adapter/OAuth tests using mocked fetch; no real provider credentials were committed.
 - Corrected Gmail initial sync to persist the history cursor from the Gmail profile response.
 - Phase 4 runtime verification and CI remain intentionally deferred while implementation continues.
+
+
+## Task ID: 15
+## Phase: 4/5/6 — Persistence and Provider Runtime
+## Status: implementation_in_progress
+## Date: 2026-10-04
+
+- Added typed `SupabaseEmailAccountRepository` with organization-scoped account CRUD, capability persistence, sync status updates, and encrypted credential save/load.
+- Added agent policy/tool-binding persistence migration.
+- Added Phase 4 security correction migration for RLS helper execution and secret-bearing tables.
+- Added a dedicated Linux worker-host architectural decision so long-lived queue consumers are not forced onto Vercel.
+- No production DB or provider credentials were provisioned.
