@@ -38,9 +38,7 @@ The worker host (single host running workers, RabbitMQ, Qdrant, ClamAV, voice re
 - **Functions**: default Vercel function config; some routes may need `maxDuration` increase (e.g., voice session token issuance, webhook processing) — set per-route in `next.config.js`
 - **Environment variables** (server-only, never exposed to the browser bundle):
   - `DATABASE_URL` (PostgreSQL connection string)
-  - `SUPABASE_SERVICE_ROLE_KEY` (server-only — workers use this; API uses anon+RLS where possible)
-  - `SUPABASE_ANON_KEY` (safe for browser)
-  - `SUPABASE_URL`
+  - `DIRECT_URL` (optional dedicated migration/session-mode connection)
   - `CREDENTIALS_MASTER_KEY` (KEK for envelope encryption)
   - `SESSION_SIGNING_KEY`
   - `REDIS_URL` (Upstash)
@@ -54,7 +52,7 @@ The worker host (single host running workers, RabbitMQ, Qdrant, ClamAV, voice re
   - `OPENAI_API_KEY` (if platform-default; org-level keys are in DB)
   - `GEMINI_API_KEY`, `SARVAM_API_KEY`, `ELEVENLABS_API_KEY` (same)
   - `CLAMAV_HOST` (worker host; not needed on Vercel)
-  - `NEXT_PUBLIC_*` (browser-safe): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_APP_URL`
+  - `NEXT_PUBLIC_APP_URL`
 
 Vercel preview deploys get the same env vars (no separate staging env in Phase 1; Phase 17 may add a staging PostgreSQL project).
 
@@ -86,7 +84,7 @@ Vercel preview deploys get the same env vars (no separate staging env in Phase 1
   - ClamAV
   - Voice relay (Sarvam wire, Gemini Live relay)
 - **Env vars** (subset of Vercel env vars + worker-only):
-  - `DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL`
+  - `DATABASE_URL`, `DIRECT_URL`
   - `CREDENTIALS_MASTER_KEY`
   - `REDIS_URL`, `RABBITMQ_URL`, `QDRANT_URL`
   - All provider API keys (workers make provider calls)
@@ -96,19 +94,17 @@ Vercel preview deploys get the same env vars (no separate staging env in Phase 1
 
 ## 4. PostgreSQL project configuration
 
-- **Project name**: `ai-comms-agent` (or `ai-comms-agent-prod` if separate staging)
-- **Region**: same as Vercel deployment region (lowest latency)
-- **Plan**: Pro (for backups, PITR)
-- **Database**: PostgreSQL 15+ (PostgreSQL default)
-- **Extensions**: `pgcrypto` (UUID), `pg_trgm` (trigram search), `unaccent` (accent-insensitive search), `citext` (case-insensitive text)
-- **Auth**: PostgreSQL Auth (optional — we may use our own auth; decided in Phase 3)
-- **Storage**: PostgreSQL Storage (for email attachments, KB documents)
-- **RLS**: enabled on every tenant-scoped table
-- **Migrations**: forward-only, named `NNNN_description.sql`, applied via `postgresql migration` CLI
-- **Backups**: daily (PostgreSQL Pro default), PITR enabled
-- **Connection pooling**: PgBouncer (PostgreSQL default), connection limit monitored
+- **Deployment**: self-hosted PostgreSQL 15+ or any managed PostgreSQL provider.
+- **Connection**: `DATABASE_URL` for runtime pooling; optional `DIRECT_URL` for migrations.
+- **Extensions**: `pgcrypto`, `citext`; `pg_trgm`/`unaccent` may be enabled as search requirements grow.
+- **Auth**: application-owned authentication boundary; database credentials are not user authentication.
+- **Storage**: S3-compatible/object storage or local volume; PostgreSQL stores metadata and hashes.
+- **RLS**: enabled on every tenant-scoped table.
+- **Migrations**: forward-only SQL files, applied by `scripts/migrate.sh` or an equivalent PostgreSQL migration runner.
+- **Backups**: operator-managed; production must have scheduled backups and restore verification.
+- **Connection pooling**: application `pg.Pool`; PgBouncer may be inserted in front of PostgreSQL for higher concurrency.
 
-PostgreSQL project is provisioned by the user before Phase 4 (per RSK-001).
+The current reference deployment is the repository's Docker PostgreSQL service.
 
 ---
 
