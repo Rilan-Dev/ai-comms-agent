@@ -79,6 +79,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: worker
+    env_file:
+      - ../.env.docker
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://aca:aca_local_dev@postgres-db:5432/aca
