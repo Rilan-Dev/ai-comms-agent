@@ -182,3 +182,8 @@ Acceptance gate for Slice 1:
 ## Execution log — 2026-10-06
 
 Slice 0 is materially implemented in the shared application shell (notifications and recoverable route errors). Slice 1 Agents implementation is active under ChatGPT ownership: PostgreSQL persistence, CRUD, version history, deployment/retirement, policy, audit, configuration testing, email binding, single-WhatsApp binding, validation, and responsive UI are now present. **Slice 1 is not accepted yet**; GitHub runtime/type/build verification and browser verification remain required before moving to Email Accounts.
+
+
+## Continuation log — 2026-10-06
+
+Development is intentionally continuing without waiting for CI/Vercel jobs. Before advancing the product acceptance gate, ChatGPT corrected the persisted email credential repository contract so the actual PostgreSQL `ciphertext` column is read correctly, and replaced the `/mail/accounts` demo page with a PostgreSQL-backed account surface plus an authorized disconnect endpoint. Provider connection activation remains truthful: OAuth/IMAP configuration is not fabricated when user-owned provider credentials are absent.
