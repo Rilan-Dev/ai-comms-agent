@@ -133,7 +133,9 @@ else
   if command -v psql >/dev/null 2>&1; then
     local_db_url="$database_url"
     if [[ "$db_host" == "host.docker.internal" ]]; then
-      local_db_url="$(printf '%s' "$database_url" | sed 's#://host\.docker\.internal:#://127.0.0.1:#')"
+      # The host-side shell cannot normally resolve host.docker.internal.
+      # Replace only the authority hostname after the optional userinfo.
+      local_db_url="$(printf '%s' "$database_url" | sed -E 's#@host\.docker\.internal(:[0-9]+)#@127.0.0.1\1#')"
     fi
     if PGCONNECT_TIMEOUT=5 psql "$local_db_url" -X -v ON_ERROR_STOP=1 -Atqc "select current_database() || '|' || current_user || '|' || version();" >/tmp/aca-pg-check.out 2>/tmp/aca-pg-check.err; then
       echo "PASS PostgreSQL authentication/query"
