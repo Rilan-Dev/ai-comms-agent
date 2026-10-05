@@ -41,6 +41,13 @@ do
   }
 done
 
+# The application is PostgreSQL-native; migrations must not depend on
+# Supabase-specific auth.uid() runtime functions.
+if grep -RIn 'auth\\.uid()' "$MIGRATIONS_DIR" --include='*.sql'; then
+  echo "ERROR: Supabase-specific auth.uid() dependency found in migrations" >&2
+  exit 1
+fi
+
 # A single-dollar function body delimiter is invalid PostgreSQL syntax.
 if grep -RInE '(^AS \$[[:space:]]*$|^\$[[:space:]]*;)' "$MIGRATIONS_DIR" --include='*.sql'; then
   echo "ERROR: invalid single-dollar PostgreSQL function delimiter found" >&2
