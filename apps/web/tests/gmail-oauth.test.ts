@@ -1,4 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { GmailOAuthClient } from "../../apps/worker/src/email/gmail-oauth";
 
 describe("GmailOAuthClient", () => {
@@ -37,13 +39,13 @@ describe("GmailOAuthClient", () => {
 
 describe("OAuth reconnect binding", () => {
   it("binds Gmail reconnect state to an optional target account", async () => {
-    const source = await (await fetch("https://raw.githubusercontent.com/Rilan-Dev/ai-comms-agent/main/apps/web/src/app/api/oauth/gmail/start/route.ts")).text();
+    const source = readFileSync(resolve(__dirname, "../src/app/api/oauth/gmail/start/route.ts"), "utf8");
     expect(source).toContain("accountId");
     expect(source).toContain("...(accountId ? { accountId } : {})");
   });
 
   it("validates Gmail reconnect target ownership and provider", async () => {
-    const source = await (await fetch("https://raw.githubusercontent.com/Rilan-Dev/ai-comms-agent/main/apps/web/src/app/api/oauth/gmail/callback/route.ts")).text();
+    const source = readFileSync(resolve(__dirname, "../src/app/api/oauth/gmail/callback/route.ts"), "utf8");
     expect(source).toContain('target.organization_id !== payload.organizationId');
     expect(source).toContain('target.provider !== "gmail"');
   });
