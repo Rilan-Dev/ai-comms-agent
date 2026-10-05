@@ -656,3 +656,10 @@ ChatGPT completed another Email Accounts hardening pass: folder/label discovery 
 ### 2026-10-06 — ChatGPT continuation verification record
 Latest implementation commit is 1972d62cffca5b1b5a5eaeb4ddcb4e7c9f53b446. Zoho adapter security/runtime contract coverage was extended for documented draft creation. No live provider credentials were used; runtime provider connectivity is not claimed.
 Acceptance remains a separate runtime/browser gate.
+
+
+### 2026-10-06 — Provider reconnect hardening
+- Latest implementation commit: `e405cbcf8d03f3e0dab9b5319689b3046e6cd1f6` (control-doc synchronization commit).
+- Gmail and Zoho OAuth reconnect now bind to a signed optional target account and validate organization/provider before persistence.
+- Regression coverage added for Gmail reconnect binding; no external network call is used by the test.
+- No provider credential success is claimed; runtime validation remains deferred by explicit project-owner instruction.
