@@ -37,8 +37,8 @@ export function EmailAccountsClient({
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("connected") === "gmail") setNotice("Gmail connected securely. Initial synchronization will be handled by the email worker.");
-    if (params.get("connected") === "zoho") setNotice("Zoho Mail connected securely. Initial synchronization will be handled by the email worker.");
+    if (params.get("connected") === "gmail") setNotice("Gmail authorization completed. The account is pending worker verification and initial synchronization.");
+    if (params.get("connected") === "zoho") setNotice("Zoho authorization completed. The account is pending worker verification and initial synchronization.");
   }, []);
 
   async function reconnect(account: EmailAccount) {
@@ -121,7 +121,7 @@ export function EmailAccountsClient({
       {showImapForm && (
         <section className="rounded-3xl border bg-background p-6 shadow-sm sm:p-7">
           <div className="flex items-start justify-between gap-4"><div><h2 className="font-semibold">Configure IMAP / SMTP</h2><p className="mt-1 text-sm text-muted-foreground">TLS is mandatory. Credentials are encrypted server-side and never returned to the browser after submission.</p></div><button type="button" onClick={()=>setShowImapForm(false)} className="text-sm font-semibold text-muted-foreground hover:text-foreground">Close</button></div>
-          <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={async(e)=>{e.preventDefault();setSavingImap(true);setNotice(null);setImapError(null);try{const response=await fetch("/api/email-accounts",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,action:"connect_imap_smtp",emailAddress:imap.email,displayName:imap.displayName,host:imap.host,port:Number(imap.port),username:imap.username,password:imap.password,smtpHost:imap.smtpHost||imap.host,smtpPort:Number(imap.smtpPort),tls:imap.tls})});const data=await response.json();if(!response.ok)throw new Error(data.message??Object.values(data.fieldErrors??{}).join(" "));setAccounts((current)=>[data.account,...current]);setNotice("Mailbox configuration saved. It remains pending until the email worker completes connection verification.");setShowImapForm(false);}catch(error){const message=error instanceof Error?error.message:"Could not save mailbox configuration.";setImapError(message);setNotice("Mailbox configuration could not be saved.");}finally{setSavingImap(false);}}}>
+          <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={async(e)=>{e.preventDefault();setSavingImap(true);setNotice(null);setImapError(null);try{const response=await fetch("/api/email-accounts",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,action:"connect_imap_smtp",emailAddress:imap.email,displayName:imap.displayName,host:imap.host,port:Number(imap.port),username:imap.username,password:imap.password,smtpHost:imap.smtpHost||imap.host,smtpPort:Number(imap.smtpPort),tls:imap.tls})});const data=await response.json();if(!response.ok)throw new Error(data.message??Object.values(data.fieldErrors??{}).join(" "));setAccounts((current)=>[data.account,...current]);setNotice("Mailbox configuration saved securely. It is pending worker verification and mailbox structure discovery.");setShowImapForm(false);}catch(error){const message=error instanceof Error?error.message:"Could not save mailbox configuration.";setImapError(message);setNotice("Mailbox configuration could not be saved.");}finally{setSavingImap(false);}}}>
             <label className="text-sm font-medium">Email address<input required type="email" value={imap.email} onChange={e=>setImap({...imap,email:e.target.value})} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
             <label className="text-sm font-medium">Display name<input value={imap.displayName} onChange={e=>setImap({...imap,displayName:e.target.value})} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
             <label className="text-sm font-medium">IMAP host<input required value={imap.host} onChange={e=>setImap({...imap,host:e.target.value})} placeholder="imap.example.com" className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
@@ -187,7 +187,7 @@ export function EmailAccountsClient({
             <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-muted text-lg">✉</div>
             <h3 className="mt-4 font-semibold">No mailboxes connected</h3>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-              Provider setup is intentionally disabled until the required OAuth or IMAP/SMTP configuration is supplied.
+              Provider setup is configuration-driven. OAuth accounts remain pending until the worker verifies credentials and discovers mailbox structure; IMAP/SMTP is tested before credentials are persisted.
             </p>
           </div>
         ) : (
