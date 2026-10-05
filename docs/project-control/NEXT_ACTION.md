@@ -251,3 +251,7 @@ ChatGPT is continuing Slice 2 directly. The IMAP/SMTP connect action was correct
 ## Current authorized action — Phase 4 (2026-10-06)
 
 ChatGPT is the primary implementer. Continue Phase 4 Database Foundation and Migrations directly. GitHub Actions/Vercel completion is not required to continue implementation. Runtime PostgreSQL migration/RLS verification remains an acceptance requirement. Do not begin Phase 5 until Phase 4 is accepted.
+
+
+### 2026-10-06 — Provider security continuation
+ChatGPT continued Email Accounts provider hardening without waiting for CI/Vercel. Zoho OAuth callback and worker adapter now allow only HTTPS Zoho Mail regional API origins, preventing an untrusted `api_domain` from becoming a server-side request target. Added deterministic adapter security tests. Next provider work: complete connection-test/reconnect lifecycle and then proceed to Mail vertical slice after Email Accounts acceptance evidence is available.
