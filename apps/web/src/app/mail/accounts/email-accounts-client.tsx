@@ -206,6 +206,7 @@ export function EmailAccountsClient({
                   <p className="mt-2 text-xs text-muted-foreground">
                     Last sync: {account.last_sync_at ? new Date(account.last_sync_at).toLocaleString() : "Not synchronized"}
                   </p>
+                  {account.last_error && <p role="alert" className="mt-2 max-w-2xl text-xs text-destructive">{account.last_error}</p>}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {account.status !== "connected" && account.status !== "disconnected" && (
