@@ -208,3 +208,10 @@ Formal phase remains 4 until runtime acceptance. In parallel under the developme
 ## 2026-10-06 — Gmail provider build blocker
 - Fixed the worker TypeScript contract failure in Gmail adapter commit `418439093ae87ceb76a32709b371b7e772d8fd04`.
 - Next: pull `main` and rerun `bash scripts/manual-up.sh`; if the worker passes, continue the next Email Accounts provider-foundation slice without waiting on CI/Vercel.
+
+
+### 2026-10-06 — Gmail provider hardening
+- Registered the real Gmail adapter in the canonical worker provider registry.
+- Hardened Gmail OAuth credentials with proactive refresh before expiry and a single 401 retry refresh path, with concurrency de-duplication.
+- Added adapter tests for expiry refresh and unauthorized-response recovery.
+- **Next implementation focus:** generic IMAP/SMTP secure connection flow, validation, encrypted credential persistence, connection testing, and adapter registration; then Zoho OAuth foundation.
