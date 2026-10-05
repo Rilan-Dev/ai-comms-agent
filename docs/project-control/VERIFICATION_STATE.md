@@ -634,3 +634,10 @@ Development-first update 2026-10-06: email credential repository schema mismatch
 
 ### 2026-10-06 — Email Accounts source verification boundary
 Latest source implementation commits through `4cea5073d1b42a3546f5023d17ff9f5efd6a701a`. Static inspection covers the new email schema reconciliation, Zoho runtime operations, provider reconnect persistence, and folder/label repository. No CI PASS, Vercel READY, or live provider connection is claimed. Acceptance remains pending runtime/browser evidence.
+
+
+### 2026-10-06 — Capability truthfulness correction
+- Aligned persisted IMAP/SMTP and Zoho capability metadata with the operations actually implemented by their adapters; unsupported draft/send/forward/attachment operations are no longer advertised as available.
+- Gmail remains the fully advertised provider surface where its adapter implements the corresponding contract.
+- Latest code commit: be4925cbd3e73ebeec28a951a5d062d70fba19ae.
+- Runtime/browser verification remains deferred and no live provider connection is claimed.
