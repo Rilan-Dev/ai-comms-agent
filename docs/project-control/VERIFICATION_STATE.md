@@ -529,3 +529,10 @@ Latest synchronization: Docker/manual verification tooling is committed at 271bd
 
 ### 2026-10-05 runtime verification finding
 The user's local `bash scripts/verify-docker.sh` run successfully booted PostgreSQL and applied migrations 0001 through 0006. Migration 0007 then failed because `agent_ai_settings` referenced `ai_provider_configs` before its table was created. This was corrected in commit `3d9dca8fe0769d2273e2fad19051b09591b83f08`. Re-run the disposable verification before Phase 3 acceptance. No false PASS is claimed.
+
+
+### 2026-10-05 — Docker verification runner correction
+- Local verification reached the migration chain successfully, then the final runtime verification command failed before executing SQL because `verify-docker.sh` invoked `psql` without `$DATABASE_URL`; the migrate container therefore attempted its local Unix socket instead of the `postgres` service.
+- Corrected in commit `b08d7e3aa244095d214fd9cd33268c4edd8930fc`: both runtime verification commands now explicitly pass `$DATABASE_URL`.
+- This was a verification harness defect, not a migration pass. The required next step is to rerun `bash scripts/verify-docker.sh` after pulling main.
+- **Phase 3/4 acceptance remains pending runtime evidence. No false PASS is claimed.**
