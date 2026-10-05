@@ -182,3 +182,7 @@ Continue Slice 1 Agents: resolve CI/runtime failures, then browser-verify create
 - SECURITY DEFINER helpers intentionally use `SET search_path = ''` with fully-qualified `public.*` table references; static tests now enforce this safer pinned path.
 - Latest implementation commit: 5bcc9758f374de1d7187d2f9cd814d2589ecf081.
 - Phase 3 acceptance remains pending until CI runtime evidence is green.
+
+
+### 2026-10-06 — ChatGPT continuation
+Continue product implementation without waiting on CI: harden Email Accounts provider connection flows next (Gmail OAuth state/PKCE, then IMAP/SMTP and Zoho), while preserving truthful configuration-required states. Keep runtime verification as the acceptance gate.
