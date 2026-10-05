@@ -1446,3 +1446,15 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - IMAP/SMTP accounts remain pending until worker-side connection verification; no false connected state is exposed.
 - Development continues without waiting for CI/Vercel; acceptance evidence remains a separate gate.
 - Next implementation: worker-backed connection testing/status transition, then complete Zoho runtime operations.
+
+
+## 2026-10-06 — PostgreSQL/service connection diagnostics
+
+- Owner: ChatGPT
+- Finding: The Agents route requires DATABASE_URL and calls ensureDevSeed() plus PostgresAgentRepository.list(). Any connection/authentication/TLS/schema failure is caught by the route and presented as the same generic PostgreSQL error, so the current screen does not identify whether the problem is DNS, port, authentication, TLS, database name, or schema.
+- Repository constraint: The real .env / .env.docker is intentionally untracked; no secret-bearing environment file was read or committed.
+- Implementation: Added scripts/check-services.sh, which reads only KEY=value configuration, masks credentials, performs a real PostgreSQL query when psql is available, and checks Redis/RabbitMQ/Qdrant connectivity.
+- Configuration correction: Updated .env.docker.example so it no longer advertises Compose-only hostnames while the normal manual stack deliberately does not provision those services.
+- Commits: 7e779130d41b97ed45701b86035652d070271213, f12b5767e4eb1705cf00f4ac775eff33fee27885, 302c58d15fe8b9fe736135f6a9e4b96354e9b143.
+- Verification status: The diagnostic must be run in the user's environment because only that environment contains the real connection endpoints and credentials. No claim of PostgreSQL connectivity is made yet.
+- Next evidence: git pull --ff-only origin main then bash scripts/check-services.sh .env.docker; share the sanitized output. If PostgreSQL passes but /agents still fails, the next check is migration/schema state rather than network configuration.
