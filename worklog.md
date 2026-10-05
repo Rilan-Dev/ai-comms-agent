@@ -1564,3 +1564,10 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Added deterministic Zoho runtime-operation tests and email-schema reconciliation static tests.
 - No provider credentials were fabricated; no live provider connection is claimed; CI/Vercel remain non-blocking under the explicit development-first instruction.
 - **Next:** finish provider error/retry UX and discovery invocation wiring, then continue to the Mail vertical slice.
+
+
+### 2026-10-06 — Capability truthfulness correction
+- Aligned persisted IMAP/SMTP and Zoho capability metadata with the operations actually implemented by their adapters; unsupported draft/send/forward/attachment operations are no longer advertised as available.
+- Gmail remains the fully advertised provider surface where its adapter implements the corresponding contract.
+- Latest code commit: be4925cbd3e73ebeec28a951a5d062d70fba19ae.
+- Runtime/browser verification remains deferred and no live provider connection is claimed.
