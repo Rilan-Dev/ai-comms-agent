@@ -20,8 +20,8 @@ function requiredRow(row: Row | undefined, entity: string): Row {
 function account(row: Row): EmailAccount {
   const status = String(row.status);
   const mappedStatus =
-    status === "active" ? "connected" :
-    status === "expired" ? "pending" :
+    status === "connected" ? "connected" :
+    status === "pending" ? "pending" :
     status === "revoked" ? "revoked" :
     status === "disconnected" ? "disconnected" :
     "error";
@@ -114,7 +114,7 @@ export class PostgresEmailAccountRepository {
   }
 
   async getById(id: string): Promise<EmailAccount | null> {
-    const r = await query<Row>("SELECT * FROM email_accounts WHERE id = $1", [id]);
+    const r = await query<Row>("SELECT * FROM email_accounts WHERE id = $1 AND deleted_at IS NULL", [id]);
     return r.rows[0] ? account(r.rows[0]) : null;
   }
 
@@ -127,13 +127,13 @@ export class PostgresEmailAccountRepository {
   }
 
   async getConnectionConfig(id: string): Promise<Record<string, unknown>> {
-    const r = await query<Row>("SELECT connection_config FROM email_accounts WHERE id = $1", [id]);
+    const r = await query<Row>("SELECT connection_config FROM email_accounts WHERE id = $1 AND deleted_at IS NULL", [id]);
     return (r.rows[0]?.connection_config ?? {}) as Record<string, unknown>;
   }
 
   async updateCapabilities(id: string, capabilities: CapabilitySet): Promise<EmailAccount | null> {
     const r = await query<Row>(
-      "UPDATE email_accounts SET capabilities = $1::jsonb WHERE id = $2 RETURNING *",
+      "UPDATE email_accounts SET capabilities = $1::jsonb WHERE id = $2 AND deleted_at IS NULL RETURNING *",
       [JSON.stringify(capabilities), id],
     );
     return r.rows[0] ? account(r.rows[0]) : null;
@@ -141,7 +141,7 @@ export class PostgresEmailAccountRepository {
 
   async updateSyncState(id: string, lastSyncAt: string): Promise<EmailAccount | null> {
     const r = await query<Row>(
-      "UPDATE email_accounts SET last_synced_at = $1, status = 'connected' WHERE id = $2 RETURNING *",
+      "UPDATE email_accounts SET last_synced_at = $1, status = 'connected', last_error = NULL, connected_at = COALESCE(connected_at, now()) WHERE id = $2 AND deleted_at IS NULL RETURNING *",
       [lastSyncAt, id],
     );
     return r.rows[0] ? account(r.rows[0]) : null;
@@ -153,7 +153,7 @@ export class PostgresEmailAccountRepository {
     lastError?: string | null,
   ): Promise<EmailAccount | null> {
     const r = await query<Row>(
-      "UPDATE email_accounts SET status = $1, last_error = CASE WHEN $1 = 'error' THEN $2 ELSE NULL END WHERE id = $3 RETURNING *",
+      "UPDATE email_accounts SET status = $1, last_error = CASE WHEN $1 = 'error' THEN $2 ELSE NULL END, connected_at = CASE WHEN $1 = 'connected' THEN COALESCE(connected_at, now()) ELSE connected_at END WHERE id = $3 AND deleted_at IS NULL RETURNING *",
       [status, lastError ?? null, id],
     );
     return r.rows[0] ? account(r.rows[0]) : null;
