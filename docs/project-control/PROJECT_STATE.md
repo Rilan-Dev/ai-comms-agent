@@ -257,3 +257,11 @@ ChatGPT corrected the remaining 0001 PostgreSQL role-bootstrap quoting defect, a
 
 ### 2026-10-06 — Product development continuation
 ChatGPT continued implementation without waiting for CI/Vercel: agent version configuration editing is now persisted through immutable version creation; agent email/WhatsApp unbinding is implemented and audited; channel binding rejects cross-tenant account IDs. Slice 1 remains formally unaccepted pending verification evidence. Development now proceeds into Slice 2 Email Accounts under the explicit development-first instruction.
+
+### Current development checkpoint — 2026-10-06
+- Product completion Slice 1 (Agents) remains active and not yet accepted.
+- Latest implementation: bc31ded2df82e7a42b985343951381751504402b.
+- Agent audit history is now persisted/read through an authorized API and visible in the detail Activity tab.
+- Agent WhatsApp channel binding now discovers organization-scoped accounts instead of requiring arbitrary UUID entry.
+- Agent policy API now performs strict server-side validation with field-level errors.
+- Next: finish remaining Slice 1 UX/error/browser verification work, then gate advancement to Email Accounts.
