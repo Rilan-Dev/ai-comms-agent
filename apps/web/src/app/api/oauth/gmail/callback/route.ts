@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   if (!stateCookie || stateCookie !== state) return oauthError("Invalid or expired Gmail OAuth session.");
   const [encoded, signature] = state.split(".");
   if (!encoded || !signature || !verify(encoded, signature)) return oauthError("Invalid Gmail OAuth state.");
-  let payload: { organizationId: string; userId: string; exp: number };
+  let payload: { organizationId: string; userId: string; accountId?: string; exp: number };
   try {
     payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
   } catch {
@@ -82,13 +82,21 @@ export async function GET(request: Request) {
     if (!masterKey) return oauthError("Credential encryption is not configured on the server.", 503);
 
     const repository = new PostgresEmailAccountRepository();
+    if (payload.accountId) {
+      const target = await repository.getById(payload.accountId);
+      if (!target || target.organization_id !== payload.organizationId || target.provider !== "gmail") {
+        return oauthError("The Gmail reconnect target is invalid.", 409);
+      }
+    }
     const capabilities = {
       folders: true, labels: true, sync_incremental: true, sync_full: true, sync_webhook: true, sync_idle: false,
       search_server_side: true, search_client_side: true, drafts: true, reply: true, forward: true,
       mark_read: true, archive: true, move: true, threads: true, attachments_download: true,
       attachments_upload: false, send: true,
     };
-    const existing = await repository.findByOrganizationProviderAddress(payload.organizationId, "gmail", profile.emailAddress);
+    const existing = payload.accountId
+      ? await repository.getById(payload.accountId)
+      : await repository.findByOrganizationProviderAddress(payload.organizationId, "gmail", profile.emailAddress);
     const account = existing
       ? await repository.updateConnection(existing.id, {
           emailAddress: profile.emailAddress,
