@@ -1438,3 +1438,11 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Added the initial Zoho Mail adapter foundation and registered Gmail, IMAP/SMTP, and Zoho in the canonical worker registry.
 - Updated provider registry tests and the shared provider contract documentation.
 - **Verification:** source implementation continued under development-first policy; CI/Vercel runtime evidence remains unavailable/blocked. No real-provider connection is claimed.
+
+
+## 2026-10-06 — Agent + Email Accounts continuation
+- Agent version JSON editing, immutable version creation, channel unbinding, and cross-tenant binding protection were implemented.
+- Email Accounts Slice 2 now includes a real IMAP/SMTP configuration form with server-side validation, mandatory TLS, and encrypted credential persistence.
+- IMAP/SMTP accounts remain pending until worker-side connection verification; no false connected state is exposed.
+- Development continues without waiting for CI/Vercel; acceptance evidence remains a separate gate.
+- Next implementation: worker-backed connection testing/status transition, then complete Zoho runtime operations.
