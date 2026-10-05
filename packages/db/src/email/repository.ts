@@ -147,6 +147,11 @@ export class PostgresEmailAccountRepository {
     return r.rows[0] ? account(r.rows[0]) : null;
   }
 
+  async delete(id: string): Promise<boolean> {
+    const r = await query<Row>("DELETE FROM email_accounts WHERE id = $1 RETURNING id", [id]);
+    return r.rows.length > 0;
+  }
+
   async updateStatus(
     id: string,
     status: "pending" | "connected" | "error" | "disconnected" | "revoked",
