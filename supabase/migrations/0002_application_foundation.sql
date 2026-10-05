@@ -798,10 +798,5 @@ DROP TRIGGER IF EXISTS audit_events_no_update ON audit_events;
 CREATE TRIGGER audit_events_no_update BEFORE UPDATE OR DELETE ON audit_events
 FOR EACH ROW EXECUTE FUNCTION deny_audit_mutation();
 
-ALTER TABLE agent_policies ENABLE ROW LEVEL SECURITY;
-CREATE POLICY agent_policies_tenant_access ON agent_policies
-  FOR ALL USING (tenant_access(organization_id))
-  WITH CHECK (tenant_access(organization_id));
-
 -- One WhatsApp account per agent is enforced by the UNIQUE(agent_id) constraint
 -- on agent_whatsapp_accounts.
