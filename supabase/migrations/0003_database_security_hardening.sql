@@ -40,9 +40,9 @@ LANGUAGE sql
 STABLE
 SECURITY INVOKER
 SET search_path = public
-AS $
+AS $$
   SELECT private.is_active_organization_member(p_organization_id, p_user_id);
-$;
+$$;
 
 CREATE OR REPLACE FUNCTION public.is_active_organization_admin_or_owner(
   p_organization_id uuid,
@@ -53,9 +53,9 @@ LANGUAGE sql
 STABLE
 SECURITY INVOKER
 SET search_path = public
-AS $
+AS $$
   SELECT private.is_active_organization_admin_or_owner(p_organization_id, p_user_id);
-$;
+$$;
 
 REVOKE EXECUTE ON FUNCTION public.is_active_organization_member(uuid, uuid) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.is_active_organization_admin_or_owner(uuid, uuid) FROM PUBLIC;
