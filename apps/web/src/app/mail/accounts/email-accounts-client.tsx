@@ -33,6 +33,7 @@ export function EmailAccountsClient({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("connected") === "gmail") setNotice("Gmail connected securely. Initial synchronization will be handled by the email worker.");
+    if (params.get("connected") === "zoho") setNotice("Zoho Mail connected securely. Initial synchronization will be handled by the email worker.");
   }, []);
 
   async function disconnect(accountId: string) {
@@ -91,12 +92,15 @@ export function EmailAccountsClient({
             <p className="mt-4 text-xs font-medium text-muted-foreground">{provider.method}</p>
             <button
               type="button"
-              disabled={provider.id !== "gmail"}
-              onClick={() => { if (provider.id === "gmail") window.location.assign("/api/oauth/gmail/start"); }}
-              title={provider.id === "gmail" ? "Start Gmail OAuth" : "Provider activation requires provider configuration."}
+              disabled={provider.id === "imap_smtp"}
+              onClick={() => {
+                if (provider.id === "gmail") window.location.assign("/api/oauth/gmail/start");
+                if (provider.id === "zoho") window.location.assign("/api/oauth/zoho/start");
+              }}
+              title={provider.id === "imap_smtp" ? "IMAP/SMTP form is being completed" : "Start provider OAuth"}
               className="mt-5 h-10 w-full cursor-not-allowed rounded-xl border bg-muted/40 text-sm font-semibold text-muted-foreground"
             >
-              {provider.id === "gmail" ? "Connect with Google" : "Connection setup required"}
+              {provider.id === "gmail" ? "Connect with Google" : provider.id === "zoho" ? "Connect with Zoho" : "Connection setup required"}
             </button>
           </article>
         ))}
