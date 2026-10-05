@@ -184,8 +184,11 @@ export class ImapSmtpAdapter implements EmailProvider {
   }
 
   private ensureConnected(): { imap: ImapConnection & { reader: SocketReader }; smtp: tls.TLSSocket; credentials: EmailCredentials } {
-    if (!this.imap || !this.smtp || !this.credentials) throw new Error("IMAP/SMTP adapter is not connected");
-    return { imap: this.imap, smtp: this.smtp.socket, credentials: this.credentials };
+    const imap = this.imap;
+    const smtp = this.smtp;
+    const credentials = this.credentials;
+    if (!imap || !smtp || !credentials) throw new Error("IMAP/SMTP adapter is not connected");
+    return { imap, smtp: smtp.socket, credentials };
   }
 
   async listFolders(): Promise<EmailFolder[]> {
