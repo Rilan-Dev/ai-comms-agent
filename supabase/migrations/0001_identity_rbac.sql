@@ -14,6 +14,19 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "citext";
 
+-- Application database roles. Supabase provides these roles already; the
+-- conditional creation keeps the schema executable on provider-neutral PostgreSQL.
+DO $
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    CREATE ROLE authenticated NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    CREATE ROLE service_role NOLOGIN;
+  END IF;
+END;
+$;
+
 -- ============================================================================
 -- Enumerations
 -- ============================================================================
