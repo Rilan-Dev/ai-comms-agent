@@ -442,3 +442,29 @@ describe("Cross-tenant provider binding integrity migration", () => {
     expect(sql).toContain("account_org <> agent_org");
   });
 });
+
+
+describe("Email schema reconciliation (0015_email_schema_reconciliation.sql)", () => {
+  const reconciliationPath = resolve(__dirname, "../../../supabase/migrations/0015_email_schema_reconciliation.sql");
+  const reconciliationSql = readFileSync(reconciliationPath, "utf8");
+
+  it("reconciles the provider connection status enum to the runtime states", () => {
+    expect(reconciliationSql).toContain("email_account_status_canonical");
+    expect(reconciliationSql).toContain("'pending','connected','error','disconnected','revoked'");
+    expect(reconciliationSql).toContain("ALTER COLUMN status TYPE email_account_status_canonical");
+  });
+
+  it("migrates legacy encrypted credential payloads into the canonical ciphertext column", () => {
+    expect(reconciliationSql).toContain("ADD COLUMN IF NOT EXISTS ciphertext bytea");
+    expect(reconciliationSql).toContain("ciphertext = COALESCE(c.ciphertext, c.encrypted_payload)");
+    expect(reconciliationSql).toContain("ALTER COLUMN ciphertext SET NOT NULL");
+    expect(reconciliationSql).toContain("key_reference");
+  });
+
+  it("adds organization scoping needed by credential and folder/label RLS", () => {
+    expect(reconciliationSql).toContain("ADD COLUMN IF NOT EXISTS organization_id uuid");
+    expect(reconciliationSql).toContain("email_account_credentials_org_idx");
+    expect(reconciliationSql).toContain("email_folders_org_idx");
+    expect(reconciliationSql).toContain("email_labels_org_idx");
+  });
+});
