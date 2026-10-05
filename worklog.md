@@ -1343,3 +1343,16 @@ No migration content was intentionally discarded; duplicate-numbered files were 
 
 ### Acceptance status
 The migration-chain structural failure is addressed. Full disposable PostgreSQL runtime verification is still required before Phase 3 acceptance. Phase 4 implementation remains NOT AUTHORIZED.
+
+
+## Task ID: 13
+## Phase: 4 — Database/Email Contract Alignment
+
+- **Status**: implemented
+- **Owner**: ChatGPT
+- Corrected the PostgreSQL email repository to match the canonical `email_accounts` / `email_account_credentials` schema: `connected` status, `last_synced_at`, `ciphertext`, `key_reference`, and organization linkage.
+- Added forward-only migration `0014_email_connection_config.sql` for non-secret provider connection metadata; secrets remain envelope-encrypted in credential ciphertext.
+- Registered the existing Gmail adapter in the server-side provider registry while retaining the deterministic mock adapter for tests.
+- Corrected migration verification tests that still referenced the removed duplicate `0002_application_foundation.sql` artifact.
+- Extended the migration-chain validator to require the new 0014 migration.
+- No production credentials or database provisioning performed. Clara source remains unchanged.
