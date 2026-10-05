@@ -1,4 +1,4 @@
-# CURRENT_PHASE.md
+# CURRENT_PHASE.md — Phase 4 Database Foundation and Migrations
 
 ---
 
@@ -213,3 +213,8 @@ current_commit: "fa8061d96628f8b1c59dadb3afde12d4f8588e3e"
 - CI now provisions PostgreSQL 17, applies `supabase/migrations/0001_identity_rbac.sql`, then executes runtime owner/RLS verification and an expected-failure ownerless-organization check.
 - Static migration verification now checks the actual private SECURITY DEFINER helper declarations and their pinned empty search_path.
 - Phase 3 acceptance remains pending until CI produces a successful runtime result. Phase 4 remains unauthorized.
+
+
+## ChatGPT authorization — 2026-10-06
+
+Phase 4 is now the active implementation phase. ChatGPT has taken primary implementation ownership and authorized direct implementation of the approved database foundation. GitHub Actions and Vercel completion are verification evidence, not prerequisites for continuing implementation. PostgreSQL runtime migration/RLS verification remains required for Phase 4 acceptance. Phase 5 remains unauthorized until Phase 4 exit criteria are met.
