@@ -1,3 +1,4 @@
+export { testImapSmtpConnection, type ImapSmtpConnectionTestInput } from "./email/connection-test";
 /**
  * @ai-comms-agent/db — PostgreSQL database access layer.
  *
