@@ -138,3 +138,9 @@ Pull latest `main` and rerun `bash scripts/verify-docker.sh`. The previous exit-
 - This is a real runtime migration defect caught by the verification harness; it is not a false-positive static test issue.
 - Phase 3 acceptance remains pending until the disposable PostgreSQL verification is rerun successfully, including ownerless-organization rejection.
 - Phase 4 remains NOT AUTHORIZED.
+
+
+### 2026-10-05 — Active implementation checkpoint
+- Database foundation is being hardened against actual PostgreSQL execution, with migration chain kept forward-only.
+- Latest implementation: 0014 email connection metadata migration, PostgreSQL email repository/schema alignment, Gmail provider registration, and migration-test cleanup.
+- Continue with Phase 5 email provider abstraction/runtime contracts next; do not claim Phase 4 acceptance until disposable PostgreSQL verification is green.
