@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -47,11 +47,8 @@ export async function POST(request: Request) {
     if (!validation.ok) return NextResponse.json({ error: "validation_error", fieldErrors: validation.fieldErrors }, { status: 422 });
 
     try {
-      const agent = await new PostgresAgentRepository().create({
-        organizationId,
-        userId: subject.user.id,
-        ...validation.value,
-      });
+      const agent = await new PostgresAgentRepository().create({ organizationId, userId: subject.user.id, ...validation.value });
+      await recordAuditEvent({ organizationId, actorUserId: subject.user.id, agentId: agent.id, eventType: "agent.created", targetType: "agent", targetId: agent.id, action: "create", decision: "allowed" });
       return NextResponse.json({ agent }, { status: 201 });
     } catch (error) {
       if (error instanceof Error && /agents_org_slug_uniq|duplicate key/i.test(error.message)) {
