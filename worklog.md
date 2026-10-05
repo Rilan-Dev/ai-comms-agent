@@ -1458,3 +1458,14 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Commits: 7e779130d41b97ed45701b86035652d070271213, f12b5767e4eb1705cf00f4ac775eff33fee27885, 302c58d15fe8b9fe736135f6a9e4b96354e9b143.
 - Verification status: The diagnostic must be run in the user's environment because only that environment contains the real connection endpoints and credentials. No claim of PostgreSQL connectivity is made yet.
 - Next evidence: git pull --ff-only origin main then bash scripts/check-services.sh .env.docker; share the sanitized output. If PostgreSQL passes but /agents still fails, the next check is migration/schema state rather than network configuration.
+
+
+## 2026-10-06 — ChatGPT Email Accounts connection-test hardening
+- **Owner:** ChatGPT
+- Corrected the `/api/email-accounts` action dispatcher: `connect_imap_smtp` was previously rejected by an early action guard before its implementation could execute.
+- Added a server-only IMAP/SMTP connection test using TLS sockets, certificate validation, IMAP LOGIN and SMTP AUTH PLAIN.
+- Added DNS resolution with fail-closed rejection of localhost/private/link-local targets to reduce SSRF risk.
+- The UI now exposes an explicit **Test connection** action before saving a mailbox. Credentials are never returned to the browser.
+- The connect flow tests the supplied credentials before encrypted persistence; failed provider authentication therefore does not create a misleading connected account.
+- No external provider credentials were fabricated or committed. Runtime connectivity remains configuration-dependent.
+- **Next:** reconnect/retry/error-state controls and complete Zoho runtime operations.
