@@ -86,23 +86,64 @@ function mime(params: DraftParams): string {
 export class GmailAdapter implements EmailProvider {
   readonly providerId = "gmail" as const;
   private accessToken?: string;
+  private refreshToken?: string;
+  private expiresAt?: number;
+  private refreshPromise?: Promise<void>;
 
   async connect(credentials: EmailCredentials): Promise<void> {
     if (!credentials.access_token) throw new Error("Gmail requires an OAuth access token");
     this.accessToken = credentials.access_token;
+    this.refreshToken = credentials.refresh_token;
+    this.expiresAt = credentials.expires_at ? Date.parse(credentials.expires_at) : undefined;
     await this.request("/profile");
   }
 
-  async disconnect(): Promise<void> { this.accessToken = undefined; }
+  async disconnect(): Promise<void> {
+    this.accessToken = undefined;
+    this.refreshToken = undefined;
+    this.expiresAt = undefined;
+    this.refreshPromise = undefined;
+  }
   async discoverCapabilities(): Promise<CapabilitySet> { return { ...CAPABILITIES }; }
   capabilities(): CapabilitySet { return { ...CAPABILITIES }; }
 
-  private async request(path: string, init?: RequestInit): Promise<any> {
+  private async refreshAccessToken(): Promise<void> {
+    if (!this.refreshToken) throw new Error("Gmail access token expired and no refresh token is available");
+    if (this.refreshPromise) return this.refreshPromise;
+    this.refreshPromise = (async () => {
+      const clientId = process.env.GMAIL_OAUTH_CLIENT_ID;
+      const clientSecret = process.env.GMAIL_OAUTH_CLIENT_SECRET;
+      if (!clientId || !clientSecret) throw new Error("Gmail OAuth client configuration is missing");
+      const response = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: this.refreshToken!,
+          grant_type: "refresh_token",
+        }),
+      });
+      if (!response.ok) throw new Error(`Gmail token refresh failed: ${response.status}`);
+      const data = await response.json() as { access_token?: string; expires_in?: number };
+      if (!data.access_token) throw new Error("Gmail token refresh returned no access token");
+      this.accessToken = data.access_token;
+      this.expiresAt = data.expires_in ? Date.now() + data.expires_in * 1000 : undefined;
+    })();
+    try { await this.refreshPromise; } finally { this.refreshPromise = undefined; }
+  }
+
+  private async request(path: string, init?: RequestInit, retried = false): Promise<any> {
     if (!this.accessToken) throw new Error("Gmail adapter is not connected");
+    if (this.expiresAt && this.expiresAt <= Date.now() + 30_000) await this.refreshAccessToken();
     const response = await fetch(`${BASE}${path}`, {
       ...init,
       headers: { Authorization: `Bearer ${this.accessToken}`, "Content-Type": "application/json", ...(init?.headers ?? {}) },
     });
+    if (response.status === 401 && !retried && this.refreshToken) {
+      await this.refreshAccessToken();
+      return this.request(path, init, true);
+    }
     if (!response.ok) {
       const body = await response.text();
       throw new Error(`Gmail API ${response.status}: ${body.slice(0, 500)}`);
