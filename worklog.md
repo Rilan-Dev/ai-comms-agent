@@ -1469,3 +1469,27 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - The connect flow tests the supplied credentials before encrypted persistence; failed provider authentication therefore does not create a misleading connected account.
 - No external provider credentials were fabricated or committed. Runtime connectivity remains configuration-dependent.
 - **Next:** reconnect/retry/error-state controls and complete Zoho runtime operations.
+
+
+## Task ID: 12
+## Phase: 4 — Database Foundation and Migrations
+
+- **Date:** 2026-10-06
+- **Owner:** ChatGPT
+- **Status:** implementation_in_progress
+
+### Actions completed
+- Re-read the canonical continuity/control documents before continuing.
+- Authorized Phase 4 under ChatGPT ownership without waiting for GitHub Actions or Vercel completion.
+- Implemented `0002_application_domain.sql` covering agents, versions/deployments, email, WhatsApp, conversations, scheduling, automation, actions/approvals, AI usage, summaries, voice, audit, storage metadata, indexes and tenant RLS.
+- Implemented `0003_phase4_schema_alignment.sql` for DATA-MODEL alignment and credential hardening.
+- Implemented `0004_phase4_schema_cleanup.sql` to normalize accidental compatibility columns, add missing FK/RLS coverage, and preserve forward-only migration semantics.
+- Added disposable PostgreSQL runtime verification to CI and expected ownerless-organization failure verification.
+- Corrected the remaining invalid cluster-role DO block in the Phase 3 migration; the migration no longer mutates cluster-level roles.
+- Updated project-control state to Phase 4 and recorded the runtime verification acceptance boundary.
+
+### Current evidence boundary
+- Static migration inspection currently finds no single-dollar DO/function delimiters and no invalid `DROP CONSTRAINT TRIGGER` syntax.
+- Runtime PostgreSQL execution has not been independently observed in this session; therefore Phase 4 is not yet accepted.
+- GitHub Actions/Vercel are not treated as blockers for continued implementation.
+- Phase 5 remains unauthorized.
