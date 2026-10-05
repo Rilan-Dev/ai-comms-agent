@@ -6,9 +6,9 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "citext";
 
 DO $$ BEGIN CREATE TYPE agent_status AS ENUM ('draft','active','paused','archived'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $ BEGIN CREATE TYPE deployment_environment AS ENUM ('production','preview'); EXCEPTION WHEN duplicate_object THEN NULL; END $;
-DO $ BEGIN CREATE TYPE agent_version_status AS ENUM ('draft','published','archived'); EXCEPTION WHEN duplicate_object THEN NULL; END $;
-DO $ BEGIN CREATE TYPE agent_deployment_status AS ENUM ('pending','active','paused','failed','retired'); EXCEPTION WHEN duplicate_object THEN NULL; END $;
+DO $phase4$ BEGIN CREATE TYPE deployment_environment AS ENUM ('production','preview'); EXCEPTION WHEN duplicate_object THEN NULL; END $phase4$;
+DO $phase4$ BEGIN CREATE TYPE agent_version_status AS ENUM ('draft','published','archived'); EXCEPTION WHEN duplicate_object THEN NULL; END $phase4$;
+DO $phase4$ BEGIN CREATE TYPE agent_deployment_status AS ENUM ('pending','active','paused','failed','retired'); EXCEPTION WHEN duplicate_object THEN NULL; END $phase4$;
 DO $$ BEGIN CREATE TYPE email_account_provider AS ENUM ('gmail','imap_smtp','zoho'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE email_account_status AS ENUM ('active','expired','revoked','error'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE email_credential_type AS ENUM ('oauth_token','password','app_password'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
