@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateAgentInput, slugifyAgentName } from "@/lib/agents/validation";
+import { validateAgentInput, slugifyAgentName, validateAgentVersionConfig } from "@/lib/agents/validation";
 
 describe("agent validation", () => {
   it("accepts a valid agent payload", () => {
@@ -32,5 +32,19 @@ describe("agent validation", () => {
 
   it("derives a stable URL-safe slug from a name", () => {
     expect(slugifyAgentName("  My AI — Operations  ")).toBe("my-ai-operations");
+  });
+});
+
+
+describe("agent version configuration validation", () => {
+  it("accepts a JSON object and rejects arrays", () => {
+    expect(validateAgentVersionConfig({ model: "default", temperature: 0.7 })).toEqual({ ok: true, value: { model: "default", temperature: 0.7 } });
+    expect(validateAgentVersionConfig([])).toEqual({ ok: false, message: "Version configuration must be a JSON object." });
+  });
+
+  it("rejects oversized configuration payloads", () => {
+    const result = validateAgentVersionConfig({ prompt: "x".repeat(100_001) });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toMatch(/100 KB/);
   });
 });
