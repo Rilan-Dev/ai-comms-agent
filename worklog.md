@@ -1571,3 +1571,26 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Gmail remains the fully advertised provider surface where its adapter implements the corresponding contract.
 - Latest code commit: be4925cbd3e73ebeec28a951a5d062d70fba19ae.
 - Runtime/browser verification remains deferred and no live provider connection is claimed.
+
+
+## Task ID: 12
+## Phase: Product Completion Slice 2 — Email Accounts
+
+- **Status**: implementation_continuing
+- **Owner**: ChatGPT
+- **Date**: 2026-10-06
+
+### Completed in this continuation
+- Made IMAP/SMTP connection persistence idempotent by organization/provider/email address.
+- Existing mailbox records are updated on reconnect instead of duplicated.
+- Credential persistence failure now moves the mailbox to an explicit error state.
+- Gmail OAuth callback now persists the account as `pending` until worker verification rather than claiming a fully connected runtime.
+- Zoho OAuth callback follows the same pending-verification lifecycle.
+- Email Accounts UI now distinguishes connected records from total records and uses truthful pending/configuration messaging.
+
+### Next
+- Wire worker-backed folder/label discovery into the persisted account lifecycle.
+- Complete provider contract/runtime regression tests.
+- Continue to Mail vertical slice after Email Accounts implementation acceptance evidence.
+
+No provider credentials were fabricated and Clara source was not modified.
