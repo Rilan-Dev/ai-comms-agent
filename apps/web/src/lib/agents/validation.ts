@@ -48,3 +48,21 @@ export function validateAgentInput(input: Partial<AgentInput>): AgentValidationR
     fieldErrors: {},
   };
 }
+
+
+export type AgentVersionConfigValidation =
+  | { ok: true; value: Record<string, unknown> }
+  | { ok: false; message: string };
+
+export function validateAgentVersionConfig(input: unknown): AgentVersionConfigValidation {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return { ok: false, message: "Version configuration must be a JSON object." };
+  }
+  try {
+    const serialized = JSON.stringify(input);
+    if (serialized.length > 100_000) return { ok: false, message: "Version configuration must be 100 KB or smaller." };
+  } catch {
+    return { ok: false, message: "Version configuration is not serializable." };
+  }
+  return { ok: true, value: input as Record<string, unknown> };
+}
