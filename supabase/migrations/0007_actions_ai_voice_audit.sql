@@ -157,26 +157,26 @@ ALTER TABLE voice_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE voice_telemetry ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_events ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY email_actions_member_visibility ON email_actions FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
-CREATE POLICY email_actions_member_manage ON email_actions FOR ALL TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid()))) WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+CREATE POLICY email_actions_member_visibility ON email_actions FOR SELECT TO authenticated USING (can_access_organization(organization_id));
+CREATE POLICY email_actions_member_manage ON email_actions FOR ALL TO authenticated USING (can_access_organization(organization_id)) WITH CHECK (can_access_organization(organization_id));
 
-CREATE POLICY email_action_approvals_member_visibility ON email_action_approvals FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
-CREATE POLICY email_action_approvals_member_manage ON email_action_approvals FOR ALL TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid()))) WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+CREATE POLICY email_action_approvals_member_visibility ON email_action_approvals FOR SELECT TO authenticated USING (can_access_organization(organization_id));
+CREATE POLICY email_action_approvals_member_manage ON email_action_approvals FOR ALL TO authenticated USING (can_access_organization(organization_id)) WITH CHECK (can_access_organization(organization_id));
 
-CREATE POLICY ai_provider_configs_admin_visibility ON ai_provider_configs FOR SELECT TO authenticated USING (is_active_organization_admin_or_owner(organization_id,(select auth.uid())));
-CREATE POLICY ai_provider_configs_admin_manage ON ai_provider_configs FOR ALL TO authenticated USING (is_active_organization_admin_or_owner(organization_id,(select auth.uid()))) WITH CHECK (is_active_organization_admin_or_owner(organization_id,(select auth.uid())));
+CREATE POLICY ai_provider_configs_admin_visibility ON ai_provider_configs FOR SELECT TO authenticated USING (can_manage_organization(organization_id));
+CREATE POLICY ai_provider_configs_admin_manage ON ai_provider_configs FOR ALL TO authenticated USING (can_manage_organization(organization_id)) WITH CHECK (can_manage_organization(organization_id));
 
-CREATE POLICY ai_usage_events_member_visibility ON ai_usage_events FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
-CREATE POLICY ai_usage_events_member_manage ON ai_usage_events FOR ALL TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid()))) WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+CREATE POLICY ai_usage_events_member_visibility ON ai_usage_events FOR SELECT TO authenticated USING (can_access_organization(organization_id));
+CREATE POLICY ai_usage_events_member_manage ON ai_usage_events FOR ALL TO authenticated USING (can_access_organization(organization_id)) WITH CHECK (can_access_organization(organization_id));
 
-CREATE POLICY voice_sessions_member_visibility ON voice_sessions FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
-CREATE POLICY voice_sessions_member_manage ON voice_sessions FOR ALL TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid()))) WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+CREATE POLICY voice_sessions_member_visibility ON voice_sessions FOR SELECT TO authenticated USING (can_access_organization(organization_id));
+CREATE POLICY voice_sessions_member_manage ON voice_sessions FOR ALL TO authenticated USING (can_access_organization(organization_id)) WITH CHECK (can_access_organization(organization_id));
 
-CREATE POLICY voice_telemetry_member_visibility ON voice_telemetry FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
-CREATE POLICY voice_telemetry_member_manage ON voice_telemetry FOR ALL TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid()))) WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+CREATE POLICY voice_telemetry_member_visibility ON voice_telemetry FOR SELECT TO authenticated USING (can_access_organization(organization_id));
+CREATE POLICY voice_telemetry_member_manage ON voice_telemetry FOR ALL TO authenticated USING (can_access_organization(organization_id)) WITH CHECK (can_access_organization(organization_id));
 
-CREATE POLICY audit_events_member_visibility ON audit_events FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
-CREATE POLICY audit_events_insert ON audit_events FOR INSERT TO authenticated WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+CREATE POLICY audit_events_member_visibility ON audit_events FOR SELECT TO authenticated USING (can_access_organization(organization_id));
+CREATE POLICY audit_events_insert ON audit_events FOR INSERT TO authenticated WITH CHECK (can_access_organization(organization_id));
 
 ALTER TABLE agent_ai_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY agent_ai_settings_member ON agent_ai_settings
