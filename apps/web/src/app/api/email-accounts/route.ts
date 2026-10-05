@@ -136,7 +136,7 @@ export async function POST(request: Request) {
         displayName: typeof body?.displayName === "string" ? body.displayName.trim() : emailAddress,
         connectionConfig: { imap_host: host, imap_port: port, smtp_host: smtpHost, smtp_port: smtpPort, tls: true },
         status: "pending",
-        capabilities: { folders: true, labels: false, sync_incremental: false, sync_full: true, sync_webhook: false, sync_idle: true, search_server_side: true, search_client_side: true, drafts: true, reply: true, forward: true, mark_read: true, archive: false, move: true, threads: false, attachments_download: true, attachments_upload: false, send: true },
+        capabilities: { folders: true, labels: false, sync_incremental: false, sync_full: true, sync_webhook: false, sync_idle: true, search_server_side: true, search_client_side: true, drafts: false, reply: false, forward: false, mark_read: true, archive: false, move: false, threads: false, attachments_download: false, attachments_upload: false, send: false },
       });
       await repository.saveCredentials(account.id, "password", { username, password, host, port, imap_host: host, imap_port: port, smtp_host: smtpHost, smtp_port: smtpPort, tls: true }, masterKey);
       await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: "email.account.created", targetType: "email_account", targetId: account.id, action: "connect", decision: "allowed", metadata: { provider: "imap_smtp" } });
