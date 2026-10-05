@@ -340,325 +340,11 @@ ALTER TABLE agent_whatsapp_accounts DROP CONSTRAINT IF EXISTS agent_whatsapp_acc
 ALTER TABLE agent_whatsapp_accounts ADD CONSTRAINT agent_whatsapp_accounts_account_fk FOREIGN KEY (whatsapp_account_id) REFERENCES whatsapp_accounts(id) ON DELETE CASCADE;
 
 -- ---------------------------------------------------------------------------
--- Conversations
--- ---------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS conversations (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  agent_id uuid NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
-  channel conversation_channel NOT NULL,
-  subject text,
-  status conversation_status NOT NULL DEFAULT 'active',
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  last_message_at timestamptz
-);
-CREATE INDEX IF NOT EXISTS conversations_org_last_message_idx ON conversations(organization_id, last_message_at DESC);
-CREATE INDEX IF NOT EXISTS conversations_agent_status_idx ON conversations(agent_id, status);
-
-CREATE TABLE IF NOT EXISTS conversation_messages (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  conversation_id uuid NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-  role conversation_role NOT NULL,
-  content text,
-  content_json jsonb,
-  parent_message_id uuid REFERENCES conversation_messages(id) ON DELETE SET NULL,
-  tool_call_id text,
-  tool_name text,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS conversation_messages_conversation_created_idx ON conversation_messages(conversation_id, created_at);
-
-CREATE TABLE IF NOT EXISTS conversation_turns (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  conversation_id uuid NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-  started_at timestamptz NOT NULL DEFAULT now(),
-  ended_at timestamptz,
-  intent text,
-  status text NOT NULL DEFAULT 'in_progress',
-  token_usage jsonb NOT NULL DEFAULT '{}'::jsonb
-);
-CREATE INDEX IF NOT EXISTS conversation_turns_conversation_started_idx ON conversation_turns(conversation_id, started_at DESC);
-
--- ---------------------------------------------------------------------------
--- Scheduling and automation
--- ---------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS scheduled_jobs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  agent_id uuid NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
-  name text NOT NULL,
-  cron text,
-  one_fire_at timestamptz,
-  intent text NOT NULL,
-  params jsonb NOT NULL DEFAULT '{}'::jsonb,
-  next_fire_at timestamptz,
-  last_fire_at timestamptz,
-  status scheduled_job_status NOT NULL DEFAULT 'active',
-  created_by uuid REFERENCES users(id) ON DELETE SET NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  CHECK ((cron IS NOT NULL) <> (one_fire_at IS NOT NULL))
-);
-CREATE INDEX IF NOT EXISTS scheduled_jobs_due_idx ON scheduled_jobs(status, next_fire_at) WHERE status = 'active';
-CREATE INDEX IF NOT EXISTS scheduled_jobs_org_idx ON scheduled_jobs(organization_id);
-
-CREATE TABLE IF NOT EXISTS scheduled_job_runs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  scheduled_job_id uuid NOT NULL REFERENCES scheduled_jobs(id) ON DELETE CASCADE,
-  fire_at timestamptz NOT NULL,
-  started_at timestamptz,
-  completed_at timestamptz,
-  status scheduled_run_status NOT NULL,
-  error text,
-  result jsonb,
-  conversation_id uuid REFERENCES conversations(id) ON DELETE SET NULL,
-  UNIQUE(scheduled_job_id, fire_at)
-);
-
-CREATE TABLE IF NOT EXISTS automation_rules (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  agent_id uuid NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
-  name text NOT NULL,
-  trigger jsonb NOT NULL,
-  action jsonb NOT NULL,
-  enabled boolean NOT NULL DEFAULT true,
-  created_by uuid REFERENCES users(id) ON DELETE SET NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS automation_rules_agent_enabled_idx ON automation_rules(agent_id, enabled);
-
--- The Phase 2 application migration creates automation_rules before this
--- Phase 4 foundation migration. Add its tenant key before enabling direct
--- organization RLS policies so existing databases are upgraded safely.
-DO $$ BEGIN
-  ALTER TABLE automation_rules
-    ADD COLUMN IF NOT EXISTS organization_id uuid;
-EXCEPTION WHEN duplicate_column THEN NULL;
-END $$;
-
-UPDATE automation_rules ar
-SET organization_id = a.organization_id
-FROM agents a
-WHERE ar.organization_id IS NULL
-  AND ar.agent_id = a.id;
-
-ALTER TABLE automation_rules
-  ALTER COLUMN organization_id SET NOT NULL;
-
-DO $$ BEGIN
-  ALTER TABLE automation_rules
-    ADD CONSTRAINT automation_rules_organization_fk
-    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-CREATE INDEX IF NOT EXISTS automation_rules_org_idx
-  ON automation_rules(organization_id);
-
-CREATE TABLE IF NOT EXISTS automation_runs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  automation_rule_id uuid NOT NULL REFERENCES automation_rules(id) ON DELETE CASCADE,
-  triggered_at timestamptz NOT NULL DEFAULT now(),
-  trigger_event jsonb NOT NULL,
-  status text NOT NULL,
-  result jsonb,
-  conversation_id uuid REFERENCES conversations(id) ON DELETE SET NULL
-);
-
--- ---------------------------------------------------------------------------
--- Actions and approvals
--- ---------------------------------------------------------------------------
--- Reconcile tables created by the earlier application-foundation migration.
--- These columns are tenant ownership boundaries required by the Phase 4 model.
-DO $aca$ BEGIN
-  ALTER TABLE email_actions ADD COLUMN organization_id uuid;
-EXCEPTION WHEN duplicate_column THEN NULL; END $aca$;
-UPDATE email_actions ea
-SET organization_id = a.organization_id
-FROM agents a
-WHERE ea.organization_id IS NULL AND ea.agent_id = a.id;
-ALTER TABLE email_actions ALTER COLUMN organization_id SET NOT NULL;
-DO $aca$ BEGIN
-  ALTER TABLE email_actions
-    ADD CONSTRAINT email_actions_organization_fk
-    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
-EXCEPTION WHEN duplicate_object THEN NULL; END $aca$;
-
-DO $aca$ BEGIN
-  ALTER TABLE summaries ADD COLUMN organization_id uuid;
-EXCEPTION WHEN duplicate_column THEN NULL; END $aca$;
-UPDATE summaries s
-SET organization_id = a.organization_id
-FROM agents a
-WHERE s.organization_id IS NULL AND s.agent_id = a.id;
-ALTER TABLE summaries ALTER COLUMN organization_id SET NOT NULL;
-DO $aca$ BEGIN
-  ALTER TABLE summaries
-    ADD CONSTRAINT summaries_organization_fk
-    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
-EXCEPTION WHEN duplicate_object THEN NULL; END $aca$;
-
-CREATE TABLE IF NOT EXISTS email_actions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  agent_id uuid NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
-  email_account_id uuid NOT NULL REFERENCES email_accounts(id) ON DELETE CASCADE,
-  action_type text NOT NULL,
-  target_message_ids uuid[] NOT NULL DEFAULT '{}'::uuid[],
-  draft_id uuid,
-  status action_status NOT NULL DEFAULT 'pending_approval',
-  requested_by uuid REFERENCES users(id) ON DELETE SET NULL,
-  requested_at timestamptz NOT NULL DEFAULT now(),
-  approved_by uuid REFERENCES users(id) ON DELETE SET NULL,
-  approved_at timestamptz,
-  executed_at timestamptz,
-  error text,
-  audit_event_id uuid
-);
-CREATE INDEX IF NOT EXISTS email_actions_org_status_idx ON email_actions(organization_id, status);
-CREATE INDEX IF NOT EXISTS email_actions_agent_requested_idx ON email_actions(agent_id, requested_at DESC);
-
-CREATE TABLE IF NOT EXISTS email_action_approvals (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  email_action_id uuid NOT NULL REFERENCES email_actions(id) ON DELETE CASCADE,
-  decision approval_decision NOT NULL,
-  decided_by uuid NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-  decided_at timestamptz NOT NULL DEFAULT now(),
-  reason text
-);
-
--- ---------------------------------------------------------------------------
--- Summaries
--- ---------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS summaries (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  agent_id uuid NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
-  scope summary_scope NOT NULL,
-  period_start timestamptz NOT NULL,
-  period_end timestamptz NOT NULL,
-  content text NOT NULL,
-  content_json jsonb NOT NULL DEFAULT '{}'::jsonb,
-  model text,
-  token_usage jsonb NOT NULL DEFAULT '{}'::jsonb,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  conversation_id uuid REFERENCES conversations(id) ON DELETE SET NULL,
-  CHECK (period_end >= period_start)
-);
-
-CREATE TABLE IF NOT EXISTS summary_sources (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  summary_id uuid NOT NULL REFERENCES summaries(id) ON DELETE CASCADE,
-  email_message_id uuid REFERENCES email_messages(id) ON DELETE SET NULL,
-  whatsapp_message_id uuid REFERENCES whatsapp_messages(id) ON DELETE SET NULL,
-  weight real,
-  CHECK ((email_message_id IS NOT NULL) OR (whatsapp_message_id IS NOT NULL))
-);
-CREATE INDEX IF NOT EXISTS summary_sources_summary_idx ON summary_sources(summary_id);
-
--- ---------------------------------------------------------------------------
--- Usage and voice
--- ---------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS ai_usage_events (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  agent_id uuid REFERENCES agents(id) ON DELETE SET NULL,
-  provider text NOT NULL,
-  model text NOT NULL,
-  operation ai_operation NOT NULL,
-  input_tokens bigint,
-  output_tokens bigint,
-  voice_seconds numeric,
-  cost_usd numeric(20,8),
-  latency_ms integer,
-  conversation_id uuid REFERENCES conversations(id) ON DELETE SET NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS ai_usage_events_org_created_idx ON ai_usage_events(organization_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS ai_usage_events_agent_created_idx ON ai_usage_events(agent_id, created_at DESC);
-
-CREATE TABLE IF NOT EXISTS voice_sessions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  agent_id uuid NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
-  user_id uuid REFERENCES users(id) ON DELETE SET NULL,
-  provider text NOT NULL,
-  provider_session_id text,
-  started_at timestamptz NOT NULL DEFAULT now(),
-  ended_at timestamptz,
-  duration_seconds numeric,
-  status voice_status NOT NULL DEFAULT 'active',
-  turn_count integer NOT NULL DEFAULT 0,
-  connection_metadata jsonb NOT NULL DEFAULT '{}'::jsonb
-);
-CREATE INDEX IF NOT EXISTS voice_sessions_org_started_idx ON voice_sessions(organization_id, started_at DESC);
-
-CREATE TABLE IF NOT EXISTS voice_telemetry (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  voice_session_id uuid NOT NULL REFERENCES voice_sessions(id) ON DELETE CASCADE,
-  turn_id uuid,
-  stage voice_latency_stage NOT NULL,
-  latency_ms integer NOT NULL CHECK (latency_ms >= 0),
-  provider_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS voice_telemetry_session_created_idx ON voice_telemetry(voice_session_id, created_at);
-
--- ---------------------------------------------------------------------------
--- Audit
--- ---------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS audit_events (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  actor_type actor_type NOT NULL,
-  actor_id uuid NOT NULL,
-  event_type text NOT NULL,
-  target_type text,
-  target_id uuid,
-  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-  correlation_id uuid,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS audit_events_org_created_idx ON audit_events(organization_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS audit_events_event_type_idx ON audit_events(event_type);
-CREATE INDEX IF NOT EXISTS audit_events_correlation_idx ON audit_events(correlation_id);
-
--- ---------------------------------------------------------------------------
--- API keys (hashed; never store plaintext)
--- ---------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS api_keys (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  name text NOT NULL,
-  hashed_key text NOT NULL,
-  scopes text[] NOT NULL DEFAULT '{}'::text[],
-  last_used_at timestamptz,
-  expires_at timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  revoked_at timestamptz
-);
-CREATE UNIQUE INDEX IF NOT EXISTS api_keys_hash_uniq ON api_keys(hashed_key);
-CREATE INDEX IF NOT EXISTS api_keys_org_idx ON api_keys(organization_id);
-
--- ---------------------------------------------------------------------------
 -- Updated-at triggers
 -- ---------------------------------------------------------------------------
 DO $$ DECLARE r record; BEGIN
   FOR r IN SELECT table_name FROM (VALUES
-    ('agents'),('ai_provider_configs'),('agent_ai_settings'),('email_accounts'),
-    ('email_account_credentials'),('email_threads'),('email_messages'),
-    ('whatsapp_accounts'),('conversations'),('scheduled_jobs'),('automation_rules')
-  ) AS t(table_name)
-  LOOP
-    EXECUTE format('DROP TRIGGER IF EXISTS set_updated_at ON %I', r.table_name);
-    EXECUTE format('CREATE TRIGGER set_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION set_updated_at()', r.table_name);
-  END LOOP;
-END $$;
-
--- ---------------------------------------------------------------------------
+    -- ---------------------------------------------------------------------------
 -- Organization ownership-aware RLS helpers
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION can_access_organization(p_organization_id uuid)
@@ -671,172 +357,142 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
   SELECT private.is_active_organization_admin_or_owner(p_organization_id, NULLIF(current_setting('app.user_id', true), '')::uuid);
 $$;
 
--- Every tenant table gets RLS. API-layer authorization remains mandatory.
+
+-- ---------------------------------------------------------------------------
+-- Organization authorization wrappers
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION can_access_organization(p_organization_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT private.is_active_organization_member(
+    p_organization_id,
+    NULLIF(current_setting('app.user_id', true), '')::uuid
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION can_manage_organization(p_organization_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT private.is_active_organization_admin_or_owner(
+    p_organization_id,
+    NULLIF(current_setting('app.user_id', true), '')::uuid
+  );
+$$;
+
+REVOKE EXECUTE ON FUNCTION can_access_organization(uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION can_manage_organization(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION can_access_organization(uuid) TO authenticated;
+
+-- Every tenant table created by 0002 gets RLS.
 DO $$ DECLARE r record; BEGIN
   FOR r IN SELECT table_name FROM (VALUES
     ('agents'),('agent_versions'),('agent_deployments'),('agent_email_accounts'),
     ('agent_whatsapp_accounts'),('ai_provider_configs'),('agent_ai_settings'),
     ('email_accounts'),('email_account_credentials'),('email_folders'),('email_labels'),
     ('email_threads'),('email_messages'),('email_attachments'),('email_sync_states'),
-    ('email_sync_events'),('whatsapp_accounts'),('whatsapp_contacts'),('whatsapp_messages'),
-    ('whatsapp_webhook_events'),('conversations'),('scheduled_jobs'),('automation_rules'),
-    ('email_actions'),('summaries'),('ai_usage_events'),('voice_sessions'),('audit_events'),
-    ('api_keys')
+    ('email_sync_events'),('whatsapp_accounts'),('whatsapp_contacts'),
+    ('whatsapp_messages'),('whatsapp_webhook_events')
   ) AS t(table_name)
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', r.table_name);
   END LOOP;
 END $$;
 
--- Direct org_id policies.
-DO $$ DECLARE r record; BEGIN
-  FOR r IN SELECT table_name FROM (VALUES
-    ('agents'),('ai_provider_configs'),('email_accounts'),('whatsapp_accounts'),
-    ('conversations'),('scheduled_jobs'),('automation_rules'),('email_actions'),
-    ('summaries'),('ai_usage_events'),('voice_sessions'),('audit_events'),('api_keys')
-  ) AS t(table_name)
-  LOOP
-    EXECUTE format('DROP POLICY IF EXISTS org_member_all ON %I', r.table_name);
-    EXECUTE format('CREATE POLICY org_member_all ON %I FOR ALL TO authenticated USING (can_access_organization(organization_id)) WITH CHECK (can_access_organization(organization_id))', r.table_name);
-  END LOOP;
-END $$;
+CREATE POLICY agents_org_member ON agents FOR ALL TO authenticated
+USING (can_access_organization(organization_id))
+WITH CHECK (can_manage_organization(organization_id));
 
--- Child tables inherit tenant access through their parent.
 CREATE POLICY agent_versions_org_member ON agent_versions FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM agents a WHERE a.id = agent_versions.agent_id AND can_access_organization(a.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id = agent_versions.agent_id AND can_access_organization(a.organization_id)));
+USING (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_versions.agent_id AND can_access_organization(a.organization_id)))
+WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_versions.agent_id AND can_manage_organization(a.organization_id)));
 
 CREATE POLICY agent_deployments_org_member ON agent_deployments FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM agents a WHERE a.id = agent_deployments.agent_id AND can_access_organization(a.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id = agent_deployments.agent_id AND can_access_organization(a.organization_id)));
+USING (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_deployments.agent_id AND can_access_organization(a.organization_id)))
+WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_deployments.agent_id AND can_manage_organization(a.organization_id)));
 
 CREATE POLICY agent_email_accounts_org_member ON agent_email_accounts FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM agents a WHERE a.id = agent_email_accounts.agent_id AND can_access_organization(a.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id = agent_email_accounts.agent_id AND can_access_organization(a.organization_id)));
+USING (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_email_accounts.agent_id AND can_access_organization(a.organization_id)))
+WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_email_accounts.agent_id AND can_manage_organization(a.organization_id)));
 
 CREATE POLICY agent_whatsapp_accounts_org_member ON agent_whatsapp_accounts FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM agents a WHERE a.id = agent_whatsapp_accounts.agent_id AND can_access_organization(a.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id = agent_whatsapp_accounts.agent_id AND can_access_organization(a.organization_id)));
+USING (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_whatsapp_accounts.agent_id AND can_access_organization(a.organization_id)))
+WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_whatsapp_accounts.agent_id AND can_manage_organization(a.organization_id)));
 
 CREATE POLICY agent_ai_settings_org_member ON agent_ai_settings FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM agents a WHERE a.id = agent_ai_settings.agent_id AND can_access_organization(a.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id = agent_ai_settings.agent_id AND can_access_organization(a.organization_id)));
+USING (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_ai_settings.agent_id AND can_access_organization(a.organization_id)))
+WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_ai_settings.agent_id AND can_manage_organization(a.organization_id)));
+
+CREATE POLICY email_accounts_org_member ON email_accounts FOR ALL TO authenticated
+USING (can_access_organization(organization_id))
+WITH CHECK (can_manage_organization(organization_id));
 
 CREATE POLICY email_account_credentials_org_member ON email_account_credentials FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id = email_account_credentials.email_account_id AND can_access_organization(e.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id = email_account_credentials.email_account_id AND can_access_organization(e.organization_id)));
+USING (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_account_credentials.email_account_id AND can_access_organization(e.organization_id)))
+WITH CHECK (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_account_credentials.email_account_id AND can_manage_organization(e.organization_id)));
 
 CREATE POLICY email_folders_org_member ON email_folders FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id = email_folders.email_account_id AND can_access_organization(e.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id = email_folders.email_account_id AND can_access_organization(e.organization_id)));
+USING (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_folders.email_account_id AND can_access_organization(e.organization_id)))
+WITH CHECK (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_folders.email_account_id AND can_manage_organization(e.organization_id)));
 
 CREATE POLICY email_labels_org_member ON email_labels FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id = email_labels.email_account_id AND can_access_organization(e.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id = email_labels.email_account_id AND can_access_organization(e.organization_id)));
+USING (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_labels.email_account_id AND can_access_organization(e.organization_id)))
+WITH CHECK (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_labels.email_account_id AND can_manage_organization(e.organization_id)));
 
 CREATE POLICY email_threads_org_member ON email_threads FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id = email_threads.email_account_id AND can_access_organization(e.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id = email_threads.email_account_id AND can_access_organization(e.organization_id)));
+USING (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_threads.email_account_id AND can_access_organization(e.organization_id)))
+WITH CHECK (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_threads.email_account_id AND can_manage_organization(e.organization_id)));
 
 CREATE POLICY email_messages_org_member ON email_messages FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id = email_messages.email_account_id AND can_access_organization(e.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id = email_messages.email_account_id AND can_access_organization(e.organization_id)));
+USING (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_messages.email_account_id AND can_access_organization(e.organization_id)))
+WITH CHECK (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_messages.email_account_id AND can_manage_organization(e.organization_id)));
 
 CREATE POLICY email_attachments_org_member ON email_attachments FOR ALL TO authenticated
 USING (EXISTS (SELECT 1 FROM email_messages m JOIN email_accounts e ON e.id=m.email_account_id WHERE m.id=email_attachments.email_message_id AND can_access_organization(e.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM email_messages m JOIN email_accounts e ON e.id=m.email_account_id WHERE m.id=email_attachments.email_message_id AND can_access_organization(e.organization_id)));
+WITH CHECK (EXISTS (SELECT 1 FROM email_messages m JOIN email_accounts e ON e.id=m.email_account_id WHERE m.id=email_attachments.email_message_id AND can_manage_organization(e.organization_id)));
 
 CREATE POLICY email_sync_states_org_member ON email_sync_states FOR ALL TO authenticated
 USING (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_sync_states.email_account_id AND can_access_organization(e.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_sync_states.email_account_id AND can_access_organization(e.organization_id)));
+WITH CHECK (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_sync_states.email_account_id AND can_manage_organization(e.organization_id)));
 
 CREATE POLICY email_sync_events_org_member ON email_sync_events FOR ALL TO authenticated
 USING (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_sync_events.email_account_id AND can_access_organization(e.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_sync_events.email_account_id AND can_access_organization(e.organization_id)));
+WITH CHECK (EXISTS (SELECT 1 FROM email_accounts e WHERE e.id=email_sync_events.email_account_id AND can_manage_organization(e.organization_id)));
+
+CREATE POLICY whatsapp_accounts_org_member ON whatsapp_accounts FOR ALL TO authenticated
+USING (can_access_organization(organization_id))
+WITH CHECK (can_manage_organization(organization_id));
 
 CREATE POLICY whatsapp_contacts_org_member ON whatsapp_contacts FOR ALL TO authenticated
 USING (EXISTS (SELECT 1 FROM whatsapp_accounts w WHERE w.id=whatsapp_contacts.whatsapp_account_id AND can_access_organization(w.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM whatsapp_accounts w WHERE w.id=whatsapp_contacts.whatsapp_account_id AND can_access_organization(w.organization_id)));
+WITH CHECK (EXISTS (SELECT 1 FROM whatsapp_accounts w WHERE w.id=whatsapp_contacts.whatsapp_account_id AND can_manage_organization(w.organization_id)));
 
 CREATE POLICY whatsapp_messages_org_member ON whatsapp_messages FOR ALL TO authenticated
 USING (EXISTS (SELECT 1 FROM whatsapp_accounts w WHERE w.id=whatsapp_messages.whatsapp_account_id AND can_access_organization(w.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM whatsapp_accounts w WHERE w.id=whatsapp_messages.whatsapp_account_id AND can_access_organization(w.organization_id)));
+WITH CHECK (EXISTS (SELECT 1 FROM whatsapp_accounts w WHERE w.id=whatsapp_messages.whatsapp_account_id AND can_manage_organization(w.organization_id)));
 
 CREATE POLICY whatsapp_webhook_events_org_member ON whatsapp_webhook_events FOR ALL TO authenticated
 USING (EXISTS (SELECT 1 FROM whatsapp_accounts w WHERE w.id=whatsapp_webhook_events.whatsapp_account_id AND can_access_organization(w.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM whatsapp_accounts w WHERE w.id=whatsapp_webhook_events.whatsapp_account_id AND can_access_organization(w.organization_id)));
-
-CREATE POLICY conversation_messages_org_member ON conversation_messages FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM conversations c WHERE c.id=conversation_messages.conversation_id AND can_access_organization(c.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM conversations c WHERE c.id=conversation_messages.conversation_id AND can_access_organization(c.organization_id)));
-
-CREATE POLICY conversation_turns_org_member ON conversation_turns FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM conversations c WHERE c.id=conversation_turns.conversation_id AND can_access_organization(c.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM conversations c WHERE c.id=conversation_turns.conversation_id AND can_access_organization(c.organization_id)));
-
-CREATE POLICY scheduled_job_runs_org_member ON scheduled_job_runs FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM scheduled_jobs s WHERE s.id=scheduled_job_runs.scheduled_job_id AND can_access_organization(s.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM scheduled_jobs s WHERE s.id=scheduled_job_runs.scheduled_job_id AND can_access_organization(s.organization_id)));
-
-CREATE POLICY automation_runs_org_member ON automation_runs FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM automation_rules a WHERE a.id=automation_runs.automation_rule_id AND can_access_organization(a.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM automation_rules a WHERE a.id=automation_runs.automation_rule_id AND can_access_organization(a.organization_id)));
-
-CREATE POLICY email_action_approvals_org_member ON email_action_approvals FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM email_actions a WHERE a.id=email_action_approvals.email_action_id AND can_access_organization(a.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM email_actions a WHERE a.id=email_action_approvals.email_action_id AND can_access_organization(a.organization_id)));
-
-CREATE POLICY summary_sources_org_member ON summary_sources FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM summaries s WHERE s.id=summary_sources.summary_id AND can_access_organization(s.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM summaries s WHERE s.id=summary_sources.summary_id AND can_access_organization(s.organization_id)));
-
-CREATE POLICY voice_telemetry_org_member ON voice_telemetry FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM voice_sessions v WHERE v.id=voice_telemetry.voice_session_id AND can_access_organization(v.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM voice_sessions v WHERE v.id=voice_telemetry.voice_session_id AND can_access_organization(v.organization_id)));
-
--- ---------------------------------------------------------------------------
--- Immutability for audit events: deny update/delete through RLS policies.
--- INSERT remains allowed to members; service role bypasses RLS.
--- ---------------------------------------------------------------------------
-CREATE POLICY audit_events_insert_member ON audit_events FOR INSERT TO authenticated
-WITH CHECK (can_access_organization(organization_id));
-DROP POLICY IF EXISTS audit_events_update_deny ON audit_events;
-CREATE POLICY audit_events_update_deny ON audit_events FOR UPDATE TO authenticated USING (false) WITH CHECK (false);
-DROP POLICY IF EXISTS audit_events_delete_deny ON audit_events;
-CREATE POLICY audit_events_delete_deny ON audit_events FOR DELETE TO authenticated USING (false);
+WITH CHECK (EXISTS (SELECT 1 FROM whatsapp_accounts w WHERE w.id=whatsapp_webhook_events.whatsapp_account_id AND can_manage_organization(w.organization_id)));
 
 -- ---------------------------------------------------------------------------
 -- Default reference permission catalogue remains Phase 3-only.
 -- ---------------------------------------------------------------------------
 INSERT INTO permissions(name, description) VALUES
- ('organization.read','Read organization'),
- ('organization.update','Update organization'),
- ('organization.members.read','Read organization members'),
- ('organization.members.manage','Manage organization members'),
- ('users.read','Read users'),
- ('users.manage','Manage users'),
- ('audit.read','Read audit events'),
- ('settings.read','Read settings'),
- ('settings.manage','Manage settings')
+ ('organization.read','Read organization'),('organization.update','Update organization'),
+ ('organization.members.read','Read organization members'),('organization.members.manage','Manage organization members'),
+ ('users.read','Read users'),('users.manage','Manage users'),('audit.read','Read audit events'),
+ ('settings.read','Read settings'),('settings.manage','Manage settings')
 ON CONFLICT (name) DO NOTHING;
 
--- Migration-level schema sanity checks.
 DO $$
-DECLARE
-  required_table text;
+DECLARE required_table text;
 BEGIN
   FOREACH required_table IN ARRAY ARRAY[
     'agents','agent_versions','agent_deployments','agent_email_accounts','agent_whatsapp_accounts',
-    'agent_ai_settings','ai_provider_configs','email_accounts','email_account_credentials',
-    'email_folders','email_labels','email_threads','email_messages','email_attachments',
-    'email_sync_states','email_sync_events','whatsapp_accounts','whatsapp_contacts',
-    'whatsapp_messages','whatsapp_webhook_events','conversations','conversation_messages',
-    'conversation_turns','scheduled_jobs','scheduled_job_runs','automation_rules','automation_runs',
-    'email_actions','email_action_approvals','summaries','summary_sources','ai_usage_events',
-    'voice_sessions','voice_telemetry','audit_events','api_keys'
+    'agent_ai_settings','ai_provider_configs','email_accounts','email_account_credentials','email_folders',
+    'email_labels','email_threads','email_messages','email_attachments','email_sync_states','email_sync_events',
+    'whatsapp_accounts','whatsapp_contacts','whatsapp_messages','whatsapp_webhook_events'
   ] LOOP
     IF to_regclass('public.' || required_table) IS NULL THEN
-      RAISE EXCEPTION 'Phase 4 schema missing required table: %', required_table;
+      RAISE EXCEPTION 'Phase 4 foundation schema missing required table: %', required_table;
     END IF;
   END LOOP;
 END $$;
