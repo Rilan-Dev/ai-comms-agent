@@ -52,7 +52,7 @@ export function EmailAccountsClient({
       return;
     }
     if (account.provider === "zoho") {
-      window.location.assign("/api/oauth/zoho/start");
+      window.location.assign(`/api/oauth/zoho/start?accountId=${encodeURIComponent(account.id)}`);
       return;
     }
     setBusy(account.id);
