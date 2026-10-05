@@ -432,11 +432,11 @@ CREATE INDEX IF NOT EXISTS automation_rules_agent_enabled_idx ON automation_rule
 -- The Phase 2 application migration creates automation_rules before this
 -- Phase 4 foundation migration. Add its tenant key before enabling direct
 -- organization RLS policies so existing databases are upgraded safely.
-DO $ BEGIN
+DO $$ BEGIN
   ALTER TABLE automation_rules
     ADD COLUMN IF NOT EXISTS organization_id uuid;
 EXCEPTION WHEN duplicate_column THEN NULL;
-END $;
+END $$;
 
 UPDATE automation_rules ar
 SET organization_id = a.organization_id
@@ -447,12 +447,12 @@ WHERE ar.organization_id IS NULL
 ALTER TABLE automation_rules
   ALTER COLUMN organization_id SET NOT NULL;
 
-DO $ BEGIN
+DO $$ BEGIN
   ALTER TABLE automation_rules
     ADD CONSTRAINT automation_rules_organization_fk
     FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 EXCEPTION WHEN duplicate_object THEN NULL;
-END $;
+END $$;
 
 CREATE INDEX IF NOT EXISTS automation_rules_org_idx
   ON automation_rules(organization_id);
