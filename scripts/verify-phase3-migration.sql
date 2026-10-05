@@ -48,11 +48,11 @@ BEGIN
   SELECT count(*) INTO helper_count
   FROM pg_proc p
   JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'public'
+  WHERE n.nspname = 'private'
     AND p.proname IN ('is_active_organization_member', 'is_active_organization_admin_or_owner');
 
   IF helper_count <> 2 THEN
-    RAISE EXCEPTION 'Runtime verification failed: expected both public RLS helper functions';
+    RAISE EXCEPTION 'Runtime verification failed: expected both private RLS helper functions';
   END IF;
 END;
 $$;
