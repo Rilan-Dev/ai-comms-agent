@@ -160,12 +160,12 @@ export async function GET(request: Request) {
       refresh_token: tokens.refresh_token,
       expires_at: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000).toISOString() : undefined,
     }, masterKey);
-    await repository.updateStatus(account.id, "connected");
+    await repository.updateStatus(account.id, "pending");
 
     await recordAuditEvent({
       organizationId: payload.organizationId,
       actorUserId: payload.userId,
-      eventType: "email.account.connected",
+      eventType: "email.account.pending_verification",
       targetType: "email_account",
       targetId: account.id,
       action: "connect",
