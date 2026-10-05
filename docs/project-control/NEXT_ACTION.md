@@ -263,3 +263,10 @@ ChatGPT continued Email Accounts provider hardening without waiting for CI/Verce
 - Agent safety policy UI now exposes security-policy and rate-limit controls.
 - Agent list now supports status filtering and robust create-network error handling.
 - Continue development without waiting for CI or Vercel. Acceptance remains a separate gate.
+
+### 2026-10-06 — Slice 1 agent completion continuation
+- Added authorized per-agent audit history API and Activity UI.
+- Added live organization WhatsApp account discovery/selection for agent channel binding; binding remains exactly-one-per-agent and cross-tenant guarded.
+- Added strict server-side agent policy validation and regression tests.
+- Latest implementation commit: bc31ded2df82e7a42b985343951381751504402b.
+- Continue Slice 1 Agents with remaining UX/error-state/browser-verification work; do not advance to Email Accounts yet. CI/Vercel remain deferred validation gates under the explicit development-first instruction.
