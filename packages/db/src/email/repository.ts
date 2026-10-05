@@ -47,6 +47,7 @@ export interface CreateEmailAccountInput {
   displayName?: string | null;
   connectionConfig?: Record<string, unknown>;
   capabilities: CapabilitySet;
+  status?: "pending" | "connected";
 }
 
 export class PostgresEmailAccountRepository {
@@ -54,7 +55,7 @@ export class PostgresEmailAccountRepository {
     const r = await query<Row>(
       `INSERT INTO email_accounts
        (organization_id, provider, email_address, display_name, connection_config, capabilities, status)
-       VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, 'connected')
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7)
        RETURNING *`,
       [
         input.organizationId,
@@ -63,6 +64,7 @@ export class PostgresEmailAccountRepository {
         input.displayName ?? null,
         JSON.stringify(input.connectionConfig ?? {}),
         JSON.stringify(input.capabilities),
+        input.status ?? "connected",
       ],
     );
     return account(requiredRow(r.rows[0], "email account"));
