@@ -1428,3 +1428,13 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Preserved the rule that provider credentials stay server-side; no secrets or provider activation were fabricated.
 - **Verification:** source-level implementation complete; runtime/CI/browser verification remains pending under the development-first acceptance policy.
 - **Next:** generic IMAP/SMTP secure connection flow, connection test, encrypted persistence, then Zoho OAuth foundation.
+
+
+## 2026-10-06 — Email provider hardening continuation
+- **Owner:** ChatGPT
+- Removed the duplicate IMAP/SMTP SMTP command helper that would cause a worker compile failure.
+- Added IMAP/SMTP contract/security tests and blocked private/local destination resolution before outbound TLS connections to mitigate SSRF.
+- Added Zoho OAuth PKCE start/callback with India default plus regional data-center support, signed state and state-cookie validation, encrypted credential persistence, and authorization checks.
+- Added the initial Zoho Mail adapter foundation and registered Gmail, IMAP/SMTP, and Zoho in the canonical worker registry.
+- Updated provider registry tests and the shared provider contract documentation.
+- **Verification:** source implementation continued under development-first policy; CI/Vercel runtime evidence remains unavailable/blocked. No real-provider connection is claimed.
