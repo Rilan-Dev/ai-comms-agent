@@ -425,3 +425,20 @@ describe("Phase 4 migration SQL verification", () => {
     expect(foundationSql).toMatch(/DO \\$\$phase4\\$/);
   });
 });
+
+
+describe("Cross-tenant provider binding integrity migration", () => {
+  const path = resolve(__dirname, "../../../supabase/migrations/0010_cross_tenant_integrity.sql");
+  const sql = readFileSync(path, "utf8");
+
+  it("derives the binding tenant from the agent because binding rows have no organization_id", () => {
+    expect(sql).toContain("SELECT a.organization_id INTO agent_org FROM agents a WHERE a.id = NEW.agent_id");
+    expect(sql).not.toContain("NEW.organization_id");
+  });
+
+  it("guards both email and WhatsApp bindings against cross-organization attachment", () => {
+    expect(sql).toContain("enforce_agent_email_account_org");
+    expect(sql).toContain("enforce_agent_whatsapp_account_org");
+    expect(sql).toContain("account_org <> agent_org");
+  });
+});
