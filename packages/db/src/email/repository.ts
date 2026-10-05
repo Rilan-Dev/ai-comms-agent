@@ -33,7 +33,7 @@ function account(row: Row): EmailAccount {
     display_name: (row.display_name as string | null) ?? undefined,
     capabilities: (row.capabilities ?? {}) as CapabilitySet,
     status: mappedStatus,
-    last_sync_at: (row.last_sync_at as string | null) ?? undefined,
+    last_sync_at: (row.last_synced_at as string | null) ?? undefined,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   };
@@ -90,15 +90,15 @@ export class PostgresEmailAccountRepository {
 
   async updateSyncState(id: string, lastSyncAt: string): Promise<EmailAccount | null> {
     const r = await query<Row>(
-      "UPDATE email_accounts SET last_sync_at = $1, status = 'active' WHERE id = $2 RETURNING *",
+      "UPDATE email_accounts SET last_synced_at = $1, status = 'connected' WHERE id = $2 RETURNING *",
       [lastSyncAt, id],
     );
     return r.rows[0] ? account(r.rows[0]) : null;
   }
 
-  async updateStatus(id: string, status: "active" | "expired" | "revoked" | "error"): Promise<EmailAccount | null> {
+  async updateStatus(id: string, status: "pending" | "connected" | "error" | "disconnected" | "revoked"): Promise<EmailAccount | null> {
     const r = await query<Row>(
-      "UPDATE email_accounts SET status = $1, last_error_at = CASE WHEN $1 = 'error' THEN now() ELSE NULL END WHERE id = $2 RETURNING *",
+      "UPDATE email_accounts SET status = $1, last_error = CASE WHEN $1 = 'error' THEN last_error ELSE NULL END WHERE id = $2 RETURNING *",
       [status, id],
     );
     return r.rows[0] ? account(r.rows[0]) : null;
@@ -113,22 +113,22 @@ export class PostgresEmailAccountRepository {
     const encrypted = encryptCredential(JSON.stringify(payload), masterKey);
     await query(
       `INSERT INTO email_account_credentials
-       (email_account_id, credential_type, encrypted_payload, updated_at)
-       VALUES ($1, $2, $3, now())
+       (email_account_id, organization_id, ciphertext, key_reference, updated_at)
+       VALUES ($1, (SELECT organization_id FROM email_accounts WHERE id = $1), $2, $3, now())
        ON CONFLICT (email_account_id)
-       DO UPDATE SET credential_type = EXCLUDED.credential_type,
-                     encrypted_payload = EXCLUDED.encrypted_payload,
+       DO UPDATE SET ciphertext = EXCLUDED.ciphertext,
+                     key_reference = EXCLUDED.key_reference,
                      updated_at = now()`,
-      [accountId, credentialType, encrypted],
+      [accountId, encrypted, "credentials-master-key-v1"],
     );
   }
 
   async loadCredentials(accountId: string, masterKey: Buffer): Promise<Record<string, unknown> | null> {
     const r = await query<Row>(
-      "SELECT encrypted_payload FROM email_account_credentials WHERE email_account_id = $1",
+      "SELECT ciphertext FROM email_account_credentials WHERE email_account_id = $1",
       [accountId],
     );
-    if (!r.rows[0]?.encrypted_payload) return null;
+    if (!r.rows[0]?.ciphertext) return null;
     const raw = decryptCredential(
       decodeBytea(r.rows[0].encrypted_payload),
       masterKey,
