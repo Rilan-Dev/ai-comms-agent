@@ -28,9 +28,9 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "4cea5073d1b42a3546f5023d17ff9f5efd6a701a"
-current_commit_short: "4cea5073"
-current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/4cea5073d1b42a3546f5023d17ff9f5efd6a701a"
+current_commit: "be4925cbd3e73ebeec28a951a5d062d70fba19ae"
+current_commit_short: "be4925cb"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/be4925cbd3e73ebeec28a951a5d062d70fba19ae"
 last_verified_commit: "pending runtime and browser verification"
 
 open_blockers:
@@ -273,3 +273,10 @@ ChatGPT continued the development-first Email Accounts slice without waiting for
 
 ### 2026-10-06 — Email Accounts continuation
 Email Accounts continuation is active under ChatGPT ownership. Corrected canonical PostgreSQL email-account schema reconciliation (status enum and credential ciphertext migration), completed core Zoho runtime operations with truthful capability metadata, added persisted folder/label discovery infrastructure, and made Gmail/Zoho OAuth reconnect idempotent. Runtime/browser verification remains deferred and is not a development blocker.
+
+
+### 2026-10-06 — Capability truthfulness correction
+- Aligned persisted IMAP/SMTP and Zoho capability metadata with the operations actually implemented by their adapters; unsupported draft/send/forward/attachment operations are no longer advertised as available.
+- Gmail remains the fully advertised provider surface where its adapter implements the corresponding contract.
+- Latest code commit: be4925cbd3e73ebeec28a951a5d062d70fba19ae.
+- Runtime/browser verification remains deferred and no live provider connection is claimed.
