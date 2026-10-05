@@ -24,8 +24,8 @@ export async function discoverEmailAccountStructure(accountId: string): Promise<
 
   const connectionConfig = await accounts.getConnectionConfig(accountId);
   const credentials: EmailCredentials = {
-    ...(encrypted as EmailCredentials),
-    ...(connectionConfig as Partial<EmailCredentials>),
+    ...(encrypted as unknown as EmailCredentials),
+    ...(connectionConfig as unknown as Partial<EmailCredentials>),
   };
 
   const provider = createEmailProviderRegistry().create(account.provider);
