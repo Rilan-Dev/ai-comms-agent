@@ -80,6 +80,19 @@ export function EmailAccountsClient({
     }
   }
 
+  async function deleteAccount(account: EmailAccount) {
+    if (!window.confirm("Permanently remove " + account.email_address + "? Synced mail and account credentials for this mailbox will also be removed.")) return;
+    setBusy(account.id); setNotice(null);
+    try {
+      const response = await fetch("/api/email-accounts", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ organizationId, accountId: account.id }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message ?? "Could not remove the mailbox.");
+      setAccounts((current) => current.filter((item) => item.id !== account.id));
+      setNotice("Mailbox removed. Stored mailbox data and credentials were deleted.");
+    } catch (error) { setNotice(error instanceof Error ? error.message : "Could not remove the mailbox."); }
+    finally { setBusy(null); }
+  }
+
   async function disconnect(accountId: string) {
     if (!window.confirm("Disconnect this mailbox? Existing synced mail will remain stored.")) return;
     setBusy(accountId);
@@ -232,6 +245,9 @@ export function EmailAccountsClient({
                       {busy === account.id ? "Checking…" : "Test connection"}
                     </button>
                   )}
+                  <button type="button" disabled={busy === account.id} onClick={() => deleteAccount(account)} className="h-10 rounded-xl border border-destructive/30 px-4 text-sm font-semibold text-destructive transition hover:bg-destructive/5 disabled:opacity-50">
+                    Remove
+                  </button>
                   {account.status !== "disconnected" && (
                     <button type="button" disabled={busy === account.id} onClick={() => disconnect(account.id)} className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
                       {busy === account.id ? "Disconnecting…" : "Disconnect"}
