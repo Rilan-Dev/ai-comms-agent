@@ -1,7 +1,7 @@
 import * as tls from "node:tls";
 import { promises as dns } from "node:dns";
 import type {
-  CapabilitySet, DraftParams, EmailCredentials, EmailFolder, EmailLabel,
+  CapabilitySet, DraftParams, DraftRef, EmailCredentials, EmailFolder, EmailLabel,
   EmailMessage, EmailProvider, ListOptions, SearchQuery, SentMessageRef, SyncResult, SyncState,
 } from "@ai-comms-agent/shared";
 
@@ -33,7 +33,8 @@ function isPrivateOrLocalAddress(address: string): boolean {
   if (address === "::1" || address.startsWith("fe80:") || address.startsWith("fc") || address.startsWith("fd")) return true;
   const parts = address.split(".").map(Number);
   if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
-  const [a, b] = parts;
+  const a = parts[0] ?? -1;
+  const b = parts[1] ?? -1;
   return a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 0);
 }
 
@@ -165,8 +166,8 @@ export class ImapSmtpAdapter implements EmailProvider {
   }
 
   async disconnect(): Promise<void> {
-    this.smtp?.write("QUIT\r\n");
-    this.smtp?.destroy();
+    this.smtp?.socket.write("QUIT\r\n");
+    this.smtp?.socket.destroy();
     this.imap?.socket.write(`${this.nextTag(this.imap)} LOGOUT\r\n`);
     this.imap?.socket.destroy();
     this.smtp = undefined;
@@ -182,7 +183,7 @@ export class ImapSmtpAdapter implements EmailProvider {
     return `A${String(connection.tag).padStart(4, "0")}`;
   }
 
-  private ensureConnected(): { imap: ImapConnection; smtp: tls.TLSSocket; credentials: EmailCredentials } {
+  private ensureConnected(): { imap: ImapConnection & { reader: SocketReader }; smtp: tls.TLSSocket; credentials: EmailCredentials } {
     if (!this.imap || !this.smtp || !this.credentials) throw new Error("IMAP/SMTP adapter is not connected");
     return { imap: this.imap, smtp: this.smtp.socket, credentials: this.credentials };
   }
@@ -217,8 +218,8 @@ export class ImapSmtpAdapter implements EmailProvider {
   async getThread(_threadId: string): Promise<EmailMessage[]> { throw new Error("IMAP thread retrieval is implemented by the email-sync worker"); }
   async search(_query: SearchQuery): Promise<EmailMessage[]> { throw new Error("IMAP search is implemented by the email-sync worker"); }
 
-  async createDraft(_params: DraftParams) { throw new Error("IMAP draft persistence is implemented by the email-sync worker"); }
-  async updateDraft(_draftId: string, _params: Partial<DraftParams>) { throw new Error("IMAP draft persistence is implemented by the email-sync worker"); }
+  async createDraft(_params: DraftParams): Promise<DraftRef> { throw new Error("IMAP draft persistence is implemented by the email-sync worker"); }
+  async updateDraft(_draftId: string, _params: Partial<DraftParams>): Promise<DraftRef> { throw new Error("IMAP draft persistence is implemented by the email-sync worker"); }
   async deleteDraft(_draftId: string): Promise<void> { throw new Error("IMAP draft persistence is implemented by the email-sync worker"); }
   async sendDraft(_draftId: string): Promise<SentMessageRef> { throw new Error("SMTP send requires persisted draft resolution"); }
   async send(_draftId: string): Promise<SentMessageRef> { return this.sendDraft(_draftId); }
