@@ -1,4 +1,5 @@
 import * as tls from "node:tls";
+import { promises as dns } from "node:dns";
 import type {
   CapabilitySet, DraftParams, EmailCredentials, EmailFolder, EmailLabel,
   EmailMessage, EmailProvider, ListOptions, SearchQuery, SentMessageRef, SyncResult, SyncState,
@@ -28,9 +29,29 @@ function quote(value: string): string {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-function connectTls(host: string, port: number, timeoutMs = 10_000): Promise<tls.TLSSocket> {
+function isPrivateOrLocalAddress(address: string): boolean {
+  if (address === "::1" || address.startsWith("fe80:") || address.startsWith("fc") || address.startsWith("fd")) return true;
+  const parts = address.split(".").map(Number);
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
+  const [a, b] = parts;
+  return a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 0);
+}
+
+async function resolvePublicHost(host: string): Promise<{ address: string; family: 4 | 6 }> {
+  const normalized = host.trim().toLowerCase();
+  if (!normalized || normalized === "localhost" || normalized.endsWith(".localhost")) {
+    throw new Error("IMAP/SMTP host must resolve to a public address");
+  }
+  const result = await dns.lookup(host, { family: 0 });
+  if (isPrivateOrLocalAddress(result.address)) throw new Error("IMAP/SMTP host resolves to a private or local address");
+  if (result.family !== 4 && result.family !== 6) throw new Error("IMAP/SMTP host resolved to an unsupported address family");
+  return { address: result.address, family: result.family };
+}
+
+async function connectTls(host: string, port: number, timeoutMs = 10_000): Promise<tls.TLSSocket> {
+  const resolved = await resolvePublicHost(host);
   return new Promise((resolve, reject) => {
-    const socket = tls.connect({ host, port, servername: host, rejectUnauthorized: true }, () => resolve(socket));
+    const socket = tls.connect({ host: resolved.address, port, servername: host, rejectUnauthorized: true }, () => resolve(socket));
     const timer = setTimeout(() => {
       socket.destroy();
       reject(new Error(`TLS connection timeout to ${host}:${port}`));
