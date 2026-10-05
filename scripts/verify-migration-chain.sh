@@ -57,4 +57,36 @@ if [[ -n "$duplicates" ]]; then
   exit 1
 fi
 
+# Domain objects must have exactly one canonical CREATE migration.
+for kind in table enum; do
+  case "$kind" in
+    table) pattern='CREATE TABLE IF NOT EXISTS[[:space:]]+([a-zA-Z_][a-zA-Z0-9_]*)';;
+    enum) pattern='CREATE TYPE[[:space:]]+([a-zA-Z_][a-zA-Z0-9_]*)[[:space:]]+AS ENUM';;
+  esac
+  duplicates="$({
+    grep -RhoE "$pattern" "$MIGRATIONS_DIR" --include='*.sql' 2>/dev/null || true
+  } | sed -E 's/^.*[[:space:]]+([a-zA-Z_][a-zA-Z0-9_]*)$/\\1/' | sort | uniq -d)"
+  if [[ -n "$duplicates" ]]; then
+    echo "ERROR: duplicate canonical $kind object(s): $duplicates" >&2
+    exit 1
+  fi
+done
+
+# Migrations 0001-0008 must use the established can_* wrappers; the public
+# is_active_* helpers are introduced by later security-hardening migrations.
+if grep -RInE '(^|[^[:alnum:]_])is_active_organization_(member|admin_or_owner)\\(' \\
+  "$MIGRATIONS_DIR"/0001_identity_rbac.sql \\
+  "$MIGRATIONS_DIR"/0002_database_foundation.sql \\
+  "$MIGRATIONS_DIR"/0003_email_domain.sql \\
+  "$MIGRATIONS_DIR"/0004_messaging.sql \\
+  "$MIGRATIONS_DIR"/0005_agent_policy_configuration.sql \\
+  "$MIGRATIONS_DIR"/0006_conversations_scheduling.sql \\
+  "$MIGRATIONS_DIR"/0007_actions_ai_voice_audit.sql \\
+  "$MIGRATIONS_DIR"/0008_api_keys_knowledge_storage.sql \\
+  | grep -v 'private.is_active_organization_' >/tmp/aca-future-rls-helper-refs.log; then
+  cat /tmp/aca-future-rls-helper-refs.log >&2
+  echo "ERROR: early migration references public RLS helper before its hardening migration" >&2
+  exit 1
+fi
+
 echo "Migration chain structure: PASS"
