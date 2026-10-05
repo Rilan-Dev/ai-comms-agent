@@ -232,3 +232,14 @@ Formal phase remains 4 until runtime acceptance. In parallel under the developme
 - Added Zoho OAuth PKCE start/callback with data-center-aware Accounts endpoints, encrypted credential persistence, state-cookie validation, and server-side authorization.
 - Added the initial Zoho REST adapter foundation (OAuth refresh, account discovery, folders, labels, message listing) and registered it in the worker provider registry.
 - **Next:** finish generic IMAP/SMTP persisted connection flow and adapter operations, then complete Zoho message/draft/send/search operations and webhook integration. Do not claim provider runtime connectivity without real credentials.
+
+
+### 2026-10-06 — Agents implementation continuation
+- Added persisted agent version JSON editing before immutable version creation.
+- Added agent email/WhatsApp unbinding controls with audit events.
+- Hardened repository channel binding against cross-organization email/WhatsApp account IDs.
+- Slice 1 implementation is materially complete; formal acceptance remains pending tests/runtime/browser evidence.
+- Per the project-owner development-first instruction, continue immediately with Slice 2 Email Accounts rather than waiting for CI/Vercel.
+
+### Current development action — Slice 2 Email Accounts
+Implement the real provider connection surface: secure IMAP/SMTP form and persistence, connection-test lifecycle, reconnect/disconnect/error recovery, capability/status display, and then finish Zoho runtime operations. Gmail OAuth remains configuration-required when server credentials are absent. No provider credentials are to be fabricated.
