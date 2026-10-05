@@ -282,3 +282,14 @@ Continue Product Completion Slice 2 — Email Accounts. Complete the persisted p
 
 
 ChatGPT continued Slice 1 without waiting for CI/Vercel: repaired literal source-newline artifacts in the agent detail/repository files, made version selection explicit for deployment, improved configuration-test coverage to include WhatsApp binding validity, initialized the editor from the selected persisted version, and made overview channel actions functional. Slice 1 remains pending formal runtime/browser acceptance. Next implementation focus remains completing remaining Agent slice gaps before moving to Email Accounts.
+
+
+### 2026-10-06 — Email Accounts implementation continuation
+- Added server-side IMAP/SMTP reconnect/retry using the encrypted persisted credential record; credentials are decrypted only on the server and never returned to the browser.
+- Email account UI now exposes reconnect/test actions by provider, capability badges, and persisted connection error messages.
+- Hardened Zoho regional OAuth refresh routing so EU/IN/AU/CA/JP/SA accounts refresh against the matching regional Accounts endpoint instead of assuming the India/default endpoint.
+- Added deterministic regression coverage for Zoho regional refresh routing.
+- Provider credentials remain configuration-dependent; no live provider connection is claimed.
+
+### Current next implementation action — Email Accounts
+Continue Email Accounts with provider lifecycle completion: OAuth reconnect/error handling for Gmail/Zoho, IMAP/SMTP reconnect UI refinement, capability/status refresh, folder/label discovery persistence, agent assignment UX, and provider contract/runtime tests. Then proceed to Mail.
