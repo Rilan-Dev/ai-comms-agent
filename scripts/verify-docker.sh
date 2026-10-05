@@ -16,6 +16,8 @@ if ! "${COMPOSE[@]}" up -d --wait postgres; then
 fi
 trap '"${COMPOSE[@]}" down -v' EXIT
 
+bash scripts/verify-migration-chain.sh
+
 "${COMPOSE[@]}" run --rm migrate
 
 "${COMPOSE[@]}" run --rm --entrypoint sh migrate -c   'psql -v ON_ERROR_STOP=1 -f /workspace/scripts/verify-phase3-migration.sql'
