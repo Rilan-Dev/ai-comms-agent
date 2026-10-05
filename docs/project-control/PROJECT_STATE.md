@@ -286,3 +286,7 @@ Email Accounts continuation is active under ChatGPT ownership. Corrected canonic
 - Slice 2 Email Accounts is active under the development-first project-owner directive.
 - Gmail/Zoho OAuth persistence now remains pending until worker verification; IMAP/SMTP persistence is idempotent and credential-save failures are fail-closed to an error state.
 - No live provider credentials are fabricated. CI/Vercel remain verification gates and are not treated as development blockers.
+
+
+### 2026-10-06 — Slice 2 provider lifecycle continuation
+ChatGPT completed another Email Accounts hardening pass: folder/label discovery is now an atomic replacement snapshot, successful worker discovery persists runtime capabilities and connected status, discovery failures become explicit account errors, and IMAP/SMTP/Zoho capability metadata is truthful to the implemented adapter surface. Continue the Mail vertical slice after Email Accounts implementation is complete; runtime acceptance remains a separate gate.
