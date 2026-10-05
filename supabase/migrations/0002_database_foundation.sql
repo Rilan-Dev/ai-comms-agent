@@ -112,7 +112,7 @@ END $$;
 -- Organization authorization wrappers
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION can_access_organization(p_organization_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public AS $
   SELECT private.is_active_organization_member(
     p_organization_id,
     NULLIF(current_setting('app.user_id', true), '')::uuid
@@ -120,7 +120,7 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
 $$;
 
 CREATE OR REPLACE FUNCTION can_manage_organization(p_organization_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public AS $
   SELECT private.is_active_organization_admin_or_owner(
     p_organization_id,
     NULLIF(current_setting('app.user_id', true), '')::uuid
