@@ -615,3 +615,11 @@ Development-first update 2026-10-06: email credential repository schema mismatch
 - Implemented: persisted version-config editing, server-side version-config validation, full policy controls, agent status filtering, and create error recovery.
 - Automated/browser verification is intentionally deferred per project-owner instruction; no pass is claimed for the latest changes.
 - Phase 4/product implementation continues without waiting for GitHub Actions or Vercel.
+
+### 2026-10-06 — Slice 1 implementation checkpoint
+- Latest implementation commit: bc31ded2df82e7a42b985343951381751504402b.
+- Added authorized agent audit-history read path and Activity UI.
+- Added organization-scoped WhatsApp account discovery for agent channel binding.
+- Added strict agent policy validation plus unit coverage.
+- These changes are source implementation only; no CI/Vercel PASS is claimed.
+- Slice 1 acceptance remains pending runtime/browser verification and final review.
