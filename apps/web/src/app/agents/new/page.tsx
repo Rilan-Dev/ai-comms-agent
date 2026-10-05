@@ -1,1 +1,58 @@
-"use client"; import {useState} from "react"; export default function NewAgentPage(){const [name,setName]=useState("");return <main className="mx-auto max-w-3xl p-5 sm:p-8 lg:p-12"><a href="/agents" className="text-xs font-semibold text-muted-foreground hover:text-foreground">← Agents</a><h1 className="mt-5 text-3xl font-semibold tracking-tight">Create an agent</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Start with the identity and behavior. Channel connections, Clara AI providers, tools, and authorization are configured after creation.</p><div className="mt-8 space-y-6 rounded-2xl border bg-background p-6 shadow-sm"><label className="block"><span className="text-sm font-medium">Agent name</span><input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Clara" className="mt-2 h-11 w-full rounded-xl border bg-background px-3 text-sm outline-none ring-primary/20 focus:ring-4"/></label><label className="block"><span className="text-sm font-medium">Purpose</span><textarea placeholder="What should this agent help with?" className="mt-2 min-h-28 w-full rounded-xl border bg-background p-3 text-sm outline-none focus:ring-4 focus:ring-primary/20"/></label><div className="rounded-xl bg-muted/60 p-4 text-sm"><p className="font-medium">Safety default</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Reading and drafting are allowed. Sending, forwarding, deletion, and bulk actions require explicit authorization.</p></div><button type="button" className="h-11 rounded-xl bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-40" disabled={!name.trim()}>Create agent</button></div></main>}
+"use client";
+
+import { useState, type ChangeEvent } from "react";
+
+export default function NewAgentPage() {
+  const [name, setName] = useState("");
+
+  const handleNameChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setName(event.target.value);
+  };
+
+  return (
+    <main className="mx-auto max-w-3xl p-5 sm:p-8 lg:p-12">
+      <a href="/agents" className="text-xs font-semibold text-muted-foreground hover:text-foreground">
+        ← Agents
+      </a>
+      <h1 className="mt-5 text-3xl font-semibold tracking-tight">Create an agent</h1>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        Start with the identity and behavior. Channel connections, Clara AI providers, tools, and authorization are configured after creation.
+      </p>
+
+      <div className="mt-8 space-y-6 rounded-2xl border bg-background p-6 shadow-sm">
+        <label className="block">
+          <span className="text-sm font-medium">Agent name</span>
+          <input
+            value={name}
+            onChange={handleNameChange}
+            placeholder="e.g. Clara"
+            className="mt-2 h-11 w-full rounded-xl border bg-background px-3 text-sm outline-none ring-primary/20 focus:ring-4"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium">Purpose</span>
+          <textarea
+            placeholder="What should this agent help with?"
+            className="mt-2 min-h-28 w-full rounded-xl border bg-background p-3 text-sm outline-none focus:ring-4 focus:ring-primary/20"
+          />
+        </label>
+
+        <div className="rounded-xl bg-muted/60 p-4 text-sm">
+          <p className="font-medium">Safety default</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Reading and drafting are allowed. Sending, forwarding, deletion, and bulk actions require explicit authorization.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="h-11 rounded-xl bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-40"
+          disabled={!name.trim()}
+        >
+          Create agent
+        </button>
+      </div>
+    </main>
+  );
+}
