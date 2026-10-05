@@ -32,3 +32,5 @@ export {
   SupabaseEmailAccountRepository,
   type CreateEmailAccountInput,
 } from "./email/repository";
+
+export { PostgresAgentRepository } from "./agent/repository";
