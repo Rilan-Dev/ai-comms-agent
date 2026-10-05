@@ -1,5 +1,6 @@
 import type { EmailProvider, EmailProviderType } from "@ai-comms-agent/shared";
 import { MockEmailProvider } from "./mock-adapter";
+import { GmailAdapter } from "./gmail-adapter";
 
 export type EmailProviderFactory = () => EmailProvider;
 
@@ -40,6 +41,11 @@ export class EmailProviderRegistry {
 
 export function createDefaultEmailProviderRegistry(): EmailProviderRegistry {
   const registry = new EmailProviderRegistry();
+  registry.register({
+    providerId: "gmail",
+    displayName: "Gmail",
+    create: () => new GmailAdapter(),
+  });
   registry.register({
     providerId: "imap_smtp",
     displayName: "Mock IMAP / SMTP",
