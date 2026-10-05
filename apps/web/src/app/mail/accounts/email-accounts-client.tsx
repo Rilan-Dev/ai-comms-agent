@@ -48,7 +48,7 @@ export function EmailAccountsClient({
 
   async function reconnect(account: EmailAccount) {
     if (account.provider === "gmail") {
-      window.location.assign("/api/oauth/gmail/start");
+      window.location.assign(`/api/oauth/gmail/start?accountId=${encodeURIComponent(account.id)}`);
       return;
     }
     if (account.provider === "zoho") {
