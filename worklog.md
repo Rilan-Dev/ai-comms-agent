@@ -1298,3 +1298,28 @@ Owner-supplied Docker verification successfully applied the identity migration a
 
 ### Acceptance state
 Runtime verification must be rerun after these corrections. Phase 4 is not yet accepted.
+
+
+## Task ID: 12
+## Phase: 4 — Database Migration Chain Integrity Correction
+
+- **Status**: correction_implemented_awaiting_runtime_verification
+- **Owner**: ChatGPT
+- **Date**: 2026-10-05
+
+### Root cause found from disposable PostgreSQL log
+The local verification run failed while applying `0002_domain_foundation.sql`: `agent_versions` was already created by an obsolete `0002_application_foundation.sql` with a different schema, so the later `CREATE TABLE IF NOT EXISTS` did not reconcile the schema and the migration failed on missing `version`.
+
+### Corrections
+- Consolidated the migration chain to the canonical `0001 → 0002_database_foundation → 0003_database_security_hardening` sequence.
+- Removed conflicting legacy `0002_application_foundation.sql`, `0002_domain_foundation.sql`, and duplicate `0003_database_foundation.sql`.
+- Fixed remaining invalid PostgreSQL single-dollar function delimiters in `0003_database_security_hardening.sql`.
+- Added `scripts/verify-migration-chain.sh` to reject legacy files, missing canonical migrations, duplicate numeric prefixes, and malformed single-dollar function bodies.
+- CI now runs migration-chain verification, applies the canonical migrations, verifies migration checksums, and executes runtime owner/RLS checks.
+- Local disposable Docker verification also runs the migration-chain guard before applying migrations.
+
+### Current verification
+- Canonical migration static audit: PASS.
+- 36 Phase 4 tables in `0002_database_foundation.sql`; no duplicate table declarations; no unresolved local FK targets detected by static audit.
+- Invalid single-dollar delimiters across canonical migrations: 0.
+- Fresh CI runtime result: pending.
