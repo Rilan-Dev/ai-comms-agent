@@ -220,3 +220,7 @@ Acceptance remains pending until a fresh runtime/CI run is green. No production 
 - **Plan:** docs/superpowers/plans/2026-10-05-product-completion-menu-plan.md
 - **Known UI gaps:** hard-coded/demo data on multiple menus, non-functional buttons, missing validation, inconsistent/no notifications, incomplete error/loading/empty states, incomplete persistence/API wiring.
 - **Important:** roadmap phase completion and product-menu acceptance remain separate gates. No phase is marked complete merely because UI work exists.
+
+
+### ChatGPT takeover update — 2026-10-06
+Product completion Slice 1 (Agents) is now the active vertical implementation track. Real PostgreSQL-backed agent CRUD, versioning, deployment, policy, audit, configuration testing, email binding, and single-WhatsApp binding endpoints/UI are implemented; runtime verification remains pending.
