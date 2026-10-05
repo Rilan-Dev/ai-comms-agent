@@ -27,7 +27,9 @@ export class PostgresAgentRepository {
   async versions(orgId:string,id:string):Promise<AgentVersion[]> { const r=await query<Row>("SELECT v.* FROM agent_versions v JOIN agents a ON a.id=v.agent_id WHERE a.organization_id=$1 AND a.id=$2 ORDER BY v.version_number DESC",[orgId,id]); return r.rows.map(version); }
   async createVersion(orgId:string,id:string,userId:string,config:Record<string,unknown>):Promise<AgentVersion>{
     return withTransaction(async c=>{
-      const current=await c.query<Row>("SELECT COALESCE(MAX(v.version_number),0) max_version FROM agent_versions v JOIN agents a ON a.id=v.agent_id WHERE a.organization_id=$1 AND a.id=$2 FOR UPDATE",[orgId,id]);
+      const lockedAgent=await c.query<Row>("SELECT id FROM agents WHERE organization_id=$1 AND id=$2 FOR UPDATE",[orgId,id]);
+      if (!lockedAgent.rows[0]) throw new Error("Agent not found");
+      const current=await c.query<Row>("SELECT COALESCE(MAX(version_number),0) max_version FROM agent_versions WHERE agent_id=$1",[id]);
       const next=Number(current.rows[0]?.max_version??0)+1;
       const r=await c.query<Row>("INSERT INTO agent_versions (agent_id,version_number,config,created_by) VALUES ($1,$2,$3::jsonb,$4) RETURNING *",[id,next,JSON.stringify(config),userId]);
       if(!r.rows[0]) throw new Error("Agent version insert returned no row"); return version(r.rows[0]);
