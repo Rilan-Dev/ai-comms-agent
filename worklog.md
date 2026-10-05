@@ -1356,3 +1356,15 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Corrected migration verification tests that still referenced the removed duplicate `0002_application_foundation.sql` artifact.
 - Extended the migration-chain validator to require the new 0014 migration.
 - No production credentials or database provisioning performed. Clara source remains unchanged.
+
+
+### ChatGPT takeover update — 2026-10-06
+## 2026-10-06 — ChatGPT Agents vertical slice
+
+- Replaced the hard-coded Agents page with a PostgreSQL-backed workspace.
+- Added shared persisted agent types and a PostgreSQL agent repository covering CRUD, versioning, deployment/retirement, policy, email bindings, and exactly-one WhatsApp binding.
+- Added server APIs for agents, versions, deployment, policy, configuration testing, and channel bindings with existing organization RBAC and append-only audit events.
+- Added truthful database-required states; no demo records are presented as live data.
+- Added agent validation tests and a polished responsive agent list/detail workspace with confirmation flows and notifications.
+- CI/runtime verification is still pending; no completion claim is made until the queued GitHub verification run is green.
+
