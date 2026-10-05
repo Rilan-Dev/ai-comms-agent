@@ -14,7 +14,7 @@ DECLARE
   target_member organization_memberships%ROWTYPE;
   caller_role membership_role;
 BEGIN
-  IF auth.uid() IS NULL THEN
+  IF NULLIF(current_setting('app.user_id', true), '')::uuid IS NULL THEN
     RAISE EXCEPTION 'Authentication required' USING ERRCODE='insufficient_privilege';
   END IF;
   IF p_new_owner_role = 'owner' THEN
@@ -24,7 +24,7 @@ BEGIN
   SELECT role INTO caller_role
   FROM organization_memberships
   WHERE organization_id = p_organization_id
-    AND user_id = auth.uid()
+    AND user_id = NULLIF(current_setting('app.user_id', true), '')::uuid
     AND status = 'active'
   FOR UPDATE;
 
