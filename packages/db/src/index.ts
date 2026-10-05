@@ -34,6 +34,7 @@ export {
   type CreateEmailAccountInput,
   listInboxMessages,
   getMailMessageForOrganization,
+  getMailThreadForOrganization,
   type MailInboxFilters,
 } from "./email/repository";
 export { PostgresEmailFolderLabelRepository } from "./email/folder-label-repository";
