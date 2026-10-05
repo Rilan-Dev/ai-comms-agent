@@ -58,3 +58,10 @@ END;
 $$;
 
 SELECT 'phase3 migration runtime verification passed' AS result;
+
+
+-- Final-owner deletion must be rejected even when it would leave zero membership rows.
+BEGIN;
+DELETE FROM organization_memberships
+WHERE id = '20000000-0000-0000-0000-000000000002';
+COMMIT;
