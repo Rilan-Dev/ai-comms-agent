@@ -40,27 +40,50 @@ function connectTls(host: string, port: number, timeoutMs = 10_000): Promise<tls
   });
 }
 
-async function readLine(socket: tls.TLSSocket, timeoutMs = 10_000): Promise<string> {
+type SocketReader = {
+  socket: tls.TLSSocket;
+  buffer: string;
+  error?: Error;
+};
+
+function createReader(socket: tls.TLSSocket): SocketReader {
+  return { socket, buffer: "" };
+}
+
+async function readLine(reader: SocketReader, timeoutMs = 10_000): Promise<string> {
+  const existing = reader.buffer.indexOf("\r\n");
+  if (existing >= 0) {
+    const line = reader.buffer.slice(0, existing);
+    reader.buffer = reader.buffer.slice(existing + 2);
+    return line;
+  }
+
   return new Promise((resolve, reject) => {
-    let data = "";
-    const timer = setTimeout(() => reject(new Error("TLS response timeout")), timeoutMs);
+    const timer = setTimeout(() => cleanup(new Error("TLS response timeout")), timeoutMs);
     const onData = (chunk: Buffer | string) => {
-      data += chunk.toString();
-      const index = data.indexOf("\r\n");
-      if (index >= 0) {
-        cleanup();
-        resolve(data.slice(0, index));
-      }
+      reader.buffer += chunk.toString();
+      const index = reader.buffer.indexOf("\r\n");
+      if (index < 0) return;
+      const line = reader.buffer.slice(0, index);
+      reader.buffer = reader.buffer.slice(index + 2);
+      cleanup();
+      resolve(line);
     };
-    const onError = (error: Error) => { cleanup(); reject(error); };
-    const cleanup = () => {
+    const onError = (error: Error) => cleanup(error);
+    const cleanup = (error?: Error) => {
       clearTimeout(timer);
-      socket.off("data", onData);
-      socket.off("error", onError);
+      reader.socket.off("data", onData);
+      reader.socket.off("error", onError);
+      if (error) reject(error);
     };
-    socket.on("data", onData);
-    socket.once("error", onError);
+    reader.socket.on("data", onData);
+    reader.socket.once("error", onError);
   });
+}
+
+async function smtpCommand(reader: SocketReader, command: string): Promise<string> {
+  reader.socket.write(command + "\r\n");
+  return readLine(reader);
 }
 
 async function smtpCommand(socket: tls.TLSSocket, command: string): Promise<string> {
@@ -71,8 +94,8 @@ async function smtpCommand(socket: tls.TLSSocket, command: string): Promise<stri
 export class ImapSmtpAdapter implements EmailProvider {
   readonly providerId = "imap_smtp" as const;
   private credentials?: EmailCredentials;
-  private imap?: ImapConnection;
-  private smtp?: tls.TLSSocket;
+  private imap?: ImapConnection & { reader: SocketReader };
+  private smtp?: { socket: tls.TLSSocket; reader: SocketReader };
 
   async connect(credentials: EmailCredentials): Promise<void> {
     const host = required(credentials, "host");
@@ -86,30 +109,32 @@ export class ImapSmtpAdapter implements EmailProvider {
 
     if (credentials.tls === false) throw new Error("IMAP/SMTP requires TLS; plaintext transport is disabled");
     const imapSocket = await connectTls(imapHost, imapPort);
-    const greeting = await readLine(imapSocket);
+    const imapReader = createReader(imapSocket);
+    const greeting = await readLine(imapReader);
     if (!greeting.startsWith("*")) {
       imapSocket.destroy();
       throw new Error("IMAP server returned an invalid greeting");
     }
-    const connection: ImapConnection = { socket: imapSocket, buffer: "", tag: 0 };
+    const connection: ImapConnection & { reader: SocketReader } = { socket: imapSocket, buffer: "", tag: 0, reader: imapReader };
     const loginTag = this.nextTag(connection);
     imapSocket.write(`${loginTag} LOGIN ${quote(username)} ${quote(password)}\r\n`);
-    const login = await readLine(imapSocket);
+    const login = await readLine(imapReader);
     if (!login.startsWith(`${loginTag} OK`)) {
       imapSocket.destroy();
       throw new Error("IMAP authentication failed");
     }
 
     const smtpSocket = await connectTls(smtpHost, smtpPort);
-    const smtpGreeting = await readLine(smtpSocket);
+    const smtpReader = createReader(smtpSocket);
+    const smtpGreeting = await readLine(smtpReader);
     if (!/^220\b/.test(smtpGreeting)) {
       smtpSocket.destroy();
       imapSocket.destroy();
       throw new Error("SMTP server returned an invalid greeting");
     }
-    await smtpCommand(smtpSocket, `EHLO ${smtpHost}`);
+    await smtpCommand(smtpReader, `EHLO ${smtpHost}`);
     const auth = await smtpCommand(
-      smtpSocket,
+      smtpReader,
       `AUTH PLAIN ${Buffer.from(`\\0${username}\\0${password}`).toString("base64")}`,
     );
     if (!/^235\b/.test(auth)) {
@@ -120,7 +145,7 @@ export class ImapSmtpAdapter implements EmailProvider {
 
     this.credentials = { ...credentials, password: undefined, access_token: undefined };
     this.imap = connection;
-    this.smtp = smtpSocket;
+    this.smtp = { socket: smtpSocket, reader: smtpReader };
   }
 
   async disconnect(): Promise<void> {
@@ -143,7 +168,7 @@ export class ImapSmtpAdapter implements EmailProvider {
 
   private ensureConnected(): { imap: ImapConnection; smtp: tls.TLSSocket; credentials: EmailCredentials } {
     if (!this.imap || !this.smtp || !this.credentials) throw new Error("IMAP/SMTP adapter is not connected");
-    return { imap: this.imap, smtp: this.smtp, credentials: this.credentials };
+    return { imap: this.imap, smtp: this.smtp.socket, credentials: this.credentials };
   }
 
   async listFolders(): Promise<EmailFolder[]> {
@@ -153,7 +178,7 @@ export class ImapSmtpAdapter implements EmailProvider {
 `);
     const folders: EmailFolder[] = [];
     while (true) {
-      const line = await readLine(imap.socket);
+      const line = await readLine(imap.reader);
       if (line.startsWith(`${tag} OK`)) return folders;
       if (line.startsWith(`${tag} NO`) || line.startsWith(`${tag} BAD`)) throw new Error(`IMAP LIST failed: ${line}`);
       const match = line.match(/^\* LIST \([^)]*\) "[^"]*" (.+)$/);
