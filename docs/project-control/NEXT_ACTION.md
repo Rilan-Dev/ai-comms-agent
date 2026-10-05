@@ -215,3 +215,12 @@ Formal phase remains 4 until runtime acceptance. In parallel under the developme
 - Hardened Gmail OAuth credentials with proactive refresh before expiry and a single 401 retry refresh path, with concurrency de-duplication.
 - Added adapter tests for expiry refresh and unauthorized-response recovery.
 - **Next implementation focus:** generic IMAP/SMTP secure connection flow, validation, encrypted credential persistence, connection testing, and adapter registration; then Zoho OAuth foundation.
+
+
+### 2026-10-06 — ChatGPT provider implementation checkpoint
+- Gmail provider registration and OAuth token lifecycle hardening are implemented.
+- Replaced the provider-neutral IMAP/SMTP mock registration with a real TLS-backed `ImapSmtpAdapter`.
+- Added explicit IMAP/SMTP connection credentials (username, host/ports, TLS) and fail-closed plaintext transport rejection.
+- Implemented authenticated IMAP folder discovery and secure SMTP authentication; credential secrets are retained only in adapter memory during an active connection and are cleared on disconnect.
+- Remaining provider work: move persisted draft/message operations into the sync/runtime workers, add dedicated adapter tests and connection-test API/UI, then implement Zoho OAuth.
+- Do not claim runtime provider connectivity without real provider credentials.
