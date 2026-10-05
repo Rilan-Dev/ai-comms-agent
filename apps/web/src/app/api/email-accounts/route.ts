@@ -129,18 +129,47 @@ export async function POST(request: Request) {
             const masterKey = process.env.CREDENTIALS_MASTER_KEY ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY) : null;
       if (!masterKey) return NextResponse.json({ error: "provider_configuration_required", message: "Credential encryption is not configured on the server." }, { status: 503 });
       const repository = new PostgresEmailAccountRepository();
-      const account = await repository.create({
+      const connectionConfig = { imap_host: host, imap_port: port, smtp_host: smtpHost, smtp_port: smtpPort, tls: true };
+      const capabilities = { folders: true, labels: false, sync_incremental: false, sync_full: true, sync_webhook: false, sync_idle: true, search_server_side: true, search_client_side: true, drafts: false, reply: false, forward: false, mark_read: true, archive: false, move: false, threads: false, attachments_download: false, attachments_upload: false, send: false };
+      const existing = await repository.findByOrganizationProviderAddress(organizationId, "imap_smtp", emailAddress);
+      let account;
+      if (existing) {
+        account = await repository.updateConnection(existing.id, {
+          emailAddress,
+          displayName: typeof body?.displayName === "string" ? body.displayName.trim() : emailAddress,
+          connectionConfig,
+          capabilities,
+          status: "pending",
+        });
+        if (!account) return NextResponse.json({ error: "not_found", message: "Email account disappeared during reconnect." }, { status: 404 });
+      } else {
+        account = await repository.create({
+          organizationId,
+          provider: "imap_smtp",
+          emailAddress,
+          displayName: typeof body?.displayName === "string" ? body.displayName.trim() : emailAddress,
+          connectionConfig,
+          status: "pending",
+          capabilities,
+        });
+      }
+      try {
+        await repository.saveCredentials(account.id, "password", { username, password, host, port, imap_host: host, imap_port: port, smtp_host: smtpHost, smtp_port: smtpPort, tls: true }, masterKey);
+      } catch (error) {
+        await repository.updateStatus(account.id, "error", "Mailbox configuration was saved without credentials. Reconnect to finish setup.");
+        throw error;
+      }
+      await recordAuditEvent({
         organizationId,
-        provider: "imap_smtp",
-        emailAddress,
-        displayName: typeof body?.displayName === "string" ? body.displayName.trim() : emailAddress,
-        connectionConfig: { imap_host: host, imap_port: port, smtp_host: smtpHost, smtp_port: smtpPort, tls: true },
-        status: "pending",
-        capabilities: { folders: true, labels: false, sync_incremental: false, sync_full: true, sync_webhook: false, sync_idle: true, search_server_side: true, search_client_side: true, drafts: false, reply: false, forward: false, mark_read: true, archive: false, move: false, threads: false, attachments_download: false, attachments_upload: false, send: false },
+        actorUserId: subject.user.id,
+        eventType: existing ? "email.account.reconnected" : "email.account.created",
+        targetType: "email_account",
+        targetId: account.id,
+        action: existing ? "reconnect" : "connect",
+        decision: "allowed",
+        metadata: { provider: "imap_smtp", status: "pending_worker_verification" },
       });
-      await repository.saveCredentials(account.id, "password", { username, password, host, port, imap_host: host, imap_port: port, smtp_host: smtpHost, smtp_port: smtpPort, tls: true }, masterKey);
-      await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: "email.account.created", targetType: "email_account", targetId: account.id, action: "connect", decision: "allowed", metadata: { provider: "imap_smtp" } });
-      return NextResponse.json({ account }, { status: 201 });
+      return NextResponse.json({ account }, { status: existing ? 200 : 201 });
     }
 
     if (!accountId) return NextResponse.json({ error: "validation_error", fieldErrors: { accountId: "Account is required." } }, { status: 422 });
