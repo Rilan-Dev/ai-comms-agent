@@ -22,8 +22,7 @@ export async function discoverEmailAccountStructure(accountId: string): Promise<
   const encrypted = await accounts.loadCredentials(accountId, masterKey);
   if (!encrypted) throw new Error("Email account credentials are unavailable");
 
-  const config = (account as EmailCredentials & { connection_config?: Record<string, unknown> });
-  const connectionConfig = (account as unknown as { connection_config?: Record<string, unknown> }).connection_config ?? {};
+  const connectionConfig = await accounts.getConnectionConfig(accountId);
   const credentials: EmailCredentials = {
     ...(encrypted as EmailCredentials),
     ...(connectionConfig as Partial<EmailCredentials>),
