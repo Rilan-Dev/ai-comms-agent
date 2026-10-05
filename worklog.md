@@ -1400,3 +1400,12 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Latest code commit: `e9af7d595dfe824d5344b3dc667b879792dc4faf`.
 - GitHub Actions still exposes no workflow run for the current main commits through the connected workflow endpoint.
 - Vercel continues to report build-rate-limit failure for the latest code; no READY claim is made.
+
+
+## 2026-10-06 — ChatGPT continuation: binding/OAuth hardening
+- Corrected migration 0010 cross-tenant provider binding guards to derive organization ownership from the agent row; binding tables do not carry organization_id.
+- Added static regression coverage preventing the invalid NEW.organization_id contract from returning.
+- Hardened Gmail OAuth callback to require the signed state cookie to match the callback state.
+- Gmail account creation now remains pending until encrypted credentials are successfully stored, then transitions to connected.
+- No provider credentials were fabricated; external provider activation remains configuration-dependent.
+- Slice 1 Agents remains unaccepted pending runtime/browser evidence; development continues under the project-owner development-first directive.
