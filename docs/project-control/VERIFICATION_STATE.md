@@ -384,7 +384,7 @@ takeover:
   primary_implementer: "ChatGPT"
   previous_implementer: "Z.AI"
   takeover_date: "2026-10-04"
-  current_commit: "4d2c5a6e2be2d0d64f0cda813e59ecf7067074b6"
+  current_commit: "fa8061d96628f8b1c59dadb3afde12d4f8588e3e"
   latest_change:
     migration_owner_invariant: "Deferred constraint triggers validate affected organizations for membership and direct organization changes."
     migration_tests: "Static migration checks now cover owner invariants, RLS recursion helpers, and PostgreSQL dollar-quote syntax."
