@@ -121,25 +121,25 @@ ALTER TABLE whatsapp_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE whatsapp_webhook_events ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY whatsapp_accounts_member_visibility ON whatsapp_accounts FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id,(select auth.uid())));
+USING (can_access_organization(organization_id));
 CREATE POLICY whatsapp_accounts_admin_manage ON whatsapp_accounts FOR ALL TO authenticated
-USING (is_active_organization_admin_or_owner(organization_id,(select auth.uid())))
-WITH CHECK (is_active_organization_admin_or_owner(organization_id,(select auth.uid())));
+USING (can_manage_organization(organization_id))
+WITH CHECK (can_manage_organization(organization_id));
 
 CREATE POLICY whatsapp_contacts_member_visibility ON whatsapp_contacts FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id,(select auth.uid())));
+USING (can_access_organization(organization_id));
 CREATE POLICY whatsapp_contacts_member_manage ON whatsapp_contacts FOR ALL TO authenticated
-USING (is_active_organization_member(organization_id,(select auth.uid())))
-WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+USING (can_access_organization(organization_id))
+WITH CHECK (can_access_organization(organization_id));
 
 CREATE POLICY whatsapp_messages_member_visibility ON whatsapp_messages FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id,(select auth.uid())));
+USING (can_access_organization(organization_id));
 CREATE POLICY whatsapp_messages_member_manage ON whatsapp_messages FOR ALL TO authenticated
-USING (is_active_organization_member(organization_id,(select auth.uid())))
-WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+USING (can_access_organization(organization_id))
+WITH CHECK (can_access_organization(organization_id));
 
 CREATE POLICY whatsapp_webhook_admin_visibility ON whatsapp_webhook_events FOR SELECT TO authenticated
-USING (is_active_organization_admin_or_owner(organization_id,(select auth.uid())));
+USING (can_manage_organization(organization_id));
 CREATE POLICY whatsapp_webhook_admin_manage ON whatsapp_webhook_events FOR ALL TO authenticated
-USING (is_active_organization_admin_or_owner(organization_id,(select auth.uid())))
-WITH CHECK (is_active_organization_admin_or_owner(organization_id,(select auth.uid())));
+USING (can_manage_organization(organization_id))
+WITH CHECK (can_manage_organization(organization_id));
