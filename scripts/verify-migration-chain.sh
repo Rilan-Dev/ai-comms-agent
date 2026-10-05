@@ -32,7 +32,8 @@ for required in \
   0010_cross_tenant_integrity.sql \
   0011_ownership_transfer.sql \
   0012_server_identity_rpcs.sql \
-  0013_database_security_hardening.sql
+  0013_database_security_hardening.sql \
+  0014_email_connection_config.sql
 do
   [[ -f "$MIGRATIONS_DIR/$required" ]] || {
     echo "ERROR: required migration missing: $required" >&2
