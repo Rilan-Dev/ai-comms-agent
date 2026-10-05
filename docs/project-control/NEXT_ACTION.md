@@ -327,3 +327,7 @@ ChatGPT completed another Email Accounts hardening pass: folder/label discovery 
 - Restoring a mailbox clears stale connection errors and records connected_at when appropriate.
 - Added regression coverage in apps/web/tests/email-account-repository-contract.test.ts.
 - Continue Email Accounts provider contract/runtime hardening; then proceed to Mail. No CI/Vercel wait and no fabricated provider credentials.
+
+
+### 2026-10-06 — ChatGPT active implementation checkpoint
+Email Accounts provider lifecycle continuation: complete truthful provider contract/runtime coverage, persisted folder/label discovery lifecycle, OAuth reconnect/error handling, agent assignment UX, then start Mail vertical slice. Do not fabricate provider connectivity.
