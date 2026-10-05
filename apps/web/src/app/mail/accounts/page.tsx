@@ -1,1 +1,42 @@
-const accounts=[["Gmail","Google Workspace / Gmail API","OAuth · incremental sync","Connected"],["Zoho","Zoho Mail","OAuth2 · regional endpoints","Available"],["IMAP / SMTP","Any compatible mailbox","TLS · OAuth or app password","Available"]]; export default function AccountsPage(){return <main className="mx-auto max-w-[1200px] space-y-7 p-5 sm:p-7 lg:p-9"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Mail</p><h1 className="mt-2 text-3xl font-semibold">Email accounts</h1><p className="mt-2 text-sm text-muted-foreground">Connect multiple mailboxes to an agent. Credentials stay server-side and are never exposed to the browser.</p></div><div className="grid gap-4 md:grid-cols-3">{accounts.map(([name,detail,tech,status])=><div key={name} className="rounded-2xl border bg-background p-5 shadow-sm"><div className="flex items-center justify-between"><div className="grid h-10 w-10 place-items-center rounded-xl bg-muted text-sm">✉</div><span className={`text-[11px] font-semibold ${status==="Connected"?"text-emerald-600":"text-muted-foreground"}`}>{status}</span></div><h2 className="mt-5 font-semibold">{name}</h2><p className="mt-1 text-sm text-muted-foreground">{detail}</p><p className="mt-4 rounded-lg bg-muted p-2.5 text-[11px] text-muted-foreground">{tech}</p><button className="mt-5 h-10 w-full rounded-xl border text-sm font-semibold hover:bg-muted">{status==="Connected"?"Manage account":"Connect"}</button></div>)}</div><div className="rounded-2xl border bg-background p-6"><p className="font-semibold">Sync architecture</p><div className="mt-4 grid gap-3 sm:grid-cols-4">{["Provider event","RabbitMQ","Sync worker","Postgres + index"].map((x,i)=><div key={x} className="rounded-xl bg-muted/60 p-4"><span className="text-xs text-muted-foreground">0{i+1}</span><p className="mt-2 text-sm font-medium">{x}</p></div>)}</div></div></main>}
+import { PostgresEmailAccountRepository } from "@ai-comms-agent/db";
+import { ensureDevSeed, getDevOrgId } from "@/lib/identity/repository";
+import { EmailAccountsClient } from "./email-accounts-client";
+
+export const dynamic = "force-dynamic";
+
+export default async function AccountsPage() {
+  if (!process.env.DATABASE_URL) {
+    return (
+      <main className="mx-auto max-w-5xl p-6 lg:p-10">
+        <div className="rounded-3xl border bg-background p-8 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Mail</p>
+          <h1 className="mt-2 text-2xl font-semibold">Email accounts need PostgreSQL</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+            This screen uses persisted account records. Configure DATABASE_URL for the runtime; no demo accounts are shown.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  try {
+    await ensureDevSeed();
+    const organizationId = getDevOrgId();
+    if (!organizationId) throw new Error("Development organization could not be resolved.");
+    const accounts = await new PostgresEmailAccountRepository().listForOrganization(organizationId);
+    return <EmailAccountsClient organizationId={organizationId} initialAccounts={accounts} />;
+  } catch (error) {
+    console.error("[mail/accounts] load failed", error);
+    return (
+      <main className="mx-auto max-w-5xl p-6 lg:p-10">
+        <div className="rounded-3xl border border-destructive/20 bg-destructive/5 p-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-destructive">Mail</p>
+          <h1 className="mt-2 text-2xl font-semibold">Email accounts unavailable</h1>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            The persisted account store could not be loaded. Check PostgreSQL and retry.
+          </p>
+        </div>
+      </main>
+    );
+  }
+}
