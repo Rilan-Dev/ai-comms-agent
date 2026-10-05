@@ -71,6 +71,48 @@ export class PostgresEmailAccountRepository {
     return account(requiredRow(r.rows[0], "email account"));
   }
 
+  async findByOrganizationProviderAddress(
+    organizationId: string,
+    provider: EmailProviderType,
+    emailAddress: string,
+  ): Promise<EmailAccount | null> {
+    const r = await query<Row>(
+      "SELECT * FROM email_accounts WHERE organization_id = $1 AND provider = $2 AND email_address = $3 AND deleted_at IS NULL LIMIT 1",
+      [organizationId, provider, emailAddress],
+    );
+    return r.rows[0] ? account(r.rows[0]) : null;
+  }
+
+  async updateConnection(
+    id: string,
+    input: {
+      emailAddress: string;
+      displayName?: string | null;
+      connectionConfig: Record<string, unknown>;
+      capabilities: CapabilitySet;
+      status: "pending" | "connected" | "error" | "disconnected" | "revoked";
+    },
+  ): Promise<EmailAccount | null> {
+    const r = await query<Row>(
+      `UPDATE email_accounts
+       SET email_address = $1, display_name = $2, connection_config = $3::jsonb,
+           capabilities = $4::jsonb, status = $5,
+           last_error = NULL, connected_at = CASE WHEN $5 = 'connected' THEN now() ELSE connected_at END,
+           updated_at = now()
+       WHERE id = $6
+       RETURNING *`,
+      [
+        input.emailAddress,
+        input.displayName ?? null,
+        JSON.stringify(input.connectionConfig),
+        JSON.stringify(input.capabilities),
+        input.status,
+        id,
+      ],
+    );
+    return r.rows[0] ? account(r.rows[0]) : null;
+  }
+
   async getById(id: string): Promise<EmailAccount | null> {
     const r = await query<Row>("SELECT * FROM email_accounts WHERE id = $1", [id]);
     return r.rows[0] ? account(r.rows[0]) : null;
