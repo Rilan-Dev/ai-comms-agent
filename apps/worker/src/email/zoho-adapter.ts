@@ -11,6 +11,23 @@ const CAPABILITIES: CapabilitySet = {
   attachments_download: true, attachments_upload: true, send: true,
 };
 
+
+function zohoAccountsDomain(apiDomain: string): string {
+  const hostname = new URL(apiDomain).hostname;
+  const suffixes: Array<[RegExp, string]> = [
+    [/^mail\.zoho\.com$/, "https://accounts.zoho.com"],
+    [/^mail\.zoho\.eu$/, "https://accounts.zoho.eu"],
+    [/^mail\.zoho\.in$/, "https://accounts.zoho.in"],
+    [/^mail\.zoho\.au$/, "https://accounts.zoho.au"],
+    [/^mail\.zoho\.jp$/, "https://accounts.zoho.jp"],
+    [/^mail\.zoho\.sa$/, "https://accounts.zoho.sa"],
+    [/^mail\.zohocloud\.ca$/, "https://accounts.zohocloud.ca"],
+  ];
+  const match = suffixes.find(([pattern]) => pattern.test(hostname));
+  if (!match) throw new Error("Zoho API domain has no trusted OAuth accounts endpoint");
+  return match[1];
+}
+
 function required(value: string | undefined, name: string): string {
   if (!value) throw new Error(`Zoho requires ${name}`);
   return value;
@@ -71,8 +88,7 @@ export class ZohoAdapter implements EmailProvider {
   private async refreshAccessToken(): Promise<void> {
     if (!this.refreshToken) throw new Error("Zoho access token expired and no refresh token is available");
     if (this.refreshPromise) return this.refreshPromise;
-    const dataCenter = this.apiDomain?.match(/accounts\.zoho\.([a-z.]+)/)?.[1] ?? "in";
-    const accountsDomain = dataCenter === "com" ? "https://accounts.zoho.com" : `https://accounts.zoho.${dataCenter}`;
+    const accountsDomain = zohoAccountsDomain(this.apiDomain!);
     this.refreshPromise = (async () => {
       const clientId = process.env.ZOHO_OAUTH_CLIENT_ID;
       const clientSecret = process.env.ZOHO_OAUTH_CLIENT_SECRET;
@@ -92,7 +108,7 @@ export class ZohoAdapter implements EmailProvider {
       if (!data.access_token) throw new Error("Zoho token refresh returned no access token");
       this.accessToken = data.access_token;
       this.expiresAt = data.expires_in ? Date.now() + data.expires_in * 1000 : undefined;
-      if (data.api_domain) this.apiDomain = data.api_domain;
+      if (data.api_domain) this.apiDomain = normalizeZohoApiDomain(data.api_domain);
     })();
     try { await this.refreshPromise; } finally { this.refreshPromise = undefined; }
   }
