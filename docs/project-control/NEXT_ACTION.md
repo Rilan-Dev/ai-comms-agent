@@ -331,3 +331,12 @@ ChatGPT completed another Email Accounts hardening pass: folder/label discovery 
 
 ### 2026-10-06 — ChatGPT active implementation checkpoint
 Email Accounts provider lifecycle continuation: complete truthful provider contract/runtime coverage, persisted folder/label discovery lifecycle, OAuth reconnect/error handling, agent assignment UX, then start Mail vertical slice. Do not fabricate provider connectivity.
+
+
+### 2026-10-06 — OAuth reconnect hardening
+- Gmail and Zoho reconnect flows now carry an optional signed target `accountId` through OAuth state.
+- OAuth callbacks validate the target account belongs to the same organization and provider before updating persisted credentials, preventing reconnect from silently creating/updating the wrong mailbox.
+- Mail Accounts UI now passes the selected account identity for Gmail/Zoho reconnect.
+- Added regression coverage for Gmail reconnect-state binding without network access.
+- Latest implementation commit: `242396815fadb6495e7f9c766ef6b17d6c52a53b`.
+- Next implementation: complete persisted folder/label discovery and provider lifecycle runtime, then begin Mail vertical slice. Validation remains a later acceptance gate under the active development-first instruction.
