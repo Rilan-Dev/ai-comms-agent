@@ -144,3 +144,30 @@ Pull latest `main` and rerun `bash scripts/verify-docker.sh`. The previous exit-
 - Database foundation is being hardened against actual PostgreSQL execution, with migration chain kept forward-only.
 - Latest implementation: 0014 email connection metadata migration, PostgreSQL email repository/schema alignment, Gmail provider registration, and migration-test cleanup.
 - Continue with Phase 5 email provider abstraction/runtime contracts next; do not claim Phase 4 acceptance until disposable PostgreSQL verification is green.
+
+
+### 2026-10-05 — Authoritative product completion execution
+
+ChatGPT is the sole active implementer. The user has explicitly requested complete menu-by-menu implementation with no placeholder controls.
+
+Authoritative implementation sequence:
+1. Shared Product UX/Runtime Foundation.
+2. Agents — complete vertical slice.
+3. Email Accounts.
+4. Mail.
+5. WhatsApp.
+6. Agent Intelligence / Knowledge.
+7. Automations & Schedules.
+8. Chat.
+9. Realtime Voice.
+10. Settings / Organization / Members.
+11. Activity / Audit / Operations.
+12. Full E2E and production verification.
+
+Current slice: **0 — Shared Product UX/Runtime Foundation**.
+
+Rules for every slice: real persistence, server authorization, validation, loading/empty/error/retry states, user notifications, working buttons/actions, audit for sensitive mutations, tests, browser verification, accessibility, and no fabricated live data.
+
+Detailed plan: docs/superpowers/plans/2026-10-05-product-completion-menu-plan.md
+
+Do not advance to the next menu until the current menu's acceptance gate is green.
