@@ -525,3 +525,7 @@ Latest synchronization: Docker/manual verification tooling is committed at 271bd
 - This is a real runtime migration defect caught by the verification harness; it is not a false-positive static test issue.
 - Phase 3 acceptance remains pending until the disposable PostgreSQL verification is rerun successfully, including ownerless-organization rejection.
 - Phase 4 remains NOT AUTHORIZED.
+
+
+### 2026-10-05 runtime verification finding
+The user's local `bash scripts/verify-docker.sh` run successfully booted PostgreSQL and applied migrations 0001 through 0006. Migration 0007 then failed because `agent_ai_settings` referenced `ai_provider_configs` before its table was created. This was corrected in commit `3d9dca8fe0769d2273e2fad19051b09591b83f08`. Re-run the disposable verification before Phase 3 acceptance. No false PASS is claimed.
