@@ -244,11 +244,5 @@ Formal phase remains 4 until runtime acceptance. In parallel under the developme
 ### Current development action — Slice 2 Email Accounts
 Implement the real provider connection surface: secure IMAP/SMTP form and persistence, connection-test lifecycle, reconnect/disconnect/error recovery, capability/status display, and then finish Zoho runtime operations. Gmail OAuth remains configuration-required when server credentials are absent. No provider credentials are to be fabricated.
 
-
-## 2026-10-06 — PostgreSQL runtime connection diagnostic
-
-- The Agents page is correctly using PostgresAgentRepository; the UI catches the underlying database exception and intentionally renders a generic "Could not load persisted agents" message.
-- The repository cannot inspect the operator's real .env / .env.docker because those files are intentionally untracked and must never be committed.
-- Added scripts/check-services.sh to inspect the supplied env file without printing credentials and test PostgreSQL authentication/query, Redis TCP reachability, RabbitMQ TCP reachability, and Qdrant HTTP health.
-- Corrected .env.docker.example: the manual application Compose stack does not start infrastructure, so internal Docker hostnames such as postgres-db must not be presented as working external-service defaults.
-- Next user-side evidence: pull main, run bash scripts/check-services.sh .env.docker (or the actual env file), then share the complete sanitized output. Do not paste raw secrets.
+### 2026-10-06 — Active implementation checkpoint
+ChatGPT is continuing Slice 2 directly. The IMAP/SMTP connect action was corrected so it no longer fails the action discriminator before reaching connection logic. A server-side TLS/authentication connection-test path is now being added before credentials are persisted, with SSRF-safe public-host resolution and no credential return to the browser. Next: add reconnect/retry/error-state controls and finish Zoho runtime operations. CI/Vercel remain non-blocking under the explicit development-first instruction.
