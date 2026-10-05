@@ -32,12 +32,22 @@ export async function discoverEmailAccountStructure(accountId: string): Promise<
   await provider.connect(credentials);
 
   try {
-    const folders = await provider.listFolders();
-    const labels = provider.listLabels ? await provider.listLabels() : [];
+    const capabilities = await provider.discoverCapabilities();
+    const folders = capabilities.folders ? await provider.listFolders() : [];
+    const labels = capabilities.labels && provider.listLabels ? await provider.listLabels() : [];
     const repository = new PostgresEmailFolderLabelRepository();
+
+    // Discovery is a replacement snapshot, not an append-only cache. Empty
+    // provider results intentionally clear stale folders/labels.
     await repository.replaceFolders(account.id, account.organization_id, folders);
-    if (labels.length) await repository.replaceLabels(account.id, account.organization_id, labels);
+    await repository.replaceLabels(account.id, account.organization_id, labels);
+    await accounts.updateCapabilities(account.id, capabilities);
+    await accounts.updateStatus(account.id, "connected");
     return { folders: folders.length, labels: labels.length };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Mailbox discovery failed";
+    await accounts.updateStatus(account.id, "error", message);
+    throw error;
   } finally {
     await provider.disconnect();
   }
