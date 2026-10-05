@@ -340,3 +340,9 @@ Email Accounts provider lifecycle continuation: complete truthful provider contr
 - Added regression coverage for Gmail reconnect-state binding without network access.
 - Latest implementation commit: `242396815fadb6495e7f9c766ef6b17d6c52a53b`.
 - Next implementation: complete persisted folder/label discovery and provider lifecycle runtime, then begin Mail vertical slice. Validation remains a later acceptance gate under the active development-first instruction.
+
+
+### 2026-10-06 — Mail vertical slice active
+The Email Accounts implementation has advanced through provider lifecycle, credential persistence, reconnect/disconnect, capability truthfulness, folder/label discovery, and OAuth foundations. Under the development-first instruction, continue into the Mail slice now: persisted inbox/thread reads, organization-scoped search/filtering, message detail, then read/unread/archive/move/labels, drafts, reply/forward, attachments, and approval-safe send flows. Do not show fabricated messages. Runtime CI/Vercel remain acceptance evidence and are not a development blocker.
+
+Current implementation commits: 792213ab7219623df2452e5d32e9de2c87120d02.
