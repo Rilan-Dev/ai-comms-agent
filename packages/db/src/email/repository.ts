@@ -229,3 +229,11 @@ export async function getMailMessageForOrganization(organizationId: string, mess
     WHERE m.id = $1 AND a.organization_id = $2 AND a.deleted_at IS NULL LIMIT 1`, [messageId, organizationId]);
   return r.rows[0] ?? null;
 }
+
+export async function getMailThreadForOrganization(organizationId: string, threadId: string): Promise<Array<Record<string, unknown>>> {
+  const r = await query<Row>(`SELECT m.*, a.email_address AS account_email, a.display_name AS account_name
+    FROM email_messages m JOIN email_accounts a ON a.id = m.email_account_id
+    WHERE m.thread_id = $1 AND a.organization_id = $2 AND a.deleted_at IS NULL
+    ORDER BY m.received_at ASC NULLS LAST`, [threadId, organizationId]);
+  return r.rows;
+}
