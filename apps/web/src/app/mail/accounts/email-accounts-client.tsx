@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { EmailAccount } from "@ai-comms-agent/shared";
 
 const providers = [
@@ -29,6 +29,11 @@ export function EmailAccountsClient({
   const [accounts, setAccounts] = useState(initialAccounts);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("connected") === "gmail") setNotice("Gmail connected securely. Initial synchronization will be handled by the email worker.");
+  }, []);
 
   async function disconnect(accountId: string) {
     if (!window.confirm("Disconnect this mailbox? Existing synced mail will remain stored.")) return;
@@ -90,7 +95,7 @@ export function EmailAccountsClient({
               title="Provider activation requires the provider credentials/configuration to be supplied."
               className="mt-5 h-10 w-full cursor-not-allowed rounded-xl border bg-muted/40 text-sm font-semibold text-muted-foreground"
             >
-              Connection setup required
+              {provider.id === "gmail" ? "Connect with Google" : "Connection setup required"}
             </button>
           </article>
         ))}
