@@ -8,7 +8,7 @@ const CAPABILITIES: CapabilitySet = {
   sync_webhook: true, sync_idle: false, search_server_side: true,
   search_client_side: true, drafts: true, reply: true, forward: false,
   mark_read: true, archive: true, move: true, threads: true,
-  attachments_download: false, attachments_upload: false, send: false,
+  attachments_download: false, attachments_upload: false, send: true,
 };
 
 
@@ -246,7 +246,22 @@ export class ZohoAdapter implements EmailProvider {
   }
 
   async updateDraft(draftId: string, params: Partial<DraftParams>): Promise<DraftRef> {
-    throw new Error("Zoho draft update requires the email worker draft repository");
+    const payload: Record<string, unknown> = {};
+    if (params.to) payload.toAddress = params.to.join(",");
+    if (params.cc) payload.ccAddress = params.cc.join(",");
+    if (params.bcc) payload.bccAddress = params.bcc.join(",");
+    if (params.subject !== undefined) payload.subject = params.subject;
+    if (params.body_html !== undefined || params.body_text !== undefined) {
+      payload.content = params.body_html ?? params.body_text ?? "";
+      payload.mailFormat = params.body_html ? "html" : "plaintext";
+    }
+    payload.fromAddress = await this.senderAddress();
+    const data = await this.request(`/api/accounts/${this.accountId}/messages/${encodeURIComponent(draftId)}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+    const id = data?.data?.messageId ?? data?.messageId ?? draftId;
+    return { draft_id: String(id), account_id: String(this.accountId) };
   }
 
   async deleteDraft(draftId: string): Promise<void> {
@@ -255,8 +270,10 @@ export class ZohoAdapter implements EmailProvider {
     await this.request(`/api/accounts/${this.accountId}/folders/${encodeURIComponent(folderId)}/messages/${encodeURIComponent(draftId)}`, { method: "DELETE" });
   }
 
-  async sendDraft(_draftId: string): Promise<SentMessageRef> {
-    throw new Error("Zoho draft send requires the email worker draft repository");
+  async sendDraft(draftId: string): Promise<SentMessageRef> {
+    const data = await this.request(`/api/accounts/${this.accountId}/messages/${encodeURIComponent(draftId)}`, { method: "POST", body: JSON.stringify({ mode: "send" }) });
+    const id = data?.data?.messageId ?? data?.messageId ?? draftId;
+    return { message_id: String(id), provider_message_id: String(id) };
   }
 
   async send(draftId: string): Promise<SentMessageRef> { return this.sendDraft(draftId); }
