@@ -29,6 +29,9 @@ export function EmailAccountsClient({
   const [accounts, setAccounts] = useState(initialAccounts);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [showImapForm, setShowImapForm] = useState(false);
+  const [imap, setImap] = useState({email:"",displayName:"",host:"",port:"993",username:"",password:"",smtpHost:"",smtpPort:"465",tls:true});
+  const [savingImap, setSavingImap] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -80,6 +83,24 @@ export function EmailAccountsClient({
         </div>
       )}
 
+      {showImapForm && (
+        <section className="rounded-3xl border bg-background p-6 shadow-sm sm:p-7">
+          <div className="flex items-start justify-between gap-4"><div><h2 className="font-semibold">Configure IMAP / SMTP</h2><p className="mt-1 text-sm text-muted-foreground">TLS is mandatory. Credentials are encrypted server-side and never returned to the browser after submission.</p></div><button type="button" onClick={()=>setShowImapForm(false)} className="text-sm font-semibold text-muted-foreground hover:text-foreground">Close</button></div>
+          <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={async(e)=>{e.preventDefault();setSavingImap(true);setNotice(null);try{const response=await fetch("/api/email-accounts",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,action:"connect_imap_smtp",emailAddress:imap.email,displayName:imap.displayName,host:imap.host,port:Number(imap.port),username:imap.username,password:imap.password,smtpHost:imap.smtpHost||imap.host,smtpPort:Number(imap.smtpPort),tls:imap.tls})});const data=await response.json();if(!response.ok)throw new Error(data.message??Object.values(data.fieldErrors??{}).join(" "));setAccounts((current)=>[data.account,...current]);setNotice("Mailbox configuration saved. It remains pending until the email worker completes connection verification.");setShowImapForm(false);}catch(error){setNotice(error instanceof Error?error.message:"Could not save mailbox configuration.");}finally{setSavingImap(false);}}}>
+            <label className="text-sm font-medium">Email address<input required type="email" value={imap.email} onChange={e=>setImap({...imap,email:e.target.value})} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
+            <label className="text-sm font-medium">Display name<input value={imap.displayName} onChange={e=>setImap({...imap,displayName:e.target.value})} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
+            <label className="text-sm font-medium">IMAP host<input required value={imap.host} onChange={e=>setImap({...imap,host:e.target.value})} placeholder="imap.example.com" className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
+            <label className="text-sm font-medium">IMAP port<input required type="number" min="1" max="65535" value={imap.port} onChange={e=>setImap({...imap,port:e.target.value})} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
+            <label className="text-sm font-medium">SMTP host<input required value={imap.smtpHost} onChange={e=>setImap({...imap,smtpHost:e.target.value})} placeholder="smtp.example.com" className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
+            <label className="text-sm font-medium">SMTP port<input required type="number" min="1" max="65535" value={imap.smtpPort} onChange={e=>setImap({...imap,smtpPort:e.target.value})} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
+            <label className="text-sm font-medium">Username<input required value={imap.username} onChange={e=>setImap({...imap,username:e.target.value})} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
+            <label className="text-sm font-medium">Password / app password<input required type="password" value={imap.password} onChange={e=>setImap({...imap,password:e.target.value})} autoComplete="new-password" className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
+            <label className="flex items-center gap-3 text-sm md:col-span-2"><input type="checkbox" checked={imap.tls} onChange={e=>setImap({...imap,tls:e.target.checked})} /> Require TLS for both IMAP and SMTP</label>
+            <div className="md:col-span-2 flex justify-end"><button disabled={savingImap} className="h-10 rounded-xl bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-50">{savingImap?"Saving…":"Save mailbox"}</button></div>
+          </form>
+        </section>
+      )}
+
       <section className="grid gap-4 lg:grid-cols-3" aria-label="Email providers">
         {providers.map((provider) => (
           <article key={provider.id} className="group rounded-3xl border bg-background p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
@@ -92,15 +113,14 @@ export function EmailAccountsClient({
             <p className="mt-4 text-xs font-medium text-muted-foreground">{provider.method}</p>
             <button
               type="button"
-              disabled={provider.id === "imap_smtp"}
               onClick={() => {
                 if (provider.id === "gmail") window.location.assign("/api/oauth/gmail/start");
                 if (provider.id === "zoho") window.location.assign("/api/oauth/zoho/start");
+                if (provider.id === "imap_smtp") setShowImapForm(true);
               }}
-              title={provider.id === "imap_smtp" ? "IMAP/SMTP form is being completed" : "Start provider OAuth"}
-              className="mt-5 h-10 w-full cursor-not-allowed rounded-xl border bg-muted/40 text-sm font-semibold text-muted-foreground"
+              className="mt-5 h-10 w-full rounded-xl border bg-muted/40 text-sm font-semibold transition hover:bg-muted"
             >
-              {provider.id === "gmail" ? "Connect with Google" : provider.id === "zoho" ? "Connect with Zoho" : "Connection setup required"}
+              {provider.id === "gmail" ? "Connect with Google" : provider.id === "zoho" ? "Connect with Zoho" : "Configure mailbox"}
             </button>
           </article>
         ))}
