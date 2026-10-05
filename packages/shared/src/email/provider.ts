@@ -40,6 +40,7 @@ export interface EmailAccount {
   capabilities: CapabilitySet;
   status: "connected" | "pending" | "revoked" | "error" | "disconnected";
   last_sync_at?: string;
+  last_error?: string;
   created_at: string;
   updated_at: string;
 }
