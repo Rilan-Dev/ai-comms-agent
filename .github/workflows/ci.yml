@@ -65,6 +65,11 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
         run: bash scripts/migrate.sh
 
+      - name: Verify migration checksums
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
+        run: bash scripts/migration-changes.sh
+
       - name: Verify Phase 3 PostgreSQL runtime
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
