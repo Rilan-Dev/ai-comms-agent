@@ -37,4 +37,4 @@ export { PostgresEmailFolderLabelRepository } from "./email/folder-label-reposit
 
 export { PostgresAgentRepository } from "./agent/repository";
 
-export { recordAuditEvent, type AuditEventInput } from "./audit/repository";
+export { listAuditEvents, recordAuditEvent, type AuditEvent, type AuditEventInput } from "./audit/repository";
