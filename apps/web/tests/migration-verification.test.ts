@@ -384,3 +384,11 @@ describe("Application database foundation static verification (0002_application_
     expect(foundationSql).toContain("audit_events is append-only");
   });
 });
+
+describe("Phase 4 migration SQL verification", () => {
+  it("uses valid PostgreSQL dollar-quoted DO blocks", () => {
+    expect(foundationSql).not.toMatch(/DO \\$ BEGIN/);
+    expect(foundationSql).not.toMatch(/END \\$;/);
+    expect(foundationSql).toMatch(/DO \\$\$phase4\\$/);
+  });
+});
