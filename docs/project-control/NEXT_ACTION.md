@@ -316,3 +316,7 @@ Continue Product Completion Slice 2 — Email Accounts. Finish provider lifecycl
 
 ### 2026-10-06 — Active provider implementation checkpoint
 ChatGPT continues Slice 2 Email Accounts under the development-first directive. Provider registry/runtime alignment is being hardened, folder/label discovery persistence is in place, Gmail/IMAP-SMTP/Zoho adapters are registered, and truthful credential-required states remain mandatory. Next concrete implementation: complete provider runtime contract tests and persisted discovery/status lifecycle, then finish Email Accounts UI acceptance work before moving to Mail. CI/Vercel results remain deferred validation gates and are not a development blocker.
+
+
+### 2026-10-06 — Slice 2 provider lifecycle continuation
+ChatGPT completed another Email Accounts hardening pass: folder/label discovery is now an atomic replacement snapshot, successful worker discovery persists runtime capabilities and connected status, discovery failures become explicit account errors, and IMAP/SMTP/Zoho capability metadata is truthful to the implemented adapter surface. Continue the Mail vertical slice after Email Accounts implementation is complete; runtime acceptance remains a separate gate.
