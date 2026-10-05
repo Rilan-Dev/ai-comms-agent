@@ -1417,3 +1417,14 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Gmail now implements the complete shared contract, including message lookup, draft deletion, explicit draft sending, and unread marking; legacy `send()` delegates to `sendDraft()`.
 - GitHub code search confirms Gmail and the mock adapter are the only concrete `EmailProvider` implementations.
 - The user-local build has not yet been rerun after this fix; source verification is complete, but no post-fix production build PASS is claimed.
+
+
+## 2026-10-06 — ChatGPT Gmail provider hardening
+
+- **Owner:** ChatGPT
+- Registered the concrete Gmail adapter in the canonical shared email-provider registry used by the worker.
+- Hardened Gmail access-token lifecycle: encrypted refresh credentials can now support proactive refresh near expiry and one retry after a 401, with concurrent refresh requests coalesced.
+- Added regression tests for proactive token refresh and 401 recovery.
+- Preserved the rule that provider credentials stay server-side; no secrets or provider activation were fabricated.
+- **Verification:** source-level implementation complete; runtime/CI/browser verification remains pending under the development-first acceptance policy.
+- **Next:** generic IMAP/SMTP secure connection flow, connection test, encrypted persistence, then Zoho OAuth foundation.
