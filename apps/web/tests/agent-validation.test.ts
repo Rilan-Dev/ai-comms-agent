@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateAgentInput, slugifyAgentName, validateAgentVersionConfig } from "@/lib/agents/validation";
+import { validateAgentInput, slugifyAgentName, validateAgentVersionConfig, validateAgentPolicyInput } from "@/lib/agents/validation";
 
 describe("agent validation", () => {
   it("accepts a valid agent payload", () => {
@@ -46,5 +46,18 @@ describe("agent version configuration validation", () => {
     const result = validateAgentVersionConfig({ prompt: "x".repeat(100_001) });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.message).toMatch(/100 KB/);
+  });
+});
+
+
+describe("agent policy validation", () => {
+  it("accepts policy objects and string lists", () => {
+    const result=validateAgentPolicyInput({securityPolicy:{requireApproval:true},rateLimits:{perMinute:30},allowedTools:["rag_search"],allowedSenders:["finance@example.com"],blockedSenders:[]});
+    expect(result.ok).toBe(true);
+  });
+  it("rejects malformed policy lists", () => {
+    const result=validateAgentPolicyInput({allowedTools:["rag_search",3]});
+    expect(result.ok).toBe(false);
+    if(!result.ok) expect(result.fieldErrors.allowedTools).toMatch(/non-empty strings/);
   });
 });
