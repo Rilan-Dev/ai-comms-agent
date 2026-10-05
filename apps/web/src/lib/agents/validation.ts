@@ -66,3 +66,16 @@ export function validateAgentVersionConfig(input: unknown): AgentVersionConfigVa
   }
   return { ok: true, value: input as Record<string, unknown> };
 }
+
+export type AgentPolicyInput = { securityPolicy:Record<string,unknown>; allowedTools:string[]; allowedSenders:string[]; blockedSenders:string[]; rateLimits:Record<string,unknown> };
+export type AgentPolicyValidationResult = { ok:true; value:AgentPolicyInput } | { ok:false; fieldErrors:Record<string,string> };
+
+export function validateAgentPolicyInput(input:Partial<Record<keyof AgentPolicyInput,unknown>>):AgentPolicyValidationResult {
+  const fieldErrors:Record<string,string>={};
+  const object=(key:keyof AgentPolicyInput)=>{const value=input[key]; if(value===undefined)return {}; if(!value||typeof value!=="object"||Array.isArray(value)) fieldErrors[String(key)]="Must be a JSON object."; return value as Record<string,unknown>;};
+  const list=(key:keyof AgentPolicyInput)=>{const value=input[key]; if(value===undefined)return []; if(!Array.isArray(value)||value.some(item=>typeof item!=="string"||item.trim().length===0)) { fieldErrors[String(key)]="Must be a list of non-empty strings."; return []; } if(value.length>100) fieldErrors[String(key)]="Cannot contain more than 100 entries."; return value.map(item=>String(item).trim()).filter(Boolean);};
+  const securityPolicy=object("securityPolicy"); const rateLimits=object("rateLimits"); const allowedTools=list("allowedTools"); const allowedSenders=list("allowedSenders"); const blockedSenders=list("blockedSenders");
+  for(const [key,value] of Object.entries({securityPolicy,rateLimits})) { if(JSON.stringify(value).length>50_000) fieldErrors[key]="Configuration must be 50 KB or smaller."; }
+  if(Object.keys(fieldErrors).length)return {ok:false,fieldErrors};
+  return {ok:true,value:{securityPolicy,rateLimits,allowedTools,allowedSenders,blockedSenders}};
+}
