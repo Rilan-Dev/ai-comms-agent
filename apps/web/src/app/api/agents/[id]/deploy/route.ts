@@ -18,6 +18,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!orgId || !versionId || !environment) return NextResponse.json({ error: "validation_error", fieldErrors: { organizationId: !orgId ? "Organization is required." : undefined, versionId: !versionId ? "Version is required." : undefined, environment: !environment ? "Environment is required." : undefined } }, { status: 400 });
     const subject = await authorize(request, { organizationId: asOrganizationId(orgId), role: "owner" }, getIdentityAdapter(), getIdentityRepository());
     const deployment = await new PostgresAgentRepository().deploy(orgId, id, subject.user.id, versionId, environment);
+    await recordAuditEvent({ organizationId: orgId, actorUserId: subject.user.id, agentId: id, eventType: "agent.deployed", targetType: "agent_deployment", targetId: deployment.id, action: "deploy", decision: "allowed", metadata: { environment, versionId } });
     return NextResponse.json({ deployment }, { status: 201 });
   } catch (error) {
     return authorizationErrorToResponse(error);
