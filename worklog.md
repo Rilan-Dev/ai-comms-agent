@@ -1537,3 +1537,12 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - GitHub Actions/Vercel are not being awaited for development, per explicit project-owner instruction.
 - Runtime/browser verification remains a release/acceptance gate.
 - Next implementation focus remains the remaining Agents UX/error-state/browser-verification work; do not advance to Email Accounts until Slice 1 acceptance is recorded.
+
+
+## 2026-10-06 — Agents vertical-slice hardening
+- Repaired literal backslash-n source artifacts in the Agent detail client and PostgreSQL agent repository that could break TypeScript compilation.
+- Agent deployment now explicitly uses the selected persisted version rather than implicitly deploying the newest row.
+- Version editor initializes from the selected/current persisted configuration and clearly marks the selected version.
+- Agent configuration simulation now verifies the optional WhatsApp binding shape in addition to agent/version/policy/email checks.
+- Agent overview Email/WhatsApp cards now perform real navigation to channel configuration instead of decorative controls.
+- No CI/Vercel result is claimed; development-first execution continues under the project-owner instruction.
