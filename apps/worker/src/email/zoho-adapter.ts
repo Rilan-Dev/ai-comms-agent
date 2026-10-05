@@ -8,7 +8,7 @@ const CAPABILITIES: CapabilitySet = {
   sync_webhook: true, sync_idle: false, search_server_side: true,
   search_client_side: true, drafts: true, reply: true, forward: true,
   mark_read: true, archive: true, move: true, threads: true,
-  attachments_download: true, attachments_upload: true, send: true,
+  attachments_download: false, attachments_upload: false, send: false,
 };
 
 
@@ -208,18 +208,10 @@ export class ZohoAdapter implements EmailProvider {
   }
 
   async getMessage(messageId: string): Promise<EmailMessage | null> {
-    const folderId = this.requireFolderId(messageId);
-    const data = await this.request(`/api/accounts/${this.accountId}/folders/${encodeURIComponent(folderId)}/messages/${encodeURIComponent(messageId)}/content`);
-    return data?.data ? this.normalizeMessage({ ...data.data, messageId }, folderId) : null;
+    const data = await this.request(`/api/accounts/${this.accountId}/messages/${encodeURIComponent(messageId)}/originalmessage`);
+    if (!data) return null;
+    return this.normalizeMessage({ ...(data.data ?? data), messageId });
   }
-
-  private requireFolderId(messageId: string): string {
-    const configured = this.credentialsFolderId;
-    if (configured) return configured;
-    throw new Error(`Zoho requires a folder context to retrieve message ${messageId}`);
-  }
-
-  private credentialsFolderId?: string;
 
   async getThread(threadId: string): Promise<EmailMessage[]> {
     const data = await this.request(`/api/accounts/${this.accountId}/messages/search?searchKey=threadId&searchValue=${encodeURIComponent(threadId)}`);
