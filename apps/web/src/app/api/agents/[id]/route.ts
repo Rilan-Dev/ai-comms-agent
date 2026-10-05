@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -38,6 +38,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!validation.ok) return NextResponse.json({ error: "validation_error", fieldErrors: validation.fieldErrors }, { status: 422 });
     const agent = await new PostgresAgentRepository().update(orgId, id, validation.value);
     if (!agent) return NextResponse.json({ error: "not_found" }, { status: 404 });
+    await recordAuditEvent({ organizationId: orgId, actorUserId: (await getIdentityRepository().getMembership(asOrganizationId(orgId), (await getIdentityRepository().getMembership(asOrganizationId(orgId), asOrganizationId(orgId) as never))?.userId as never))?.userId ?? null, agentId: agent.id, eventType: "agent.updated", targetType: "agent", targetId: agent.id, action: "update", decision: "allowed" });
     return NextResponse.json({ agent });
   } catch (error) {
     return authorizationErrorToResponse(error);
