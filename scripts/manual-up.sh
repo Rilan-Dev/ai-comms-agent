@@ -11,7 +11,7 @@ fi
 # This compose file intentionally starts application containers only.
 # PostgreSQL, Redis, RabbitMQ, and Qdrant are external services and are never
 # created, managed, or networked as Compose services by this script.
-docker compose -f infra/docker-compose.manual.yml up -d --build
+docker compose -f infra/docker-compose.manual.yml build --pull && docker compose -f infra/docker-compose.manual.yml up -d
 
 echo "Application stack is starting."
 echo "Web: http://localhost:3000"
