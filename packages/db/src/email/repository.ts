@@ -53,7 +53,7 @@ export class PostgresEmailAccountRepository {
     const r = await query<Row>(
       `INSERT INTO email_accounts
        (organization_id, provider, email_address, display_name, connection_config, capabilities, status)
-       VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, 'active')
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, 'connected')
        RETURNING *`,
       [
         input.organizationId,
