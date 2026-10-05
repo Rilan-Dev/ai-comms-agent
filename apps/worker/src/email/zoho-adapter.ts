@@ -250,7 +250,8 @@ export class ZohoAdapter implements EmailProvider {
   }
 
   async deleteDraft(draftId: string): Promise<void> {
-    const folderId = this.credentialsFolderId ?? "DRAFTS";
+    const folders = await this.listFolders();
+    const folderId = folders.find((folder) => folder.role === "drafts")?.provider_folder_id ?? "DRAFTS";
     await this.request(`/api/accounts/${this.accountId}/folders/${encodeURIComponent(folderId)}/messages/${encodeURIComponent(draftId)}`, { method: "DELETE" });
   }
 
