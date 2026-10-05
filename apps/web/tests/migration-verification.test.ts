@@ -21,8 +21,6 @@ const migrationSql = readFileSync(migrationPath, "utf8");
 const initPath = resolve(__dirname, "../../../infra/postgres-init/00-supabase-roles.sql");
 const initSql = readFileSync(initPath, "utf8");
 
-const foundationPath = resolve(__dirname, "../../../supabase/migrations/0002_application_foundation.sql");
-const foundationSql = readFileSync(foundationPath, "utf8");
 const databaseFoundationPath = resolve(__dirname, "../../../supabase/migrations/0002_database_foundation.sql");
 const databaseFoundationSql = readFileSync(databaseFoundationPath, "utf8");
 
@@ -43,10 +41,10 @@ describe("Migration static verification (0002_database_foundation.sql)", () => {
     expect(databaseFoundationSql).toContain("END $aca$;");
   });
 
-  it("contains the application foundation migration artifact", () => {
+  it("contains the canonical agent foundation migration artifact", () => {
     expect(databaseFoundationSql).toContain("CREATE TABLE IF NOT EXISTS agents");
-    expect(databaseFoundationSql).toContain("CREATE TABLE IF NOT EXISTS email_accounts");
-    expect(databaseFoundationSql).toContain("CREATE TABLE IF NOT EXISTS whatsapp_accounts");
+    expect(databaseFoundationSql).not.toContain("CREATE TABLE IF NOT EXISTS email_accounts");
+    expect(databaseFoundationSql).not.toContain("CREATE TABLE IF NOT EXISTS whatsapp_accounts");
   });
 });
 
