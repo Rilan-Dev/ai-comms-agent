@@ -1546,3 +1546,11 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Agent configuration simulation now verifies the optional WhatsApp binding shape in addition to agent/version/policy/email checks.
 - Agent overview Email/WhatsApp cards now perform real navigation to channel configuration instead of decorative controls.
 - No CI/Vercel result is claimed; development-first execution continues under the project-owner instruction.
+
+
+## 2026-10-06 — Email Accounts lifecycle hardening
+- Added `reconnect_imap_smtp` server action that loads encrypted credentials, performs the same SSRF-safe TLS/authentication test as initial connection, marks the account connected on success, and records success/failure audit events.
+- Email Accounts UI now provides provider-aware reconnect actions, IMAP/SMTP test-connection actions, capability badges, and persisted `last_error` display.
+- Extended the shared `EmailAccount` contract and PostgreSQL repository mapping with `last_error` so provider failures are visible without exposing credentials.
+- Fixed Zoho OAuth token refresh regional routing by deriving the Accounts endpoint from the trusted Mail API domain; added a deterministic EU refresh regression test.
+- No provider credentials were fabricated and no runtime connection is claimed.
