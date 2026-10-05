@@ -536,3 +536,12 @@ The user's local `bash scripts/verify-docker.sh` run successfully booted Postgre
 - Corrected in commit `b08d7e3aa244095d214fd9cd33268c4edd8930fc`: both runtime verification commands now explicitly pass `$DATABASE_URL`.
 - This was a verification harness defect, not a migration pass. The required next step is to rerun `bash scripts/verify-docker.sh` after pulling main.
 - **Phase 3/4 acceptance remains pending runtime evidence. No false PASS is claimed.**
+
+
+### 2026-10-05 — ChatGPT implementation verification update
+
+- Phase 4 remains implementation_in_progress; formal acceptance is not claimed.
+- Static schema regression coverage now checks the complete Phase 4 tenant table inventory, RLS enablement, ciphertext-only credential fields, audit append-only protections, and key idempotency/search indexes.
+- Fixed PostgresEmailAccountRepository.loadCredentials() to read email_account_credentials.ciphertext and corrected email-account status mapping to the actual database enum.
+- Runtime CI/Vercel verification remains a separate gate; no deployment is claimed READY for this latest code.
+- Phase 3 acceptance remains explicitly deferred under the 2026-10-04 development-first project-owner instruction; this does not waive later acceptance requirements.
