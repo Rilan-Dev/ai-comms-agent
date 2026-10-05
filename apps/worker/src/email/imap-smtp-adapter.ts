@@ -86,11 +86,6 @@ async function smtpCommand(reader: SocketReader, command: string): Promise<strin
   return readLine(reader);
 }
 
-async function smtpCommand(socket: tls.TLSSocket, command: string): Promise<string> {
-  socket.write(command + "\r\n");
-  return readLine(socket);
-}
-
 export class ImapSmtpAdapter implements EmailProvider {
   readonly providerId = "imap_smtp" as const;
   private credentials?: EmailCredentials;
