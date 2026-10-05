@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { parseCredentialsMasterKey } from "@ai-comms-agent/db";
 import { PostgresEmailAccountRepository, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
+import { testImapSmtpConnection } from "@ai-comms-agent/db";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 
@@ -69,14 +70,14 @@ export async function POST(request: Request) {
       getIdentityRepository(),
     );
 
-    if (action !== "disconnect" || !accountId) {
+    if (!["disconnect", "connect_imap_smtp", "test_imap_smtp"].includes(action)) {
       return NextResponse.json(
         { error: "validation_error", fieldErrors: { action: "A supported account action is required." } },
         { status: 422 },
       );
     }
 
-    if (action === "connect_imap_smtp") {
+    if (action === "connect_imap_smtp" || action === "test_imap_smtp") {
       const emailAddress = typeof body?.emailAddress === "string" ? body.emailAddress.trim().toLowerCase() : "";
       const host = typeof body?.host === "string" ? body.host.trim() : "";
       const smtpHost = typeof body?.smtpHost === "string" ? body.smtpHost.trim() : host;
@@ -88,7 +89,9 @@ export async function POST(request: Request) {
       if (!emailAddress || !host || !smtpHost || !username || !password || !Number.isInteger(port) || port < 1 || port > 65535 || !Number.isInteger(smtpPort) || smtpPort < 1 || smtpPort > 65535 || !tls) {
         return NextResponse.json({ error: "validation_error", message: "Email, hosts, valid ports, username, password and mandatory TLS are required." }, { status: 422 });
       }
-      const masterKey = process.env.CREDENTIALS_MASTER_KEY ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY) : null;
+      const test = await testImapSmtpConnection({ host, port, username, password, smtpHost, smtpPort, tls });
+      if (action === "test_imap_smtp") return NextResponse.json({ ok: true, test });
+            const masterKey = process.env.CREDENTIALS_MASTER_KEY ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY) : null;
       if (!masterKey) return NextResponse.json({ error: "provider_configuration_required", message: "Credential encryption is not configured on the server." }, { status: 503 });
       const repository = new PostgresEmailAccountRepository();
       const account = await repository.create({
@@ -105,6 +108,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ account }, { status: 201 });
     }
 
+    if (!accountId) return NextResponse.json({ error: "validation_error", fieldErrors: { accountId: "Account is required." } }, { status: 422 });
     const repository = new PostgresEmailAccountRepository();
     const account = await repository.getById(accountId);
     if (!account || account.organization_id !== organizationId) {
