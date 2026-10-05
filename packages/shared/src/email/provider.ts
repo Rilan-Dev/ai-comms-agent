@@ -2,9 +2,8 @@
  * Email provider abstraction — adapter model with capability discovery.
  * Per docs/architecture/EMAIL-PROVIDER-ARCHITECTURE.md and docs/specs/PROVIDER-CONTRACTS.md.
  *
- * Phase 2 scope: interface definition only. Concrete adapters (Gmail, IMAP/SMTP,
- * Zoho) are implemented in Phases 5-8. A mock adapter for the foundation
- * vertical slice is in apps/worker/src/email/mock-adapter.ts.
+ * Phase 5 scope: the provider contract, capability discovery, and mock adapter
+ * are production-shaped; real Gmail/IMAP/SMTP/Zoho adapters remain in Phases 6-8.
  */
 
 export type EmailProviderType = "gmail" | "imap_smtp" | "zoho" | "microsoft_graph";
