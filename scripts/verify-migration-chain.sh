@@ -43,6 +43,12 @@ done
 
 # The application is PostgreSQL-native; migrations must not depend on
 # Supabase-specific auth.uid() runtime functions.
+# Reject accidental escaped-newline literals introduced into SQL source.
+if grep -RInF '\\n--' "$MIGRATIONS_DIR" --include='*.sql'; then
+  echo "ERROR: literal \\n sequence found in SQL migration" >&2
+  exit 1
+fi
+
 if grep -RIn 'auth\\.uid()' "$MIGRATIONS_DIR" --include='*.sql'; then
   echo "ERROR: Supabase-specific auth.uid() dependency found in migrations" >&2
   exit 1
