@@ -312,3 +312,7 @@ Continue Product Completion Slice 2 — Email Accounts. Finish provider lifecycl
 - Gmail and Zoho OAuth callbacks now remain `pending` until worker verification/discovery rather than falsely claiming runtime connectivity.
 - Email Accounts UI now distinguishes connected vs total records and reports OAuth/IMAP states truthfully.
 - Next implementation: wire worker-backed folder/label discovery persistence into the account lifecycle, then finish provider contract/runtime tests and Mail vertical slice.
+
+
+### 2026-10-06 — Active provider implementation checkpoint
+ChatGPT continues Slice 2 Email Accounts under the development-first directive. Provider registry/runtime alignment is being hardened, folder/label discovery persistence is in place, Gmail/IMAP-SMTP/Zoho adapters are registered, and truthful credential-required states remain mandatory. Next concrete implementation: complete provider runtime contract tests and persisted discovery/status lifecycle, then finish Email Accounts UI acceptance work before moving to Mail. CI/Vercel results remain deferred validation gates and are not a development blocker.
