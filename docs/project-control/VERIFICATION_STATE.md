@@ -543,3 +543,12 @@ The user's local `bash scripts/verify-docker.sh` run successfully booted Postgre
 - SECURITY DEFINER helpers intentionally use `SET search_path = ''` with fully-qualified `public.*` table references; static tests now enforce this safer pinned path.
 - Latest implementation commit: 5bcc9758f374de1d7187d2f9cd814d2589ecf081.
 - Phase 3 acceptance remains pending until CI runtime evidence is green.
+
+
+### Latest ChatGPT verification update — 2026-10-06
+- Latest code: 557951a49fd93d07877ef4361f616d331be4d226.
+- PostgreSQL 17 CI service added; Phase 3 migration is now explicitly applied before runtime verification.
+- Runtime checks cover valid ownership transfer, exactly-one-active-owner state, RLS helper existence, and rejection of ownerless organization commit.
+- Static tests verify private SECURITY DEFINER helper search_path hardening.
+- GitHub workflow results are not yet exposed by the current workflow-run endpoint; Vercel is currently blocked by build-rate-limit. No false green/READY claim is made.
+- Acceptance: PENDING. Phase 4: NOT AUTHORIZED.
