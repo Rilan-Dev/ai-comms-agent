@@ -167,49 +167,175 @@ export class ZohoAdapter implements EmailProvider {
     };
   }
 
-  async listMessages(folderId: string, opts: ListOptions): Promise<EmailMessage[]> {
-    const query = new URLSearchParams({ folderId, start: "1" });
-    if (opts.limit) query.set("limit", String(Math.min(opts.limit, 200)));
-    const data = await this.request(`/api/accounts/${this.accountId}/messages/view?${query}`);
-    return (data.data ?? []).map((message: any) => ({
+  private normalizeMessage(message: any, folderId = String(message?.folderId ?? "")): EmailMessage {
+    const to = String(message.toAddress ?? "").split(",").map((v: string) => v.trim()).filter(Boolean);
+    const cc = String(message.ccAddress ?? "").split(",").map((v: string) => v.trim()).filter(Boolean);
+    return {
       id: String(message.messageId),
       email_account_id: String(this.accountId),
       thread_id: String(message.threadId ?? message.messageId),
-      folder_id: String(message.folderId ?? folderId),
+      folder_id: folderId,
       provider_message_id: String(message.messageId),
-      message_id_header: "",
+      message_id_header: String(message.messageIdHeader ?? ""),
+      in_reply_to: message.inReplyTo ? String(message.inReplyTo) : undefined,
+      references: message.references ? String(message.references).split(/\s+/).filter(Boolean) : undefined,
       from_address: String(message.fromAddress ?? ""),
-      to_addresses: String(message.toAddress ?? "").split(",").map((v: string) => v.trim()).filter(Boolean),
-      cc_addresses: String(message.ccAddress ?? "").split(",").map((v: string) => v.trim()).filter(Boolean),
-      bcc_addresses: [],
+      to_addresses: to,
+      cc_addresses: cc,
+      bcc_addresses: String(message.bccAddress ?? "").split(",").map((v: string) => v.trim()).filter(Boolean),
       subject: String(message.subject ?? ""),
-      text_body: String(message.summary ?? ""),
-      snippet: String(message.summary ?? ""),
-      received_at: new Date(Number(message.receivedTime ?? Date.now())).toISOString(),
+      text_body: String(message.content ?? message.summary ?? ""),
+      html_body: message.content ? String(message.content) : undefined,
+      snippet: String(message.summary ?? message.content ?? "").slice(0, 240),
+      received_at: new Date(Number(message.receivedTime ?? message.date ?? Date.now())).toISOString(),
       is_read: String(message.status ?? "1") !== "0",
       is_starred: String(message.flagid ?? "").includes("flag"),
-      is_draft: false,
-      is_outbound: false,
+      is_draft: String(message.folderName ?? "").toLowerCase() === "drafts",
+      is_outbound: String(message.fromAddress ?? "").toLowerCase() === String(message.accountAddress ?? "").toLowerCase(),
       importance_score: Number(message.priority ?? 3) >= 4 ? 0.7 : 0.3,
       action_required: false,
       has_attachments: String(message.hasAttachment ?? "0") === "1",
-      embedding_status: "pending" as const,
-    }));
+      embedding_status: "pending",
+    };
   }
 
-  async getMessage(_messageId: string): Promise<EmailMessage | null> { throw new Error("Zoho message retrieval is implemented by the email worker"); }
-  async getThread(_threadId: string): Promise<EmailMessage[]> { throw new Error("Zoho thread retrieval is implemented by the email worker"); }
-  async search(_query: SearchQuery): Promise<EmailMessage[]> { throw new Error("Zoho search is implemented by the email worker"); }
-  async createDraft(_params: DraftParams): Promise<DraftRef> { throw new Error("Zoho draft persistence is implemented by the email worker"); }
-  async updateDraft(_draftId: string, _params: Partial<DraftParams>): Promise<DraftRef> { throw new Error("Zoho draft persistence is implemented by the email worker"); }
-  async deleteDraft(_draftId: string): Promise<void> { throw new Error("Zoho draft persistence is implemented by the email worker"); }
-  async sendDraft(_draftId: string): Promise<SentMessageRef> { throw new Error("Zoho send requires persisted draft resolution"); }
-  async send(_draftId: string): Promise<SentMessageRef> { return this.sendDraft(_draftId); }
-  async reply(_messageId: string, _params: DraftParams): Promise<SentMessageRef> { throw new Error("Zoho reply requires persisted message resolution"); }
-  async forward(_messageId: string, _to: string[]): Promise<SentMessageRef> { throw new Error("Zoho forward requires persisted message resolution"); }
-  async markRead(_messageIds: string[], _isRead: boolean): Promise<void> { throw new Error("Zoho message flags are implemented by the email worker"); }
-  async markUnread(_messageIds: string[]): Promise<void> { throw new Error("Zoho message flags are implemented by the email worker"); }
-  async archive(_messageIds: string[]): Promise<void> { throw new Error("Zoho archive is implemented by the email worker"); }
-  async move(_messageIds: string[], _targetFolderId: string): Promise<void> { throw new Error("Zoho move is implemented by the email worker"); }
-  async downloadAttachment(_attachmentId: string): Promise<Buffer> { throw new Error("Zoho attachment retrieval is implemented by the email worker"); }
+  async listMessages(folderId: string, opts: ListOptions): Promise<EmailMessage[]> {
+    const query = new URLSearchParams({ folderId, start: "1" });
+    if (opts.limit) query.set("limit", String(Math.min(opts.limit, 200)));
+    if (opts.cursor) query.set("start", opts.cursor);
+    const data = await this.request(`/api/accounts/${this.accountId}/messages/view?${query}`);
+    return (data.data ?? []).map((message: any) => this.normalizeMessage(message, folderId));
+  }
+
+  async getMessage(messageId: string): Promise<EmailMessage | null> {
+    const folderId = this.requireFolderId(messageId);
+    const data = await this.request(`/api/accounts/${this.accountId}/folders/${encodeURIComponent(folderId)}/messages/${encodeURIComponent(messageId)}/content`);
+    return data?.data ? this.normalizeMessage({ ...data.data, messageId }, folderId) : null;
+  }
+
+  private requireFolderId(messageId: string): string {
+    const configured = this.credentialsFolderId;
+    if (configured) return configured;
+    throw new Error(`Zoho requires a folder context to retrieve message ${messageId}`);
+  }
+
+  private credentialsFolderId?: string;
+
+  async getThread(threadId: string): Promise<EmailMessage[]> {
+    const data = await this.request(`/api/accounts/${this.accountId}/messages/search?searchKey=threadId&searchValue=${encodeURIComponent(threadId)}`);
+    return (data.data ?? []).map((message: any) => this.normalizeMessage(message));
+  }
+
+  async search(query: SearchQuery): Promise<EmailMessage[]> {
+    const term = query.text ?? query.subject ?? query.from;
+    if (!term) throw new Error("Zoho search requires text, subject, or from");
+    const data = await this.request(`/api/accounts/${this.accountId}/messages/search?searchKey=content&searchValue=${encodeURIComponent(term)}`);
+    return (data.data ?? []).map((message: any) => this.normalizeMessage(message));
+  }
+
+  async createDraft(params: DraftParams): Promise<DraftRef> {
+    const data = await this.request(`/api/accounts/${this.accountId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({
+        mode: "draft",
+        fromAddress: await this.senderAddress(),
+        toAddress: params.to.join(","),
+        ccAddress: params.cc?.join(","),
+        bccAddress: params.bcc?.join(","),
+        subject: params.subject,
+        content: params.body_html ?? params.body_text,
+        mailFormat: params.body_html ? "html" : "plaintext",
+        inReplyTo: params.reply_to_message_id,
+      }),
+    });
+    const id = data?.data?.messageId ?? data?.messageId;
+    if (!id) throw new Error("Zoho did not return a draft message id");
+    return { draft_id: String(id), account_id: String(this.accountId) };
+  }
+
+  async updateDraft(draftId: string, params: Partial<DraftParams>): Promise<DraftRef> {
+    throw new Error("Zoho draft update requires the email worker draft repository");
+  }
+
+  async deleteDraft(draftId: string): Promise<void> {
+    const folderId = this.credentialsFolderId ?? "DRAFTS";
+    await this.request(`/api/accounts/${this.accountId}/folders/${encodeURIComponent(folderId)}/messages/${encodeURIComponent(draftId)}`, { method: "DELETE" });
+  }
+
+  async sendDraft(_draftId: string): Promise<SentMessageRef> {
+    throw new Error("Zoho draft send requires the email worker draft repository");
+  }
+
+  async send(draftId: string): Promise<SentMessageRef> { return this.sendDraft(draftId); }
+
+  async reply(messageId: string, params: DraftParams): Promise<SentMessageRef> {
+    const data = await this.request(`/api/accounts/${this.accountId}/messages/${encodeURIComponent(messageId)}`, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "reply",
+        fromAddress: await this.senderAddress(),
+        toAddress: params.to.join(","),
+        ccAddress: params.cc?.join(","),
+        bccAddress: params.bcc?.join(","),
+        subject: params.subject,
+        content: params.body_html ?? params.body_text,
+        mailFormat: params.body_html ? "html" : "plaintext",
+      }),
+    });
+    const id = data?.data?.messageId ?? data?.messageId;
+    if (!id) throw new Error("Zoho did not return a sent message id");
+    return { message_id: String(id), provider_message_id: String(id) };
+  }
+
+  async forward(_messageId: string, _to: string[]): Promise<SentMessageRef> {
+    throw new Error("Zoho forward requires the email worker message composer");
+  }
+
+  async markRead(messageIds: string[], isRead: boolean): Promise<void> {
+    await this.request(`/api/accounts/${this.accountId}/updatemessage`, {
+      method: "PUT",
+      body: JSON.stringify({ mode: isRead ? "markAsRead" : "markAsUnread", messageId: messageIds.map(Number) }),
+    });
+  }
+
+  async markUnread(messageIds: string[]): Promise<void> { return this.markRead(messageIds, false); }
+
+  async archive(messageIds: string[]): Promise<void> {
+    await this.request(`/api/accounts/${this.accountId}/updatemessage`, {
+      method: "PUT",
+      body: JSON.stringify({ mode: "archive", messageId: messageIds.map(Number) }),
+    });
+  }
+
+  async move(messageIds: string[], targetFolderId: string): Promise<void> {
+    await this.request(`/api/accounts/${this.accountId}/updatemessage`, {
+      method: "PUT",
+      body: JSON.stringify({ mode: "move", messageId: messageIds.map(Number), folderId: targetFolderId }),
+    });
+  }
+
+  async addLabel(messageIds: string[], labelId: string): Promise<void> {
+    await this.request(`/api/accounts/${this.accountId}/updatemessage`, {
+      method: "PUT",
+      body: JSON.stringify({ mode: "addLabel", messageId: messageIds.map(Number), labelId: [Number(labelId)] }),
+    });
+  }
+
+  async removeLabel(messageIds: string[], labelId: string): Promise<void> {
+    await this.request(`/api/accounts/${this.accountId}/updatemessage`, {
+      method: "PUT",
+      body: JSON.stringify({ mode: "removeLabel", messageId: messageIds.map(Number), labelId: [Number(labelId)] }),
+    });
+  }
+
+  async downloadAttachment(_attachmentId: string): Promise<Buffer> {
+    throw new Error("Zoho attachment retrieval requires folder/message context from the email worker");
+  }
+
+  private async senderAddress(): Promise<string> {
+    const data = await this.request(`/api/accounts/${this.accountId}`);
+    const address = data?.data?.emailAddress ?? data?.data?.email ?? data?.emailAddress;
+    if (!address) throw new Error("Zoho account has no sender address");
+    return String(address);
+  }
 }
