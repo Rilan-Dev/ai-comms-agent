@@ -1,2 +1,21 @@
-const agents=[{name:"Clara",status:"Active",description:"Personal communications assistant",channels:"Email · WhatsApp · Voice",activity:"18 conversations today"},{name:"Operations",status:"Draft",description:"Internal operations and follow-up assistant",channels:"Email",activity:"Not deployed"}];
-export default function AgentsPage(){return <main className="mx-auto max-w-[1400px] space-y-7 p-5 sm:p-7 lg:p-9"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Agents</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Your communications agents</h1><p className="mt-2 text-sm text-muted-foreground">Create focused assistants, connect channels, and control what they are allowed to do.</p></div><a href="/agents/new" className="inline-flex h-10 items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background">+ New agent</a></div><div className="grid gap-4 lg:grid-cols-2">{agents.map(a=><div key={a.name} className="rounded-2xl border bg-background p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"><div className="flex items-start justify-between"><div className="grid h-11 w-11 place-items-center rounded-xl bg-muted text-lg">✦</div><span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${a.status==="Active"?"bg-emerald-50 text-emerald-700":"bg-amber-50 text-amber-700"}`}>{a.status}</span></div><h2 className="mt-5 text-lg font-semibold">{a.name}</h2><p className="mt-1 text-sm text-muted-foreground">{a.description}</p><div className="mt-5 flex flex-wrap gap-2 text-xs"><span className="rounded-lg bg-muted px-2.5 py-1.5">{a.channels}</span><span className="rounded-lg bg-muted px-2.5 py-1.5">{a.activity}</span></div><a href="/agents/new" className="mt-6 inline-flex text-xs font-semibold text-primary">Configure agent →</a></div>)}</div></main>}
+import { PostgresAgentRepository } from "@ai-comms-agent/db";
+import { AgentsClient } from "./agents-client";
+import { ensureDevSeed, getDevOrgId } from "@/lib/identity/repository";
+
+export const dynamic = "force-dynamic";
+
+export default async function AgentsPage() {
+  if (!process.env.DATABASE_URL) {
+    return <main className="mx-auto max-w-3xl p-6 lg:p-10"><div className="rounded-3xl border bg-background p-8 shadow-sm"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Agents</p><h1 className="mt-2 text-2xl font-semibold">PostgreSQL is required</h1><p className="mt-3 text-sm leading-6 text-muted-foreground">Agent records are no longer backed by demo data. Configure DATABASE_URL for the application runtime, then reload this page.</p></div></main>;
+  }
+  try {
+    await ensureDevSeed();
+    const organizationId = getDevOrgId();
+    if (!organizationId) throw new Error("Development organization could not be resolved.");
+    const agents = await new PostgresAgentRepository().list(organizationId);
+    return <AgentsClient organizationId={organizationId} initialAgents={agents} />;
+  } catch (error) {
+    console.error("[agents] load failed", error);
+    return <main className="mx-auto max-w-3xl p-6 lg:p-10"><div className="rounded-3xl border bg-background p-8 shadow-sm"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-destructive">Agents unavailable</p><h1 className="mt-2 text-2xl font-semibold">Could not load persisted agents</h1><p className="mt-3 text-sm leading-6 text-muted-foreground">The application could not connect to PostgreSQL. Check the database connection and try again.</p></div></main>;
+  }
+}
