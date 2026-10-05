@@ -203,3 +203,8 @@ Formal phase remains 4 until runtime acceptance. In parallel under the developme
 - Latest implementation corrections: cross-tenant provider binding guard fixed in migration 0010; Gmail OAuth callback now validates state-cookie equality; Gmail accounts remain pending until encrypted credentials are stored successfully.
 - Slice 1 Agents remains pending formal acceptance. Development-first implementation continues; no Vercel READY or CI PASS is claimed.
 - Next product work remains Email Accounts provider connection hardening (Gmail, then IMAP/SMTP and Zoho), followed by Mail.
+
+
+## 2026-10-06 — Gmail provider build blocker
+- Fixed the worker TypeScript contract failure in Gmail adapter commit `418439093ae87ceb76a32709b371b7e772d8fd04`.
+- Next: pull `main` and rerun `bash scripts/manual-up.sh`; if the worker passes, continue the next Email Accounts provider-foundation slice without waiting on CI/Vercel.
