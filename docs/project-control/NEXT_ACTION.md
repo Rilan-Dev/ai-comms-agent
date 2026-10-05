@@ -171,3 +171,7 @@ Rules for every slice: real persistence, server authorization, validation, loadi
 Detailed plan: docs/superpowers/plans/2026-10-05-product-completion-menu-plan.md
 
 Do not advance to the next menu until the current menu's acceptance gate is green.
+
+
+### ChatGPT takeover update — 2026-10-06
+Continue Slice 1 Agents: resolve CI/runtime failures, then browser-verify create/edit/version/deploy/policy/channel flows. Only after Slice 1 acceptance move to Email Accounts.
