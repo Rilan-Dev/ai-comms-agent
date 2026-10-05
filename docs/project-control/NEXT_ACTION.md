@@ -304,3 +304,11 @@ Continue Product Completion Slice 2 — Email Accounts. Finish provider lifecycl
 - Gmail remains the fully advertised provider surface where its adapter implements the corresponding contract.
 - Latest code commit: be4925cbd3e73ebeec28a951a5d062d70fba19ae.
 - Runtime/browser verification remains deferred and no live provider connection is claimed.
+
+
+### 2026-10-06 — Slice 2 Email Accounts lifecycle hardening
+- IMAP/SMTP connection persistence is now idempotent by organization/provider/address; reconnect updates the existing record instead of creating duplicates.
+- Credential-save failure transitions the account to `error` rather than leaving a misleading pending record.
+- Gmail and Zoho OAuth callbacks now remain `pending` until worker verification/discovery rather than falsely claiming runtime connectivity.
+- Email Accounts UI now distinguishes connected vs total records and reports OAuth/IMAP states truthfully.
+- Next implementation: wire worker-backed folder/label discovery persistence into the account lifecycle, then finish provider contract/runtime tests and Mail vertical slice.
