@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { EmailAccount } from "@ai-comms-agent/shared";
 
 const providers = [
@@ -34,6 +34,11 @@ export function EmailAccountsClient({
   const [savingImap, setSavingImap] = useState(false);
   const [imapError, setImapError] = useState<string | null>(null);
   const [testingImap, setTestingImap] = useState(false);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | EmailAccount["status"]>("all");
+  const [refreshing, setRefreshing] = useState(false);
+  const filteredAccounts = useMemo(() => { const q = query.trim().toLowerCase(); return accounts.filter((a) => (statusFilter === "all" || a.status === statusFilter) && (!q || [a.email_address, a.display_name, a.provider].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)))); }, [accounts, query, statusFilter]);
+  async function refreshAccounts() { setRefreshing(true); try { const response = await fetch("/api/email-accounts?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" }); const data = await response.json(); if (!response.ok) throw new Error(data.message ?? "Could not refresh email accounts."); setAccounts(data.accounts ?? []); setNotice("Mailbox status refreshed."); } catch (error) { setNotice(error instanceof Error ? error.message : "Could not refresh email accounts."); } finally { setRefreshing(false); } }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -179,8 +184,13 @@ export function EmailAccountsClient({
 
       <section className="overflow-hidden rounded-3xl border bg-background shadow-sm">
         <div className="border-b px-5 py-5 sm:px-6">
-          <h2 className="font-semibold">Connected mailboxes</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Only persisted account state is shown here.</p>
+          <div><h2 className="font-semibold">Connected mailboxes</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Live persisted state only. Credentials never leave the server.</p></div>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <label className="sr-only" htmlFor="mailbox-search">Search mailboxes</label><input id="mailbox-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search mailboxes..." className="h-10 w-full rounded-xl border bg-background px-3 text-sm sm:w-56" />
+            <label className="sr-only" htmlFor="mailbox-status">Filter status</label><select id="mailbox-status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} className="h-10 rounded-xl border bg-background px-3 text-sm"><option value="all">All statuses</option><option value="connected">Connected</option><option value="pending">Pending</option><option value="error">Needs attention</option><option value="disconnected">Disconnected</option><option value="revoked">Revoked</option></select>
+            <button type="button" onClick={refreshAccounts} disabled={refreshing} className="h-10 rounded-xl border px-4 text-sm font-semibold disabled:opacity-50">{refreshing ? "Refreshing..." : "Refresh"}</button>
+          </div>
         </div>
         {accounts.length === 0 ? (
           <div className="px-6 py-14 text-center">
@@ -190,9 +200,11 @@ export function EmailAccountsClient({
               Provider setup is configuration-driven. OAuth accounts remain pending until the worker verifies credentials and discovers mailbox structure; IMAP/SMTP is tested before credentials are persisted.
             </p>
           </div>
+        ) : filteredAccounts.length === 0 ? (
+          <div className="px-6 py-14 text-center"><h3 className="font-semibold">No matching mailboxes</h3><p className="mt-2 text-sm text-muted-foreground">Try a different search or status filter.</p><button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); }} className="mt-4 text-sm font-semibold underline underline-offset-4">Clear filters</button></div>
         ) : (
           <div className="divide-y">
-            {accounts.map((account) => (
+            {filteredAccounts.map((account) => (
               <div key={account.id} className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
