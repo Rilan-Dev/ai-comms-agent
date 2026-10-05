@@ -1368,3 +1368,35 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Added agent validation tests and a polished responsive agent list/detail workspace with confirmation flows and notifications.
 - CI/runtime verification is still pending; no completion claim is made until the queued GitHub verification run is green.
 
+
+
+## Task ID: 12
+## Phase: 4 — Database Hardening / Phase 5 Email Provider Foundation
+
+- **Status**: implementation_continues__runtime_gate_pending
+- **Objective**: Continue the approved development-first roadmap while preserving ChatGPT acceptance gates.
+- **Architect / Developer**: ChatGPT
+- **Date**: 2026-10-06
+
+### Database corrections
+
+- Removed remaining Supabase-only `auth.uid()` dependencies from migrations 0009, 0011, and 0012; the PostgreSQL-native identity boundary now uses `app.user_id`.
+- Added conditional `authenticated` and `service_role` database-role creation so the migration chain can execute on provider-neutral PostgreSQL while remaining compatible with environments that already provide those roles.
+- Removed public authenticated access to arbitrary-user membership helper functions; RLS wrappers call the private SECURITY DEFINER helpers directly.
+- Added migration-chain checks rejecting `auth.uid()` and accidental literal escaped-newline SQL corruption.
+- Corrected the hardening migration after detecting and removing a literal `\\n` sequence.
+- Updated runtime verification to inspect private RLS helpers.
+
+### Phase 5 implementation started
+
+- Added worker-side `EmailProviderRegistry` with factory-based provider registration and duplicate-registration protection.
+- Added worker unit tests covering the mock provider capability contract, connection lifecycle, and registry behavior.
+- CI now executes the worker unit test suite in addition to the existing source and PostgreSQL verification path.
+
+### Gate status
+
+- Formal current phase remains Phase 4 until runtime/staging evidence and ChatGPT acceptance are recorded.
+- Phase 5 implementation work is proceeding under the explicit development-first project-owner instruction; this is not a formal phase acceptance or phase transition.
+- Latest code commit: `e9af7d595dfe824d5344b3dc667b879792dc4faf`.
+- GitHub Actions still exposes no workflow run for the current main commits through the connected workflow endpoint.
+- Vercel continues to report build-rate-limit failure for the latest code; no READY claim is made.
