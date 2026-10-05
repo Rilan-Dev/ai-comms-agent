@@ -591,3 +591,12 @@ Development-first update 2026-10-06: email credential repository schema mismatch
 - Latest source correction: `418439093ae87ceb76a32709b371b7e772d8fd04`.
 - Static repository inspection confirms all concrete `EmailProvider` implementations expose the current required method surface.
 - Post-fix local Docker build is still pending; therefore this correction is not marked as a build/runtime PASS.
+
+
+### 2026-10-06 — Latest provider implementation checkpoint
+- Latest governance/code state: `cbfec672c26795d4fc8bea2a90ba9ec402181d4c`.
+- IMAP/SMTP: duplicate helper removed; contract/security tests added; private/local target protection added.
+- Zoho: OAuth PKCE start/callback, regional Accounts endpoints, encrypted credential persistence, and initial REST adapter foundation implemented.
+- Registry now resolves Gmail, IMAP/SMTP, and Zoho adapters.
+- No CI PASS is claimed and Vercel remains build-rate-limit blocked. Real provider connectivity is unverified because no provider credentials are available.
+- **Acceptance: PENDING. Development continues under the project-owner development-first instruction.**
