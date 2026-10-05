@@ -1,58 +1,8 @@
 # Manual local application stack.
-# This is for development/verification only; self-hosted Docker deployment path.
+# External-infrastructure mode: this compose file MUST NOT create PostgreSQL,
+# Redis, RabbitMQ, Qdrant, or migration containers. Those services are managed
+# separately and are reached through .env.docker endpoint variables.
 services:
-  # postgres-db:
-  #   profiles: ["local-infra"]
-  #   image: postgres:17-alpine
-  #   environment:
-  #     POSTGRES_USER: aca
-  #     POSTGRES_PASSWORD: aca_local_dev
-  #     POSTGRES_DB: aca
-  #   ports: ["5432:5432"]
-  #   volumes: [aca-manual-postgres:/var/lib/postgresql/data]
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U aca -d aca"]
-  #     interval: 3s
-  #     timeout: 5s
-  #     retries: 15
-
-  # redis:
-  #   profiles: ["local-infra"]
-  #   image: redis:7-alpine
-  #   ports: ["6379:6379"]
-  #   volumes: [aca-manual-redis:/data]
-
-  # rabbitmq:
-  #   profiles: ["local-infra"]
-  #   image: rabbitmq:3.13-management-alpine
-  #   environment:
-  #     RABBITMQ_DEFAULT_USER: aca
-  #     RABBITMQ_DEFAULT_PASS: aca_local_dev
-  #   ports: ["5672:5672", "15672:15672"]
-  #   volumes: [aca-manual-rabbitmq:/var/lib/rabbitmq]
-
-  # qdrant:
-  #   profiles: ["local-infra"]
-  #   image: qdrant/qdrant:v1.12.4
-  #   ports: ["6333:6333", "6334:6334"]
-  #   volumes: [aca-manual-qdrant:/qdrant/storage]
-
-  # migrate:
-  #   profiles: ["local-infra"]
-  #   image: postgres:17-alpine
-  #   environment:
-  #     DATABASE_URL: postgresql://postgres:postgres456@postgres-db:5432/aca
-  #   volumes:
-  #     - ..:/workspace:ro
-  #   working_dir: /workspace
-  #   depends_on:
-  #     postgres-db:
-  #       condition: service_healthy
-  #   command:
-  #     - sh
-  #     - -c
-  #     - apk add --no-cache bash coreutils >/dev/null && bash /workspace/scripts/migrate.sh
-
   web:
     build:
       context: ..
@@ -62,22 +12,8 @@ services:
       - ../.env.docker
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://postgres:postgres456@postgres-db:5432/aca
-      REDIS_URL: redis://redis:6379
-      RABBITMQ_URL: amqp://aca:aca_local_dev@rabbitmq:5672
-      QDRANT_URL: http://qdrant:6333
-    ports: ["3000:3000"]
-    # depends_on:
-    #   postgres-db:
-    #     condition: service_healthy
-    #   migrate:
-    #     condition: service_completed_successfully
-    #   redis:
-    #     condition: service_started
-    #   rabbitmq:
-    #     condition: service_started
-    #   qdrant:
-    #     condition: service_started
+    ports:
+      - "3000:3000"
 
   worker:
     build:
@@ -88,24 +24,3 @@ services:
       - ../.env.docker
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://postgres:postgres456@postgres-db:5432/aca
-      REDIS_URL: redis://redis:6379
-      RABBITMQ_URL: amqp://aca:aca_local_dev@rabbitmq:5672
-      QDRANT_URL: http://qdrant:6333
-    # depends_on:
-    #   postgres-db:
-    #     condition: service_healthy
-    #   migrate:
-    #     condition: service_completed_successfully
-    #   redis:
-    #     condition: service_started
-    #   rabbitmq:
-    #     condition: service_started
-    #   qdrant:
-    #     condition: service_started
-
-volumes:
-  aca-manual-postgres:
-  aca-manual-redis:
-  aca-manual-rabbitmq:
-  aca-manual-qdrant:
