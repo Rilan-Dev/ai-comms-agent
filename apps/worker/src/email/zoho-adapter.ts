@@ -16,6 +16,23 @@ function required(value: string | undefined, name: string): string {
   return value;
 }
 
+function normalizeZohoApiDomain(value: string): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("Zoho API domain is invalid");
+  }
+  if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
+    throw new Error("Zoho API domain must be an HTTPS origin");
+  }
+  const allowed = [/^mail\.zoho\.(com|eu|in|au|jp|sa)$/, /^mail\.zohocloud\.ca$/];
+  if (!allowed.some((pattern) => pattern.test(url.hostname)) || (url.pathname !== "/" && url.pathname !== "")) {
+    throw new Error("Zoho API domain is not an allowed Zoho Mail endpoint");
+  }
+  return url.origin;
+}
+
 export class ZohoAdapter implements EmailProvider {
   readonly providerId = "zoho" as const;
   private accessToken?: string;
@@ -29,7 +46,7 @@ export class ZohoAdapter implements EmailProvider {
     if (!credentials.access_token) throw new Error("Zoho requires an OAuth access token");
     this.accessToken = credentials.access_token;
     this.refreshToken = credentials.refresh_token;
-    this.apiDomain = required(credentials.api_domain, "api_domain");
+    this.apiDomain = normalizeZohoApiDomain(required(credentials.api_domain, "api_domain"));
     this.accountId = credentials.account_id;
     this.expiresAt = credentials.expires_at ? Date.parse(credentials.expires_at) : undefined;
 
