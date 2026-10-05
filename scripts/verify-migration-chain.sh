@@ -66,7 +66,15 @@ for kind in table enum; do
   esac
   duplicates="$({
     grep -RhoE "$pattern" "$MIGRATIONS_DIR" --include='*.sql' 2>/dev/null || true
-  } | sed -E 's/^.*(CREATE TYPE[[:space:]]+)(IF[[:space:]]+NOT[[:space:]]+EXISTS[[:space:]]+)?([a-zA-Z_][a-zA-Z0-9_]*).*$/\3/' | sort | uniq -d)"
+  } | awk -v kind="$kind" '{
+      if (kind == "table") {
+        if (match($0, /CREATE TABLE IF NOT EXISTS[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)/, m)) print m[1];
+      } else {
+        if (match($0, /CREATE TYPE[[:space:]]+(IF NOT EXISTS[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)[[:space:]]+AS ENUM/, m)) {
+          if (m[2] != "") print m[2]; else print m[1];
+        }
+      }
+    }' | sort | uniq -d)"
   if [[ -n "$duplicates" ]]; then
     echo "ERROR: duplicate canonical $kind object(s): $duplicates" >&2
     exit 1
