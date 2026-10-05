@@ -91,8 +91,9 @@ export function EmailAccountsClient({
             <p className="mt-4 text-xs font-medium text-muted-foreground">{provider.method}</p>
             <button
               type="button"
-              disabled
-              title="Provider activation requires the provider credentials/configuration to be supplied."
+              disabled={provider.id !== "gmail"}
+              onClick={() => { if (provider.id === "gmail") window.location.assign("/api/oauth/gmail/start"); }}
+              title={provider.id === "gmail" ? "Start Gmail OAuth" : "Provider activation requires provider configuration."}
               className="mt-5 h-10 w-full cursor-not-allowed rounded-xl border bg-muted/40 text-sm font-semibold text-muted-foreground"
             >
               {provider.id === "gmail" ? "Connect with Google" : "Connection setup required"}
