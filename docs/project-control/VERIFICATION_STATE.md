@@ -384,7 +384,7 @@ takeover:
   primary_implementer: "ChatGPT"
   previous_implementer: "Z.AI"
   takeover_date: "2026-10-04"
-  current_commit: "fa8061d96628f8b1c59dadb3afde12d4f8588e3e"
+  current_commit: "3a8af9f3f8eecc96badd8f24dbce087d510f483e"
   latest_change:
     migration_owner_invariant: "Deferred constraint triggers validate affected organizations for membership and direct organization changes."
     migration_tests: "Static migration checks now cover owner invariants, RLS recursion helpers, and PostgreSQL dollar-quote syntax."
@@ -563,3 +563,10 @@ The user's local `bash scripts/verify-docker.sh` run successfully booted Postgre
 
 ### 2026-10-06 — ChatGPT continuation
 Development-first update 2026-10-06: email credential repository schema mismatch corrected; `/mail/accounts` demo replaced by persisted PostgreSQL-backed UI; authorized disconnect endpoint added. No runtime pass is claimed. CI/Vercel remain verification gates only.
+
+
+### 2026-10-06 takeover continuation
+- Database migrations were hardened to remove remaining Supabase-only identity calls and public arbitrary-user membership helper exposure.
+- Phase 5 implementation has begun with a worker-side email provider registry and mock-provider contract tests.
+- Latest commit: 3a8af9f3f8eecc96badd8f24dbce087d510f483e.
+- Runtime acceptance remains pending; no Vercel READY claim is made.
