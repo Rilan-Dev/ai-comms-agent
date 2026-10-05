@@ -1409,3 +1409,11 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Gmail account creation now remains pending until encrypted credentials are successfully stored, then transitions to connected.
 - No provider credentials were fabricated; external provider activation remains configuration-dependent.
 - Slice 1 Agents remains unaccepted pending runtime/browser evidence; development continues under the project-owner development-first directive.
+
+
+## 2026-10-06 — Gmail provider contract repair
+- Local `bash scripts/manual-up.sh` after pulling `93eb427` reached the worker TypeScript build and exposed a real contract mismatch: `GmailAdapter` implemented the older method surface while `EmailProvider` now requires `getMessage`, `deleteDraft`, `sendDraft`, and `markUnread`.
+- Corrected `apps/worker/src/email/gmail-adapter.ts` on `main` in commit `418439093ae87ceb76a32709b371b7e772d8fd04`.
+- Gmail now implements the complete shared contract, including message lookup, draft deletion, explicit draft sending, and unread marking; legacy `send()` delegates to `sendDraft()`.
+- GitHub code search confirms Gmail and the mock adapter are the only concrete `EmailProvider` implementations.
+- The user-local build has not yet been rerun after this fix; source verification is complete, but no post-fix production build PASS is claimed.
