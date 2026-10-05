@@ -647,3 +647,7 @@ Latest source implementation commits through `4cea5073d1b42a3546f5023d17ff9f5efd
 - Implemented idempotent IMAP/SMTP account persistence and truthful pending OAuth lifecycle states.
 - No runtime provider connectivity is claimed; real user-owned credentials are required.
 - Acceptance evidence remains separate from development and is not claimed from CI/Vercel.
+
+
+### 2026-10-06 — Slice 2 provider lifecycle continuation
+ChatGPT completed another Email Accounts hardening pass: folder/label discovery is now an atomic replacement snapshot, successful worker discovery persists runtime capabilities and connected status, discovery failures become explicit account errors, and IMAP/SMTP/Zoho capability metadata is truthful to the implemented adapter surface. Continue the Mail vertical slice after Email Accounts implementation is complete; runtime acceptance remains a separate gate.
