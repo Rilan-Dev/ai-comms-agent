@@ -559,3 +559,7 @@ The user's local `bash scripts/verify-docker.sh` run successfully booted Postgre
 - The GitHub workflow endpoint currently returns no workflow run for the latest migration-verification commit, so runtime execution evidence is still unavailable.
 - GitHub combined status currently reports only the Vercel context, which is failing due the existing build-rate-limit; this is not treated as application-test evidence.
 - **Phase 3 acceptance remains PENDING. Phase 4 remains NOT AUTHORIZED.**
+
+
+### 2026-10-06 — ChatGPT continuation
+Development-first update 2026-10-06: email credential repository schema mismatch corrected; `/mail/accounts` demo replaced by persisted PostgreSQL-backed UI; authorized disconnect endpoint added. No runtime pass is claimed. CI/Vercel remain verification gates only.
