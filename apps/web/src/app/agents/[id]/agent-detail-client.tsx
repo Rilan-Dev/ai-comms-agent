@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Agent, AgentEmailBinding, AgentPolicy, AgentVersion, AgentWhatsAppBinding, EmailAccount } from "@ai-comms-agent/shared";
 import { useNotifications } from "@/components/notifications";
 
-type Check = { key: string; label: string; ok: boolean; detail?: string };
+type Check = { key: string; label: string; ok: boolean; detail?: string };\ntype AuditEvent = { id:string; eventType:string; action:string|null; decision:string|null; createdAt:string; metadata:Record<string,unknown> };
 
 export function AgentDetailClient({ organizationId, devUserId, initialAgent, initialVersions, initialPolicy, initialEmailBindings, initialWhatsAppBinding }: { organizationId: string; devUserId: string; initialAgent: Agent; initialVersions: AgentVersion[]; initialPolicy: AgentPolicy | null; initialEmailBindings: AgentEmailBinding[]; initialWhatsAppBinding: AgentWhatsAppBinding | null }) {
   const router = useRouter();
@@ -15,7 +15,7 @@ export function AgentDetailClient({ organizationId, devUserId, initialAgent, ini
   const [policy, setPolicy] = useState(initialPolicy);
   const [emailBindings, setEmailBindings] = useState(initialEmailBindings);
   const [whatsappBinding, setWhatsappBinding] = useState(initialWhatsAppBinding);
-  const [tab, setTab] = useState<"overview"|"versions"|"policy"|"channels"|"test">("overview");
+  const [tab, setTab] = useState<"overview"|"versions"|"policy"|"channels"|"test"|"activity">("overview");
   const [busy, setBusy] = useState(false);
   const [showConfirm, setShowConfirm] = useState<"deploy"|"retire"|null>(null);
   const [emailAccountId, setEmailAccountId] = useState("");
@@ -26,7 +26,7 @@ export function AgentDetailClient({ organizationId, devUserId, initialAgent, ini
   const [emailRole, setEmailRole] = useState<"primary"|"read_only"|"send_only">("primary");
   const [editName, setEditName] = useState(initialAgent.name);
   const [editSlug, setEditSlug] = useState(initialAgent.slug);
-  const [editDescription, setEditDescription] = useState(initialAgent.description ?? "");
+  const [editDescription, setEditDescription] = useState(initialAgent.description ?? "");\n  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);\n  const [auditLoading, setAuditLoading] = useState(false);
 
   async function call(path:string, init:RequestInit) {
     const response=await fetch(path,init); const payload=await response.json();
@@ -57,6 +57,16 @@ export function AgentDetailClient({ organizationId, devUserId, initialAgent, ini
     return () => { cancelled = true; };
   }, [tab, organizationId, devUserId, notify]);
 
+  useEffect(() => {
+    if (tab !== "activity") return;
+    let cancelled = false; setAuditLoading(true);
+    const url = "/api/agents/" + agent.id + "/audit?organizationId=" + encodeURIComponent(organizationId) + "&limit=50";
+    fetch(url,{headers:{"x-dev-user-id":devUserId}})
+      .then(async response => { const payload=await response.json(); if(!response.ok) throw new Error(payload.message??"Audit history could not be loaded."); if(!cancelled) setAuditEvents(payload.events??[]); })
+      .catch(error => { if(!cancelled) notify({kind:"error",title:"Activity unavailable",message:error instanceof Error?error.message:"Unable to load audit history."}); })
+      .finally(() => { if(!cancelled) setAuditLoading(false); });
+    return () => { cancelled=true; };
+  },[tab,agent.id,organizationId,devUserId,notify]);
   async function saveAgent(event:React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true);
     try {
@@ -128,7 +138,7 @@ export function AgentDetailClient({ organizationId, devUserId, initialAgent, ini
         <div className="flex flex-wrap gap-2">{agent.status==="active" ? <button type="button" onClick={()=>setShowConfirm("retire")} className="h-10 rounded-xl border px-4 text-sm font-medium hover:bg-muted">Pause</button> : <button type="button" onClick={()=>setShowConfirm("deploy")} className="h-10 rounded-xl bg-foreground px-4 text-sm font-semibold text-background">Deploy latest</button>}</div>
       </div>
     </header>
-    <nav className="flex gap-1 overflow-x-auto rounded-2xl border bg-background p-1 shadow-sm">{(["overview","versions","policy","channels","test"] as const).map((item)=><button key={item} type="button" onClick={()=>setTab(item)} className={`rounded-xl px-4 py-2.5 text-sm font-medium capitalize ${tab===item?"bg-foreground text-background":"text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{item}</button>)}</nav>
+    <nav className="flex gap-1 overflow-x-auto rounded-2xl border bg-background p-1 shadow-sm">{(["overview","versions","policy","channels","test","activity"] as const).map((item)=><button key={item} type="button" onClick={()=>setTab(item)} className={`rounded-xl px-4 py-2.5 text-sm font-medium capitalize ${tab===item?"bg-foreground text-background":"text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{item}</button>)}</nav>
     {tab==="overview" && <section className="space-y-4">
       <form onSubmit={saveAgent} className="rounded-2xl border bg-background p-6 shadow-sm">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -156,6 +166,9 @@ export function AgentDetailClient({ organizationId, devUserId, initialAgent, ini
   </select>
 </div><div className="mt-4 space-y-2">{emailBindings.map((b)=><div key={b.id} className="flex items-center justify-between rounded-xl border p-3 text-xs"><span className="min-w-0 truncate font-medium">{emailAccounts.find((a)=>a.id===b.emailAccountId)?.email_address ?? b.emailAccountId}</span><span className="ml-3 flex items-center gap-2"><span className="rounded-full bg-muted px-2 py-1">{b.role}</span><button type="button" disabled={busy} onClick={()=>unbindEmail(b.emailAccountId)} className="text-destructive hover:underline">Remove</button></span></div>)}</div></div><div className="rounded-2xl border bg-background p-6 shadow-sm"><h2 className="font-semibold">WhatsApp</h2><p className="mt-1 text-sm text-muted-foreground">Exactly one WhatsApp Business account can be bound to an agent.</p><input value={whatsappAccountId} onChange={(e)=>setWhatsappAccountId(e.target.value)} className="mt-5 h-11 w-full rounded-xl border px-3 text-sm" placeholder="WhatsApp account UUID" /><div className="mt-4 rounded-xl border p-3 text-xs">{whatsappBinding ? <><span className="font-medium">{whatsappBinding.whatsappAccountId}</span><span className="flex items-center gap-3"><span className="text-emerald-600">Connected</span><button type="button" disabled={busy} onClick={unbindWhatsApp} className="text-destructive hover:underline">Remove</button></span></> : <span className="text-muted-foreground">No WhatsApp account connected.</span>}</div><button type="button" disabled={busy || (!emailAccountId && !whatsappAccountId)} onClick={saveChannels} className="mt-5 h-10 rounded-xl bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Saving…":"Save channels"}</button></div></section>}
     {tab==="test" && <section className="rounded-2xl border bg-background p-6 shadow-sm"><h2 className="font-semibold">Configuration test</h2><p className="mt-1 text-sm text-muted-foreground">This verifies persisted agent configuration and security prerequisites without pretending to execute a live AI/provider call.</p><button type="button" disabled={busy} onClick={runTest} className="mt-5 h-10 rounded-xl bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Testing…":"Run configuration test"}</button>{testResult && <div className="mt-5 space-y-2">{testResult.checks.map((c)=><div key={c.key} className="flex items-center justify-between rounded-xl border p-3 text-sm"><span>{c.label}</span><span className={c.ok?"text-emerald-600":"text-destructive"}>{c.ok?"Pass":"Needs attention"}</span></div>)}</div>}</section>}
-    {showConfirm && <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"><div role="dialog" aria-modal="true" className="w-full max-w-md rounded-3xl border bg-background p-6 shadow-2xl"><h2 className="text-lg font-semibold">{showConfirm==="deploy"?"Deploy this agent?":"Pause this agent?"}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{showConfirm==="deploy"?"The latest version will become active in production.":"The agent will stop being active. Existing configuration and versions remain preserved."}</p><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={()=>setShowConfirm(null)} className="h-10 rounded-xl border px-4 text-sm">Cancel</button><button type="button" disabled={busy} onClick={showConfirm==="deploy"?deploy:retire} className="h-10 rounded-xl bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Working…":"Confirm"}</button></div></div></div>}
+    {tab==="activity" && <section className="rounded-2xl border bg-background shadow-sm">
+      <div className="border-b p-6"><h2 className="font-semibold">Activity</h2><p className="mt-1 text-sm text-muted-foreground">Security-sensitive configuration, deployment, policy, and channel changes for this agent.</p></div>
+      {auditLoading?<div className="space-y-3 p-6">{[1,2,3].map(i=><div key={i} className="h-14 animate-pulse rounded-xl bg-muted" />)}</div>:auditEvents.length===0?<div className="p-10 text-center text-sm text-muted-foreground">No recorded activity yet.</div>:<div className="divide-y">{auditEvents.map(event=><div key={event.id} className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold">{event.eventType.replaceAll("_"," ")}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(event.createdAt).toLocaleString()}{event.action ? " · "+event.action : ""}</p></div><span className={"w-fit rounded-full px-2.5 py-1 text-[11px] font-semibold "+(event.decision==="allowed"?"bg-emerald-50 text-emerald-700":"bg-muted text-muted-foreground")}>{event.decision??"recorded"}</span></div>)}</div>}
+    </section>}\n    {showConfirm && <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"><div role="dialog" aria-modal="true" className="w-full max-w-md rounded-3xl border bg-background p-6 shadow-2xl"><h2 className="text-lg font-semibold">{showConfirm==="deploy"?"Deploy this agent?":"Pause this agent?"}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{showConfirm==="deploy"?"The latest version will become active in production.":"The agent will stop being active. Existing configuration and versions remain preserved."}</p><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={()=>setShowConfirm(null)} className="h-10 rounded-xl border px-4 text-sm">Cancel</button><button type="button" disabled={busy} onClick={showConfirm==="deploy"?deploy:retire} className="h-10 rounded-xl bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Working…":"Confirm"}</button></div></div></div>}
   </main>;
 }
