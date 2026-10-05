@@ -253,3 +253,7 @@ ChatGPT corrected the remaining 0001 PostgreSQL role-bootstrap quoting defect, a
 - Added Zoho OAuth PKCE start/callback with regional Accounts domains, signed state-cookie validation, encrypted credential persistence, and organization admin authorization.
 - Added the initial Zoho REST adapter foundation and registered Gmail, IMAP/SMTP, and Zoho in the worker registry.
 - Runtime/provider credentials are not available, so no live provider connection is claimed.
+
+
+### 2026-10-06 — Product development continuation
+ChatGPT continued implementation without waiting for CI/Vercel: agent version configuration editing is now persisted through immutable version creation; agent email/WhatsApp unbinding is implemented and audited; channel binding rejects cross-tenant account IDs. Slice 1 remains formally unaccepted pending verification evidence. Development now proceeds into Slice 2 Email Accounts under the explicit development-first instruction.
