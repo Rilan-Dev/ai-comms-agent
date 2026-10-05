@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
