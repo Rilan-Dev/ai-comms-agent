@@ -74,6 +74,11 @@ export async function GET(request: Request) {
     const profile = await profileResponse.json() as { emailAddress?: string; historyId?: string };
     if (!profile.emailAddress) return oauthError("Gmail did not return an account address.", 502);
 
+    const masterKey = process.env.CREDENTIALS_MASTER_KEY
+      ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY)
+      : null;
+    if (!masterKey) return oauthError("Credential encryption is not configured on the server.", 503);
+
     const repository = new PostgresEmailAccountRepository();
     const account = await repository.create({
       organizationId: payload.organizationId,
@@ -88,11 +93,6 @@ export async function GET(request: Request) {
         attachments_upload: false, send: true,
       },
     });
-
-    const masterKey = process.env.CREDENTIALS_MASTER_KEY
-      ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY)
-      : null;
-    if (!masterKey) return oauthError("Credential encryption is not configured on the server.", 503);
 
     await repository.saveCredentials(account.id, "oauth_token", {
       access_token: tokens.access_token,
