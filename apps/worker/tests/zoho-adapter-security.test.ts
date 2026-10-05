@@ -156,3 +156,26 @@ test("Zoho adapter exposes implemented draft lifecycle operations", async () => 
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test("Zoho adapter creates drafts using the documented Mail API", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: Array<{ url: string; method: string; body?: string }> = [];
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    calls.push({ url, method: init?.method ?? "GET", body: typeof init?.body === "string" ? init.body : undefined });
+    if (url.endsWith("/api/accounts/123")) return new Response(JSON.stringify({ data: { emailAddress: "user@example.com" } }), { status: 200 });
+    if (url.endsWith("/api/accounts/123/messages") && (init?.method ?? "GET") === "POST") return new Response(JSON.stringify({ data: { messageId: "draft-1" } }), { status: 200 });
+    throw new Error("Unexpected network call: " + url);
+  };
+  try {
+    const adapter = new ZohoAdapter();
+    await adapter.connect({ credential_type: "oauth_token", access_token: "test-token", api_domain: "https://mail.zoho.in", account_id: "123" });
+    const draft = await adapter.createDraft({ to: ["recipient@example.com"], subject: "Draft", body_text: "Hello" });
+    assert.equal(draft.draft_id, "draft-1");
+    const call = calls.find((item) => item.url.endsWith("/messages") && item.method === "POST");
+    assert.equal(JSON.parse(call?.body ?? "{}").mode, "draft");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
