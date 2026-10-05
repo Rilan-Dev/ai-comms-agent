@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createDefaultEmailProviderRegistry } from "../src/email/provider-registry";
+import { createDefaultEmailProviderRegistry } from "../src/email/registry";
 import { MockEmailProvider } from "../src/email/mock-adapter";
 import type { EmailProviderCapability } from "@ai-comms-agent/shared";
 
@@ -29,7 +29,7 @@ test("mock provider enforces connection lifecycle", async () => {
 });
 
 test("registry creates registered providers and rejects duplicates", () => {
-  const registry = createDefaultEmailProviderRegistry();
+  const registry = createEmailProviderRegistry();
   assert.equal(registry.has("imap_smtp"), true);
   assert.ok(registry.create("imap_smtp") instanceof MockEmailProvider);
   assert.throws(() => registry.register({ providerId: "imap_smtp", displayName: "Duplicate", create: () => new MockEmailProvider() }), /already registered/);
