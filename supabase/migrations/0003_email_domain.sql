@@ -249,55 +249,55 @@ ALTER TABLE email_sync_states ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_sync_events ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY email_accounts_member_visibility ON email_accounts FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())));
+USING (can_access_organization(organization_id));
 CREATE POLICY email_accounts_admin_manage ON email_accounts FOR ALL TO authenticated
-USING (is_active_organization_admin_or_owner(organization_id, (select auth.uid())))
-WITH CHECK (is_active_organization_admin_or_owner(organization_id, (select auth.uid())));
+USING (can_manage_organization(organization_id))
+WITH CHECK (can_manage_organization(organization_id));
 
 CREATE POLICY email_credentials_admin_visibility ON email_account_credentials FOR SELECT TO authenticated
-USING (is_active_organization_admin_or_owner(organization_id, (select auth.uid())));
+USING (can_manage_organization(organization_id));
 CREATE POLICY email_credentials_admin_manage ON email_account_credentials FOR ALL TO authenticated
-USING (is_active_organization_admin_or_owner(organization_id, (select auth.uid())))
-WITH CHECK (is_active_organization_admin_or_owner(organization_id, (select auth.uid())));
+USING (can_manage_organization(organization_id))
+WITH CHECK (can_manage_organization(organization_id));
 
 CREATE POLICY email_folders_member_visibility ON email_folders FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())));
+USING (can_access_organization(organization_id));
 CREATE POLICY email_folders_member_manage ON email_folders FOR ALL TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())))
-WITH CHECK (is_active_organization_member(organization_id, (select auth.uid())));
+USING (can_access_organization(organization_id))
+WITH CHECK (can_access_organization(organization_id));
 
 CREATE POLICY email_labels_member_visibility ON email_labels FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())));
+USING (can_access_organization(organization_id));
 CREATE POLICY email_labels_member_manage ON email_labels FOR ALL TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())))
-WITH CHECK (is_active_organization_member(organization_id, (select auth.uid())));
+USING (can_access_organization(organization_id))
+WITH CHECK (can_access_organization(organization_id));
 
 CREATE POLICY email_threads_member_visibility ON email_threads FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())));
+USING (can_access_organization(organization_id));
 CREATE POLICY email_threads_member_manage ON email_threads FOR ALL TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())))
-WITH CHECK (is_active_organization_member(organization_id, (select auth.uid())));
+USING (can_access_organization(organization_id))
+WITH CHECK (can_access_organization(organization_id));
 
 CREATE POLICY email_messages_member_visibility ON email_messages FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())));
+USING (can_access_organization(organization_id));
 CREATE POLICY email_messages_member_manage ON email_messages FOR ALL TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())))
-WITH CHECK (is_active_organization_member(organization_id, (select auth.uid())));
+USING (can_access_organization(organization_id))
+WITH CHECK (can_access_organization(organization_id));
 
 CREATE POLICY email_attachments_member_visibility ON email_attachments FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())));
+USING (can_access_organization(organization_id));
 CREATE POLICY email_attachments_member_manage ON email_attachments FOR ALL TO authenticated
-USING (is_active_organization_member(organization_id, (select auth.uid())))
-WITH CHECK (is_active_organization_member(organization_id, (select auth.uid())));
+USING (can_access_organization(organization_id))
+WITH CHECK (can_access_organization(organization_id));
 
 CREATE POLICY email_sync_states_admin_visibility ON email_sync_states FOR SELECT TO authenticated
-USING (is_active_organization_admin_or_owner(organization_id, (select auth.uid())));
+USING (can_manage_organization(organization_id));
 CREATE POLICY email_sync_states_admin_manage ON email_sync_states FOR ALL TO authenticated
-USING (is_active_organization_admin_or_owner(organization_id, (select auth.uid())))
-WITH CHECK (is_active_organization_admin_or_owner(organization_id, (select auth.uid())));
+USING (can_manage_organization(organization_id))
+WITH CHECK (can_manage_organization(organization_id));
 
 CREATE POLICY email_sync_events_admin_visibility ON email_sync_events FOR SELECT TO authenticated
-USING (is_active_organization_admin_or_owner(organization_id, (select auth.uid())));
+USING (can_manage_organization(organization_id));
 CREATE POLICY email_sync_events_admin_manage ON email_sync_events FOR ALL TO authenticated
-USING (is_active_organization_admin_or_owner(organization_id, (select auth.uid())))
-WITH CHECK (is_active_organization_admin_or_owner(organization_id, (select auth.uid())));
+USING (can_manage_organization(organization_id))
+WITH CHECK (can_manage_organization(organization_id));
