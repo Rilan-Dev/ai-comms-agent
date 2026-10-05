@@ -48,3 +48,16 @@ test("IMAP/SMTP adapter fails closed when used before connection", async () => {
   const provider = new ImapSmtpAdapter();
   await assert.rejects(() => provider.listFolders(), /not connected/);
 });
+
+
+test("IMAP/SMTP adapter blocks private and local network targets to prevent server-side request abuse", async () => {
+  const provider = new ImapSmtpAdapter();
+  await assert.rejects(
+    () => provider.connect({ credential_type: "password", username: "user", password: "secret", host: "127.0.0.1", tls: true }),
+    /private or local address/,
+  );
+  await assert.rejects(
+    () => provider.connect({ credential_type: "password", username: "user", password: "secret", host: "localhost", tls: true }),
+    /public address/,
+  );
+});
