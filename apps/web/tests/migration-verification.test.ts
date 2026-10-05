@@ -51,6 +51,18 @@ describe("Migration static verification (0002_database_foundation.sql)", () => {
 });
 
 describe("Migration static verification (0001_identity_rbac.sql)", () => {
+  describe("Migration chain integrity", () => {
+    it("uses the canonical Phase 3 → Phase 4 migration names", () => {
+      expect(migrationSql).toContain("CREATE TABLE IF NOT EXISTS organizations");
+      expect(migrationSql).toContain("CROSS-ROW, CROSS-STATEMENT invariant");
+    });
+
+    it("does not contain invalid single-dollar PostgreSQL delimiters", () => {
+      expect(migrationSql).not.toMatch(/^AS \$/m);
+      expect(migrationSql).not.toMatch(/^\$/m);
+    });
+  });
+
   describe("Owner invariant mechanism", () => {
     it("contains a deferred constraint trigger for exactly-one-owner", () => {
       expect(migrationSql).toContain("CREATE CONSTRAINT TRIGGER");
