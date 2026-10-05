@@ -1516,3 +1516,24 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Expanded Agent Policy editing to include security policy and rate-limit controls.
 - Added Agent list status filtering and resilient network-error handling for create operations.
 - No provider activation, no fake AI execution, no Clara source modification, and no production credential provisioning.
+
+
+## Task ID: 12
+## Phase: Product Completion Slice 1 — Agents
+
+- **Status**: implementation_continuing
+- **Owner**: ChatGPT
+- **Latest commit**: bc31ded2df82e7a42b985343951381751504402b
+
+### Completed in this continuation
+- Added listAuditEvents() to the PostgreSQL audit repository and an authorized per-agent audit API.
+- Added an Activity tab to the Agent detail UI so deployment/policy/channel/configuration mutations are inspectable instead of being invisible backend records.
+- Added organization-scoped WhatsApp account discovery and replaced arbitrary UUID entry with a live account selector.
+- Added strict server-side Agent Policy validation with field-level errors and regression tests.
+- Preserved cross-tenant binding protections and exactly-one-WhatsApp-account-per-agent database semantics.
+
+### Acceptance state
+- Slice 1 Agents is **not accepted yet**.
+- GitHub Actions/Vercel are not being awaited for development, per explicit project-owner instruction.
+- Runtime/browser verification remains a release/acceptance gate.
+- Next implementation focus remains the remaining Agents UX/error-state/browser-verification work; do not advance to Email Accounts until Slice 1 acceptance is recorded.
