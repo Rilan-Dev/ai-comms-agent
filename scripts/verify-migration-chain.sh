@@ -74,15 +74,15 @@ done
 
 # Migrations 0001-0008 must use the established can_* wrappers; the public
 # is_active_* helpers are introduced by later security-hardening migrations.
-if grep -RInE '(^|[^[:alnum:]_])is_active_organization_(member|admin_or_owner)\\(' \\
-  "$MIGRATIONS_DIR"/0001_identity_rbac.sql \\
-  "$MIGRATIONS_DIR"/0002_database_foundation.sql \\
-  "$MIGRATIONS_DIR"/0003_email_domain.sql \\
-  "$MIGRATIONS_DIR"/0004_messaging.sql \\
-  "$MIGRATIONS_DIR"/0005_agent_policy_configuration.sql \\
-  "$MIGRATIONS_DIR"/0006_conversations_scheduling.sql \\
-  "$MIGRATIONS_DIR"/0007_actions_ai_voice_audit.sql \\
-  "$MIGRATIONS_DIR"/0008_api_keys_knowledge_storage.sql \\
+if grep -RInE '(^|[^[:alnum:]_])is_active_organization_(member|admin_or_owner)\(' \
+  "$MIGRATIONS_DIR"/0001_identity_rbac.sql \
+  "$MIGRATIONS_DIR"/0002_database_foundation.sql \
+  "$MIGRATIONS_DIR"/0003_email_domain.sql \
+  "$MIGRATIONS_DIR"/0004_messaging.sql \
+  "$MIGRATIONS_DIR"/0005_agent_policy_configuration.sql \
+  "$MIGRATIONS_DIR"/0006_conversations_scheduling.sql \
+  "$MIGRATIONS_DIR"/0007_actions_ai_voice_audit.sql \
+  "$MIGRATIONS_DIR"/0008_api_keys_knowledge_storage.sql \
   | grep -v 'private.is_active_organization_' >/tmp/aca-future-rls-helper-refs.log; then
   cat /tmp/aca-future-rls-helper-refs.log >&2
   echo "ERROR: early migration references public RLS helper before its hardening migration" >&2
