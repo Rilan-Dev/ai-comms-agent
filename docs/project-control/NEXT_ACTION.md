@@ -246,3 +246,8 @@ Implement the real provider connection surface: secure IMAP/SMTP form and persis
 
 ### 2026-10-06 — Active implementation checkpoint
 ChatGPT is continuing Slice 2 directly. The IMAP/SMTP connect action was corrected so it no longer fails the action discriminator before reaching connection logic. A server-side TLS/authentication connection-test path is now being added before credentials are persisted, with SSRF-safe public-host resolution and no credential return to the browser. Next: add reconnect/retry/error-state controls and finish Zoho runtime operations. CI/Vercel remain non-blocking under the explicit development-first instruction.
+
+
+## Current authorized action — Phase 4 (2026-10-06)
+
+ChatGPT is the primary implementer. Continue Phase 4 Database Foundation and Migrations directly. GitHub Actions/Vercel completion is not required to continue implementation. Runtime PostgreSQL migration/RLS verification remains an acceptance requirement. Do not begin Phase 5 until Phase 4 is accepted.
