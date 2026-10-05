@@ -75,3 +75,56 @@ test("Zoho regional refresh uses the matching accounts domain", async () => {
     if (originalClientSecret === undefined) delete process.env.ZOHO_OAUTH_CLIENT_SECRET; else process.env.ZOHO_OAUTH_CLIENT_SECRET = originalClientSecret;
   }
 });
+
+
+test("Zoho adapter maps folder, label, read-state and move operations to the documented API", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: Array<{ url: string; method: string; body?: string }> = [];
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    calls.push({ url, method: init?.method ?? "GET", body: typeof init?.body === "string" ? init.body : undefined });
+    if (url.endsWith("/api/accounts/123")) {
+      return new Response(JSON.stringify({ data: { emailAddress: "user@example.com" } }), { status: 200 });
+    }
+    if (url.endsWith("/api/accounts/123/folders")) {
+      return new Response(JSON.stringify({ data: [{ folderId: "9", folderName: "Inbox", unreadCount: 2 }] }), { status: 200 });
+    }
+    if (url.endsWith("/api/accounts/123/labels")) {
+      return new Response(JSON.stringify({ data: [{ labelId: "7", labelName: "Important" }] }), { status: 200 });
+    }
+    if (url.endsWith("/api/accounts/123/updatemessage")) {
+      return new Response(JSON.stringify({ status: { code: 200, description: "success" } }), { status: 200 });
+    }
+    if (url.endsWith("/api/accounts/123/messages/88")) {
+      return new Response(JSON.stringify({ data: { messageId: "99" } }), { status: 200 });
+    }
+    throw new Error("Unexpected network call: " + url);
+  };
+
+  try {
+    const adapter = new ZohoAdapter();
+    await adapter.connect({
+      credential_type: "oauth_token",
+      access_token: "test-token",
+      api_domain: "https://mail.zoho.in",
+      account_id: "123",
+    });
+
+    const folders = await adapter.listFolders();
+    assert.equal(folders[0]?.name, "Inbox");
+    const labels = await adapter.listLabels();
+    assert.equal(labels[0]?.name, "Important");
+    await adapter.markRead(["10"], true);
+    await adapter.markUnread(["10"]);
+    await adapter.move(["10"], "9");
+    await adapter.archive(["10"]);
+    const reply = await adapter.reply("88", { to: ["recipient@example.com"], subject: "Re", body_text: "Reply" });
+    assert.equal(reply.provider_message_id, "99");
+
+    const updateBodies = calls.filter((call) => call.url.endsWith("/updatemessage")).map((call) => JSON.parse(call.body ?? "{}"));
+    assert.deepEqual(updateBodies.map((body) => body.mode), ["markAsRead", "markAsUnread", "move", "archive"]);
+    assert.equal(updateBodies[2].folderId, "9");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
