@@ -203,7 +203,8 @@ export class ImapSmtpAdapter implements EmailProvider {
       if (line.startsWith(`${tag} NO`) || line.startsWith(`${tag} BAD`)) throw new Error(`IMAP LIST failed: ${line}`);
       const match = line.match(/^\* LIST \([^)]*\) "[^"]*" (.+)$/);
       if (match) {
-        const rawName = match[1].replace(/^"|"$/g, "");
+        const rawName = match[1]?.replace(/^"|"$/g, "");
+        if (!rawName) continue;
         const lower = rawName.toLowerCase();
         const role = lower === "inbox" ? "inbox" : lower === "sent" ? "sent" : lower === "drafts" ? "drafts" : lower === "trash" ? "trash" : lower === "spam" ? "spam" : "custom";
         folders.push({ id: rawName, email_account_id: "imap_smtp", provider_folder_id: rawName, name: rawName, role, unread_count: 0 });
