@@ -187,3 +187,12 @@ Slice 0 is materially implemented in the shared application shell (notifications
 ## Continuation log — 2026-10-06
 
 Development is intentionally continuing without waiting for CI/Vercel jobs. Before advancing the product acceptance gate, ChatGPT corrected the persisted email credential repository contract so the actual PostgreSQL `ciphertext` column is read correctly, and replaced the `/mail/accounts` demo page with a PostgreSQL-backed account surface plus an authorized disconnect endpoint. Provider connection activation remains truthful: OAuth/IMAP configuration is not fabricated when user-owned provider credentials are absent.
+
+
+### Continuation log — 2026-10-06 (ChatGPT takeover)
+- Corrected a remaining PostgreSQL syntax defect in 0001_identity_rbac.sql: the provider-neutral role bootstrap now uses valid $$ dollar quoting.
+- Added persisted Agent Details editing to the Agent detail surface, backed by the existing authorized PostgreSQL PATCH endpoint and validation path.
+- Replaced raw email-account UUID entry in Agent channel binding with a live organization-scoped email-account selector and explicit binding role.
+- Added live account loading/error notification behavior for the channel surface.
+- No fake provider activation was introduced; unconfigured external providers remain truthful.
+- Slice 1 remains NOT ACCEPTED until automated/runtime and browser verification are green.
