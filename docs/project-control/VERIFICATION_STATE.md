@@ -579,3 +579,9 @@ Development-first update 2026-10-06: email credential repository schema mismatch
 - GitHub workflow-run connector still reports no push-triggered runs; therefore no CI green result is claimed.
 - Vercel combined status reports build-rate-limit failure; the latest implementation is not claimed deployed/READY.
 - Phase 4 and Slice 1 acceptance remain pending runtime/browser evidence.
+
+
+### 2026-10-06 — ChatGPT continuation
+- Latest implementation corrections: cross-tenant provider binding guard fixed in migration 0010; Gmail OAuth callback now validates state-cookie equality; Gmail accounts remain pending until encrypted credentials are stored successfully.
+- Slice 1 Agents remains pending formal acceptance. Development-first implementation continues; no Vercel READY or CI PASS is claimed.
+- Next product work remains Email Accounts provider connection hardening (Gmail, then IMAP/SMTP and Zoho), followed by Mail.
