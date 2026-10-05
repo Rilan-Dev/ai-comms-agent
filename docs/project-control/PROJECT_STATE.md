@@ -290,3 +290,8 @@ Email Accounts continuation is active under ChatGPT ownership. Corrected canonic
 
 ### 2026-10-06 — Slice 2 provider lifecycle continuation
 ChatGPT completed another Email Accounts hardening pass: folder/label discovery is now an atomic replacement snapshot, successful worker discovery persists runtime capabilities and connected status, discovery failures become explicit account errors, and IMAP/SMTP/Zoho capability metadata is truthful to the implemented adapter surface. Continue the Mail vertical slice after Email Accounts implementation is complete; runtime acceptance remains a separate gate.
+
+
+### 2026-10-06 — ChatGPT continuation
+Slice 2 Email Accounts provider lifecycle implementation is active under the development-first override; CI/Vercel remain deferred acceptance gates.
+Current commit: `1972d62cffca5b1b5a5eaeb4ddcb4e7c9f53b446`.
