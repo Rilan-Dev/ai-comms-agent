@@ -641,3 +641,9 @@ Latest source implementation commits through `4cea5073d1b42a3546f5023d17ff9f5efd
 - Gmail remains the fully advertised provider surface where its adapter implements the corresponding contract.
 - Latest code commit: be4925cbd3e73ebeec28a951a5d062d70fba19ae.
 - Runtime/browser verification remains deferred and no live provider connection is claimed.
+
+
+### 2026-10-06 — Email Accounts lifecycle hardening
+- Implemented idempotent IMAP/SMTP account persistence and truthful pending OAuth lifecycle states.
+- No runtime provider connectivity is claimed; real user-owned credentials are required.
+- Acceptance evidence remains separate from development and is not claimed from CI/Vercel.
