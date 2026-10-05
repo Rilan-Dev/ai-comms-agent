@@ -20,10 +20,10 @@ bash scripts/verify-migration-chain.sh
 
 "${COMPOSE[@]}" run --rm migrate
 
-"${COMPOSE[@]}" run --rm --entrypoint sh migrate -c   'psql -v ON_ERROR_STOP=1 -f /workspace/scripts/verify-phase3-migration.sql'
+"${COMPOSE[@]}" run --rm --entrypoint sh migrate -c   'psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/scripts/verify-phase3-migration.sql'
 
 set +e
-"${COMPOSE[@]}" run --rm --entrypoint sh migrate -c   'psql -v ON_ERROR_STOP=1 -f /workspace/scripts/verify-phase3-migration-fail.sql'   >/tmp/aca-ownerless.log 2>&1
+"${COMPOSE[@]}" run --rm --entrypoint sh migrate -c   'psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /workspace/scripts/verify-phase3-migration-fail.sql'   >/tmp/aca-ownerless.log 2>&1
 status=$?
 set -e
 
