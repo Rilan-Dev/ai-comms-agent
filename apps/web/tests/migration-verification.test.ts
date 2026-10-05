@@ -192,7 +192,7 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
     });
 
     it("does not self-query organization_memberships directly from its RLS policy", () => {
-      expect(migrationSql).not.toContain("SELECT 1 FROM organization_memberships m2");
+      expect(migrationSql).not.toMatch(/SELECT 1 FROM organization_memberships m2/);
     });
   });
 
