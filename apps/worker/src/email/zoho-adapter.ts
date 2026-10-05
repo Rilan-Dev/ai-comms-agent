@@ -1,5 +1,5 @@
 import type {
-  CapabilitySet, DraftParams, EmailCredentials, EmailFolder, EmailLabel,
+  CapabilitySet, DraftParams, DraftRef, EmailCredentials, EmailFolder, EmailLabel,
   EmailMessage, EmailProvider, ListOptions, SearchQuery, SentMessageRef, SyncResult, SyncState,
 } from "@ai-comms-agent/shared";
 
@@ -184,8 +184,8 @@ export class ZohoAdapter implements EmailProvider {
   async getMessage(_messageId: string): Promise<EmailMessage | null> { throw new Error("Zoho message retrieval is implemented by the email worker"); }
   async getThread(_threadId: string): Promise<EmailMessage[]> { throw new Error("Zoho thread retrieval is implemented by the email worker"); }
   async search(_query: SearchQuery): Promise<EmailMessage[]> { throw new Error("Zoho search is implemented by the email worker"); }
-  async createDraft(_params: DraftParams) { throw new Error("Zoho draft persistence is implemented by the email worker"); }
-  async updateDraft(_draftId: string, _params: Partial<DraftParams>) { throw new Error("Zoho draft persistence is implemented by the email worker"); }
+  async createDraft(_params: DraftParams): Promise<DraftRef> { throw new Error("Zoho draft persistence is implemented by the email worker"); }
+  async updateDraft(_draftId: string, _params: Partial<DraftParams>): Promise<DraftRef> { throw new Error("Zoho draft persistence is implemented by the email worker"); }
   async deleteDraft(_draftId: string): Promise<void> { throw new Error("Zoho draft persistence is implemented by the email worker"); }
   async sendDraft(_draftId: string): Promise<SentMessageRef> { throw new Error("Zoho send requires persisted draft resolution"); }
   async send(_draftId: string): Promise<SentMessageRef> { return this.sendDraft(_draftId); }
