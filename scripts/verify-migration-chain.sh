@@ -24,7 +24,7 @@ do
 done
 
 # PostgreSQL dollar-quoted function bodies must use paired delimiters.
-if grep -RInE 'AS \\$(($|[^$]))|^\\$;' "$MIGRATIONS_DIR" --include='*.sql'; then
+if grep -RInE 'AS \\$(\$|[^$])|^\\$;' "$MIGRATIONS_DIR" --include='*.sql'; then
   echo "ERROR: invalid single-dollar PostgreSQL function delimiter found" >&2
   exit 1
 fi
