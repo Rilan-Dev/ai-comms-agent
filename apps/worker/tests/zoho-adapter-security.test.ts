@@ -128,3 +128,31 @@ test("Zoho adapter maps folder, label, read-state and move operations to the doc
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test("Zoho adapter exposes implemented draft lifecycle operations", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: Array<{ url: string; method: string; body?: string }> = [];
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    calls.push({ url, method: init?.method ?? "GET", body: typeof init?.body === "string" ? init.body : undefined });
+    if (url.endsWith("/api/accounts/123")) return new Response(JSON.stringify({ data: { emailAddress: "user@example.com" } }), { status: 200 });
+    if (url.endsWith("/api/accounts/123/messages") && (init?.method ?? "GET") === "POST") return new Response(JSON.stringify({ data: { messageId: "draft-1" } }), { status: 200 });
+    if (url.endsWith("/api/accounts/123/messages/draft-1") && init?.method === "PUT") return new Response(JSON.stringify({ data: { messageId: "draft-1" } }), { status: 200 });
+    throw new Error("Unexpected network call: " + url);
+  };
+  try {
+    const adapter = new ZohoAdapter();
+    await adapter.connect({ credential_type: "oauth_token", access_token: "test-token", api_domain: "https://mail.zoho.in", account_id: "123" });
+    const draft = await adapter.createDraft({ to: ["recipient@example.com"], subject: "Draft", body_text: "Hello" });
+    assert.equal(draft.draft_id, "draft-1");
+    const updated = await adapter.updateDraft("draft-1", { subject: "Updated", body_text: "Updated body" });
+    assert.equal(updated.draft_id, "draft-1");
+    const draftCall = calls.find((call) => call.url.endsWith("/messages") && call.method === "POST");
+    assert.equal(JSON.parse(draftCall?.body ?? "{}").mode, "draft");
+    const updateCall = calls.find((call) => call.url.endsWith("/messages/draft-1") && call.method === "PUT");
+    assert.equal(JSON.parse(updateCall?.body ?? "{}").subject, "Updated");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
