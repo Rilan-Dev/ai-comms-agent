@@ -442,6 +442,36 @@ CREATE TABLE IF NOT EXISTS automation_runs (
 -- ---------------------------------------------------------------------------
 -- Actions and approvals
 -- ---------------------------------------------------------------------------
+-- Reconcile tables created by the earlier application-foundation migration.
+-- These columns are tenant ownership boundaries required by the Phase 4 model.
+DO $ BEGIN
+  ALTER TABLE email_actions ADD COLUMN organization_id uuid;
+EXCEPTION WHEN duplicate_column THEN NULL; END $;
+UPDATE email_actions ea
+SET organization_id = a.organization_id
+FROM agents a
+WHERE ea.organization_id IS NULL AND ea.agent_id = a.id;
+ALTER TABLE email_actions ALTER COLUMN organization_id SET NOT NULL;
+DO $ BEGIN
+  ALTER TABLE email_actions
+    ADD CONSTRAINT email_actions_organization_fk
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $;
+
+DO $ BEGIN
+  ALTER TABLE summaries ADD COLUMN organization_id uuid;
+EXCEPTION WHEN duplicate_column THEN NULL; END $;
+UPDATE summaries s
+SET organization_id = a.organization_id
+FROM agents a
+WHERE s.organization_id IS NULL AND s.agent_id = a.id;
+ALTER TABLE summaries ALTER COLUMN organization_id SET NOT NULL;
+DO $ BEGIN
+  ALTER TABLE summaries
+    ADD CONSTRAINT summaries_organization_fk
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $;
+
 CREATE TABLE IF NOT EXISTS email_actions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
