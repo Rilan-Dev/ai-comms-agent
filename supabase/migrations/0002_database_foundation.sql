@@ -109,32 +109,6 @@ CREATE TABLE IF NOT EXISTS agent_whatsapp_accounts (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS ai_provider_configs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  provider text NOT NULL,
-  display_name text,
-  encrypted_api_key bytea,
-  model_overrides jsonb NOT NULL DEFAULT '{}'::jsonb,
-  feature_flags jsonb NOT NULL DEFAULT '{}'::jsonb,
-  enabled boolean NOT NULL DEFAULT true,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS ai_provider_configs_org_idx ON ai_provider_configs(organization_id, enabled);
-
-CREATE TABLE IF NOT EXISTS agent_ai_settings (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  agent_id uuid NOT NULL UNIQUE REFERENCES agents(id) ON DELETE CASCADE,
-  ai_provider_config_id uuid REFERENCES ai_provider_configs(id) ON DELETE SET NULL,
-  model_overrides jsonb NOT NULL DEFAULT '{}'::jsonb,
-  feature_flags jsonb NOT NULL DEFAULT '{}'::jsonb,
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
--- ---------------------------------------------------------------------------
--- Email
--- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS email_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -384,7 +358,7 @@ GRANT EXECUTE ON FUNCTION can_manage_organization(uuid) TO authenticated;
 DO $$ DECLARE r record; BEGIN
   FOR r IN SELECT table_name FROM (VALUES
     ('agents'),('agent_versions'),('agent_deployments'),('agent_email_accounts'),
-    ('agent_whatsapp_accounts'),('ai_provider_configs'),('agent_ai_settings'),
+    ('agent_whatsapp_accounts'),('agent_ai_settings'),
     ('email_accounts'),('email_account_credentials'),('email_folders'),('email_labels'),
     ('email_threads'),('email_messages'),('email_attachments'),('email_sync_states'),
     ('email_sync_events'),('whatsapp_accounts'),('whatsapp_contacts'),
@@ -492,7 +466,7 @@ DECLARE required_table text;
 BEGIN
   FOREACH required_table IN ARRAY ARRAY[
     'agents','agent_versions','agent_deployments','agent_email_accounts',
-    'agent_whatsapp_accounts','ai_provider_configs','agent_ai_settings',
+    'agent_whatsapp_accounts','agent_ai_settings',
     'email_accounts','email_account_credentials','email_folders','email_labels',
     'email_threads','email_messages','email_attachments','email_sync_states',
     'email_sync_events','whatsapp_accounts','whatsapp_contacts',
