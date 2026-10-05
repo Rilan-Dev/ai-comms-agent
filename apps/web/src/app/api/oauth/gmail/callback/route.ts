@@ -82,20 +82,31 @@ export async function GET(request: Request) {
     if (!masterKey) return oauthError("Credential encryption is not configured on the server.", 503);
 
     const repository = new PostgresEmailAccountRepository();
-    const account = await repository.create({
-      organizationId: payload.organizationId,
-      provider: "gmail",
-      emailAddress: profile.emailAddress,
-      displayName: profile.emailAddress,
-      connectionConfig: { historyId: profile.historyId ?? null, oauthScope: tokens.scope ?? null },
-      status: "pending",
-      capabilities: {
-        folders: true, labels: true, sync_incremental: true, sync_full: true, sync_webhook: true, sync_idle: false,
-        search_server_side: true, search_client_side: true, drafts: true, reply: true, forward: true,
-        mark_read: true, archive: true, move: true, threads: true, attachments_download: true,
-        attachments_upload: false, send: true,
-      },
-    });
+    const capabilities = {
+      folders: true, labels: true, sync_incremental: true, sync_full: true, sync_webhook: true, sync_idle: false,
+      search_server_side: true, search_client_side: true, drafts: true, reply: true, forward: true,
+      mark_read: true, archive: true, move: true, threads: true, attachments_download: true,
+      attachments_upload: false, send: true,
+    };
+    const existing = await repository.findByOrganizationProviderAddress(payload.organizationId, "gmail", profile.emailAddress);
+    const account = existing
+      ? await repository.updateConnection(existing.id, {
+          emailAddress: profile.emailAddress,
+          displayName: profile.emailAddress,
+          connectionConfig: { historyId: profile.historyId ?? null, oauthScope: tokens.scope ?? null },
+          status: "pending",
+          capabilities,
+        })
+      : await repository.create({
+          organizationId: payload.organizationId,
+          provider: "gmail",
+          emailAddress: profile.emailAddress,
+          displayName: profile.emailAddress,
+          connectionConfig: { historyId: profile.historyId ?? null, oauthScope: tokens.scope ?? null },
+          status: "pending",
+          capabilities,
+        });
+    if (!account) return oauthError("Gmail account could not be persisted.", 500);
 
     await repository.saveCredentials(account.id, "oauth_token", {
       access_token: tokens.access_token,
