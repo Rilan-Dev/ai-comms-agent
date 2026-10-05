@@ -6,10 +6,10 @@ BEGIN;
 
 SET CONSTRAINTS ALL DEFERRED;
 
-INSERT INTO users (id, email, name)
+INSERT INTO users (id, email)
 VALUES
-  ('00000000-0000-0000-0000-000000000001', 'owner@example.test', 'Owner'),
-  ('00000000-0000-0000-0000-000000000002', 'target@example.test', 'Target');
+  ('00000000-0000-0000-0000-000000000001', 'owner@example.test'),
+  ('00000000-0000-0000-0000-000000000002', 'target@example.test');
 
 INSERT INTO organizations (id, name, slug)
 VALUES ('10000000-0000-0000-0000-000000000001', 'Verification Org', 'verification-org');
