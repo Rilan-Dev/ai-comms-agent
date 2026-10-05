@@ -6,7 +6,7 @@ BEGIN;
 
 SET CONSTRAINTS ALL DEFERRED;
 
-INSERT INTO users (id, email, name)
+INSERT INTO users (id, email, display_name)
 VALUES
   ('00000000-0000-0000-0000-000000000001', 'owner@example.test', 'Owner'),
   ('00000000-0000-0000-0000-000000000002', 'target@example.test', 'Target');
