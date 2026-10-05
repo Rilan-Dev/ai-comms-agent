@@ -224,3 +224,11 @@ Formal phase remains 4 until runtime acceptance. In parallel under the developme
 - Implemented authenticated IMAP folder discovery and secure SMTP authentication; credential secrets are retained only in adapter memory during an active connection and are cleared on disconnect.
 - Remaining provider work: move persisted draft/message operations into the sync/runtime workers, add dedicated adapter tests and connection-test API/UI, then implement Zoho OAuth.
 - Do not claim runtime provider connectivity without real provider credentials.
+
+
+### 2026-10-06 — ChatGPT email provider continuation
+- Fixed a duplicate SMTP helper that would have blocked the IMAP/SMTP worker build.
+- Added dedicated IMAP/SMTP adapter tests and fail-closed protection against localhost/private-network targets to reduce SSRF risk from user-supplied mail hosts.
+- Added Zoho OAuth PKCE start/callback with data-center-aware Accounts endpoints, encrypted credential persistence, state-cookie validation, and server-side authorization.
+- Added the initial Zoho REST adapter foundation (OAuth refresh, account discovery, folders, labels, message listing) and registered it in the worker provider registry.
+- **Next:** finish generic IMAP/SMTP persisted connection flow and adapter operations, then complete Zoho message/draft/send/search operations and webhook integration. Do not claim provider runtime connectivity without real credentials.
