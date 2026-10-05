@@ -2,7 +2,7 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import { GmailAdapter } from "../../apps/worker/src/email/gmail-adapter";
 
 describe("GmailAdapter", () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 
   it("advertises the provider capability matrix", () => {
     const adapter = new GmailAdapter();
