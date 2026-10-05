@@ -6,7 +6,7 @@ import { useNotifications } from "@/components/notifications";
 import { slugifyAgentName } from "@/lib/agents/validation";
 import type { Agent } from "@ai-comms-agent/shared";
 
-export function AgentsClient({ organizationId, initialAgents }: { organizationId: string; initialAgents: Agent[] }) {
+export function AgentsClient({ organizationId, devUserId, initialAgents }: { organizationId: string; devUserId: string; initialAgents: Agent[] }) {
   const router = useRouter();
   const { notify } = useNotifications();
   const [agents, setAgents] = useState(initialAgents);
@@ -21,7 +21,7 @@ export function AgentsClient({ organizationId, initialAgents }: { organizationId
     event.preventDefault();
     setCreating(true);
     try {
-      const response = await fetch("/api/agents", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ organizationId, name, slug: slug || slugifyAgentName(name), description }) });
+      const response = await fetch("/api/agents", { method: "POST", headers: { "content-type": "application/json", "x-dev-user-id": devUserId }, body: JSON.stringify({ organizationId, name, slug: slug || slugifyAgentName(name), description }) });
       const payload = await response.json();
       if (!response.ok) {
         notify({ kind: "error", title: "Agent could not be created", message: payload.message ?? Object.values(payload.fieldErrors ?? {}).filter(Boolean).join(" ") });
