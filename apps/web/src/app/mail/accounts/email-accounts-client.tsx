@@ -41,6 +41,39 @@ export function EmailAccountsClient({
     if (params.get("connected") === "zoho") setNotice("Zoho Mail connected securely. Initial synchronization will be handled by the email worker.");
   }, []);
 
+  async function reconnect(account: EmailAccount) {
+    if (account.provider === "gmail") {
+      window.location.assign("/api/oauth/gmail/start");
+      return;
+    }
+    if (account.provider === "zoho") {
+      window.location.assign("/api/oauth/zoho/start");
+      return;
+    }
+    setBusy(account.id);
+    setNotice(null);
+    try {
+      const response = await fetch("/api/email-accounts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ organizationId, accountId: account.id, action: "reconnect_imap_smtp" }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message ?? "Could not reconnect the mailbox.");
+      setAccounts((current) => current.map((item) => item.id === account.id ? data.account : item));
+      setNotice("Mailbox connection verified and restored.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Mailbox reconnection failed.");
+      const response = await fetch("/api/email-accounts?organizationId=" + encodeURIComponent(organizationId));
+      if (response.ok) {
+        const data = await response.json();
+        setAccounts(data.accounts ?? []);
+      }
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function disconnect(accountId: string) {
     if (!window.confirm("Disconnect this mailbox? Existing synced mail will remain stored.")) return;
     setBusy(accountId);
@@ -169,20 +202,28 @@ export function EmailAccountsClient({
                   <p className="mt-1 text-sm text-muted-foreground">
                     {account.provider.replace("_", " / ")} · {account.display_name ?? "Mailbox"}
                   </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">{Object.entries(account.capabilities).filter(([,enabled])=>enabled).slice(0,5).map(([key])=><span key={key} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">{key.replaceAll("_"," ")}</span>)}</div>
                   <p className="mt-2 text-xs text-muted-foreground">
                     Last sync: {account.last_sync_at ? new Date(account.last_sync_at).toLocaleString() : "Not synchronized"}
                   </p>
                 </div>
-                {account.status !== "disconnected" && (
-                  <button
-                    type="button"
-                    disabled={busy === account.id}
-                    onClick={() => disconnect(account.id)}
-                    className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50"
-                  >
-                    {busy === account.id ? "Disconnecting…" : "Disconnect"}
-                  </button>
-                )}
+                <div className="flex flex-wrap gap-2">
+                  {account.status !== "connected" && account.status !== "disconnected" && (
+                    <button type="button" disabled={busy === account.id} onClick={() => reconnect(account)} className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
+                      {busy === account.id ? "Reconnecting…" : "Reconnect"}
+                    </button>
+                  )}
+                  {account.status === "connected" && account.provider === "imap_smtp" && (
+                    <button type="button" disabled={busy === account.id} onClick={() => reconnect(account)} className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
+                      {busy === account.id ? "Checking…" : "Test connection"}
+                    </button>
+                  )}
+                  {account.status !== "disconnected" && (
+                    <button type="button" disabled={busy === account.id} onClick={() => disconnect(account.id)} className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
+                      {busy === account.id ? "Disconnecting…" : "Disconnect"}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
