@@ -9,7 +9,7 @@ STABLE
 SECURITY INVOKER
 SET search_path = public
 AS $$
-  SELECT public.is_active_organization_member(p_organization_id, NULLIF(current_setting('app.user_id', true), '')::uuid);
+  SELECT private.is_active_organization_member(p_organization_id, NULLIF(current_setting('app.user_id', true), '')::uuid);
 $$;
 
 CREATE OR REPLACE FUNCTION public.can_manage_organization(p_organization_id uuid)
@@ -19,7 +19,7 @@ STABLE
 SECURITY INVOKER
 SET search_path = public
 AS $$
-  SELECT public.is_active_organization_admin_or_owner(p_organization_id, NULLIF(current_setting('app.user_id', true), '')::uuid);
+  SELECT private.is_active_organization_admin_or_owner(p_organization_id, NULLIF(current_setting('app.user_id', true), '')::uuid);
 $$;
 
 REVOKE EXECUTE ON FUNCTION public.can_access_organization(uuid) FROM PUBLIC;
@@ -27,42 +27,11 @@ REVOKE EXECUTE ON FUNCTION public.can_manage_organization(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.can_access_organization(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.can_manage_organization(uuid) TO authenticated;
 
--- Existing membership helpers are required by policies but must not be a
--- privileged public API callable by anonymous clients.
--- Existing membership helpers live in the private schema in 0001. Expose
--- controlled SECURITY INVOKER wrappers in public for the Phase 4 policy layer.
-CREATE OR REPLACE FUNCTION public.is_active_organization_member(
-  p_organization_id uuid,
-  p_user_id uuid
-)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY INVOKER
-SET search_path = public
-AS $$
-  SELECT private.is_active_organization_member(p_organization_id, p_user_id);
-$$;
-
-CREATE OR REPLACE FUNCTION public.is_active_organization_admin_or_owner(
-  p_organization_id uuid,
-  p_user_id uuid
-)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY INVOKER
-SET search_path = public
-AS $$
-  SELECT private.is_active_organization_admin_or_owner(p_organization_id, p_user_id);
-$$;
-
-REVOKE EXECUTE ON FUNCTION public.is_active_organization_member(uuid, uuid) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.is_active_organization_admin_or_owner(uuid, uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.is_active_organization_member(uuid, uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.is_active_organization_admin_or_owner(uuid, uuid) TO authenticated;
-
--- Credential-bearing tables: membership is not sufficient to read or mutate
+-- Keep the SECURITY DEFINER membership helpers private. RLS wrappers call them
+-- directly; no authenticated caller should be able to supply an arbitrary user ID.
+DROP FUNCTION IF EXISTS public.is_active_organization_member(uuid, uuid);
+DROP FUNCTION IF EXISTS public.is_active_organization_admin_or_owner(uuid, uuid);
+\n-- Credential-bearing tables: membership is not sufficient to read or mutate
 -- ciphertext. Organization admins/owners are the database-level minimum;
 -- application authorization remains stricter where required.
 DROP POLICY IF EXISTS email_account_credentials_org_member ON email_account_credentials;
