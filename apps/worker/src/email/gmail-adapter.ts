@@ -165,6 +165,15 @@ export class GmailAdapter implements EmailProvider {
     return Promise.all((data.messages ?? []).map((m: any) => this.request(`/messages/${m.id}?format=full`).then(toMessage)));
   }
 
+  async getMessage(messageId: string): Promise<EmailMessage | null> {
+    try {
+      return toMessage(await this.request(`/messages/${encodeURIComponent(messageId)}?format=full`));
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("Gmail API 404:")) return null;
+      throw error;
+    }
+  }
+
   async getThread(threadId: string): Promise<EmailMessage[]> {
     const data = await this.request(`/threads/${encodeURIComponent(threadId)}?format=full`);
     return (data.messages ?? []).map(toMessage);
@@ -201,9 +210,17 @@ export class GmailAdapter implements EmailProvider {
     return { draft_id: draftId, account_id: "gmail" };
   }
 
-  async send(draftId: string): Promise<SentMessageRef> {
+  async deleteDraft(draftId: string): Promise<void> {
+    await this.request(`/drafts/${encodeURIComponent(draftId)}`, { method: "DELETE" });
+  }
+
+  async sendDraft(draftId: string): Promise<SentMessageRef> {
     const data = await this.request("/drafts/send", { method: "POST", body: JSON.stringify({ id: draftId }) });
     return { message_id: data.id, provider_message_id: data.id };
+  }
+
+  async send(draftId: string): Promise<SentMessageRef> {
+    return this.sendDraft(draftId);
   }
 
   async reply(messageId: string, params: DraftParams): Promise<SentMessageRef> {
@@ -218,7 +235,14 @@ export class GmailAdapter implements EmailProvider {
   }
 
   async markRead(messageIds: string[], isRead: boolean): Promise<void> {
-    await Promise.all(messageIds.map((id) => this.request(`/messages/${id}/modify`, { method: "POST", body: JSON.stringify(isRead ? { removeLabelIds: ["UNREAD"] } : { addLabelIds: ["UNREAD"] }) })));
+    await Promise.all(messageIds.map((id) => this.request(`/messages/${encodeURIComponent(id)}/modify`, {
+      method: "POST",
+      body: JSON.stringify(isRead ? { removeLabelIds: ["UNREAD"] } : { addLabelIds: ["UNREAD"] }),
+    })));
+  }
+
+  async markUnread(messageIds: string[]): Promise<void> {
+    await this.markRead(messageIds, false);
   }
 
   async archive(messageIds: string[]): Promise<void> {
