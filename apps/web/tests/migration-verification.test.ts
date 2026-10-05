@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 const migrationPath = resolve(__dirname, "../../../supabase/migrations/0001_identity_rbac.sql");
@@ -196,7 +196,63 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
     });
   });
 
-  describe("Core identity tables", () => {
+
+  describe("Phase 4 schema foundation", () => {
+    const migrationDir = resolve(__dirname, "../../../supabase/migrations");
+    const schemaSql = readdirSync(migrationDir)
+      .filter((name) => /^\\d+_.*\\.sql$/.test(name))
+      .sort()
+      .map((name) => readFileSync(resolve(migrationDir, name), "utf8"))
+      .join("\\n");
+
+    const tenantTables = [
+      "organizations", "organization_memberships", "agents", "agent_versions",
+      "agent_deployments", "agent_email_accounts", "agent_whatsapp_accounts",
+      "email_accounts", "email_account_credentials", "email_folders", "email_labels",
+      "email_threads", "email_messages", "email_attachments", "email_sync_states",
+      "email_sync_events", "whatsapp_accounts", "whatsapp_contacts", "whatsapp_messages",
+      "whatsapp_webhook_events", "agent_policies", "agent_tool_bindings", "conversations",
+      "conversation_messages", "conversation_turns", "scheduled_jobs", "scheduled_job_runs",
+      "automation_rules", "automation_runs", "summaries", "summary_sources", "email_actions",
+      "email_action_approvals", "ai_provider_configs", "agent_ai_settings", "ai_usage_events",
+      "voice_sessions", "voice_telemetry", "audit_events", "api_keys", "knowledge_documents",
+      "knowledge_chunks", "storage_objects",
+    ];
+
+    it("contains the complete Phase 4 tenant table inventory", () => {
+      for (const table of tenantTables) {
+        expect(schemaSql).toMatch(new RegExp(`CREATE TABLE IF NOT EXISTS\\\\s+${table}\\\\b`));
+      }
+    });
+
+    it("enables RLS on every tenant table", () => {
+      for (const table of tenantTables) {
+        expect(schemaSql).toMatch(new RegExp(`ALTER TABLE\\\\s+${table}\\\\s+ENABLE ROW LEVEL SECURITY`));
+      }
+    });
+
+    it("keeps provider and AI credentials ciphertext-only", () => {
+      expect(schemaSql).toContain("email_account_credentials");
+      expect(schemaSql).toMatch(/email_account_credentials[\\s\\S]*ciphertext bytea NOT NULL/);
+      expect(schemaSql).toMatch(/ai_provider_configs[\\s\\S]*credential_ciphertext bytea/);
+      expect(schemaSql).not.toMatch(/email_account_credentials[\\s\\S]*(access_token|refresh_token|password)\\s+text/i);
+    });
+
+    it("enforces audit append-only behavior", () => {
+      expect(schemaSql).toContain("prevent_audit_mutation");
+      expect(schemaSql).toContain("BEFORE UPDATE OR DELETE ON audit_events");
+      expect(schemaSql).toContain("audit_events_update_deny");
+      expect(schemaSql).toContain("audit_events_delete_deny");
+    });
+
+    it("defines required idempotency and search indexes", () => {
+      expect(schemaSql).toContain("email_threads_provider_uniq");
+      expect(schemaSql).toContain("email_messages_search_idx");
+      expect(schemaSql).toContain("email_messages USING gin(search_vector)");
+      expect(schemaSql).toContain("ai_usage_request_uniq");
+    });
+  });
+\n  describe("Core identity tables", () => {
     it("contains organizations table with unique slug", () => {
       expect(migrationSql).toContain("CREATE TABLE IF NOT EXISTS organizations");
       expect(migrationSql).toContain("organizations_slug_uniq");
