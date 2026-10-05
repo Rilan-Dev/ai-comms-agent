@@ -28,7 +28,7 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "4d2c5a6e2be2d0d64f0cda813e59ecf7067074b6"
+current_commit: "fa8061d96628f8b1c59dadb3afde12d4f8588e3e"
 current_commit_short: "4d2c5a6e"
 current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/57079b6283187d48e6eb999d02b9bf470468ddbc4"
 last_verified_commit: "pending runtime rerun after Phase 4 migration correction"
@@ -194,3 +194,10 @@ Latest synchronization: Docker/manual verification tooling is committed at 271bd
 - This is a real runtime migration defect caught by the verification harness; it is not a false-positive static test issue.
 - Phase 3 acceptance remains pending until the disposable PostgreSQL verification is rerun successfully, including ownerless-organization rejection.
 - Phase 4 remains NOT AUTHORIZED.
+
+
+## 2026-10-05 migration-chain correction
+
+ChatGPT audited the disposable PostgreSQL failure reported from the local verification run. Root cause: conflicting legacy Phase 4 migrations shared the 0002 numeric prefix and defined incompatible versions of the same domain tables; the runner applied an obsolete `agent_versions` definition before the newer domain migration expected `version_number`. The canonical chain is now `0001_identity_rbac.sql → 0002_database_foundation.sql → 0003_database_security_hardening.sql`. Legacy `0002_application_foundation.sql`, `0002_domain_foundation.sql`, and `0003_database_foundation.sql` were removed. Invalid single-dollar function delimiters in the security migration were also corrected. A migration-chain regression guard was added and CI now applies migrations, verifies checksums, then runs runtime tests.
+
+Acceptance remains pending until a fresh runtime/CI run is green. No production Supabase provisioning has been performed.
