@@ -135,12 +135,6 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
       expect(migrationSql).not.toMatch(/^\\$ LANGUAGE /m);
       expect(migrationSql).toContain("RETURNS TRIGGER AS $");
     });
-
-    it("uses valid PostgreSQL dollar-quoted function bodies", () => {
-      expect(migrationSql).not.toMatch(/\\bAS \\$(?!\\$)/);
-      expect(migrationSql).not.toMatch(/^\\$ LANGUAGE /m);
-      expect(migrationSql).toContain("RETURNS TRIGGER AS $");
-    });
   });
 
   describe("RBAC persistence (Option A — deferred custom-role tables)", () => {
