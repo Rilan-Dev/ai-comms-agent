@@ -15,8 +15,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!orgId) return NextResponse.json({ error: "validation_error", fieldErrors: { organizationId: "Organization is required." } }, { status: 400 });
     await authorize(request, { organizationId: asOrganizationId(orgId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
     const repo = new PostgresAgentRepository();
-    const [emailBindings, whatsappBinding] = await Promise.all([repo.emailBindings(orgId, id), repo.whatsappBinding(orgId, id)]);
-    return NextResponse.json({ emailBindings, whatsappBinding });
+    const [emailBindings, whatsappBinding, whatsappAccounts] = await Promise.all([repo.emailBindings(orgId, id), repo.whatsappBinding(orgId, id), repo.whatsappAccounts(orgId)]);
+    return NextResponse.json({ emailBindings, whatsappBinding, whatsappAccounts });
   } catch (error) { return authorizationErrorToResponse(error); }
 }
 
@@ -45,7 +45,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       await repo.bindWhatsApp(orgId, id, body.whatsappAccountId.trim());
       await recordAuditEvent({ organizationId: orgId, actorUserId: subject.user.id, agentId: id, eventType: "agent.whatsapp_binding_updated", targetType: "agent_whatsapp_account", action: "bind", decision: "allowed", metadata: { whatsappAccountId: body.whatsappAccountId.trim() } });
     }
-    const [emailBindings, whatsappBinding] = await Promise.all([repo.emailBindings(orgId, id), repo.whatsappBinding(orgId, id)]);
-    return NextResponse.json({ emailBindings, whatsappBinding });
+    const [emailBindings, whatsappBinding, whatsappAccounts] = await Promise.all([repo.emailBindings(orgId, id), repo.whatsappBinding(orgId, id), repo.whatsappAccounts(orgId)]);
+    return NextResponse.json({ emailBindings, whatsappBinding, whatsappAccounts });
   } catch (error) { return authorizationErrorToResponse(error); }
 }
