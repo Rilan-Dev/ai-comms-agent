@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Agent, AgentEmailBinding, AgentPolicy, AgentVersion, AgentWhatsAppBinding } from "@ai-comms-agent/shared";
+import type { Agent, AgentEmailBinding, AgentPolicy, AgentVersion, AgentWhatsAppBinding, EmailAccount } from "@ai-comms-agent/shared";
 import { useNotifications } from "@/components/notifications";
 
 type Check = { key: string; label: string; ok: boolean; detail?: string };
@@ -21,6 +21,8 @@ export function AgentDetailClient({ organizationId, devUserId, initialAgent, ini
   const [emailAccountId, setEmailAccountId] = useState("");
   const [whatsappAccountId, setWhatsappAccountId] = useState("");
   const [testResult, setTestResult] = useState<{ok:boolean;checks:Check[]}|null>(null);
+  const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
+  const [emailRole, setEmailRole] = useState<"primary"|"read_only"|"send_only">("primary");
   const [editName, setEditName] = useState(initialAgent.name);
   const [editSlug, setEditSlug] = useState(initialAgent.slug);
   const [editDescription, setEditDescription] = useState(initialAgent.description ?? "");
@@ -39,6 +41,21 @@ export function AgentDetailClient({ organizationId, devUserId, initialAgent, ini
     setBusy(true);
     try { const p=await call(`/api/agents/${agent.id}`,{method:"DELETE",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId})}); setAgent(p.agent); notify({kind:"success",title:"Agent paused"}); setShowConfirm(null); } catch(e){notify({kind:"error",title:"Could not pause agent",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
+  useEffect(() => {
+    if (tab !== "channels") return;
+    let cancelled = false;
+    fetch(`/api/email-accounts?organizationId=${encodeURIComponent(organizationId)}`, { headers: { "x-dev-user-id": devUserId } })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.message ?? "Email accounts could not be loaded.");
+        if (!cancelled) setEmailAccounts(payload.accounts ?? []);
+      })
+      .catch((error) => {
+        if (!cancelled) notify({ kind:"error", title:"Email accounts unavailable", message:error instanceof Error ? error.message : "Unable to load email accounts." });
+      });
+    return () => { cancelled = true; };
+  }, [tab, organizationId, devUserId, notify]);
+
   async function saveAgent(event:React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true);
     try {
@@ -60,7 +77,7 @@ export function AgentDetailClient({ organizationId, devUserId, initialAgent, ini
   async function saveChannels() {
     setBusy(true);
     try {
-      const p=await call(`/api/agents/${agent.id}/channels`,{method:"PATCH",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId,emailAccountId,whatsappAccountId})});
+      const p=await call(`/api/agents/${agent.id}/channels`,{method:"PATCH",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId,emailAccountId,whatsappAccountId,emailRole})});
       setEmailBindings(p.emailBindings); setWhatsappBinding(p.whatsappBinding);
       notify({kind:"success",title:"Channels saved"});
     } catch(e) { notify({kind:"error",title:"Channels could not be saved",message:e instanceof Error?e.message:"Unknown error"}); }
@@ -99,7 +116,17 @@ export function AgentDetailClient({ organizationId, devUserId, initialAgent, ini
       <div className="grid gap-4 lg:grid-cols-3"><div className="rounded-2xl border bg-background p-6 shadow-sm lg:col-span-2"><h2 className="font-semibold">Configuration</h2><p className="mt-1 text-sm text-muted-foreground">Versioned runtime configuration is stored with the agent.</p><div className="mt-6 grid gap-3 sm:grid-cols-3"><div className="rounded-xl bg-muted/50 p-4"><p className="text-xs text-muted-foreground">Versions</p><p className="mt-1 text-xl font-semibold">{versions.length}</p></div><div className="rounded-xl bg-muted/50 p-4"><p className="text-xs text-muted-foreground">Policy</p><p className="mt-1 text-xl font-semibold">{policy ? "Ready" : "Missing"}</p></div><div className="rounded-xl bg-muted/50 p-4"><p className="text-xs text-muted-foreground">Deployment</p><p className="mt-1 text-xl font-semibold">{agent.status==="active" ? "Live" : "Draft"}</p></div></div></div></div><div className="rounded-2xl border bg-background p-6 shadow-sm"><h2 className="font-semibold">Channels</h2><p className="mt-1 text-sm text-muted-foreground">Connect email and WhatsApp accounts from the channel configuration.</p><div className="mt-5 space-y-2"><div className="rounded-xl border p-3 text-sm">Email <span className="float-right text-xs text-muted-foreground">Configure next</span></div><div className="rounded-xl border p-3 text-sm">WhatsApp <span className="float-right text-xs text-muted-foreground">Configure next</span></div></div></div></section>}
     {tab==="versions" && <section className="rounded-2xl border bg-background shadow-sm"><div className="flex items-center justify-between border-b p-5"><div><h2 className="font-semibold">Version history</h2><p className="text-xs text-muted-foreground">Immutable configuration snapshots.</p></div><button type="button" disabled={busy} onClick={createVersion} className="h-9 rounded-xl bg-foreground px-3 text-xs font-semibold text-background disabled:opacity-50">New version</button></div><div className="divide-y">{versions.map((v)=><div key={v.id} className="flex items-center justify-between p-5"><div><p className="text-sm font-semibold">Version {v.versionNumber}</p><p className="text-xs text-muted-foreground">{new Date(v.createdAt).toLocaleString()}</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-[11px]">{v.id===agent.currentVersionId?"Current":"Draft"}</span></div>)}</div></section>}
     {tab==="policy" && <section className="rounded-2xl border bg-background p-6 shadow-sm"><h2 className="font-semibold">Agent safety policy</h2><p className="mt-1 text-sm text-muted-foreground">Control tool and sender boundaries before deployment.</p><form onSubmit={savePolicy} className="mt-6 space-y-5"><label className="block text-sm font-medium">Allowed tools<input name="allowedTools" defaultValue={policy?.allowedTools.join(", ")??""} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm font-normal" placeholder="rag_search, summarize_emails" /></label><label className="block text-sm font-medium">Allowed senders<input name="allowedSenders" defaultValue={policy?.allowedSenders.join(", ")??""} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm font-normal" placeholder="finance@example.com" /></label><label className="block text-sm font-medium">Blocked senders<input name="blockedSenders" defaultValue={policy?.blockedSenders.join(", ")??""} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm font-normal" placeholder="spam@example.com" /></label><button disabled={busy} className="h-10 rounded-xl bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">Save policy</button></form></section>}
-    {tab==="channels" && <section className="grid gap-4 lg:grid-cols-2"><div className="rounded-2xl border bg-background p-6 shadow-sm"><h2 className="font-semibold">Email accounts</h2><p className="mt-1 text-sm text-muted-foreground">An agent can use multiple email accounts. Enter an existing persisted email account ID while the Email Accounts menu is being completed.</p><input value={emailAccountId} onChange={(e)=>setEmailAccountId(e.target.value)} className="mt-5 h-11 w-full rounded-xl border px-3 text-sm" placeholder="Email account UUID" /><div className="mt-4 space-y-2">{emailBindings.map((b)=><div key={b.id} className="rounded-xl border p-3 text-xs"><span className="font-medium">{b.emailAccountId}</span><span className="float-right rounded-full bg-muted px-2 py-1">{b.role}</span></div>)}</div></div><div className="rounded-2xl border bg-background p-6 shadow-sm"><h2 className="font-semibold">WhatsApp</h2><p className="mt-1 text-sm text-muted-foreground">Exactly one WhatsApp Business account can be bound to an agent.</p><input value={whatsappAccountId} onChange={(e)=>setWhatsappAccountId(e.target.value)} className="mt-5 h-11 w-full rounded-xl border px-3 text-sm" placeholder="WhatsApp account UUID" /><div className="mt-4 rounded-xl border p-3 text-xs">{whatsappBinding ? <><span className="font-medium">{whatsappBinding.whatsappAccountId}</span><span className="float-right text-emerald-600">Connected</span></> : <span className="text-muted-foreground">No WhatsApp account connected.</span>}</div><button type="button" disabled={busy || (!emailAccountId && !whatsappAccountId)} onClick={saveChannels} className="mt-5 h-10 rounded-xl bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Saving…":"Save channels"}</button></div></section>}
+    {tab==="channels" && <section className="grid gap-4 lg:grid-cols-2"><div className="rounded-2xl border bg-background p-6 shadow-sm"><h2 className="font-semibold">Email accounts</h2><p className="mt-1 text-sm text-muted-foreground">An agent can use multiple email accounts. Enter an existing persisted email account ID while the Email Accounts menu is being completed.</p><div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
+  <select value={emailAccountId} onChange={(e)=>setEmailAccountId(e.target.value)} className="h-11 rounded-xl border bg-background px-3 text-sm">
+    <option value="">Select a persisted email account</option>
+    {emailAccounts.map((account)=><option key={account.id} value={account.id}>{account.email_address} · {account.provider} · {account.status}</option>)}
+  </select>
+  <select value={emailRole} onChange={(e)=>setEmailRole(e.target.value as typeof emailRole)} className="h-11 rounded-xl border bg-background px-3 text-sm">
+    <option value="primary">Primary</option>
+    <option value="read_only">Read only</option>
+    <option value="send_only">Send only</option>
+  </select>
+</div><div className="mt-4 space-y-2">{emailBindings.map((b)=><div key={b.id} className="rounded-xl border p-3 text-xs"><span className="font-medium">{b.emailAccountId}</span><span className="float-right rounded-full bg-muted px-2 py-1">{b.role}</span></div>)}</div></div><div className="rounded-2xl border bg-background p-6 shadow-sm"><h2 className="font-semibold">WhatsApp</h2><p className="mt-1 text-sm text-muted-foreground">Exactly one WhatsApp Business account can be bound to an agent.</p><input value={whatsappAccountId} onChange={(e)=>setWhatsappAccountId(e.target.value)} className="mt-5 h-11 w-full rounded-xl border px-3 text-sm" placeholder="WhatsApp account UUID" /><div className="mt-4 rounded-xl border p-3 text-xs">{whatsappBinding ? <><span className="font-medium">{whatsappBinding.whatsappAccountId}</span><span className="float-right text-emerald-600">Connected</span></> : <span className="text-muted-foreground">No WhatsApp account connected.</span>}</div><button type="button" disabled={busy || (!emailAccountId && !whatsappAccountId)} onClick={saveChannels} className="mt-5 h-10 rounded-xl bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Saving…":"Save channels"}</button></div></section>}
     {tab==="test" && <section className="rounded-2xl border bg-background p-6 shadow-sm"><h2 className="font-semibold">Configuration test</h2><p className="mt-1 text-sm text-muted-foreground">This verifies persisted agent configuration and security prerequisites without pretending to execute a live AI/provider call.</p><button type="button" disabled={busy} onClick={runTest} className="mt-5 h-10 rounded-xl bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Testing…":"Run configuration test"}</button>{testResult && <div className="mt-5 space-y-2">{testResult.checks.map((c)=><div key={c.key} className="flex items-center justify-between rounded-xl border p-3 text-sm"><span>{c.label}</span><span className={c.ok?"text-emerald-600":"text-destructive"}>{c.ok?"Pass":"Needs attention"}</span></div>)}</div>}</section>}
     {showConfirm && <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"><div role="dialog" aria-modal="true" className="w-full max-w-md rounded-3xl border bg-background p-6 shadow-2xl"><h2 className="text-lg font-semibold">{showConfirm==="deploy"?"Deploy this agent?":"Pause this agent?"}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{showConfirm==="deploy"?"The latest version will become active in production.":"The agent will stop being active. Existing configuration and versions remain preserved."}</p><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={()=>setShowConfirm(null)} className="h-10 rounded-xl border px-4 text-sm">Cancel</button><button type="button" disabled={busy} onClick={showConfirm==="deploy"?deploy:retire} className="h-10 rounded-xl bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Working…":"Confirm"}</button></div></div></div>}
   </main>;
