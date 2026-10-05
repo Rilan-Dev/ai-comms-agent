@@ -24,7 +24,7 @@ function pkceChallenge(verifier: string) {
   return createHash("sha256").update(verifier).digest("base64url");
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   await ensureDevSeed();
   const clientId = process.env.ZOHO_OAUTH_CLIENT_ID;
   const dataCenter = (process.env.ZOHO_OAUTH_DATA_CENTER ?? "in").toLowerCase();
@@ -33,6 +33,7 @@ export async function GET() {
     `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/oauth/zoho/callback`;
   const organizationId = getDevOrgId();
   const userId = getDevUserId();
+  const accountId = new URL(request.url).searchParams.get("accountId") || undefined;
 
   if (!clientId || !accountsDomain || !process.env.SESSION_SIGNING_KEY || !organizationId || !userId) {
     return NextResponse.json({
@@ -43,7 +44,7 @@ export async function GET() {
 
   const verifier = randomBytes(32).toString("base64url");
   const nonce = randomBytes(16).toString("base64url");
-  const payload = JSON.stringify({ organizationId, userId, nonce, dataCenter, exp: Date.now() + 10 * 60_000 });
+  const payload = JSON.stringify({ organizationId, userId, ...(accountId ? { accountId } : {}), nonce, dataCenter, exp: Date.now() + 10 * 60_000 });
   const encoded = Buffer.from(payload).toString("base64url");
   const state = `${encoded}.${sign(encoded)}`;
 
