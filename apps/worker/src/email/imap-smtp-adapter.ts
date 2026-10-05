@@ -79,10 +79,13 @@ export class ImapSmtpAdapter implements EmailProvider {
     const username = required(credentials, "username");
     const password = credentials.password ?? credentials.access_token;
     if (!password) throw new Error("IMAP/SMTP requires password or app_password credentials");
+    const imapHost = credentials.imap_host ?? host;
+    const smtpHost = credentials.smtp_host ?? host;
     const imapPort = credentials.imap_port ?? credentials.port ?? 993;
     const smtpPort = credentials.smtp_port ?? 465;
 
-    const imapSocket = await connectTls(host, imapPort);
+    if (credentials.tls === false) throw new Error("IMAP/SMTP requires TLS; plaintext transport is disabled");
+    const imapSocket = await connectTls(imapHost, imapPort);
     const greeting = await readLine(imapSocket);
     if (!greeting.startsWith("*")) {
       imapSocket.destroy();
@@ -97,17 +100,17 @@ export class ImapSmtpAdapter implements EmailProvider {
       throw new Error("IMAP authentication failed");
     }
 
-    const smtpSocket = await connectTls(credentials.smtp_host ?? host, smtpPort);
+    const smtpSocket = await connectTls(smtpHost, smtpPort);
     const smtpGreeting = await readLine(smtpSocket);
     if (!/^220\b/.test(smtpGreeting)) {
       smtpSocket.destroy();
       imapSocket.destroy();
       throw new Error("SMTP server returned an invalid greeting");
     }
-    await smtpCommand(smtpSocket, `EHLO ${host}`);
+    await smtpCommand(smtpSocket, `EHLO ${smtpHost}`);
     const auth = await smtpCommand(
       smtpSocket,
-      `AUTH LOGIN ${Buffer.from(username).toString("base64")} ${Buffer.from(password).toString("base64")}`,
+      `AUTH PLAIN ${Buffer.from(`\\0${username}\\0${password}`).toString("base64")}`,
     );
     if (!/^235\b/.test(auth)) {
       smtpSocket.destroy();
