@@ -70,11 +70,46 @@ export async function POST(request: Request) {
       getIdentityRepository(),
     );
 
-    if (!["disconnect", "connect_imap_smtp", "test_imap_smtp"].includes(action)) {
+    if (!["disconnect", "connect_imap_smtp", "test_imap_smtp", "reconnect_imap_smtp"].includes(action)) {
       return NextResponse.json(
         { error: "validation_error", fieldErrors: { action: "A supported account action is required." } },
         { status: 422 },
       );
+    }
+
+    if (action === "reconnect_imap_smtp") {
+      if (!accountId) return NextResponse.json({ error: "validation_error", fieldErrors: { accountId: "Account is required." } }, { status: 422 });
+      const repository = new PostgresEmailAccountRepository();
+      const account = await repository.getById(accountId);
+      if (!account || account.organization_id !== organizationId) {
+        return NextResponse.json({ error: "not_found", message: "Email account was not found." }, { status: 404 });
+      }
+      if (account.provider !== "imap_smtp") {
+        return NextResponse.json({ error: "validation_error", message: "Only IMAP/SMTP accounts can be reconnected from this action." }, { status: 422 });
+      }
+      const masterKey = process.env.CREDENTIALS_MASTER_KEY ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY) : null;
+      if (!masterKey) return NextResponse.json({ error: "provider_configuration_required", message: "Credential encryption is not configured on the server." }, { status: 503 });
+      const credentials = await repository.loadCredentials(accountId, masterKey);
+      if (!credentials) return NextResponse.json({ error: "provider_configuration_required", message: "Saved mailbox credentials are unavailable. Reconfigure this account." }, { status: 409 });
+      try {
+        await testImapSmtpConnection({
+          host: String(credentials.host ?? ""),
+          port: Number(credentials.port),
+          username: String(credentials.username ?? ""),
+          password: String(credentials.password ?? ""),
+          smtpHost: String(credentials.smtp_host ?? credentials.host ?? ""),
+          smtpPort: Number(credentials.smtp_port ?? 465),
+          tls: credentials.tls === true,
+        });
+        const updated = await repository.updateStatus(accountId, "connected");
+        await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: "email.account.reconnected", targetType: "email_account", targetId: accountId, action: "reconnect", decision: "allowed", metadata: { provider: "imap_smtp" } });
+        return NextResponse.json({ account: updated, ok: true });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "IMAP/SMTP connection failed.";
+        await repository.updateStatus(accountId, "error", message);
+        await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: "email.account.reconnect_failed", targetType: "email_account", targetId: accountId, action: "reconnect", decision: "allowed", metadata: { provider: "imap_smtp" } });
+        return NextResponse.json({ error: "provider_connection_failed", message }, { status: 502 });
+      }
     }
 
     if (action === "connect_imap_smtp" || action === "test_imap_smtp") {
