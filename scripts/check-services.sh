@@ -29,7 +29,7 @@ get_env() {
       if (index(line, key "=") == 1) {
         value=substr(line, length(key)+2)
         sub(/[[:space:]]+#.*$/, "", value)
-        gsub(/^["''']|["''']$/, "", value)
+        gsub(/^[\"\x27]|[\"\x27]$/, "", value)
         print value
         exit
       }
@@ -114,7 +114,7 @@ else
     echo "WARNING: '$db_host' is a Docker-network hostname. It only works from a container on the matching Docker network."
   fi
   if command -v psql >/dev/null 2>&1; then
-    if PGCONNECT_TIMEOUT=5 psql "$database_url" -X -v ON_ERROR_STOP=1 -Atqc 'select current_database() || '|' || current_user || '|' || version();' >/tmp/aca-pg-check.out 2>/tmp/aca-pg-check.err; then
+    if PGCONNECT_TIMEOUT=5 psql "$database_url" -X -v ON_ERROR_STOP=1 -Atqc "select current_database() || '|' || current_user || '|' || version();" >/tmp/aca-pg-check.out 2>/tmp/aca-pg-check.err; then
       echo "PASS PostgreSQL authentication/query"
       cat /tmp/aca-pg-check.out
     else
