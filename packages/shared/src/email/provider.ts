@@ -208,8 +208,14 @@ export interface EmailCredentials {
   refresh_token?: string;
   expires_at?: string;
   password?: string;
+  username?: string;
   host?: string;
   port?: number;
+  imap_host?: string;
+  imap_port?: number;
+  smtp_host?: string;
+  smtp_port?: number;
+  tls?: boolean;
   scopes?: string[];
 }
 
