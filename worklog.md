@@ -1615,3 +1615,13 @@ No provider credentials were fabricated and Clara source was not modified.
 - Worker discovery now persists runtime capability discovery and transitions accounts to connected only after successful provider connection/discovery; failures persist error with a safe diagnostic.
 - Corrected IMAP/SMTP capability metadata to advertise only operations actually implemented by the adapter; Zoho forward is no longer advertised because the adapter does not implement it.
 - No live provider credentials were introduced or fabricated. CI/Vercel remain non-blocking development gates per the explicit project-owner instruction.
+
+## 2026-10-06 — ChatGPT Email Accounts repository correction
+
+- Found a real persistence contract mismatch: the canonical migration stores email_account_status values as pending/connected/error/disconnected/revoked, while the repository decoder still interpreted legacy active/expired values. This could surface healthy pending records as errors.
+- Corrected status mapping to the actual PostgreSQL enum.
+- Hardened normal reads and status/config/capability updates against soft-deleted accounts.
+- Restored connection state now clears stale errors and establishes connected_at when missing.
+- Added deterministic repository contract regression tests.
+- No provider credentials were fabricated and no live provider connectivity is claimed.
+- Next implementation remains Email Accounts provider contract/runtime completion, followed by Mail.
