@@ -1323,3 +1323,23 @@ The local verification run failed while applying `0002_domain_foundation.sql`: `
 - 36 Phase 4 tables in `0002_database_foundation.sql`; no duplicate table declarations; no unresolved local FK targets detected by static audit.
 - Invalid single-dollar delimiters across canonical migrations: 0.
 - Fresh CI runtime result: pending.
+
+
+## Task ID: 12
+## Phase: 3 — Migration Chain Repair
+
+- **Status**: correction_implemented_awaiting_local/runtime_verification
+- **Date**: 2026-10-05
+- **Owner**: ChatGPT
+
+### Finding
+The user's disposable Docker verification reached the migration-chain validator and correctly rejected duplicate numeric prefixes `0003` and `0004`. This was a real repository defect.
+
+### Correction
+Canonicalized the Phase 4 migration sequence to unique ordered prefixes:
+`0001_identity_rbac`, `0002_database_foundation`, `0003_email_domain`, `0004_messaging`, `0005_agent_policy_configuration`, `0006_conversations_scheduling`, `0007_actions_ai_voice_audit`, `0008_api_keys_knowledge_storage`, `0009_rls_helper_hardening`, `0010_cross_tenant_integrity`, `0011_ownership_transfer`, `0012_server_identity_rpcs`, `0013_database_security_hardening`.
+
+No migration content was intentionally discarded; duplicate-numbered files were moved to unique canonical names and the old duplicate paths removed. The chain validator now requires the canonical sequence.
+
+### Acceptance status
+The migration-chain structural failure is addressed. Full disposable PostgreSQL runtime verification is still required before Phase 3 acceptance. Phase 4 implementation remains NOT AUTHORIZED.
