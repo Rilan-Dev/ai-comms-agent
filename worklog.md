@@ -1278,3 +1278,23 @@ No Gmail, Zoho, IMAP/SMTP credentials, external API calls, or production provide
 - This is a real runtime migration defect caught by the verification harness; it is not a false-positive static test issue.
 - Phase 3 acceptance remains pending until the disposable PostgreSQL verification is rerun successfully, including ownerless-organization rejection.
 - Phase 4 remains NOT AUTHORIZED.
+
+
+## Task ID: 12
+## Phase: 4 — Database Foundation Migration-Chain Correction
+
+- **Status**: correction_implemented_awaiting_runtime_rerun
+- **Date**: 2026-10-05
+- **Implementer**: ChatGPT
+
+### Evidence
+Owner-supplied Docker verification successfully applied the identity migration and application foundation, then failed while creating the tenant RLS policy for `automation_rules` because the existing table lacked `organization_id`. The evidence is preserved in the conversation attachment.
+
+### Corrections
+- Renamed the second Phase 4 migration from duplicate `0002_database_foundation.sql` to unique `0003_database_foundation.sql` so migration ordering is deterministic: 0001 identity → 0002 application → 0003 database foundation.
+- Added safe reconciliation of `automation_rules.organization_id` from `agents.organization_id`, then enforced NOT NULL, FK, and tenant index before direct organization RLS policies.
+- Corrected PostgreSQL dollar-quoted DO blocks introduced during the correction.
+- CI now provisions disposable PostgreSQL, installs the PostgreSQL client, runs the complete migration chain, then executes owner-invariant runtime checks.
+
+### Acceptance state
+Runtime verification must be rerun after these corrections. Phase 4 is not yet accepted.
