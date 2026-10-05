@@ -16,6 +16,22 @@ const ACCOUNT_DOMAINS: Record<string, string> = {
   sa: "https://accounts.zoho.sa",
 };
 
+function normalizeZohoApiDomain(value: string): string | null {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) return null;
+    const allowed = [
+      /^mail\\.zoho\\.(com|eu|in|au|jp|sa)$/,
+      /^mail\\.zohocloud\\.ca$/,
+    ];
+    if (!allowed.some((pattern) => pattern.test(url.hostname))) return null;
+    if (url.pathname !== "/" && url.pathname !== "") return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
 function verify(encoded: string, signature: string) {
   const secret = process.env.SESSION_SIGNING_KEY;
   if (!secret) return false;
@@ -85,8 +101,10 @@ export async function GET(request: Request) {
       access_token?: string; refresh_token?: string; expires_in?: number; api_domain?: string;
     };
     if (!tokens.access_token || !tokens.api_domain) return oauthError("Zoho did not return the required token metadata.", 502);
+    const apiDomain = normalizeZohoApiDomain(tokens.api_domain);
+    if (!apiDomain) return oauthError("Zoho returned an untrusted API domain.", 502);
 
-    const accountsResponse = await fetch(`${tokens.api_domain}/api/accounts`, {
+    const accountsResponse = await fetch(`${apiDomain}/api/accounts`, {
       headers: { authorization: `Zoho-oauthtoken ${tokens.access_token}`, accept: "application/json" },
     });
     if (!accountsResponse.ok) return oauthError("Zoho account verification failed.", 502);
@@ -115,7 +133,7 @@ export async function GET(request: Request) {
       emailAddress: remote.emailAddress,
       displayName: remote.displayName ?? remote.emailAddress,
       connectionConfig: {
-        apiDomain: tokens.api_domain,
+        apiDomain,
         dataCenter: payload.dataCenter,
         remoteAccountId: String(remote.accountId),
       },
