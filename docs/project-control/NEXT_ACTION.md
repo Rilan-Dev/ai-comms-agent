@@ -190,3 +190,9 @@ Continue product implementation without waiting on CI: harden Email Accounts pro
 
 ### 2026-10-06 active development continuation
 Formal phase remains 4 until runtime acceptance. In parallel under the development-first directive, Phase 5 email provider abstraction work is being implemented. Next concrete provider-foundation work is capability/runtime contract completion, followed by Phase 4 runtime acceptance when CI infrastructure becomes observable.
+
+
+## 2026-10-06 — Agents web build repair follow-up
+- Agents web build source repair is committed on main.
+- Pull main and rerun `bash scripts/manual-up.sh` to verify the corrected production build locally.
+- Continue the next product-completion vertical slice after the Agents slice; CI/Vercel validation remains a later gate and does not block development.
