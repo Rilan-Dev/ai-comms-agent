@@ -62,11 +62,11 @@ fi
 for kind in table enum; do
   case "$kind" in
     table) pattern='CREATE TABLE IF NOT EXISTS[[:space:]]+([a-zA-Z_][a-zA-Z0-9_]*)';;
-    enum) pattern='CREATE TYPE[[:space:]]+([a-zA-Z_][a-zA-Z0-9_]*)[[:space:]]+AS ENUM';;
+    enum) pattern='CREATE TYPE[[:space:]]+(IF[[:space:]]+NOT[[:space:]]+EXISTS[[:space:]]+)?([a-zA-Z_][a-zA-Z0-9_]*)[[:space:]]+AS ENUM';;
   esac
   duplicates="$({
     grep -RhoE "$pattern" "$MIGRATIONS_DIR" --include='*.sql' 2>/dev/null || true
-  } | sed -E 's/^.*[[:space:]]+([a-zA-Z_][a-zA-Z0-9_]*)$/\1/' | sort | uniq -d)"
+  } | sed -E 's/^.*(CREATE TYPE[[:space:]]+)(IF[[:space:]]+NOT[[:space:]]+EXISTS[[:space:]]+)?([a-zA-Z_][a-zA-Z0-9_]*).*$/\3/' | sort | uniq -d)"
   if [[ -n "$duplicates" ]]; then
     echo "ERROR: duplicate canonical $kind object(s): $duplicates" >&2
     exit 1
