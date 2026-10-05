@@ -1356,3 +1356,25 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Corrected migration verification tests that still referenced the removed duplicate `0002_application_foundation.sql` artifact.
 - Extended the migration-chain validator to require the new 0014 migration.
 - No production credentials or database provisioning performed. Clara source remains unchanged.
+
+
+## Task ID: 12
+## Phase: 4 — Database Foundation and Migrations
+
+- Status: implementation_continues
+- Architect / Developer: ChatGPT
+- Date: 2026-10-05
+
+### Completed in this continuation
+- Added Phase 4 static schema regression coverage across the complete tenant-table inventory.
+- Added RLS enablement assertions for all tenant-scoped tables.
+- Added ciphertext-only credential assertions for email and AI provider credentials.
+- Added audit append-only and idempotency/search index assertions.
+- Fixed email credential repository decryption to read the actual ciphertext database column.
+- Corrected email account status mapping to the real Phase 4 database enum values.
+- No Clara source modifications, billing, subscriptions, or production provisioning.
+
+### Current state
+- Phase 4 remains active under ChatGPT ownership.
+- Runtime verification is still the acceptance gate.
+- Latest code commit: 8fdef7bec29412fc197006246827885e0e4ee009.
