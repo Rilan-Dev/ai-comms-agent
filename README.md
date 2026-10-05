@@ -5,7 +5,7 @@
 **Repository:** `Rilan-Dev/ai-comms-agent` (private)
 **Vercel project:** `ai-comms-agent` (linked to this repo, production branch `main`)
 **Effective date:** 2026-10-03
-**Current phase:** Phase 3 — Identity, Organization, Users, Roles & RBAC
+**Current phase:** Phase 4 — Database Foundation and Migrations
 
 ---
 
@@ -61,7 +61,7 @@ Z.AI must not silently convert a proposal into an architectural decision. The ru
 | Field | Value |
 |---|---|
 Current Phase | Phase 3 — Identity, Organization, Users, Roles & RBAC
-Phase status | Correction implemented; final runtime acceptance pending
+Phase status | Implementation in progress; runtime PostgreSQL verification pending
 Application code | Foundation + Phase 3 identity/RBAC implemented
 Database migrations | Phase 3 migration artifact + Docker verification tooling
 Deployments | Previous Phase 3 deployment READY; latest code requires fresh verification
