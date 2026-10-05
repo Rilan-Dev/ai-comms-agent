@@ -59,6 +59,11 @@ export class MockEmailProvider implements EmailProvider {
     return this.messages.slice(0, Math.min(opts.limit ?? 50, 100));
   }
 
+  async getMessage(messageId: string): Promise<EmailMessage | null> {
+    this.ensureConnected();
+    return this.messages.find((m) => m.id === messageId) ?? null;
+  }
+
   async getThread(threadId: string): Promise<EmailMessage[]> {
     this.ensureConnected();
     return this.messages.filter((m) => m.thread_id === threadId);
@@ -89,10 +94,19 @@ export class MockEmailProvider implements EmailProvider {
     return { draft_id: draftId, account_id: "mock-account" };
   }
 
-  async send(draftId: string): Promise<SentMessageRef> {
+  async deleteDraft(draftId: string): Promise<void> {
+    this.ensureConnected();
+    this.drafts.delete(draftId);
+  }
+
+  async sendDraft(draftId: string): Promise<SentMessageRef> {
     this.ensureConnected();
     if (!this.drafts.has(draftId)) throw new Error(`Unknown draft: ${draftId}`);
     return { message_id: `mock-sent-${draftId}`, provider_message_id: `mock-provider-${draftId}` };
+  }
+
+  async send(draftId: string): Promise<SentMessageRef> {
+    return this.sendDraft(draftId);
   }
 
   async reply(messageId: string, params: DraftParams): Promise<SentMessageRef> {
@@ -106,6 +120,9 @@ export class MockEmailProvider implements EmailProvider {
   }
 
   async markRead(_messageIds: string[], _isRead: boolean): Promise<void> { this.ensureConnected(); }
+  async markUnread(messageIds: string[]): Promise<void> {
+    await this.markRead(messageIds, false);
+  }
   async archive(_messageIds: string[]): Promise<void> { this.ensureConnected(); }
   async move(_messageIds: string[], _targetFolderId: string): Promise<void> { this.ensureConnected(); }
   async downloadAttachment(attachmentId: string): Promise<Buffer> {
