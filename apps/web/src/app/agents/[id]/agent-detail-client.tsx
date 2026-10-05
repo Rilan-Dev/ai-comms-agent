@@ -21,6 +21,7 @@ export function AgentDetailClient({ organizationId, devUserId, initialAgent, ini
   const [emailAccountId, setEmailAccountId] = useState("");
   const [whatsappAccountId, setWhatsappAccountId] = useState("");
   const [testResult, setTestResult] = useState<{ok:boolean;checks:Check[]}|null>(null);
+  const [versionConfig, setVersionConfig] = useState("{}");
   const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
   const [emailRole, setEmailRole] = useState<"primary"|"read_only"|"send_only">("primary");
   const [editName, setEditName] = useState(initialAgent.name);
