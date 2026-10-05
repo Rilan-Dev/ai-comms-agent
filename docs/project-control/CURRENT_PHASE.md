@@ -205,3 +205,11 @@ current_commit: "fa8061d96628f8b1c59dadb3afde12d4f8588e3e"
 - This is a real runtime migration defect caught by the verification harness; it is not a false-positive static test issue.
 - Phase 3 acceptance remains pending until the disposable PostgreSQL verification is rerun successfully, including ownerless-organization rejection.
 - Phase 4 remains NOT AUTHORIZED.
+
+
+### ChatGPT takeover verification update — 2026-10-06
+
+- Latest code correction commit: `557951a49fd93d07877ef4361f616d331be4d226`.
+- CI now provisions PostgreSQL 17, applies `supabase/migrations/0001_identity_rbac.sql`, then executes runtime owner/RLS verification and an expected-failure ownerless-organization check.
+- Static migration verification now checks the actual private SECURITY DEFINER helper declarations and their pinned empty search_path.
+- Phase 3 acceptance remains pending until CI produces a successful runtime result. Phase 4 remains unauthorized.
