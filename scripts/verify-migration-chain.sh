@@ -22,7 +22,17 @@ done
 for required in \
   0001_identity_rbac.sql \
   0002_database_foundation.sql \
-  0003_database_security_hardening.sql
+  0003_email_domain.sql \
+  0004_messaging.sql \
+  0005_agent_policy_configuration.sql \
+  0006_conversations_scheduling.sql \
+  0007_actions_ai_voice_audit.sql \
+  0008_api_keys_knowledge_storage.sql \
+  0009_rls_helper_hardening.sql \
+  0010_cross_tenant_integrity.sql \
+  0011_ownership_transfer.sql \
+  0012_server_identity_rpcs.sql \
+  0013_database_security_hardening.sql
 do
   [[ -f "$MIGRATIONS_DIR/$required" ]] || {
     echo "ERROR: required migration missing: $required" >&2
