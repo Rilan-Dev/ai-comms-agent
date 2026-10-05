@@ -623,3 +623,10 @@ Development-first update 2026-10-06: email credential repository schema mismatch
 - Added strict agent policy validation plus unit coverage.
 - These changes are source implementation only; no CI/Vercel PASS is claimed.
 - Slice 1 acceptance remains pending runtime/browser verification and final review.
+
+
+### 2026-10-06 — Email Accounts continuation
+- Latest implementation checkpoint: 30cf7d51c32a05b7f49551817368a0248349f95c7.
+- Source changes include IMAP/SMTP reconnect lifecycle, persisted connection error mapping, provider-aware reconnect UI, and Zoho regional OAuth refresh regression coverage.
+- GitHub Actions/Vercel are not being used as development blockers per explicit project-owner instruction.
+- Runtime/browser/provider acceptance remains pending; no CI PASS, Vercel READY, or live-provider connection is claimed.
