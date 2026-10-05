@@ -552,3 +552,10 @@ The user's local `bash scripts/verify-docker.sh` run successfully booted Postgre
 - Static tests verify private SECURITY DEFINER helper search_path hardening.
 - GitHub workflow results are not yet exposed by the current workflow-run endpoint; Vercel is currently blocked by build-rate-limit. No false green/READY claim is made.
 - Acceptance: PENDING. Phase 4: NOT AUTHORIZED.
+
+
+### Runtime verification CI status — 2026-10-06
+- PostgreSQL runtime verification scripts are now present under `scripts/verify-phase3-migration.sql` and the CI job provisions PostgreSQL 17.
+- The GitHub workflow endpoint currently returns no workflow run for the latest migration-verification commit, so runtime execution evidence is still unavailable.
+- GitHub combined status currently reports only the Vercel context, which is failing due the existing build-rate-limit; this is not treated as application-test evidence.
+- **Phase 3 acceptance remains PENDING. Phase 4 remains NOT AUTHORIZED.**
