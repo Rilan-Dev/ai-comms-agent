@@ -231,3 +231,7 @@ Product completion Slice 1 (Agents) is now the active vertical implementation tr
 - SECURITY DEFINER helpers intentionally use `SET search_path = ''` with fully-qualified `public.*` table references; static tests now enforce this safer pinned path.
 - Latest implementation commit: 5bcc9758f374de1d7187d2f9cd814d2589ecf081.
 - Phase 3 acceptance remains pending until CI runtime evidence is green.
+
+
+### 2026-10-06 — ChatGPT continuation
+Email Accounts continuation is active under ChatGPT ownership. Corrected the email credential repository to read the canonical ciphertext column, replaced the mail/accounts demo UI with persisted PostgreSQL account state, and added an authorized disconnect API. Provider activation remains configuration-required when user-owned OAuth/IMAP credentials are absent. Latest implementation commit: 36411839ab9080762d5d9eae5ce3aeb4d3aedf46.
