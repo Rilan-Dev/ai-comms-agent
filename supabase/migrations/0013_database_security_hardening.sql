@@ -31,7 +31,8 @@ GRANT EXECUTE ON FUNCTION public.can_manage_organization(uuid) TO authenticated;
 -- directly; no authenticated caller should be able to supply an arbitrary user ID.
 DROP FUNCTION IF EXISTS public.is_active_organization_member(uuid, uuid);
 DROP FUNCTION IF EXISTS public.is_active_organization_admin_or_owner(uuid, uuid);
-\n-- Credential-bearing tables: membership is not sufficient to read or mutate
+
+-- Credential-bearing tables: membership is not sufficient to read or mutate
 -- ciphertext. Organization admins/owners are the database-level minimum;
 -- application authorization remains stricter where required.
 DROP POLICY IF EXISTS email_account_credentials_org_member ON email_account_credentials;
