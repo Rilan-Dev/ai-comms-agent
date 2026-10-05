@@ -593,7 +593,7 @@ SET search_path = public
 AS $$
   SELECT p_organization_id IS NOT NULL
      AND p_organization_id = current_app_organization_id()
-     AND is_active_organization_member(p_organization_id, current_setting('app.user_id', true)::uuid);
+     AND public.is_active_organization_member(p_organization_id, current_setting('app.user_id', true)::uuid);
 $$;
 
 -- Tenant tables use the same fail-closed policy for SELECT/INSERT/UPDATE/DELETE.
