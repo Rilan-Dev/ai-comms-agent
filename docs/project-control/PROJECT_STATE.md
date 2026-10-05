@@ -280,3 +280,9 @@ Email Accounts continuation is active under ChatGPT ownership. Corrected canonic
 - Gmail remains the fully advertised provider surface where its adapter implements the corresponding contract.
 - Latest code commit: be4925cbd3e73ebeec28a951a5d062d70fba19ae.
 - Runtime/browser verification remains deferred and no live provider connection is claimed.
+
+
+### Latest implementation checkpoint — 2026-10-06
+- Slice 2 Email Accounts is active under the development-first project-owner directive.
+- Gmail/Zoho OAuth persistence now remains pending until worker verification; IMAP/SMTP persistence is idempotent and credential-save failures are fail-closed to an error state.
+- No live provider credentials are fabricated. CI/Vercel remain verification gates and are not treated as development blockers.
