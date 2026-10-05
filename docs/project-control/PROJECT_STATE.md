@@ -209,3 +209,14 @@ Acceptance remains pending until a fresh runtime/CI run is green. No production 
 - Registered Gmail in the server-side provider registry; mock provider remains available for deterministic tests.
 - Removed stale test dependency on the deleted duplicate Phase 4 foundation migration.
 - Runtime migration verification remains a required acceptance gate; no unverified deployment is claimed.
+
+
+### Product completion track — 2026-10-05
+
+- **Owner:** ChatGPT
+- **Objective:** complete the actual application menu-by-menu; no placeholder controls or fake live state.
+- **Current product slice:** 0 — Shared Product UX/Runtime Foundation.
+- **Next complete vertical slice:** 1 — Agents.
+- **Plan:** docs/superpowers/plans/2026-10-05-product-completion-menu-plan.md
+- **Known UI gaps:** hard-coded/demo data on multiple menus, non-functional buttons, missing validation, inconsistent/no notifications, incomplete error/loading/empty states, incomplete persistence/API wiring.
+- **Important:** roadmap phase completion and product-menu acceptance remain separate gates. No phase is marked complete merely because UI work exists.
