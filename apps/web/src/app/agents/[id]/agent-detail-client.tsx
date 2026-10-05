@@ -68,8 +68,15 @@ export function AgentDetailClient({ organizationId, devUserId, initialAgent, ini
     } finally { setBusy(false); }
   }
   async function createVersion() {
+    let parsed: unknown;
+    try { parsed = JSON.parse(versionConfig); } catch { notify({kind:"error",title:"Invalid configuration",message:"Version configuration must be valid JSON."}); return; }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) { notify({kind:"error",title:"Invalid configuration",message:"Version configuration must be a JSON object."}); return; }
     setBusy(true);
-    try { const p=await call(`/api/agents/${agent.id}/versions`,{method:"POST",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId,config:{}})}); setVersions((v)=>[p.version,...v]); notify({kind:"success",title:"Version created",message:`Version ${p.version.versionNumber} is ready for deployment.`}); } catch(e){notify({kind:"error",title:"Could not create version",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
+    try {
+      const p=await call(`/api/agents/${agent.id}/versions`,{method:"POST",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId,config:parsed})});
+      setVersions((v)=>[p.version,...v]); setVersionConfig(JSON.stringify(p.version.config ?? {},null,2));
+      notify({kind:"success",title:"Version created",message:`Version ${p.version.versionNumber} is ready for deployment.`});
+    } catch(e){notify({kind:"error",title:"Could not create version",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
   async function runTest() {
     setBusy(true); setTestResult(null);
