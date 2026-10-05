@@ -34,3 +34,5 @@ export {
 } from "./email/repository";
 
 export { PostgresAgentRepository } from "./agent/repository";
+
+export { recordAuditEvent, type AuditEventInput } from "./audit/repository";
