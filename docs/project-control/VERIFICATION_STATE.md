@@ -391,7 +391,7 @@ takeover:
     ci: "CI provisions PostgreSQL 17 and executes the Phase 3 migration verification scripts."
   execution_status:
     phase_3: "awaiting_final_chatgpt_acceptance — Vercel latest deployment pending/rate-limited"
-    phase_4_authorized: false
+    phase_4_authorized: true
 
 
 ### Latest ChatGPT verification update — 2026-10-04
@@ -600,3 +600,10 @@ Development-first update 2026-10-06: email credential repository schema mismatch
 - Registry now resolves Gmail, IMAP/SMTP, and Zoho adapters.
 - No CI PASS is claimed and Vercel remains build-rate-limit blocked. Real provider connectivity is unverified because no provider credentials are available.
 - **Acceptance: PENDING. Development continues under the project-owner development-first instruction.**
+
+
+### Phase 4 authorization — 2026-10-06
+- ChatGPT has authorized Phase 4 implementation and remains primary implementer/verifier.
+- GitHub Actions and Vercel completion are not prerequisites for continued implementation.
+- Runtime PostgreSQL migration and RLS verification remain required evidence before Phase 4 acceptance.
+- Current implementation migrations: 0002_application_domain.sql, 0003_phase4_schema_alignment.sql, 0004_phase4_schema_cleanup.sql.
