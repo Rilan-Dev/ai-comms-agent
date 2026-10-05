@@ -1625,3 +1625,14 @@ No provider credentials were fabricated and Clara source was not modified.
 - Added deterministic repository contract regression tests.
 - No provider credentials were fabricated and no live provider connectivity is claimed.
 - Next implementation remains Email Accounts provider contract/runtime completion, followed by Mail.
+
+
+## 2026-10-06 — ChatGPT Email Accounts provider lifecycle continuation
+
+- Re-read `docs/project-control/NEXT_ACTION.md` and `CHAT_CONTINUITY.md` before continuing. Development-first override remains active; CI/Vercel are not blocking implementation.
+- Audited the Zoho Mail adapter against current official Zoho Mail API documentation. The adapter already implements account discovery, folders, labels, list/get/search, draft creation, reply, read/unread, archive, move, and label operations.
+- Kept unsupported Zoho draft-update/draft-send operations fail-closed rather than fabricating undocumented behavior; capability metadata continues to advertise `send: false` until the application-side draft repository/worker orchestration provides a verified implementation path.
+- Added deterministic provider-contract coverage for documented Zoho draft creation and retained regional OAuth/security coverage.
+- No provider credentials were fabricated or used. No live connectivity is claimed.
+- Latest implementation commit before control-document synchronization: `1972d62cffca5b1b5a5eaeb4ddcb4e7c9f53b446`.
+- Next implementation target: complete persisted folder/label discovery lifecycle and provider contract coverage, then finish Email Accounts UX/assignment lifecycle before Mail.
