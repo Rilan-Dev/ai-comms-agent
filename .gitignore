@@ -61,7 +61,9 @@ supabase-service-role*
 prima-service-token*
 
 # ---- Editor / OS ----
-.vscode/
+!.vscode/
+.vscode/*
+!.vscode/mcp.json
 .idea/
 *.swp
 *.swo
