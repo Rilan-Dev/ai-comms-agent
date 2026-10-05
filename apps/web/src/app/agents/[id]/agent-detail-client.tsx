@@ -7,7 +7,7 @@ import { useNotifications } from "@/components/notifications";
 
 type Check = { key: string; label: string; ok: boolean; detail?: string };
 
-export function AgentDetailClient({ organizationId, initialAgent, initialVersions, initialPolicy }: { organizationId: string; initialAgent: Agent; initialVersions: AgentVersion[]; initialPolicy: AgentPolicy | null }) {
+export function AgentDetailClient({ organizationId, devUserId, initialAgent, initialVersions, initialPolicy }: { organizationId: string; devUserId: string; initialAgent: Agent; initialVersions: AgentVersion[]; initialPolicy: AgentPolicy | null }) {
   const router = useRouter();
   const { notify } = useNotifications();
   const [agent, setAgent] = useState(initialAgent);
@@ -26,7 +26,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   async function deploy() {
     const version=versions[0]; if(!version) return;
     setBusy(true);
-    try { const p=await call(\`/api/agents/\${agent.id}/deploy\`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,versionId:version.id,environment:"production"})}); setAgent({...agent,status:"active",currentVersionId:version.id,currentDeploymentId:p.deployment.id}); notify({kind:"success",title:"Agent deployed",message:\`Version \${version.versionNumber} is now active.\`}); setShowConfirm(null); } catch(e){notify({kind:"error",title:"Deployment failed",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
+    try { const p=await call(\`/api/agents/\${agent.id}/deploy\`,{method:"POST",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId,versionId:version.id,environment:"production"})}); setAgent({...agent,status:"active",currentVersionId:version.id,currentDeploymentId:p.deployment.id}); notify({kind:"success",title:"Agent deployed",message:\`Version \${version.versionNumber} is now active.\`}); setShowConfirm(null); } catch(e){notify({kind:"error",title:"Deployment failed",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
   async function retire() {
     setBusy(true);
