@@ -76,25 +76,25 @@ ALTER TABLE knowledge_chunks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE storage_objects ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY api_keys_admin_visibility ON api_keys FOR SELECT TO authenticated
-USING (is_active_organization_admin_or_owner(organization_id,(select auth.uid())));
+USING (can_manage_organization(organization_id));
 CREATE POLICY api_keys_admin_manage ON api_keys FOR ALL TO authenticated
-USING (is_active_organization_admin_or_owner(organization_id,(select auth.uid())))
-WITH CHECK (is_active_organization_admin_or_owner(organization_id,(select auth.uid())));
+USING (can_manage_organization(organization_id))
+WITH CHECK (can_manage_organization(organization_id));
 
 CREATE POLICY knowledge_documents_member_visibility ON knowledge_documents FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id,(select auth.uid())));
+USING (can_access_organization(organization_id));
 CREATE POLICY knowledge_documents_member_manage ON knowledge_documents FOR ALL TO authenticated
-USING (is_active_organization_member(organization_id,(select auth.uid())))
-WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+USING (can_access_organization(organization_id))
+WITH CHECK (can_access_organization(organization_id));
 
 CREATE POLICY knowledge_chunks_member_visibility ON knowledge_chunks FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id,(select auth.uid())));
+USING (can_access_organization(organization_id));
 CREATE POLICY knowledge_chunks_member_manage ON knowledge_chunks FOR ALL TO authenticated
-USING (is_active_organization_member(organization_id,(select auth.uid())))
-WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+USING (can_access_organization(organization_id))
+WITH CHECK (can_access_organization(organization_id));
 
 CREATE POLICY storage_objects_member_visibility ON storage_objects FOR SELECT TO authenticated
-USING (is_active_organization_member(organization_id,(select auth.uid())));
+USING (can_access_organization(organization_id));
 CREATE POLICY storage_objects_member_manage ON storage_objects FOR ALL TO authenticated
-USING (is_active_organization_member(organization_id,(select auth.uid())))
-WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+USING (can_access_organization(organization_id))
+WITH CHECK (can_access_organization(organization_id));
