@@ -18,13 +18,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const repo = new PostgresAgentRepository();
     const agent = await repo.get(organizationId, id);
     if (!agent) return NextResponse.json({ error: "not_found" }, { status: 404 });
-    const [versions, policy, bindings] = await Promise.all([repo.versions(organizationId, id), repo.policy(organizationId, id), repo.emailBindings(organizationId, id)]);
+    const [versions, policy, bindings, whatsappBinding] = await Promise.all([repo.versions(organizationId, id), repo.policy(organizationId, id), repo.emailBindings(organizationId, id), repo.whatsappBinding(organizationId, id)]);
     const current = versions.find((v) => v.id === agent.currentVersionId) ?? versions[0] ?? null;
     const checks = [
       { key: "agent", label: "Agent record exists", ok: true },
       { key: "version", label: "At least one configuration version exists", ok: Boolean(current) },
       { key: "policy", label: "Security policy exists", ok: Boolean(policy) },
       { key: "email", label: "Email channel binding is optional", ok: true, detail: bindings.length ? `${bindings.length} email binding(s)` : "Not connected" },
+      { key: "whatsapp", label: "WhatsApp binding is valid", ok: !whatsappBinding || Boolean(whatsappBinding.whatsappAccountId), detail: whatsappBinding ? "One account connected" : "Not connected" },
     ];
     return NextResponse.json({ ok: checks.every((c) => c.ok), checks, agentId: id });
   } catch (error) {
