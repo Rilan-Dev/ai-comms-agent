@@ -607,3 +607,11 @@ Development-first update 2026-10-06: email credential repository schema mismatch
 - GitHub Actions and Vercel completion are not prerequisites for continued implementation.
 - Runtime PostgreSQL migration and RLS verification remain required evidence before Phase 4 acceptance.
 - Current implementation migrations: 0002_application_domain.sql, 0003_phase4_schema_alignment.sql, 0004_phase4_schema_cleanup.sql.
+
+
+### Development-first checkpoint — 2026-10-06
+- Latest implementation commit: b96c44a9a233fe0ee1b0c00fd6176e3eea8835db.
+- Slice 1 Agents remains the active product slice.
+- Implemented: persisted version-config editing, server-side version-config validation, full policy controls, agent status filtering, and create error recovery.
+- Automated/browser verification is intentionally deferred per project-owner instruction; no pass is claimed for the latest changes.
+- Phase 4/product implementation continues without waiting for GitHub Actions or Vercel.
