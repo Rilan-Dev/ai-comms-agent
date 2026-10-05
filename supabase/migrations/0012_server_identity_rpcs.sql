@@ -13,7 +13,7 @@ DECLARE
   created_org organizations%ROWTYPE;
   created_membership organization_memberships%ROWTYPE;
 BEGIN
-  IF auth.uid() IS NOT NULL AND auth.uid() <> p_owner_id THEN
+  IF NULLIF(current_setting('app.user_id', true), '')::uuid IS NOT NULL AND NULLIF(current_setting('app.user_id', true), '')::uuid <> p_owner_id THEN
     IF NOT EXISTS (
       SELECT 1 FROM organization_memberships
       WHERE organization_id IS NULL AND false
