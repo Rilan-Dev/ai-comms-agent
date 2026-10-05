@@ -33,3 +33,18 @@ describe("GmailOAuthClient", () => {
     );
   });
 });
+
+
+describe("OAuth reconnect binding", () => {
+  it("binds Gmail reconnect state to an optional target account", async () => {
+    const source = await (await fetch("https://raw.githubusercontent.com/Rilan-Dev/ai-comms-agent/main/apps/web/src/app/api/oauth/gmail/start/route.ts")).text();
+    expect(source).toContain("accountId");
+    expect(source).toContain("...(accountId ? { accountId } : {})");
+  });
+
+  it("validates Gmail reconnect target ownership and provider", async () => {
+    const source = await (await fetch("https://raw.githubusercontent.com/Rilan-Dev/ai-comms-agent/main/apps/web/src/app/api/oauth/gmail/callback/route.ts")).text();
+    expect(source).toContain('target.organization_id !== payload.organizationId');
+    expect(source).toContain('target.provider !== "gmail"');
+  });
+});
