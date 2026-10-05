@@ -175,3 +175,10 @@ Do not advance to the next menu until the current menu's acceptance gate is gree
 
 ### ChatGPT takeover update — 2026-10-06
 Continue Slice 1 Agents: resolve CI/runtime failures, then browser-verify create/edit/version/deploy/policy/channel flows. Only after Slice 1 acceptance move to Email Accounts.
+
+
+### Verification hardening — 2026-10-06
+- CI now provisions PostgreSQL 17, applies the Phase 3 migration, executes transaction-level owner/RLS runtime verification, and asserts ownerless-organization rejection.
+- SECURITY DEFINER helpers intentionally use `SET search_path = ''` with fully-qualified `public.*` table references; static tests now enforce this safer pinned path.
+- Latest implementation commit: 5bcc9758f374de1d7187d2f9cd814d2589ecf081.
+- Phase 3 acceptance remains pending until CI runtime evidence is green.
