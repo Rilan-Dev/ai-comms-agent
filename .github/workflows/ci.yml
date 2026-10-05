@@ -50,6 +50,9 @@ jobs:
       - name: Full source verification
         run: pnpm run verify
 
+      - name: Verify migration chain structure
+        run: bash scripts/verify-migration-chain.sh
+
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
