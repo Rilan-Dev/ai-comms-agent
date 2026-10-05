@@ -12,13 +12,13 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT auth.uid() IS NOT NULL
-    AND p_user_id = auth.uid()
+  SELECT NULLIF(current_setting('app.user_id', true), '')::uuid IS NOT NULL
+    AND p_user_id = NULLIF(current_setting('app.user_id', true), '')::uuid
     AND EXISTS (
       SELECT 1
       FROM organization_memberships m
       WHERE m.organization_id = p_organization_id
-        AND m.user_id = auth.uid()
+        AND m.user_id = NULLIF(current_setting('app.user_id', true), '')::uuid
         AND m.status = 'active'
     );
 $$;
@@ -33,13 +33,13 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT auth.uid() IS NOT NULL
-    AND p_user_id = auth.uid()
+  SELECT NULLIF(current_setting('app.user_id', true), '')::uuid IS NOT NULL
+    AND p_user_id = NULLIF(current_setting('app.user_id', true), '')::uuid
     AND EXISTS (
       SELECT 1
       FROM organization_memberships m
       WHERE m.organization_id = p_organization_id
-        AND m.user_id = auth.uid()
+        AND m.user_id = NULLIF(current_setting('app.user_id', true), '')::uuid
         AND m.status = 'active'
         AND m.role IN ('owner', 'admin')
     );
