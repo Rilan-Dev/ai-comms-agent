@@ -32,6 +32,9 @@ export {
   PostgresEmailAccountRepository,
   SupabaseEmailAccountRepository,
   type CreateEmailAccountInput,
+  listInboxMessages,
+  getMailMessageForOrganization,
+  type MailInboxFilters,
 } from "./email/repository";
 export { PostgresEmailFolderLabelRepository } from "./email/folder-label-repository";
 
