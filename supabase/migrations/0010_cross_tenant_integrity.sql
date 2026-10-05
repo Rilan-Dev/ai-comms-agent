@@ -18,10 +18,12 @@ ALTER TABLE agent_whatsapp_accounts
 CREATE OR REPLACE FUNCTION enforce_agent_email_account_org()
 RETURNS TRIGGER AS $$
 DECLARE account_org uuid;
+  agent_org uuid;
 BEGIN
   IF NEW.email_account_id IS NULL THEN RETURN NEW; END IF;
+  SELECT a.organization_id INTO agent_org FROM agents a WHERE a.id = NEW.agent_id;
   SELECT organization_id INTO account_org FROM email_accounts WHERE id = NEW.email_account_id;
-  IF account_org IS NULL OR account_org <> NEW.organization_id THEN
+  IF agent_org IS NULL OR account_org IS NULL OR account_org <> agent_org THEN
     RAISE EXCEPTION 'Email account does not belong to agent organization' USING ERRCODE='foreign_key_violation';
   END IF;
   RETURN NEW;
@@ -31,10 +33,12 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION enforce_agent_whatsapp_account_org()
 RETURNS TRIGGER AS $$
 DECLARE account_org uuid;
+  agent_org uuid;
 BEGIN
   IF NEW.whatsapp_account_id IS NULL THEN RETURN NEW; END IF;
+  SELECT a.organization_id INTO agent_org FROM agents a WHERE a.id = NEW.agent_id;
   SELECT organization_id INTO account_org FROM whatsapp_accounts WHERE id = NEW.whatsapp_account_id;
-  IF account_org IS NULL OR account_org <> NEW.organization_id THEN
+  IF agent_org IS NULL OR account_org IS NULL OR account_org <> agent_org THEN
     RAISE EXCEPTION 'WhatsApp account does not belong to agent organization' USING ERRCODE='foreign_key_violation';
   END IF;
   RETURN NEW;
