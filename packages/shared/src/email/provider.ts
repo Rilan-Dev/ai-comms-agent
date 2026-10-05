@@ -177,19 +177,26 @@ export interface EmailProvider {
   sync(state: SyncState): Promise<SyncResult>;
 
   listMessages(folderId: string, opts: ListOptions): Promise<EmailMessage[]>;
+  getMessage(messageId: string): Promise<EmailMessage | null>;
   getThread(threadId: string): Promise<EmailMessage[]>;
   search(query: SearchQuery): Promise<EmailMessage[]>;
 
   createDraft(params: DraftParams): Promise<DraftRef>;
   updateDraft(draftId: string, params: Partial<DraftParams>): Promise<DraftRef>;
+  deleteDraft(draftId: string): Promise<void>;
 
+  sendDraft(draftId: string): Promise<SentMessageRef>;
+  /** @deprecated Use sendDraft for an explicit draft operation. */
   send(draftId: string): Promise<SentMessageRef>;
   reply(messageId: string, params: DraftParams): Promise<SentMessageRef>;
   forward(messageId: string, to: string[]): Promise<SentMessageRef>;
 
   markRead(messageIds: string[], isRead: boolean): Promise<void>;
+  markUnread(messageIds: string[]): Promise<void>;
   archive(messageIds: string[]): Promise<void>;
   move(messageIds: string[], targetFolderId: string): Promise<void>;
+  addLabel?(messageIds: string[], labelId: string): Promise<void>;
+  removeLabel?(messageIds: string[], labelId: string): Promise<void>;
   applyLabels?(messageIds: string[], labelIds: string[]): Promise<void>;
 
   downloadAttachment(attachmentId: string): Promise<Buffer>;
