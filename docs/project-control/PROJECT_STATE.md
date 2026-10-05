@@ -239,3 +239,9 @@ Email Accounts continuation is active under ChatGPT ownership. Corrected the ema
 
 ### 2026-10-06 — Agent vertical-slice continuation
 ChatGPT corrected the remaining 0001 PostgreSQL role-bootstrap quoting defect, added persisted Agent Details editing, and replaced raw email-account UUID entry with an organization-scoped persisted account selector plus binding role. The product-completion plan remains the active execution baseline; Slice 1 Agents is still not accepted pending runtime/browser verification. Vercel continues to report build-rate-limit failure and the GitHub workflow connector exposes no push-run records, so no green verification is claimed.
+
+
+### 2026-10-06 — ChatGPT continuation
+- Latest implementation corrections: cross-tenant provider binding guard fixed in migration 0010; Gmail OAuth callback now validates state-cookie equality; Gmail accounts remain pending until encrypted credentials are stored successfully.
+- Slice 1 Agents remains pending formal acceptance. Development-first implementation continues; no Vercel READY or CI PASS is claimed.
+- Next product work remains Email Accounts provider connection hardening (Gmail, then IMAP/SMTP and Zoho), followed by Mail.
