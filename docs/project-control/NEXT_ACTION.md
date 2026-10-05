@@ -11,9 +11,10 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Continue Phase 4 PostgreSQL-native implementation. Complete schema/runtime contracts,
-  self-hosted Docker verification, and database access migration. Then proceed to Phase 5
-  email provider abstraction without waiting for hosted infrastructure.
+  Continue Product Completion Slice 1 — Agents. Finish the real persisted agent vertical
+  slice: detail editing, version/config workflow, policy, channel binding/unbinding,
+  configuration testing, authorization, notifications, responsive states, tests, and
+  browser verification. Then advance to Slice 2 — Email Accounts.
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
@@ -21,7 +22,7 @@ constraints:
   source_of_truth: "GitHub main"
   clara: "Reuse Clara Core; do not modify Clara source"
   deployment: "Self-hosted Docker is the current deployment path"
-  validation: "Run authoritative Docker/CI verification after the current implementation set"
+  validation: "Verification is an acceptance gate; development continues under the approved development-first override."
 ```
 
 ---
