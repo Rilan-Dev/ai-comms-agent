@@ -1,4 +1,4 @@
-import { query } from "../client";
+import { query, withTransaction } from "../client";
 import type { EmailFolder, EmailLabel } from "@ai-comms-agent/shared";
 
 type Row = Record<string, unknown>;
@@ -29,32 +29,41 @@ function label(row: Row): EmailLabel {
 
 export class PostgresEmailFolderLabelRepository {
   async replaceFolders(accountId: string, organizationId: string, folders: EmailFolder[]): Promise<EmailFolder[]> {
-    for (const item of folders) {
-      await query(
-        `INSERT INTO email_folders
-          (email_account_id, organization_id, provider_folder_id, name, folder_type, unread_count, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,now())
-         ON CONFLICT (email_account_id, provider_folder_id)
-         DO UPDATE SET name=EXCLUDED.name, folder_type=EXCLUDED.folder_type,
-                       unread_count=EXCLUDED.unread_count, updated_at=now()`,
-        [accountId, organizationId, item.provider_folder_id, item.name, item.role, item.unread_count],
+    return withTransaction(async (client) => {
+      await client.query("DELETE FROM email_folders WHERE email_account_id = $1", [accountId]);
+      for (const item of folders) {
+        await client.query(
+          `INSERT INTO email_folders
+            (email_account_id, organization_id, provider_folder_id, name, folder_type, unread_count, updated_at)
+           VALUES ($1,$2,$3,$4,$5,$6,now())`,
+          [accountId, organizationId, item.provider_folder_id, item.name, item.role, item.unread_count],
+        );
+      }
+      const result = await client.query<Row>(
+        "SELECT * FROM email_folders WHERE email_account_id = $1 ORDER BY name",
+        [accountId],
       );
-    }
-    return this.listFolders(accountId);
+      return result.rows.map(folder);
+    });
   }
 
   async replaceLabels(accountId: string, organizationId: string, labels: EmailLabel[]): Promise<EmailLabel[]> {
-    for (const item of labels) {
-      await query(
-        `INSERT INTO email_labels
-          (email_account_id, organization_id, provider_label_id, name, color, updated_at)
-         VALUES ($1,$2,$3,$4,$5,now())
-         ON CONFLICT (email_account_id, provider_label_id)
-         DO UPDATE SET name=EXCLUDED.name, color=EXCLUDED.color, updated_at=now()`,
-        [accountId, organizationId, item.provider_label_id, item.name, item.color ?? null],
+    return withTransaction(async (client) => {
+      await client.query("DELETE FROM email_labels WHERE email_account_id = $1", [accountId]);
+      for (const item of labels) {
+        await client.query(
+          `INSERT INTO email_labels
+            (email_account_id, organization_id, provider_label_id, name, color, updated_at)
+           VALUES ($1,$2,$3,$4,$5,now())`,
+          [accountId, organizationId, item.provider_label_id, item.name, item.color ?? null],
+        );
+      }
+      const result = await client.query<Row>(
+        "SELECT * FROM email_labels WHERE email_account_id = $1 ORDER BY name",
+        [accountId],
       );
-    }
-    return this.listLabels(accountId);
+      return result.rows.map(label);
+    });
   }
 
   async listFolders(accountId: string): Promise<EmailFolder[]> {
