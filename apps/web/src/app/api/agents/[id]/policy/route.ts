@@ -21,9 +21,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       rateLimits: body?.rateLimits && typeof body.rateLimits === "object" ? body.rateLimits : {},
     };
     if (!orgId) return NextResponse.json({ error: "validation_error", fieldErrors: { organizationId: "Organization is required." } }, { status: 400 });
-    await authorize(request, { organizationId: asOrganizationId(orgId), role: "admin" }, getIdentityAdapter(), getIdentityRepository());
+    const subject = await authorize(request, { organizationId: asOrganizationId(orgId), role: "admin" }, getIdentityAdapter(), getIdentityRepository());
     const policy = await new PostgresAgentRepository().updatePolicy(orgId, id, input);
     if (!policy) return NextResponse.json({ error: "not_found" }, { status: 404 });
+    await recordAuditEvent({ organizationId: orgId, actorUserId: subject.user.id, agentId: id, eventType: "agent.policy_updated", targetType: "agent_policy", targetId: policy.id, action: "update", decision: "allowed" });
     return NextResponse.json({ policy });
   } catch (error) {
     return authorizationErrorToResponse(error);
