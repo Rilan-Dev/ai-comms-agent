@@ -1594,3 +1594,16 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Continue to Mail vertical slice after Email Accounts implementation acceptance evidence.
 
 No provider credentials were fabricated and Clara source was not modified.
+
+
+## Task ID: 12
+## Phase: Product Completion Slice 2 — Email Accounts UX
+
+- **Status**: implementation_continued
+- **Owner**: ChatGPT
+- Added persisted mailbox search and status filtering to the Email Accounts screen.
+- Added explicit refresh against the authorized organization account endpoint with truthful success/error feedback.
+- Added a no-results state with filter reset instead of presenting an empty account state as if no mailboxes existed.
+- Preserved the security boundary: only persisted account metadata is rendered; credentials remain server-side.
+- No live provider connectivity is claimed; OAuth/IMAP/SMTP configuration remains truthful when server credentials are absent.
+- **Commit**: e828d5555031425f7174c5280019ce64230e06af8.
