@@ -344,19 +344,15 @@ ALTER TABLE agent_whatsapp_accounts ADD CONSTRAINT agent_whatsapp_accounts_accou
 -- ---------------------------------------------------------------------------
 DO $$ DECLARE r record; BEGIN
   FOR r IN SELECT table_name FROM (VALUES
-    -- ---------------------------------------------------------------------------
--- Organization ownership-aware RLS helpers
--- ---------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION can_access_organization(p_organization_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT private.is_active_organization_member(p_organization_id, NULLIF(current_setting('app.user_id', true), '')::uuid);
-$$;
-
-CREATE OR REPLACE FUNCTION can_manage_organization(p_organization_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT private.is_active_organization_admin_or_owner(p_organization_id, NULLIF(current_setting('app.user_id', true), '')::uuid);
-$$;
-
+    ('agents'),('agent_ai_settings'),('email_accounts'),
+    ('email_account_credentials'),('email_threads'),('email_messages'),
+    ('whatsapp_accounts')
+  ) AS t(table_name)
+  LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS set_updated_at ON %I', r.table_name);
+    EXECUTE format('CREATE TRIGGER set_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION set_updated_at()', r.table_name);
+  END LOOP;
+END $$;
 
 -- ---------------------------------------------------------------------------
 -- Organization authorization wrappers
@@ -380,8 +376,11 @@ $$;
 REVOKE EXECUTE ON FUNCTION can_access_organization(uuid) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION can_manage_organization(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION can_access_organization(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION can_manage_organization(uuid) TO authenticated;
 
--- Every tenant table created by 0002 gets RLS.
+-- ---------------------------------------------------------------------------
+-- RLS for tables created by this migration
+-- ---------------------------------------------------------------------------
 DO $$ DECLARE r record; BEGIN
   FOR r IN SELECT table_name FROM (VALUES
     ('agents'),('agent_versions'),('agent_deployments'),('agent_email_accounts'),
@@ -476,20 +475,28 @@ WITH CHECK (EXISTS (SELECT 1 FROM whatsapp_accounts w WHERE w.id=whatsapp_webhoo
 -- Default reference permission catalogue remains Phase 3-only.
 -- ---------------------------------------------------------------------------
 INSERT INTO permissions(name, description) VALUES
- ('organization.read','Read organization'),('organization.update','Update organization'),
- ('organization.members.read','Read organization members'),('organization.members.manage','Manage organization members'),
- ('users.read','Read users'),('users.manage','Manage users'),('audit.read','Read audit events'),
- ('settings.read','Read settings'),('settings.manage','Manage settings')
+ ('organization.read','Read organization'),
+ ('organization.update','Update organization'),
+ ('organization.members.read','Read organization members'),
+ ('organization.members.manage','Manage organization members'),
+ ('users.read','Read users'),
+ ('users.manage','Manage users'),
+ ('audit.read','Read audit events'),
+ ('settings.read','Read settings'),
+ ('settings.manage','Manage settings')
 ON CONFLICT (name) DO NOTHING;
 
+-- Migration-level schema sanity checks.
 DO $$
 DECLARE required_table text;
 BEGIN
   FOREACH required_table IN ARRAY ARRAY[
-    'agents','agent_versions','agent_deployments','agent_email_accounts','agent_whatsapp_accounts',
-    'agent_ai_settings','ai_provider_configs','email_accounts','email_account_credentials','email_folders',
-    'email_labels','email_threads','email_messages','email_attachments','email_sync_states','email_sync_events',
-    'whatsapp_accounts','whatsapp_contacts','whatsapp_messages','whatsapp_webhook_events'
+    'agents','agent_versions','agent_deployments','agent_email_accounts',
+    'agent_whatsapp_accounts','ai_provider_configs','agent_ai_settings',
+    'email_accounts','email_account_credentials','email_folders','email_labels',
+    'email_threads','email_messages','email_attachments','email_sync_states',
+    'email_sync_events','whatsapp_accounts','whatsapp_contacts',
+    'whatsapp_messages','whatsapp_webhook_events'
   ] LOOP
     IF to_regclass('public.' || required_table) IS NULL THEN
       RAISE EXCEPTION 'Phase 4 foundation schema missing required table: %', required_table;
