@@ -10,7 +10,8 @@ function privateAddress(address: string): boolean {
   if (address === "::1" || address.startsWith("fe80:") || address.startsWith("fc") || address.startsWith("fd")) return true;
   const p = address.split(".").map(Number);
   if (p.length !== 4 || p.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return false;
-  const [a,b] = p;
+  const a = p[0] ?? -1;
+  const b = p[1] ?? -1;
   return a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || a === 0;
 }
 async function publicAddress(host: string): Promise<string> {
