@@ -217,6 +217,9 @@ export interface EmailCredentials {
   smtp_port?: number;
   tls?: boolean;
   scopes?: string[];
+  api_domain?: string;
+  account_id?: string;
+  data_center?: string;
 }
 
 export class CapabilityNotSupported extends Error {
