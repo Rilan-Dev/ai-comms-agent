@@ -85,3 +85,14 @@ Statuses: `identified`, `mitigating`, `materialized`, `retired`, `accepted`.
 | ID | Date identified | Date retired | Summary |
 |---|---|---|---|
 | RSK-002 | 2026-10-03 | 2026-10-03 | Clara deep audit completed in Phase 2; no hidden coupling found; 2 manifest SHA typos are upstream Clara defects, not integration risks. Risk retired. |
+
+
+## RSK-007 — Phase 4 migration runtime evidence pending
+
+- **Identified:** 2026-10-06
+- **Likelihood:** medium
+- **Impact:** high
+- **Owner:** ChatGPT
+- **Status:** mitigating
+- **Description:** Phase 4 migration files are implemented, but runtime execution against PostgreSQL has not yet been independently evidenced in this session.
+- **Mitigation:** CI now provisions disposable PostgreSQL, applies all migrations, and executes runtime invariant checks. No Phase 4 acceptance will be claimed until runtime evidence is green.
