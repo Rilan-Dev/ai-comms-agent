@@ -35,6 +35,7 @@ function account(row: Row): EmailAccount {
     capabilities: (row.capabilities ?? {}) as CapabilitySet,
     status: mappedStatus,
     last_sync_at: (row.last_synced_at as string | null) ?? undefined,
+    last_error: (row.last_error as string | null) ?? undefined,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   };
