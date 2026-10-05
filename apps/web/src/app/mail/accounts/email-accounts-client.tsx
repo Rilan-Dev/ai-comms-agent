@@ -33,6 +33,7 @@ export function EmailAccountsClient({
   const [imap, setImap] = useState({email:"",displayName:"",host:"",port:"993",username:"",password:"",smtpHost:"",smtpPort:"465",tls:true});
   const [savingImap, setSavingImap] = useState(false);
   const [imapError, setImapError] = useState<string | null>(null);
+  const [testingImap, setTestingImap] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -98,7 +99,22 @@ export function EmailAccountsClient({
             <label className="text-sm font-medium">Password / app password<input required type="password" value={imap.password} onChange={e=>setImap({...imap,password:e.target.value})} autoComplete="new-password" className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
             <label className="flex items-center gap-3 text-sm md:col-span-2"><input type="checkbox" checked={imap.tls} onChange={e=>setImap({...imap,tls:e.target.checked})} /> Require TLS for both IMAP and SMTP</label>
             {imapError && <p role="alert" className="md:col-span-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{imapError}</p>}
-            <div className="md:col-span-2 flex justify-end"><button disabled={savingImap} className="h-10 rounded-xl bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-50">{savingImap?"Saving…":"Save mailbox"}</button></div>
+            <div className="md:col-span-2 flex flex-wrap justify-end gap-3">
+              <button type="button" disabled={savingImap || testingImap} onClick={async () => {
+                setTestingImap(true); setImapError(null);
+                try {
+                  const response = await fetch("/api/email-accounts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
+                    organizationId, action: "test_imap_smtp", emailAddress: imap.email, host: imap.host, port: Number(imap.port),
+                    username: imap.username, password: imap.password, smtpHost: imap.smtpHost || imap.host, smtpPort: Number(imap.smtpPort), tls: imap.tls,
+                  })});
+                  const data = await response.json();
+                  if (!response.ok) throw new Error(data.message ?? "Connection test failed.");
+                  setNotice("IMAP and SMTP authentication succeeded. You can safely save this mailbox.");
+                } catch (error) { setImapError(error instanceof Error ? error.message : "Connection test failed."); }
+                finally { setTestingImap(false); }
+              }} className="h-10 rounded-xl border px-5 text-sm font-semibold disabled:opacity-50">{testingImap ? "Testing…" : "Test connection"}</button>
+              <button disabled={savingImap || testingImap} className="h-10 rounded-xl bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-50">{savingImap ? "Saving…" : "Save mailbox"}</button>
+            </div>
           </form>
         </section>
       )}
