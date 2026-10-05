@@ -35,16 +35,6 @@ CREATE TABLE IF NOT EXISTS email_action_approvals (
 );
 CREATE INDEX IF NOT EXISTS email_action_approvals_org_idx ON email_action_approvals(organization_id,created_at DESC);
 
-CREATE TABLE IF NOT EXISTS agent_ai_settings (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  agent_id uuid NOT NULL UNIQUE REFERENCES agents(id) ON DELETE CASCADE,
-  ai_provider_config_id uuid REFERENCES ai_provider_configs(id) ON DELETE SET NULL,
-  model_overrides jsonb NOT NULL DEFAULT '{}'::jsonb,
-  feature_flags jsonb NOT NULL DEFAULT '{}'::jsonb,
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS agent_ai_settings_agent_idx ON agent_ai_settings(agent_id);
-
 CREATE TABLE IF NOT EXISTS ai_provider_configs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -60,6 +50,16 @@ CREATE TABLE IF NOT EXISTS ai_provider_configs (
   UNIQUE(organization_id,provider,purpose)
 );
 CREATE INDEX IF NOT EXISTS ai_provider_configs_org_idx ON ai_provider_configs(organization_id);
+
+CREATE TABLE IF NOT EXISTS agent_ai_settings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id uuid NOT NULL UNIQUE REFERENCES agents(id) ON DELETE CASCADE,
+  ai_provider_config_id uuid REFERENCES ai_provider_configs(id) ON DELETE SET NULL,
+  model_overrides jsonb NOT NULL DEFAULT '{}'::jsonb,
+  feature_flags jsonb NOT NULL DEFAULT '{}'::jsonb,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS agent_ai_settings_agent_idx ON agent_ai_settings(agent_id);
 
 CREATE TABLE IF NOT EXISTS ai_usage_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
