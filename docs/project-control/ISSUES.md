@@ -6,12 +6,12 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 
 ---
 
-## ISS-001 — Awaiting ChatGPT final Phase 2 acceptance
+## ISS-001 — Historical Phase 2 acceptance record
 
 - **Opened:** 2026-10-03 (originally opened for Phase 1 review; repurposed for Phase 2 on 2026-10-03)
 - **Severity:** blocker (gates Phase 3)
 - **Owner:** ChatGPT
-- **Status:** open
+- **Status:** resolved
 - **Description:** Phase 1 review is complete (FINAL APPROVAL issued 2026-10-03). Phase 2 implementation is complete (commit `13835dd`) and developer verification is complete (typecheck, build, browser verification, security scan all pass). ChatGPT reviewed the Phase 2 implementation and identified stale/contradictory project-control records; a control-state correction was authorized and implemented. The current blocker is awaiting ChatGPT's **final Phase 2 acceptance** decision after reviewing the corrected control-state.
 - **Resolution plan:** ChatGPT reviews the corrected Phase 2 state (this commit). Outcome is one of: (a) ACCEPT — Phase 2 accepted; issue Phase 3 Z.AI_HANDOFF; (b) REJECT — fundamental gaps; issue correction handoff; (c) CORRECT — specific corrections; issue correction handoff. After the decision, update `PROJECT_STATE.md`, `VERIFICATION_STATE.md`, `CURRENT_PHASE.md`, and `NEXT_ACTION.md`.
 
@@ -93,3 +93,13 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 |---|---|---|---|
 | ISS-002 | 2026-10-03 | 2026-10-03 | Clara deep audit completed in Phase 2; 106/108 manifest checks pass; 2 manifest SHA typos identified (upstream Clara issue); claraRuntime export verified; no hidden coupling. |
 | ISS-003 | 2026-10-03 | 2026-10-03 | CI workflow implemented in Phase 2 control-state correction (.github/workflows/ci.yml); minimum approved workflow per ROADMAP.md Phase 2 scope. |
+
+
+## ISS-006 — Phase 4 runtime migration verification pending
+
+- **Opened:** 2026-10-06
+- **Severity:** medium
+- **Owner:** ChatGPT
+- **Status:** in_progress
+- **Description:** Phase 4 schema migrations are implemented directly by ChatGPT. Runtime application against disposable PostgreSQL is required before Phase 4 acceptance. GitHub Actions and Vercel completion are not prerequisites for continued implementation.
+- **Resolution plan:** Continue schema alignment, collect runtime migration/RLS evidence when execution is available, then accept or correct Phase 4.
