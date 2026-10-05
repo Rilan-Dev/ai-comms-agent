@@ -84,6 +84,11 @@ export class PostgresEmailAccountRepository {
     return r.rows.map(account);
   }
 
+  async getConnectionConfig(id: string): Promise<Record<string, unknown>> {
+    const r = await query<Row>("SELECT connection_config FROM email_accounts WHERE id = $1", [id]);
+    return (r.rows[0]?.connection_config ?? {}) as Record<string, unknown>;
+  }
+
   async updateCapabilities(id: string, capabilities: CapabilitySet): Promise<EmailAccount | null> {
     const r = await query<Row>(
       "UPDATE email_accounts SET capabilities = $1::jsonb WHERE id = $2 RETURNING *",
