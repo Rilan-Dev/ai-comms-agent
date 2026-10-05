@@ -295,3 +295,11 @@ ChatGPT completed another Email Accounts hardening pass: folder/label discovery 
 ### 2026-10-06 — ChatGPT continuation
 Slice 2 Email Accounts provider lifecycle implementation is active under the development-first override; CI/Vercel remain deferred acceptance gates.
 Current commit: `1972d62cffca5b1b5a5eaeb4ddcb4e7c9f53b446`.
+
+
+### 2026-10-06 — Mail slice implementation checkpoint
+- Development-first continuation is active under explicit project-owner instruction; CI/Vercel completion is not blocking implementation.
+- Email Accounts provider lifecycle work remains in place without fabricated live credentials.
+- Mail now has a PostgreSQL-backed, organization-scoped inbox query/API, real persisted inbox UI with search/status filters, and persisted thread detail.
+- No Mail provider send/read mutation is claimed yet; those are the next implementation steps.
+- Formal runtime acceptance remains separate and is not being represented as passed.
