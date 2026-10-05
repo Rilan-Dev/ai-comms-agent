@@ -196,3 +196,9 @@ Development is intentionally continuing without waiting for CI/Vercel jobs. Befo
 - Added live account loading/error notification behavior for the channel surface.
 - No fake provider activation was introduced; unconfigured external providers remain truthful.
 - Slice 1 remains NOT ACCEPTED until automated/runtime and browser verification are green.
+
+### 2026-10-06 continuation — Agents hardening
+- Agent Activity is now a real persisted audit-history surface with organization authorization.
+- Agent channel binding now uses organization-scoped WhatsApp account discovery rather than arbitrary identifiers.
+- Agent policy mutations now use strict server-side validation with field-level failures.
+- Slice 1 remains active; these changes do not advance the menu gate.
