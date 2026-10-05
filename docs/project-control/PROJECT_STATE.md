@@ -224,3 +224,10 @@ Acceptance remains pending until a fresh runtime/CI run is green. No production 
 
 ### ChatGPT takeover update — 2026-10-06
 Product completion Slice 1 (Agents) is now the active vertical implementation track. Real PostgreSQL-backed agent CRUD, versioning, deployment, policy, audit, configuration testing, email binding, and single-WhatsApp binding endpoints/UI are implemented; runtime verification remains pending.
+
+
+### Verification hardening — 2026-10-06
+- CI now provisions PostgreSQL 17, applies the Phase 3 migration, executes transaction-level owner/RLS runtime verification, and asserts ownerless-organization rejection.
+- SECURITY DEFINER helpers intentionally use `SET search_path = ''` with fully-qualified `public.*` table references; static tests now enforce this safer pinned path.
+- Latest implementation commit: 5bcc9758f374de1d7187d2f9cd814d2589ecf081.
+- Phase 3 acceptance remains pending until CI runtime evidence is green.
