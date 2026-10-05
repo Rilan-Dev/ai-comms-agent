@@ -76,20 +76,24 @@ export async function ensureDevSeed(): Promise<void> {
   }
 
   const memoryRepo = repo as InMemoryIdentityRepository;
-  const org = await memoryRepo.createOrganizationWithOwner({
+  const org = await memoryRepo.createOrganization({
     name: "Development Organization",
     slug: "dev-org",
-    ownerId: undefined as never,
-  }).catch(async () => {
-    const createdOrg = await memoryRepo.createOrganization({ name: "Development Organization", slug: "dev-org" });
-    const user = await memoryRepo.createUser({ email: "dev@ai-comms-agent.local", name: "Dev User" });
-    await memoryRepo.createMembership({ organizationId: createdOrg.id, userId: user.id, role: "owner" });
-    (globalThis as { __ACA_DEV_ORG_ID?: string }).__ACA_DEV_ORG_ID = createdOrg.id;
-    (globalThis as { __ACA_DEV_USER_ID?: string }).__ACA_DEV_USER_ID = user.id;
-    return createdOrg;
   });
 
-  void org;
+  const user = await memoryRepo.createUser({
+    email: "dev@ai-comms-agent.local",
+    name: "Dev User",
+  });
+
+  await memoryRepo.createMembership({
+    organizationId: org.id,
+    userId: user.id,
+    role: "owner",
+  });
+
+  (globalThis as { __ACA_DEV_ORG_ID?: string }).__ACA_DEV_ORG_ID = org.id;
+  (globalThis as { __ACA_DEV_USER_ID?: string }).__ACA_DEV_USER_ID = user.id;
 }
 
 /**
