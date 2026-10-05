@@ -34,15 +34,15 @@ export function AgentDetailClient({ organizationId, devUserId, initialAgent, ini
   }
   async function retire() {
     setBusy(true);
-    try { const p=await call(\`/api/agents/\${agent.id}\`,{method:"DELETE",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId})}); setAgent(p.agent); notify({kind:"success",title:"Agent paused"}); setShowConfirm(null); } catch(e){notify({kind:"error",title:"Could not pause agent",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
+    try { const p=await call(\`/api/agents/\${agent.id}\`,{method:"DELETE",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId})}); setAgent(p.agent); notify({kind:"success",title:"Agent paused"}); setShowConfirm(null); } catch(e){notify({kind:"error",title:"Could not pause agent",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
   async function createVersion() {
     setBusy(true);
-    try { const p=await call(\`/api/agents/\${agent.id}/versions\`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,config:{}})}); setVersions((v)=>[p.version,...v]); notify({kind:"success",title:"Version created",message:\`Version \${p.version.versionNumber} is ready for deployment.\`}); } catch(e){notify({kind:"error",title:"Could not create version",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
+    try { const p=await call(\`/api/agents/\${agent.id}/versions\`,{method:"POST",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId,config:{}})}); setVersions((v)=>[p.version,...v]); notify({kind:"success",title:"Version created",message:\`Version \${p.version.versionNumber} is ready for deployment.\`}); } catch(e){notify({kind:"error",title:"Could not create version",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
   async function runTest() {
     setBusy(true); setTestResult(null);
-    try { const p=await call(\`/api/agents/\${agent.id}/simulate\`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId})}); setTestResult(p); } catch(e){notify({kind:"error",title:"Configuration test failed",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
+    try { const p=await call(\`/api/agents/\${agent.id}/simulate\`,{method:"POST",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId})}); setTestResult(p); } catch(e){notify({kind:"error",title:"Configuration test failed",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
   async function saveChannels() {
     setBusy(true);
@@ -59,7 +59,7 @@ export function AgentDetailClient({ organizationId, devUserId, initialAgent, ini
     const allowedTools=String(form.get("allowedTools")??"").split(",").map((v)=>v.trim()).filter(Boolean);
     const allowedSenders=String(form.get("allowedSenders")??"").split(",").map((v)=>v.trim()).filter(Boolean);
     const blockedSenders=String(form.get("blockedSenders")??"").split(",").map((v)=>v.trim()).filter(Boolean);
-    try { const p=await call(\`/api/agents/\${agent.id}/policy\`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,securityPolicy:policy?.securityPolicy??{},allowedTools,allowedSenders,blockedSenders,rateLimits:policy?.rateLimits??{}})}); setPolicy(p.policy); notify({kind:"success",title:"Policy saved"}); } catch(e){notify({kind:"error",title:"Policy could not be saved",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
+    try { const p=await call(\`/api/agents/\${agent.id}/policy\`,{method:"PATCH",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId,securityPolicy:policy?.securityPolicy??{},allowedTools,allowedSenders,blockedSenders,rateLimits:policy?.rateLimits??{}})}); setPolicy(p.policy); notify({kind:"success",title:"Policy saved"}); } catch(e){notify({kind:"error",title:"Policy could not be saved",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
 
   return <main className="mx-auto max-w-[1500px] space-y-6 p-5 sm:p-7 lg:p-9">
