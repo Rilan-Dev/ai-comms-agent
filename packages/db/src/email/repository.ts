@@ -198,3 +198,34 @@ export class PostgresEmailAccountRepository {
 }
 
 export { PostgresEmailAccountRepository as SupabaseEmailAccountRepository };
+
+export interface MailInboxFilters {
+  accountId?: string;
+  query?: string;
+  unreadOnly?: boolean;
+  actionRequired?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export async function listInboxMessages(organizationId: string, filters: MailInboxFilters = {}): Promise<Array<Record<string, unknown>>> {
+  const values: unknown[] = [organizationId];
+  const conditions = ["a.organization_id = $1", "a.deleted_at IS NULL"];
+  if (filters.accountId) { values.push(filters.accountId); conditions.push(`m.email_account_id = $${values.length}`); }
+  if (filters.unreadOnly) conditions.push("m.is_read = false");
+  if (filters.actionRequired) conditions.push("m.action_required = true");
+  if (filters.query?.trim()) { values.push(`%${filters.query.trim()}%`); conditions.push(`(m.subject ILIKE $${values.length} OR m.from_address ILIKE $${values.length} OR m.snippet ILIKE $${values.length})`); }
+  const limit = Math.min(Math.max(filters.limit ?? 50, 1), 100); const offset = Math.max(filters.offset ?? 0, 0);
+  values.push(limit, offset);
+  const r = await query<Row>(`SELECT m.id, m.email_account_id, m.thread_id, m.from_address, m.to_addresses, m.subject, m.snippet, m.received_at, m.is_read, m.is_starred, m.is_draft, m.is_outbound, m.importance_score, m.action_required, m.has_attachments, a.email_address AS account_email, a.display_name AS account_name
+    FROM email_messages m JOIN email_accounts a ON a.id = m.email_account_id
+    WHERE ${conditions.join(" AND ")} ORDER BY m.received_at DESC NULLS LAST LIMIT $${values.length - 1} OFFSET $${values.length}`, values);
+  return r.rows;
+}
+
+export async function getMailMessageForOrganization(organizationId: string, messageId: string): Promise<Record<string, unknown> | null> {
+  const r = await query<Row>(`SELECT m.*, a.email_address AS account_email, a.display_name AS account_name
+    FROM email_messages m JOIN email_accounts a ON a.id = m.email_account_id
+    WHERE m.id = $1 AND a.organization_id = $2 AND a.deleted_at IS NULL LIMIT 1`, [messageId, organizationId]);
+  return r.rows[0] ?? null;
+}
