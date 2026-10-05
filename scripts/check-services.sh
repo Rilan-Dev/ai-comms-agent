@@ -29,7 +29,10 @@ get_env() {
       if (index(line, key "=") == 1) {
         value=substr(line, length(key)+2)
         sub(/[[:space:]]+#.*$/, "", value)
-        gsub(/^[\"\x27]|[\"\x27]$/, "", value)
+        dq=sprintf("%c",34)
+        sq=sprintf("%c",39)
+        if (substr(value,1,1)==dq || substr(value,1,1)==sq) value=substr(value,2)
+        if (substr(value,length(value),1)==dq || substr(value,length(value),1)==sq) value=substr(value,1,length(value)-1)
         print value
         exit
       }
@@ -64,19 +67,33 @@ print(u.port or "")
 PY
 }
 
+host_for_local_check() {
+  local host="$1"
+  # host.docker.internal is the correct endpoint inside Docker containers.
+  # From the Windows/Linux host running this diagnostic, the published service
+  # ports are reached through loopback instead.
+  if [[ "$host" == "host.docker.internal" ]]; then
+    echo "127.0.0.1"
+  else
+    echo "$host"
+  fi
+}
+
 tcp_check() {
   local host="$1" port="$2"
-  if [[ -z "$host" || -z "$port" ]]; then
+  local target_host
+  target_host="$(host_for_local_check "$host")"
+  if [[ -z "$target_host" || -z "$port" ]]; then
     echo "SKIP (host/port could not be parsed)"
     return 2
   fi
   if command -v nc >/dev/null 2>&1; then
-    if nc -z -w 5 "$host" "$port" >/dev/null 2>&1; then
+    if nc -z -w 5 "$target_host" "$port" >/dev/null 2>&1; then
       echo "PASS TCP $host:$port"
       return 0
     fi
   elif command -v timeout >/dev/null 2>&1; then
-    if timeout 5 bash -c "</dev/tcp/$host/$port" >/dev/null 2>&1; then
+    if timeout 5 bash -c "</dev/tcp/$target_host/$port" >/dev/null 2>&1; then
       echo "PASS TCP $host:$port"
       return 0
     fi
@@ -111,10 +128,14 @@ else
   db_port="$(url_port "$database_url")"
   echo "Target: $(mask_url "$database_url")"
   if [[ "$db_host" == "postgres-db" || "$db_host" == "postgres" || "$db_host" == "db" ]]; then
-    echo "WARNING: '$db_host' is a Docker-network hostname. It only works from a container on the matching Docker network."
+    echo "WARNING: '$db_host' is a Docker-network hostname. It is not reachable from the host and is not a valid external endpoint for the manual app stack."
   fi
   if command -v psql >/dev/null 2>&1; then
-    if PGCONNECT_TIMEOUT=5 psql "$database_url" -X -v ON_ERROR_STOP=1 -Atqc "select current_database() || '|' || current_user || '|' || version();" >/tmp/aca-pg-check.out 2>/tmp/aca-pg-check.err; then
+    local_db_url="$database_url"
+    if [[ "$db_host" == "host.docker.internal" ]]; then
+      local_db_url="$(printf '%s' "$database_url" | sed 's#://host\.docker\.internal:#://127.0.0.1:#')"
+    fi
+    if PGCONNECT_TIMEOUT=5 psql "$local_db_url" -X -v ON_ERROR_STOP=1 -Atqc "select current_database() || '|' || current_user || '|' || version();" >/tmp/aca-pg-check.out 2>/tmp/aca-pg-check.err; then
       echo "PASS PostgreSQL authentication/query"
       cat /tmp/aca-pg-check.out
     else
@@ -151,10 +172,14 @@ echo "[Qdrant]"
 if [[ -z "$qdrant_url" ]]; then
   echo "SKIP QDRANT_URL is unset"
 elif command -v curl >/dev/null 2>&1; then
-  if curl --fail --silent --show-error --max-time 8 "${qdrant_url%/}/healthz" >/tmp/aca-qdrant-check.out 2>/tmp/aca-qdrant-check.err; then
+  local_qdrant_url="$qdrant_url"
+  if [[ "$(url_host "$qdrant_url")" == "host.docker.internal" ]]; then
+    local_qdrant_url="$(printf '%s' "$qdrant_url" | sed 's#://host\.docker\.internal#://127.0.0.1#')"
+  fi
+  if curl --fail --silent --show-error --max-time 8 "${local_qdrant_url%/}/healthz" >/tmp/aca-qdrant-check.out 2>/tmp/aca-qdrant-check.err; then
     echo "PASS Qdrant HTTP health"
     cat /tmp/aca-qdrant-check.out
-  elif curl --fail --silent --show-error --max-time 8 "${qdrant_url%/}" >/tmp/aca-qdrant-check.out 2>/tmp/aca-qdrant-check.err; then
+  elif curl --fail --silent --show-error --max-time 8 "${local_qdrant_url%/}" >/tmp/aca-qdrant-check.out 2>/tmp/aca-qdrant-check.err; then
     echo "PASS Qdrant HTTP endpoint reachable"
     cat /tmp/aca-qdrant-check.out
   else
