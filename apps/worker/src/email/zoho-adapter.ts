@@ -6,7 +6,7 @@ import type {
 const CAPABILITIES: CapabilitySet = {
   folders: true, labels: true, sync_incremental: false, sync_full: true,
   sync_webhook: true, sync_idle: false, search_server_side: true,
-  search_client_side: true, drafts: true, reply: true, forward: true,
+  search_client_side: true, drafts: true, reply: true, forward: false,
   mark_read: true, archive: true, move: true, threads: true,
   attachments_download: false, attachments_upload: false, send: false,
 };
