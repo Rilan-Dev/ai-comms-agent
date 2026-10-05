@@ -630,3 +630,7 @@ Development-first update 2026-10-06: email credential repository schema mismatch
 - Source changes include IMAP/SMTP reconnect lifecycle, persisted connection error mapping, provider-aware reconnect UI, and Zoho regional OAuth refresh regression coverage.
 - GitHub Actions/Vercel are not being used as development blockers per explicit project-owner instruction.
 - Runtime/browser/provider acceptance remains pending; no CI PASS, Vercel READY, or live-provider connection is claimed.
+
+
+### 2026-10-06 — Email Accounts source verification boundary
+Latest source implementation commits through `4cea5073d1b42a3546f5023d17ff9f5efd6a701a`. Static inspection covers the new email schema reconciliation, Zoho runtime operations, provider reconnect persistence, and folder/label repository. No CI PASS, Vercel READY, or live provider connection is claimed. Acceptance remains pending runtime/browser evidence.
