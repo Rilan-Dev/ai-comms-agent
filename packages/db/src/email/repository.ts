@@ -19,10 +19,11 @@ function requiredRow(row: Row | undefined, entity: string): Row {
 
 function account(row: Row): EmailAccount {
   const status = String(row.status);
-  const mappedStatus =
-    status === "active" ? "connected" :
-    status === "expired" ? "pending" :
+  const mappedStatus: EmailAccount["status"] =
+    status === "connected" ? "connected" :
+    status === "pending" ? "pending" :
     status === "revoked" ? "revoked" :
+    status === "disconnected" ? "disconnected" :
     "error";
 
   return {
@@ -134,7 +135,7 @@ export class PostgresEmailAccountRepository {
     );
     if (!r.rows[0]?.ciphertext) return null;
     const raw = decryptCredential(
-      decodeBytea(r.rows[0].encrypted_payload),
+      decodeBytea(r.rows[0].ciphertext),
       masterKey,
     ).toString("utf8");
     return JSON.parse(raw) as Record<string, unknown>;
