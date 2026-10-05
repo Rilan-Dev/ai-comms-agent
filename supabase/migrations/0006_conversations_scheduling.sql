@@ -173,29 +173,29 @@ ALTER TABLE automation_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE summaries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE summary_sources ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY conversations_member_visibility ON conversations FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
-CREATE POLICY conversations_member_manage ON conversations FOR ALL TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid()))) WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+CREATE POLICY conversations_member_visibility ON conversations FOR SELECT TO authenticated USING (can_access_organization(organization_id));
+CREATE POLICY conversations_member_manage ON conversations FOR ALL TO authenticated USING (can_access_organization(organization_id)) WITH CHECK (can_access_organization(organization_id));
 
-CREATE POLICY conversation_messages_member_visibility ON conversation_messages FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
-CREATE POLICY conversation_messages_member_manage ON conversation_messages FOR ALL TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid()))) WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+CREATE POLICY conversation_messages_member_visibility ON conversation_messages FOR SELECT TO authenticated USING (can_access_organization(organization_id));
+CREATE POLICY conversation_messages_member_manage ON conversation_messages FOR ALL TO authenticated USING (can_access_organization(organization_id)) WITH CHECK (can_access_organization(organization_id));
 
-CREATE POLICY conversation_turns_member_visibility ON conversation_turns FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
-CREATE POLICY conversation_turns_member_manage ON conversation_turns FOR ALL TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid()))) WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+CREATE POLICY conversation_turns_member_visibility ON conversation_turns FOR SELECT TO authenticated USING (can_access_organization(organization_id));
+CREATE POLICY conversation_turns_member_manage ON conversation_turns FOR ALL TO authenticated USING (can_access_organization(organization_id)) WITH CHECK (can_access_organization(organization_id));
 
-CREATE POLICY scheduled_jobs_member_visibility ON scheduled_jobs FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
-CREATE POLICY scheduled_jobs_member_manage ON scheduled_jobs FOR ALL TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid()))) WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+CREATE POLICY scheduled_jobs_member_visibility ON scheduled_jobs FOR SELECT TO authenticated USING (can_access_organization(organization_id));
+CREATE POLICY scheduled_jobs_member_manage ON scheduled_jobs FOR ALL TO authenticated USING (can_access_organization(organization_id)) WITH CHECK (can_access_organization(organization_id));
 
-CREATE POLICY scheduled_job_runs_member_visibility ON scheduled_job_runs FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
-CREATE POLICY scheduled_job_runs_member_manage ON scheduled_job_runs FOR ALL TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid()))) WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+CREATE POLICY scheduled_job_runs_member_visibility ON scheduled_job_runs FOR SELECT TO authenticated USING (can_access_organization(organization_id));
+CREATE POLICY scheduled_job_runs_member_manage ON scheduled_job_runs FOR ALL TO authenticated USING (can_access_organization(organization_id)) WITH CHECK (can_access_organization(organization_id));
 
-CREATE POLICY automation_rules_member_visibility ON automation_rules FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
-CREATE POLICY automation_rules_member_manage ON automation_rules FOR ALL TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid()))) WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+CREATE POLICY automation_rules_member_visibility ON automation_rules FOR SELECT TO authenticated USING (can_access_organization(organization_id));
+CREATE POLICY automation_rules_member_manage ON automation_rules FOR ALL TO authenticated USING (can_access_organization(organization_id)) WITH CHECK (can_access_organization(organization_id));
 
-CREATE POLICY automation_runs_member_visibility ON automation_runs FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
-CREATE POLICY automation_runs_member_manage ON automation_runs FOR ALL TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid()))) WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+CREATE POLICY automation_runs_member_visibility ON automation_runs FOR SELECT TO authenticated USING (can_access_organization(organization_id));
+CREATE POLICY automation_runs_member_manage ON automation_runs FOR ALL TO authenticated USING (can_access_organization(organization_id)) WITH CHECK (can_access_organization(organization_id));
 
-CREATE POLICY summaries_member_visibility ON summaries FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
-CREATE POLICY summaries_member_manage ON summaries FOR ALL TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid()))) WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+CREATE POLICY summaries_member_visibility ON summaries FOR SELECT TO authenticated USING (can_access_organization(organization_id));
+CREATE POLICY summaries_member_manage ON summaries FOR ALL TO authenticated USING (can_access_organization(organization_id)) WITH CHECK (can_access_organization(organization_id));
 
-CREATE POLICY summary_sources_member_visibility ON summary_sources FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
-CREATE POLICY summary_sources_member_manage ON summary_sources FOR ALL TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid()))) WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+CREATE POLICY summary_sources_member_visibility ON summary_sources FOR SELECT TO authenticated USING (can_access_organization(organization_id));
+CREATE POLICY summary_sources_member_manage ON summary_sources FOR ALL TO authenticated USING (can_access_organization(organization_id)) WITH CHECK (can_access_organization(organization_id));
