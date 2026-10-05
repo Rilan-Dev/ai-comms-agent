@@ -1505,3 +1505,14 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Cleaned a provider-registry documentation escape artifact.
 - No provider credentials were fabricated, no Clara source was modified, and no production deployment was claimed.
 - **Next:** finish Email Accounts connection-test/reconnect lifecycle and then continue to Mail once the Email Accounts slice is accepted.
+
+
+## 2026-10-06 — Agents vertical slice continuation
+
+- **Owner:** ChatGPT
+- **Status:** implementation_in_progress
+- Fixed a functional gap where the Agent Versions editor displayed JSON but always persisted an empty configuration. The editor now parses and sends the actual object and restores the saved configuration after creation.
+- Added server-side version configuration validation (object-only, serializable, <=100 KB) and regression tests.
+- Expanded Agent Policy editing to include security policy and rate-limit controls.
+- Added Agent list status filtering and resilient network-error handling for create operations.
+- No provider activation, no fake AI execution, no Clara source modification, and no production credential provisioning.
