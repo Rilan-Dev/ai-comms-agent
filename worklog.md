@@ -1607,3 +1607,11 @@ No provider credentials were fabricated and Clara source was not modified.
 - Preserved the security boundary: only persisted account metadata is rendered; credentials remain server-side.
 - No live provider connectivity is claimed; OAuth/IMAP/SMTP configuration remains truthful when server credentials are absent.
 - **Commit**: e828d5555031425f7174c5280019ce64230e06af8.
+
+
+## 2026-10-06 — Slice 2 provider lifecycle continuation
+- **Owner:** ChatGPT
+- Atomically replaced persisted folder/label snapshots during worker discovery so stale provider structures are removed safely and empty discovery results are represented truthfully.
+- Worker discovery now persists runtime capability discovery and transitions accounts to connected only after successful provider connection/discovery; failures persist error with a safe diagnostic.
+- Corrected IMAP/SMTP capability metadata to advertise only operations actually implemented by the adapter; Zoho forward is no longer advertised because the adapter does not implement it.
+- No live provider credentials were introduced or fabricated. CI/Vercel remain non-blocking development gates per the explicit project-owner instruction.
