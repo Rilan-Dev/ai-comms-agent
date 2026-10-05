@@ -96,10 +96,14 @@ export class PostgresEmailAccountRepository {
     return r.rows[0] ? account(r.rows[0]) : null;
   }
 
-  async updateStatus(id: string, status: "pending" | "connected" | "error" | "disconnected" | "revoked"): Promise<EmailAccount | null> {
+  async updateStatus(
+    id: string,
+    status: "pending" | "connected" | "error" | "disconnected" | "revoked",
+    lastError?: string | null,
+  ): Promise<EmailAccount | null> {
     const r = await query<Row>(
-      "UPDATE email_accounts SET status = $1, last_error = CASE WHEN $1 = 'error' THEN last_error ELSE NULL END WHERE id = $2 RETURNING *",
-      [status, id],
+      "UPDATE email_accounts SET status = $1, last_error = CASE WHEN $1 = 'error' THEN $2 ELSE NULL END WHERE id = $3 RETURNING *",
+      [status, lastError ?? null, id],
     );
     return r.rows[0] ? account(r.rows[0]) : null;
   }
