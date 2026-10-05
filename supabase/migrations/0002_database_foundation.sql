@@ -2,7 +2,7 @@
 -- Forward-only production schema for the ai-comms-agent domain.
 -- Phase 3 system roles remain TypeScript-authoritative; custom role tables stay deferred.
 -- No provider secrets are stored in plaintext.
-set ON_ERROR_STOP on
+-- psql session directive belongs in the runner, not inside the SQL migration.
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "citext";
