@@ -6,7 +6,8 @@ import { ZohoAdapter } from "./zoho-adapter";
 
 /**
  * Server-side provider registry. Provider implementations are constructed per
- * connection so credentials never live in the registry singleton.\n * The mock adapter remains available only to tests; production resolution uses the real adapter.
+ * connection so credentials never live in the registry singleton.
+ * The mock adapter remains available only to tests; production resolution uses the real adapter.
  */
 export function createEmailProviderRegistry(): EmailProviderRegistry {
   const registry = new EmailProviderRegistry();
