@@ -11,10 +11,12 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Continue Product Completion Slice 1 — Agents. Finish the real persisted agent vertical
-  slice: detail editing, version/config workflow, policy, channel binding/unbinding,
-  configuration testing, authorization, notifications, responsive states, tests, and
-  browser verification. Then advance to Slice 2 — Email Accounts.
+  Continue Product Completion Slice 2 — Email Accounts. Complete the persisted provider
+  connection vertical slice: Gmail OAuth state/PKCE and callback persistence, IMAP/SMTP
+  secure connection and worker verification, Zoho OAuth foundation, connect/disconnect/
+  reconnect lifecycle, connection tests, truthful pending/error/retry states, folder/label
+  discovery, agent assignment, authorization/audit, responsive UI, and tests. Do not
+  fabricate provider connectivity without real user-owned credentials.
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
