@@ -210,7 +210,7 @@ CREATE TABLE IF NOT EXISTS email_messages (
   provider_message_id text,
   message_id_header text,
   in_reply_to text,
-  references text[],
+  "references" text[],
   from_address citext NOT NULL,
   to_addresses jsonb NOT NULL DEFAULT '[]'::jsonb,
   cc_addresses jsonb NOT NULL DEFAULT '[]'::jsonb,
