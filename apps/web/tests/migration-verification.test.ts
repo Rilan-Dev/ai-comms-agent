@@ -177,6 +177,12 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
     });
   });
 
+  describe("Provider-neutral identity boundary", () => {
+    it("does not depend on Supabase auth.uid()", () => {
+      expect(migrationSql).not.toContain("auth.uid()");
+    });
+  });
+
   describe("RLS recursion safety", () => {
     it("uses SECURITY DEFINER membership helpers", () => {
       expect(migrationSql).toContain("private.is_active_organization_member");
