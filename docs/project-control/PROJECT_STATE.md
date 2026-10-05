@@ -269,3 +269,7 @@ ChatGPT continued implementation without waiting for CI/Vercel: agent version co
 
 ### 2026-10-06 — Email Accounts continuation
 ChatGPT continued the development-first Email Accounts slice without waiting for CI/Vercel. IMAP/SMTP reconnect now reuses encrypted persisted credentials for a server-side connection test and updates connection status with audit events. Email account errors/capabilities are surfaced in the UI. Zoho regional OAuth refresh routing was hardened and regression-tested. No live provider credentials are present, so no provider connectivity is claimed.
+
+
+### 2026-10-06 — Email Accounts continuation
+Email Accounts continuation is active under ChatGPT ownership. Corrected canonical PostgreSQL email-account schema reconciliation (status enum and credential ciphertext migration), completed core Zoho runtime operations with truthful capability metadata, added persisted folder/label discovery infrastructure, and made Gmail/Zoho OAuth reconnect idempotent. Runtime/browser verification remains deferred and is not a development blocker.
