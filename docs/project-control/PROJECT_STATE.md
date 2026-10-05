@@ -28,9 +28,9 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "dbaf5e5527cbfd9e616ac38a468a3b4294467226"
-current_commit_short: "dbaf5e55"
-current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/dbaf5e5527cbfd9e616ac38a468a3b4294467226"
+current_commit: "06083aa345d3c64a3ab8681545c7df3abaf126cc"
+current_commit_short: "06083aa3"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/06083aa345d3c64a3ab8681545c7df3abaf126cc"
 last_verified_commit: "pending runtime and browser verification"
 
 open_blockers:
@@ -245,3 +245,11 @@ ChatGPT corrected the remaining 0001 PostgreSQL role-bootstrap quoting defect, a
 - Latest implementation corrections: cross-tenant provider binding guard fixed in migration 0010; Gmail OAuth callback now validates state-cookie equality; Gmail accounts remain pending until encrypted credentials are stored successfully.
 - Slice 1 Agents remains pending formal acceptance. Development-first implementation continues; no Vercel READY or CI PASS is claimed.
 - Next product work remains Email Accounts provider connection hardening (Gmail, then IMAP/SMTP and Zoho), followed by Mail.
+
+
+### 2026-10-06 — Email provider implementation continuation
+- Fixed the IMAP/SMTP duplicate helper compile defect and added provider/security tests.
+- Added outbound-target protection for user-supplied IMAP/SMTP hosts to reject localhost/private destinations before TLS connection.
+- Added Zoho OAuth PKCE start/callback with regional Accounts domains, signed state-cookie validation, encrypted credential persistence, and organization admin authorization.
+- Added the initial Zoho REST adapter foundation and registered Gmail, IMAP/SMTP, and Zoho in the worker registry.
+- Runtime/provider credentials are not available, so no live provider connection is claimed.
