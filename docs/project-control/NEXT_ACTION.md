@@ -297,3 +297,10 @@ Continue Email Accounts with provider lifecycle completion: OAuth reconnect/erro
 
 ### 2026-10-06 — Current implementation checkpoint
 Continue Product Completion Slice 2 — Email Accounts. Finish provider lifecycle hardening and persistence: validate Gmail/Zoho OAuth reconnect idempotency, complete worker-backed folder/label discovery persistence, finalize provider contract tests and truthful error/retry states, then proceed to the Mail vertical slice. Do not fabricate provider connectivity without real user-owned credentials.
+
+
+### 2026-10-06 — Capability truthfulness correction
+- Aligned persisted IMAP/SMTP and Zoho capability metadata with the operations actually implemented by their adapters; unsupported draft/send/forward/attachment operations are no longer advertised as available.
+- Gmail remains the fully advertised provider surface where its adapter implements the corresponding contract.
+- Latest code commit: be4925cbd3e73ebeec28a951a5d062d70fba19ae.
+- Runtime/browser verification remains deferred and no live provider connection is claimed.
