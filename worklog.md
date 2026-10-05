@@ -1554,3 +1554,13 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Extended the shared `EmailAccount` contract and PostgreSQL repository mapping with `last_error` so provider failures are visible without exposing credentials.
 - Fixed Zoho OAuth token refresh regional routing by deriving the Accounts endpoint from the trusted Mail API domain; added a deterministic EU refresh regression test.
 - No provider credentials were fabricated and no runtime connection is claimed.
+
+
+## 2026-10-06 — ChatGPT Email Accounts provider completion continuation
+- Reconciled the forward-only PostgreSQL email schema with the actual runtime contract: canonical pending/connected/error/disconnected/revoked status values, legacy credential payload migration into `ciphertext`, required organization scoping, and folder/label organization indexes.
+- Added persisted folder/label repository support and a worker-side provider discovery function that decrypts credentials server-side, invokes the registered provider adapter, and persists discovered structure.
+- Expanded the Zoho adapter with documented core folder/label, message listing/search, reply, read/unread, move, archive, and label operations; capability metadata is now truthful for operations not yet backed by the runtime worker.
+- Made Gmail and Zoho OAuth callbacks idempotent on reconnect: an existing organization/provider/address record is updated instead of creating duplicate accounts, while credentials are rotated in the existing account.
+- Added deterministic Zoho runtime-operation tests and email-schema reconciliation static tests.
+- No provider credentials were fabricated; no live provider connection is claimed; CI/Vercel remain non-blocking under the explicit development-first instruction.
+- **Next:** finish provider error/retry UX and discovery invocation wiring, then continue to the Mail vertical slice.
