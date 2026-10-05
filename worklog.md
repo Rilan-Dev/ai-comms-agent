@@ -1493,3 +1493,15 @@ The migration-chain structural failure is addressed. Full disposable PostgreSQL 
 - Runtime PostgreSQL execution has not been independently observed in this session; therefore Phase 4 is not yet accepted.
 - GitHub Actions/Vercel are not treated as blockers for continued implementation.
 - Phase 5 remains unauthorized.
+
+
+### 2026-10-06 — Email Accounts provider security continuation
+
+- **Owner:** ChatGPT
+- **Scope:** Continue the active Email Accounts/provider implementation without waiting for GitHub Actions or Vercel.
+- Added a strict Zoho API-domain allowlist to the OAuth callback so the provider-supplied `api_domain` cannot become an arbitrary server-side request destination.
+- Added the same allowlist validation inside the worker Zoho adapter so persisted/tampered connection configuration cannot bypass the boundary.
+- Added deterministic tests covering rejection of local/non-Zoho endpoints and acceptance of supported regional Zoho Mail origins.
+- Cleaned a provider-registry documentation escape artifact.
+- No provider credentials were fabricated, no Clara source was modified, and no production deployment was claimed.
+- **Next:** finish Email Accounts connection-test/reconnect lifecycle and then continue to Mail once the Email Accounts slice is accepted.
