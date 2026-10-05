@@ -28,10 +28,10 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "3a8af9f3f8eecc96badd8f24dbce087d510f483e"
-current_commit_short: "3a8af9f"
-current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/32225f2efc10ff6a42192bdc1d3df6c3558b212c"
-last_verified_commit: "pending runtime verification"
+current_commit: "dbaf5e5527cbfd9e616ac38a468a3b4294467226"
+current_commit_short: "dbaf5e55"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/dbaf5e5527cbfd9e616ac38a468a3b4294467226"
+last_verified_commit: "pending runtime and browser verification"
 
 open_blockers:
   - "Runtime verification still pending for the PostgreSQL migration set; development continuation is explicitly authorized"
@@ -235,3 +235,7 @@ Product completion Slice 1 (Agents) is now the active vertical implementation tr
 
 ### 2026-10-06 — ChatGPT continuation
 Email Accounts continuation is active under ChatGPT ownership. Corrected the email credential repository to read the canonical ciphertext column, replaced the mail/accounts demo UI with persisted PostgreSQL account state, and added an authorized disconnect API. Provider activation remains configuration-required when user-owned OAuth/IMAP credentials are absent. Latest implementation commit: 36411839ab9080762d5d9eae5ce3aeb4d3aedf46.
+
+
+### 2026-10-06 — Agent vertical-slice continuation
+ChatGPT corrected the remaining 0001 PostgreSQL role-bootstrap quoting defect, added persisted Agent Details editing, and replaced raw email-account UUID entry with an organization-scoped persisted account selector plus binding role. The product-completion plan remains the active execution baseline; Slice 1 Agents is still not accepted pending runtime/browser verification. Vercel continues to report build-rate-limit failure and the GitHub workflow connector exposes no push-run records, so no green verification is claimed.
