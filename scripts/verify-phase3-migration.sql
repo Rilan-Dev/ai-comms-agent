@@ -46,11 +46,13 @@ BEGIN
   END IF;
 
   SELECT count(*) INTO helper_count
-  FROM pg_proc
-  WHERE proname IN ('is_active_organization_member', 'is_active_organization_admin_or_owner');
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname IN ('is_active_organization_member', 'is_active_organization_admin_or_owner');
 
   IF helper_count <> 2 THEN
-    RAISE EXCEPTION 'Runtime verification failed: expected both RLS helper functions';
+    RAISE EXCEPTION 'Runtime verification failed: expected both public RLS helper functions';
   END IF;
 END;
 $$;
