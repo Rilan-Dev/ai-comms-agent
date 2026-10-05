@@ -35,6 +35,16 @@ CREATE TABLE IF NOT EXISTS email_action_approvals (
 );
 CREATE INDEX IF NOT EXISTS email_action_approvals_org_idx ON email_action_approvals(organization_id,created_at DESC);
 
+CREATE TABLE IF NOT EXISTS agent_ai_settings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id uuid NOT NULL UNIQUE REFERENCES agents(id) ON DELETE CASCADE,
+  ai_provider_config_id uuid REFERENCES ai_provider_configs(id) ON DELETE SET NULL,
+  model_overrides jsonb NOT NULL DEFAULT '{}'::jsonb,
+  feature_flags jsonb NOT NULL DEFAULT '{}'::jsonb,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS agent_ai_settings_agent_idx ON agent_ai_settings(agent_id);
+
 CREATE TABLE IF NOT EXISTS ai_provider_configs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -167,3 +177,9 @@ CREATE POLICY voice_telemetry_member_manage ON voice_telemetry FOR ALL TO authen
 
 CREATE POLICY audit_events_member_visibility ON audit_events FOR SELECT TO authenticated USING (is_active_organization_member(organization_id,(select auth.uid())));
 CREATE POLICY audit_events_insert ON audit_events FOR INSERT TO authenticated WITH CHECK (is_active_organization_member(organization_id,(select auth.uid())));
+
+ALTER TABLE agent_ai_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY agent_ai_settings_member ON agent_ai_settings
+  FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM agents a WHERE a.id = agent_ai_settings.agent_id AND can_access_organization(a.organization_id)))
+  WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id = agent_ai_settings.agent_id AND can_manage_organization(a.organization_id)));
