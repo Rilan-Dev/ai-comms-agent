@@ -30,12 +30,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!orgId) return NextResponse.json({ error: "validation_error", fieldErrors: { organizationId: "Organization is required." } }, { status: 400 });
     const subject = await authorize(request, { organizationId: asOrganizationId(orgId), role: "admin" }, getIdentityAdapter(), getIdentityRepository());
     const repo = new PostgresAgentRepository();
-    if (typeof body?.emailAccountId === "string" && body.emailAccountId.trim()) {
+    if (body?.action === "unbind_email" && typeof body?.emailAccountId === "string" && body.emailAccountId.trim()) {
+      await repo.unbindEmail(orgId, id, body.emailAccountId.trim());
+      await recordAuditEvent({ organizationId: orgId, actorUserId: subject.user.id, agentId: id, eventType: "agent.email_binding_updated", targetType: "agent_email_account", action: "unbind", decision: "allowed", metadata: { emailAccountId: body.emailAccountId.trim() } });
+    } else if (typeof body?.emailAccountId === "string" && body.emailAccountId.trim()) {
       const role = body?.emailRole === "read_only" || body?.emailRole === "send_only" ? body.emailRole : "primary";
       await repo.bindEmail(orgId, id, body.emailAccountId.trim(), role);
       await recordAuditEvent({ organizationId: orgId, actorUserId: subject.user.id, agentId: id, eventType: "agent.email_binding_updated", targetType: "agent_email_account", action: "bind", decision: "allowed", metadata: { emailAccountId: body.emailAccountId.trim(), role } });
     }
-    if (typeof body?.whatsappAccountId === "string" && body.whatsappAccountId.trim()) {
+    if (body?.action === "unbind_whatsapp") {
+      await repo.unbindWhatsApp(orgId, id);
+      await recordAuditEvent({ organizationId: orgId, actorUserId: subject.user.id, agentId: id, eventType: "agent.whatsapp_binding_updated", targetType: "agent_whatsapp_account", action: "unbind", decision: "allowed" });
+    } else if (typeof body?.whatsappAccountId === "string" && body.whatsappAccountId.trim()) {
       await repo.bindWhatsApp(orgId, id, body.whatsappAccountId.trim());
       await recordAuditEvent({ organizationId: orgId, actorUserId: subject.user.id, agentId: id, eventType: "agent.whatsapp_binding_updated", targetType: "agent_whatsapp_account", action: "bind", decision: "allowed", metadata: { whatsappAccountId: body.whatsappAccountId.trim() } });
     }
