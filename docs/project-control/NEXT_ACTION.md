@@ -320,3 +320,10 @@ ChatGPT continues Slice 2 Email Accounts under the development-first directive. 
 
 ### 2026-10-06 — Slice 2 provider lifecycle continuation
 ChatGPT completed another Email Accounts hardening pass: folder/label discovery is now an atomic replacement snapshot, successful worker discovery persists runtime capabilities and connected status, discovery failures become explicit account errors, and IMAP/SMTP/Zoho capability metadata is truthful to the implemented adapter surface. Continue the Mail vertical slice after Email Accounts implementation is complete; runtime acceptance remains a separate gate.
+
+### 2026-10-06 — Email repository correctness hardening
+- Corrected the PostgreSQL email account repository status mapping to match the canonical enum (pending, connected, error, disconnected, revoked); legacy active/expired assumptions were removed.
+- Normal account reads/listing/config/capability/status updates now exclude soft-deleted records.
+- Restoring a mailbox clears stale connection errors and records connected_at when appropriate.
+- Added regression coverage in apps/web/tests/email-account-repository-contract.test.ts.
+- Continue Email Accounts provider contract/runtime hardening; then proceed to Mail. No CI/Vercel wait and no fabricated provider credentials.
