@@ -23,6 +23,8 @@ const initSql = readFileSync(initPath, "utf8");
 
 const foundationPath = resolve(__dirname, "../../../supabase/migrations/0002_application_foundation.sql");
 const foundationSql = readFileSync(foundationPath, "utf8");
+const databaseFoundationPath = resolve(__dirname, "../../../supabase/migrations/0002_database_foundation.sql");
+const databaseFoundationSql = readFileSync(databaseFoundationPath, "utf8");
 
 describe("Disposable PostgreSQL bootstrap static verification", () => {
   it("uses valid dollar-quoted DO blocks", () => {
@@ -30,6 +32,21 @@ describe("Disposable PostgreSQL bootstrap static verification", () => {
     expect(initSql).toContain("END\n$$;");
     expect(initSql).not.toMatch(/^DO \$(?!\$)/m);
     expect(initSql).not.toMatch(/^\$/m);
+  });
+});
+
+describe("Migration static verification (0002_database_foundation.sql)", () => {
+  it("does not contain invalid single-dollar DO delimiters", () => {
+    expect(databaseFoundationSql).not.toMatch(/^DO \$(?!\$)/m);
+    expect(databaseFoundationSql).not.toMatch(/END \$;/m);
+    expect(databaseFoundationSql).toContain("DO $aca$ BEGIN");
+    expect(databaseFoundationSql).toContain("END $aca$;");
+  });
+
+  it("contains the application foundation migration artifact", () => {
+    expect(databaseFoundationSql).toContain("CREATE TABLE IF NOT EXISTS agents");
+    expect(databaseFoundationSql).toContain("CREATE TABLE IF NOT EXISTS email_accounts");
+    expect(databaseFoundationSql).toContain("CREATE TABLE IF NOT EXISTS whatsapp_accounts");
   });
 });
 
