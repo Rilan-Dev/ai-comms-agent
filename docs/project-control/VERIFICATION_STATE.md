@@ -517,3 +517,11 @@ Latest synchronization: Docker/manual verification tooling is committed at 271bd
 - Corrective action: `0002_application_foundation.sql` is now the single authoritative Phase 4 application/agent foundation migration. The richer agent version/deployment/policy fields were consolidated into it, and the duplicate `0002_agent_foundation.sql` migration was removed before production application.
 - Latest correction commit: `9fd34d1d69417302f2c8e31d0a453a0836533e27`.
 - Required next verification: pull `main` and rerun `bash scripts/verify-docker.sh`; then inspect CI runtime result. Do not claim Phase 4 acceptance until the full migration chain passes.
+
+
+### Runtime verification finding — 2026-10-05
+- Local disposable PostgreSQL verification reached `0002_database_foundation.sql` successfully but failed because its `can_access_organization()` helper referenced Phase 3 RLS helpers without the `private.` schema qualification.
+- Corrected in commit `d2da078e406a96fce7245dcd753b2e7f1ab87d74`: `private.is_active_organization_member(...)` and `private.is_active_organization_admin_or_owner(...)` are now explicitly qualified.
+- This is a real runtime migration defect caught by the verification harness; it is not a false-positive static test issue.
+- Phase 3 acceptance remains pending until the disposable PostgreSQL verification is rerun successfully, including ownerless-organization rejection.
+- Phase 4 remains NOT AUTHORIZED.
