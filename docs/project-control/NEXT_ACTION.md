@@ -255,3 +255,11 @@ ChatGPT is the primary implementer. Continue Phase 4 Database Foundation and Mig
 
 ### 2026-10-06 — Provider security continuation
 ChatGPT continued Email Accounts provider hardening without waiting for CI/Vercel. Zoho OAuth callback and worker adapter now allow only HTTPS Zoho Mail regional API origins, preventing an untrusted `api_domain` from becoming a server-side request target. Added deterministic adapter security tests. Next provider work: complete connection-test/reconnect lifecycle and then proceed to Mail vertical slice after Email Accounts acceptance evidence is available.
+
+
+### 2026-10-06 — active implementation checkpoint
+- Agent version editor now persists the edited JSON configuration instead of silently creating an empty configuration.
+- Version configuration has a server-side validation boundary and regression tests.
+- Agent safety policy UI now exposes security-policy and rate-limit controls.
+- Agent list now supports status filtering and robust create-network error handling.
+- Continue development without waiting for CI or Vercel. Acceptance remains a separate gate.
