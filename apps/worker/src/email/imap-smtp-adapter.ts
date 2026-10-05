@@ -7,10 +7,10 @@ import type {
 
 const CAPABILITIES: CapabilitySet = {
   folders: true, labels: false, sync_incremental: false, sync_full: true,
-  sync_webhook: false, sync_idle: true, search_server_side: true,
-  search_client_side: true, drafts: true, reply: true, forward: true,
-  mark_read: true, archive: false, move: true, threads: false,
-  attachments_download: true, attachments_upload: false, send: true,
+  sync_webhook: false, sync_idle: true, search_server_side: false,
+  search_client_side: false, drafts: false, reply: false, forward: false,
+  mark_read: false, archive: false, move: false, threads: false,
+  attachments_download: false, attachments_upload: false, send: false,
 };
 
 type ImapConnection = {
