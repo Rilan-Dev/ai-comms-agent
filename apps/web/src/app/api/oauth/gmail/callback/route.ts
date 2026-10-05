@@ -24,6 +24,8 @@ export async function GET(request: Request) {
   const verifier = request.headers.get("cookie")?.match(/(?:^|; )gmail_oauth_verifier=([^;]+)/)?.[1];
   if (!code || !state || !verifier) return oauthError("The Gmail authorization session is incomplete or expired.");
 
+  const stateCookie = request.headers.get("cookie")?.match(/(?:^|; )gmail_oauth_state=([^;]+)/)?.[1];
+  if (!stateCookie || stateCookie !== state) return oauthError("Invalid or expired Gmail OAuth session.");
   const [encoded, signature] = state.split(".");
   if (!encoded || !signature || !verify(encoded, signature)) return oauthError("Invalid Gmail OAuth state.");
   let payload: { organizationId: string; userId: string; exp: number };
@@ -86,6 +88,7 @@ export async function GET(request: Request) {
       emailAddress: profile.emailAddress,
       displayName: profile.emailAddress,
       connectionConfig: { historyId: profile.historyId ?? null, oauthScope: tokens.scope ?? null },
+      status: "pending",
       capabilities: {
         folders: true, labels: true, sync_incremental: true, sync_full: true, sync_webhook: true, sync_idle: false,
         search_server_side: true, search_client_side: true, drafts: true, reply: true, forward: true,
@@ -100,6 +103,7 @@ export async function GET(request: Request) {
       expires_at: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000).toISOString() : undefined,
       scope: tokens.scope,
     }, masterKey);
+    const connectedAccount = await repository.updateStatus(account.id, "connected");
 
     await recordAuditEvent({
       organizationId: payload.organizationId,
