@@ -2,8 +2,9 @@
  * Email provider abstraction — adapter model with capability discovery.
  * Per docs/architecture/EMAIL-PROVIDER-ARCHITECTURE.md and docs/specs/PROVIDER-CONTRACTS.md.
  *
- * Phase 5 scope: the provider contract, capability discovery, and mock adapter
- * are production-shaped; real Gmail/IMAP/SMTP/Zoho adapters remain in Phases 6-8.
+ * The provider contract and capability discovery are shared across the active Gmail,
+ * IMAP/SMTP, and Zoho adapter implementations. Provider-specific runtime completeness
+ * is tracked by the roadmap and must not be inferred from registration alone.
  */
 
 export type EmailProviderType = "gmail" | "imap_smtp" | "zoho" | "microsoft_graph";
