@@ -67,6 +67,7 @@ export function EmailAccountsClient({
       if (!response.ok) throw new Error(data.message ?? "Could not reconnect the mailbox.");
       setAccounts((current) => current.map((item) => item.id === account.id ? data.account : item));
       setNotice("Mailbox connection verified and restored.");
+      await refreshAccounts();
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Mailbox reconnection failed.");
       const response = await fetch("/api/email-accounts?organizationId=" + encodeURIComponent(organizationId));
