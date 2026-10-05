@@ -33,6 +33,7 @@ export {
   SupabaseEmailAccountRepository,
   type CreateEmailAccountInput,
 } from "./email/repository";
+export { PostgresEmailFolderLabelRepository } from "./email/folder-label-repository";
 
 export { PostgresAgentRepository } from "./agent/repository";
 
