@@ -127,19 +127,33 @@ export async function GET(request: Request) {
     };
 
     const repository = new PostgresEmailAccountRepository();
-    const account = await repository.create({
-      organizationId: payload.organizationId,
-      provider: "zoho",
-      emailAddress: remote.emailAddress,
-      displayName: remote.displayName ?? remote.emailAddress,
-      connectionConfig: {
-        apiDomain,
-        dataCenter: payload.dataCenter,
-        remoteAccountId: String(remote.accountId),
-      },
-      status: "pending",
-      capabilities,
-    });
+    const existing = await repository.findByOrganizationProviderAddress(payload.organizationId, "zoho", remote.emailAddress);
+    const account = existing
+      ? await repository.updateConnection(existing.id, {
+          emailAddress: remote.emailAddress,
+          displayName: remote.displayName ?? remote.emailAddress,
+          connectionConfig: {
+            apiDomain,
+            dataCenter: payload.dataCenter,
+            remoteAccountId: String(remote.accountId),
+          },
+          status: "pending",
+          capabilities,
+        })
+      : await repository.create({
+          organizationId: payload.organizationId,
+          provider: "zoho",
+          emailAddress: remote.emailAddress,
+          displayName: remote.displayName ?? remote.emailAddress,
+          connectionConfig: {
+            apiDomain,
+            dataCenter: payload.dataCenter,
+            remoteAccountId: String(remote.accountId),
+          },
+          status: "pending",
+          capabilities,
+        });
+    if (!account) return oauthError("Zoho account could not be persisted.", 500);
 
     await repository.saveCredentials(account.id, "oauth_token", {
       access_token: tokens.access_token,
