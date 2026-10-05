@@ -1,4 +1,4 @@
-import tls from "node:tls";
+import * as tls from "node:tls";
 import type {
   CapabilitySet, DraftParams, EmailCredentials, EmailFolder, EmailLabel,
   EmailMessage, EmailProvider, ListOptions, SearchQuery, SentMessageRef, SyncResult, SyncState,
