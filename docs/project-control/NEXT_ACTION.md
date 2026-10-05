@@ -144,3 +144,11 @@ Pull latest `main` and rerun `bash scripts/verify-docker.sh`. The previous exit-
 - Database foundation is being hardened against actual PostgreSQL execution, with migration chain kept forward-only.
 - Latest implementation: 0014 email connection metadata migration, PostgreSQL email repository/schema alignment, Gmail provider registration, and migration-test cleanup.
 - Continue with Phase 5 email provider abstraction/runtime contracts next; do not claim Phase 4 acceptance until disposable PostgreSQL verification is green.
+
+
+### 2026-10-05 — ChatGPT continuation update
+
+- Added complete Phase 4 schema regression coverage for tenant-table inventory, RLS enablement, credential ciphertext fields, audit immutability, and required idempotency/search indexes.
+- Corrected the email-account repository to read the actual ciphertext column and to map the database email-account status enum without inventing active/expired states.
+- Latest implementation commit: 8fdef7bec29412fc197006246827885e0e4ee009.
+- Continue with Phase 4 typed persistence/storage contracts and runtime verification before declaring Phase 4 accepted. Provider implementation may continue only as downstream development; no phase acceptance is being claimed.
