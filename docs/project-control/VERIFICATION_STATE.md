@@ -710,3 +710,8 @@ Latest source correction: `apps/web/src/app/api/email-accounts/route.ts` was rep
 
 
 ### 2026-10-06 — Latest development-first implementation: Clara chat workspace at `/chat`, persisted conversation/message loading, SSE streaming, organization authorization, agent-isolated conversation switching, and workspace navigation/dashboard entry points. Runtime/CI/Vercel verification remains non-blocking; no live AI/provider success is claimed.
+\n\n### 2026-10-06 — Development-first Settings continuation
+- Latest source commit: 2e4a29b1f7c58523aff2a65331941e3e2562a252.
+- Voice transcript bridge, shared transport contract, organization settings read, member read, and member role/status management are implemented.
+- Runtime/browser verification is intentionally deferred under the active project-owner development-first instruction.
+- No provider credentials or live external connectivity are claimed.
