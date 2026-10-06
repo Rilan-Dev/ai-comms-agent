@@ -246,7 +246,7 @@ export function EmailAccountsClient({
           <div className="px-6 py-14 text-center"><h3 className="font-semibold">No matching mailboxes</h3><p className="mt-2 text-sm text-muted-foreground">Try a different search or status filter.</p><button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); }} className="mt-4 text-sm font-semibold underline underline-offset-4">Clear filters</button></div>
         ) : (
           <div className="divide-y">
-            {filteredAccounts.map((account) => (
+            {filteredAccounts.map((account) => {\n              const structure = structureByAccount[account.id];\n              return (
               <div key={account.id} className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -261,7 +261,7 @@ export function EmailAccountsClient({
                     Last sync: {account.last_sync_at ? new Date(account.last_sync_at).toLocaleString() : "Not synchronized"}
                   </p>
                   {account.last_error && <p role="alert" className="mt-2 max-w-2xl text-xs text-destructive">{account.last_error}</p>}
-                  {structureByAccount[account.id] && (
+                  {structure && (
                     <div className="mt-3 rounded-2xl border bg-muted/30 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Mailbox structure</p>
