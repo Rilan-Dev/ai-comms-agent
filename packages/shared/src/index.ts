@@ -95,3 +95,7 @@ export { EMAIL_CAPABILITIES, emptyCapabilitySet, normalizeCapabilitySet, assertC
 export type { AgentStatus, DeploymentEnvironment, AgentEmailAccountRole, Agent, AgentVersion, AgentDeployment, AgentPolicy, AgentEmailBinding, AgentWhatsAppBinding } from "./agent/domain";
 
 export type { AgentExecutionSource, AgentExecutionRequest, AgentExecutionDispatchResult } from "./agent/execution";
+
+// Realtime voice transport contract — host adapter only; Clara owns provider transport.
+export type { VoiceTransportState, VoiceTranscriptEvent, VoiceTransportSession, VoiceTransportAdapter } from "./voice";
+export { isCurrentVoiceSequence } from "./voice";
