@@ -373,3 +373,7 @@ ChatGPT continued Product Completion Slice 2 (Email Accounts) without waiting fo
 
 ### 2026-10-06 development-first continuation
 WhatsApp status/media/routing hardening and persisted Schedules/Automations CRUD workspaces are implemented. Runtime acceptance remains deferred by explicit project-owner instruction. Next implementation is the worker scheduler/automation execution boundary.
+
+
+### 2026-10-06 — WhatsApp inbound + Chat runtime continuation
+ChatGPT continued development-first implementation without waiting for CI/Vercel. WhatsApp inbound messages now have a durable processing claim lifecycle and worker-side Clara execution path that queues replies to the originating contact; inbound processing also emits `whatsapp.received` automation events. Added host-owned persisted conversation/message repository and a Clara-backed authorized SSE chat route using hybrid RAG. Latest implementation/control commit: 0d71e4e2d24cc99911913a5a15946ccb1d83fdc7. Runtime/deployment acceptance is not claimed.
