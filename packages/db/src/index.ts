@@ -42,6 +42,16 @@ export {
   type MailInboxFilters,
 } from "./email/repository";
 export { PostgresEmailFolderLabelRepository } from "./email/folder-label-repository";
+export {
+  createEmailAction,
+  getEmailActionForOrganization,
+  decideEmailAction,
+  claimApprovedEmailAction,
+  completeEmailAction,
+  type CreateEmailActionInput,
+  type EmailActionType,
+  type EmailActionStatus,
+} from "./email/actions";
 
 export { PostgresAgentRepository } from "./agent/repository";
 
