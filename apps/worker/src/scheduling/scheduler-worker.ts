@@ -9,7 +9,7 @@ export async function processScheduledJobs(limit=25,now=new Date()):Promise<{cla
     try{
       const result=await dispatchAgentExecution({executionId:job.runId,organizationId:job.organizationId,agentId:job.agentId,source:"schedule",intent:job.intent,params:job.params,requestedAt:now.toISOString()});
       if(result.status==="configuration_required"){ await failScheduledJobRun(job.runId,result.reason); failed+=1; }
-      else { await completeScheduledJobRun(job.runId,{status:"queued",executionId:result.executionId}); completed+=1; }
+      else { await completeScheduledJobRun(job.runId,{status:result.status,executionId:result.executionId,output:result.output??null,provider:result.provider??null,model:result.model??null}); completed+=1; }
       const next=job.cron ? nextCronFire(job.cron,now,job.timezone) : null;
       await advanceScheduledJob(job.id,next?.toISOString()??null,job.cron ? "active" : "archived",null);
     }catch(error){
