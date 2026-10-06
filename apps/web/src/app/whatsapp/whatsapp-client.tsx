@@ -26,7 +26,15 @@ export default function WhatsAppClient({ organizationId }: { organizationId: str
   useEffect(() => { const firstAccount = accounts[0]; if (firstAccount && !selectedAccountId) setSelectedAccountId(firstAccount.id); }, [accounts, selectedAccountId]);
   useEffect(() => { if (!selectedAccountId) return; const loadMessages = async () => { try { const r = await fetch("/api/whatsapp/messages?organizationId=" + encodeURIComponent(organizationId) + "&accountId=" + encodeURIComponent(selectedAccountId), { cache: "no-store" }); const d = await r.json(); if (r.ok) setMessages(d.messages ?? []); } catch {} }; void loadMessages(); const timer = setInterval(() => { void loadMessages(); }, 5000); return () => clearInterval(timer); }, [organizationId, selectedAccountId]);
 
-  const credentialFields = [\n    ["phoneNumberId", "Phone number ID", false],\n    ["businessAccountId", "Business account ID", false],\n    ["phoneNumber", "Display phone number", false],\n    ["displayName", "Display name", false],\n    ["accessToken", "Access token", true],\n  ] as const;\n\n  async function save() {
+  const credentialFields = [
+    ["phoneNumberId", "Phone number ID", false],
+    ["businessAccountId", "Business account ID", false],
+    ["phoneNumber", "Display phone number", false],
+    ["displayName", "Display name", false],
+    ["accessToken", "Access token", true],
+  ] as const;
+
+  async function save() {
     setBusy(true); setNotice(null);
     try {
       const r = await fetch("/api/whatsapp/accounts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ organizationId, ...form }) });
