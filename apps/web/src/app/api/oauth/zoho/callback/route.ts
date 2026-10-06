@@ -39,8 +39,14 @@ function verify(encoded: string, signature: string) {
   return expected === signature;
 }
 
-function oauthError(message: string, status = 400) {
-  return NextResponse.json({ error: "oauth_error", message }, { status });
+function oauthError(message: string, request: Request, status = 400) {
+  const safeMessage = message.slice(0, 240);
+  const response = NextResponse.redirect(
+    new URL(`/mail/accounts?providerError=${encodeURIComponent(safeMessage)}`, request.url),
+    303,
+  );
+  response.headers.set("x-oauth-error-status", String(status));
+  return response;
 }
 
 export async function GET(request: Request) {
@@ -51,26 +57,26 @@ export async function GET(request: Request) {
   const verifier = cookie.match(/(?:^|; )zoho_oauth_verifier=([^;]+)/)?.[1];
   const stateCookie = cookie.match(/(?:^|; )zoho_oauth_state=([^;]+)/)?.[1];
   if (!code || !state || !verifier || !stateCookie || stateCookie !== state) {
-    return oauthError("The Zoho authorization session is incomplete or invalid.");
+    return oauthError("The Zoho authorization session is incomplete or invalid.", request);
   }
 
   const [encoded, signature] = state.split(".");
-  if (!encoded || !signature || !verify(encoded, signature)) return oauthError("Invalid Zoho OAuth state.");
+  if (!encoded || !signature || !verify(encoded, signature)) return oauthError("Invalid Zoho OAuth state.", request);
 
   let payload: { organizationId: string; userId: string; accountId?: string; dataCenter: string; exp: number };
   try {
     payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
   } catch {
-    return oauthError("Invalid Zoho OAuth state.");
+    return oauthError("Invalid Zoho OAuth state.", request);
   }
-  if (!payload.organizationId || !payload.userId || payload.exp < Date.now()) return oauthError("Zoho OAuth state has expired.");
+  if (!payload.organizationId || !payload.userId || payload.exp < Date.now()) return oauthError("Zoho OAuth state has expired.", request);
 
   const accountsDomain = ACCOUNT_DOMAINS[payload.dataCenter];
   const clientId = process.env.ZOHO_OAUTH_CLIENT_ID;
   const clientSecret = process.env.ZOHO_OAUTH_CLIENT_SECRET;
   const redirectUri = process.env.ZOHO_OAUTH_REDIRECT_URI ??
     `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/oauth/zoho/callback`;
-  if (!accountsDomain || !clientId || !clientSecret) return oauthError("Zoho OAuth is not configured on the server.", 503);
+  if (!accountsDomain || !clientId || !clientSecret) return oauthError("Zoho OAuth is not configured on the server.", request, 503);
 
   try {
     await authorize(
@@ -80,7 +86,7 @@ export async function GET(request: Request) {
       getIdentityRepository(),
     );
   } catch {
-    return oauthError("You are not authorized to connect an email account for this organization.", 403);
+    return oauthError("You are not authorized to connect an email account for this organization.", request, 403);
   }
 
   try {
@@ -96,28 +102,28 @@ export async function GET(request: Request) {
         code_verifier: verifier,
       }),
     });
-    if (!tokenResponse.ok) return oauthError("Zoho rejected the authorization code.", 502);
+    if (!tokenResponse.ok) return oauthError("Zoho rejected the authorization code.", request, 502);
     const tokens = await tokenResponse.json() as {
       access_token?: string; refresh_token?: string; expires_in?: number; api_domain?: string;
     };
-    if (!tokens.access_token || !tokens.api_domain) return oauthError("Zoho did not return the required token metadata.", 502);
+    if (!tokens.access_token || !tokens.api_domain) return oauthError("Zoho did not return the required token metadata.", request, 502);
     const apiDomain = normalizeZohoApiDomain(tokens.api_domain);
-    if (!apiDomain) return oauthError("Zoho returned an untrusted API domain.", 502);
+    if (!apiDomain) return oauthError("Zoho returned an untrusted API domain.", request, 502);
 
     const accountsResponse = await fetch(`${apiDomain}/api/accounts`, {
       headers: { authorization: `Zoho-oauthtoken ${tokens.access_token}`, accept: "application/json" },
     });
-    if (!accountsResponse.ok) return oauthError("Zoho account verification failed.", 502);
+    if (!accountsResponse.ok) return oauthError("Zoho account verification failed.", request, 502);
     const accountsPayload = await accountsResponse.json() as {
       data?: Array<{ accountId?: string | number; emailAddress?: string; displayName?: string }>;
     };
     const remote = accountsPayload.data?.[0];
-    if (!remote?.accountId || !remote.emailAddress) return oauthError("Zoho did not return a usable mail account.", 502);
+    if (!remote?.accountId || !remote.emailAddress) return oauthError("Zoho did not return a usable mail account.", request, 502);
 
     const masterKey = process.env.CREDENTIALS_MASTER_KEY
       ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY)
       : null;
-    if (!masterKey) return oauthError("Credential encryption is not configured on the server.", 503);
+    if (!masterKey) return oauthError("Credential encryption is not configured on the server.", request, 503);
 
     const capabilities = {
       folders: true, labels: true, sync_incremental: false, sync_full: true, sync_webhook: true, sync_idle: false,
@@ -130,7 +136,7 @@ export async function GET(request: Request) {
     if (payload.accountId) {
       const target = await repository.getById(payload.accountId);
       if (!target || target.organization_id !== payload.organizationId || target.provider !== "zoho") {
-        return oauthError("The Zoho reconnect target is invalid.", 409);
+        return oauthError("The Zoho reconnect target is invalid.", request, 409);
       }
     }
     const existing = payload.accountId
@@ -161,7 +167,7 @@ export async function GET(request: Request) {
           status: "pending",
           capabilities,
         });
-    if (!account) return oauthError("Zoho account could not be persisted.", 500);
+    if (!account) return oauthError("Zoho account could not be persisted.", request, 500);
 
     await repository.saveCredentials(account.id, "oauth_token", {
       access_token: tokens.access_token,
@@ -186,6 +192,6 @@ export async function GET(request: Request) {
     return response;
   } catch (error) {
     console.error("[zoho-oauth] callback failed", error);
-    return oauthError("Zoho connection could not be completed.", 500);
+    return oauthError("Zoho connection could not be completed.", request, 500);
   }
 }
