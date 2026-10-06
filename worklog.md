@@ -1658,3 +1658,11 @@ No provider credentials were fabricated and Clara source was not modified.
 - Added deterministic coverage for OAuth error routing.
 - No provider credentials were fabricated, no live provider connection was claimed, and CI/Vercel were not treated as development blockers.
 - Next: finish remaining deterministic account API authorization/error coverage and Email Accounts UX, then proceed to Mail.
+
+
+### 2026-10-06 — Email Accounts API source-integrity correction
+- Direct source audit found literal `\\n` escape sequences in the email account API `DELETE` handler, which would make the TypeScript source invalid.
+- Repaired the file and added a deterministic test guard against literal escaped-newline corruption.
+- Added static API authorization/credential non-exposure coverage and OAuth error-routing coverage.
+- No CI/Vercel result is used as development evidence; no live provider credentials are claimed.
+- Continue Email Accounts implementation before moving to Mail.
