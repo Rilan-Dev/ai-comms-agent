@@ -1827,3 +1827,10 @@ Next: implement inbound WhatsApp agent-command execution and durable event emiss
 - Added host-owned conversation persistence repository for chat conversations/messages and a Clara-backed SSE chat route at `/api/chat/stream` with organization authorization and hybrid RAG.
 - No live provider credentials, external send success, or deployment success is claimed.
 - **Next:** build the polished chat workspace UI and realtime voice session boundary, reusing the same conversation and approval-safe action layers.
+
+
+### 2026-10-06 — Realtime voice host boundary implementation
+
+ChatGPT continued development-first implementation into the Clara realtime voice surface. Added forward-only migration `0019_voice_session_lifecycle.sql` to align `voice_sessions` with the documented host-owned lifecycle (user/provider session identity, duration, turn count, finalization trigger). Added PostgreSQL voice session/telemetry repository operations, a host-authorized `/api/voice/session` lifecycle endpoint, and replaced the old AI & Voice placeholder screen with a real agent-scoped session workspace. The implementation calls Clara's `startRealtimeSession()` for provider/model/transport resolution and keeps provider credentials out of the browser. No live provider connectivity is fabricated.
+
+**Next:** implement the provider transport handshake adapter behind the resolved Clara session endpoint, then wire browser microphone/transcript state to the same persisted session and telemetry boundary. Preserve Clara ownership of realtime transport/reconnect/cancellation and keep sensitive actions on the host authorization boundary.
