@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository, createVoiceSession, endVoiceSessionForOrganization } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, activateVoiceSessionForOrganization, createVoiceSession, endVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, recordVoiceTelemetry } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -27,6 +27,40 @@ export async function POST(request: Request) {
     const session = await claraRuntime.startRealtimeSession({ orgId: organizationId, agentId, kbId, userId: subject.user.id, sessionId: crypto.randomUUID(), surface: "voice" });
     const persisted = await createVoiceSession({ organizationId, agentId, userId: subject.user.id, conversationId, provider: session.provider, model: session.model, voiceId: session.voiceId, metadata: { sessionEndpoint: session.sessionEndpoint } });
     return NextResponse.json({ session: persisted, transport: session });
+  } catch (error) {
+    return authorizationErrorToResponse(error);
+  }
+}
+
+
+export async function PATCH(request: Request) {
+  try {
+    if (!process.env.DATABASE_URL) return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
+    await ensureDevSeed();
+    const body = await request.json().catch(() => null);
+    const organizationId = typeof body?.organizationId === "string" ? body.organizationId : "";
+    const sessionId = typeof body?.sessionId === "string" ? body.sessionId : "";
+    const action = typeof body?.action === "string" ? body.action : "";
+    if (!organizationId || !sessionId || !action) return NextResponse.json({ error: "validation_error", message: "organizationId, sessionId and action are required." }, { status: 422 });
+    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+
+    if (action === "activate") {
+      const updated = await activateVoiceSessionForOrganization(organizationId, sessionId, typeof body?.providerSessionId === "string" ? body.providerSessionId.slice(0, 500) : null);
+      if (!updated) return NextResponse.json({ error: "not_found" }, { status: 404 });
+      return NextResponse.json({ session: updated });
+    }
+    if (action === "turn") {
+      await incrementVoiceSessionTurnForOrganization(organizationId, sessionId);
+      return NextResponse.json({ ok: true });
+    }
+    if (action === "telemetry") {
+      const metricName = typeof body?.metricName === "string" ? body.metricName.slice(0, 100) : "";
+      const metricValue = typeof body?.metricValue === "number" && Number.isFinite(body.metricValue) ? body.metricValue : NaN;
+      if (!metricName || !Number.isFinite(metricValue)) return NextResponse.json({ error: "validation_error", message: "metricName and finite metricValue are required." }, { status: 422 });
+      await recordVoiceTelemetry({ organizationId, voiceSessionId: sessionId, metricName, metricValue, unit: typeof body?.unit === "string" ? body.unit.slice(0, 32) : null, stage: typeof body?.stage === "string" ? body.stage.slice(0, 100) : null, correlationId: typeof body?.correlationId === "string" ? body.correlationId.slice(0, 100) : null, metadata: body?.metadata && typeof body.metadata === "object" ? body.metadata : {} });
+      return NextResponse.json({ ok: true });
+    }
+    return NextResponse.json({ error: "unsupported_action" }, { status: 422 });
   } catch (error) {
     return authorizationErrorToResponse(error);
   }
