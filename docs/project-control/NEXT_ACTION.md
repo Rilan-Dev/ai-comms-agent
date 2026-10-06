@@ -571,3 +571,11 @@ The remaining Clara package diagnostics are the intentional optional vendored-su
 - Added organization-wide audit querying with authorization-aware API access.
 - Replaced synthetic Audit and Activity UI with persisted PostgreSQL-backed event surfaces, filtering/loading/error/empty states.
 - **Next:** final cross-surface product hardening and E2E/deployment preparation; validation remains deferred under the active development-first instruction.
+
+
+### 2026-10-06 — Activity/Audit/Operations implementation continuation
+- Added server-side audit filtering for event type, decision, actor, search and time bounds.
+- Added authorized JSON/CSV audit export.
+- Added organization-scoped Operations API with PostgreSQL runtime check, configured infrastructure signals, persisted email/sync/voice/schedule/authorization metrics, and an Operations workspace.
+- Added Operations navigation and removed the fake static “Core online” indicator.
+- **Next implementation:** cross-surface E2E hardening: email → AI → approval → send, WhatsApp routing, scheduling, chat/voice, organization isolation, and sensitive-action audit/idempotency coverage. Validation remains deferred under the development-first instruction.
