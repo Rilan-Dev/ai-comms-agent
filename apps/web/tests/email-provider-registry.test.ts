@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { EmailProviderRegistry } from "@ai-comms-agent/shared";
-import { GmailAdapter } from "../../apps/worker/src/email/gmail-adapter";
-import { ImapSmtpAdapter } from "../../apps/worker/src/email/imap-smtp-adapter";
-import { ZohoAdapter } from "../../apps/worker/src/email/zoho-adapter";
-import { createEmailProviderRegistry } from "../../apps/worker/src/email/registry";
+import { GmailAdapter } from "../../../apps/worker/src/email/gmail-adapter";
+import { ImapSmtpAdapter } from "../../../apps/worker/src/email/imap-smtp-adapter";
+import { ZohoAdapter } from "../../../apps/worker/src/email/zoho-adapter";
+import { createEmailProviderRegistry } from "../../../apps/worker/src/email/registry";
 import { EMAIL_CAPABILITIES } from "@ai-comms-agent/shared";
 
 describe("EmailProviderRegistry", () => {
