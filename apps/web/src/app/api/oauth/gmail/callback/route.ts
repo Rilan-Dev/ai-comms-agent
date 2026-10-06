@@ -13,8 +13,14 @@ function verify(encoded: string, signature: string) {
   return expected === signature;
 }
 
-function oauthError(message: string, status = 400) {
-  return NextResponse.json({ error: "oauth_error", message }, { status });
+function oauthError(message: string, request: Request, status = 400) {
+  const safeMessage = message.slice(0, 240);
+  const response = NextResponse.redirect(
+    new URL(`/mail/accounts?providerError=${encodeURIComponent(safeMessage)}`, request.url),
+    303,
+  );
+  response.headers.set("x-oauth-error-status", String(status));
+  return response;
 }
 
 export async function GET(request: Request) {
@@ -22,19 +28,19 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const verifier = request.headers.get("cookie")?.match(/(?:^|; )gmail_oauth_verifier=([^;]+)/)?.[1];
-  if (!code || !state || !verifier) return oauthError("The Gmail authorization session is incomplete or expired.");
+  if (!code || !state || !verifier) return oauthError("The Gmail authorization session is incomplete or expired.", request);
 
   const stateCookie = request.headers.get("cookie")?.match(/(?:^|; )gmail_oauth_state=([^;]+)/)?.[1];
-  if (!stateCookie || stateCookie !== state) return oauthError("Invalid or expired Gmail OAuth session.");
+  if (!stateCookie || stateCookie !== state) return oauthError("Invalid or expired Gmail OAuth session.", request);
   const [encoded, signature] = state.split(".");
-  if (!encoded || !signature || !verify(encoded, signature)) return oauthError("Invalid Gmail OAuth state.");
+  if (!encoded || !signature || !verify(encoded, signature)) return oauthError("Invalid Gmail OAuth state.", request);
   let payload: { organizationId: string; userId: string; accountId?: string; exp: number };
   try {
     payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
   } catch {
-    return oauthError("Invalid Gmail OAuth state.");
+    return oauthError("Invalid Gmail OAuth state.", request);
   }
-  if (!payload.organizationId || !payload.userId || payload.exp < Date.now()) return oauthError("Gmail OAuth state has expired.");
+  if (!payload.organizationId || !payload.userId || payload.exp < Date.now()) return oauthError("Gmail OAuth state has expired.", request);
 
   try {
     await authorize(
@@ -44,13 +50,13 @@ export async function GET(request: Request) {
       getIdentityRepository(),
     );
   } catch {
-    return oauthError("You are not authorized to connect an email account for this organization.", 403);
+    return oauthError("You are not authorized to connect an email account for this organization.", request, 403);
   }
 
   const clientId = process.env.GMAIL_OAUTH_CLIENT_ID;
   const clientSecret = process.env.GMAIL_OAUTH_CLIENT_SECRET;
   const redirectUri = process.env.GMAIL_OAUTH_REDIRECT_URI ?? `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/oauth/gmail/callback`;
-  if (!clientId || !clientSecret) return oauthError("Gmail OAuth is not configured on the server.", 503);
+  if (!clientId || !clientSecret) return oauthError("Gmail OAuth is not configured on the server.", request, 503);
 
   try {
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -65,27 +71,27 @@ export async function GET(request: Request) {
         code_verifier: verifier,
       }),
     });
-    if (!tokenResponse.ok) return oauthError("Google rejected the authorization code.", 502);
+    if (!tokenResponse.ok) return oauthError("Google rejected the authorization code.", request, 502);
     const tokens = await tokenResponse.json() as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string };
-    if (!tokens.access_token) return oauthError("Google did not return an access token.", 502);
+    if (!tokens.access_token) return oauthError("Google did not return an access token.", request, 502);
 
     const profileResponse = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
       headers: { authorization: `Bearer ${tokens.access_token}` },
     });
-    if (!profileResponse.ok) return oauthError("Gmail account verification failed.", 502);
+    if (!profileResponse.ok) return oauthError("Gmail account verification failed.", request, 502);
     const profile = await profileResponse.json() as { emailAddress?: string; historyId?: string };
-    if (!profile.emailAddress) return oauthError("Gmail did not return an account address.", 502);
+    if (!profile.emailAddress) return oauthError("Gmail did not return an account address.", request, 502);
 
     const masterKey = process.env.CREDENTIALS_MASTER_KEY
       ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY)
       : null;
-    if (!masterKey) return oauthError("Credential encryption is not configured on the server.", 503);
+    if (!masterKey) return oauthError("Credential encryption is not configured on the server.", request, 503);
 
     const repository = new PostgresEmailAccountRepository();
     if (payload.accountId) {
       const target = await repository.getById(payload.accountId);
       if (!target || target.organization_id !== payload.organizationId || target.provider !== "gmail") {
-        return oauthError("The Gmail reconnect target is invalid.", 409);
+        return oauthError("The Gmail reconnect target is invalid.", request, 409);
       }
     }
     const capabilities = {
@@ -114,7 +120,7 @@ export async function GET(request: Request) {
           status: "pending",
           capabilities,
         });
-    if (!account) return oauthError("Gmail account could not be persisted.", 500);
+    if (!account) return oauthError("Gmail account could not be persisted.", request, 500);
 
     await repository.saveCredentials(account.id, "oauth_token", {
       access_token: tokens.access_token,
@@ -140,6 +146,6 @@ export async function GET(request: Request) {
     return response;
   } catch (error) {
     console.error("[gmail-oauth] callback failed", error);
-    return oauthError("Gmail connection could not be completed.", 500);
+    return oauthError("Gmail connection could not be completed.", request, 500);
   }
 }
