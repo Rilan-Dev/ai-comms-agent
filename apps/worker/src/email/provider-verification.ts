@@ -6,21 +6,23 @@ export interface ProviderVerificationResult {
 }
 
 /**
- * Verify one provider connection and discover the runtime capability surface.
- * The provider instance is always disconnected, including on failure.
- * Credentials remain owned by the caller and are never returned.
+ * Verify a provider and run work that requires the live connection.
+ * The adapter is disconnected exactly once after the callback, including on failure.
  */
-export async function verifyEmailProviderConnection(
+export async function verifyEmailProviderConnection<T = void>(
   provider: EmailProvider,
   credentials: EmailCredentials,
-): Promise<ProviderVerificationResult> {
-  let connected = false;
+  onConnected?: (context: { provider: EmailProvider; capabilities: CapabilitySet }) => Promise<T>,
+): Promise<ProviderVerificationResult & (T extends void ? { value?: undefined } : { value: T })> {
+  await provider.connect(credentials);
   try {
-    await provider.connect(credentials);
-    connected = true;
     const capabilities = normalizeCapabilitySet(await provider.discoverCapabilities());
-    return { capabilities };
+    if (onConnected) {
+      const value = await onConnected({ provider, capabilities });
+      return { capabilities, value } as ProviderVerificationResult & (T extends void ? { value?: undefined } : { value: T });
+    }
+    return { capabilities } as ProviderVerificationResult & (T extends void ? { value?: undefined } : { value: T });
   } finally {
-    if (connected) await provider.disconnect();
+    await provider.disconnect();
   }
 }
