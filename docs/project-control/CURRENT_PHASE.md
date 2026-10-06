@@ -236,3 +236,7 @@ Development-first Mail work now includes real persisted thread navigation, read-
 - Worker lifecycle now runs the scheduler tick every 15 seconds when PostgreSQL is configured.
 - Added worker tests for cron calculation and automation matching.
 - **Next:** implement the Clara-backed agent execution adapter, then route concrete scheduled/automation actions through the existing approval-safe email/WhatsApp workers.
+
+
+### 2026-10-06 — Clara-backed execution continuation
+The worker execution boundary now calls Clara's immutable `claraRuntime.createChatTurn()` with tenant/agent context and hybrid RAG, consuming the returned stream and persisting provider/model/output in scheduled and automation runs. `CLARA_KB_ID` is an explicit runtime configuration boundary; missing configuration fails truthfully.
