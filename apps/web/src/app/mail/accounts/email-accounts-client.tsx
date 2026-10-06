@@ -41,6 +41,7 @@ export function EmailAccountsClient({
   const [structureByAccount, setStructureByAccount] = useState<Record<string, {
     folders: Array<{ id: string; name: string; role: string; unread_count: number }>;
     labels: Array<{ id: string; name: string; label_type: string }>;
+    agents: Array<{ id: string; name: string; slug: string; role: string }>;
     discoveredAt: string | null;
   }>>({});
   const filteredAccounts = useMemo(() => { const q = query.trim().toLowerCase(); return accounts.filter((a) => (statusFilter === "all" || a.status === statusFilter) && (!q || [a.email_address, a.display_name, a.provider].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)))); }, [accounts, query, statusFilter]);
@@ -108,6 +109,7 @@ export function EmailAccountsClient({
       setStructureByAccount((current) => ({ ...current, [accountId]: {
         folders: data.folders ?? [],
         labels: data.labels ?? [],
+        agents: data.agents ?? [],
         discoveredAt: data.discoveredAt ?? null,
       }}));
     } catch (error) {
@@ -268,6 +270,11 @@ export function EmailAccountsClient({
                         </span>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
+                        {structureByAccount[account.id].agents.map((agent) => (
+                          <span key={agent.id} className="rounded-full border border-primary/20 bg-primary/5 px-2 py-1 text-[10px] font-semibold">
+                            Agent: {agent.name} · {agent.role.replaceAll("_", " ")}
+                          </span>
+                        ))}
                         {structureByAccount[account.id].folders.map((folder) => (
                           <span key={folder.id} className="rounded-full border bg-background px-2 py-1 text-[10px] font-medium">
                             {folder.name}{folder.unread_count > 0 ? ` · ${folder.unread_count} unread` : ""}
@@ -278,7 +285,7 @@ export function EmailAccountsClient({
                             #{label.name}
                           </span>
                         ))}
-                        {structureByAccount[account.id].folders.length === 0 && structureByAccount[account.id].labels.length === 0 && (
+                        {structureByAccount[account.id].folders.length === 0 && structureByAccount[account.id].labels.length === 0 && structureByAccount[account.id].agents.length === 0 && (
                           <span className="text-xs text-muted-foreground">No folders or labels have been discovered yet.</span>
                         )}
                       </div>
