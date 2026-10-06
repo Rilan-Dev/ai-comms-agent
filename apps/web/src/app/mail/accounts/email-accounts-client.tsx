@@ -50,6 +50,10 @@ export function EmailAccountsClient({
     const params = new URLSearchParams(window.location.search);
     if (params.get("connected") === "gmail") setNotice("Gmail authorization completed. The account is pending worker verification and initial synchronization.");
     if (params.get("connected") === "zoho") setNotice("Zoho authorization completed. The account is pending worker verification and initial synchronization.");
+    if (params.get("providerError")) setNotice(params.get("providerError"));
+    if (params.has("connected") || params.has("providerError")) {
+      window.history.replaceState({}, "", "/mail/accounts");
+    }
   }, []);
 
   async function reconnect(account: EmailAccount) {
