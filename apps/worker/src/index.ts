@@ -7,6 +7,7 @@
  */
 
 import { isPostgresConfigured } from "@ai-comms-agent/db";
+import { startProviderDraftSyncLoop } from "./email/provider-draft-worker";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -72,6 +73,7 @@ function main() {
   }
 
   // Phase 2: health-check loop. Real queue consumption is Phase 9+.
+  const stopProviderDraftSync = startProviderDraftSyncLoop();
   const interval = setInterval(() => {
     const checks = healthCheck();
     log("health check", checks);
@@ -81,13 +83,14 @@ function main() {
   const shutdown = (signal: string) => {
     log(`received ${signal} — shutting down`);
     clearInterval(interval);
+    stopProviderDraftSync();
     process.exit(0);
   };
 
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
 
-  log("worker ready — Phase 2 foundation (no queue consumption yet)");
+  log("worker ready — provider draft synchronization loop enabled when PostgreSQL is configured");
 }
 
 main();
