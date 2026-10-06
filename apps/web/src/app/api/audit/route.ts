@@ -17,7 +17,14 @@ export async function GET(request: Request) {
     await authorize(request, { organizationId: asOrganizationId(rawId), permission: "audit.read" }, getIdentityAdapter(), getIdentityRepository());
 
     const limitValue = Number(url.searchParams.get("limit") ?? "50");
-    const events = await listOrganizationAuditEvents(rawId, Number.isFinite(limitValue) ? limitValue : 50);
+    const events = await listOrganizationAuditEvents(rawId, Number.isFinite(limitValue) ? limitValue : 50, {
+      eventType: url.searchParams.get("eventType")?.trim() || undefined,
+      decision: url.searchParams.get("decision")?.trim() || undefined,
+      actorUserId: url.searchParams.get("actorUserId")?.trim() || undefined,
+      search: url.searchParams.get("search")?.trim() || undefined,
+      from: url.searchParams.get("from")?.trim() || undefined,
+      to: url.searchParams.get("to")?.trim() || undefined,
+    });
     return NextResponse.json({ events });
   } catch (error) {
     return authorizationErrorToResponse(error);
