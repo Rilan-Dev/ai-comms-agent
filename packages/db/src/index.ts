@@ -64,7 +64,7 @@ export {
 
 export { PostgresAgentRepository } from "./agent/repository";
 
-export { listAuditEvents, listOrganizationAuditEvents, recordAuditEvent, type AuditEvent, type AuditEventInput } from "./audit/repository";
+export { listAuditEvents, listOrganizationAuditEvents, listOrganizationAuditEventsForExport, recordAuditEvent, type AuditEvent, type AuditEventFilters, type AuditEventInput } from "./audit/repository";
 
 export { getLocalDraftForOrganization, listDraftsPendingProviderSync, markDraftProviderSyncingForOrganization, markDraftProviderSyncedForOrganization, markDraftProviderSyncErrorForOrganization, markLocalDraftSentForOrganization } from "./email/repository";
 
