@@ -11,10 +11,11 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Continue Product Completion with Activity / Audit / Operations. Build the real
-  organization-scoped activity and security-audit surfaces from persisted audit
-  events, add authorization-aware filtering/search and truthful operational states,
-  then continue final E2E hardening across email, WhatsApp, schedules, chat and voice.
+  Continue final Product Completion hardening across the full communication loop:
+  email provider/account lifecycle, Mail actions, WhatsApp inbound/outbound, schedules
+  and automations, Clara chat, realtime voice, Settings/RBAC, Activity/Audit. Add
+  cross-surface authorization/idempotency/error handling and deterministic E2E fixtures,
+  then prepare the final deployment/runtime verification milestone.
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
@@ -564,3 +565,9 @@ The remaining Clara package diagnostics are the intentional optional vendored-su
 - Organization settings and member management are now persisted and authorization-aware.
 - Owner changes use the invariant-safe transfer path; direct owner demotion is blocked.
 - **Next:** Activity / Audit / Operations surfaces.
+
+
+### 2026-10-06 — Activity / Audit continuation
+- Added organization-wide audit querying with authorization-aware API access.
+- Replaced synthetic Audit and Activity UI with persisted PostgreSQL-backed event surfaces, filtering/loading/error/empty states.
+- **Next:** final cross-surface product hardening and E2E/deployment preparation; validation remains deferred under the active development-first instruction.
