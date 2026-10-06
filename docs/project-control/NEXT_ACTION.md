@@ -467,3 +467,14 @@ Next implementation: harden webhook status updates/media handling, enforce exact
 - Replaced static Automations and Schedules pages with persisted PostgreSQL-backed workspaces and organization-authorized CRUD APIs.
 - Added migration 0018 with schedule timezone, catch-up window, last-error fields, and durable runtime indexes.
 - Next concrete implementation: build the worker-side durable scheduler tick and automation trigger evaluator, then connect scheduled/automation executions to the shared agent execution boundary. Do not wait for CI/Vercel.
+
+
+### 2026-10-06 — WhatsApp web typecheck correction
+
+The latest local web typecheck exposed three source-level typing defects in the WhatsApp slice: a provider-error payload expression inferred too broadly in the webhook route, unchecked first-account access in the client, and a computed form-field key inferred as string/boolean. Corrected all three directly on `main` without changing provider behavior or fabricating connectivity.
+
+- Webhook provider errors are normalized to bounded strings before persistence.
+- Account selection now guards the first account explicitly.
+- Credential form fields use a typed `as const` field definition, eliminating unsafe computed-key inference.
+- Correction commits: `f16b0d0`, `07ad3c0`.
+- **Next:** pull `main` and rerun `npm run typecheck`; if the web package is clean, continue the active durable scheduler tick and automation trigger evaluator. Do not wait for CI/Vercel.
