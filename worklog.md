@@ -1708,3 +1708,11 @@ No provider credentials were fabricated and Clara source was not modified.
 - Added deterministic regression coverage to protect both fixes.
 - No provider credentials were used; no live send/connectivity claim was made.
 - Next: finish thread-level draft/reply and mailbox mutation UX, then wire provider-backed send only through authorized approval paths.
+
+### 2026-10-06 — Mail approval-safe outbound action implementation
+- Added persisted `email_actions`/approval repository operations with organization scoping, expiry-aware atomic decisions, content hashing, and execution-state claiming.
+- Added `/api/mail/actions` for send/reply/forward action requests and approval/rejection, with server authorization and audit events.
+- Added worker-only approved action executor: provider credentials are decrypted only server-side, live provider connections are created/disconnected in the worker, and provider `sendDraft`/`reply`/`forward` execute only after an approved action is claimed.
+- Added Compose send-approval request UI and thread Reply/Forward approval controls. Sending is never simulated and no provider credentials are fabricated.
+- Added deterministic approval/execution contract tests.
+- Next: complete provider-backed local/provider draft synchronization, outbound result persistence, message/thread UX, and attachment handling before Mail acceptance.
