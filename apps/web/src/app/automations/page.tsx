@@ -1,1 +1,13 @@
-const rows=[["Important sender → draft reply","When a priority sender emails","Create draft","Enabled"],["Action item → notify","When AI detects a task","WhatsApp","Enabled"],["Attachment → index","When a new attachment arrives","Clara RAG","Enabled"]];export default function AutomationsPage(){return <main className="mx-auto max-w-[1200px] space-y-7 p-5 sm:p-7 lg:p-9"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Automation</p><h1 className="mt-2 text-3xl font-semibold">Rules that run for you</h1><p className="mt-2 text-sm text-muted-foreground">Event-driven actions with authorization boundaries built in.</p></div><button className="h-10 rounded-xl bg-foreground px-4 text-sm font-semibold text-background">+ New rule</button></div><div className="overflow-hidden rounded-2xl border bg-background"><div className="grid grid-cols-[1.4fr_1.3fr_1fr_.5fr] border-b bg-muted/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><span>Rule</span><span>Trigger</span><span>Action</span><span>Status</span></div>{rows.map(r=><div key={r[0]} className="grid grid-cols-[1.4fr_1.3fr_1fr_.5fr] items-center border-b px-5 py-4 text-sm last:border-0"><span className="font-medium">{r[0]}</span><span className="text-muted-foreground">{r[1]}</span><span>{r[2]}</span><span className="text-xs font-semibold text-emerald-600">{r[3]}</span></div>)}</div></main>}
+import { listAutomationRules } from "@ai-comms-agent/db";
+import { PostgresAgentRepository } from "@ai-comms-agent/db";
+import { ensureDevSeed, getDevOrgId } from "@/lib/identity/repository";
+import AutomationsClient from "./automations-client";
+
+export default async function AutomationsPage() {
+  if (!process.env.DATABASE_URL) return <main className="p-8"><h1 className="text-2xl font-semibold">Automations unavailable</h1><p className="mt-2 text-sm text-muted-foreground">PostgreSQL is required for persistent automation rules.</p></main>;
+  await ensureDevSeed();
+  const organizationId = getDevOrgId();
+  if (!organizationId) return <main className="p-8"><h1 className="text-2xl font-semibold">Automations unavailable</h1><p className="mt-2 text-sm text-muted-foreground">Organization context is unavailable.</p></main>;
+  const [rules, agents] = await Promise.all([listAutomationRules(organizationId), new PostgresAgentRepository().list(organizationId)]);
+  return <AutomationsClient organizationId={organizationId} initialRules={rules as never[]} agents={agents.map(a=>({id:a.id,name:a.name}))} />;
+}
