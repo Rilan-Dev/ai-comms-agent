@@ -1,4 +1,4 @@
-import { createEmailAction, getWhatsAppAccountForAgent, queueWhatsAppOutboundMessage, PostgresEmailAccountRepository } from "@ai-comms-agent/db";
+import { createEmailAction, getWhatsAppAccountForAgent, queueWhatsAppOutboundMessage, PostgresEmailAccountRepository, recordAuditEvent } from "@ai-comms-agent/db";
 import type { ProductActionResult } from "@ai-comms-agent/shared";
 
 type Action = Record<string, unknown>;
@@ -41,6 +41,7 @@ export async function executeProductActions(context: Context, params: Record<str
         body,
         idempotencyKey: "agent:" + context.agentId + ":execution:" + context.executionId + ":whatsapp:" + to,
       });
+      await recordAuditEvent({ organizationId: context.organizationId, actorUserId: null, agentId: context.agentId, eventType: "whatsapp.message.queued", targetType: "whatsapp_message", targetId: messageId, action: "send_whatsapp", decision: messageId ? "queued" : "duplicate", metadata: { executionId: context.executionId, recipient: to } });
       results.push({ type, status: messageId ? "queued" : "duplicate", messageId: messageId ?? null });
       continue;
     }
@@ -69,6 +70,7 @@ export async function executeProductActions(context: Context, params: Record<str
         recipientSnapshot: { ...recipientSnapshot, generatedOutput: context.output },
         requestedBy: null,
       });
+      await recordAuditEvent({ organizationId: context.organizationId, actorUserId: null, agentId: context.agentId, eventType: "email.action.requested", targetType: "email_action", targetId: approval.id, action: actionType, decision: "pending_approval", metadata: { executionId: context.executionId, emailAccountId } });
       results.push({ type, status: "pending_approval", actionId: approval.id });
       continue;
     }
