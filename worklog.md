@@ -1736,3 +1736,12 @@ No provider credentials were fabricated and Clara source was not modified.
 - No live provider credentials or fabricated send/forward success were introduced.
 - **Next:** provider-backed draft result synchronization and secure attachment retrieval/handling, then remaining Mail UX/action hardening.
 \n## 2026-10-06 — Product Completion Slice 2: provider retry hardening\n\n- Added `apps/worker/src/email/retry.ts` with bounded exponential retry policy (max 5 attempts, capped delay).\n- Integrated retry into the live provider connect/discovery verification lifecycle.\n- Authentication/credential/revocation failures fail closed without retry; transient 408/429/5xx/network/TLS failures are retryable.\n- Added worker tests for retry/backoff, non-retryable credential errors, attempt limits, and lifecycle disconnect cleanup.\n- Corrected the mailbox lifecycle source test to match current persisted discovery UI copy.\n- No CI/Vercel wait; no production credentials fabricated; Clara source unchanged.\n
+
+## 2026-10-06 — Mail provider draft synchronization and attachment boundary
+- **Owner:** ChatGPT
+- Implemented worker-only persisted draft synchronization using the existing provider registry, encrypted credential store, capability gating, sync status metadata, and audit events.
+- Approved send actions now reuse a provider draft when one has already been synchronized, then persist the provider message ID and mark the local draft sent. This prevents duplicate provider-side draft creation.
+- Added worker-only attachment retrieval with organization/message ownership validation, provider capability validation, credential isolation, configurable maximum attachment size, and SHA-256 integrity metadata.
+- Added regression tests covering the worker security boundary.
+- No live provider credentials were introduced, no fabricated connectivity was claimed, and no Clara source was modified.
+- Next: connect the draft-sync lifecycle to the existing Mail UI/API and add a safe attachment metadata/download boundary backed by the application's storage contract.
