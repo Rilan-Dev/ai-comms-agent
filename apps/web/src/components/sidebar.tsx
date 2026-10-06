@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { label: "WhatsApp", href: "/whatsapp", icon: "◌" },
   { label: "Automations", href: "/automations", icon: "↯" },
   { label: "Schedules", href: "/schedules", icon: "◷" },
+  { label: "Chat", href: "/chat", icon: "◫" },
   { label: "AI & Voice", href: "/ai-voice", icon: "◉" },
   { label: "Knowledge", href: "/knowledge", icon: "▱" },
   { label: "Activity", href: "/activity", icon: "⌁" },
