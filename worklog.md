@@ -1815,3 +1815,15 @@ Clara-backed execution is now connected to the worker dispatch boundary. Schedul
 ChatGPT continued implementation without waiting for CI/Vercel or phase acceptance. Added a worker-owned product action executor after Clara-backed scheduled/automation turns. Supported actions are explicit and fail closed: send_whatsapp resolves the organization's agent-bound WhatsApp account and queues outbound text for the existing worker, while create_email_approval creates a pending approval action and never sends directly. Added organization-scoped agent-to-WhatsApp account resolution, exposed structured product-action results from the shared execution contract, and prevented worker-generated approvals from fabricating a user identity. Single-action and action-array payloads are both supported. No live provider credentials or fabricated provider success were used.
 
 Next: implement inbound WhatsApp agent-command execution and durable event emission from Mail/WhatsApp workers, then continue Clara chat/realtime voice surfaces. CI/Vercel remain non-blocking under the explicit development-first instruction.
+
+
+## 2026-10-06 — Development-first WhatsApp + Chat runtime continuation
+- **Owner:** ChatGPT
+- Continued implementation without waiting for GitHub Actions or Vercel.
+- Added durable WhatsApp inbound claiming with PostgreSQL `FOR UPDATE SKIP LOCKED`, processing lifecycle, and worker execution through the shared Clara-backed agent dispatcher.
+- Added explicit `whatsapp` execution source and generalized the Clara execution prompt beyond schedule/automation-only tasks.
+- Inbound WhatsApp text now executes against tenant-bound Clara context and queues the response back to the originating WhatsApp contact through the existing worker-only outbound boundary.
+- Added `whatsapp.received` automation event emission after successful inbound agent processing.
+- Added host-owned conversation persistence repository for chat conversations/messages and a Clara-backed SSE chat route at `/api/chat/stream` with organization authorization and hybrid RAG.
+- No live provider credentials, external send success, or deployment success is claimed.
+- **Next:** build the polished chat workspace UI and realtime voice session boundary, reusing the same conversation and approval-safe action layers.
