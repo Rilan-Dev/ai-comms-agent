@@ -86,4 +86,6 @@ export {
   updateWhatsAppAccountStatus,
   markWhatsAppOutboundSent,
   markWhatsAppOutboundFailed,
+  listAgentsForWhatsAppAccount,
+  applyWhatsAppProviderStatus,
 } from "./messaging/whatsapp-repository";
