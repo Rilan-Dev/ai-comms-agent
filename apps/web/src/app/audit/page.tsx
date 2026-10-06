@@ -10,11 +10,17 @@ type Event = {
 export default function AuditPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [query, setQuery] = useState("");
+  const [eventType, setEventType] = useState("");
+  const [decision, setDecision] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    void fetch("/api/audit?limit=100")
+    const params = new URLSearchParams({ limit: "100" });
+    if (query.trim()) params.set("search", query.trim());
+    if (eventType) params.set("eventType", eventType);
+    if (decision) params.set("decision", decision);
+    void fetch("/api/audit?" + params.toString())
       .then(async (response) => {
         const body = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(body.message ?? "Audit history could not be loaded.");
@@ -24,10 +30,7 @@ export default function AuditPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = events.filter((event) =>
-    [event.eventType, event.targetType, event.action, event.decision, event.actorUserId]
-      .filter(Boolean).join(" ").toLowerCase().includes(query.toLowerCase()),
-  );
+  const filtered = events;
 
   return (
     <main className="mx-auto max-w-[1200px] space-y-7 p-5 sm:p-7 lg:p-9">
@@ -37,10 +40,16 @@ export default function AuditPage() {
         <p className="mt-2 text-sm text-muted-foreground">Organization-scoped security and configuration events from PostgreSQL. No synthetic activity is shown.</p>
       </header>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search event, action or decision…" className="h-11 flex-1 rounded-xl border bg-background px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-        <div className="rounded-xl border bg-background px-4 py-3 text-sm text-muted-foreground">{loading ? "Loading…" : `${filtered.length} events`}</div>
+      <div className="grid gap-3 md:grid-cols-[1fr_180px_160px_auto_auto]">
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search event, action or target…" className="h-11 rounded-xl border bg-background px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+        <input value={eventType} onChange={(e) => setEventType(e.target.value)} placeholder="Event type" className="h-11 rounded-xl border bg-background px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+        <select value={decision} onChange={(e) => setDecision(e.target.value)} className="h-11 rounded-xl border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <option value="">All decisions</option><option value="allowed">Allowed</option><option value="denied">Denied</option><option value="recorded">Recorded</option>
+        </select>
+        <a href={"/api/audit/export?format=csv" + (query ? "&search=" + encodeURIComponent(query) : "") + (eventType ? "&eventType=" + encodeURIComponent(eventType) : "") + (decision ? "&decision=" + encodeURIComponent(decision) : "")} className="inline-flex h-11 items-center justify-center rounded-xl border px-4 text-sm font-medium hover:bg-muted">Export CSV</a>
+        <a href={"/api/audit/export?format=json" + (query ? "&search=" + encodeURIComponent(query) : "") + (eventType ? "&eventType=" + encodeURIComponent(eventType) : "") + (decision ? "&decision=" + encodeURIComponent(decision) : "")} className="inline-flex h-11 items-center justify-center rounded-xl border px-4 text-sm font-medium hover:bg-muted">Export JSON</a>
       </div>
+      <div className="text-xs text-muted-foreground">{loading ? "Loading audit events…" : `${filtered.length} events`}</div>
 
       {error ? <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">{error}</div> : null}
 
@@ -62,7 +71,7 @@ export default function AuditPage() {
               ))}
             </tbody>
           </table>
-          {!loading && filtered.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground">{query ? "No audit events match the filter." : "No audit events have been recorded yet."}</div> : null}
+          {!loading && filtered.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground">{query || eventType || decision ? "No audit events match the current filters." : "No audit events have been recorded yet."}</div> : null}
         </div>
       </section>
     </main>
