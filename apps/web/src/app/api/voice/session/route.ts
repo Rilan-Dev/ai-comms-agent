@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository, activateVoiceSessionForOrganization, createVoiceSession, endVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, recordVoiceTelemetry } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, activateVoiceSessionForOrganization, createVoiceSession, endVoiceSessionForOrganization, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, recordVoiceTelemetry } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -42,7 +42,9 @@ export async function PATCH(request: Request) {
     const sessionId = typeof body?.sessionId === "string" ? body.sessionId : "";
     const action = typeof body?.action === "string" ? body.action : "";
     if (!organizationId || !sessionId || !action) return NextResponse.json({ error: "validation_error", message: "organizationId, sessionId and action are required." }, { status: 422 });
-    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    const subject = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    const session = await getVoiceSessionForOrganization(organizationId, sessionId);
+    if (!session || session.user_id !== subject.user.id) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
     if (action === "activate") {
       const updated = await activateVoiceSessionForOrganization(organizationId, sessionId, typeof body?.providerSessionId === "string" ? body.providerSessionId.slice(0, 500) : null);
@@ -74,7 +76,9 @@ export async function DELETE(request: Request) {
     const organizationId = typeof body?.organizationId === "string" ? body.organizationId : "";
     const sessionId = typeof body?.sessionId === "string" ? body.sessionId : "";
     if (!organizationId || !sessionId) return NextResponse.json({ error: "validation_error", message: "organizationId and sessionId are required." }, { status: 422 });
-    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    const subject = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    const session = await getVoiceSessionForOrganization(organizationId, sessionId);
+    if (!session || session.user_id !== subject.user.id) return NextResponse.json({ error: "not_found" }, { status: 404 });
     const ended = await endVoiceSessionForOrganization(organizationId, sessionId, typeof body?.reason === "string" ? body.reason.slice(0, 200) : null);
     if (!ended) return NextResponse.json({ error: "not_found" }, { status: 404 });
     return NextResponse.json({ session: ended });
