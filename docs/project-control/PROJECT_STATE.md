@@ -341,3 +341,11 @@ Latest source correction: repaired literal escaped-newline corruption in the ema
 - Added expected-failure verification for direct ownerless organization insertion.
 - Latest implementation commit: ede90e43f1d106206657f85b0f09efe7b5521785.
 - Phase 3 remains pending CI runtime evidence; Phase 4 is not authorized.
+
+
+### 2026-10-06 — Mail vertical implementation update
+- Added organization-authorized thread API and functional thread UI.
+- Added approval-safe reply request from thread view.
+- Added persisted pending approval listing and a functional approval queue UI.
+- Approval remains deterministic and worker-only for provider execution; no live send is claimed.
+- Next Mail work: draft lifecycle hardening, provider-backed draft/result synchronization, forward UX, and secure attachment handling.
