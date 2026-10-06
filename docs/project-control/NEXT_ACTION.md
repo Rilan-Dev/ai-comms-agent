@@ -369,3 +369,6 @@ ChatGPT implemented the next provider lifecycle slice on `main`:
 
 ### 2026-10-06 — ChatGPT continuation
 Continue Slice 2 — Email Accounts. The provider registry/capability contract and mailbox discovery lifecycle are now hardened. The next implementation focus is the remaining account connection UX/runtime path: provider-specific connection/reconnect error states, persisted discovery refresh behavior, account/agent assignment visibility, and deterministic API/UI coverage. Do not wait for CI/Vercel; runtime/browser evidence remains acceptance-only.
+
+
+OAuth failure paths now return users to `/mail/accounts` with a bounded, non-secret provider error message, and the account UI consumes/clears that state. Continue with deterministic account API authorization/error coverage and remaining Email Accounts UX before moving to Mail.
