@@ -16,6 +16,7 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [approvalId, setApprovalId] = useState<string | null>(null);
 
   useEffect(() => {
     void fetch("/api/email-accounts?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" })
@@ -61,7 +62,7 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
         <label className="block text-sm font-medium">Bcc<input value={bcc} onChange={e=>setBcc(e.target.value)} className="mt-2 h-11 w-full rounded-xl border bg-background px-3 text-sm"/></label>
         <label className="block text-sm font-medium">Subject<input value={subject} onChange={e=>setSubject(e.target.value)} className="mt-2 h-11 w-full rounded-xl border bg-background px-3 text-sm"/></label>
         <label className="block text-sm font-medium">Message<textarea value={bodyText} onChange={e=>setBodyText(e.target.value)} rows={14} className="mt-2 w-full resize-y rounded-xl border bg-background p-3 text-sm leading-6 outline-none focus:ring-2 focus:ring-primary/20"/></label>
-        <div className="flex flex-wrap justify-end gap-3 border-t pt-5"><button type="button" onClick={()=>void saveDraft()} disabled={busy || accounts.length===0} className="rounded-xl border px-4 py-2.5 text-sm font-semibold disabled:opacity-50">{busy ? "Saving…" : "Save draft"}</button><button type="button" disabled className="rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background opacity-50" title="Provider send workflow is the next sensitive mail action">Send</button></div>
+        <div className="flex flex-wrap justify-end gap-3 border-t pt-5"><button type="button" onClick={()=>void saveDraft()} disabled={busy || accounts.length===0} className="rounded-xl border px-4 py-2.5 text-sm font-semibold disabled:opacity-50">{busy ? "Saving…" : "Save draft"}</button><button type="button" disabled className="rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background opacity-50" onClick={()=>void requestSendApproval()} title="Sending requires explicit approval" >{approvalId ? "Approval requested" : "Request send approval"}</button></div>
       </div>
     </section>
   </div></main>;
