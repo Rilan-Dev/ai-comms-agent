@@ -29,8 +29,9 @@ test("accounts UI exposes persisted structure and agent assignments", () => {
 test("worker discovery uses the verified provider lifecycle", () => {
   const source = readFileSync(discoveryPath, "utf8");
   assert.match(source, /verifyEmailProviderConnection\(provider, credentials/);
-  assert.match(source, /replaceFolders/);
-  assert.match(source, /replaceLabels/);
+  assert.match(source, /replaceStructure/);
+  assert.doesNotMatch(source, /replaceFolders\(account\.id, account\.organization_id, folders\)/);
+  assert.doesNotMatch(source, /replaceLabels\(account\.id, account\.organization_id, labels\)/);
   assert.match(source, /updateStatus\(account\.id, "connected"\)/);
   assert.match(source, /updateStatus\(account\.id, "error", message\)/);
 });
