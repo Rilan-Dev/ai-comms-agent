@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { markDraftProviderSyncingForOrganization, getLocalDraftForOrganization, PostgresEmailAccountRepository } from "@ai-comms-agent/db";
+import { markDraftProviderSyncingForOrganization, getLocalDraftForOrganization, PostgresEmailAccountRepository, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -22,7 +22,8 @@ export async function POST(request: Request) {
     if (!account.capabilities.drafts) return NextResponse.json({ error: "capability_not_supported", message: "This provider does not support remote drafts." }, { status: 409 });
     const queued = await markDraftProviderSyncingForOrganization(organizationId, messageId);
     if (!queued) return NextResponse.json({ error: "conflict", message: "Draft could not be queued for provider synchronization." }, { status: 409 });
-    return NextResponse.json({ queued: true, status: "syncing", draftId: messageId, actorId: actor.user.id });
+    await recordAuditEvent({ organizationId, actorUserId: actor.user.id, eventType: "email.draft.provider_sync_requested", targetType: "email_message", targetId: messageId, action: "sync", decision: "allowed" });
+    return NextResponse.json({ queued: true, status: "syncing", draftId: messageId });
   } catch (error) {
     return authorizationErrorToResponse(error);
   }
