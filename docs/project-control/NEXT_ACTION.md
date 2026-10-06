@@ -445,3 +445,10 @@ Development now continues into the WhatsApp vertical slice without waiting for C
 WhatsApp foundation is now implemented: organization-scoped account persistence/configuration, encrypted Meta credentials, worker-side account verification, signed/idempotent webhook ingestion, inbound message persistence, worker-owned outbound Meta execution, queued outbound API, and conversation UI. A forward-only `0016_whatsapp_schema_reconciliation.sql` migration reconciles the legacy 0002 WhatsApp schema with the richer 0004 runtime contract.
 
 Next implementation: harden webhook status updates/media handling, enforce exactly-one WhatsApp account binding per agent in runtime APIs/UI, add agent-command routing from inbound WhatsApp messages, then continue Automations/Schedules. Do not wait for CI/Vercel and do not fabricate provider connectivity.
+
+
+### 2026-10-06 — Worker typecheck correction checkpoint
+- Local worker typecheck exposed five source-level contract issues in the Mail/WhatsApp worker boundary: unsafe credential casts, impossible reply/forward narrowing caused by a duplicate discriminator branch, unchecked attachment content, an incorrect provider draft worker import path, and untyped Meta Graph response payloads.
+- Corrected these directly on `main` without changing provider behavior or fabricating credentials.
+- Correction commits: `2197d89`, `9c99421`, `c19783c`, `649a59b`.
+- **Next:** pull `main` and rerun `npm run typecheck`. If worker typecheck is clean, continue the active WhatsApp vertical slice: webhook status/media handling, exactly-one account binding per agent, inbound agent-command routing, and truthful configuration-required/error/retry states. Do not wait for CI/Vercel.
