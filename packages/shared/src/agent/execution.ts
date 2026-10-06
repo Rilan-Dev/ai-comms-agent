@@ -1,4 +1,4 @@
-export type AgentExecutionSource = "schedule" | "automation" | "user";
+export type AgentExecutionSource = "schedule" | "automation" | "user" | "whatsapp";
 
 export interface AgentExecutionRequest {
   executionId: string;
