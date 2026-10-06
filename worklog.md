@@ -1755,3 +1755,14 @@ No provider credentials were fabricated and Clara source was not modified.
 - Added WhatsApp account repository, organization-scoped account configuration API, encrypted Meta access-token persistence, disconnect lifecycle, and a polished WhatsApp configuration workspace.
 - WhatsApp remains truthfully `pending` until Meta connectivity verification/webhook/runtime execution is implemented; no live provider success is claimed.
 - Next: WhatsApp webhook verification/idempotent inbound persistence, outbound worker execution, agent binding, and conversation UI.
+
+
+### 2026-10-06 — WhatsApp vertical implementation
+
+- Added WhatsApp account repository and organization-scoped configuration/disconnect APIs.
+- Added encrypted Meta access-token storage and worker-side account verification; accounts remain `pending` until Meta verification succeeds.
+- Added signed Meta webhook GET verification and HMAC SHA-256 POST verification, webhook idempotency records, contact upsert, and inbound message persistence.
+- Added queued outbound WhatsApp message persistence/API and worker-only Meta Graph execution with provider message IDs and audit events.
+- Added WhatsApp workspace UI with account configuration, conversation history, outbound queue composer, and truthful pending/error states.
+- Added forward-only `0016_whatsapp_schema_reconciliation.sql` because the legacy 0002 WhatsApp tables predated the richer 0004 runtime contract.
+- Next: webhook status/media handling, exactly-one-per-agent binding enforcement in runtime flows, inbound command routing, then Automations/Schedules.
