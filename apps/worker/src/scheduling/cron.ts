@@ -3,7 +3,7 @@ const FIELD_RANGES = [[0,59],[0,23],[1,31],[1,12],[0,6]] as const;
 function expandField(field:string,min:number,max:number):Set<number>{
   const out=new Set<number>();
   for(const part of field.split(",")){
-    const [base,stepRaw]=part.split("/"); const step=Number(stepRaw??1);
+    const [base,stepRaw]=part.split("/"); const step=Number(stepRaw??1); if(!base) throw new Error("Invalid cron field");
     if(!Number.isInteger(step)||step<1) throw new Error("Invalid cron step");
     let start=min,end=max;
     if(base==="*"){ /* full range */ }
@@ -25,7 +25,7 @@ export function matchesCron(cron:string,date:Date,timeZone:string):boolean{
 }
 
 export function nextCronFire(cron:string,after:Date,timeZone:string):Date{
-  const candidate=new Date(after.getTime()); candidate.setUTCSeconds(0,0); candidate.setUTCMinutes(candidate.getUTCMinutes()+1);
+  let candidate=new Date(after.getTime()); candidate.setUTCSeconds(0,0); candidate.setUTCMinutes(candidate.getUTCMinutes()+1);
   for(let i=0;i<366*24*60;i++){ if(matchesCron(cron,candidate,timeZone)) return candidate; candidate=new Date(candidate.getTime()+60_000); }
   throw new Error("Unable to find next cron fire within one year");
 }
