@@ -7,6 +7,8 @@ const routePath = resolve(__dirname, "../src/app/api/email-accounts/[accountId]/
 const clientPath = resolve(__dirname, "../src/app/mail/accounts/email-accounts-client.tsx");
 const discoveryPath = resolve(__dirname, "../../worker/src/email/discovery.ts");
 const verificationPath = resolve(__dirname, "../../worker/src/email/provider-verification.ts");
+const gmailCallbackPath = resolve(__dirname, "../src/app/api/oauth/gmail/callback/route.ts");
+const zohoCallbackPath = resolve(__dirname, "../src/app/api/oauth/zoho/callback/route.ts");
 
 test("mailbox structure route is organization-scoped and never returns credentials", () => {
   const source = readFileSync(routePath, "utf8");
@@ -50,4 +52,13 @@ test("accounts UI keeps disconnected mailboxes recoverable", () => {
   assert.match(source, /account\.status !== "connected"/);
   assert.doesNotMatch(source, /account\.status !== "connected" && account\.status !== "disconnected"/);
   assert.match(source, /Reconnect/);
+});
+
+
+test("OAuth callbacks return provider failures to the account UI without exposing token payloads", () => {
+  for (const source of [readFileSync(gmailCallbackPath, "utf8"), readFileSync(zohoCallbackPath, "utf8")]) {
+    assert.match(source, /\/mail\/accounts\?providerError=/);
+    assert.match(source, /NextResponse\.redirect/);
+    assert.doesNotMatch(source, /access_token.*providerError|refresh_token.*providerError/);
+  }
 });
