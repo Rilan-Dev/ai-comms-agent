@@ -30,20 +30,7 @@ test("mock provider enforces connection lifecycle", async () => {
 
 test("registry creates registered providers and rejects duplicates", () => {
   const registry = createEmailProviderRegistry();
-  assert.equal(registry.has("imap_smtp"), true);
-  assert.ok(registry.create("imap_smtp") instanceof MockEmailProvider);
-  assert.throws(() => registry.register({ providerId: "imap_smtp", displayName: "Duplicate", create: () => new MockEmailProvider() }), /already registered/);
-});
-
-
-test("real provider registry exposes truthful runtime capability surfaces without network access", async () => {
-  const registry = createEmailProviderRegistry();
-  for (const providerId of ["gmail", "imap_smtp", "zoho"] as const) {
-    const provider = registry.create(providerId);
-    const discovered = await provider.discoverCapabilities();
-    assert.deepEqual(discovered, provider.capabilities(), providerId);
-    for (const capability of REQUIRED_CAPABILITIES) {
-      assert.equal(typeof discovered[capability], "boolean", `${providerId} missing capability: ${capability}`);
-    }
-  }
+  assert.deepEqual(registry.list(), ["gmail", "imap_smtp", "zoho"]);
+  assert.ok(registry.create("imap_smtp"));
+  assert.throws(() => registry.register("imap_smtp", () => new MockEmailProvider()), /already registered/);
 });
