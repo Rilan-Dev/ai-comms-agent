@@ -1,5 +1,6 @@
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import type { AgentExecutionDispatchResult, AgentExecutionRequest } from "@ai-comms-agent/shared";
+import { executeProductActions } from "./product-action-executor";
 
 function buildPrompt(request:AgentExecutionRequest){
   const params=JSON.stringify(request.params);
@@ -25,5 +26,8 @@ export async function dispatchAgentExecution(request:AgentExecutionRequest):Prom
     messages:[{role:"user",content:buildPrompt(request)}],
   });
   let output=""; for await(const chunk of turn.stream) output+=chunk;
-  return {status:"completed",executionId:request.executionId,output,provider:turn.providerName,model:turn.model};
+  const actions=await executeProductActions({ organizationId:request.organizationId, agentId:request.agentId, executionId:request.executionId, output }, request.params);
+  const blocked=actions.find((action)=>action.status==="configuration_required");
+  if(blocked) return {status:"configuration_required",executionId:request.executionId,reason:String(blocked.reason ?? "Product action requires configuration"),actions};
+  return {status:"completed",executionId:request.executionId,output,provider:turn.providerName,model:turn.model,actions};
 }
