@@ -361,3 +361,11 @@ ChatGPT continued Product Completion Slice 2 (Email Accounts) without waiting fo
 - WhatsApp vertical slice is now active under the explicit development-first instruction.
 - Latest implementation commit: `8675e9bc39799796714b1418470733246f58e4ca8`.
 - CI/Vercel are deferred validation gates; no latest runtime/deployment PASS is claimed.
+
+
+### 2026-10-06 — WhatsApp vertical implementation active
+- Added WhatsApp account repository/configuration API/UI with encrypted credential persistence.
+- Added worker verification, signed Meta webhook ingestion, idempotent inbound persistence, queued outbound messaging, and worker-only Meta execution.
+- Added forward-only `0016_whatsapp_schema_reconciliation.sql` to reconcile legacy WhatsApp schema with runtime contract.
+- Latest implementation commit: `552f13e097c4ff33b7c81a5db7a216328caea078`.
+- Validation remains deferred; no CI/Vercel PASS is claimed.
