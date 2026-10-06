@@ -1716,3 +1716,11 @@ No provider credentials were fabricated and Clara source was not modified.
 - Added Compose send-approval request UI and thread Reply/Forward approval controls. Sending is never simulated and no provider credentials are fabricated.
 - Added deterministic approval/execution contract tests.
 - Next: complete provider-backed local/provider draft synchronization, outbound result persistence, message/thread UX, and attachment handling before Mail acceptance.
+
+
+## 2026-10-06 — Mail thread and approval continuation
+- Added authorized persisted thread API/page and read-state interaction.
+- Added reply request flow that creates a pending approval rather than sending directly.
+- Added pending approval API and responsive approval queue with explicit approve/reject actions.
+- Provider credentials remain worker-only; no fake external send success is exposed.
+- Next: draft lifecycle hardening, provider-backed draft/result synchronization, forward UX, secure attachment handling.
