@@ -663,3 +663,9 @@ Acceptance remains a separate runtime/browser gate.
 - Gmail and Zoho OAuth reconnect now bind to a signed optional target account and validate organization/provider before persistence.
 - Regression coverage added for Gmail reconnect binding; no external network call is used by the test.
 - No provider credential success is claimed; runtime validation remains deferred by explicit project-owner instruction.
+\n\n### 2026-10-06 — Email Accounts lifecycle implementation
+- Provider verification now guarantees cleanup around capability discovery and mailbox structure discovery.
+- Mailbox structure API is organization-scoped and returns only persisted folders, labels, capabilities, and agent assignment metadata.
+- Static tests cover provider registry capability surfaces, provider cleanup, discovery status transitions, and credential non-exposure.
+- Runtime/browser/provider verification remains deferred under the explicit development-first instruction; no CI PASS or Vercel READY claim is made.
+- Latest implementation commit before control synchronization: `105d41481d9523bda66b0f6ae147e73fff1c3c46`.
