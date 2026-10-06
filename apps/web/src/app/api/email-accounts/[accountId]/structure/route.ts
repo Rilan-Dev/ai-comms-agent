@@ -60,7 +60,6 @@ export async function GET(
       folders,
       labels,
       agents,
-      discoveredAt: folders.map((folder) => folder.last_synced_at).filter(Boolean).sort().at(-1) ?? null,
     });
   } catch (error) {
     return authorizationErrorToResponse(error);
