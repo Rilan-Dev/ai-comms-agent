@@ -66,7 +66,9 @@ export async function createEmailAction(input: CreateEmailActionInput) {
       input.expiresAt ?? null,
     ],
   );
-  return action(r.rows[0]);
+  const row = r.rows[0];
+  if (!row) throw new Error("Email action insert returned no row");
+  return action(row);
 }
 
 export async function listPendingEmailActionsForOrganization(organizationId: string) {
