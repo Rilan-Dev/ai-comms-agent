@@ -240,3 +240,8 @@ Development-first Mail work now includes real persisted thread navigation, read-
 
 ### 2026-10-06 — Clara-backed execution continuation
 The worker execution boundary now calls Clara's immutable `claraRuntime.createChatTurn()` with tenant/agent context and hybrid RAG, consuming the returned stream and persisting provider/model/output in scheduled and automation runs. `CLARA_KB_ID` is an explicit runtime configuration boundary; missing configuration fails truthfully.
+\n\n### 2026-10-06 — Settings / Organization implementation continuation
+- Added organization settings and membership read APIs with organization-scoped authorization.
+- Added authorized member role/status management and owner-transfer routing through the invariant-safe repository method.
+- Settings UI now renders persisted organization/member state and exposes live role/status controls; owner cannot be demoted directly.
+- Next product implementation: Activity/Audit/Operations surfaces and security-sensitive audit visibility.
