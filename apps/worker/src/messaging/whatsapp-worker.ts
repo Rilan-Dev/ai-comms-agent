@@ -60,7 +60,7 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
         headers: { authorization: "Bearer " + token, "content-type": "application/json" },
         body: JSON.stringify({ messaging_product: "whatsapp", to: String(message.phone_number), type: "text", text: { body: String(message.body ?? "") } }),
       });
-      const payload = await response.json().catch(() => ({}));
+      const payload = (await response.json().catch(() => ({}))) as WhatsAppGraphPayload;
       if (!response.ok) throw new Error(typeof payload?.error?.message === "string" ? payload.error.message : "Meta WhatsApp API request failed");
       const providerMessageId = typeof payload?.messages?.[0]?.id === "string" ? payload.messages[0].id : "";
       if (!providerMessageId) throw new Error("Meta WhatsApp API returned no message ID");
