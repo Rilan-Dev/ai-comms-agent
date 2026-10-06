@@ -12,11 +12,12 @@ role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
   Continue Product Completion Slice 2 — Email Accounts. Complete the persisted provider
-  connection vertical slice: Gmail OAuth state/PKCE and callback persistence, IMAP/SMTP
-  secure connection and worker verification, Zoho OAuth foundation, connect/disconnect/
-  reconnect lifecycle, connection tests, truthful pending/error/retry states, folder/label
-  discovery, agent assignment, authorization/audit, responsive UI, and tests. Do not
-  fabricate provider connectivity without real user-owned credentials.
+  connection vertical slice by finishing provider lifecycle tests, mailbox structure
+  discovery/status persistence, account-to-agent assignment visibility, OAuth/IMAP retry
+  states, authorization/audit coverage, responsive UI, and deterministic source tests.
+  Keep live provider connectivity truthful: no real user-owned credentials may be fabricated.
+  Do not wait for CI/Vercel validation; continue source implementation under the approved
+  development-first override.
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
@@ -346,3 +347,16 @@ Email Accounts provider lifecycle continuation: complete truthful provider contr
 The Email Accounts implementation has advanced through provider lifecycle, credential persistence, reconnect/disconnect, capability truthfulness, folder/label discovery, and OAuth foundations. Under the development-first instruction, continue into the Mail slice now: persisted inbox/thread reads, organization-scoped search/filtering, message detail, then read/unread/archive/move/labels, drafts, reply/forward, attachments, and approval-safe send flows. Do not show fabricated messages. Runtime CI/Vercel remain acceptance evidence and are not a development blocker.
 
 Current implementation commits: 792213ab7219623df2452e5d32e9de2c87120d02.
+
+
+### 2026-10-06 — Email Accounts lifecycle implementation continuation
+
+ChatGPT implemented the next provider lifecycle slice on `main`:
+- Added a single-connection provider verification helper with guaranteed cleanup.
+- Refactored mailbox folder/label discovery to use the verified live provider connection and persist replacement snapshots plus connected/error state.
+- Added organization-scoped mailbox structure API returning persisted folders, labels, and assigned agents without credential fields.
+- Added mailbox UI inspection for folders/labels and current agent assignments.
+- Added provider capability contract tests and lifecycle/static coverage.
+- No live Gmail/Zoho/IMAP credentials were used; no provider connection success is claimed.
+- Latest implementation commit: `105d41481d9523bda66b0f6ae147e73fff1c3c46`.
+- Slice 2 remains under development; validation is deferred and Phase/menu acceptance is not claimed.
