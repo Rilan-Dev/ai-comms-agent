@@ -372,3 +372,6 @@ Continue Slice 2 — Email Accounts. The provider registry/capability contract a
 
 
 OAuth failure paths now return users to `/mail/accounts` with a bounded, non-secret provider error message, and the account UI consumes/clears that state. Continue with deterministic account API authorization/error coverage and remaining Email Accounts UX before moving to Mail.
+
+
+A source-integrity defect in the email account API was corrected (literal `\\n` text had entered the TypeScript source). Deterministic coverage now guards against it. Continue remaining Email Accounts API/UI work; then move to Mail only after the slice implementation is complete.
