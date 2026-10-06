@@ -7,6 +7,7 @@
  */
 
 // AI core types
+// @ts-expect-error Clara is an optional git submodule; structural host checks must compile without its checkout.
 export type {
   AIProvider,
   ChatMessage,
@@ -19,6 +20,7 @@ export type {
 } from "../../../vendor/clara/clara-core/source/src/modules/ai-core/types";
 
 // Voice core types
+// @ts-expect-error Clara is an optional git submodule; structural host checks must compile without its checkout.
 export type {
   VoiceProvider,
   VoiceProviderService,
@@ -26,6 +28,7 @@ export type {
 } from "../../../vendor/clara/clara-core/source/src/modules/voice-core/types";
 
 // RAG grounding types
+// @ts-expect-error Clara is an optional git submodule; structural host checks must compile without its checkout.
 export type {
   GroundingRagMode,
   GroundingRequest,
