@@ -230,6 +230,17 @@ export async function getMailMessageForOrganization(organizationId: string, mess
   return r.rows[0] ?? null;
 }
 
+export async function listMailAttachmentsForOrganization(organizationId: string, messageId: string): Promise<Array<Record<string, unknown>>> {
+  const r = await query<Row>(
+    `SELECT id, message_id, filename, content_type, size_bytes, storage_bucket, storage_path, sha256, scan_status, created_at
+     FROM email_attachments
+     WHERE organization_id = $1 AND message_id = $2
+     ORDER BY created_at ASC`,
+    [organizationId, messageId],
+  );
+  return r.rows;
+}
+
 export async function getMailThreadForOrganization(organizationId: string, threadId: string): Promise<Array<Record<string, unknown>>> {
   const r = await query<Row>(`SELECT m.*, a.email_address AS account_email, a.display_name AS account_name
     FROM email_messages m JOIN email_accounts a ON a.id = m.email_account_id
