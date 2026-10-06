@@ -579,3 +579,11 @@ The remaining Clara package diagnostics are the intentional optional vendored-su
 - Added organization-scoped Operations API with PostgreSQL runtime check, configured infrastructure signals, persisted email/sync/voice/schedule/authorization metrics, and an Operations workspace.
 - Added Operations navigation and removed the fake static “Core online” indicator.
 - **Next implementation:** cross-surface E2E hardening: email → AI → approval → send, WhatsApp routing, scheduling, chat/voice, organization isolation, and sensitive-action audit/idempotency coverage. Validation remains deferred under the development-first instruction.
+
+
+### 2026-10-07 — Worker typecheck regression correction
+
+- Pulling `main` at `cff1eab` exposed two worker source regressions: `ProductActionResult` was defined but not re-exported from `@ai-comms-agent/shared`, and strict indexed tuple access in the cron matcher still produced `number | undefined` under the worker compiler settings.
+- Corrected only those host boundaries; Clara source and provider behavior are unchanged.
+- The remaining Clara unresolved-module diagnostics are the intentional optional vendored-submodule structural check. The web typecheck SIGKILL is still a process/resource termination with no reported source diagnostic.
+- **Next:** continue final cross-surface hardening, with realtime voice host transport/session lifecycle as the active implementation surface; do not wait for CI/Vercel.
