@@ -422,3 +422,12 @@ Next implementation focus: finish deterministic Email Accounts lifecycle/source 
 - Added worker-only attachment retrieval with organization/message ownership checks, provider capability gating, credential isolation, configurable size limits, and SHA-256 integrity metadata.
 - Added worker security regression coverage for these boundaries.
 - **Next concrete implementation:** expose the draft synchronization lifecycle through the existing Mail UI/API and implement attachment metadata/download UX backed by a safe object-storage boundary. Keep provider execution worker-only and do not fabricate live connectivity.
+
+
+### 2026-10-06 — Local runtime startup correction
+- Local typecheck passed for shared, DB, worker, and web; Clara Core structural-check messages remain intentionally skipped.
+- Local Docker image builds completed for both web and worker.
+- Runtime startup exposed two real defects: a duplicate Mail dynamic route used `[id]` alongside `[threadId]`, and the DB package exported a missing `email/connection-test` module.
+- Corrected both directly on `main`: restored the TLS/SSRF-safe IMAP/SMTP connection-test module and removed the duplicate `[id]` Mail thread route.
+- No provider connectivity is claimed and no credentials were used.
+- **Next:** pull `main`, rerun `bash scripts/manual-up.sh`, then inspect container logs. If runtime is clean, continue exposing provider-backed draft synchronization and secure attachment metadata/download UX through Mail UI/API.
