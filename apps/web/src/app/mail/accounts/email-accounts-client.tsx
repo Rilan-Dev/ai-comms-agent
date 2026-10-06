@@ -246,7 +246,9 @@ export function EmailAccountsClient({
           <div className="px-6 py-14 text-center"><h3 className="font-semibold">No matching mailboxes</h3><p className="mt-2 text-sm text-muted-foreground">Try a different search or status filter.</p><button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); }} className="mt-4 text-sm font-semibold underline underline-offset-4">Clear filters</button></div>
         ) : (
           <div className="divide-y">
-            {filteredAccounts.map((account) => {\n              const structure = structureByAccount[account.id];\n              return (
+            {filteredAccounts.map((account) => {
+              const structure = structureByAccount[account.id];
+              return (
               <div key={account.id} className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
