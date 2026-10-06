@@ -79,10 +79,18 @@ export async function upsertWhatsAppContact(input: { organizationId: string; acc
   return r.rows[0]?.id ? String(r.rows[0].id) : null;
 }
 
-export async function insertWhatsAppInboundMessage(input: { organizationId: string; accountId: string; contactId?: string | null; providerMessageId: string; messageType: string; body?: string | null; media?: Record<string, unknown>; providerTimestamp?: string | null }) {
+export async function listAgentsForWhatsAppAccount(organizationId: string, accountId: string) {
   const r = await query<Row>(
-    "INSERT INTO whatsapp_messages (organization_id, whatsapp_account_id, contact_id, direction, provider_message_id, message_type, body, media, status, provider_timestamp) VALUES ($1,$2,$3,'inbound',$4,$5,$6,$7::jsonb,'received',$8) ON CONFLICT DO NOTHING RETURNING id",
-    [input.organizationId, input.accountId, input.contactId ?? null, input.providerMessageId, input.messageType, input.body ?? null, JSON.stringify(input.media ?? {}), input.providerTimestamp ?? null],
+    "SELECT a.id, a.name, a.slug FROM agent_whatsapp_accounts b JOIN agents a ON a.id = b.agent_id WHERE a.organization_id = $1 AND b.whatsapp_account_id = $2 ORDER BY a.name ASC",
+    [organizationId, accountId],
+  );
+  return r.rows.map((row) => ({ id: String(row.id), name: String(row.name), slug: String(row.slug) }));
+}
+
+export async function insertWhatsAppInboundMessage(input: { organizationId: string; accountId: string; agentId?: string | null; contactId?: string | null; providerMessageId: string; messageType: string; body?: string | null; media?: Record<string, unknown>; providerTimestamp?: string | null }) {
+  const r = await query<Row>(
+    "INSERT INTO whatsapp_messages (organization_id, whatsapp_account_id, agent_id, contact_id, direction, provider_message_id, message_type, body, media, status, processing_status, provider_timestamp) VALUES ($1,$2,$3,$4,'inbound',$5,$6,$7,$8::jsonb,'received',CASE WHEN $3 IS NULL THEN 'received' ELSE 'routed' END,$9) ON CONFLICT DO NOTHING RETURNING id",
+    [input.organizationId, input.accountId, input.agentId ?? null, input.contactId ?? null, input.providerMessageId, input.messageType, input.body ?? null, JSON.stringify(input.media ?? {}), input.providerTimestamp ?? null],
   );
   return { inserted: r.rows.length > 0, id: r.rows[0]?.id ? String(r.rows[0].id) : null };
 }
@@ -110,6 +118,14 @@ export async function markWhatsAppOutboundSent(messageId: string, providerMessag
 export async function markWhatsAppOutboundFailed(messageId: string, error: string) {
   const r = await query<Row>("UPDATE whatsapp_messages SET status = 'failed', updated_at = now() WHERE id = $1 AND direction = 'outbound' AND status = 'queued' RETURNING id", [messageId]);
   return r.rows.length > 0;
+}
+
+export async function applyWhatsAppProviderStatus(input: { providerMessageId: string; status: "sent" | "delivered" | "read" | "failed"; error?: string | null; timestamp?: string | null }) {
+  const r = await query<Row>(
+    "UPDATE whatsapp_messages SET status = $1, delivered_at = CASE WHEN $1 IN ('delivered','read') THEN COALESCE(delivered_at, $2::timestamptz) ELSE delivered_at END, read_at = CASE WHEN $1 = 'read' THEN COALESCE(read_at, $2::timestamptz) ELSE read_at END, updated_at = now() WHERE provider_message_id = $3 RETURNING id, organization_id, whatsapp_account_id",
+    [input.status, input.timestamp ?? new Date().toISOString(), input.providerMessageId],
+  );
+  return r.rows[0] ? { id: String(r.rows[0].id), organizationId: String(r.rows[0].organization_id), accountId: String(r.rows[0].whatsapp_account_id) } : null;
 }
 
 
