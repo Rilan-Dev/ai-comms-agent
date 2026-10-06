@@ -310,3 +310,7 @@ Current commit: `1972d62cffca5b1b5a5eaeb4ddcb4e7c9f53b446`.
 - Added mailbox UI inspection plus provider lifecycle/contract tests.
 - No real provider credentials were used; no live connectivity is claimed.
 - Latest implementation commit before control synchronization: `105d41481d9523bda66b0f6ae147e73fff1c3c46`.
+\n\n### 2026-10-06 — Email Accounts truthfulness hardening
+- Removed synthetic mailbox discovery timestamps; UI/API now expose only persisted structure state.
+- Provider lifecycle remains server-side, organization-scoped, and credential-free in responses.
+- Latest implementation commit before this control update: `ee2bba7c696e2ed9672c7ff7281e0a1658951798`.
