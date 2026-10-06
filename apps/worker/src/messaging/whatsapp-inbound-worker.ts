@@ -1,5 +1,6 @@
 import { claimRoutedWhatsAppInbound, completeWhatsAppInbound, recordAuditEvent } from "@ai-comms-agent/db";
 import { dispatchAgentExecution } from "../agent/execution-dispatcher";
+import { evaluateAutomationEvent } from "../automation/automation-engine";
 
 function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -54,6 +55,10 @@ export async function processRoutedWhatsAppInbound(limit = 10) {
       }
 
       await completeWhatsAppInbound(messageId, "completed");
+      await evaluateAutomationEvent({
+        type: "whatsapp.received",
+        payload: { messageId, organizationId, agentId, accountId, contactId, sender: from, body },
+      });
       await recordAuditEvent({
         organizationId,
         actorUserId: null,
