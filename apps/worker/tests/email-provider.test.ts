@@ -34,3 +34,23 @@ test("registry creates registered providers and rejects duplicates", () => {
   assert.ok(registry.create("imap_smtp"));
   assert.throws(() => registry.register("imap_smtp", () => new MockEmailProvider()), /already registered/);
 });
+
+
+test("verified provider lifecycle retries transient discovery failures and always disconnects", async () => {
+  const { verifyEmailProviderConnection } = await import("../src/email/provider-verification");
+  let attempts = 0;
+  let disconnected = 0;
+  const provider = new MockEmailProvider();
+  const originalDiscover = provider.discoverCapabilities.bind(provider);
+  provider.discoverCapabilities = async () => {
+    attempts += 1;
+    if (attempts < 2) throw new Error("provider 503 temporary outage");
+    return originalDiscover();
+  };
+  const originalDisconnect = provider.disconnect.bind(provider);
+  provider.disconnect = async () => { disconnected += 1; await originalDisconnect(); };
+  const result = await verifyEmailProviderConnection(provider, { credential_type: "app_password", host: "mock", port: 993 });
+  assert.equal(result.capabilities.drafts, true);
+  assert.equal(attempts, 2);
+  assert.equal(disconnected, 1);
+});
