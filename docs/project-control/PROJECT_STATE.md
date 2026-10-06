@@ -324,3 +324,11 @@ Latest Email Accounts implementation adds user-facing OAuth failure recovery in 
 
 
 Latest source correction: repaired literal escaped-newline corruption in the email account API and added a regression guard. Email Accounts remains the active product slice; no acceptance or deployment claim is made.
+
+
+### 2026-10-06 — Mail outbound action checkpoint
+- Development-first execution is active under ChatGPT ownership.
+- Email Accounts provider lifecycle has advanced through connection persistence, reconnect/error handling, capability truthfulness, OAuth reconnect binding, and mailbox structure discovery.
+- Mail now has approval-safe persisted outbound action requests for send/reply/forward, server-side approval transitions with audit, and worker-only provider execution scaffolding.
+- No live provider credentials or successful external send is claimed.
+- Next implementation: provider-backed draft synchronization/result persistence, message/thread action UX, and attachment handling.
