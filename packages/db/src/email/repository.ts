@@ -258,6 +258,62 @@ export async function updateMailReadStateForOrganization(
   return r.rows.length;
 }
 
+export async function archiveMailMessagesForOrganization(
+  organizationId: string,
+  messageIds: string[],
+): Promise<number> {
+  if (messageIds.length === 0) return 0;
+  const r = await query<{ id: string }>(
+    `UPDATE email_messages m
+     SET folder_id = f.id, updated_at = now()
+     FROM email_accounts a
+     JOIN email_folders f ON f.email_account_id = a.id AND f.role = 'archive'
+     WHERE m.email_account_id = a.id
+       AND a.organization_id = $1
+       AND a.deleted_at IS NULL
+       AND m.id = ANY($2::uuid[])
+     RETURNING m.id`,
+    [organizationId, messageIds],
+  );
+  return r.rows.length;
+}
+
+export async function moveMailMessagesForOrganization(
+  organizationId: string,
+  messageIds: string[],
+  folderId: string,
+): Promise<number> {
+  if (messageIds.length === 0) return 0;
+  const r = await query<{ id: string }>(
+    `UPDATE email_messages m
+     SET folder_id = f.id, updated_at = now()
+     FROM email_accounts a
+     JOIN email_folders f ON f.id = $2 AND f.email_account_id = a.id
+     WHERE m.email_account_id = a.id
+       AND a.organization_id = $1
+       AND a.deleted_at IS NULL
+       AND m.id = ANY($3::uuid[])
+     RETURNING m.id`,
+    [organizationId, folderId, messageIds],
+  );
+  return r.rows.length;
+}
+
+export async function listMailFoldersForOrganization(
+  organizationId: string,
+  accountId?: string,
+): Promise<Array<Record<string, unknown>>> {
+  const values: unknown[] = [organizationId];
+  const conditions = ["a.organization_id = $1", "a.deleted_at IS NULL"];
+  if (accountId) { values.push(accountId); conditions.push(`f.email_account_id = ${values.length}`); }
+  const r = await query<Row>(
+    `SELECT f.id, f.email_account_id, f.provider_folder_id, f.name, f.role, f.unread_count
+     FROM email_folders f JOIN email_accounts a ON a.id = f.email_account_id
+     WHERE ${conditions.join(" AND ")} ORDER BY f.name ASC`,
+    values,
+  );
+  return r.rows;
+}
 export interface CreateLocalDraftInput {
   organizationId: string;
   emailAccountId: string;
