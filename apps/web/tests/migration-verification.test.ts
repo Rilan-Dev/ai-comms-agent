@@ -22,12 +22,13 @@ const initPath = resolve(__dirname, "../../../infra/postgres-init/00-supabase-ro
 const initSql = readFileSync(initPath, "utf8");
 
 const databaseFoundationPath = resolve(__dirname, "../../../supabase/migrations/0002_database_foundation.sql");
-const databaseFoundationSql = readFileSync(databaseFoundationPath, "utf8");\nconst foundationSql = databaseFoundationSql;
+const foundationSql = readFileSync(databaseFoundationPath, "utf8");
 
 describe("Disposable PostgreSQL bootstrap static verification", () => {
   it("uses valid dollar-quoted DO blocks", () => {
     expect(initSql).toContain("DO $$");
-    expect(initSql).toContain("END\n$$;");
+    expect(initSql).toContain("END
+$$;");
     expect(initSql).not.toMatch(/^DO \$(?!\$)/m);
     expect(initSql).not.toMatch(/^\$/m);
   });
