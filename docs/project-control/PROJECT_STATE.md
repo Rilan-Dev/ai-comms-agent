@@ -349,3 +349,4 @@ Latest source correction: repaired literal escaped-newline corruption in the ema
 - Added persisted pending approval listing and a functional approval queue UI.
 - Approval remains deterministic and worker-only for provider execution; no live send is claimed.
 - Next Mail work: draft lifecycle hardening, provider-backed draft/result synchronization, forward UX, and secure attachment handling.
+\n\n### 2026-10-06 — Mail draft/action continuation\n- Current implementation commit: 9b9aeee0ac9605cdcde476e93a464f78d6be3f92.\n- Persisted draft list/retrieve/update/delete is organization-scoped; Drafts UI is no longer a placeholder.\n- Thread Forward uses the existing approval-gated sensitive action API.\n- Runtime/browser validation remains deferred under the development-first override; no provider connectivity is claimed.\n- Next: provider-backed draft result synchronization and secure attachment retrieval/handling.\n
