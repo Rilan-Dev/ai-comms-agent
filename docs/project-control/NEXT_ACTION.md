@@ -11,11 +11,10 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Continue Product Completion after the Clara realtime voice transport boundary.
-  Build the Settings / Organization / Members vertical slice with real PostgreSQL-backed
-  identity data, organization-scoped authorization, member role management, validation,
-  notifications, audit events, and truthful configuration/security states. Then continue
-  through Activity/Audit/Operations and the remaining end-to-end completion work.
+  Continue Product Completion with Activity / Audit / Operations. Build the real
+  organization-scoped activity and security-audit surfaces from persisted audit
+  events, add authorization-aware filtering/search and truthful operational states,
+  then continue final E2E hardening across email, WhatsApp, schedules, chat and voice.
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
@@ -559,3 +558,9 @@ The remaining Clara package diagnostics are the intentional optional vendored-su
 - Added a shared `VoiceTransportAdapter` contract and sequence-safety helper; this defines the host/browser boundary without reimplementing Clara provider transport.
 - No provider credentials or live connectivity are fabricated.
 - **Next:** Settings / Organization / Members vertical slice.
+
+
+### 2026-10-06 — Settings slice continuation
+- Organization settings and member management are now persisted and authorization-aware.
+- Owner changes use the invariant-safe transfer path; direct owner demotion is blocked.
+- **Next:** Activity / Audit / Operations surfaces.
