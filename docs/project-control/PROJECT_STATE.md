@@ -332,3 +332,12 @@ Latest source correction: repaired literal escaped-newline corruption in the ema
 - Mail now has approval-safe persisted outbound action requests for send/reply/forward, server-side approval transitions with audit, and worker-only provider execution scaffolding.
 - No live provider credentials or successful external send is claimed.
 - Next implementation: provider-backed draft synchronization/result persistence, message/thread action UX, and attachment handling.
+
+
+## 2026-10-06 ChatGPT takeover runtime-verification preparation
+
+- Added disposable PostgreSQL 17 service to CI.
+- Added runtime migration verification covering organization creation, ownership transfer, deferred owner invariant, and SECURITY DEFINER helper presence.
+- Added expected-failure verification for direct ownerless organization insertion.
+- Latest implementation commit: ede90e43f1d106206657f85b0f09efe7b5521785.
+- Phase 3 remains pending CI runtime evidence; Phase 4 is not authorized.
