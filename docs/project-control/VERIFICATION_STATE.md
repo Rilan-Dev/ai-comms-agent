@@ -390,7 +390,7 @@ takeover:
     migration_tests: "Static migration checks now cover owner invariants, RLS recursion helpers, and PostgreSQL dollar-quote syntax."
     ci: "CI provisions PostgreSQL 17 and executes the Phase 3 migration verification scripts."
   execution_status:
-    phase_3: "awaiting_final_chatgpt_acceptance — Vercel latest deployment pending/rate-limited"
+    phase_3: "awaiting_ci_runtime_verification — PostgreSQL 17 migration checks added"
     phase_4_authorized: true
 
 
@@ -683,3 +683,11 @@ Latest Email Accounts source changes: OAuth callback failures are routed back to
 
 
 Latest source correction: `apps/web/src/app/api/email-accounts/route.ts` was repaired after direct audit found literal `\\n` source corruption. Static Email Accounts tests now guard API authorization, credential non-exposure, OAuth error routing, disconnected recovery, and source integrity. Runtime/browser/provider verification remains pending.
+
+
+### 2026-10-06 runtime verification preparation
+- CI now provisions disposable PostgreSQL 17.
+- Runtime script verifies the Phase 3 migration, deferred ownership transfer, and RLS helper functions.
+- Expected-failure script verifies direct ownerless organization creation is rejected at commit.
+- Latest code baseline: ede90e43f1d106206657f85b0f09efe7b5521785.
+- Acceptance remains pending until CI produces green runtime evidence.
