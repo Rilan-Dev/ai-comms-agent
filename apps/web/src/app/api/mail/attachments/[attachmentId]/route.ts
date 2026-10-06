@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createReadStream } from "node:fs";
+import { Readable } from "node:stream";
 import { stat, readFile } from "node:fs/promises";
 import { resolve, relative } from "node:path";
 import { createHash } from "node:crypto";
@@ -35,7 +36,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ atta
       const digest = createHash("sha256").update(await readFile(filePath)).digest("hex");
       if (digest !== String(attachment.sha256)) return NextResponse.json({ error: "attachment_integrity_failed", message: "Attachment integrity verification failed." }, { status: 409 });
     }
-    const body = createReadStream(filePath) as unknown as BodyInit;
+    const body = Readable.toWeb(createReadStream(filePath)) as unknown as BodyInit;
     return new NextResponse(body, { headers: { "Content-Type": String(attachment.content_type || "application/octet-stream"), "Content-Length": String(info.size), "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(String(attachment.filename || "attachment"))}`, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
     return authorizationErrorToResponse(error);
