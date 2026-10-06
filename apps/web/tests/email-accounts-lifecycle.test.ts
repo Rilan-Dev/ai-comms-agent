@@ -43,3 +43,11 @@ test("provider verification owns cleanup around live provider discovery", () => 
   assert.match(source, /finally/);
   assert.match(source, /await provider\.disconnect\(\)/);
 });
+
+
+test("accounts UI keeps disconnected mailboxes recoverable", () => {
+  const source = readFileSync(clientPath, "utf8");
+  assert.match(source, /account\.status !== "connected"/);
+  assert.doesNotMatch(source, /account\.status !== "connected" && account\.status !== "disconnected"/);
+  assert.match(source, /Reconnect/);
+});
