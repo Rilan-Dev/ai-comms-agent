@@ -35,6 +35,8 @@ export {
   listInboxMessages,
   getMailMessageForOrganization,
   getMailThreadForOrganization,
+  listMailAttachmentsForOrganization,
+  getMailAttachmentForOrganization,
   updateMailReadStateForOrganization,
   archiveMailMessagesForOrganization,
   moveMailMessagesForOrganization,
@@ -53,6 +55,7 @@ export {
   listPendingEmailActionsForOrganization,
   decideEmailAction,
   claimApprovedEmailAction,
+  listApprovedEmailActions,
   completeEmailAction,
   type CreateEmailActionInput,
   type EmailActionType,
@@ -63,4 +66,4 @@ export { PostgresAgentRepository } from "./agent/repository";
 
 export { listAuditEvents, recordAuditEvent, type AuditEvent, type AuditEventInput } from "./audit/repository";
 
-export { getLocalDraftForOrganization, markDraftProviderSyncingForOrganization, markDraftProviderSyncedForOrganization, markDraftProviderSyncErrorForOrganization, markLocalDraftSentForOrganization } from "./email/repository";
+export { getLocalDraftForOrganization, listDraftsPendingProviderSync, markDraftProviderSyncingForOrganization, markDraftProviderSyncedForOrganization, markDraftProviderSyncErrorForOrganization, markLocalDraftSentForOrganization } from "./email/repository";
