@@ -385,3 +385,11 @@ ChatGPT corrected the persisted Mail repository to match the canonical 0003 emai
 ### 2026-10-06 — Mail vertical continuation
 
 ChatGPT continues development-first Mail implementation without waiting for CI/Vercel. Completed the next persisted mail slice: organization-scoped read/unread mutation with audit, a persisted local draft repository/API, autosaving compose UI, and an inbox Compose entry point. No provider send is simulated. Next implementation target is real thread/message mutations and provider-backed draft/send orchestration, with approval boundaries preserved.
+
+
+### 2026-10-06 — Mail mutation continuation
+- Added organization-scoped persisted archive/move operations backed by mailbox folders, with fail-closed partial-update handling.
+- Added authorized folder mutation API and responsive inbox Archive/Move controls; folder lists are filtered by the same mailbox account.
+- Added deterministic contract tests for organization scoping and authorization.
+- Added lightweight thread-header action polish without fabricating provider state.
+- **Next implementation:** finish provider-aware draft/reply/forward/send orchestration with approval-safe outbound actions, then complete message/thread action UX and attachment handling before Mail slice acceptance.
