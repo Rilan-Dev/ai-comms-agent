@@ -1,4 +1,4 @@
-/**
+/** @ts-nocheck
  * Clara runtime re-export
  *
  * Re-exports the claraRuntime object from Clara's ai-platform-core module.
@@ -17,11 +17,16 @@
  *
  * Source: vendor/clara/clara-core/source/src/modules/ai-platform-core/clara-runtime.ts
  * (immutable byte-for-byte copy — never modified)
+ *
+ * The vendored Clara submodule is intentionally optional in host checkouts.
+ * @ts-nocheck is used at this immutable-boundary re-export so downstream
+ * package consumers do not turn an absent optional submodule into a host
+ * typecheck failure. When the submodule is present, the original Clara
+ * runtime remains the sole runtime implementation.
  */
 
 // This re-export relies on the tsconfig paths configuration:
 //   "@/modules/*" -> "../../vendor/clara/clara-core/source/src/modules/*"
-// @ts-ignore Clara is an optional git submodule; structural host checks must compile without its checkout.
 export {
   claraRuntime,
   type ClaraRuntimeContext,
