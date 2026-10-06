@@ -1,4 +1,4 @@
-import { query } from "../client";
+import { query, withTransaction } from "../client";
 
 type Row = Record<string, unknown>;
 
@@ -150,4 +150,43 @@ export async function listAutomationRuns(organizationId: string, ruleId: string)
     [organizationId, ruleId],
   );
   return r.rows;
+}
+
+export type ScheduledJobClaim = {
+  runId:string; id:string; agentId:string; organizationId:string; intent:string; params:Record<string,unknown>;
+  cron:string|null; nextFireAt:string|null; timezone:string; catchUpMinutes:number;
+  advance:(nextFireAt:string|null,status:"active"|"archived"|"error",lastError:string|null)=>Promise<void>;
+};
+
+export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise<ScheduledJobClaim[]> {
+  return withTransaction(async client=>{
+    const jobs=await client.query<Row>(
+      "SELECT * FROM scheduled_jobs WHERE status='active' AND next_fire_at IS NOT NULL AND next_fire_at <= $1::timestamptz ORDER BY next_fire_at ASC FOR UPDATE SKIP LOCKED LIMIT $2",
+      [nowIso,limit],
+    );
+    const claims:ScheduledJobClaim[]=[];
+    for(const row of jobs.rows){
+      const run=await client.query<Row>(
+        "INSERT INTO scheduled_job_runs (scheduled_job_id,status,result) VALUES ($1,'running',$2::jsonb) RETURNING id",
+        [row.id,JSON.stringify({claimedAt:nowIso})],
+      );
+      const runId=String(run.rows[0]?.id);
+      claims.push({
+        runId,id:String(row.id),agentId:String(row.agent_id),organizationId:String(row.organization_id),intent:String(row.intent),
+        params:(row.params??{}) as Record<string,unknown>,cron:row.cron?String(row.cron):null,nextFireAt:row.next_fire_at?String(row.next_fire_at):null,
+        timezone:String(row.timezone??"UTC"),catchUpMinutes:Number(row.catch_up_minutes??60),
+        advance:async(next,status,lastError)=>{
+          await client.query("UPDATE scheduled_jobs SET next_fire_at=$2::timestamptz,last_fire_at=now(),status=$3,last_error=$4,updated_at=now() WHERE id=$1",[String(row.id),next,status,lastError]);
+        },
+      });
+    }
+    return claims;
+  });
+}
+
+export async function completeScheduledJobRun(runId:string,result:Record<string,unknown>={}){
+  await query("UPDATE scheduled_job_runs SET status='completed',finished_at=now(),result=$2::jsonb,error=NULL WHERE id=$1",[runId,JSON.stringify(result)]);
+}
+export async function failScheduledJobRun(runId:string,error:string){
+  await query("UPDATE scheduled_job_runs SET status='failed',finished_at=now(),error=$2 WHERE id=$1",[runId,error]);
 }
