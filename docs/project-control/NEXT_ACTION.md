@@ -497,3 +497,12 @@ The latest local typecheck exposed source-level cron narrowing errors in `apps/w
 Correction commits: `63e5240`, `fbd6c8a`, `3b47247`.
 
 **Next:** pull `main` and rerun `npm run typecheck`; continue implementation regardless of CI/Vercel. If typecheck is clean, wire scheduler/automation execution results to concrete approved Email/WhatsApp actions and event emission from existing workers.
+
+
+### 2026-10-06 — Follow-up typecheck correction
+
+The next local typecheck showed two remaining classes of diagnostics: strict indexed-access narrowing in the cron matcher and unresolved Clara git-submodule imports during host worker compilation. Cron field/range indexing is now explicitly narrowed. The Clara adapter remains a structural boundary when the optional `vendor/clara` git submodule is not initialized; unresolved submodule re-exports are explicitly suppressed at that boundary rather than replacing or modifying Clara source. Runtime Clara integration still requires the pinned submodule checkout when that feature is exercised.
+
+Correction commits: `dd9786c`, `7a7e872`, `979c341`.
+
+**Next:** pull `main` and rerun `npm run typecheck`. Continue the scheduler/automation execution implementation; do not wait for CI/Vercel.
