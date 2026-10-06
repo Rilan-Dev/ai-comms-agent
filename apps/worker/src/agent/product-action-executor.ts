@@ -1,4 +1,4 @@
-import { createEmailAction, getWhatsAppAccountForAgent, queueWhatsAppOutboundMessage } from "@ai-comms-agent/db";
+import { createEmailAction, getWhatsAppAccountForAgent, queueWhatsAppOutboundMessage, PostgresEmailAccountRepository } from "@ai-comms-agent/db";
 import type { ProductActionResult } from "@ai-comms-agent/shared";
 
 type Action = Record<string, unknown>;
@@ -16,6 +16,7 @@ function actionsFromParams(params: Record<string, unknown>): Action[] {
 
 export async function executeProductActions(context: Context, params: Record<string, unknown>) {
   const actions = actionsFromParams(params);
+  const emailAccounts = new PostgresEmailAccountRepository();
   const results: ProductActionResult[] = [];
   for (const action of actions) {
     const type = stringValue(action.type);
@@ -49,6 +50,11 @@ export async function executeProductActions(context: Context, params: Record<str
       const actionType = stringValue(action.actionType) as "send_email" | "reply_email" | "forward_email" | null;
       if (!emailAccountId || !actionType || !["send_email", "reply_email", "forward_email"].includes(actionType)) {
         results.push({ type, status: "configuration_required", reason: "Email account and supported actionType are required" });
+        continue;
+      }
+      const boundAccount = await emailAccounts.getForAgent(context.organizationId, context.agentId, emailAccountId);
+      if (!boundAccount) {
+        results.push({ type, status: "configuration_required", reason: "Email account is not owned by the organization or bound to this agent" });
         continue;
       }
       const recipientSnapshot = action.recipientSnapshot && typeof action.recipientSnapshot === "object" && !Array.isArray(action.recipientSnapshot)
