@@ -61,6 +61,7 @@ export async function retrieveEmailAttachment(
     async ({ provider: connected }) => connected.downloadAttachment(attachmentId),
   );
   const content = result.value;
+  if (!content) throw new Error("Provider returned no attachment content");
   const maxBytes = Number(process.env.MAX_EMAIL_ATTACHMENT_BYTES ?? DEFAULT_MAX_BYTES);
   if (!Number.isFinite(maxBytes) || maxBytes <= 0) throw new Error("MAX_EMAIL_ATTACHMENT_BYTES must be a positive number");
   if (content.byteLength > maxBytes) throw new Error("Attachment exceeds configured size limit");
