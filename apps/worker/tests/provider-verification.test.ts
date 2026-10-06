@@ -13,7 +13,7 @@ function fakeProvider(options: { failConnect?: boolean; failDiscover?: boolean; 
   const state = { value: "new" };
   return {
     providerId: "gmail",
-    state: state.value,
+    get state() { return state.value; },
     async connect(_credentials: EmailCredentials) { if (options.failConnect) throw new Error("connect failed"); state.value = "connected"; },
     async disconnect() { state.value = "disconnected"; if (options.failDisconnect) throw new Error("disconnect failed"); },
     async discoverCapabilities() { if (options.failDiscover) throw new Error("discovery failed"); return capabilities; },
@@ -30,13 +30,13 @@ test("provider verification connects, normalizes capabilities, and always discon
   const result = await verifyEmailProviderConnection(provider, { credential_type: "oauth_token", access_token: "server-only" });
   assert.equal(result.capabilities.folders, true);
   assert.equal(result.capabilities.send, false);
-  assert.equal((provider as typeof provider & { state: string }).state, "new");
+  assert.equal(provider.state, "disconnected");
 });
 
 test("provider verification disconnects when capability discovery fails", async () => {
   const provider = fakeProvider({ failDiscover: true });
   await assert.rejects(() => verifyEmailProviderConnection(provider, { credential_type: "oauth_token", access_token: "server-only" }), /discovery failed/);
-  assert.equal((provider as typeof provider & { state: string }).state, "new");
+  assert.equal(provider.state, "disconnected");
 });
 
 test("provider verification does not call disconnect when connect fails", async () => {
