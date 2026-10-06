@@ -7,6 +7,7 @@ export type EmailActionType = "send_email" | "reply_email" | "forward_email";
 export type EmailActionStatus =
   | "pending_approval"
   | "approved"
+  | "executing"
   | "rejected"
   | "completed"
   | "failed"
