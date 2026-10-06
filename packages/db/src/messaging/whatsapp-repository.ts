@@ -56,3 +56,58 @@ export async function listWhatsAppMessagesForOrganization(organizationId: string
   const r = await query<Row>("SELECT m.id, m.whatsapp_account_id, m.contact_id, m.direction, m.provider_message_id, m.message_type, m.body, m.status, m.provider_timestamp, m.created_at, c.phone_number, c.display_name FROM whatsapp_messages m LEFT JOIN whatsapp_contacts c ON c.id = m.contact_id WHERE m.organization_id = $1 AND m.whatsapp_account_id = $2 ORDER BY m.created_at DESC LIMIT $3", [organizationId, accountId, safeLimit]);
   return r.rows;
 }
+
+
+export async function getWhatsAppAccountByPhoneNumberId(phoneNumberId: string) {
+  const r = await query<Row>("SELECT * FROM whatsapp_accounts WHERE phone_number_id = $1 AND deleted_at IS NULL LIMIT 1", [phoneNumberId]);
+  return r.rows[0] ? mapAccount(r.rows[0]) : null;
+}
+
+export async function recordWhatsAppWebhookEvent(input: { organizationId: string; accountId: string; providerEventId?: string | null; eventType: string; payloadHash: string; payload: Record<string, unknown> }) {
+  const r = await query<Row>(
+    "INSERT INTO whatsapp_webhook_events (organization_id, whatsapp_account_id, provider_event_id, event_type, payload_hash, payload, status) VALUES ($1,$2,$3,$4,$5,$6::jsonb,'received') ON CONFLICT (whatsapp_account_id, provider_event_id) WHERE provider_event_id IS NOT NULL DO NOTHING RETURNING id",
+    [input.organizationId, input.accountId, input.providerEventId ?? null, input.eventType, input.payloadHash, JSON.stringify(input.payload)],
+  );
+  return { inserted: r.rows.length > 0, id: r.rows[0]?.id ? String(r.rows[0].id) : null };
+}
+
+export async function upsertWhatsAppContact(input: { organizationId: string; accountId: string; phoneNumber: string; displayName?: string | null; providerContactId?: string | null }) {
+  const r = await query<Row>(
+    "INSERT INTO whatsapp_contacts (organization_id, whatsapp_account_id, phone_number, display_name, provider_contact_id, last_interaction_at) VALUES ($1,$2,$3,$4,$5,now()) ON CONFLICT (whatsapp_account_id, phone_number) DO UPDATE SET display_name = COALESCE(EXCLUDED.display_name, whatsapp_contacts.display_name), provider_contact_id = COALESCE(EXCLUDED.provider_contact_id, whatsapp_contacts.provider_contact_id), last_interaction_at = now() RETURNING id",
+    [input.organizationId, input.accountId, input.phoneNumber, input.displayName ?? null, input.providerContactId ?? null],
+  );
+  return r.rows[0]?.id ? String(r.rows[0].id) : null;
+}
+
+export async function insertWhatsAppInboundMessage(input: { organizationId: string; accountId: string; contactId?: string | null; providerMessageId: string; messageType: string; body?: string | null; media?: Record<string, unknown>; providerTimestamp?: string | null }) {
+  const r = await query<Row>(
+    "INSERT INTO whatsapp_messages (organization_id, whatsapp_account_id, contact_id, direction, provider_message_id, message_type, body, media, status, provider_timestamp) VALUES ($1,$2,$3,'inbound',$4,$5,$6,$7::jsonb,'received',$8) ON CONFLICT (whatsapp_account_id, provider_message_id) DO NOTHING RETURNING id",
+    [input.organizationId, input.accountId, input.contactId ?? null, input.providerMessageId, input.messageType, input.body ?? null, JSON.stringify(input.media ?? {}), input.providerTimestamp ?? null],
+  );
+  return { inserted: r.rows.length > 0, id: r.rows[0]?.id ? String(r.rows[0].id) : null };
+}
+
+export async function queueWhatsAppOutboundMessage(input: { organizationId: string; accountId: string; contactId?: string | null; to: string; body: string; idempotencyKey: string }) {
+  const contactId = input.contactId ?? await upsertWhatsAppContact({ organizationId: input.organizationId, accountId: input.accountId, phoneNumber: input.to });
+  const r = await query<Row>(
+    "INSERT INTO whatsapp_messages (organization_id, whatsapp_account_id, contact_id, direction, message_type, body, status, idempotency_key) VALUES ($1,$2,$3,'outbound','text',$4,'queued',$5) ON CONFLICT (organization_id, idempotency_key) DO NOTHING RETURNING id",
+    [input.organizationId, input.accountId, contactId, input.body, input.idempotencyKey],
+  );
+  return r.rows[0]?.id ? String(r.rows[0].id) : null;
+}
+
+export async function listQueuedWhatsAppOutbound(limit = 20) {
+  const safeLimit = Math.min(Math.max(limit, 1), 50);
+  const r = await query<Row>("SELECT m.*, c.phone_number FROM whatsapp_messages m JOIN whatsapp_contacts c ON c.id = m.contact_id WHERE m.direction = 'outbound' AND m.status = 'queued' ORDER BY m.created_at ASC LIMIT $1", [safeLimit]);
+  return r.rows;
+}
+
+export async function markWhatsAppOutboundSent(messageId: string, providerMessageId: string) {
+  const r = await query<Row>("UPDATE whatsapp_messages SET status = 'sent', provider_message_id = $1, updated_at = now() WHERE id = $2 AND direction = 'outbound' AND status = 'queued' RETURNING id", [providerMessageId, messageId]);
+  return r.rows.length > 0;
+}
+
+export async function markWhatsAppOutboundFailed(messageId: string, error: string) {
+  const r = await query<Row>("UPDATE whatsapp_messages SET status = 'failed', updated_at = now() WHERE id = $1 AND direction = 'outbound' AND status = 'queued' RETURNING id", [messageId]);
+  return r.rows.length > 0;
+}
