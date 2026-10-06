@@ -1700,3 +1700,11 @@ No provider credentials were fabricated and Clara source was not modified.
 - Polished the thread header actions without inventing provider connectivity.
 - No real provider credentials were used; CI/Vercel were not awaited as instructed.
 - Current next implementation: approval-safe provider-backed draft/reply/forward/send orchestration and remaining Mail action UX/attachments.
+
+
+## 2026-10-06 — Mail slice continuation
+- Corrected an inbox repository parameterization defect where the sender predicate omitted the PostgreSQL placeholder, which would break filtered sender searches.
+- Repaired literal escaped-newline corruption in the inbox client source.
+- Added deterministic regression coverage to protect both fixes.
+- No provider credentials were used; no live send/connectivity claim was made.
+- Next: finish thread-level draft/reply and mailbox mutation UX, then wire provider-backed send only through authorized approval paths.
