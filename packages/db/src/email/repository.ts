@@ -214,17 +214,17 @@ export async function listInboxMessages(organizationId: string, filters: MailInb
   if (filters.accountId) { values.push(filters.accountId); conditions.push(`m.email_account_id = $${values.length}`); }
   if (filters.unreadOnly) conditions.push("m.is_read = false");
   if (filters.actionRequired) conditions.push("m.action_required = true");
-  if (filters.query?.trim()) { values.push(`%${filters.query.trim()}%`); conditions.push(`(m.subject ILIKE $${values.length} OR m.from_address ILIKE $${values.length} OR m.snippet ILIKE $${values.length})`); }
+  if (filters.query?.trim()) { values.push(`%${filters.query.trim()}%`); conditions.push(`(m.subject ILIKE $${values.length} OR m.from_email ILIKE ${values.length} OR m.from_name ILIKE ${values.length} OR m.text_body ILIKE ${values.length} OR m.snippet ILIKE $${values.length})`); }
   const limit = Math.min(Math.max(filters.limit ?? 50, 1), 100); const offset = Math.max(filters.offset ?? 0, 0);
   values.push(limit, offset);
-  const r = await query<Row>(`SELECT m.id, m.email_account_id, m.thread_id, m.from_address, m.to_addresses, m.subject, m.snippet, m.received_at, m.is_read, m.is_starred, m.is_draft, m.is_outbound, m.importance_score, m.action_required, m.has_attachments, a.email_address AS account_email, a.display_name AS account_name
+  const r = await query<Row>(`SELECT m.id, m.email_account_id, m.thread_id, COALESCE(m.from_email, m.from_name, '') AS from_address, m.to_recipients AS to_addresses, m.subject, m.snippet, m.received_at, m.is_read, m.is_starred, m.is_draft, m.is_sent AS is_outbound, m.importance_score, m.action_required, EXISTS (SELECT 1 FROM email_attachments ea WHERE ea.message_id = m.id) AS has_attachments, a.email_address AS account_email, a.display_name AS account_name
     FROM email_messages m JOIN email_accounts a ON a.id = m.email_account_id
     WHERE ${conditions.join(" AND ")} ORDER BY m.received_at DESC NULLS LAST LIMIT $${values.length - 1} OFFSET $${values.length}`, values);
   return r.rows;
 }
 
 export async function getMailMessageForOrganization(organizationId: string, messageId: string): Promise<Record<string, unknown> | null> {
-  const r = await query<Row>(`SELECT m.*, a.email_address AS account_email, a.display_name AS account_name
+  const r = await query<Row>(`SELECT m.*, COALESCE(m.from_email, m.from_name, '') AS from_address, m.to_recipients AS to_addresses, m.text_body, m.html_body_sanitized AS html_body, EXISTS (SELECT 1 FROM email_attachments ea WHERE ea.message_id = m.id) AS has_attachments, a.email_address AS account_email, a.display_name AS account_name
     FROM email_messages m JOIN email_accounts a ON a.id = m.email_account_id
     WHERE m.id = $1 AND a.organization_id = $2 AND a.deleted_at IS NULL LIMIT 1`, [messageId, organizationId]);
   return r.rows[0] ?? null;
