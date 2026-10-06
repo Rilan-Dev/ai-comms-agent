@@ -245,3 +245,11 @@ The worker execution boundary now calls Clara's immutable `claraRuntime.createCh
 - Added authorized member role/status management and owner-transfer routing through the invariant-safe repository method.
 - Settings UI now renders persisted organization/member state and exposes live role/status controls; owner cannot be demoted directly.
 - Next product implementation: Activity/Audit/Operations surfaces and security-sensitive audit visibility.
+
+
+### 2026-10-06 — Activity/Audit/Operations + E2E hardening continuation
+- Activity/Audit/Operations now has server-side filtering, authorized JSON/CSV export, organization-scoped operational signals, and a real Operations workspace.
+- Automated agent execution now rejects email accounts that are not owned by the current organization and explicitly bound to the executing agent; automated email/WhatsApp action requests are audited.
+- Overview metrics/activity are now loaded from persisted organization state instead of hard-coded demo values.
+- Added product-completion contract tests for authorization, export, overview integrity, and cross-tenant execution boundaries.
+- Continue cross-surface E2E hardening without waiting for CI/Vercel.
