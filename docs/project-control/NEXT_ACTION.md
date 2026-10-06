@@ -488,3 +488,12 @@ Implemented the next active Phase 4 runtime slice: durable scheduled-job claimin
 
 ### 2026-10-06 — Clara-backed execution continuation
 Clara-backed agent execution is now wired through the worker-owned dispatcher. The next implementation is to connect concrete execution results to product actions: scheduled summaries/outbound WhatsApp, approval-safe email actions, and automation event emission from existing Mail/WhatsApp workers. CI/Vercel remain non-blocking under the development-first instruction.
+
+
+### 2026-10-06 — Worker typecheck correction: scheduler + Clara imports
+
+The latest local typecheck exposed source-level cron narrowing errors in `apps/worker/src/scheduling/cron.ts` and worker compilation was also traversing the Clara package source with unresolved `@/modules/*` aliases. Corrected the cron candidate/parser narrowing and changed Clara host-package re-exports to resolve the immutable vendored Clara source through stable relative paths. No Clara vendor source was modified and no provider connectivity is claimed.
+
+Correction commits: `63e5240`, `fbd6c8a`, `3b47247`.
+
+**Next:** pull `main` and rerun `npm run typecheck`; continue implementation regardless of CI/Vercel. If typecheck is clean, wire scheduler/automation execution results to concrete approved Email/WhatsApp actions and event emission from existing workers.
