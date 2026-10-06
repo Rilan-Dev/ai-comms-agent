@@ -42,7 +42,6 @@ export function EmailAccountsClient({
     folders: Array<{ id: string; name: string; role: string; unread_count: number }>;
     labels: Array<{ id: string; name: string; label_type: string }>;
     agents: Array<{ id: string; name: string; slug: string; role: string }>;
-    discoveredAt: string | null;
   }>>({});
   const filteredAccounts = useMemo(() => { const q = query.trim().toLowerCase(); return accounts.filter((a) => (statusFilter === "all" || a.status === statusFilter) && (!q || [a.email_address, a.display_name, a.provider].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)))); }, [accounts, query, statusFilter]);
   async function refreshAccounts() { setRefreshing(true); try { const response = await fetch("/api/email-accounts?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" }); const data = await response.json(); if (!response.ok) throw new Error(data.message ?? "Could not refresh email accounts."); setAccounts(data.accounts ?? []); setNotice("Mailbox status refreshed."); } catch (error) { setNotice(error instanceof Error ? error.message : "Could not refresh email accounts."); } finally { setRefreshing(false); } }
@@ -110,7 +109,6 @@ export function EmailAccountsClient({
         folders: data.folders ?? [],
         labels: data.labels ?? [],
         agents: data.agents ?? [],
-        discoveredAt: data.discoveredAt ?? null,
       }}));
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not load mailbox structure.");
@@ -264,9 +262,7 @@ export function EmailAccountsClient({
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Mailbox structure</p>
                         <span className="text-[11px] text-muted-foreground">
-                          {structureByAccount[account.id].discoveredAt
-                            ? `Discovered ${new Date(structureByAccount[account.id].discoveredAt as string).toLocaleString()}`
-                            : "No persisted discovery snapshot"}
+                          Persisted discovery snapshot
                         </span>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
