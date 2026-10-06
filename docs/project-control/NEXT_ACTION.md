@@ -529,3 +529,9 @@ Implemented the next concrete WhatsApp runtime slice without waiting for CI/Verc
 
 
 ### 2026-10-06 — Chat/realtime continuation is active. The Clara chat surface is now implemented at `/chat` with persisted conversations, SSE streaming, agent-scoped conversation switching, and navigation/dashboard entry points. The next concrete implementation is the realtime voice session boundary: expose a host-authorized server transport around Clara `startRealtimeSession(ctx)`, persist voice session metadata/telemetry, and connect the UI to interruption-safe streaming without duplicating Clara provider logic. Continue without waiting for CI/Vercel.
+
+
+### 2026-10-06 — Realtime voice implementation continuation
+actor: "ChatGPT"
+action: "Continue the Clara realtime voice vertical slice. Implement the provider transport handshake adapter behind the resolved Clara session endpoint, then wire browser microphone/transcript state to persisted voice session and telemetry boundaries."
+constraints: "Reuse Clara realtime architecture; do not modify Clara source; no provider API keys in browser; no fabricated live connectivity; CI/Vercel remain non-blocking under the development-first override."
