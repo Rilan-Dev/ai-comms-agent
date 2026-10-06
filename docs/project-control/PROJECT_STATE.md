@@ -387,3 +387,10 @@ ChatGPT continued development-first implementation without waiting for CI/Vercel
 - Settings organization/member state and authorization-aware membership controls implemented.
 - Activity and Audit now read persisted organization audit events; synthetic operational metrics were removed.
 - **Next:** cross-surface hardening and E2E/deployment preparation under the development-first continuation instruction.
+
+
+### 2026-10-06 — Cross-surface hardening continuation
+- Activity/Audit/Operations surfaces now use persisted organization state, server-side filters, authorized JSON/CSV export, and runtime signals; the static sidebar health claim was removed.
+- Automated agent actions now require the email account to belong to the organization and be bound to the executing agent, and automated email/WhatsApp requests emit audit events.
+- Overview dashboard no longer presents fabricated live metrics; it loads persisted organization counts/activity with truthful configuration and empty states.
+- Product-completion contract coverage added for these boundaries. Development continues toward full cross-surface E2E.
