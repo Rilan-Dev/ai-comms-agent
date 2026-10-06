@@ -89,3 +89,5 @@ export {
   listAgentsForWhatsAppAccount,
   applyWhatsAppProviderStatus,
 } from "./messaging/whatsapp-repository";
+
+export { listScheduledJobs, getScheduledJob, createScheduledJob, updateScheduledJob, deleteScheduledJob, listScheduledJobRuns, listAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, listAutomationRuns } from "./automation/repository";
