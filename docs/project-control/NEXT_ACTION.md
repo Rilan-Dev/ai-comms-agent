@@ -452,3 +452,10 @@ Next implementation: harden webhook status updates/media handling, enforce exact
 - Corrected these directly on `main` without changing provider behavior or fabricating credentials.
 - Correction commits: `2197d89`, `9c99421`, `c19783c`, `649a59b`.
 - **Next:** pull `main` and rerun `npm run typecheck`. If worker typecheck is clean, continue the active WhatsApp vertical slice: webhook status/media handling, exactly-one account binding per agent, inbound agent-command routing, and truthful configuration-required/error/retry states. Do not wait for CI/Vercel.
+
+
+### 2026-10-06 — WhatsApp send response typing correction
+- The next local typecheck exposed one remaining untyped Meta Graph JSON response in the WhatsApp outbound-send path; the account-verification response was already typed.
+- Corrected the outbound response to use the same `WhatsAppGraphPayload` boundary.
+- Commit: `ee9d302`.
+- **Next:** pull `main` and rerun `npm run typecheck`; continue the active WhatsApp implementation after the worker typecheck is clean. Do not wait for CI/Vercel.
