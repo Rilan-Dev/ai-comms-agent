@@ -22,7 +22,7 @@ const initPath = resolve(__dirname, "../../../infra/postgres-init/00-supabase-ro
 const initSql = readFileSync(initPath, "utf8");
 
 const databaseFoundationPath = resolve(__dirname, "../../../supabase/migrations/0002_database_foundation.sql");
-const databaseFoundationSql = readFileSync(databaseFoundationPath, "utf8");
+const databaseFoundationSql = readFileSync(databaseFoundationPath, "utf8");\nconst foundationSql = databaseFoundationSql;
 
 describe("Disposable PostgreSQL bootstrap static verification", () => {
   it("uses valid dollar-quoted DO blocks", () => {
