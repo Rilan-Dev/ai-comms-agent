@@ -57,7 +57,7 @@ export async function GET(
       },
       folders,
       labels,
-      discoveredAt: folders.length || labels.length ? new Date().toISOString() : null,
+      discoveredAt: folders.map((folder) => folder.last_synced_at).filter(Boolean).sort().at(-1) ?? null,
     });
   } catch (error) {
     return authorizationErrorToResponse(error);
