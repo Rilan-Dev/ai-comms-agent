@@ -60,7 +60,7 @@ export async function executeProductActions(context: Context, params: Record<str
         actionType,
         draftId: stringValue(action.draftId),
         recipientSnapshot: { ...recipientSnapshot, generatedOutput: context.output },
-        requestedBy: context.agentId,
+        requestedBy: null,
       });
       results.push({ type, status: "pending_approval", actionId: approval.id });
       continue;
