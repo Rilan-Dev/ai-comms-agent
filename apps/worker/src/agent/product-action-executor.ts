@@ -1,4 +1,5 @@
 import { createEmailAction, getWhatsAppAccountForAgent, queueWhatsAppOutboundMessage } from "@ai-comms-agent/db";
+import type { ProductActionResult } from "@ai-comms-agent/shared";
 
 type Action = Record<string, unknown>;
 type Context = { organizationId: string; agentId: string; executionId: string; output: string };
@@ -15,7 +16,7 @@ function actionsFromParams(params: Record<string, unknown>): Action[] {
 
 export async function executeProductActions(context: Context, params: Record<string, unknown>) {
   const actions = actionsFromParams(params);
-  const results: Array<Record<string, unknown>> = [];
+  const results: ProductActionResult[] = [];
   for (const action of actions) {
     const type = stringValue(action.type);
 
