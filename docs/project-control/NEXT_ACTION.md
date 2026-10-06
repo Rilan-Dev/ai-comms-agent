@@ -587,3 +587,12 @@ The remaining Clara package diagnostics are the intentional optional vendored-su
 - Corrected only those host boundaries; Clara source and provider behavior are unchanged.
 - The remaining Clara unresolved-module diagnostics are the intentional optional vendored-submodule structural check. The web typecheck SIGKILL is still a process/resource termination with no reported source diagnostic.
 - **Next:** continue final cross-surface hardening, with realtime voice host transport/session lifecycle as the active implementation surface; do not wait for CI/Vercel.
+
+
+### 2026-10-07 — Voice/session authorization hardening
+
+- Corrected the remaining worker cron strict-indexing regression by binding minute/hour/day/month/weekday to named values before field matching.
+- Hardened voice session PATCH/DELETE lifecycle operations so an authenticated organization member can mutate only their own persisted voice session.
+- Hardened the voice turn endpoint so the requested turn must belong to the authenticated user and the exact requested agent; ended sessions are rejected before Clara execution.
+- Clara realtime/provider logic remains untouched; the host continues to own authorization and persistence while Clara owns realtime generation/transport policy.
+- **Next:** continue cross-surface hardening and deterministic E2E coverage around email/WhatsApp/scheduling/chat/voice, then prepare final runtime/deployment verification without waiting on CI/Vercel.
