@@ -67,3 +67,13 @@ export { PostgresAgentRepository } from "./agent/repository";
 export { listAuditEvents, recordAuditEvent, type AuditEvent, type AuditEventInput } from "./audit/repository";
 
 export { getLocalDraftForOrganization, listDraftsPendingProviderSync, markDraftProviderSyncingForOrganization, markDraftProviderSyncedForOrganization, markDraftProviderSyncErrorForOrganization, markLocalDraftSentForOrganization } from "./email/repository";
+
+export {
+  listWhatsAppAccountsForOrganization,
+  getWhatsAppAccountForOrganization,
+  createOrUpdateWhatsAppAccount,
+  saveWhatsAppCredential,
+  loadWhatsAppCredential,
+  disconnectWhatsAppAccount,
+  listWhatsAppMessagesForOrganization,
+} from "./messaging/whatsapp-repository";
