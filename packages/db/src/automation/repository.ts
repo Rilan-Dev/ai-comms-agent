@@ -185,3 +185,18 @@ export async function completeScheduledJobRun(runId:string,result:Record<string,
 export async function failScheduledJobRun(runId:string,error:string){
   await query("UPDATE scheduled_job_runs SET status='failed',finished_at=now(),error=$2 WHERE id=$1",[runId,error]);
 }
+
+export async function listActiveAutomationRules(){
+  const r=await query<Row>("SELECT * FROM automation_rules WHERE status='active' ORDER BY created_at ASC");
+  return r.rows.map(automation);
+}
+export async function createAutomationRun(ruleId:string, result:Record<string,unknown>={}){
+  const r=await query<Row>("INSERT INTO automation_runs (automation_rule_id,status,result) VALUES ($1,'running',$2::jsonb) RETURNING id",[ruleId,JSON.stringify(result)]);
+  return r.rows[0]?String(r.rows[0].id):null;
+}
+export async function completeAutomationRun(runId:string,result:Record<string,unknown>={}){
+  await query("UPDATE automation_runs SET status='completed',finished_at=now(),result=$2::jsonb,error=NULL WHERE id=$1",[runId,JSON.stringify(result)]);
+}
+export async function failAutomationRun(runId:string,error:string){
+  await query("UPDATE automation_runs SET status='failed',finished_at=now(),error=$2 WHERE id=$1",[runId,error]);
+}
