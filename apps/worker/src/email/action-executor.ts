@@ -5,6 +5,7 @@ import {
   parseCredentialsMasterKey,
   claimApprovedEmailAction,
   getMailMessageForOrganization,
+  markLocalDraftSentForOrganization,
 } from "@ai-comms-agent/db";
 import type { DraftParams, EmailCredentials } from "@ai-comms-agent/shared";
 import { createEmailProviderRegistry } from "./registry";
@@ -60,8 +61,12 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
           subject: String(snapshot.subject ?? ""),
           body_text: String(snapshot.bodyText ?? ""),
         };
-        const providerDraft = await connected.createDraft(params);
-        return connected.sendDraft(providerDraft.draft_id);
+        const providerDraftId = draft.provider_draft_id
+          ? String(draft.provider_draft_id)
+          : (await connected.createDraft(params)).draft_id;
+        const sent = await connected.sendDraft(providerDraftId);
+        await markLocalDraftSentForOrganization(organizationId, draftId, sent.provider_message_id);
+        return sent;
       }
 
       const messageId = String(snapshot.messageId ?? "");
