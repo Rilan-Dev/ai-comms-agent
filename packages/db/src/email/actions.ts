@@ -21,7 +21,7 @@ export interface CreateEmailActionInput {
   actionType: EmailActionType;
   draftId?: string | null;
   recipientSnapshot: Record<string, unknown>;
-  requestedBy: string;
+  requestedBy?: string | null;
   expiresAt?: string | null;
 }
 
@@ -63,7 +63,7 @@ export async function createEmailAction(input: CreateEmailActionInput) {
       input.draftId ?? null,
       snapshot,
       contentHash,
-      input.requestedBy,
+      input.requestedBy ?? null,
       input.expiresAt ?? null,
     ],
   );
