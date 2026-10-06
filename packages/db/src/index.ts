@@ -36,6 +36,9 @@ export {
   getMailMessageForOrganization,
   getMailThreadForOrganization,
   updateMailReadStateForOrganization,
+  createLocalDraft,
+  updateLocalDraftForOrganization,
+  type CreateLocalDraftInput,
   type MailInboxFilters,
 } from "./email/repository";
 export { PostgresEmailFolderLabelRepository } from "./email/folder-label-repository";
