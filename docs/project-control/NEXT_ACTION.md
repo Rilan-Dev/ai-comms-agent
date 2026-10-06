@@ -409,3 +409,10 @@ ChatGPT completed the next Mail implementation slice: authorized persisted threa
 ChatGPT continued the Mail vertical slice without waiting for CI/Vercel. Persisted draft lifecycle is now organization-scoped end-to-end: list, retrieve into compose, autosave/update, authorized delete, audit, and responsive Drafts UI. Thread Forward now creates an explicit approval-gated sensitive action. Added deterministic contract coverage for draft lifecycle and forward authorization. No provider connectivity or send success is fabricated.
 
 **Next implementation:** complete provider-backed draft result synchronization and secure attachment retrieval/handling, then finish Mail message/thread action UX before Mail slice acceptance. Keep all outbound provider execution worker-only and approval-gated.
+
+### 2026-10-06 — Email Accounts continuation
+
+Implemented the bounded provider retry layer and wired it into verified provider connect/discovery. Credential/authentication failures fail immediately; transient 408/429/5xx/network/TLS failures retry with capped exponential backoff. Added lifecycle tests for retry limits and guaranteed disconnect cleanup. Mailbox discovery remains persisted and truthful: accounts stay pending until a worker performs live verification/discovery.
+
+Next implementation focus: finish deterministic Email Accounts lifecycle/source coverage, then begin the Mail vertical slice (provider-backed mailbox structure/sync boundary) without waiting for CI/Vercel.
+
