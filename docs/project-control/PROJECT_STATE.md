@@ -318,3 +318,6 @@ Current commit: `1972d62cffca5b1b5a5eaeb4ddcb4e7c9f53b446`.
 
 ### 2026-10-06 — Slice 2 Email Accounts checkpoint
 Current product slice: **Slice 2 — Email Accounts**. ChatGPT is the sole active implementer. Latest source work hardens atomic folder/label discovery persistence, provider capability contract tests, and disconnected-account recovery. Runtime/browser/provider acceptance remains pending and no live credentials are claimed.
+
+
+Latest Email Accounts implementation adds user-facing OAuth failure recovery in the account UI, alongside atomic mailbox discovery and disconnected-account reconnectability. Current source baseline is control commit 98f1c2801a1cdabaf6e85ad4be592b4917d663802.
