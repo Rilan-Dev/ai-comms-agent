@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createLocalDraft, updateLocalDraftForOrganization, recordAuditEvent } from "@ai-comms-agent/db";
+import { createLocalDraft, updateLocalDraftForOrganization, listLocalDraftsForOrganization, deleteLocalDraftForOrganization, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -40,6 +40,38 @@ export async function PATCH(request: Request) {
     if (!draft) return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization." }, { status: 404 });
     await recordAuditEvent({ organizationId, actorUserId: subjectUser.user.id, eventType: "email.draft.updated", targetType: "email_message", targetId: messageId, action: "update", decision: "allowed" });
     return NextResponse.json({ draft });
+  } catch (error) {
+    return authorizationErrorToResponse(error);
+  }
+}
+
+
+export async function GET(request: Request) {
+  try {
+    if (!process.env.DATABASE_URL) return NextResponse.json({ error: "database_not_configured", message: "PostgreSQL is required for drafts." }, { status: 503 });
+    await ensureDevSeed();
+    const organizationId = new URL(request.url).searchParams.get("organizationId") ?? "";
+    if (!organizationId) return NextResponse.json({ error: "validation_error", message: "Organization is required." }, { status: 422 });
+    await authorize(request, { organizationId: asOrganizationId(organizationId), role: "member" }, getIdentityAdapter(), getIdentityRepository());
+    return NextResponse.json({ drafts: await listLocalDraftsForOrganization(organizationId) });
+  } catch (error) {
+    return authorizationErrorToResponse(error);
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    if (!process.env.DATABASE_URL) return NextResponse.json({ error: "database_not_configured", message: "PostgreSQL is required for drafts." }, { status: 503 });
+    await ensureDevSeed();
+    const body = await request.json().catch(() => null);
+    const organizationId = typeof body?.organizationId === "string" ? body.organizationId : "";
+    const messageId = typeof body?.messageId === "string" ? body.messageId : "";
+    if (!organizationId || !messageId) return NextResponse.json({ error: "validation_error", message: "Organization and draft are required." }, { status: 422 });
+    const subjectUser = await authorize(request, { organizationId: asOrganizationId(organizationId), role: "member" }, getIdentityAdapter(), getIdentityRepository());
+    const deleted = await deleteLocalDraftForOrganization(organizationId, messageId);
+    if (!deleted) return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization." }, { status: 404 });
+    await recordAuditEvent({ organizationId, actorUserId: subjectUser.user.id, eventType: "email.draft.deleted", targetType: "email_message", targetId: messageId, action: "delete", decision: "allowed" });
+    return NextResponse.json({ deleted: true });
   } catch (error) {
     return authorizationErrorToResponse(error);
   }
