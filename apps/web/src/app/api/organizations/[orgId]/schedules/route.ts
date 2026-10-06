@@ -76,8 +76,3 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ o
     return NextResponse.json({ ok: true });
   } catch (error) { return authorizationErrorToResponse(error); }
 }
-
-export async function GET_RUNS(request: Request, { params }: { params: Promise<{ orgId: string; jobId: string }> }) {
-  const { orgId, jobId } = await params;
-  return NextResponse.json({ runs: await listScheduledJobRuns(orgId, jobId) });
-}
