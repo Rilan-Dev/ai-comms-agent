@@ -698,3 +698,12 @@ Latest source correction: `apps/web/src/app/api/email-accounts/route.ts` was rep
 - WhatsApp account configuration API/UI now stores Meta credentials encrypted server-side and keeps account status `pending` until provider verification is implemented.
 - Latest implementation commit: `8675e9bc39799796714b1418470733246f58e4ca8`.
 - Runtime/browser validation intentionally deferred under the active development-first instruction; no PASS is claimed.
+
+
+### 2026-10-06 — WhatsApp implementation checkpoint
+- WhatsApp account credentials are encrypted server-side and account status remains truthful until worker verification succeeds.
+- Webhook signatures use HMAC SHA-256 and inbound provider IDs are persisted idempotently.
+- Outbound messages are queued in PostgreSQL and provider execution is worker-only.
+- Legacy WhatsApp schema compatibility is handled by forward-only migration 0016.
+- Latest implementation commit: `552f13e097c4ff33b7c81a5db7a216328caea078`.
+- Runtime/browser validation is intentionally deferred under the development-first instruction.
