@@ -382,3 +382,6 @@ A source-integrity defect in the email account API was corrected (literal `\\n` 
 ChatGPT corrected the persisted Mail repository to match the canonical 0003 email-domain schema (from_email/from_name, to_recipients, is_sent, sanitized body, attachment existence) and added regression tests for organization scoping and parameterized search. No provider mutation is claimed yet.
 
 **Next implementation:** complete the Mail vertical slice with persisted message mutation APIs (read/unread, draft create/update/delete, provider-aware send/reply/forward behind deterministic authorization/approval), thread actions, audit events, and polished loading/error/empty states. Do not fabricate provider connectivity or bypass approval for sensitive outbound actions.
+### 2026-10-06 — Mail vertical continuation
+
+ChatGPT continues development-first Mail implementation without waiting for CI/Vercel. Completed the next persisted mail slice: organization-scoped read/unread mutation with audit, a persisted local draft repository/API, autosaving compose UI, and an inbox Compose entry point. No provider send is simulated. Next implementation target is real thread/message mutations and provider-backed draft/send orchestration, with approval boundaries preserved.
