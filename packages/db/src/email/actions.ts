@@ -124,6 +124,18 @@ export async function decideEmailAction(
   return getEmailActionForOrganization(organizationId, actionId);
 }
 
+export async function listApprovedEmailActions(limit = 10) {
+  const safeLimit = Math.min(Math.max(limit, 1), 50);
+  const r = await query<Row>(
+    `SELECT * FROM email_actions
+     WHERE status = 'approved' AND (expires_at IS NULL OR expires_at > now())
+     ORDER BY approved_at ASC NULLS LAST, requested_at ASC
+     LIMIT $1`,
+    [safeLimit],
+  );
+  return r.rows.map(action);
+}
+
 export async function claimApprovedEmailAction(actionId: string) {
   const r = await query<Row>(
     `UPDATE email_actions
