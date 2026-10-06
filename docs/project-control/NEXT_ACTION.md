@@ -431,3 +431,10 @@ Next implementation focus: finish deterministic Email Accounts lifecycle/source 
 - Corrected both directly on `main`: restored the TLS/SSRF-safe IMAP/SMTP connection-test module and removed the duplicate `[id]` Mail thread route.
 - No provider connectivity is claimed and no credentials were used.
 - **Next:** pull `main`, rerun `bash scripts/manual-up.sh`, then inspect container logs. If runtime is clean, continue exposing provider-backed draft synchronization and secure attachment metadata/download UX through Mail UI/API.
+
+
+### 2026-10-06 — Development-first continuation: Mail to WhatsApp
+
+Completed the concrete Mail follow-up: provider draft synchronization request/status UI, worker polling/execution, approval-safe send/reply/forward provider execution, organization-scoped attachment metadata, and secure attachment download boundary with scan/integrity/path checks.
+
+Development now continues into the WhatsApp vertical slice without waiting for CI/Vercel. Next implementation focus: harden the WhatsApp account schema boundary, implement Meta webhook verification/idempotent inbound persistence, worker-backed outbound text execution, exactly-one WhatsApp account per agent binding, conversation UI, and truthful configuration-required/error/retry states. No provider success is fabricated without real credentials.
