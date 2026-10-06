@@ -3,6 +3,12 @@ import { getWhatsAppAccountForOrganization, listPendingWhatsAppAccounts, updateW
 
 const GRAPH_HOST = "https://graph.facebook.com";
 
+type WhatsAppGraphPayload = {
+  error?: { message?: unknown };
+  display_phone_number?: unknown;
+  verified_name?: unknown;
+  messages?: Array<{ id?: unknown }>;
+};
 
 export async function verifyPendingWhatsAppAccounts(limit = 10) {
   if (!process.env.DATABASE_URL) return { processed: 0 };
@@ -20,7 +26,7 @@ export async function verifyPendingWhatsAppAccounts(limit = 10) {
       const version = process.env.WHATSAPP_GRAPH_API_VERSION || "v23.0";
       const url = new URL(version + "/" + encodeURIComponent(account.phone_number_id) + "?fields=display_phone_number,verified_name", GRAPH_HOST + "/");
       const response = await fetch(url, { headers: { authorization: "Bearer " + token } });
-      const payload = await response.json().catch(() => ({}));
+      const payload = (await response.json().catch(() => ({}))) as WhatsAppGraphPayload;
       if (!response.ok) throw new Error(typeof payload?.error?.message === "string" ? payload.error.message : "Meta WhatsApp account verification failed");
       await updateWhatsAppAccountStatus(account.organization_id, account.id, "connected", null, typeof payload?.display_phone_number === "string" ? payload.display_phone_number : null, typeof payload?.verified_name === "string" ? payload.verified_name : null);
       await recordAuditEvent({ organizationId: account.organization_id, actorUserId: null, eventType: "whatsapp.account.verified", targetType: "whatsapp_account", targetId: account.id, action: "verify", decision: "allowed" });
