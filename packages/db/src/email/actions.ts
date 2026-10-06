@@ -69,6 +69,18 @@ export async function createEmailAction(input: CreateEmailActionInput) {
   return action(r.rows[0]);
 }
 
+export async function listPendingEmailActionsForOrganization(organizationId: string) {
+  const r = await query<Row>(
+    `SELECT * FROM email_actions
+       WHERE organization_id = $1
+         AND status = 'pending_approval'
+         AND (expires_at IS NULL OR expires_at > now())
+       ORDER BY requested_at ASC`,
+    [organizationId],
+  );
+  return r.rows.map(action);
+}
+
 export async function getEmailActionForOrganization(organizationId: string, actionId: string) {
   const r = await query<Row>(
     `SELECT * FROM email_actions
