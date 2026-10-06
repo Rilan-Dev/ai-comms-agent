@@ -415,3 +415,10 @@ Implemented the bounded provider retry layer and wired it into verified provider
 Next implementation focus: finish deterministic Email Accounts lifecycle/source coverage, then begin the Mail vertical slice (provider-backed mailbox structure/sync boundary) without waiting for CI/Vercel.
 
 \n\n### 2026-10-06 — Mail provider draft synchronization continuation\nContinue Product Completion Slice 2 — Mail. Complete provider-backed draft synchronization and secure attachment retrieval/handling, then finish message/thread action UX. Provider execution remains worker-only and credential-free in browser/API paths. Do not fabricate live provider connectivity. CI/Vercel are acceptance gates, not development blockers under the explicit development-first override.\n
+
+### 2026-10-06 — Mail provider draft/attachment implementation checkpoint
+- Implemented worker-owned provider draft synchronization with encrypted credential access, capability gating, audit events, and persisted provider draft sync status.
+- Updated approved-send execution to reuse an already synchronized provider draft and persist the resulting provider message ID, preventing duplicate provider draft creation.
+- Added worker-only attachment retrieval with organization/message ownership checks, provider capability gating, credential isolation, configurable size limits, and SHA-256 integrity metadata.
+- Added worker security regression coverage for these boundaries.
+- **Next concrete implementation:** expose the draft synchronization lifecycle through the existing Mail UI/API and implement attachment metadata/download UX backed by a safe object-storage boundary. Keep provider execution worker-only and do not fabricate live connectivity.
