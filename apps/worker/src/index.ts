@@ -10,6 +10,7 @@ import { isPostgresConfigured } from "@ai-comms-agent/db";
 import { startProviderDraftSyncLoop } from "./email/provider-draft-worker";
 import { processApprovedEmailActions } from "./email/action-worker";
 import { processQueuedWhatsAppMessages, verifyPendingWhatsAppAccounts } from "./messaging/whatsapp-worker";
+import { processScheduledJobs } from "./scheduling/scheduler-worker";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -79,6 +80,7 @@ function main() {
   const actionTimer = setInterval(() => { void processApprovedEmailActions(); }, 5_000);
   const whatsappTimer = setInterval(() => { void processQueuedWhatsAppMessages(); }, 5_000);
   const whatsappVerifyTimer = setInterval(() => { void verifyPendingWhatsAppAccounts(); }, 10_000);
+  const schedulerTimer = setInterval(() => { void processScheduledJobs(); }, 15_000);
   const interval = setInterval(() => {
     const checks = healthCheck();
     log("health check", checks);
@@ -92,13 +94,14 @@ function main() {
     clearInterval(actionTimer);
     clearInterval(whatsappTimer);
     clearInterval(whatsappVerifyTimer);
+    clearInterval(schedulerTimer);
     process.exit(0);
   };
 
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
 
-  log("worker ready — provider draft synchronization loop enabled when PostgreSQL is configured");
+  log("worker ready — provider draft, WhatsApp, and durable scheduler loops enabled when PostgreSQL is configured");
 }
 
 main();
