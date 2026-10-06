@@ -17,7 +17,7 @@ export function ApprovalsClient({ organizationId }: { organizationId: string }) 
       setActions(d.actions ?? []);
     } catch (e) { setNotice(e instanceof Error ? e.message : "Could not load approvals."); } finally { setBusy(false); }
   }
-  useEffect(() => { void load(); }, [organizationId]);
+  useEffect(() => { void load(); const timer = setInterval(() => { void load(); }, 5000); return () => clearInterval(timer); }, [organizationId]);
 
   async function decide(actionId: string, decision: "approved" | "rejected") {
     setBusy(true); setNotice(null);
@@ -25,7 +25,7 @@ export function ApprovalsClient({ organizationId }: { organizationId: string }) 
       const r = await fetch("/api/mail/actions", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ organizationId, actionId, decision }) });
       const d = await r.json(); if (!r.ok) throw new Error(d.message ?? "Could not update approval.");
       setActions(current => current.filter(a => a.id !== actionId));
-      setNotice(decision === "approved" ? "Approved. Provider execution remains worker-only." : "Rejected. No provider action was executed.");
+      setNotice(decision === "approved" ? "Approved. The worker will execute the provider action using server-side credentials." : "Rejected. No provider action was executed.");
     } catch (e) { setNotice(e instanceof Error ? e.message : "Could not update approval."); } finally { setBusy(false); }
   }
 
