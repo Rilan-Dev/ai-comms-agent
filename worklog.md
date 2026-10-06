@@ -1784,3 +1784,23 @@ ChatGPT continued development-first implementation without waiting for CI/Vercel
 - No provider credentials were fabricated, no live WhatsApp/Meta connectivity was claimed, and no CI/Vercel result was treated as a development blocker.
 
 Next: worker-side durable scheduler tick and automation trigger evaluation, followed by the shared agent execution boundary.
+
+
+## Task ID: 12
+## Phase: 4 — Durable Scheduling + Automation Runtime
+
+- **Status**: implementation_continues
+- **Date**: 2026-10-06
+- **Implementer**: ChatGPT
+
+### Implemented
+- Added a shared agent-execution request/dispatch contract.
+- Added PostgreSQL `FOR UPDATE SKIP LOCKED` scheduled-job claiming and durable scheduled run lifecycle.
+- Added timezone-aware five-field cron matching and next-fire calculation.
+- Added worker scheduler polling every 15 seconds when PostgreSQL is configured.
+- Added deterministic automation trigger/condition evaluation and automation run lifecycle persistence.
+- Added truthful configuration-required behavior until the Clara-backed agent runtime adapter is wired.
+- Added worker tests for cron and automation matching.
+
+### Next
+Implement the Clara-backed agent execution adapter, then route scheduled/automation actions through existing approval-safe email and WhatsApp execution paths. CI/Vercel are not development blockers per the explicit development-first instruction.
