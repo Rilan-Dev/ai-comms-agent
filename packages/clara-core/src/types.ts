@@ -13,6 +13,7 @@
  */
 
 // AI core types
+// @ts-ignore — the optional Clara submodule may be absent in host checkouts.
 export type {
   AIProvider,
   ChatMessage,
@@ -25,6 +26,7 @@ export type {
 } from "../../../vendor/clara/clara-core/source/src/modules/ai-core/types";
 
 // Voice core types
+// @ts-ignore — the optional Clara submodule may be absent in host checkouts.
 export type {
   VoiceProvider,
   VoiceProviderService,
@@ -32,6 +34,7 @@ export type {
 } from "../../../vendor/clara/clara-core/source/src/modules/voice-core/types";
 
 // RAG grounding types
+// @ts-ignore — the optional Clara submodule may be absent in host checkouts.
 export type {
   GroundingRagMode,
   GroundingRequest,
