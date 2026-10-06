@@ -438,3 +438,10 @@ Next implementation focus: finish deterministic Email Accounts lifecycle/source 
 Completed the concrete Mail follow-up: provider draft synchronization request/status UI, worker polling/execution, approval-safe send/reply/forward provider execution, organization-scoped attachment metadata, and secure attachment download boundary with scan/integrity/path checks.
 
 Development now continues into the WhatsApp vertical slice without waiting for CI/Vercel. Next implementation focus: harden the WhatsApp account schema boundary, implement Meta webhook verification/idempotent inbound persistence, worker-backed outbound text execution, exactly-one WhatsApp account per agent binding, conversation UI, and truthful configuration-required/error/retry states. No provider success is fabricated without real credentials.
+
+
+### 2026-10-06 — WhatsApp runtime continuation
+
+WhatsApp foundation is now implemented: organization-scoped account persistence/configuration, encrypted Meta credentials, worker-side account verification, signed/idempotent webhook ingestion, inbound message persistence, worker-owned outbound Meta execution, queued outbound API, and conversation UI. A forward-only `0016_whatsapp_schema_reconciliation.sql` migration reconciles the legacy 0002 WhatsApp schema with the richer 0004 runtime contract.
+
+Next implementation: harden webhook status updates/media handling, enforce exactly-one WhatsApp account binding per agent in runtime APIs/UI, add agent-command routing from inbound WhatsApp messages, then continue Automations/Schedules. Do not wait for CI/Vercel and do not fabricate provider connectivity.
