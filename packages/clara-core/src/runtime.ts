@@ -33,4 +33,5 @@ export {
   type ClaraRuntimeContext,
   type ClaraAgentTurnRequest,
   type ClaraAgentTurn,
+// @ts-ignore — suppress the unresolved optional submodule at the module specifier.
 } from "../../../vendor/clara/clara-core/source/src/modules/ai-platform-core/clara-runtime";
