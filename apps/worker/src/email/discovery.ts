@@ -54,3 +54,4 @@ export async function discoverEmailAccountStructure(accountId: string): Promise<
     await accounts.updateStatus(account.id, "error", message);
     throw error;
   }
+}
