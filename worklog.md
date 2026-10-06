@@ -1636,3 +1636,15 @@ No provider credentials were fabricated and Clara source was not modified.
 - No provider credentials were fabricated or used. No live connectivity is claimed.
 - Latest implementation commit before control-document synchronization: `1972d62cffca5b1b5a5eaeb4ddcb4e7c9f53b446`.
 - Next implementation target: complete persisted folder/label discovery lifecycle and provider contract coverage, then finish Email Accounts UX/assignment lifecycle before Mail.
+
+
+## 2026-10-06 — ChatGPT Email Accounts lifecycle continuation
+
+- **Owner:** ChatGPT
+- Added `apps/worker/src/email/provider-verification.ts` to centralize provider connection verification, capability normalization, callback execution, and guaranteed disconnect cleanup.
+- Refactored `apps/worker/src/email/discovery.ts` so folder/label discovery occurs on the same verified live provider connection and persists replacement snapshots before marking the account connected. Failures persist an explicit account error.
+- Added `GET /api/email-accounts/[accountId]/structure` with organization authorization. It returns persisted folders, labels, capabilities, and organization-scoped agent assignments only; credentials are never exposed.
+- Added `agentsForEmailAccount` to the PostgreSQL agent repository and surfaced current agent bindings in the Email Accounts UI.
+- Added provider capability/lifecycle tests and Email Accounts static lifecycle tests. Real provider connectivity remains unverified because no user-owned provider credentials are available.
+- Corrected the provider registry test to match the current registry API and verify Gmail/IMAP-SMTP/Zoho capability surfaces.
+- **Validation:** intentionally deferred under the project-owner development-first instruction. No CI PASS, browser PASS, Vercel READY, or live provider connection is claimed.
