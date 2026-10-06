@@ -202,3 +202,12 @@ Development is intentionally continuing without waiting for CI/Vercel jobs. Befo
 - Agent channel binding now uses organization-scoped WhatsApp account discovery rather than arbitrary identifiers.
 - Agent policy mutations now use strict server-side validation with field-level failures.
 - Slice 1 remains active; these changes do not advance the menu gate.
+
+
+### 2026-10-06 — ChatGPT continuation
+### 2026-10-06 — Slice 2 lifecycle hardening
+- Mailbox folder/label discovery now persists as one transaction so partial snapshots cannot be exposed.
+- Provider registry tests now require every registered adapter to expose the complete capability map and to keep `discoverCapabilities()` aligned with `capabilities()`.
+- Disconnected email accounts can be reconnected from the account UI; the previous UI condition accidentally made them a dead-end state.
+- No provider credentials were fabricated and no live connection is claimed.
+- Continue Slice 2 with remaining connection/reconnect UX and deterministic API coverage before moving to Mail.
