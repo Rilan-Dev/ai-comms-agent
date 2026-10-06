@@ -90,4 +90,4 @@ export {
   applyWhatsAppProviderStatus,
 } from "./messaging/whatsapp-repository";
 
-export { listScheduledJobs, getScheduledJob, createScheduledJob, updateScheduledJob, deleteScheduledJob, listScheduledJobRuns, claimDueScheduledJobs, advanceScheduledJob, completeScheduledJobRun, failScheduledJobRun, listAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, listAutomationRuns, type ScheduledJobClaim } from "./automation/repository";
+export { listScheduledJobs, getScheduledJob, createScheduledJob, updateScheduledJob, deleteScheduledJob, listScheduledJobRuns, claimDueScheduledJobs, advanceScheduledJob, completeScheduledJobRun, failScheduledJobRun, listAutomationRules, listActiveAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, listAutomationRuns, createAutomationRun, completeAutomationRun, failAutomationRun, type ScheduledJobClaim } from "./automation/repository";
