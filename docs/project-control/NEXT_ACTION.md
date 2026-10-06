@@ -459,3 +459,11 @@ Next implementation: harden webhook status updates/media handling, enforce exact
 - Corrected the outbound response to use the same `WhatsAppGraphPayload` boundary.
 - Commit: `ee9d302`.
 - **Next:** pull `main` and rerun `npm run typecheck`; continue the active WhatsApp implementation after the worker typecheck is clean. Do not wait for CI/Vercel.
+
+
+### 2026-10-06 — WhatsApp hardening + Scheduling/Automation implementation continuation
+- Hardened WhatsApp provider status handling (sent/delivered/read/failed), monotonic status transitions, provider error persistence, sanitized media metadata, and inbound routing to explicitly bound agents.
+- Added migration 0017 for WhatsApp routing/status lifecycle and shared-number-safe provider message identity.
+- Replaced static Automations and Schedules pages with persisted PostgreSQL-backed workspaces and organization-authorized CRUD APIs.
+- Added migration 0018 with schedule timezone, catch-up window, last-error fields, and durable runtime indexes.
+- Next concrete implementation: build the worker-side durable scheduler tick and automation trigger evaluator, then connect scheduled/automation executions to the shared agent execution boundary. Do not wait for CI/Vercel.
