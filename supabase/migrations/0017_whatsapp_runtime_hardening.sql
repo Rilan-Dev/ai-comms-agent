@@ -22,3 +22,12 @@ CREATE INDEX IF NOT EXISTS whatsapp_messages_provider_status_idx
 
 CREATE INDEX IF NOT EXISTS agent_whatsapp_accounts_account_idx
   ON agent_whatsapp_accounts(whatsapp_account_id);
+
+-- A provider message may be delivered to more than one explicitly bound agent.
+-- The provider ID remains unique per WhatsApp account, not globally across routed agent copies.
+ALTER TABLE whatsapp_messages
+  DROP CONSTRAINT IF EXISTS whatsapp_messages_provider_message_id_key;
+
+CREATE UNIQUE INDEX IF NOT EXISTS whatsapp_messages_account_provider_agent_uniq
+  ON whatsapp_messages(whatsapp_account_id, provider_message_id, COALESCE(agent_id, '00000000-0000-0000-0000-000000000000'::uuid))
+  WHERE provider_message_id IS NOT NULL;
