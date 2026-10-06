@@ -314,3 +314,7 @@ Current commit: `1972d62cffca5b1b5a5eaeb4ddcb4e7c9f53b446`.
 - Removed synthetic mailbox discovery timestamps; UI/API now expose only persisted structure state.
 - Provider lifecycle remains server-side, organization-scoped, and credential-free in responses.
 - Latest implementation commit before this control update: `ee2bba7c696e2ed9672c7ff7281e0a1658951798`.
+
+
+### 2026-10-06 — Slice 2 Email Accounts checkpoint
+Current product slice: **Slice 2 — Email Accounts**. ChatGPT is the sole active implementer. Latest source work hardens atomic folder/label discovery persistence, provider capability contract tests, and disconnected-account recovery. Runtime/browser/provider acceptance remains pending and no live credentials are claimed.
