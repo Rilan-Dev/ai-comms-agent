@@ -1902,3 +1902,14 @@ ChatGPT continued the realtime voice vertical slice without waiting for CI/Verce
 - **Files changed:** `packages/clara-core/src/runtime.ts`, `packages/clara-core/src/types.ts`.
 - **Commits:** `36bd517f730f20509f92f961b8a0e44651e66eca`, `cdafde392e36b09be11056f4654a35780799620e`.
 - No CI/Vercel wait was performed. The user should rerun `npm run typecheck` after pulling these commits; no passing result is claimed here.
+
+
+## 2026-10-07 — Clara optional-submodule TS2307 directive placement correction
+
+- **Owner:** ChatGPT
+- **Scope:** Error-fixing only; no feature development and no project-control documentation changes.
+- User reran `npm run typecheck` and the same four Clara TS2307 diagnostics remained. The previous `@ts-ignore` directives were placed before the multiline export declarations, but TypeScript 5.8 reports TS2307 on the module-specifier line itself under `--noResolve`.
+- Moved the targeted `@ts-ignore` directives to immediately precede each unresolved Clara module-specifier line in `runtime.ts` and `types.ts`. This keeps the immutable Clara source untouched and suppresses only the expected missing optional-submodule diagnostic.
+- **Files changed:** `packages/clara-core/src/runtime.ts`, `packages/clara-core/src/types.ts`.
+- **Commits:** `bc7a06d6f20a82a83b4603e300aeaaa5d672024b`, `0cb93988618cc30f00c66b1ef35d664ad50a6189`.
+- No CI/Vercel wait was performed. No passing typecheck is claimed until the user reruns `npm run typecheck`.
