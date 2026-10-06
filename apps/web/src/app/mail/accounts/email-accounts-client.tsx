@@ -37,6 +37,12 @@ export function EmailAccountsClient({
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | EmailAccount["status"]>("all");
   const [refreshing, setRefreshing] = useState(false);
+  const [structureLoading, setStructureLoading] = useState<string | null>(null);
+  const [structureByAccount, setStructureByAccount] = useState<Record<string, {
+    folders: Array<{ id: string; name: string; role: string; unread_count: number }>;
+    labels: Array<{ id: string; name: string; label_type: string }>;
+    discoveredAt: string | null;
+  }>>({});
   const filteredAccounts = useMemo(() => { const q = query.trim().toLowerCase(); return accounts.filter((a) => (statusFilter === "all" || a.status === statusFilter) && (!q || [a.email_address, a.display_name, a.provider].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)))); }, [accounts, query, statusFilter]);
   async function refreshAccounts() { setRefreshing(true); try { const response = await fetch("/api/email-accounts?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" }); const data = await response.json(); if (!response.ok) throw new Error(data.message ?? "Could not refresh email accounts."); setAccounts(data.accounts ?? []); setNotice("Mailbox status refreshed."); } catch (error) { setNotice(error instanceof Error ? error.message : "Could not refresh email accounts."); } finally { setRefreshing(false); } }
 
@@ -91,6 +97,24 @@ export function EmailAccountsClient({
       setNotice("Mailbox removed. Stored mailbox data and credentials were deleted.");
     } catch (error) { setNotice(error instanceof Error ? error.message : "Could not remove the mailbox."); }
     finally { setBusy(null); }
+  }
+
+  async function loadStructure(accountId: string) {
+    setStructureLoading(accountId);
+    try {
+      const response = await fetch(`/api/email-accounts/${encodeURIComponent(accountId)}/structure?organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message ?? "Could not load mailbox structure.");
+      setStructureByAccount((current) => ({ ...current, [accountId]: {
+        folders: data.folders ?? [],
+        labels: data.labels ?? [],
+        discoveredAt: data.discoveredAt ?? null,
+      }}));
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not load mailbox structure.");
+    } finally {
+      setStructureLoading(null);
+    }
   }
 
   async function disconnect(accountId: string) {
@@ -233,11 +257,43 @@ export function EmailAccountsClient({
                     Last sync: {account.last_sync_at ? new Date(account.last_sync_at).toLocaleString() : "Not synchronized"}
                   </p>
                   {account.last_error && <p role="alert" className="mt-2 max-w-2xl text-xs text-destructive">{account.last_error}</p>}
+                  {structureByAccount[account.id] && (
+                    <div className="mt-3 rounded-2xl border bg-muted/30 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Mailbox structure</p>
+                        <span className="text-[11px] text-muted-foreground">
+                          {structureByAccount[account.id].discoveredAt
+                            ? `Discovered ${new Date(structureByAccount[account.id].discoveredAt as string).toLocaleString()}`
+                            : "No persisted discovery snapshot"}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {structureByAccount[account.id].folders.map((folder) => (
+                          <span key={folder.id} className="rounded-full border bg-background px-2 py-1 text-[10px] font-medium">
+                            {folder.name}{folder.unread_count > 0 ? ` · ${folder.unread_count} unread` : ""}
+                          </span>
+                        ))}
+                        {structureByAccount[account.id].labels.map((label) => (
+                          <span key={label.id} className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-medium">
+                            #{label.name}
+                          </span>
+                        ))}
+                        {structureByAccount[account.id].folders.length === 0 && structureByAccount[account.id].labels.length === 0 && (
+                          <span className="text-xs text-muted-foreground">No folders or labels have been discovered yet.</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {account.status !== "connected" && account.status !== "disconnected" && (
                     <button type="button" disabled={busy === account.id} onClick={() => reconnect(account)} className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
                       {busy === account.id ? "Reconnecting…" : "Reconnect"}
+                    </button>
+                  )}
+                  {account.status === "connected" && (
+                    <button type="button" disabled={structureLoading === account.id} onClick={() => loadStructure(account.id)} className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
+                      {structureLoading === account.id ? "Loading…" : structureByAccount[account.id] ? "Refresh folders" : "View folders"}
                     </button>
                   )}
                   {account.status === "connected" && account.provider === "imap_smtp" && (
