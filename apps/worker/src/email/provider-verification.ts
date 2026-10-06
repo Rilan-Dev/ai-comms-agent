@@ -1,5 +1,6 @@
 import type { CapabilitySet, EmailCredentials, EmailProvider } from "@ai-comms-agent/shared";
 import { normalizeCapabilitySet } from "@ai-comms-agent/shared";
+import { withProviderRetry } from "./retry";
 
 export interface ProviderVerificationResult {
   capabilities: CapabilitySet;
