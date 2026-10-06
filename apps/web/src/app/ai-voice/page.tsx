@@ -1,1 +1,23 @@
-const providers=["OpenAI","ElevenLabs","Gemini","Sarvam"]; export default function AIVoicePage(){return <main className="mx-auto max-w-[1200px] space-y-7 p-5 sm:p-7 lg:p-9"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Clara runtime</p><h1 className="mt-2 text-3xl font-semibold">AI & Voice</h1><p className="mt-2 text-sm text-muted-foreground">Clara owns provider resolution, RAG, chat, streaming, and realtime voice. This workspace controls host configuration.</p></div><section className="grid gap-4 lg:grid-cols-2">{providers.map((p,i)=><div key={p} className="rounded-2xl border bg-background p-5 shadow-sm"><div className="flex items-center justify-between"><h2 className="font-semibold">{p}</h2><span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${i===0?"bg-emerald-50 text-emerald-700":"bg-muted text-muted-foreground"}`}>{i===0?"Primary":"Available"}</span></div><p className="mt-2 text-sm text-muted-foreground">Provider credentials are resolved server-side through Clara.</p><div className="mt-5 flex gap-2"><button className="rounded-xl border px-3 py-2 text-xs font-semibold hover:bg-muted">Configure</button><button className="rounded-xl border px-3 py-2 text-xs font-semibold hover:bg-muted">Test connection</button></div></div>)}</section><div className="rounded-2xl border bg-foreground p-6 text-background"><p className="text-sm font-semibold">Realtime voice</p><p className="mt-2 max-w-2xl text-sm leading-6 text-background/65">Target experience: fast turn-taking, interruption-safe streaming, provider switching, and complete session telemetry without moving RAG or provider logic into the host application.</p></div></main>}
+import { PostgresAgentRepository } from "@ai-comms-agent/db";
+import { ensureDevSeed, getDevOrgId } from "@/lib/identity/repository";
+import { VoiceWorkspace } from "./voice-workspace";
+
+export const dynamic = "force-dynamic";
+
+export default async function AIVoicePage() {
+  if (!process.env.DATABASE_URL) return <Unavailable body="PostgreSQL is required for voice sessions." />;
+  try {
+    await ensureDevSeed();
+    const organizationId = getDevOrgId();
+    if (!organizationId) return <Unavailable body="Organization context is unavailable." />;
+    const agents = await new PostgresAgentRepository().list(organizationId);
+    if (!agents.length) return <Unavailable body="Create an agent before starting a voice session." actionHref="/agents/new" actionLabel="Create agent" />;
+    return <VoiceWorkspace organizationId={organizationId} agents={agents.map((a) => ({ id: a.id, name: a.name, status: a.status }))} />;
+  } catch {
+    return <Unavailable body="The voice workspace could not load. Check PostgreSQL and retry." />;
+  }
+}
+
+function Unavailable({ body, actionHref, actionLabel }: { body: string; actionHref?: string; actionLabel?: string }) {
+  return <main className="mx-auto max-w-3xl p-6 lg:p-10"><div className="rounded-3xl border bg-background p-8 shadow-sm"><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Clara realtime voice</p><h1 className="mt-2 text-2xl font-semibold">Voice workspace unavailable</h1><p className="mt-3 text-sm leading-6 text-muted-foreground">{body}</p>{actionHref ? <a href={actionHref} className="mt-6 inline-flex rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background">{actionLabel}</a> : null}</div></main>;
+}
