@@ -21,7 +21,7 @@ export function matchesCron(cron:string,date:Date,timeZone:string):boolean{
   const get=(type:string)=>Number(parts.find(p=>p.type===type)?.value);
   const weekday=new Map([["Sun",0],["Mon",1],["Tue",2],["Wed",3],["Thu",4],["Fri",5],["Sat",6]]).get(parts.find(p=>p.type==="weekday")?.value??"Sun")??0;
   const values=[get("minute"),get("hour"),get("day"),get("month"),weekday];
-  return fields.every((f,i)=>expandField(f,FIELD_RANGES[i][0],FIELD_RANGES[i][1]).has(values[i]));
+  return fields.every((f,i)=>{ const range=FIELD_RANGES[i]!; return expandField(f,range[0],range[1]).has(values[i]!); });
 }
 
 export function nextCronFire(cron:string,after:Date,timeZone:string):Date{
