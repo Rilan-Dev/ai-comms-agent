@@ -1840,3 +1840,13 @@ ChatGPT continued development-first implementation into the Clara realtime voice
 ChatGPT continued the realtime voice vertical slice without waiting for CI/Vercel. Added an authorized PATCH boundary for voice-session activation, turn counting, and telemetry; connected the browser voice workspace to microphone permission state and host telemetry; and ensured microphone failure closes the persisted session instead of leaving a false active state. Clara remains responsible for provider transport and reconnect; no provider connection or live credential success is claimed.
 
 **Next:** add the thin browser/Clara transport adapter contract and interruption-safe transcript event bridge, keeping provider transport implementation inside Clara and routing business actions through the existing host authorization boundary.
+
+
+## 2026-10-06 — Clara realtime voice boundary implementation
+- Added `apps/web/src/app/api/voice/turn/route.ts` for authenticated organization/agent/session transcript turns through the immutable Clara runtime with hybrid RAG.
+- Added interruption-safe transcript UI with abortable turns, monotonic sequence protection, microphone permission lifecycle, and truthful configuration-required/error states.
+- Added browser turn round-trip telemetry persistence through the existing voice session telemetry endpoint.
+- Added shared `VoiceTransportAdapter` / transcript event contract and exported it from `@ai-comms-agent/shared`; this is a host adapter contract and does not duplicate Clara provider transport, cancellation, or reconnect logic.
+- Modernized the Settings landing surface as the next product-control entry point; unimplemented subareas are not represented as provider-ready/live state.
+- No provider credentials, external sends, or live realtime provider connectivity were fabricated.
+- Development continues without waiting for CI/Vercel validation under the explicit project-owner development-first instruction.
