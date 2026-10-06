@@ -318,7 +318,8 @@ export function EmailAccountsClient({
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
