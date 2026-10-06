@@ -52,6 +52,14 @@ export class PostgresAgentRepository {
   async updatePolicy(orgId:string,id:string,i:Pick<AgentPolicy,"securityPolicy"|"allowedTools"|"allowedSenders"|"blockedSenders"|"rateLimits">):Promise<AgentPolicy|null>{
     const r=await query<Row>("INSERT INTO agent_policies (agent_id,security_policy,allowed_tools,allowed_senders,blocked_senders,rate_limits) SELECT a.id,$3::jsonb,$4::text[],$5::text[],$6::text[],$7::jsonb FROM agents a WHERE a.organization_id=$1 AND a.id=$2 ON CONFLICT(agent_id) DO UPDATE SET security_policy=EXCLUDED.security_policy,allowed_tools=EXCLUDED.allowed_tools,allowed_senders=EXCLUDED.allowed_senders,blocked_senders=EXCLUDED.blocked_senders,rate_limits=EXCLUDED.rate_limits RETURNING *",[orgId,id,JSON.stringify(i.securityPolicy),i.allowedTools,i.allowedSenders,i.blockedSenders,JSON.stringify(i.rateLimits)]); return r.rows[0]?policy(r.rows[0]):null;
   }
+  async agentsForEmailAccount(orgId:string,emailAccountId:string):Promise<Array<{id:string;name:string;slug:string;role:AgentEmailAccountRole}>>{
+    const r=await query<Row>(
+      "SELECT a.id,a.name,a.slug,b.role FROM agent_email_accounts b JOIN agents a ON a.id=b.agent_id WHERE a.organization_id=$1 AND b.email_account_id=$2 ORDER BY a.name ASC",
+      [orgId,emailAccountId],
+    );
+    return r.rows.map((row)=>({id:String(row.id),name:String(row.name),slug:String(row.slug),role:row.role as AgentEmailAccountRole}));
+  }
+
   async emailBindings(orgId:string,id:string):Promise<AgentEmailBinding[]>{ const r=await query<Row>("SELECT b.* FROM agent_email_accounts b JOIN agents a ON a.id=b.agent_id WHERE a.organization_id=$1 AND a.id=$2 ORDER BY b.created_at ASC",[orgId,id]); return r.rows.map(emailBinding); }
   async bindEmail(orgId:string,id:string,emailAccountId:string,role:AgentEmailAccountRole):Promise<AgentEmailBinding>{
     const r=await query<Row>("INSERT INTO agent_email_accounts(agent_id,email_account_id,role) SELECT a.id,$3,$4 FROM agents a JOIN email_accounts ea ON ea.id=$3 AND ea.organization_id=a.organization_id WHERE a.organization_id=$1 AND a.id=$2 ON CONFLICT(agent_id,email_account_id) DO UPDATE SET role=EXCLUDED.role RETURNING *",[orgId,id,emailAccountId,role]);
