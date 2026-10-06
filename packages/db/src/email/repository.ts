@@ -118,6 +118,17 @@ export class PostgresEmailAccountRepository {
     return r.rows[0] ? account(r.rows[0]) : null;
   }
 
+  async getForAgent(organizationId: string, agentId: string, accountId: string): Promise<EmailAccount | null> {
+    const r = await query<Row>(
+      `SELECT a.* FROM email_accounts a
+       JOIN agent_email_accounts binding ON binding.email_account_id = a.id
+       WHERE a.id = $1 AND a.organization_id = $2 AND binding.agent_id = $3 AND a.deleted_at IS NULL
+       LIMIT 1`,
+      [accountId, organizationId, agentId],
+    );
+    return r.rows[0] ? account(r.rows[0]) : null;
+  }
+
   async listForOrganization(organizationId: string): Promise<EmailAccount[]> {
     const r = await query<Row>(
       "SELECT * FROM email_accounts WHERE organization_id = $1 ORDER BY created_at DESC",
