@@ -1875,3 +1875,12 @@ ChatGPT continued the realtime voice vertical slice without waiting for CI/Verce
 - Added an Operations workspace and navigation entry; removed the static/fabricated “Core online” indicator from the sidebar.
 - Provider infrastructure status is intentionally reported as configured/not configured when the worker owns connectivity, rather than fabricating live connectivity.
 - Development continues directly into cross-surface E2E hardening without waiting for CI/Vercel.
+
+
+## 2026-10-06 — Cross-surface security and product-integrity hardening
+
+- Hardened the automated agent execution boundary: `create_email_approval` now resolves the email account through the organization + agent binding before creating a sensitive action.
+- Automated email approval requests and WhatsApp queue operations now emit persisted audit events with the agent/execution correlation context.
+- Added organization-scoped `/api/overview` and replaced hard-coded dashboard counts/activity with persisted PostgreSQL state, loading states, and truthful configuration errors.
+- Added product-completion contract tests covering audit authorization/filtering/export, Operations authorization/metrics, Overview non-fabrication, and automated email account binding.
+- Continue the final cross-surface E2E implementation without waiting for CI/Vercel validation.
