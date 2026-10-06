@@ -677,3 +677,6 @@ Acceptance remains a separate runtime/browser gate.
 
 ### 2026-10-06 — Email Accounts lifecycle hardening
 Latest development checkpoint: Email Accounts lifecycle hardening. Added atomic mailbox structure replacement, provider capability contract coverage for all registered adapters, and reconnectability for disconnected accounts. These are source changes only; no CI PASS, Vercel READY, or live-provider connection is claimed.
+
+
+Latest Email Accounts source changes: OAuth callback failures are routed back to the account UI without token payloads; UI consumes and clears provider error state. Deterministic static coverage was added. No runtime/browser/provider PASS is claimed.
