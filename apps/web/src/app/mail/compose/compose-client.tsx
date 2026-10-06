@@ -75,7 +75,7 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
   }, [to, cc, bcc, subject, bodyText]);
 
   return <main className="min-h-full bg-muted/20 p-5 sm:p-7 lg:p-9"><div className="mx-auto max-w-4xl">
-    <div className="flex items-center justify-between gap-4"><a href="/mail/inbox" className="text-sm font-semibold text-muted-foreground">← Back to inbox</a><span className="text-xs text-muted-foreground">{savedAt ? "Saved " + savedAt : "Local draft"}</span></div>
+    <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-4"><a href="/mail/inbox" className="text-sm font-semibold text-muted-foreground">← Back to inbox</a><a href="/mail/approvals" className="text-sm font-semibold text-muted-foreground underline underline-offset-4">Approvals</a></div><span className="text-xs text-muted-foreground">{savedAt ? "Saved " + savedAt : "Local draft"}</span></div>
     <section className="mt-6 overflow-hidden rounded-3xl border bg-background shadow-sm">
       <header className="border-b p-6"><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Mail</p><h1 className="mt-2 text-2xl font-semibold">New draft</h1><p className="mt-2 text-sm text-muted-foreground">Drafts are persisted locally first. Sending remains an authorized provider action and is not simulated.</p></header>
       {notice && <div role="alert" className="border-b bg-destructive/5 px-6 py-3 text-sm text-destructive">{notice}</div>}
