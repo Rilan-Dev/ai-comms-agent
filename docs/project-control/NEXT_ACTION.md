@@ -535,3 +535,14 @@ Implemented the next concrete WhatsApp runtime slice without waiting for CI/Verc
 actor: "ChatGPT"
 action: "Continue the Clara realtime voice vertical slice. Implement the provider transport handshake adapter behind the resolved Clara session endpoint, then wire browser microphone/transcript state to persisted voice session and telemetry boundaries."
 constraints: "Reuse Clara realtime architecture; do not modify Clara source; no provider API keys in browser; no fabricated live connectivity; CI/Vercel remain non-blocking under the development-first override."
+
+
+### 2026-10-06 — Worker typecheck correction: product actions + cron + DB export
+
+After pulling main at `e415700`, the worker typecheck exposed three source-level regressions introduced by the concrete product-action boundary: the WhatsApp agent-account repository helper was not re-exported from `@ai-comms-agent/db`, product-action results were inferred as generic records instead of the shared `ProductActionResult` contract, and strict indexed access still widened cron field ranges to `number | undefined`. Corrected these directly on `main` without changing provider behavior or Clara source.
+
+Correction commits: `ea1ffbd`, `2a9b030`, `45b4974`.
+
+The remaining Clara package diagnostics are the intentional optional vendored-submodule structural boundary; the web package SIGKILL is resource/process termination rather than a reported source diagnostic. Continue development-first implementation without waiting for CI/Vercel.
+
+**Next concrete implementation:** continue the Clara realtime voice surface already started at `/api/voice/session`: harden host-owned voice session lifecycle/telemetry and connect the voice UI to the host-authorized Clara transport boundary. Do not duplicate Clara provider logic or fabricate live provider connectivity.
