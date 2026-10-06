@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type Account = { id: string; provider: string; email_address: string; display_name?: string | null; status: string; capabilities: Record<string, boolean> };
 
 export function ComposeClient({ organizationId }: { organizationId: string }) {
+  const searchParams = useSearchParams();
+  const requestedDraftId = searchParams.get("draftId");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountId, setAccountId] = useState("");
   const [to, setTo] = useState("");
@@ -17,6 +20,23 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [approvalId, setApprovalId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!requestedDraftId) return;
+    void fetch("/api/mail/drafts?organizationId=" + encodeURIComponent(organizationId) + "&draftId=" + encodeURIComponent(requestedDraftId), { cache: "no-store" })
+      .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.message ?? "Could not load draft."); return d.draft; })
+      .then((d: Record<string, any>) => {
+        setDraftId(String(d.id));
+        setAccountId(String(d.email_account_id));
+        setTo(Array.isArray(d.to_recipients) ? d.to_recipients.join(", ") : "");
+        setCc(Array.isArray(d.cc_recipients) ? d.cc_recipients.join(", ") : "");
+        setBcc(Array.isArray(d.bcc_recipients) ? d.bcc_recipients.join(", ") : "");
+        setSubject(String(d.subject ?? ""));
+        setBodyText(String(d.text_body ?? ""));
+        setSavedAt(d.updated_at ? new Date(String(d.updated_at)).toLocaleTimeString() : null);
+      })
+      .catch(e => setNotice(e instanceof Error ? e.message : "Could not load draft."));
+  }, [organizationId, requestedDraftId]);
 
   useEffect(() => {
     void fetch("/api/email-accounts?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" })
