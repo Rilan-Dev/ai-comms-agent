@@ -93,3 +93,5 @@ export { EmailProviderRegistry, type EmailProviderFactory } from "./email/regist
 export { EMAIL_CAPABILITIES, emptyCapabilitySet, normalizeCapabilitySet, assertCapability } from "./email/capabilities";
 
 export type { AgentStatus, DeploymentEnvironment, AgentEmailAccountRole, Agent, AgentVersion, AgentDeployment, AgentPolicy, AgentEmailBinding, AgentWhatsAppBinding } from "./agent/domain";
+
+export type { AgentExecutionSource, AgentExecutionRequest, AgentExecutionDispatchResult } from "./agent/execution";
