@@ -5,7 +5,7 @@ import { executeProductActions } from "./product-action-executor";
 function buildPrompt(request:AgentExecutionRequest){
   const params=JSON.stringify(request.params);
   return [
-    "Execute this scheduled/automation task using the available tenant-bound Clara knowledge context.",
+    "Execute this tenant-bound agent task using the available Clara knowledge context.",
     "Intent: "+request.intent,
     "Parameters: "+params,
     "Do not claim that an external side effect occurred unless the host execution tool explicitly confirms it.",
