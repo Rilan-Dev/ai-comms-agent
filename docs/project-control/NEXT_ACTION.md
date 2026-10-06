@@ -403,3 +403,9 @@ Email Accounts lifecycle is now materially complete enough to enter Mail impleme
 
 ### 2026-10-06 — Mail thread/action continuation
 ChatGPT completed the next Mail implementation slice: authorized persisted thread API/page, read-state interaction in thread view, approval-safe reply request flow, pending approval API, and a responsive approval queue with approve/reject actions. Sensitive approval still does not execute provider calls in the browser. Next: draft deletion/update hardening, provider-backed draft result synchronization, forward UX, and secure attachment retrieval/handling. Continue without waiting for CI/Vercel.
+
+
+### 2026-10-06 — Mail draft/action continuation
+ChatGPT continued the Mail vertical slice without waiting for CI/Vercel. Persisted draft lifecycle is now organization-scoped end-to-end: list, retrieve into compose, autosave/update, authorized delete, audit, and responsive Drafts UI. Thread Forward now creates an explicit approval-gated sensitive action. Added deterministic contract coverage for draft lifecycle and forward authorization. No provider connectivity or send success is fabricated.
+
+**Next implementation:** complete provider-backed draft result synchronization and secure attachment retrieval/handling, then finish Mail message/thread action UX before Mail slice acceptance. Keep all outbound provider execution worker-only and approval-gated.
