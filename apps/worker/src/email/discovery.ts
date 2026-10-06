@@ -5,6 +5,7 @@ import {
 } from "@ai-comms-agent/db";
 import type { EmailCredentials } from "@ai-comms-agent/shared";
 import { createEmailProviderRegistry } from "./registry";
+import { verifyEmailProviderConnection } from "./provider-verification";
 
 export async function discoverEmailAccountStructure(accountId: string): Promise<{
   folders: number;
@@ -29,10 +30,12 @@ export async function discoverEmailAccountStructure(accountId: string): Promise<
   };
 
   const provider = createEmailProviderRegistry().create(account.provider);
-  await provider.connect(credentials);
-
+  let capabilities: Awaited<ReturnType<typeof verifyEmailProviderConnection>>["capabilities"];
   try {
-    const capabilities = await provider.discoverCapabilities();
+    capabilities = (await verifyEmailProviderConnection(provider, credentials)).capabilities;
+    // The verification helper disconnects the adapter after capability discovery.
+    // Folder/label discovery is therefore performed in a fresh connection below.
+    await provider.connect(credentials);
     const folders = capabilities.folders ? await provider.listFolders() : [];
     const labels = capabilities.labels && provider.listLabels ? await provider.listLabels() : [];
     const repository = new PostgresEmailFolderLabelRepository();
@@ -49,6 +52,8 @@ export async function discoverEmailAccountStructure(accountId: string): Promise<
     await accounts.updateStatus(account.id, "error", message);
     throw error;
   } finally {
-    await provider.disconnect();
+    // Safe even when verification failed before connect; provider implementations
+    // must tolerate disconnect after a partial connection attempt.
+    try { await provider.disconnect(); } catch { /* preserve the original verification/discovery error */ }
   }
 }
