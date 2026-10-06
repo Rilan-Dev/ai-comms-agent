@@ -8,6 +8,7 @@
 
 import { isPostgresConfigured } from "@ai-comms-agent/db";
 import { startProviderDraftSyncLoop } from "./email/provider-draft-worker";
+import { processApprovedEmailActions } from "./email/action-worker";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -74,6 +75,7 @@ function main() {
 
   // Phase 2: health-check loop. Real queue consumption is Phase 9+.
   const stopProviderDraftSync = startProviderDraftSyncLoop();
+  const actionTimer = setInterval(() => { void processApprovedEmailActions(); }, 5_000);
   const interval = setInterval(() => {
     const checks = healthCheck();
     log("health check", checks);
@@ -84,6 +86,7 @@ function main() {
     log(`received ${signal} — shutting down`);
     clearInterval(interval);
     stopProviderDraftSync();
+    clearInterval(actionTimer);
     process.exit(0);
   };
 
