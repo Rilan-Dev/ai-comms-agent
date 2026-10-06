@@ -150,7 +150,7 @@ export function EmailAccountsClient({
         </div>
         <div className="rounded-2xl border bg-muted/40 px-4 py-3 text-sm">
           <span className="font-semibold">{accounts.length}</span>
-          <span className="ml-1 text-muted-foreground">connected records</span>
+          <span className="ml-1 text-muted-foreground">mailboxes</span>
         </div>
       </header>
 
@@ -289,7 +289,7 @@ export function EmailAccountsClient({
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {account.status !== "connected" && account.status !== "disconnected" && (
+                  {account.status !== "connected" && (
                     <button type="button" disabled={busy === account.id} onClick={() => reconnect(account)} className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
                       {busy === account.id ? "Reconnecting…" : "Reconnect"}
                     </button>
