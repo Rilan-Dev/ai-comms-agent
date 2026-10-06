@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PostgresEmailAccountRepository, PostgresEmailFolderLabelRepository } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, PostgresEmailAccountRepository, PostgresEmailFolderLabelRepository } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -42,9 +42,11 @@ export async function GET(
     }
 
     const repository = new PostgresEmailFolderLabelRepository();
-    const [folders, labels] = await Promise.all([
+    const agentRepository = new PostgresAgentRepository();
+    const [folders, labels, agents] = await Promise.all([
       repository.listFolders(accountId),
       repository.listLabels(accountId),
+      agentRepository.agentsForEmailAccount(organizationId, accountId),
     ]);
 
     return NextResponse.json({
@@ -57,6 +59,7 @@ export async function GET(
       },
       folders,
       labels,
+      agents,
       discoveredAt: folders.map((folder) => folder.last_synced_at).filter(Boolean).sort().at(-1) ?? null,
     });
   } catch (error) {
