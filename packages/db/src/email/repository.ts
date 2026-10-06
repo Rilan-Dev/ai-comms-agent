@@ -370,3 +370,29 @@ export async function updateLocalDraftForOrganization(
   );
   return r.rows[0] ?? null;
 }
+
+
+export async function listLocalDraftsForOrganization(organizationId: string): Promise<Array<Record<string, unknown>>> {
+  const r = await query<Row>(
+    `SELECT m.id, m.email_account_id, m.thread_id, m.from_email, m.to_recipients, m.cc_recipients, m.bcc_recipients,
+            m.subject, m.text_body, m.updated_at, a.email_address AS account_email, a.display_name AS account_name
+     FROM email_messages m
+     JOIN email_accounts a ON a.id = m.email_account_id
+     WHERE m.organization_id = $1 AND a.organization_id = $1 AND a.deleted_at IS NULL AND m.is_draft = true
+     ORDER BY m.updated_at DESC`,
+    [organizationId],
+  );
+  return r.rows;
+}
+
+export async function deleteLocalDraftForOrganization(organizationId: string, messageId: string): Promise<boolean> {
+  const r = await query<Row>(
+    `DELETE FROM email_messages m
+     USING email_accounts a
+     WHERE m.id = $1 AND m.organization_id = $2 AND m.email_account_id = a.id
+       AND a.organization_id = $2 AND a.deleted_at IS NULL AND m.is_draft = true
+     RETURNING m.id`,
+    [messageId, organizationId],
+  );
+  return r.rows.length > 0;
+}
