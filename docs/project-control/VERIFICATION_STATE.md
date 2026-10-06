@@ -680,3 +680,6 @@ Latest development checkpoint: Email Accounts lifecycle hardening. Added atomic 
 
 
 Latest Email Accounts source changes: OAuth callback failures are routed back to the account UI without token payloads; UI consumes and clears provider error state. Deterministic static coverage was added. No runtime/browser/provider PASS is claimed.
+
+
+Latest source correction: `apps/web/src/app/api/email-accounts/route.ts` was repaired after direct audit found literal `\\n` source corruption. Static Email Accounts tests now guard API authorization, credential non-exposure, OAuth error routing, disconnected recovery, and source integrity. Runtime/browser/provider verification remains pending.
