@@ -45,12 +45,9 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
       .catch(e => setNotice(e instanceof Error ? e.message : "Could not load mailboxes."));
   }, [organizationId]);
 
-  const recipients = useMemo(() => to.split(/[,
-]/).map(v => v.trim().toLowerCase()).filter(Boolean), [to]);
-  const ccRecipients = useMemo(() => cc.split(/[,
-]/).map(v => v.trim().toLowerCase()).filter(Boolean), [cc]);
-  const bccRecipients = useMemo(() => bcc.split(/[,
-]/).map(v => v.trim().toLowerCase()).filter(Boolean), [bcc]);
+  const recipients = useMemo(() => to.split(/[,\n]/).map(v => v.trim().toLowerCase()).filter(Boolean), [to]);
+  const ccRecipients = useMemo(() => cc.split(/[,\n]/).map(v => v.trim().toLowerCase()).filter(Boolean), [cc]);
+  const bccRecipients = useMemo(() => bcc.split(/[,\n]/).map(v => v.trim().toLowerCase()).filter(Boolean), [bcc]);
 
   async function saveDraft() {
     if (!accountId || recipients.length === 0) { setNotice("Select a mailbox and add at least one recipient."); return; }
