@@ -47,6 +47,44 @@ export class PostgresEmailFolderLabelRepository {
     });
   }
 
+  /**
+   * Replace the complete mailbox structure in one transaction so folders and
+   * labels can never expose a half-refreshed discovery snapshot.
+   */
+  async replaceStructure(
+    accountId: string,
+    organizationId: string,
+    folders: EmailFolder[],
+    labels: EmailLabel[],
+  ): Promise<{ folders: EmailFolder[]; labels: EmailLabel[] }> {
+    return withTransaction(async (client) => {
+      await client.query("DELETE FROM email_folders WHERE email_account_id = $1", [accountId]);
+      for (const item of folders) {
+        await client.query(
+          `INSERT INTO email_folders
+            (email_account_id, organization_id, provider_folder_id, name, folder_type, unread_count, updated_at)
+           VALUES ($1,$2,$3,$4,$5,$6,now())`,
+          [accountId, organizationId, item.provider_folder_id, item.name, item.role, item.unread_count],
+        );
+      }
+
+      await client.query("DELETE FROM email_labels WHERE email_account_id = $1", [accountId]);
+      for (const item of labels) {
+        await client.query(
+          `INSERT INTO email_labels
+            (email_account_id, organization_id, provider_label_id, name, color, updated_at)
+           VALUES ($1,$2,$3,$4,$5,now())`,
+          [accountId, organizationId, item.provider_label_id, item.name, item.color ?? null],
+        );
+      }
+
+      const [folderResult, labelResult] = await Promise.all([
+        client.query<Row>("SELECT * FROM email_folders WHERE email_account_id = $1 ORDER BY name", [accountId]),
+        client.query<Row>("SELECT * FROM email_labels WHERE email_account_id = $1 ORDER BY name", [accountId]),
+      ]);
+      return { folders: folderResult.rows.map(folder), labels: labelResult.rows.map(label) };
+    });
+  }
   async replaceLabels(accountId: string, organizationId: string, labels: EmailLabel[]): Promise<EmailLabel[]> {
     return withTransaction(async (client) => {
       await client.query("DELETE FROM email_labels WHERE email_account_id = $1", [accountId]);
