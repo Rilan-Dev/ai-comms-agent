@@ -546,3 +546,10 @@ Correction commits: `ea1ffbd`, `2a9b030`, `45b4974`.
 The remaining Clara package diagnostics are the intentional optional vendored-submodule structural boundary; the web package SIGKILL is resource/process termination rather than a reported source diagnostic. Continue development-first implementation without waiting for CI/Vercel.
 
 **Next concrete implementation:** continue the Clara realtime voice surface already started at `/api/voice/session`: harden host-owned voice session lifecycle/telemetry and connect the voice UI to the host-authorized Clara transport boundary. Do not duplicate Clara provider logic or fabricate live provider connectivity.
+
+
+### 2026-10-06 — Realtime voice transport continuation
+- Added host-authorized voice session PATCH actions for activation, turn counting, and telemetry.
+- Voice UI now requests microphone access, exposes microphone/transport state, records browser telemetry, and closes the session on microphone failure.
+- No provider connection is claimed; Clara remains the owner of realtime transport/reconnect/cancellation.
+- **Next:** implement the thin browser/Clara transport adapter contract and interruption-safe transcript event bridge.
