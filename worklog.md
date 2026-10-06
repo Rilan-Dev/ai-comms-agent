@@ -1850,3 +1850,11 @@ ChatGPT continued the realtime voice vertical slice without waiting for CI/Verce
 - Modernized the Settings landing surface as the next product-control entry point; unimplemented subareas are not represented as provider-ready/live state.
 - No provider credentials, external sends, or live realtime provider connectivity were fabricated.
 - Development continues without waiting for CI/Vercel validation under the explicit project-owner development-first instruction.
+\n\n## 2026-10-06 — Settings / Organization / Members implementation
+- Added organization settings GET API with server-side organization authorization and PostgreSQL-backed identity state.
+- Added organization member listing with role/status/user details and organization membership authorization.
+- Added member role/status mutation API with field validation, authorization, and owner-invariant protection.
+- Owner transfer uses the existing atomic `transferOwnership` repository path; direct owner demotion is rejected.
+- Replaced the Settings placeholder with a persisted organization/member control surface and live role/status controls.
+- No production auth/provider claims were fabricated; the existing development identity adapter remains the current auth boundary.
+- Next implementation target: Activity/Audit/Operations surfaces and security-sensitive audit visibility.
