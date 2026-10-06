@@ -1804,3 +1804,7 @@ Next: worker-side durable scheduler tick and automation trigger evaluation, foll
 
 ### Next
 Implement the Clara-backed agent execution adapter, then route scheduled/automation actions through existing approval-safe email and WhatsApp execution paths. CI/Vercel are not development blockers per the explicit development-first instruction.
+
+
+### 2026-10-06 — Clara-backed execution continuation
+Clara-backed execution is now connected to the worker dispatch boundary. Scheduled and automation runs persist the grounded streamed output/provider/model when configured; missing `CLARA_KB_ID` is reported as configuration-required rather than fabricated. Next: connect concrete product side effects and provider-safe action paths.
