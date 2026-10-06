@@ -39,8 +39,7 @@ export async function discoverEmailAccountStructure(accountId: string): Promise<
 
       // Discovery is a replacement snapshot, not an append-only cache. Empty
       // provider results intentionally clear stale folders/labels.
-      await repository.replaceFolders(account.id, account.organization_id, folders);
-      await repository.replaceLabels(account.id, account.organization_id, labels);
+      await repository.replaceStructure(account.id, account.organization_id, folders, labels);
       return { folders, labels };
     });
 
