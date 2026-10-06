@@ -1865,3 +1865,13 @@ ChatGPT continued the realtime voice vertical slice without waiting for CI/Verce
 - Replaced the synthetic Audit page with persisted PostgreSQL audit events, search, loading/error/empty states and organization scoping.
 - Replaced the synthetic Activity metrics page with a persisted organization activity feed sourced from the same audit boundary; no fabricated counts remain.
 - Product completion is now in final cross-surface hardening rather than placeholder UI construction.
+
+
+## 2026-10-06 — Activity / Audit / Operations completion
+
+- Added server-side audit filtering for event type, decision, actor, free-text search, and time bounds.
+- Added authorized audit export in JSON and CSV formats, reusing the same organization authorization and filters.
+- Added an organization-scoped Operations API with real PostgreSQL reachability checks plus persisted email error, sync failure, active voice, scheduled error, and denied-authorization signals.
+- Added an Operations workspace and navigation entry; removed the static/fabricated “Core online” indicator from the sidebar.
+- Provider infrastructure status is intentionally reported as configured/not configured when the worker owns connectivity, rather than fabricating live connectivity.
+- Development continues directly into cross-surface E2E hardening without waiting for CI/Vercel.
