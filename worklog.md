@@ -1666,3 +1666,14 @@ No provider credentials were fabricated and Clara source was not modified.
 - Added static API authorization/credential non-exposure coverage and OAuth error-routing coverage.
 - No CI/Vercel result is used as development evidence; no live provider credentials are claimed.
 - Continue Email Accounts implementation before moving to Mail.
+
+
+## 2026-10-06 — ChatGPT Mail schema correction and continuation
+
+- **Owner:** ChatGPT
+- Corrected packages/db/src/email/repository.ts after reconciling its SQL with the canonical 0003 email-domain schema. The previous inbox/thread queries referenced legacy/nonexistent columns such as from_address, to_addresses, and has_attachments.
+- Inbox/thread reads now derive sender from from_email/from_name, recipients from to_recipients, outbound state from is_sent, sanitized body from html_body_sanitized, and attachment presence from email_attachments.
+- Search remains fully parameterized and organization-scoped.
+- Added apps/web/tests/email-repository-mail-contract.test.ts to prevent regression to the legacy column contract.
+- No live provider credentials, sends, replies, forwards, or fabricated connectivity were introduced.
+- **Next:** implement Mail mutations and authorization/approval flow, then continue the remaining product slices.
