@@ -1925,3 +1925,15 @@ ChatGPT continued the realtime voice vertical slice without waiting for CI/Verce
 - **File changed:** `apps/web/src/app/whatsapp/whatsapp-client.tsx`.
 - **Commit:** `062ec274ab57f07b4f0daf4dd4bc4df0f4865f9b`.
 - No CI/Vercel wait was performed. No typecheck pass is claimed until the user reruns it.
+
+
+## 2026-10-07 — WhatsApp webhook contact-map type correction
+
+- **Owner:** ChatGPT
+- **Scope:** Error-fixing only; no feature development and no project-control documentation changes.
+- User reran `npm run typecheck`; all workspace packages passed except `apps/web`, which reported TS2322 at `apps/web/src/app/api/whatsapp/webhook/route.ts(69,140)`: the WhatsApp contact display-name value was inferred as `{} | null` instead of `string | null | undefined`.
+- The cause was TypeScript's inference for the `Map` constructed from the mapped contact tuples. The map value type was not explicitly constrained to `string`.
+- Added an explicit `Map<string, string>` type and tuple annotation to the contact map. This changes only static typing; webhook behavior is unchanged.
+- **File changed:** `apps/web/src/app/api/whatsapp/webhook/route.ts`.
+- **Commit:** `f35782d22cb95fcbb3def84affa1107277084df7`.
+- No CI/Vercel wait was performed. No typecheck pass is claimed until the user reruns `npm run typecheck`.
