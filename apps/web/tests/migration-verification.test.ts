@@ -22,13 +22,12 @@ const initPath = resolve(__dirname, "../../../infra/postgres-init/00-supabase-ro
 const initSql = readFileSync(initPath, "utf8");
 
 const databaseFoundationPath = resolve(__dirname, "../../../supabase/migrations/0002_database_foundation.sql");
-const foundationSql = readFileSync(databaseFoundationPath, "utf8");
+const databaseFoundationSql = readFileSync(databaseFoundationPath, "utf8");
 
 describe("Disposable PostgreSQL bootstrap static verification", () => {
   it("uses valid dollar-quoted DO blocks", () => {
     expect(initSql).toContain("DO $$");
-    expect(initSql).toContain("END
-$$;");
+    expect(initSql).toContain("END\n$;");
     expect(initSql).not.toMatch(/^DO \$(?!\$)/m);
     expect(initSql).not.toMatch(/^\$/m);
   });
@@ -247,9 +246,6 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
 
 
 describe("Phase 4 database foundation migration", () => {
-  const foundationPath = resolve(__dirname, "../../../supabase/migrations/0002_database_foundation.sql");
-  const foundationSql = readFileSync(foundationPath, "utf8");
-
   const requiredTables = [
     "agents","agent_versions","agent_deployments","agent_email_accounts","agent_whatsapp_accounts",
     "agent_ai_settings","ai_provider_configs","email_accounts","email_account_credentials",
