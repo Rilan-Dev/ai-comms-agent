@@ -26,7 +26,7 @@ test("accounts UI exposes persisted structure and agent assignments", () => {
   assert.match(source, /\/api\/email-accounts\/.*\/structure/);
   assert.match(source, /View folders|Refresh folders/);
   assert.match(source, /Agent: \{agent\.name\}/);
-  assert.match(source, /No persisted discovery snapshot/);
+  assert.match(source, /No folders or labels have been discovered yet/);
 });
 
 test("worker discovery uses the verified provider lifecycle", () => {
