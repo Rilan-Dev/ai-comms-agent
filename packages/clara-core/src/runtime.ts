@@ -21,6 +21,7 @@
 
 // This re-export relies on the tsconfig paths configuration:
 //   "@/modules/*" -> "../../vendor/clara/clara-core/source/src/modules/*"
+// @ts-expect-error Clara is an optional git submodule; structural host checks must compile without its checkout.
 export {
   claraRuntime,
   type ClaraRuntimeContext,
