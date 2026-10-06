@@ -226,3 +226,4 @@ ChatGPT is continuing the product-completion Email Accounts slice under the deve
 
 ### 2026-10-06 — Mail implementation continuation
 Development-first Mail work now includes real persisted thread navigation, read-state mutation, reply approval requests, and a pending approval queue. Sensitive provider execution remains isolated to the worker executor. Continue the Mail slice before advancing the product-completion menu gate.
+\n\n### 2026-10-06 — Mail draft/action continuation\nImplementation continues under Phase 4 development-first execution. Persisted drafts now have list/retrieve/update/delete lifecycle and Forward is wired to approval-safe actions. Runtime acceptance remains a later gate. Next concrete implementation target is provider-backed draft result synchronization and secure attachment retrieval/handling.\n
