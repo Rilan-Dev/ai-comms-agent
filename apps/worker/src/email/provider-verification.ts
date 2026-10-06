@@ -13,15 +13,15 @@ export async function verifyEmailProviderConnection<T = void>(
   provider: EmailProvider,
   credentials: EmailCredentials,
   onConnected?: (context: { provider: EmailProvider; capabilities: CapabilitySet }) => Promise<T>,
-): Promise<ProviderVerificationResult & (T extends void ? { value?: undefined } : { value: T })> {
+): Promise<ProviderVerificationResult & { value?: T }> {
   await provider.connect(credentials);
   try {
     const capabilities = normalizeCapabilitySet(await provider.discoverCapabilities());
     if (onConnected) {
       const value = await onConnected({ provider, capabilities });
-      return { capabilities, value } as ProviderVerificationResult & (T extends void ? { value?: undefined } : { value: T });
+      return { capabilities, value };
     }
-    return { capabilities } as ProviderVerificationResult & (T extends void ? { value?: undefined } : { value: T });
+    return { capabilities };
   } finally {
     await provider.disconnect();
   }
