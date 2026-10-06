@@ -9,6 +9,7 @@ const discoveryPath = resolve(__dirname, "../../worker/src/email/discovery.ts");
 const verificationPath = resolve(__dirname, "../../worker/src/email/provider-verification.ts");
 const gmailCallbackPath = resolve(__dirname, "../src/app/api/oauth/gmail/callback/route.ts");
 const zohoCallbackPath = resolve(__dirname, "../src/app/api/oauth/zoho/callback/route.ts");
+const accountsRoutePath = resolve(__dirname, "../src/app/api/email-accounts/route.ts");
 
 test("mailbox structure route is organization-scoped and never returns credentials", () => {
   const source = readFileSync(routePath, "utf8");
@@ -61,4 +62,14 @@ test("OAuth callbacks return provider failures to the account UI without exposin
     assert.match(source, /NextResponse\.redirect/);
     assert.doesNotMatch(source, /access_token.*providerError|refresh_token.*providerError/);
   }
+});
+
+
+test("email account API enforces organization authorization and never returns credentials", () => {
+  const source = readFileSync(accountsRoutePath, "utf8");
+  assert.match(source, /permission: "organization\.read"/);
+  assert.match(source, /role: "admin"/);
+  assert.match(source, /account\.organization_id !== organizationId/);
+  assert.doesNotMatch(source, /loadCredentials\([^\n]+\).*NextResponse/);
+  assert.doesNotMatch(source, /access_token|refresh_token|password.*NextResponse/);
 });
