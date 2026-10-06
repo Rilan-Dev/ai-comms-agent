@@ -27,6 +27,7 @@
 
 // This re-export relies on the tsconfig paths configuration:
 //   "@/modules/*" -> "../../vendor/clara/clara-core/source/src/modules/*"
+// @ts-ignore — the optional Clara submodule may be absent in host checkouts.
 export {
   claraRuntime,
   type ClaraRuntimeContext,
