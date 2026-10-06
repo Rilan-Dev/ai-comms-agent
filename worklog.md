@@ -1648,3 +1648,13 @@ No provider credentials were fabricated and Clara source was not modified.
 - Added provider capability/lifecycle tests and Email Accounts static lifecycle tests. Real provider connectivity remains unverified because no user-owned provider credentials are available.
 - Corrected the provider registry test to match the current registry API and verify Gmail/IMAP-SMTP/Zoho capability surfaces.
 - **Validation:** intentionally deferred under the project-owner development-first instruction. No CI PASS, browser PASS, Vercel READY, or live provider connection is claimed.
+
+
+### 2026-10-06 — Email Accounts connection UX hardening
+- Corrected mailbox structure discovery to replace folders and labels atomically in one PostgreSQL transaction.
+- Added provider registry contract tests requiring complete capability maps and parity between declared/discovered capabilities.
+- Made disconnected accounts reconnectable from the account UI.
+- Changed Gmail/Zoho OAuth callback failures from raw JSON error pages to bounded, non-secret account-page error state; the UI displays and clears the state.
+- Added deterministic coverage for OAuth error routing.
+- No provider credentials were fabricated, no live provider connection was claimed, and CI/Vercel were not treated as development blockers.
+- Next: finish remaining deterministic account API authorization/error coverage and Email Accounts UX, then proceed to Mail.
