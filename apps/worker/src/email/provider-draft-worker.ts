@@ -1,5 +1,5 @@
 import { listDraftsPendingProviderSync } from "@ai-comms-agent/db";
-import { syncLocalDraftToProvider } from "./email/draft-sync";
+import { syncLocalDraftToProvider } from "./draft-sync";
 
 const INTERVAL_MS = 5_000;
 let running = false;
