@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { GmailOAuthClient } from "../../apps/worker/src/email/gmail-oauth";
+import { GmailOAuthClient } from "../../../apps/worker/src/email/gmail-oauth";
 
 describe("GmailOAuthClient", () => {
   afterEach(() => vi.restoreAllMocks());
