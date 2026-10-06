@@ -26,6 +26,20 @@ export function ChatClient({
 
   const activeAgent = useMemo(() => agents.find((agent) => agent.id === agentId) ?? agents[0], [agents, agentId]);
 
+  async function switchAgent(nextAgentId: string) {
+    if (busy || nextAgentId === agentId) return;
+    setAgentId(nextAgentId);
+    try {
+      const response = await fetch(`/api/chat/conversation?organizationId=${encodeURIComponent(organizationId)}&agentId=${encodeURIComponent(nextAgentId)}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("Could not load the selected agent conversation");
+      const payload = await response.json() as { conversation: { id: string }; messages: Message[] };
+      setConversationId(payload.conversation.id);
+      setMessages(payload.messages);
+    } catch (error) {
+      setMessages([{ id: "switch-error-" + Date.now(), conversationId, role: "system", content: error instanceof Error ? error.message : "Could not switch agent", createdAt: new Date().toISOString() }]);
+    }
+  }
+
   async function sendMessage() {
     const content = draft.trim();
     if (!content || busy || !activeAgent) return;
@@ -98,7 +112,7 @@ export function ChatClient({
           </div>
           <label className="hidden items-center gap-2 rounded-xl border bg-background px-3 py-2 sm:flex">
             <span className="text-xs text-muted-foreground">Agent</span>
-            <select value={activeAgent?.id ?? ""} onChange={(event) => setAgentId(event.target.value)} className="bg-transparent text-sm font-semibold outline-none">
+            <select value={activeAgent?.id ?? ""} onChange={(event) => void switchAgent(event.target.value)} className="bg-transparent text-sm font-semibold outline-none">
               {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
             </select>
           </label>
