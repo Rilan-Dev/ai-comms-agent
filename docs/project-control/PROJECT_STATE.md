@@ -355,3 +355,9 @@ Latest source correction: repaired literal escaped-newline corruption in the ema
 ChatGPT continued Product Completion Slice 2 (Email Accounts) without waiting for CI/Vercel. Added bounded provider retry handling for transient connection/discovery failures, immediate fail-closed behavior for authentication/credential failures, and provider lifecycle tests covering retry/backoff/cleanup. Existing persisted mailbox discovery and account-to-agent visibility remain in place. Phase 4 development continues; validation remains a later acceptance gate.
 
 \n\n### 2026-10-06 — Mail provider draft synchronization continuation\n2026-10-06 — Mail continuation: implemented additive provider-draft synchronization metadata, organization-scoped draft sync repository operations, and a worker-only provider draft synchronization executor. Corrected the persisted email-action status model to include the executing state used by the worker. No live provider credentials or send success are claimed.\n
+
+### 2026-10-06 — ChatGPT development-first continuation
+- Mail follow-up implementation advanced through provider draft sync lifecycle, worker-only approved send/reply/forward execution, attachment metadata API, and secure attachment download boundary.
+- WhatsApp vertical slice is now active under the explicit development-first instruction.
+- Latest implementation commit: `8675e9bc39799796714b1418470733246f58e4ca8`.
+- CI/Vercel are deferred validation gates; no latest runtime/deployment PASS is claimed.
