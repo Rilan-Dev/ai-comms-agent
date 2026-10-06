@@ -375,7 +375,7 @@ export async function updateLocalDraftForOrganization(
 export async function listLocalDraftsForOrganization(organizationId: string): Promise<Array<Record<string, unknown>>> {
   const r = await query<Row>(
     `SELECT m.id, m.email_account_id, m.thread_id, m.from_email, m.to_recipients, m.cc_recipients, m.bcc_recipients,
-            m.subject, m.text_body, m.updated_at, a.email_address AS account_email, a.display_name AS account_name
+            m.subject, m.text_body, m.provider_message_id, m.provider_draft_id, m.provider_draft_sync_status, m.provider_draft_synced_at, m.provider_draft_last_error, m.updated_at, a.email_address AS account_email, a.display_name AS account_name
      FROM email_messages m
      JOIN email_accounts a ON a.id = m.email_account_id
      WHERE m.organization_id = $1 AND a.organization_id = $1 AND a.deleted_at IS NULL AND m.is_draft = true
@@ -384,6 +384,65 @@ export async function listLocalDraftsForOrganization(organizationId: string): Pr
   );
   return r.rows;
 }
+
+export async function markDraftProviderSyncingForOrganization(organizationId: string, messageId: string) {
+  const r = await query<Row>(
+    `UPDATE email_messages m
+     SET provider_draft_sync_status = 'syncing', provider_draft_last_error = NULL, updated_at = now()
+     FROM email_accounts a
+     WHERE m.id = $1 AND m.organization_id = $2 AND m.email_account_id = a.id
+       AND a.organization_id = $2 AND a.deleted_at IS NULL AND m.is_draft = true
+     RETURNING m.*`,
+    [messageId, organizationId],
+  );
+  return r.rows[0] ?? null;
+}
+
+export async function markDraftProviderSyncedForOrganization(
+  organizationId: string,
+  messageId: string,
+  providerDraftId: string,
+) {
+  const r = await query<Row>(
+    `UPDATE email_messages m
+     SET provider_draft_id = $1, provider_draft_sync_status = 'synced', provider_draft_synced_at = now(), provider_draft_last_error = NULL, updated_at = now()
+     FROM email_accounts a
+     WHERE m.id = $2 AND m.organization_id = $3 AND m.email_account_id = a.id
+       AND a.organization_id = $3 AND a.deleted_at IS NULL AND m.is_draft = true
+     RETURNING m.*`,
+    [providerDraftId, messageId, organizationId],
+  );
+  return r.rows[0] ?? null;
+}
+
+export async function markDraftProviderSyncErrorForOrganization(
+  organizationId: string,
+  messageId: string,
+  error: string,
+) {
+  const r = await query<Row>(
+    `UPDATE email_messages m
+     SET provider_draft_sync_status = 'error', provider_draft_last_error = left($1, 2000), updated_at = now()
+     FROM email_accounts a
+     WHERE m.id = $2 AND m.organization_id = $3 AND m.email_account_id = a.id
+       AND a.organization_id = $3 AND a.deleted_at IS NULL AND m.is_draft = true
+     RETURNING m.*`,
+    [error, messageId, organizationId],
+  );
+  return r.rows[0] ?? null;
+}
+
+export async function getLocalDraftForOrganization(organizationId: string, messageId: string) {
+  const r = await query<Row>(
+    `SELECT m.*, a.email_address AS account_email, a.display_name AS account_name
+     FROM email_messages m JOIN email_accounts a ON a.id = m.email_account_id
+     WHERE m.id = $1 AND m.organization_id = $2 AND a.organization_id = $2 AND a.deleted_at IS NULL AND m.is_draft = true
+     LIMIT 1`,
+    [messageId, organizationId],
+  );
+  return r.rows[0] ?? null;
+}
+
 
 export async function deleteLocalDraftForOrganization(organizationId: string, messageId: string): Promise<boolean> {
   const r = await query<Row>(
