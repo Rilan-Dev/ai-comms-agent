@@ -1913,3 +1913,15 @@ ChatGPT continued the realtime voice vertical slice without waiting for CI/Verce
 - **Files changed:** `packages/clara-core/src/runtime.ts`, `packages/clara-core/src/types.ts`.
 - **Commits:** `bc7a06d6f20a82a83b4603e300aeaaa5d672024b`, `0cb93988618cc30f00c66b1ef35d664ad50a6189`.
 - No CI/Vercel wait was performed. No passing typecheck is claimed until the user reruns `npm run typecheck`.
+
+
+## 2026-10-07 — WhatsApp client TS1127 source correction
+
+- **Owner:** ChatGPT
+- **Scope:** Error-fixing only; no feature development and no project-control documentation changes.
+- User reran `npm run typecheck`; Clara/shared/db/worker passed, while the web package failed with TS1127/TS1434 on line 29 of `apps/web/src/app/whatsapp/whatsapp-client.tsx`.
+- The source contained literal escaped newline sequences (`\\n`) inside the TypeScript expression that defines `credentialFields`. Those characters are invalid source syntax and caused the reported parser diagnostics.
+- Replaced only that malformed block with normal TypeScript line breaks. No runtime behavior or feature contract was changed.
+- **File changed:** `apps/web/src/app/whatsapp/whatsapp-client.tsx`.
+- **Commit:** `062ec274ab57f07b4f0daf4dd4bc4df0f4865f9b`.
+- No CI/Vercel wait was performed. No typecheck pass is claimed until the user reruns it.
