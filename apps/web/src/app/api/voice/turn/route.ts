@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository, incrementVoiceSessionTurnForOrganization } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -40,6 +40,12 @@ export async function POST(request: Request) {
 
     const agent = await new PostgresAgentRepository().get(organizationId, agentId);
     if (!agent) return NextResponse.json({ error: "not_found", message: "Agent was not found in this organization." }, { status: 404 });
+
+    const session = await getVoiceSessionForOrganization(organizationId, sessionId);
+    if (!session || session.user_id !== subject.user.id || session.agent_id !== agentId) {
+      return NextResponse.json({ error: "not_found", message: "Voice session was not found for this user and agent." }, { status: 404 });
+    }
+    if (session.ended_at) return NextResponse.json({ error: "session_ended", message: "The voice session has already ended." }, { status: 409 });
 
     const kbId = process.env.CLARA_KB_ID?.trim();
     if (!kbId) {
