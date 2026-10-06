@@ -596,3 +596,12 @@ The remaining Clara package diagnostics are the intentional optional vendored-su
 - Hardened the voice turn endpoint so the requested turn must belong to the authenticated user and the exact requested agent; ended sessions are rejected before Clara execution.
 - Clara realtime/provider logic remains untouched; the host continues to own authorization and persistence while Clara owns realtime generation/transport policy.
 - **Next:** continue cross-surface hardening and deterministic E2E coverage around email/WhatsApp/scheduling/chat/voice, then prepare final runtime/deployment verification without waiting on CI/Vercel.
+
+
+## 2026-10-07 — Worker strict-indexing correction follow-up
+
+- Local typecheck still reported `TS2322` in `apps/worker/src/scheduling/cron.ts` because cron range destructuring under strict indexed access inferred `a`/`b` as possibly undefined.
+- Corrected range parsing to validate the two-part shape before numeric conversion.
+- Commit: `51cdfb824fd0a3e34426db03c67c76db31557155`.
+- Clara optional vendored-source diagnostics remain an intentional structural-check boundary when `vendor/clara` is not initialized.
+- Continue final cross-surface authorization/idempotency/error hardening and deterministic E2E coverage; do not wait for CI/Vercel.
