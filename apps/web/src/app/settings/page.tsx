@@ -106,8 +106,8 @@ export default function SettingsPage() {
         <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Configuration</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <LinkCard href="/ai-voice" title="AI & Voice" text="Provider readiness and Clara voice configuration." />
-          <LinkCard href="/activity" title="Activity" text="Inspect persisted operational activity." />
-          <LinkCard href="/audit" title="Audit" text="Review security-sensitive changes." />
+          <LinkCard href="/agents" title="Agents" text="Manage agent configuration, versions and policies." />
+          <LinkCard href="/mail/accounts" title="Email accounts" text="Manage provider connections and mailbox structure." />
         </div>
       </section>
     </main>
