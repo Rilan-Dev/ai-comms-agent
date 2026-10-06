@@ -1,4 +1,4 @@
-import { loadWhatsAppCredential, listQueuedWhatsAppOutbound, markWhatsAppOutboundFailed, markWhatsAppOutboundSent, PostgresEmailAccountRepository, parseCredentialsMasterKey, recordAuditEvent } from "@ai-comms-agent/db";
+import { loadWhatsAppCredential, listQueuedWhatsAppOutbound, markWhatsAppOutboundFailed, markWhatsAppOutboundSent, parseCredentialsMasterKey, recordAuditEvent } from "@ai-comms-agent/db";
 import { getWhatsAppAccountForOrganization } from "@ai-comms-agent/db";
 
 const GRAPH_HOST = "https://graph.facebook.com";
