@@ -155,7 +155,6 @@ export async function listAutomationRuns(organizationId: string, ruleId: string)
 export type ScheduledJobClaim = {
   runId:string; id:string; agentId:string; organizationId:string; intent:string; params:Record<string,unknown>;
   cron:string|null; nextFireAt:string|null; timezone:string; catchUpMinutes:number;
-  advance:(nextFireAt:string|null,status:"active"|"archived"|"error",lastError:string|null)=>Promise<void>;
 };
 
 export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise<ScheduledJobClaim[]> {
@@ -170,18 +169,14 @@ export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise
         "INSERT INTO scheduled_job_runs (scheduled_job_id,status,result) VALUES ($1,'running',$2::jsonb) RETURNING id",
         [row.id,JSON.stringify({claimedAt:nowIso})],
       );
-      const runId=String(run.rows[0]?.id);
-      claims.push({
-        runId,id:String(row.id),agentId:String(row.agent_id),organizationId:String(row.organization_id),intent:String(row.intent),
-        params:(row.params??{}) as Record<string,unknown>,cron:row.cron?String(row.cron):null,nextFireAt:row.next_fire_at?String(row.next_fire_at):null,
-        timezone:String(row.timezone??"UTC"),catchUpMinutes:Number(row.catch_up_minutes??60),
-        advance:async(next,status,lastError)=>{
-          await client.query("UPDATE scheduled_jobs SET next_fire_at=$2::timestamptz,last_fire_at=now(),status=$3,last_error=$4,updated_at=now() WHERE id=$1",[String(row.id),next,status,lastError]);
-        },
-      });
+      claims.push({runId:String(run.rows[0]?.id),id:String(row.id),agentId:String(row.agent_id),organizationId:String(row.organization_id),intent:String(row.intent),params:(row.params??{}) as Record<string,unknown>,cron:row.cron?String(row.cron):null,nextFireAt:row.next_fire_at?String(row.next_fire_at):null,timezone:String(row.timezone??"UTC"),catchUpMinutes:Number(row.catch_up_minutes??60)});
     }
     return claims;
   });
+}
+
+export async function advanceScheduledJob(id:string,nextFireAt:string|null,status:"active"|"archived"|"error",lastError:string|null){
+  await query("UPDATE scheduled_jobs SET next_fire_at=$2::timestamptz,last_fire_at=now(),status=$3,last_error=$4,updated_at=now() WHERE id=$1",[id,nextFireAt,status,lastError]);
 }
 
 export async function completeScheduledJobRun(runId:string,result:Record<string,unknown>={}){
