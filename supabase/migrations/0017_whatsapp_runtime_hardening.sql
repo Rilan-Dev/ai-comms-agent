@@ -3,7 +3,8 @@
 
 ALTER TABLE whatsapp_messages
   ADD COLUMN IF NOT EXISTS agent_id uuid REFERENCES agents(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS processing_status text NOT NULL DEFAULT 'received';
+  ADD COLUMN IF NOT EXISTS processing_status text NOT NULL DEFAULT 'received',
+  ADD COLUMN IF NOT EXISTS provider_error text;
 
 ALTER TABLE whatsapp_messages
   DROP CONSTRAINT IF EXISTS whatsapp_messages_processing_status_check;
