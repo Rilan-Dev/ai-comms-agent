@@ -396,3 +396,6 @@ ChatGPT continues development-first Mail implementation without waiting for CI/V
 
 ### 2026-10-06 — Mail slice implementation continuation
 ChatGPT is continuing the Mail vertical slice under the development-first override. Corrected a parameterization defect in organization-scoped inbox sender search and repaired escaped-newline source corruption in the inbox client. Next implementation: complete thread actions (read state, reply-draft persistence, archive/move UX) and then provider-backed send/approval wiring without fabricating live credentials. CI/Vercel remain acceptance gates, not development blockers.
+
+
+Email Accounts lifecycle is now materially complete enough to enter Mail implementation. Continue Mail with approval-safe provider actions: persisted draft/reply/forward/send action requests, deterministic approval/rejection transitions, worker-only credential access and provider execution, then finish thread/message UX and attachment handling. Do not fabricate provider connectivity. CI/Vercel remain non-blocking under the development-first override.
