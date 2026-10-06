@@ -669,3 +669,7 @@ Acceptance remains a separate runtime/browser gate.
 - Static tests cover provider registry capability surfaces, provider cleanup, discovery status transitions, and credential non-exposure.
 - Runtime/browser/provider verification remains deferred under the explicit development-first instruction; no CI PASS or Vercel READY claim is made.
 - Latest implementation commit before control synchronization: `105d41481d9523bda66b0f6ae147e73fff1c3c46`.
+\n\n### 2026-10-06 — Email Accounts truthfulness hardening
+- Mailbox structure API/UI no longer synthesizes discovery timestamps.
+- Source tests remain the available implementation evidence; runtime/browser/provider validation is intentionally deferred and no PASS is claimed.
+- Latest implementation commit before this control update: `ee2bba7c696e2ed9672c7ff7281e0a1658951798`.
