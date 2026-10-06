@@ -11,5 +11,5 @@ export interface AgentExecutionRequest {
 }
 
 export type AgentExecutionDispatchResult =
-  | { status: "queued"; executionId: string }
+  | { status: "queued" | "completed"; executionId: string; output?: string; provider?: string; model?: string }
   | { status: "configuration_required"; executionId: string; reason: string };
