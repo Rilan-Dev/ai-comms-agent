@@ -11,11 +11,11 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Continue Product Completion Slice 2 — Mail. Complete provider-backed draft synchronization
-  and secure attachment retrieval/handling, then finish message/thread action UX. Provider
-  execution remains worker-only and credential-free in browser/API paths. Do not fabricate
-  live provider connectivity. Do not wait for CI/Vercel validation; continue source
-  implementation under the approved development-first override.
+  Continue Product Completion after the Clara realtime voice transport boundary.
+  Build the Settings / Organization / Members vertical slice with real PostgreSQL-backed
+  identity data, organization-scoped authorization, member role management, validation,
+  notifications, audit events, and truthful configuration/security states. Then continue
+  through Activity/Audit/Operations and the remaining end-to-end completion work.
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
@@ -23,10 +23,8 @@ constraints:
   source_of_truth: "GitHub main"
   clara: "Reuse Clara Core; do not modify Clara source"
   deployment: "Self-hosted Docker is the current deployment path"
-  validation: "Verification is an acceptance gate; development continues under the approved development-first override."
+  validation: "Verification is a later acceptance gate; development continues under the approved development-first override."
 ```
-
----
 
 ## STOP instruction
 
@@ -553,3 +551,11 @@ The remaining Clara package diagnostics are the intentional optional vendored-su
 - Voice UI now requests microphone access, exposes microphone/transport state, records browser telemetry, and closes the session on microphone failure.
 - No provider connection is claimed; Clara remains the owner of realtime transport/reconnect/cancellation.
 - **Next:** implement the thin browser/Clara transport adapter contract and interruption-safe transcript event bridge.
+
+
+### 2026-10-06 — Clara realtime voice boundary continuation
+- Added the authorized `/api/voice/turn` transcript bridge through the immutable Clara runtime.
+- Added interruption-safe browser turn sequencing, microphone lifecycle handling, and persisted browser turn-latency telemetry.
+- Added a shared `VoiceTransportAdapter` contract and sequence-safety helper; this defines the host/browser boundary without reimplementing Clara provider transport.
+- No provider credentials or live connectivity are fabricated.
+- **Next:** Settings / Organization / Members vertical slice.
