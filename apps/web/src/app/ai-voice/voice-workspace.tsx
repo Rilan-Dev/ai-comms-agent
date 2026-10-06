@@ -86,6 +86,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     const controller = new AbortController();
     turnAbortRef.current = controller;
     const sequence = ++turnSequenceRef.current;
+    const startedAt = performance.now();
 
     setTurnBusy(true);
     setError("");
@@ -107,6 +108,20 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       if (sequence !== turnSequenceRef.current || controller.signal.aborted) return;
       setResponseText(payload.text ?? "");
       setTranscript("");
+      void fetch("/api/voice/session", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          organizationId,
+          sessionId: session.id,
+          action: "telemetry",
+          metricName: "voice.turn.round_trip",
+          metricValue: performance.now() - startedAt,
+          unit: "ms",
+          stage: "browser_turn",
+          metadata: { sequence },
+        }),
+      }).catch(() => undefined);
       setNotice("Response received. A later turn safely supersedes an interrupted request.");
     } catch (e) {
       if (controller.signal.aborted) return;
