@@ -270,22 +270,22 @@ export function EmailAccountsClient({
                         </span>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
-                        {structureByAccount[account.id].agents.map((agent) => (
+                        {structure.agents.map((agent) => (
                           <span key={agent.id} className="rounded-full border border-primary/20 bg-primary/5 px-2 py-1 text-[10px] font-semibold">
                             Agent: {agent.name} · {agent.role.replaceAll("_", " ")}
                           </span>
                         ))}
-                        {structureByAccount[account.id].folders.map((folder) => (
+                        {structure.folders.map((folder) => (
                           <span key={folder.id} className="rounded-full border bg-background px-2 py-1 text-[10px] font-medium">
                             {folder.name}{folder.unread_count > 0 ? ` · ${folder.unread_count} unread` : ""}
                           </span>
                         ))}
-                        {structureByAccount[account.id].labels.map((label) => (
+                        {structure.labels.map((label) => (
                           <span key={label.id} className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-medium">
                             #{label.name}
                           </span>
                         ))}
-                        {structureByAccount[account.id].folders.length === 0 && structureByAccount[account.id].labels.length === 0 && structureByAccount[account.id].agents.length === 0 && (
+                        {structure.folders.length === 0 && structure.labels.length === 0 && structure.agents.length === 0 && (
                           <span className="text-xs text-muted-foreground">No folders or labels have been discovered yet.</span>
                         )}
                       </div>
@@ -300,7 +300,7 @@ export function EmailAccountsClient({
                   )}
                   {account.status === "connected" && (
                     <button type="button" disabled={structureLoading === account.id} onClick={() => loadStructure(account.id)} className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
-                      {structureLoading === account.id ? "Loading…" : structureByAccount[account.id] ? "Refresh folders" : "View folders"}
+                      {structureLoading === account.id ? "Loading…" : structure ? "Refresh folders" : "View folders"}
                     </button>
                   )}
                   {account.status === "connected" && account.provider === "imap_smtp" && (
