@@ -237,3 +237,23 @@ export async function getMailThreadForOrganization(organizationId: string, threa
     ORDER BY m.received_at ASC NULLS LAST`, [threadId, organizationId]);
   return r.rows;
 }
+
+export async function updateMailReadStateForOrganization(
+  organizationId: string,
+  messageIds: string[],
+  isRead: boolean,
+): Promise<number> {
+  if (messageIds.length === 0) return 0;
+  const r = await query<{ id: string }>(
+    `UPDATE email_messages m
+     SET is_read = $1, updated_at = now()
+     FROM email_accounts a
+     WHERE m.email_account_id = a.id
+       AND a.organization_id = $2
+       AND a.deleted_at IS NULL
+       AND m.id = ANY($3::uuid[])
+     RETURNING m.id`,
+    [isRead, organizationId, messageIds],
+  );
+  return r.rows.length;
+}
