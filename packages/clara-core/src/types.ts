@@ -16,14 +16,14 @@ export type {
   LLMProvider,
   EmbeddingProviderId,
   ProviderConfig,
-} from "@/modules/ai-core/types";
+} from "../../../vendor/clara/clara-core/source/src/modules/ai-core/types";
 
 // Voice core types
 export type {
   VoiceProvider,
   VoiceProviderService,
   ConversationalVoiceService,
-} from "@/modules/voice-core/types";
+} from "../../../vendor/clara/clara-core/source/src/modules/voice-core/types";
 
 // RAG grounding types
 export type {
@@ -31,4 +31,4 @@ export type {
   GroundingRequest,
   GroundedSource,
   GroundedContext,
-} from "@/modules/rag/grounding";
+} from "../../../vendor/clara/clara-core/source/src/modules/rag/grounding";
