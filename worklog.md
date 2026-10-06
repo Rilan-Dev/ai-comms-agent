@@ -1834,3 +1834,9 @@ Next: implement inbound WhatsApp agent-command execution and durable event emiss
 ChatGPT continued development-first implementation into the Clara realtime voice surface. Added forward-only migration `0019_voice_session_lifecycle.sql` to align `voice_sessions` with the documented host-owned lifecycle (user/provider session identity, duration, turn count, finalization trigger). Added PostgreSQL voice session/telemetry repository operations, a host-authorized `/api/voice/session` lifecycle endpoint, and replaced the old AI & Voice placeholder screen with a real agent-scoped session workspace. The implementation calls Clara's `startRealtimeSession()` for provider/model/transport resolution and keeps provider credentials out of the browser. No live provider connectivity is fabricated.
 
 **Next:** implement the provider transport handshake adapter behind the resolved Clara session endpoint, then wire browser microphone/transcript state to the same persisted session and telemetry boundary. Preserve Clara ownership of realtime transport/reconnect/cancellation and keep sensitive actions on the host authorization boundary.
+
+
+### 2026-10-06 — Realtime voice host transport continuation
+ChatGPT continued the realtime voice vertical slice without waiting for CI/Vercel. Added an authorized PATCH boundary for voice-session activation, turn counting, and telemetry; connected the browser voice workspace to microphone permission state and host telemetry; and ensured microphone failure closes the persisted session instead of leaving a false active state. Clara remains responsible for provider transport and reconnect; no provider connection or live credential success is claimed.
+
+**Next:** add the thin browser/Clara transport adapter contract and interruption-safe transcript event bridge, keeping provider transport implementation inside Clara and routing business actions through the existing host authorization boundary.
