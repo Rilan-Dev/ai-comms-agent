@@ -1,4 +1,4 @@
-import { query } from "../client";
+import { query, withTransaction } from "../client";
 import { decryptCredential, encryptCredential } from "../security";
 
 type Row = Record<string, unknown>;
@@ -101,6 +101,33 @@ export async function insertWhatsAppInboundMessage(input: { organizationId: stri
     [input.organizationId, input.accountId, input.agentId ?? null, input.contactId ?? null, input.providerMessageId, input.messageType, input.body ?? null, JSON.stringify(input.media ?? {}), input.providerTimestamp ?? null],
   );
   return { inserted: r.rows.length > 0, id: r.rows[0]?.id ? String(r.rows[0].id) : null };
+}
+
+export async function claimRoutedWhatsAppInbound(limit = 10) {
+  const safeLimit = Math.min(Math.max(limit, 1), 50);
+  return withTransaction(async (client) => {
+    const selected = await client.query<Row>(
+      "SELECT m.*, c.phone_number, c.display_name FROM whatsapp_messages m JOIN whatsapp_contacts c ON c.id = m.contact_id WHERE m.direction = 'inbound' AND m.processing_status = 'routed' AND m.agent_id IS NOT NULL ORDER BY m.created_at ASC LIMIT $1 FOR UPDATE SKIP LOCKED",
+      [safeLimit],
+    );
+    const claimed: Row[] = [];
+    for (const row of selected.rows) {
+      const updated = await client.query<Row>(
+        "UPDATE whatsapp_messages SET processing_status = 'processing', updated_at = now() WHERE id = $1 AND processing_status = 'routed' RETURNING *",
+        [row.id],
+      );
+      if (updated.rows[0]) claimed.push({ ...updated.rows[0], phone_number: row.phone_number, display_name: row.display_name });
+    }
+    return claimed;
+  });
+}
+
+export async function completeWhatsAppInbound(messageId: string, status: "completed" | "failed", error?: string | null) {
+  const r = await query<Row>(
+    "UPDATE whatsapp_messages SET processing_status = $1, provider_error = CASE WHEN $1 = 'failed' THEN left($2,2000) ELSE provider_error END, updated_at = now() WHERE id = $3 AND direction = 'inbound' AND processing_status = 'processing' RETURNING id",
+    [status, error ?? null, messageId],
+  );
+  return r.rows.length > 0;
 }
 
 export async function queueWhatsAppOutboundMessage(input: { organizationId: string; accountId: string; contactId?: string | null; to: string; body: string; idempotencyKey: string }) {
