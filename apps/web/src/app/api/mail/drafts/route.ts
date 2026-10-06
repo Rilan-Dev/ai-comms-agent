@@ -50,9 +50,16 @@ export async function GET(request: Request) {
   try {
     if (!process.env.DATABASE_URL) return NextResponse.json({ error: "database_not_configured", message: "PostgreSQL is required for drafts." }, { status: 503 });
     await ensureDevSeed();
-    const organizationId = new URL(request.url).searchParams.get("organizationId") ?? "";
+    const params = new URL(request.url).searchParams;
+    const organizationId = params.get("organizationId") ?? "";
+    const messageId = params.get("draftId") ?? "";
     if (!organizationId) return NextResponse.json({ error: "validation_error", message: "Organization is required." }, { status: 422 });
     await authorize(request, { organizationId: asOrganizationId(organizationId), role: "member" }, getIdentityAdapter(), getIdentityRepository());
+    if (messageId) {
+      const draft = await updateLocalDraftForOrganization(organizationId, messageId, {});
+      if (!draft) return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization." }, { status: 404 });
+      return NextResponse.json({ draft });
+    }
     return NextResponse.json({ drafts: await listLocalDraftsForOrganization(organizationId) });
   } catch (error) {
     return authorizationErrorToResponse(error);
