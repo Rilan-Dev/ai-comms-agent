@@ -15,6 +15,7 @@ const activity = [
 const quickActions = [
   ["Connect email", "/mail/accounts", "Add Gmail, Zoho or IMAP/SMTP"],
   ["Create agent", "/agents/new", "Configure an assistant for your team"],
+  ["Open Clara chat", "/chat", "Ask about mail, actions and daily priorities"],
   ["Schedule briefing", "/schedules", "Send a daily summary to WhatsApp"],
 ];
 
