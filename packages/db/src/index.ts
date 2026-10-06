@@ -95,3 +95,14 @@ export {
 export { listScheduledJobs, getScheduledJob, createScheduledJob, updateScheduledJob, deleteScheduledJob, listScheduledJobRuns, claimDueScheduledJobs, advanceScheduledJob, completeScheduledJobRun, failScheduledJobRun, listAutomationRules, listActiveAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, listAutomationRuns, createAutomationRun, completeAutomationRun, failAutomationRun, type ScheduledJobClaim } from "./automation/repository";
 
 export { getOrCreateChatConversation, listChatMessages, appendConversationMessage } from "./conversation/repository";
+
+export {
+  createVoiceSession,
+  activateVoiceSessionForOrganization,
+  incrementVoiceSessionTurnForOrganization,
+  endVoiceSessionForOrganization,
+  getVoiceSessionForOrganization,
+  recordVoiceTelemetry,
+  type CreateVoiceSessionInput,
+  type VoiceSessionStatus,
+} from "./voice/repository";
