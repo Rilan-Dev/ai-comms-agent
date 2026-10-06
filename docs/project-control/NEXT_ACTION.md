@@ -11,13 +11,11 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Continue Product Completion Slice 2 — Email Accounts. Complete the persisted provider
-  connection vertical slice by finishing provider lifecycle tests, mailbox structure
-  discovery/status persistence, account-to-agent assignment visibility, OAuth/IMAP retry
-  states, authorization/audit coverage, responsive UI, and deterministic source tests.
-  Keep live provider connectivity truthful: no real user-owned credentials may be fabricated.
-  Do not wait for CI/Vercel validation; continue source implementation under the approved
-  development-first override.
+  Continue Product Completion Slice 2 — Mail. Complete provider-backed draft synchronization
+  and secure attachment retrieval/handling, then finish message/thread action UX. Provider
+  execution remains worker-only and credential-free in browser/API paths. Do not fabricate
+  live provider connectivity. Do not wait for CI/Vercel validation; continue source
+  implementation under the approved development-first override.
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
