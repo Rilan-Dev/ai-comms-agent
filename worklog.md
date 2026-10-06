@@ -1724,3 +1724,14 @@ No provider credentials were fabricated and Clara source was not modified.
 - Added pending approval API and responsive approval queue with explicit approve/reject actions.
 - Provider credentials remain worker-only; no fake external send success is exposed.
 - Next: draft lifecycle hardening, provider-backed draft/result synchronization, forward UX, secure attachment handling.
+
+
+## 2026-10-06 — Mail draft lifecycle and forward continuation
+- **Owner:** ChatGPT
+- Added organization-scoped persisted draft listing and deletion in `packages/db/src/email/repository.ts`, with explicit `is_draft` and organization/mailbox scoping.
+- Added authorized `GET`/draft retrieval and `DELETE` endpoints under `/api/mail/drafts`, including audit events for deletion.
+- Replaced the placeholder Drafts screen with a functional responsive persisted-draft manager and made Compose load existing drafts by ID for real editing.
+- Added an approval-safe Forward action to the thread UI through the existing sensitive-action API; provider execution remains worker-only.
+- Added deterministic contract tests covering draft lifecycle scoping, authorized routes, persisted draft loading, and forward approval routing.
+- No live provider credentials or fabricated send/forward success were introduced.
+- **Next:** provider-backed draft result synchronization and secure attachment retrieval/handling, then remaining Mail UX/action hardening.
