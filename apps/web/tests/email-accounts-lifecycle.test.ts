@@ -72,4 +72,5 @@ test("email account API enforces organization authorization and never returns cr
   assert.match(source, /account\.organization_id !== organizationId/);
   assert.doesNotMatch(source, /loadCredentials\([^\n]+\).*NextResponse/);
   assert.doesNotMatch(source, /access_token|refresh_token|password.*NextResponse/);
+  assert.doesNotMatch(source, /\\\\n/);
 });
