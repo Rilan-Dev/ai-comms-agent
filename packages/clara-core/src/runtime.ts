@@ -26,4 +26,4 @@ export {
   type ClaraRuntimeContext,
   type ClaraAgentTurnRequest,
   type ClaraAgentTurn,
-} from "@/modules/ai-platform-core/clara-runtime";
+} from "../../../vendor/clara/clara-core/source/src/modules/ai-platform-core/clara-runtime";
