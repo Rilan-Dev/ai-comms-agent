@@ -3,7 +3,7 @@ import { PostgresAgentRepository, incrementVoiceSessionTurnForOrganization } fro
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
-import { dispatchAgentExecution } from "@/lib/agent/dispatch";
+import { claraRuntime } from "@ai-comms-agent/clara-core";
 
 export const dynamic = "force-dynamic";
 
@@ -41,34 +41,41 @@ export async function POST(request: Request) {
     const agent = await new PostgresAgentRepository().get(organizationId, agentId);
     if (!agent) return NextResponse.json({ error: "not_found", message: "Agent was not found in this organization." }, { status: 404 });
 
-    const result = await dispatchAgentExecution({
-      executionId: crypto.randomUUID(),
-      organizationId,
-      agentId,
-      source: "user",
-      intent: "general_qa",
-      params: {
-        transcript,
-        voiceSessionId: sessionId,
-        requestedBy: subject.user.id,
-      },
-      requestedAt: new Date().toISOString(),
-    });
-
-    if (result.status === "configuration_required") {
+    const kbId = process.env.CLARA_KB_ID?.trim();
+    if (!kbId) {
       return NextResponse.json(
-        { error: "configuration_required", message: result.reason, executionId: result.executionId },
+        { error: "configuration_required", message: "CLARA_KB_ID is not configured." },
         { status: 503 },
       );
     }
 
+    const executionId = crypto.randomUUID();
+    const turn = await claraRuntime.createChatTurn({
+      orgId: organizationId,
+      agentId,
+      kbId,
+      userId: subject.user.id,
+      sessionId,
+      surface: "chat",
+      ragMode: "hybrid",
+      messages: [
+        {
+          role: "user",
+          content: transcript,
+        },
+      ],
+    });
+
+    let output = "";
+    for await (const chunk of turn.stream) output += chunk;
+
     await incrementVoiceSessionTurnForOrganization(organizationId, sessionId);
     return NextResponse.json({
-      executionId: result.executionId,
-      text: result.output ?? "",
-      provider: result.provider ?? null,
-      model: result.model ?? null,
-      actions: result.actions ?? [],
+      executionId,
+      text: output,
+      provider: turn.providerName,
+      model: turn.model,
+      actions: [],
     });
   } catch (error) {
     return authorizationErrorToResponse(error);
