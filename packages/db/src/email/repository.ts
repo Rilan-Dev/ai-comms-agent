@@ -385,6 +385,22 @@ export async function listLocalDraftsForOrganization(organizationId: string): Pr
   return r.rows;
 }
 
+export async function listDraftsPendingProviderSync(limit = 25): Promise<Array<{ id: string; organization_id: string }>> {
+  const safeLimit = Math.min(Math.max(limit, 1), 100);
+  const r = await query<Row>(
+    `SELECT m.id, m.organization_id
+     FROM email_messages m
+     JOIN email_accounts a ON a.id = m.email_account_id
+     WHERE m.is_draft = true
+       AND m.provider_draft_sync_status = 'syncing'
+       AND a.deleted_at IS NULL
+     ORDER BY m.updated_at ASC
+     LIMIT $1`,
+    [safeLimit],
+  );
+  return r.rows.map(row => ({ id: String(row.id), organization_id: String(row.organization_id) }));
+}
+
 export async function markDraftProviderSyncingForOrganization(organizationId: string, messageId: string) {
   const r = await query<Row>(
     `UPDATE email_messages m
