@@ -227,3 +227,12 @@ ChatGPT is continuing the product-completion Email Accounts slice under the deve
 ### 2026-10-06 — Mail implementation continuation
 Development-first Mail work now includes real persisted thread navigation, read-state mutation, reply approval requests, and a pending approval queue. Sensitive provider execution remains isolated to the worker executor. Continue the Mail slice before advancing the product-completion menu gate.
 \n\n### 2026-10-06 — Mail draft/action continuation\nImplementation continues under Phase 4 development-first execution. Persisted drafts now have list/retrieve/update/delete lifecycle and Forward is wired to approval-safe actions. Runtime acceptance remains a later gate. Next concrete implementation target is provider-backed draft result synchronization and secure attachment retrieval/handling.\n
+
+### 2026-10-06 — Durable scheduler and automation runtime
+- Implemented PostgreSQL `FOR UPDATE SKIP LOCKED` claiming for due scheduled jobs and durable scheduled-job run lifecycle updates.
+- Added timezone-aware five-field cron matching/next-fire calculation in the worker.
+- Added a worker-owned agent execution dispatch boundary shared by schedule and automation sources; unsupported execution reports configuration-required instead of fabricating provider/AI success.
+- Added deterministic automation trigger/condition evaluation and durable automation run lifecycle.
+- Worker lifecycle now runs the scheduler tick every 15 seconds when PostgreSQL is configured.
+- Added worker tests for cron calculation and automation matching.
+- **Next:** implement the Clara-backed agent execution adapter, then route concrete scheduled/automation actions through the existing approval-safe email/WhatsApp workers.
