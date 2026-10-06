@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 type Message = Record<string, any>;
+type Attachment = { id: string; filename: string; content_type?: string | null; size_bytes?: number | null; scan_status: string; download_available: boolean };
 
 export function ThreadClient({ organizationId, threadId, initialMessages }: { organizationId: string; threadId: string; initialMessages: Message[] }) {
   const [messages, setMessages] = useState(initialMessages);
@@ -11,6 +12,16 @@ export function ThreadClient({ organizationId, threadId, initialMessages }: { or
   const latest = messages[messages.length - 1];
   const [replyBody, setReplyBody] = useState("");
   const [forwardTo, setForwardTo] = useState("");
+  const [attachments, setAttachments] = useState<Record<string, Attachment[]>>({});
+
+
+  async function loadAttachments(messageId: string) {
+    try {
+      const r = await fetch("/api/mail/attachments?organizationId=" + encodeURIComponent(organizationId) + "&messageId=" + encodeURIComponent(messageId), { cache: "no-store" });
+      const d = await r.json();
+      if (r.ok) setAttachments(current => ({ ...current, [messageId]: d.attachments ?? [] }));
+    } catch {}
+  }
 
   async function markRead(id: string) {
     setBusy(true); setNotice(null);
