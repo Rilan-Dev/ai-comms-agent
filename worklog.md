@@ -1766,3 +1766,21 @@ No provider credentials were fabricated and Clara source was not modified.
 - Added WhatsApp workspace UI with account configuration, conversation history, outbound queue composer, and truthful pending/error states.
 - Added forward-only `0016_whatsapp_schema_reconciliation.sql` because the legacy 0002 WhatsApp tables predated the richer 0004 runtime contract.
 - Next: webhook status/media handling, exactly-one-per-agent binding enforcement in runtime flows, inbound command routing, then Automations/Schedules.
+
+
+## 2026-10-06 — WhatsApp hardening and Scheduling/Automation continuation
+
+ChatGPT continued development-first implementation without waiting for CI/Vercel.
+
+- Added forward-only migration 0017 for WhatsApp inbound agent routing, processing lifecycle, provider-status indexes, and provider error persistence.
+- Added shared-number-safe provider message identity so a single inbound provider message can be explicitly routed to multiple bound agents without global-ID collisions.
+- Webhook processing now handles Meta delivery status events, persists failed-delivery error metadata, applies monotonic sent/delivered/read transitions, and sanitizes inbound media metadata before persistence.
+- Added database operations for account-to-agent routing lookup and provider status updates.
+- Added migration regression coverage for the new WhatsApp runtime boundary.
+- Added forward-only migration 0018 for durable schedule timezone/catch-up/error fields and scheduling indexes.
+- Added PostgreSQL repositories for schedules and automation rules with organization-scoped CRUD and run history reads.
+- Added organization-authorized schedule and automation APIs with validation and audit events.
+- Replaced the previous static Schedules and Automations pages with functional persisted workspaces: create/archive, agent selection, cron or one-shot schedule configuration, timezone/catch-up settings, trigger/action selection, status/error display, loading-free server hydration, and truthful empty states.
+- No provider credentials were fabricated, no live WhatsApp/Meta connectivity was claimed, and no CI/Vercel result was treated as a development blocker.
+
+Next: worker-side durable scheduler tick and automation trigger evaluation, followed by the shared agent execution boundary.
