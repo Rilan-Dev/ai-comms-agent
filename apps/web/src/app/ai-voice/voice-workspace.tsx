@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { isCurrentVoiceSequence } from "@ai-comms-agent/shared";
 
 type Agent = { id: string; name: string; status: string };
 type VoiceSession = { id: string; status: string; provider?: string | null; model?: string | null };
@@ -105,7 +106,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       });
       const payload = await response.json().catch(() => ({})) as { text?: string; message?: string };
       if (!response.ok) throw new Error(payload.message ?? "Voice turn failed.");
-      if (sequence !== turnSequenceRef.current || controller.signal.aborted) return;
+      if (!isCurrentVoiceSequence(turnSequenceRef.current, sequence) || controller.signal.aborted) return;
       setResponseText(payload.text ?? "");
       setTranscript("");
       void fetch("/api/voice/session", {
@@ -128,7 +129,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       setError(e instanceof Error ? e.message : "Voice turn failed.");
       setNotice("The turn failed safely; no external action was claimed.");
     } finally {
-      if (sequence === turnSequenceRef.current) setTurnBusy(false);
+      if (isCurrentVoiceSequence(turnSequenceRef.current, sequence)) setTurnBusy(false);
     }
   }
 
