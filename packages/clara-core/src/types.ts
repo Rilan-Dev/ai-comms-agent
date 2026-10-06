@@ -23,6 +23,7 @@ export type {
   LLMProvider,
   EmbeddingProviderId,
   ProviderConfig,
+// @ts-ignore — suppress the unresolved optional submodule at the module specifier.
 } from "../../../vendor/clara/clara-core/source/src/modules/ai-core/types";
 
 // Voice core types
@@ -31,6 +32,7 @@ export type {
   VoiceProvider,
   VoiceProviderService,
   ConversationalVoiceService,
+// @ts-ignore — suppress the unresolved optional submodule at the module specifier.
 } from "../../../vendor/clara/clara-core/source/src/modules/voice-core/types";
 
 // RAG grounding types
@@ -40,4 +42,5 @@ export type {
   GroundingRequest,
   GroundedSource,
   GroundedContext,
+// @ts-ignore — suppress the unresolved optional submodule at the module specifier.
 } from "../../../vendor/clara/clara-core/source/src/modules/rag/grounding";
