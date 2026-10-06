@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { label: "Knowledge", href: "/knowledge", icon: "▱" },
   { label: "Activity", href: "/activity", icon: "⌁" },
   { label: "Audit", href: "/audit", icon: "◇" },
+  { label: "Operations", href: "/operations", icon: "⌁" },
   { label: "Settings", href: "/settings", icon: "⚙" },
 ] as const;
 
@@ -44,12 +45,7 @@ export function Sidebar() {
           })}
         </ul>
       </nav>
-      <div className="border-t p-3">
-        <div className="rounded-xl border bg-muted/40 p-3">
-          <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-500"/><span className="text-xs font-medium">Core online</span></div>
-          <p className="mt-1 text-[11px] text-muted-foreground">AI, email and messaging workspace</p>
-        </div>
-      </div>
+      <div className="border-t p-3"><a href="/operations" className="block rounded-xl border bg-muted/40 p-3 transition hover:bg-muted"><p className="text-xs font-semibold">Operations</p><p className="mt-1 text-[11px] text-muted-foreground">Health, runtime signals and infrastructure status</p></a></div>
     </aside>
   );
 }
