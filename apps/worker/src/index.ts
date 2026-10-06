@@ -9,7 +9,7 @@
 import { isPostgresConfigured } from "@ai-comms-agent/db";
 import { startProviderDraftSyncLoop } from "./email/provider-draft-worker";
 import { processApprovedEmailActions } from "./email/action-worker";
-import { processQueuedWhatsAppMessages } from "./messaging/whatsapp-worker";
+import { processQueuedWhatsAppMessages, verifyPendingWhatsAppAccounts } from "./messaging/whatsapp-worker";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -78,6 +78,7 @@ function main() {
   const stopProviderDraftSync = startProviderDraftSyncLoop();
   const actionTimer = setInterval(() => { void processApprovedEmailActions(); }, 5_000);
   const whatsappTimer = setInterval(() => { void processQueuedWhatsAppMessages(); }, 5_000);
+  const whatsappVerifyTimer = setInterval(() => { void verifyPendingWhatsAppAccounts(); }, 10_000);
   const interval = setInterval(() => {
     const checks = healthCheck();
     log("health check", checks);
@@ -90,6 +91,7 @@ function main() {
     stopProviderDraftSync();
     clearInterval(actionTimer);
     clearInterval(whatsappTimer);
+    clearInterval(whatsappVerifyTimer);
     process.exit(0);
   };
 
