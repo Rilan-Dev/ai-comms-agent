@@ -444,6 +444,23 @@ export async function getLocalDraftForOrganization(organizationId: string, messa
 }
 
 
+export async function markLocalDraftSentForOrganization(
+  organizationId: string,
+  messageId: string,
+  providerMessageId: string,
+): Promise<Record<string, unknown> | null> {
+  const r = await query<Row>(
+    `UPDATE email_messages m
+     SET is_draft = false, is_sent = true, provider_message_id = $1, updated_at = now()
+     FROM email_accounts a
+     WHERE m.id = $2 AND m.organization_id = $3 AND m.email_account_id = a.id
+       AND a.organization_id = $3 AND a.deleted_at IS NULL
+     RETURNING m.*`,
+    [providerMessageId, messageId, organizationId],
+  );
+  return r.rows[0] ?? null;
+}
+
 export async function deleteLocalDraftForOrganization(organizationId: string, messageId: string): Promise<boolean> {
   const r = await query<Row>(
     `DELETE FROM email_messages m
