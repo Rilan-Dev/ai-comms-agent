@@ -692,3 +692,9 @@ Latest source correction: `apps/web/src/app/api/email-accounts/route.ts` was rep
 - Latest code baseline: ede90e43f1d106206657f85b0f09efe7b5521785.
 - Acceptance remains pending until CI produces green runtime evidence.
 \n\n### 2026-10-06 — Development-first verification state\n- Latest implementation commit: 9b9aeee0ac9605cdcde476e93a464f78d6be3f92.\n- Added deterministic Mail draft/forward contract tests.\n- No new runtime acceptance claim; CI/Vercel remain verification gates and do not block implementation under the explicit development-first instruction.\n\n\n### 2026-10-06 — Mail provider draft synchronization continuation\n2026-10-06 — Development-first Mail continuation: provider draft synchronization source implementation is now present. Runtime/provider verification remains pending and is not represented as passed. No live credentials were used.\n
+
+### 2026-10-06 — Development-first implementation checkpoint
+- Mail implementation now includes provider draft synchronization request/polling, worker-only approved outbound execution, and attachment metadata/download boundaries.
+- WhatsApp account configuration API/UI now stores Meta credentials encrypted server-side and keeps account status `pending` until provider verification is implemented.
+- Latest implementation commit: `8675e9bc39799796714b1418470733246f58e4ca8`.
+- Runtime/browser validation intentionally deferred under the active development-first instruction; no PASS is claimed.
