@@ -38,6 +38,8 @@ export {
   updateMailReadStateForOrganization,
   createLocalDraft,
   updateLocalDraftForOrganization,
+  listLocalDraftsForOrganization,
+  deleteLocalDraftForOrganization,
   type CreateLocalDraftInput,
   type MailInboxFilters,
 } from "./email/repository";
