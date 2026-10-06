@@ -230,6 +230,17 @@ export async function getMailMessageForOrganization(organizationId: string, mess
   return r.rows[0] ?? null;
 }
 
+export async function getMailAttachmentForOrganization(organizationId: string, attachmentId: string): Promise<Record<string, unknown> | null> {
+  const r = await query<Row>(
+    `SELECT id, message_id, organization_id, filename, content_type, size_bytes, storage_bucket, storage_path, sha256, scan_status
+     FROM email_attachments
+     WHERE id = $1 AND organization_id = $2
+     LIMIT 1`,
+    [attachmentId, organizationId],
+  );
+  return r.rows[0] ?? null;
+}
+
 export async function listMailAttachmentsForOrganization(organizationId: string, messageId: string): Promise<Array<Record<string, unknown>>> {
   const r = await query<Row>(
     `SELECT id, message_id, filename, content_type, size_bytes, storage_bucket, storage_path, sha256, scan_status, created_at
