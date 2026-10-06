@@ -30,7 +30,7 @@ export async function processApprovedEmailActions(limit = 10) {
       const encrypted = await repository.loadCredentials(account.id, masterKey);
       if (!encrypted) throw new Error("Email account credentials are unavailable");
       const config = await repository.getConnectionConfig(account.id);
-      const credentials: EmailCredentials = { ...(encrypted as EmailCredentials), ...(config as Partial<EmailCredentials>) };
+      const credentials: EmailCredentials = { ...(encrypted as unknown as EmailCredentials), ...(config as unknown as Partial<EmailCredentials>) };
       const provider = createEmailProviderRegistry().create(account.provider);
       const result = await verifyEmailProviderConnection(provider, credentials, async ({ provider: connected }) => {
         const snapshot = action.recipientSnapshot;
@@ -51,7 +51,6 @@ export async function processApprovedEmailActions(limit = 10) {
             : (await connected.createDraft(params)).draft_id;
           return { kind: "send", ref: await connected.sendDraft(providerDraftId) };
         }
-        if (action.actionType === "reply_email") throw new Error("unreachable");
         if (action.actionType === "reply_email") {
           if (!account.capabilities.reply) throw new CapabilityNotSupported(account.provider, "reply");
           const messageId = String(snapshot.messageId ?? "");
