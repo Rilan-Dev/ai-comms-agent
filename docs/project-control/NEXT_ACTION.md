@@ -375,3 +375,10 @@ OAuth failure paths now return users to `/mail/accounts` with a bounded, non-sec
 
 
 A source-integrity defect in the email account API was corrected (literal `\\n` text had entered the TypeScript source). Deterministic coverage now guards against it. Continue remaining Email Accounts API/UI work; then move to Mail only after the slice implementation is complete.
+
+
+### 2026-10-06 — Mail schema/runtime continuation
+
+ChatGPT corrected the persisted Mail repository to match the canonical 0003 email-domain schema (from_email/from_name, to_recipients, is_sent, sanitized body, attachment existence) and added regression tests for organization scoping and parameterized search. No provider mutation is claimed yet.
+
+**Next implementation:** complete the Mail vertical slice with persisted message mutation APIs (read/unread, draft create/update/delete, provider-aware send/reply/forward behind deterministic authorization/approval), thread actions, audit events, and polished loading/error/empty states. Do not fabricate provider connectivity or bypass approval for sensitive outbound actions.
