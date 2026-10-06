@@ -1688,3 +1688,15 @@ No provider credentials were fabricated and Clara source was not modified.
 - Added Compose entry point to the persisted inbox.
 - No live provider credentials were used or fabricated; no send operation is claimed.
 - **Next:** thread/message mutation surface and provider-backed draft/send orchestration, followed by Mail acceptance verification.
+
+
+## 2026-10-06 — ChatGPT Mail mutation continuation
+
+- Added organization-scoped persisted archive and move operations in `packages/db/src/email/repository.ts`.
+- Archive resolves only an archive folder belonging to the same mailbox; move requires the destination folder to belong to the same mailbox.
+- Added authorized `/api/mail/messages/folder` GET/PATCH route using organization authorization and fail-closed partial mutation handling.
+- Added inbox Archive and Move controls with mailbox-aware folder choices and truthful error handling.
+- Added deterministic contract coverage in `apps/web/tests/mail-folder-mutation-contract.test.ts`.
+- Polished the thread header actions without inventing provider connectivity.
+- No real provider credentials were used; CI/Vercel were not awaited as instructed.
+- Current next implementation: approval-safe provider-backed draft/reply/forward/send orchestration and remaining Mail action UX/attachments.
