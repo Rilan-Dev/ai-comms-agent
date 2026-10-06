@@ -74,3 +74,13 @@ test("email account API enforces organization authorization and never returns cr
   assert.doesNotMatch(source, /access_token|refresh_token|password.*NextResponse/);
   assert.doesNotMatch(source, /\\\\n/);
 });
+
+
+test("inbox source contains no escaped-newline literals and sender search remains parameterized", () => {
+  const inboxPath = resolve(__dirname, "../src/app/mail/inbox/inbox-client.tsx");
+  const repositoryPath = resolve(__dirname, "../../packages/db/src/email/repository.ts");
+  const inbox = readFileSync(inboxPath, "utf8");
+  const repository = readFileSync(repositoryPath, "utf8");
+  assert.doesNotMatch(inbox, /\\\\n/);
+  assert.match(repository, /m\\.from_email ILIKE \\$\\$\\{values\\.length\\}/);
+});
