@@ -257,3 +257,60 @@ export async function updateMailReadStateForOrganization(
   );
   return r.rows.length;
 }
+
+export interface CreateLocalDraftInput {
+  organizationId: string;
+  emailAccountId: string;
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject?: string;
+  bodyText?: string;
+}
+
+export async function createLocalDraft(input: CreateLocalDraftInput): Promise<Record<string, unknown>> {
+  const accountResult = await query<Row>(
+    "SELECT id, email_address FROM email_accounts WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL LIMIT 1",
+    [input.emailAccountId, input.organizationId],
+  );
+  if (!accountResult.rows[0]) throw new Error("Email account was not found in this organization.");
+  const threadResult = await query<Row>(
+    `INSERT INTO email_threads (email_account_id, organization_id, subject, normalized_subject, participant_emails)
+     VALUES ($1, $2, $3, lower(regexp_replace(coalesce($3,''), '^([[:space:]]*(re|fwd):[[:space:]]*)+', '', 'gi')), $4::citext[])
+     RETURNING id`,
+    [input.emailAccountId, input.organizationId, input.subject?.trim() || null, [...input.to, String(accountResult.rows[0].email_address)]],
+  );
+  const threadId = String(requiredRow(threadResult.rows[0], "draft thread").id);
+  const messageResult = await query<Row>(
+    `INSERT INTO email_messages
+      (email_account_id, organization_id, thread_id, provider_message_id, from_email, to_recipients, cc_recipients, bcc_recipients, subject, text_body, snippet, is_read, is_draft, is_sent, received_at)
+     VALUES ($1, $2, $3, 'local-draft:' || gen_random_uuid()::text, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8, $9, left($9, 240), true, true, false, now())
+     RETURNING id, thread_id, email_account_id, from_email, to_recipients, cc_recipients, bcc_recipients, subject, text_body, is_draft, updated_at`,
+    [input.emailAccountId, input.organizationId, threadId, accountResult.rows[0].email_address, JSON.stringify(input.to), JSON.stringify(input.cc ?? []), JSON.stringify(input.bcc ?? []), input.subject?.trim() || null, input.bodyText ?? ""],
+  );
+  return requiredRow(messageResult.rows[0], "draft message");
+}
+
+export async function updateLocalDraftForOrganization(
+  organizationId: string,
+  messageId: string,
+  input: Partial<Pick<CreateLocalDraftInput, "to" | "cc" | "bcc" | "subject" | "bodyText">>,
+): Promise<Record<string, unknown> | null> {
+  const values: unknown[] = [];
+  const sets: string[] = [];
+  if (input.to) { values.push(JSON.stringify(input.to)); sets.push(`to_recipients = $${values.length}::jsonb`); }
+  if (input.cc) { values.push(JSON.stringify(input.cc)); sets.push(`cc_recipients = $${values.length}::jsonb`); }
+  if (input.bcc) { values.push(JSON.stringify(input.bcc)); sets.push(`bcc_recipients = $${values.length}::jsonb`); }
+  if (input.subject !== undefined) { values.push(input.subject.trim() || null); sets.push(`subject = $${values.length}`); }
+  if (input.bodyText !== undefined) { values.push(input.bodyText); sets.push(`text_body = $${values.length}, snippet = left($${values.length}, 240)`); }
+  if (!sets.length) return getMailMessageForOrganization(organizationId, messageId);
+  values.push(messageId, organizationId);
+  const r = await query<Row>(
+    `UPDATE email_messages m SET ${sets.join(", ")}, updated_at = now()
+     FROM email_accounts a
+     WHERE m.id = $${values.length - 1} AND m.email_account_id = a.id AND a.organization_id = $${values.length} AND m.is_draft = true AND a.deleted_at IS NULL
+     RETURNING m.*`,
+    values,
+  );
+  return r.rows[0] ?? null;
+}
