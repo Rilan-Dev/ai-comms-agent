@@ -40,7 +40,7 @@ export function InboxClient({ organizationId, initialMessages }: { organizationI
     <div className="mx-auto max-w-[1500px]">
       <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Mail workspace</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Inbox</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Search and triage persisted messages from connected mailboxes. No demo messages are shown.</p></div>
-        <a href="/mail/accounts" className="inline-flex h-10 items-center justify-center rounded-xl border bg-background px-4 text-sm font-semibold hover:bg-muted">Manage accounts</a>
+        <div className="flex flex-wrap gap-2"><a href="/mail/compose" className="inline-flex h-10 items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background hover:opacity-90">Compose</a><a href="/mail/accounts" className="inline-flex h-10 items-center justify-center rounded-xl border bg-background px-4 text-sm font-semibold hover:bg-muted">Manage accounts</a></div>
       </header>
       <div className="mt-7 grid gap-3 sm:grid-cols-3">
         {[["Messages", messages.length],["Unread", unreadCount],["Needs action", actionCount]].map(([label,value])=><div key={String(label)} className="rounded-2xl border bg-background/90 p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-2xl font-semibold">{value}</p></div>)}
