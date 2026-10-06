@@ -303,3 +303,10 @@ Current commit: `1972d62cffca5b1b5a5eaeb4ddcb4e7c9f53b446`.
 - Mail now has a PostgreSQL-backed, organization-scoped inbox query/API, real persisted inbox UI with search/status filters, and persisted thread detail.
 - No Mail provider send/read mutation is claimed yet; those are the next implementation steps.
 - Formal runtime acceptance remains separate and is not being represented as passed.
+\n\n### 2026-10-06 — ChatGPT Email Accounts lifecycle continuation
+- Added a single-connection provider verification helper with guaranteed cleanup and capability normalization.
+- Refactored persisted folder/label discovery to run within the verified provider connection and update account status to connected/error truthfully.
+- Added organization-scoped mailbox structure API exposing persisted folders, labels, and agent assignments without credential data.
+- Added mailbox UI inspection plus provider lifecycle/contract tests.
+- No real provider credentials were used; no live connectivity is claimed.
+- Latest implementation commit before control synchronization: `105d41481d9523bda66b0f6ae147e73fff1c3c46`.
