@@ -82,6 +82,8 @@ export {
   insertWhatsAppInboundMessage,
   queueWhatsAppOutboundMessage,
   listQueuedWhatsAppOutbound,
+  listPendingWhatsAppAccounts,
+  updateWhatsAppAccountStatus,
   markWhatsAppOutboundSent,
   markWhatsAppOutboundFailed,
 } from "./messaging/whatsapp-repository";
