@@ -520,3 +520,9 @@ Correction commits: `161b8e0`, `7af6e77`, `338a735`.
 ### 2026-10-06 — Concrete scheduled/automation product actions
 
 ChatGPT continued development-first execution past the verification gate. Clara execution now flows into a worker-owned product action boundary: scheduled/automation payloads can queue outbound WhatsApp text through the existing worker queue or create approval-gated email actions without fabricating a user actor or sending from the browser. Agent-to-WhatsApp account resolution is organization-scoped and reuses the existing exactly-one binding model. The next implementation is inbound WhatsApp agent-command execution and event emission from Mail/WhatsApp workers, followed by the Clara chat/realtime voice product surface. Do not wait for CI/Vercel.
+
+
+### 2026-10-06 — WhatsApp inbound agent execution
+Implemented the next concrete WhatsApp runtime slice without waiting for CI/Vercel: durable routed-to-processing-to-completed/failed inbound claiming with PostgreSQL row locking, worker-side Clara agent execution for inbound text commands, automatic reply queuing to the originating WhatsApp contact, and whatsapp.received automation event emission. Added whatsapp as an explicit agent execution source. No live provider success is claimed.
+
+**Next concrete implementation:** advance the Clara chat/realtime voice product surface and shared conversation persistence, then connect voice/chat actions to the same approval-safe Email/WhatsApp execution boundary. Continue development without waiting for CI/Vercel.
