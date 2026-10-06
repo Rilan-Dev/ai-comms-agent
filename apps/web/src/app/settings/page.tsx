@@ -10,6 +10,8 @@ export default function SettingsPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [savingMember, setSavingMember] = useState("");
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     void Promise.all([
@@ -30,6 +32,26 @@ export default function SettingsPage() {
       setError(e instanceof Error ? e.message : "Settings could not be loaded.");
     }).finally(() => setLoading(false));
   }, []);
+
+  async function updateMember(membershipId: string, action: "role" | "status", value: string) {
+    setSavingMember(membershipId);
+    setNotice("");
+    try {
+      const response = await fetch("/api/settings/members", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ membershipId, action, [action === "role" ? "role" : "status"]: value }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.message ?? "Membership update failed.");
+      setMembers((current) => current.map((item) => item.id === membershipId ? { ...item, ...(body.membership ?? {}) } : item));
+      setNotice("Membership updated.");
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Membership update failed.");
+    } finally {
+      setSavingMember("");
+    }
+  }
 
   return (
     <main className="mx-auto max-w-[1100px] space-y-8 p-5 sm:p-7 lg:p-9">
@@ -76,6 +98,7 @@ export default function SettingsPage() {
       </section>
 
       <section className="rounded-2xl border bg-background p-5">
+        {notice ? <div className="mb-4 rounded-xl border bg-muted/30 px-4 py-3 text-sm">{notice}</div> : null}
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Members & roles</p>
@@ -91,8 +114,30 @@ export default function SettingsPage() {
               {members.map((member) => (
                 <tr key={member.id} className="border-b last:border-0">
                   <td className="px-3 py-3"><div className="font-medium">{member.user?.name || "Unnamed user"}</div><div className="text-xs text-muted-foreground">{member.user?.email || "Unknown email"}</div></td>
-                  <td className="px-3 py-3"><span className="rounded-full border px-2.5 py-1 text-xs font-medium capitalize">{member.role}</span></td>
-                  <td className="px-3 py-3 capitalize text-muted-foreground">{member.status}</td>
+                  <td className="px-3 py-3">
+                    {member.role === "owner" ? (
+                      <span className="rounded-full border px-2.5 py-1 text-xs font-medium capitalize">owner</span>
+                    ) : (
+                      <select
+                        value={member.role}
+                        disabled={savingMember === member.id}
+                        onChange={(e) => void updateMember(member.id, "role", e.target.value)}
+                        className="rounded-lg border bg-background px-2 py-1 text-xs"
+                      >
+                        <option value="admin">admin</option><option value="member">member</option><option value="viewer">viewer</option>
+                      </select>
+                    )}
+                  </td>
+                  <td className="px-3 py-3">
+                    <select
+                      value={member.status}
+                      disabled={savingMember === member.id || member.role === "owner"}
+                      onChange={(e) => void updateMember(member.id, "status", e.target.value)}
+                      className="rounded-lg border bg-background px-2 py-1 text-xs capitalize"
+                    >
+                      <option value="active">active</option><option value="suspended">suspended</option><option value="invited">invited</option>
+                    </select>
+                  </td>
                   <td className="px-3 py-3 capitalize text-muted-foreground">{member.user?.status ?? "unknown"}</td>
                 </tr>
               ))}
