@@ -65,7 +65,7 @@ export async function getWhatsAppAccountByPhoneNumberId(phoneNumberId: string) {
 
 export async function recordWhatsAppWebhookEvent(input: { organizationId: string; accountId: string; providerEventId?: string | null; eventType: string; payloadHash: string; payload: Record<string, unknown> }) {
   const r = await query<Row>(
-    "INSERT INTO whatsapp_webhook_events (organization_id, whatsapp_account_id, provider_event_id, event_type, payload_hash, payload, status) VALUES ($1,$2,$3,$4,$5,$6::jsonb,'received') ON CONFLICT (whatsapp_account_id, provider_event_id) WHERE provider_event_id IS NOT NULL DO NOTHING RETURNING id",
+    "INSERT INTO whatsapp_webhook_events (organization_id, whatsapp_account_id, provider_event_id, event_type, payload_hash, payload, status) VALUES ($1,$2,$3,$4,$5,$6::jsonb,'received') ON CONFLICT DO NOTHING RETURNING id",
     [input.organizationId, input.accountId, input.providerEventId ?? null, input.eventType, input.payloadHash, JSON.stringify(input.payload)],
   );
   return { inserted: r.rows.length > 0, id: r.rows[0]?.id ? String(r.rows[0].id) : null };
@@ -81,7 +81,7 @@ export async function upsertWhatsAppContact(input: { organizationId: string; acc
 
 export async function insertWhatsAppInboundMessage(input: { organizationId: string; accountId: string; contactId?: string | null; providerMessageId: string; messageType: string; body?: string | null; media?: Record<string, unknown>; providerTimestamp?: string | null }) {
   const r = await query<Row>(
-    "INSERT INTO whatsapp_messages (organization_id, whatsapp_account_id, contact_id, direction, provider_message_id, message_type, body, media, status, provider_timestamp) VALUES ($1,$2,$3,'inbound',$4,$5,$6,$7::jsonb,'received',$8) ON CONFLICT (whatsapp_account_id, provider_message_id) DO NOTHING RETURNING id",
+    "INSERT INTO whatsapp_messages (organization_id, whatsapp_account_id, contact_id, direction, provider_message_id, message_type, body, media, status, provider_timestamp) VALUES ($1,$2,$3,'inbound',$4,$5,$6,$7::jsonb,'received',$8) ON CONFLICT DO NOTHING RETURNING id",
     [input.organizationId, input.accountId, input.contactId ?? null, input.providerMessageId, input.messageType, input.body ?? null, JSON.stringify(input.media ?? {}), input.providerTimestamp ?? null],
   );
   return { inserted: r.rows.length > 0, id: r.rows[0]?.id ? String(r.rows[0].id) : null };
