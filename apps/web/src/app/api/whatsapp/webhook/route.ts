@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       const event = await recordWhatsAppWebhookEvent({ organizationId: account.organization_id, accountId: account.id, providerEventId, eventType: String(change?.field ?? "unknown"), payloadHash, payload: value ?? {} });
       if (!event.inserted) continue;
       const contacts = Array.isArray(value?.contacts) ? value.contacts : [];
-      const contactMap = new Map(contacts.map((c: any) => [String(c.wa_id ?? ""), String(c.profile?.name ?? "")]));
+      const contactMap = new Map<string, string>(contacts.map((c: any) => [String(c.wa_id ?? ""), String(c.profile?.name ?? "")] as [string, string]));
       const statuses = Array.isArray(value?.statuses) ? value.statuses : [];
       for (const status of statuses) {
         const providerMessageId = typeof status?.id === "string" ? status.id : "";
