@@ -1,1 +1,41 @@
-export default function DraftsPage(){return <main className="mx-auto max-w-[1200px] p-5 sm:p-7 lg:p-9"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Mail</p><h1 className="mt-2 text-3xl font-semibold">Drafts</h1><p className="mt-2 text-sm text-muted-foreground">AI-prepared replies stay drafts until an authorized send action occurs.</p></div><div className="mt-7 rounded-2xl border bg-background p-10 text-center"><p className="font-semibold">Your drafts will appear here</p><p className="mt-2 text-sm text-muted-foreground">Sending is approval-gated by default.</p></div></main>}
+"use client";
+
+import { useEffect, useState } from "react";
+
+type Draft = { id: string; email_account_id: string; subject?: string | null; text_body?: string | null; to_recipients?: string[]; updated_at?: string; account_email?: string };
+
+export default function DraftsPage() {
+  const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const organizationId = "00000000-0000-0000-0000-000000000001";
+
+  async function load() {
+    try {
+      const r = await fetch("/api/mail/drafts?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" });
+      const d = await r.json(); if (!r.ok) throw new Error(d.message ?? "Could not load drafts.");
+      setDrafts(d.drafts ?? []);
+    } catch (e) { setNotice(e instanceof Error ? e.message : "Could not load drafts."); }
+  }
+
+  useEffect(() => { void load(); }, []);
+
+  async function remove(id: string) {
+    if (!window.confirm("Delete this local draft? This cannot be undone.")) return;
+    setBusyId(id); setNotice(null);
+    try {
+      const r = await fetch("/api/mail/drafts", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ organizationId, messageId: id }) });
+      const d = await r.json(); if (!r.ok) throw new Error(d.message ?? "Could not delete draft.");
+      setDrafts(items => items.filter(item => item.id !== id));
+    } catch (e) { setNotice(e instanceof Error ? e.message : "Could not delete draft."); }
+    finally { setBusyId(null); }
+  }
+
+  return <main className="min-h-full bg-muted/20 p-5 sm:p-7 lg:p-9"><div className="mx-auto max-w-[1100px]">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Mail</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Drafts</h1><p className="mt-2 text-sm text-muted-foreground">Persisted drafts stay editable until you explicitly request an approval-gated send.</p></div><a href="/mail/compose" className="rounded-xl bg-foreground px-4 py-2.5 text-center text-sm font-semibold text-background">New draft</a></div>
+    {notice && <div role="alert" className="mt-5 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">{notice}</div>}
+    <section className="mt-7 overflow-hidden rounded-3xl border bg-background shadow-sm">
+      {drafts.length === 0 ? <div className="p-12 text-center"><p className="font-semibold">No drafts yet</p><p className="mt-2 text-sm text-muted-foreground">Compose a message to create the first persisted draft.</p></div> : <div className="divide-y">{drafts.map(d => <article key={d.id} className="p-5 sm:p-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><p className="truncate font-semibold">{d.subject || "(No subject)"}</p><p className="mt-1 text-xs text-muted-foreground">{d.account_email || "Mailbox"} · {d.to_recipients?.join(", ") || "No recipients"}</p><p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{d.text_body || "Empty draft"}</p><p className="mt-3 text-xs text-muted-foreground">Updated {d.updated_at ? new Date(d.updated_at).toLocaleString() : "recently"}</p></div><div className="flex shrink-0 gap-2"><a href={"/mail/compose?draftId=" + encodeURIComponent(d.id)} className="rounded-lg border px-3 py-2 text-xs font-semibold">Edit</a><button type="button" disabled={busyId === d.id} onClick={() => void remove(d.id)} className="rounded-lg border border-destructive/20 px-3 py-2 text-xs font-semibold text-destructive disabled:opacity-50">{busyId === d.id ? "Deleting…" : "Delete"}</button></div></div></article>)}</div>}
+    </section>
+  </div></main>;
+}
