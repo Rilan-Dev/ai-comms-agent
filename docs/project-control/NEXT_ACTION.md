@@ -416,3 +416,4 @@ Implemented the bounded provider retry layer and wired it into verified provider
 
 Next implementation focus: finish deterministic Email Accounts lifecycle/source coverage, then begin the Mail vertical slice (provider-backed mailbox structure/sync boundary) without waiting for CI/Vercel.
 
+\n\n### 2026-10-06 — Mail provider draft synchronization continuation\nContinue Product Completion Slice 2 — Mail. Complete provider-backed draft synchronization and secure attachment retrieval/handling, then finish message/thread action UX. Provider execution remains worker-only and credential-free in browser/API paths. Do not fabricate live provider connectivity. CI/Vercel are acceptance gates, not development blockers under the explicit development-first override.\n
