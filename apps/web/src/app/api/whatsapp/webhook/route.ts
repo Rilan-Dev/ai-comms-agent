@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         const result = await applyWhatsAppProviderStatus({
           providerMessageId,
           status: providerStatus as "sent" | "delivered" | "read" | "failed",
-          error: Array.isArray(status?.errors) && status.errors[0] ? JSON.stringify(status.errors[0]).slice(0, 2000) : null,
+          error: Array.isArray(status?.errors) && status.errors[0] ? String(JSON.stringify(status.errors[0])).slice(0, 2000) : null,
           timestamp: typeof status?.timestamp === "string" ? new Date(Number(status.timestamp) * 1000).toISOString() : null,
         });
         if (result) accepted += 1;
