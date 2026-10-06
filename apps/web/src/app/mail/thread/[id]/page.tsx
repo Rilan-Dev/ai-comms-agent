@@ -13,7 +13,9 @@ export default async function MailThreadPage({ params }: { params: Promise<{ id:
     const { id } = await params;
     const messages = await getMailThreadForOrganization(organizationId, id);
     if (!messages.length) return <State title="Thread not found" body="This thread does not exist in the current organization." />;
-    const firstMessage = messages[0];\n    if (!firstMessage) throw new Error("Thread message data is incomplete.");\n    const subject = String(firstMessage.subject ?? "(No subject)");
+    const firstMessage = messages[0];
+    if (!firstMessage) throw new Error("Thread message data is incomplete.");
+    const subject = String(firstMessage.subject ?? "(No subject)");
     return <main className="min-h-full bg-muted/20 p-5 sm:p-7 lg:p-9"><div className="mx-auto max-w-4xl">
       <a href="/mail/inbox" className="text-sm font-semibold text-muted-foreground hover:text-foreground">← Back to inbox</a>
       <header className="mt-6 rounded-3xl border bg-background p-6 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Conversation</p><h1 className="mt-2 text-2xl font-semibold tracking-tight">{subject}</h1><p className="mt-2 text-sm text-muted-foreground">{messages.length} message{messages.length === 1 ? "" : "s"} · {String(firstMessage.account_email)}</p></div><div className="flex gap-2"><a href="/mail/compose" className="rounded-xl border px-3 py-2 text-xs font-semibold hover:bg-muted">Compose</a><a href="/mail/inbox" className="rounded-xl bg-foreground px-3 py-2 text-xs font-semibold text-background">Back to inbox</a></div></div></header>
