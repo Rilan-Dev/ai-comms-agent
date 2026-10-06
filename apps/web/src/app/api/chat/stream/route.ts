@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "user", content });
 
     const messages = [
-      ...history.map((message) => ({ role: message.role as "user" | "assistant" | "system" | "tool", content: message.content })),
+      ...history.filter((message) => message.role === "user" || message.role === "assistant" || message.role === "system").map((message) => ({ role: message.role as "user" | "assistant" | "system", content: message.content })),
       { role: "user" as const, content },
     ];
 
