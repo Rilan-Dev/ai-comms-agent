@@ -1745,3 +1745,13 @@ No provider credentials were fabricated and Clara source was not modified.
 - Added regression tests covering the worker security boundary.
 - No live provider credentials were introduced, no fabricated connectivity was claimed, and no Clara source was modified.
 - Next: connect the draft-sync lifecycle to the existing Mail UI/API and add a safe attachment metadata/download boundary backed by the application's storage contract.
+
+
+### 2026-10-06 — Mail provider execution and WhatsApp foundation continuation
+
+- Added provider draft synchronization request API and Drafts UI lifecycle (`local_only` → `syncing` → `synced`/`error`).
+- Added worker polling for pending provider drafts and worker-only approved email action execution for send/reply/forward, preserving credential isolation and approval boundaries.
+- Added organization-scoped attachment metadata API and secure download boundary with scan-status enforcement, path traversal protection, size limits, and SHA-256 integrity verification.
+- Added WhatsApp account repository, organization-scoped account configuration API, encrypted Meta access-token persistence, disconnect lifecycle, and a polished WhatsApp configuration workspace.
+- WhatsApp remains truthfully `pending` until Meta connectivity verification/webhook/runtime execution is implemented; no live provider success is claimed.
+- Next: WhatsApp webhook verification/idempotent inbound persistence, outbound worker execution, agent binding, and conversation UI.
