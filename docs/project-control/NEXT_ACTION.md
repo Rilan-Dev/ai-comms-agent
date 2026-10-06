@@ -478,3 +478,9 @@ The latest local web typecheck exposed three source-level typing defects in the 
 - Credential form fields use a typed `as const` field definition, eliminating unsafe computed-key inference.
 - Correction commits: `f16b0d0`, `07ad3c0`.
 - **Next:** pull `main` and rerun `npm run typecheck`; if the web package is clean, continue the active durable scheduler tick and automation trigger evaluator. Do not wait for CI/Vercel.
+
+
+### 2026-10-06 — Durable scheduler/automation execution boundary
+Implemented the next active Phase 4 runtime slice: durable scheduled-job claiming with PostgreSQL row locking, scheduled run lifecycle persistence, timezone-aware five-field cron calculation, worker scheduler polling, an event-driven automation trigger evaluator, and a single worker-owned agent execution dispatch boundary. Unsupported execution is reported as configuration-required rather than fabricated. Added worker unit coverage for cron and automation matching.
+
+**Next concrete implementation:** wire real agent execution into the shared Clara-backed runtime boundary, then connect scheduler/automation dispatch to approved email/WhatsApp actions and add event emission from the existing provider workers. Continue without waiting for CI/Vercel.
