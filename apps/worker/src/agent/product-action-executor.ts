@@ -8,9 +8,9 @@ function stringValue(value: unknown): string | null {
 }
 
 function actionsFromParams(params: Record<string, unknown>): Action[] {
-  const raw = params.actions;
-  if (!Array.isArray(raw)) return [];
-  return raw.filter((value): value is Action => !!value && typeof value === "object" && !Array.isArray(value));
+  const raw = params.actions ?? params.action;
+  if (Array.isArray(raw)) return raw.filter((value): value is Action => !!value && typeof value === "object" && !Array.isArray(value));
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? [raw as Action] : [];
 }
 
 export async function executeProductActions(context: Context, params: Record<string, unknown>) {
