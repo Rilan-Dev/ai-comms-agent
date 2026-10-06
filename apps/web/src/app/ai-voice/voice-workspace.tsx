@@ -1,17 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Agent = { id: string; name: string; status: string };
-type VoiceSession = { id: string; status: string; provider?: string | null; model?: string | null };
+type VoiceSession = { id: string; status: string; provider?: string | null; model?: string | null };\ntype Transport = { sessionEndpoint?: string; provider?: string | null; model?: string | null; voiceId?: string | null };
 
 export function VoiceWorkspace({ organizationId, agents }: { organizationId: string; agents: Agent[] }) {
   const [agentId, setAgentId] = useState(agents[0]?.id ?? "");
   const [session, setSession] = useState<VoiceSession | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState("");\n  const [transport, setTransport] = useState<Transport | null>(null);\n  const [micState, setMicState] = useState<"idle" | "requesting" | "ready" | "denied">("idle");\n  const streamRef = useRef<MediaStream | null>(null);
   const [notice, setNotice] = useState("Voice transport is Clara-owned. This host boundary never exposes provider credentials.");
-  const agent = useMemo(() => agents.find((item) => item.id === agentId) ?? agents[0], [agents, agentId]);
+  const agent = useMemo(() => agents.find((item) => item.id === agentId) ?? agents[0], [agents, agentId]);\n\n  useEffect(() => () => { streamRef.current?.getTracks().forEach((track) => track.stop()); }, []);
 
   async function start() {
     if (!agent || busy) return;
@@ -32,8 +32,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     if (!session || busy) return;
     setBusy(true);
     try {
-      await fetch("/api/voice/session", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ organizationId, sessionId: session.id, reason: "user_ended" }) });
-      setSession((current) => current ? { ...current, status: "ended" } : null);
+      streamRef.current?.getTracks().forEach((track) => track.stop());\n      streamRef.current = null;\n      await fetch("/api/voice/session", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ organizationId, sessionId: session.id, reason: "user_ended" }) });
+      setSession((current) => current ? { ...current, status: "ended" } : null);\n      setTransport(null);\n      setMicState("idle");
       setNotice("Voice session ended and persisted.");
     } finally { setBusy(false); }
   }
@@ -47,7 +47,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       <section className="mt-8 grid gap-5 md:grid-cols-[1.25fr_.75fr]">
         <div className="rounded-[2rem] border bg-background p-7 shadow-sm"><div className="grid min-h-[360px] place-items-center text-center"><div><div className="mx-auto grid h-24 w-24 place-items-center rounded-full border-8 border-primary/10 bg-primary/5 text-3xl">◉</div><h2 className="mt-6 text-xl font-semibold">{session?.status === "active" ? "Voice session active" : session?.status === "ended" ? "Session ended" : "Ready to connect"}</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">{notice}</p>{error ? <p className="mx-auto mt-3 max-w-md rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{error}</p> : null}<div className="mt-6">{session?.status === "active" ? <button onClick={() => void stop()} disabled={busy} className="rounded-xl border px-5 py-3 text-sm font-semibold hover:bg-muted disabled:opacity-50">End session</button> : <button onClick={() => void start()} disabled={busy || !agent} className="rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-background hover:-translate-y-0.5 disabled:opacity-50">{busy ? "Connecting…" : "Start voice session"}</button>}</div></div></div></div>
         <aside className="space-y-4">
-          <div className="rounded-2xl border bg-background p-5"><p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Session</p><dl className="mt-4 space-y-3 text-sm"><Row label="Provider" value={session?.provider ?? "Not resolved"} /><Row label="Model" value={session?.model ?? "Not resolved"} /><Row label="Session ID" value={session?.id ? session.id.slice(0, 12) + "…" : "—"} /><Row label="Credentials" value="Server-side only" /></dl></div>
+          <div className="rounded-2xl border bg-background p-5"><p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Session</p><dl className="mt-4 space-y-3 text-sm"><Row label="Provider" value={session?.provider ?? "Not resolved"} /><Row label="Model" value={session?.model ?? "Not resolved"} /><Row label="Session ID" value={session?.id ? session.id.slice(0, 12) + "…" : "—"} /><Row label="Credentials" value="Server-side only" /><Row label="Microphone" value={micState === "ready" ? "Ready" : micState === "requesting" ? "Requesting…" : micState === "denied" ? "Blocked" : "Off"} /><Row label="Transport" value={transport?.sessionEndpoint ? "Resolved" : "Not resolved"} /></dl></div>
           <div className="rounded-2xl border bg-background p-5"><p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Safety boundary</p><p className="mt-3 text-sm leading-6 text-muted-foreground">Voice-originated business actions continue through the same authorization and approval boundary as chat. The browser never receives provider API keys.</p></div>
         </aside>
       </section>
