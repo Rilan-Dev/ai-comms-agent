@@ -360,3 +360,8 @@ ChatGPT implemented the next provider lifecycle slice on `main`:
 - No live Gmail/Zoho/IMAP credentials were used; no provider connection success is claimed.
 - Latest implementation commit: `105d41481d9523bda66b0f6ae147e73fff1c3c46`.
 - Slice 2 remains under development; validation is deferred and Phase/menu acceptance is not claimed.
+\n\n### 2026-10-06 — Email Accounts truthfulness hardening
+- Removed synthetic discovery timestamps from the mailbox structure API/UI; the interface now reports only that a persisted snapshot exists.
+- Provider verification remains single-connection with guaranteed cleanup.
+- Latest implementation commit: `ee2bba7c696e2ed9672c7ff7281e0a1658951798`.
+- Continue Email Accounts implementation/contract hardening under development-first mode; do not wait for CI/Vercel.
