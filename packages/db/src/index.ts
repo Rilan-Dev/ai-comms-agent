@@ -45,6 +45,7 @@ export { PostgresEmailFolderLabelRepository } from "./email/folder-label-reposit
 export {
   createEmailAction,
   getEmailActionForOrganization,
+  listPendingEmailActionsForOrganization,
   decideEmailAction,
   claimApprovedEmailAction,
   completeEmailAction,
