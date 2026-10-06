@@ -321,3 +321,6 @@ Current product slice: **Slice 2 — Email Accounts**. ChatGPT is the sole activ
 
 
 Latest Email Accounts implementation adds user-facing OAuth failure recovery in the account UI, alongside atomic mailbox discovery and disconnected-account reconnectability. Current source baseline is control commit 98f1c2801a1cdabaf6e85ad4be592b4917d663802.
+
+
+Latest source correction: repaired literal escaped-newline corruption in the email account API and added a regression guard. Email Accounts remains the active product slice; no acceptance or deployment claim is made.
