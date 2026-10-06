@@ -1858,3 +1858,10 @@ ChatGPT continued the realtime voice vertical slice without waiting for CI/Verce
 - Replaced the Settings placeholder with a persisted organization/member control surface and live role/status controls.
 - No production auth/provider claims were fabricated; the existing development identity adapter remains the current auth boundary.
 - Next implementation target: Activity/Audit/Operations surfaces and security-sensitive audit visibility.
+
+
+## 2026-10-06 — Activity / Audit / Operations implementation
+- Added organization-wide audit repository querying and an authorization-protected `/api/audit` endpoint.
+- Replaced the synthetic Audit page with persisted PostgreSQL audit events, search, loading/error/empty states and organization scoping.
+- Replaced the synthetic Activity metrics page with a persisted organization activity feed sourced from the same audit boundary; no fabricated counts remain.
+- Product completion is now in final cross-surface hardening rather than placeholder UI construction.
