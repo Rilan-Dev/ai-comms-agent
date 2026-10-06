@@ -10,6 +10,7 @@ export function ThreadClient({ organizationId, threadId, initialMessages }: { or
   const [busy, setBusy] = useState(false);
   const latest = messages[messages.length - 1];
   const [replyBody, setReplyBody] = useState("");
+  const [forwardTo, setForwardTo] = useState("");
 
   async function markRead(id: string) {
     setBusy(true); setNotice(null);
@@ -18,6 +19,18 @@ export function ThreadClient({ organizationId, threadId, initialMessages }: { or
       const d = await r.json(); if (!r.ok) throw new Error(d.message ?? "Could not mark the message read.");
       setMessages(current => current.map(m => m.id === id ? { ...m, is_read: true } : m));
     } catch (e) { setNotice(e instanceof Error ? e.message : "Could not update the message."); } finally { setBusy(false); }
+  }
+
+  async function requestForward() {
+    if (!latest?.id || !latest?.email_account_id) return;
+    const recipients = forwardTo.split(/[,\\n]/).map(v => v.trim().toLowerCase()).filter(Boolean);
+    if (recipients.length === 0) { setNotice("Add at least one forwarding recipient."); return; }
+    setBusy(true); setNotice(null);
+    try {
+      const r = await fetch("/api/mail/actions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ organizationId, emailAccountId: latest.email_account_id, actionType: "forward_email", messageId: latest.id, to: recipients }) });
+      const d = await r.json(); if (!r.ok) throw new Error(d.message ?? "Could not create the forwarding approval request.");
+      setForwardTo(""); setNotice("Forward request created. It is pending approval and will not send automatically.");
+    } catch (e) { setNotice(e instanceof Error ? e.message : "Could not create the forwarding approval request."); } finally { setBusy(false); }
   }
 
   async function requestReply() {
@@ -42,6 +55,7 @@ export function ThreadClient({ organizationId, threadId, initialMessages }: { or
         {m.has_attachments && <p className="mt-5 rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">This message has attachments. Secure attachment retrieval is exposed only after provider/storage integration is available.</p>}
       </article>)}</section>
       <section className="mt-6 rounded-3xl border bg-background p-5 shadow-sm"><div className="flex items-center justify-between"><h2 className="font-semibold">Reply</h2><span className="text-xs text-muted-foreground">Approval required</span></div><textarea value={replyBody} onChange={e => setReplyBody(e.target.value)} placeholder="Write a reply…" rows={6} className="mt-4 w-full rounded-2xl border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"/><div className="mt-3 flex justify-end"><button type="button" disabled={busy} onClick={() => void requestReply()} className="rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-50">{busy ? "Submitting…" : "Request approval"}</button></div></section>
+      <section className="mt-4 rounded-3xl border bg-background p-5 shadow-sm"><div className="flex items-center justify-between"><h2 className="font-semibold">Forward</h2><span className="text-xs text-muted-foreground">Approval required</span></div><input value={forwardTo} onChange={e => setForwardTo(e.target.value)} placeholder="recipient@example.com" className="mt-4 h-11 w-full rounded-xl border bg-background px-3 text-sm"/><div className="mt-3 flex justify-end"><button type="button" disabled={busy} onClick={() => void requestForward()} className="rounded-xl border px-4 py-2.5 text-sm font-semibold disabled:opacity-50">{busy ? "Submitting…" : "Request forward approval"}</button></div></section>
     </div>
   </main>;
 }
