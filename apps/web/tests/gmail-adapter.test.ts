@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { GmailAdapter } from "../../apps/worker/src/email/gmail-adapter";
+import { GmailAdapter } from "../../../apps/worker/src/email/gmail-adapter";
 
 describe("GmailAdapter", () => {
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
