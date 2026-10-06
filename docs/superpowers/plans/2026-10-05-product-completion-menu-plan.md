@@ -211,3 +211,8 @@ Development is intentionally continuing without waiting for CI/Vercel jobs. Befo
 - Disconnected email accounts can be reconnected from the account UI; the previous UI condition accidentally made them a dead-end state.
 - No provider credentials were fabricated and no live connection is claimed.
 - Continue Slice 2 with remaining connection/reconnect UX and deterministic API coverage before moving to Mail.
+\n\n### 2026-10-06 — Mail continuation
+- Read/unread is now persisted through an authorized API and audit event.
+- Local drafts now have real PostgreSQL persistence and autosaving compose UI.
+- The Send action remains intentionally disabled until the provider-backed worker/action/approval path is implemented; the UI does not fake successful sending.
+- Next: thread/message mutations and provider-backed draft/send orchestration.
