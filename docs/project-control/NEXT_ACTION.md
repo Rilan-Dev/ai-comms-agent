@@ -506,3 +506,12 @@ The next local typecheck showed two remaining classes of diagnostics: strict ind
 Correction commits: `dd9786c`, `7a7e872`, `979c341`.
 
 **Next:** pull `main` and rerun `npm run typecheck`. Continue the scheduler/automation execution implementation; do not wait for CI/Vercel.
+
+
+### 2026-10-06 — Typecheck boundary correction (continued)
+
+The local checkout still has no resolved `vendor/clara` source, so `@ts-expect-error` was inappropriate because the structural-only Clara package check reports the directive itself as unused while also reporting the unresolved import. The host adapter boundary now uses `@ts-ignore` specifically for this optional-submodule condition. Cron field ranges are explicitly typed as fixed tuples so strict indexed access cannot produce undefined range bounds.
+
+Correction commits: `161b8e0`, `7af6e77`, `338a735`.
+
+**Next:** pull `main` and rerun `npm run typecheck`; continue implementation regardless of CI/Vercel state.
