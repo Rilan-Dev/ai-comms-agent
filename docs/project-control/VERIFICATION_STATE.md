@@ -673,3 +673,7 @@ Acceptance remains a separate runtime/browser gate.
 - Mailbox structure API/UI no longer synthesizes discovery timestamps.
 - Source tests remain the available implementation evidence; runtime/browser/provider validation is intentionally deferred and no PASS is claimed.
 - Latest implementation commit before this control update: `ee2bba7c696e2ed9672c7ff7281e0a1658951798`.
+
+
+### 2026-10-06 — Email Accounts lifecycle hardening
+Latest development checkpoint: Email Accounts lifecycle hardening. Added atomic mailbox structure replacement, provider capability contract coverage for all registered adapters, and reconnectability for disconnected accounts. These are source changes only; no CI PASS, Vercel READY, or live-provider connection is claimed.
