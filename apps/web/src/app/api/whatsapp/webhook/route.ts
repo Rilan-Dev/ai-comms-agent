@@ -1,5 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { getWhatsAppAccountByPhoneNumberId, insertWhatsAppInboundMessage, recordWhatsAppWebhookEvent, upsertWhatsAppContact } from "@ai-comms-agent/db";
+import { applyWhatsAppProviderStatus, getWhatsAppAccountByPhoneNumberId, insertWhatsAppInboundMessage, listAgentsForWhatsAppAccount, recordWhatsAppWebhookEvent, upsertWhatsAppContact } from "@ai-comms-agent/db";
 
 export const dynamic = "force-dynamic";
 
@@ -46,15 +46,52 @@ export async function POST(request: Request) {
       if (!event.inserted) continue;
       const contacts = Array.isArray(value?.contacts) ? value.contacts : [];
       const contactMap = new Map(contacts.map((c: any) => [String(c.wa_id ?? ""), String(c.profile?.name ?? "")]));
+      const statuses = Array.isArray(value?.statuses) ? value.statuses : [];
+      for (const status of statuses) {
+        const providerMessageId = typeof status?.id === "string" ? status.id : "";
+        const providerStatus = typeof status?.status === "string" ? status.status : "";
+        if (!providerMessageId || !["sent", "delivered", "read", "failed"].includes(providerStatus)) continue;
+        const result = await applyWhatsAppProviderStatus({
+          providerMessageId,
+          status: providerStatus as "sent" | "delivered" | "read" | "failed",
+          error: Array.isArray(status?.errors) && status.errors[0] ? JSON.stringify(status.errors[0]).slice(0, 2000) : null,
+          timestamp: typeof status?.timestamp === "string" ? new Date(Number(status.timestamp) * 1000).toISOString() : null,
+        });
+        if (result) accepted += 1;
+      }
+
       const messages = Array.isArray(value?.messages) ? value.messages : [];
+      const agents = await listAgentsForWhatsAppAccount(account.organization_id, account.id);
       for (const message of messages) {
         const from = typeof message?.from === "string" ? message.from : "";
         const providerMessageId = typeof message?.id === "string" ? message.id : "";
         if (!from || !providerMessageId) continue;
         const contactId = await upsertWhatsAppContact({ organizationId: account.organization_id, accountId: account.id, phoneNumber: from, displayName: contactMap.get(from) || null, providerContactId: from });
         const type = typeof message?.type === "string" ? message.type : "unknown";
-        const body = type === "text" && typeof message?.text?.body === "string" ? message.text.body : null;
-        await insertWhatsAppInboundMessage({ organizationId: account.organization_id, accountId: account.id, contactId, providerMessageId, messageType: type, body, media: type === "text" ? {} : message?.[type] ?? {}, providerTimestamp: typeof message?.timestamp === "string" ? new Date(Number(message.timestamp) * 1000).toISOString() : null });
+        const rawMedia = type === "text" ? {} : message?.[type] ?? {};
+        const media = rawMedia && typeof rawMedia === "object" ? {
+          id: typeof rawMedia.id === "string" ? rawMedia.id : undefined,
+          mime_type: typeof rawMedia.mime_type === "string" ? rawMedia.mime_type : undefined,
+          sha256: typeof rawMedia.sha256 === "string" ? rawMedia.sha256 : undefined,
+          caption: typeof rawMedia.caption === "string" ? rawMedia.caption.slice(0, 4096) : undefined,
+        } : {};
+        const body = type === "text" && typeof message?.text?.body === "string" ? message.text.body : (typeof media.caption === "string" ? media.caption : null);
+        for (const agent of agents) {
+          await insertWhatsAppInboundMessage({
+            organizationId: account.organization_id,
+            accountId: account.id,
+            agentId: agent.id,
+            contactId,
+            providerMessageId: agents.length === 1 ? providerMessageId : providerMessageId + ":" + agent.id,
+            messageType: type,
+            body,
+            media,
+            providerTimestamp: typeof message?.timestamp === "string" ? new Date(Number(message.timestamp) * 1000).toISOString() : null,
+          });
+        }
+        if (agents.length === 0) {
+          await insertWhatsAppInboundMessage({ organizationId: account.organization_id, accountId: account.id, agentId: null, contactId, providerMessageId, messageType: type, body, media, providerTimestamp: typeof message?.timestamp === "string" ? new Date(Number(message.timestamp) * 1000).toISOString() : null });
+        }
         accepted += 1;
       }
     }
