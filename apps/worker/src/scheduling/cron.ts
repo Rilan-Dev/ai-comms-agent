@@ -1,4 +1,4 @@
-const FIELD_RANGES = [[0,59],[0,23],[1,31],[1,12],[0,6]] as const;
+const FIELD_RANGES: readonly [readonly [number, number], readonly [number, number], readonly [number, number], readonly [number, number], readonly [number, number]] = [[0,59],[0,23],[1,31],[1,12],[0,6]];
 
 function expandField(field:string,min:number,max:number):Set<number>{
   const out=new Set<number>();
