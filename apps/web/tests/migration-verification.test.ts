@@ -259,7 +259,7 @@ describe("Phase 4 database foundation migration", () => {
 
   it("declares every Phase 4 target table", () => {
     for (const table of requiredTables) {
-      expect(foundationSql).toMatch(new RegExp("CREATE TABLE IF NOT EXISTS " + table + "\\b"));
+      expect(databaseFoundationSql).toMatch(new RegExp("CREATE TABLE IF NOT EXISTS " + table + "\\b"));
     }
   });
 
@@ -269,44 +269,44 @@ describe("Phase 4 database foundation migration", () => {
       "scheduled_jobs","automation_rules","email_actions","summaries","ai_usage_events",
       "voice_sessions","audit_events","api_keys",
     ]) {
-      expect(foundationSql).toContain("ALTER TABLE " + table + " ENABLE ROW LEVEL SECURITY");
+      expect(databaseFoundationSql).toContain("ALTER TABLE " + table + " ENABLE ROW LEVEL SECURITY");
     }
   });
 
   it("protects child-domain tables through their organization-owning parent", () => {
-    expect(foundationSql).toContain("agent_versions_org_member");
-    expect(foundationSql).toContain("email_messages_org_member");
-    expect(foundationSql).toContain("whatsapp_messages_org_member");
-    expect(foundationSql).toContain("conversation_messages_org_member");
-    expect(foundationSql).toContain("scheduled_job_runs_org_member");
-    expect(foundationSql).toContain("summary_sources_org_member");
-    expect(foundationSql).toContain("voice_telemetry_org_member");
+    expect(databaseFoundationSql).toContain("agent_versions_org_member");
+    expect(databaseFoundationSql).toContain("email_messages_org_member");
+    expect(databaseFoundationSql).toContain("whatsapp_messages_org_member");
+    expect(databaseFoundationSql).toContain("conversation_messages_org_member");
+    expect(databaseFoundationSql).toContain("scheduled_job_runs_org_member");
+    expect(databaseFoundationSql).toContain("summary_sources_org_member");
+    expect(databaseFoundationSql).toContain("voice_telemetry_org_member");
   });
 
   it("stores provider credentials as ciphertext bytea", () => {
-    expect(foundationSql).toContain("encrypted_payload bytea NOT NULL");
-    expect(foundationSql).toContain("encrypted_api_key bytea");
-    expect(foundationSql).toContain("encrypted_credentials bytea NOT NULL");
-    expect(foundationSql).toContain("hashed_key text NOT NULL");
+    expect(databaseFoundationSql).toContain("encrypted_payload bytea NOT NULL");
+    expect(databaseFoundationSql).toContain("encrypted_api_key bytea");
+    expect(databaseFoundationSql).toContain("encrypted_credentials bytea NOT NULL");
+    expect(databaseFoundationSql).toContain("hashed_key text NOT NULL");
   });
 
   it("provides full-text search and idempotency indexes", () => {
-    expect(foundationSql).toContain("search_tsv tsvector GENERATED ALWAYS");
-    expect(foundationSql).toContain("USING gin(search_tsv)");
-    expect(foundationSql).toContain("email_messages_provider_id_uniq");
-    expect(foundationSql).toContain("whatsapp_webhook_events");
-    expect(foundationSql).toContain("UNIQUE(scheduled_job_id, fire_at)");
+    expect(databaseFoundationSql).toContain("search_tsv tsvector GENERATED ALWAYS");
+    expect(databaseFoundationSql).toContain("USING gin(search_tsv)");
+    expect(databaseFoundationSql).toContain("email_messages_provider_id_uniq");
+    expect(databaseFoundationSql).toContain("whatsapp_webhook_events");
+    expect(databaseFoundationSql).toContain("UNIQUE(scheduled_job_id, fire_at)");
   });
 
   it("makes audit updates and deletes fail closed through RLS", () => {
-    expect(foundationSql).toContain("audit_events_update_deny");
-    expect(foundationSql).toContain("audit_events_delete_deny");
-    expect(foundationSql).toContain("USING (false) WITH CHECK (false)");
+    expect(databaseFoundationSql).toContain("audit_events_update_deny");
+    expect(databaseFoundationSql).toContain("audit_events_delete_deny");
+    expect(databaseFoundationSql).toContain("USING (false) WITH CHECK (false)");
   });
 
   it("does not reintroduce custom role persistence", () => {
-    expect(foundationSql).not.toMatch(/CREATE\\s+TABLE.*\\broles\\b/i);
-    expect(foundationSql).not.toMatch(/CREATE\\s+TABLE.*\\brole_permissions\\b/i);
+    expect(databaseFoundationSql).not.toMatch(/CREATE\\s+TABLE.*\\broles\\b/i);
+    expect(databaseFoundationSql).not.toMatch(/CREATE\\s+TABLE.*\\brole_permissions\\b/i);
   });
 });
 
@@ -389,37 +389,37 @@ describe("Application database foundation static verification (0002_application_
       "ai_provider_configs", "ai_usage_events", "voice_sessions", "voice_telemetry",
       "audit_events",
     ]) {
-      expect(foundationSql).toContain(`CREATE TABLE IF NOT EXISTS ${table}`);
+      expect(databaseFoundationSql).toContain(`CREATE TABLE IF NOT EXISTS ${table}`);
     }
   });
 
   it("enforces one WhatsApp account per agent", () => {
-    expect(foundationSql).toContain("agent_id uuid NOT NULL UNIQUE REFERENCES agents");
+    expect(databaseFoundationSql).toContain("agent_id uuid NOT NULL UNIQUE REFERENCES agents");
   });
 
   it("defines email full-text indexing", () => {
-    expect(foundationSql).toContain("search_tsv tsvector GENERATED ALWAYS");
-    expect(foundationSql).toContain("email_messages_search_tsv_idx");
+    expect(databaseFoundationSql).toContain("search_tsv tsvector GENERATED ALWAYS");
+    expect(databaseFoundationSql).toContain("email_messages_search_tsv_idx");
   });
 
   it("defines tenant RLS fail-closed through PostgreSQL settings", () => {
-    expect(foundationSql).toContain("current_app_organization_id");
-    expect(foundationSql).toContain("tenant_access");
-    expect(foundationSql).toContain("SET search_path = public");
+    expect(databaseFoundationSql).toContain("current_app_organization_id");
+    expect(databaseFoundationSql).toContain("tenant_access");
+    expect(databaseFoundationSql).toContain("SET search_path = public");
   });
 
   it("makes audit events append-only", () => {
-    expect(foundationSql).toContain("audit_events_insert");
-    expect(foundationSql).toContain("audit_events_read");
-    expect(foundationSql).toContain("audit_events is append-only");
+    expect(databaseFoundationSql).toContain("audit_events_insert");
+    expect(databaseFoundationSql).toContain("audit_events_read");
+    expect(databaseFoundationSql).toContain("audit_events is append-only");
   });
 });
 
 describe("Phase 4 migration SQL verification", () => {
   it("uses valid PostgreSQL dollar-quoted DO blocks", () => {
-    expect(foundationSql).not.toMatch(/DO \\$ BEGIN/);
-    expect(foundationSql).not.toMatch(/END \\$;/);
-    expect(foundationSql).toMatch(/DO \\$\$phase4\\$/);
+    expect(databaseFoundationSql).not.toMatch(/DO \\$ BEGIN/);
+    expect(databaseFoundationSql).not.toMatch(/END \\$;/);
+    expect(databaseFoundationSql).toMatch(/DO \\$\$phase4\\$/);
   });
 });
 
