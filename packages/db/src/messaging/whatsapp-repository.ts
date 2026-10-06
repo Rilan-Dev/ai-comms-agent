@@ -111,3 +111,15 @@ export async function markWhatsAppOutboundFailed(messageId: string, error: strin
   const r = await query<Row>("UPDATE whatsapp_messages SET status = 'failed', updated_at = now() WHERE id = $1 AND direction = 'outbound' AND status = 'queued' RETURNING id", [messageId]);
   return r.rows.length > 0;
 }
+
+
+export async function listPendingWhatsAppAccounts(limit = 10) {
+  const safeLimit = Math.min(Math.max(limit, 1), 25);
+  const r = await query<Row>("SELECT id, organization_id, phone_number_id, status FROM whatsapp_accounts WHERE status = 'pending' AND deleted_at IS NULL ORDER BY updated_at ASC LIMIT $1", [safeLimit]);
+  return r.rows;
+}
+
+export async function updateWhatsAppAccountStatus(organizationId: string, accountId: string, status: "pending" | "connected" | "error" | "disconnected" | "revoked", lastError?: string | null, phoneNumber?: string | null, displayName?: string | null) {
+  const r = await query<Row>("UPDATE whatsapp_accounts SET status = $1, last_error = CASE WHEN $1 = 'error' THEN left($2,2000) ELSE NULL END, phone_number = COALESCE($3, phone_number), display_name = COALESCE($4, display_name), connected_at = CASE WHEN $1 = 'connected' THEN now() ELSE connected_at END, updated_at = now() WHERE id = $5 AND organization_id = $6 AND deleted_at IS NULL RETURNING id", [status, lastError ?? null, phoneNumber ?? null, displayName ?? null, accountId, organizationId]);
+  return r.rows.length > 0;
+}
