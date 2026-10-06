@@ -1677,3 +1677,14 @@ No provider credentials were fabricated and Clara source was not modified.
 - Added apps/web/tests/email-repository-mail-contract.test.ts to prevent regression to the legacy column contract.
 - No live provider credentials, sends, replies, forwards, or fabricated connectivity were introduced.
 - **Next:** implement Mail mutations and authorization/approval flow, then continue the remaining product slices.
+\n\n## 2026-10-06 — Mail slice: read state and persisted drafts
+- **Owner:** ChatGPT
+- **Status:** implementation continuing; acceptance deferred by development-first directive.
+- Added organization-scoped persisted message read/unread mutation in the PostgreSQL repository and authorized API.
+- Added audit events for mail read-state changes.
+- Added local draft persistence using the canonical email thread/message schema; drafts remain provider-send independent until the worker/provider orchestration is connected.
+- Added authorized draft create/update API with member-level organization authorization.
+- Added responsive compose UI with mailbox selection, recipient fields, subject/body, autosave, truthful save state, and disabled Send until the sensitive provider-backed send workflow is implemented.
+- Added Compose entry point to the persisted inbox.
+- No live provider credentials were used or fabricated; no send operation is claimed.
+- **Next:** thread/message mutation surface and provider-backed draft/send orchestration, followed by Mail acceptance verification.
