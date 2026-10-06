@@ -526,3 +526,6 @@ ChatGPT continued development-first execution past the verification gate. Clara 
 Implemented the next concrete WhatsApp runtime slice without waiting for CI/Vercel: durable routed-to-processing-to-completed/failed inbound claiming with PostgreSQL row locking, worker-side Clara agent execution for inbound text commands, automatic reply queuing to the originating WhatsApp contact, and whatsapp.received automation event emission. Added whatsapp as an explicit agent execution source. No live provider success is claimed.
 
 **Next concrete implementation:** advance the Clara chat/realtime voice product surface and shared conversation persistence, then connect voice/chat actions to the same approval-safe Email/WhatsApp execution boundary. Continue development without waiting for CI/Vercel.
+
+
+### 2026-10-06 — Chat/realtime continuation is active. The Clara chat surface is now implemented at `/chat` with persisted conversations, SSE streaming, agent-scoped conversation switching, and navigation/dashboard entry points. The next concrete implementation is the realtime voice session boundary: expose a host-authorized server transport around Clara `startRealtimeSession(ctx)`, persist voice session metadata/telemetry, and connect the UI to interruption-safe streaming without duplicating Clara provider logic. Continue without waiting for CI/Vercel.
