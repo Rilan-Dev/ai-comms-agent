@@ -1,13 +1,18 @@
-/**
+/** @ts-nocheck
  * Clara type re-exports
  *
  * Re-exports key types from Clara's ai-core and voice-core modules.
  * These are type-only imports (no runtime dependency) used by the host
  * application to interact with Clara's interfaces.
+ *
+ * The vendored Clara submodule is intentionally optional in host checkouts.
+ * @ts-nocheck is used at this immutable-boundary re-export so downstream
+ * package consumers do not turn an absent optional submodule into a host
+ * typecheck failure. When the submodule is present, these remain the exact
+ * Clara contracts.
  */
 
 // AI core types
-// @ts-ignore Clara is an optional git submodule; structural host checks must compile without its checkout.
 export type {
   AIProvider,
   ChatMessage,
@@ -20,7 +25,6 @@ export type {
 } from "../../../vendor/clara/clara-core/source/src/modules/ai-core/types";
 
 // Voice core types
-// @ts-ignore Clara is an optional git submodule; structural host checks must compile without its checkout.
 export type {
   VoiceProvider,
   VoiceProviderService,
@@ -28,7 +32,6 @@ export type {
 } from "../../../vendor/clara/clara-core/source/src/modules/voice-core/types";
 
 // RAG grounding types
-// @ts-ignore Clara is an optional git submodule; structural host checks must compile without its checkout.
 export type {
   GroundingRagMode,
   GroundingRequest,
