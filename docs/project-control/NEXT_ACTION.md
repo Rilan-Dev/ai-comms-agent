@@ -515,3 +515,8 @@ The local checkout still has no resolved `vendor/clara` source, so `@ts-expect-e
 Correction commits: `161b8e0`, `7af6e77`, `338a735`.
 
 **Next:** pull `main` and rerun `npm run typecheck`; continue implementation regardless of CI/Vercel state.
+
+
+### 2026-10-06 — Concrete scheduled/automation product actions
+
+ChatGPT continued development-first execution past the verification gate. Clara execution now flows into a worker-owned product action boundary: scheduled/automation payloads can queue outbound WhatsApp text through the existing worker queue or create approval-gated email actions without fabricating a user actor or sending from the browser. Agent-to-WhatsApp account resolution is organization-scoped and reuses the existing exactly-one binding model. The next implementation is inbound WhatsApp agent-command execution and event emission from Mail/WhatsApp workers, followed by the Clara chat/realtime voice product surface. Do not wait for CI/Vercel.
