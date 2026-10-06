@@ -79,6 +79,14 @@ export async function upsertWhatsAppContact(input: { organizationId: string; acc
   return r.rows[0]?.id ? String(r.rows[0].id) : null;
 }
 
+export async function getWhatsAppAccountForAgent(organizationId: string, agentId: string) {
+  const r = await query<Row>(
+    "SELECT w.id, w.organization_id, w.provider, w.business_account_id, w.phone_number_id, w.phone_number, w.display_name, w.status, w.capabilities, w.connected_at, w.last_error, w.created_at, w.updated_at FROM agent_whatsapp_accounts b JOIN whatsapp_accounts w ON w.id = b.whatsapp_account_id WHERE w.organization_id = $1 AND b.agent_id = $2 AND w.deleted_at IS NULL ORDER BY w.created_at ASC LIMIT 1",
+    [organizationId, agentId],
+  );
+  return r.rows[0] ? mapAccount(r.rows[0]) : null;
+}
+
 export async function listAgentsForWhatsAppAccount(organizationId: string, accountId: string) {
   const r = await query<Row>(
     "SELECT a.id, a.name, a.slug FROM agent_whatsapp_accounts b JOIN agents a ON a.id = b.agent_id WHERE a.organization_id = $1 AND b.whatsapp_account_id = $2 ORDER BY a.name ASC",
