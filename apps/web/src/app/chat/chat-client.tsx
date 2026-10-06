@@ -1,0 +1,145 @@
+"use client";
+
+import { useMemo, useState } from "react";
+
+type Agent = { id: string; name: string; status: string };
+type Message = { id: string; conversationId: string; role: string; content: string; createdAt: string };
+
+export function ChatClient({
+  organizationId,
+  agents,
+  initialAgentId,
+  initialConversationId,
+  initialMessages,
+}: {
+  organizationId: string;
+  agents: Agent[];
+  initialAgentId: string;
+  initialConversationId: string;
+  initialMessages: Message[];
+}) {
+  const [agentId, setAgentId] = useState(initialAgentId);
+  const [conversationId, setConversationId] = useState(initialConversationId);
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const activeAgent = useMemo(() => agents.find((agent) => agent.id === agentId) ?? agents[0], [agents, agentId]);
+
+  async function sendMessage() {
+    const content = draft.trim();
+    if (!content || busy || !activeAgent) return;
+    setDraft("");
+    setBusy(true);
+
+    const optimisticId = "local-" + Date.now();
+    setMessages((current) => [...current, { id: optimisticId, conversationId, role: "user", content, createdAt: new Date().toISOString() }]);
+
+    try {
+      const response = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "text/event-stream" },
+        body: JSON.stringify({ organizationId, agentId: activeAgent.id, conversationId, message: content }),
+      });
+      if (!response.ok || !response.body) throw new Error((await response.text()) || "Chat request failed");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantId = "local-assistant-" + Date.now();
+      let assistant = "";
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+
+        for (const event of events) {
+          const line = event.split("\n").find((item) => item.startsWith("data: "));
+          if (!line) {
+            const conversationLine = event.split("\n").find((item) => item.startsWith("data: "));
+            if (event.startsWith("event: conversation") && conversationLine) {
+              const payload = JSON.parse(conversationLine.slice(6)) as { conversationId?: string };
+              if (payload.conversationId) setConversationId(payload.conversationId);
+            }
+            continue;
+          }
+          const payload = JSON.parse(line.slice(6)) as { text?: string; conversationId?: string; message?: string };
+          if (payload.conversationId) setConversationId(payload.conversationId);
+          if (payload.text) {
+            assistant += payload.text;
+            setMessages((current) => {
+              const existing = current.findIndex((message) => message.id === assistantId);
+              const next = { id: assistantId, conversationId, role: "assistant", content: assistant, createdAt: new Date().toISOString() };
+              if (existing === -1) return [...current, next];
+              return current.map((message, index) => index === existing ? next : message);
+            });
+          }
+          if (payload.message) throw new Error(payload.message);
+        }
+      }
+    } catch (error) {
+      setMessages((current) => [...current, { id: "error-" + Date.now(), conversationId, role: "system", content: error instanceof Error ? error.message : "Chat failed", createdAt: new Date().toISOString() }]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className="flex min-h-[calc(100vh-72px)] min-w-0 flex-col bg-[radial-gradient(circle_at_top_right,rgba(79,70,229,.08),transparent_30%)]">
+      <header className="border-b bg-background/85 px-5 py-4 backdrop-blur sm:px-7">
+        <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Clara workspace</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight">Chat with your agent</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Grounded through Clara. Actions remain behind the host authorization boundary.</p>
+          </div>
+          <label className="hidden items-center gap-2 rounded-xl border bg-background px-3 py-2 sm:flex">
+            <span className="text-xs text-muted-foreground">Agent</span>
+            <select value={activeAgent?.id ?? ""} onChange={(event) => setAgentId(event.target.value)} className="bg-transparent text-sm font-semibold outline-none">
+              {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
+            </select>
+          </label>
+        </div>
+      </header>
+
+      <section className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col px-4 py-5 sm:px-7">
+        <div className="flex-1 space-y-4 overflow-y-auto pb-6">
+          {messages.length === 0 ? (
+            <div className="grid min-h-[45vh] place-items-center text-center">
+              <div className="max-w-md">
+                <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-foreground text-xl text-background">✦</div>
+                <h2 className="mt-5 text-xl font-semibold">What should Clara help with?</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">Ask for an inbox summary, important messages, action items, or anything your connected communication agent is allowed to handle.</p>
+                <div className="mt-5 flex flex-wrap justify-center gap-2">
+                  {["What needs my attention today?", "Summarize the last 24 hours", "Show important emails"].map((prompt) => <button key={prompt} onClick={() => setDraft(prompt)} className="rounded-full border bg-background px-3 py-2 text-xs font-medium transition hover:-translate-y-0.5 hover:bg-muted">{prompt}</button>)}
+                </div>
+              </div>
+            </div>
+          ) : messages.map((message) => (
+            <div key={message.id} className={"flex " + (message.role === "user" ? "justify-end" : "justify-start")}>
+              <div className={"max-w-[min(760px,90%)] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm " + (message.role === "user" ? "rounded-br-md bg-foreground text-background" : message.role === "system" ? "border border-destructive/20 bg-destructive/5 text-destructive" : "rounded-bl-md border bg-background")}>
+                {message.role === "assistant" ? <p className="mb-1 text-[10px] font-semibold uppercase tracking-[.14em] text-primary">Clara</p> : null}
+                <p className="whitespace-pre-wrap">{message.content}</p>
+              </div>
+            </div>
+          ))}
+          {busy ? <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />Clara is thinking…</div> : null}
+        </div>
+
+        <div className="sticky bottom-0 rounded-2xl border bg-background/95 p-2 shadow-[0_12px_40px_rgba(15,23,42,.10)] backdrop-blur">
+          <div className="flex items-end gap-2">
+            <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Ask Clara about your communications…" rows={2} className="min-h-12 flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground" />
+            <button disabled={busy || !draft.trim()} onClick={() => void sendMessage()} className="rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40">Send</button>
+          </div>
+          <div className="flex items-center justify-between px-3 pb-1 pt-2 text-[11px] text-muted-foreground">
+            <span>Enter to send · Shift+Enter for a new line</span>
+            <a href="/ai-voice" className="font-semibold text-primary hover:underline">Open voice workspace →</a>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
