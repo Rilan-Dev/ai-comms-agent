@@ -465,3 +465,26 @@ describe("Email schema reconciliation (0015_email_schema_reconciliation.sql)", (
     expect(reconciliationSql).toContain("email_labels_org_idx");
   });
 });
+
+
+describe("WhatsApp runtime hardening migration (0017)", () => {
+  const sql = readFileSync(resolve(__dirname, "../../../supabase/migrations/0017_whatsapp_runtime_hardening.sql"), "utf8");
+
+  it("stores an explicit agent routing target and processing lifecycle", () => {
+    expect(sql).toContain("ADD COLUMN IF NOT EXISTS agent_id uuid REFERENCES agents(id) ON DELETE SET NULL");
+    expect(sql).toContain("processing_status text NOT NULL DEFAULT 'received'");
+    expect(sql).toContain("('received','routed','processing','completed','failed')");
+  });
+
+  it("indexes provider status updates and agent routing", () => {
+    expect(sql).toContain("whatsapp_messages_agent_created_idx");
+    expect(sql).toContain("whatsapp_messages_provider_status_idx");
+    expect(sql).toContain("agent_whatsapp_accounts_account_idx");
+  });
+
+  it("supports shared-number routing without global provider-id collisions", () => {
+    expect(sql).toContain("DROP CONSTRAINT IF EXISTS whatsapp_messages_provider_message_id_key");
+    expect(sql).toContain("whatsapp_messages_account_provider_agent_uniq");
+    expect(sql).toContain("COALESCE(agent_id, '00000000-0000-0000-0000-000000000000'::uuid)");
+  });
+});
