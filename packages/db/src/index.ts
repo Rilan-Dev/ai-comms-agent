@@ -76,4 +76,12 @@ export {
   loadWhatsAppCredential,
   disconnectWhatsAppAccount,
   listWhatsAppMessagesForOrganization,
+  getWhatsAppAccountByPhoneNumberId,
+  recordWhatsAppWebhookEvent,
+  upsertWhatsAppContact,
+  insertWhatsAppInboundMessage,
+  queueWhatsAppOutboundMessage,
+  listQueuedWhatsAppOutbound,
+  markWhatsAppOutboundSent,
+  markWhatsAppOutboundFailed,
 } from "./messaging/whatsapp-repository";
