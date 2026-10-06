@@ -1,1 +1,13 @@
-const jobs=[["Daily briefing","Every day · 08:00","WhatsApp summary","Healthy"],["Inbox digest","Weekdays · 17:30","AI summary","Healthy"],["Sync reconciliation","Every 15 min","Email sync","Healthy"]];export default function SchedulesPage(){return <main className="mx-auto max-w-[1100px] space-y-7 p-5 sm:p-7 lg:p-9"><div className="flex items-end justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Automation</p><h1 className="mt-2 text-3xl font-semibold">Schedules</h1><p className="mt-2 text-sm text-muted-foreground">Durable schedules are stored in PostgreSQL and dispatched through RabbitMQ.</p></div><button className="h-10 rounded-xl bg-foreground px-4 text-sm font-semibold text-background">+ Schedule</button></div><div className="space-y-3">{jobs.map(j=><div key={j[0]} className="flex flex-col gap-4 rounded-2xl border bg-background p-5 sm:flex-row sm:items-center"><div className="grid h-10 w-10 place-items-center rounded-xl bg-muted">◷</div><div className="min-w-0 flex-1"><p className="font-semibold">{j[0]}</p><p className="mt-1 text-xs text-muted-foreground">{j[1]} · {j[2]}</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">{j[3]}</span></div>)}</div></main>}
+import { listScheduledJobs } from "@ai-comms-agent/db";
+import { PostgresAgentRepository } from "@ai-comms-agent/db";
+import { ensureDevSeed, getDevOrgId } from "@/lib/identity/repository";
+import SchedulesClient from "./schedules-client";
+
+export default async function SchedulesPage() {
+  if (!process.env.DATABASE_URL) return <main className="p-8"><h1 className="text-2xl font-semibold">Schedules unavailable</h1><p className="mt-2 text-sm text-muted-foreground">PostgreSQL is required for durable schedules.</p></main>;
+  await ensureDevSeed();
+  const organizationId = getDevOrgId();
+  if (!organizationId) return <main className="p-8"><h1 className="text-2xl font-semibold">Schedules unavailable</h1><p className="mt-2 text-sm text-muted-foreground">Organization context is unavailable.</p></main>;
+  const [schedules, agents] = await Promise.all([listScheduledJobs(organizationId), new PostgresAgentRepository().list(organizationId)]);
+  return <SchedulesClient organizationId={organizationId} initialSchedules={schedules as never[]} agents={agents.map(a=>({id:a.id,name:a.name,status:a.status}))} />;
+}
