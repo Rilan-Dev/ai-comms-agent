@@ -49,3 +49,16 @@ Never write "Phase complete" without evidence.
 - **Files changed:** `apps/web/tsconfig.json`, `apps/worker/tsconfig.json`.
 - **Commits:** `a3dffe594b878527d5f1057d0af04abda975c2da`, `436adcce949f26a30604dcbef0d97fde180039ea`.
 - No CI/Vercel wait was performed. No typecheck/build pass is claimed. The remaining Clara host-bound aliases and external dependency errors still require concrete correction.
+
+
+## 2026-10-07 — Clara reference-library build-boundary correction
+
+- **Owner:** ChatGPT
+- **Scope:** Error-fixing only; no feature development and no project-control documentation changes.
+- User clarified that `vendor/clara` is the `Rilan-Dev/ai-reusable-libraries` reference source only. The entire reusable-library repository must not be treated as application build code or traversed by the web/worker TypeScript programs.
+- Removed the erroneous `@/modules/*` mappings from both application tsconfigs and restored each app to its own `@/* -> ./src/*` namespace.
+- Removed the preflight check that scanned the entire Clara reference tree for host aliases and replaced it with a boundary check intended to detect direct application imports of the reference source. Removed mandatory submodule initialization from manual startup and removed the worker health check's dependency on a vendored Clara file.
+- **Important remaining error:** `packages/clara-core/src/runtime.ts` and `packages/clara-core/src/types.ts` still directly reference `vendor/clara`. Therefore the current TypeScript graph can still traverse the reference repository through the package boundary even after the incorrect tsconfig aliases are removed. This is the remaining concrete source of the reported 91/94 vendor errors and requires the developer-side local Clara functionality extraction/adapter work; the immutable reference source must not be patched.
+- **Files changed:** `apps/web/tsconfig.json`, `apps/worker/tsconfig.json`, `scripts/pre-docker-check.sh`, `scripts/manual-up.sh`, `apps/worker/src/index.ts`.
+- **Commits:** `f0348b5ca05b881f036ed213370425ea1656a2ba`, `07bf330d88051af2e8c0219f14c436e62f8e3c8c`, `c6db13191521799e675078f7c69a7aa1523d8613`, `d454c48fd81394011400b6854201fd9659660225`, `48a0b026aadceb28048338d04580e747eafcf490`.
+- No CI/Vercel wait was performed. No typecheck, preflight, or Docker pass is claimed.
