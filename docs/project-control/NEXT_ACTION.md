@@ -653,3 +653,8 @@ Development-first execution continues without waiting for GitHub Actions or Verc
 - Scheduler claims now persist `fire_at` and use `ON CONFLICT DO NOTHING` so the same scheduled fire cannot create duplicate runs under concurrent worker claims.
 - Added deterministic scheduling idempotency contract coverage.
 - **Next:** continue remaining deterministic cross-surface fixtures and duplicate-action coverage for email approval, WhatsApp outbound, scheduled/automation execution, organization isolation, and audit traces. CI/Vercel remain non-blocking.
+
+### 2026-10-07 — Deterministic E2E fixture foundation
+- Added stable UUID fixtures and scenario definitions for email approval/send, WhatsApp outbound duplicate handling, scheduled execution duplicate protection, organization isolation, and audit trace continuity.
+- These fixtures are deterministic inputs for the final cross-surface E2E runner; they do not claim runtime verification.
+- **Next:** connect the fixture scenarios to the application's integration/E2E harness and close any remaining duplicate-action, isolation, and audit edge cases before final runtime/deployment verification.
