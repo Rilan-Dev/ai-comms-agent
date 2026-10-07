@@ -33,8 +33,11 @@ export async function POST(request: Request) {
     const account = await getWhatsAppAccountForOrganization(organizationId, accountId);
     if (!account) return NextResponse.json({ error: "not_found", message: "WhatsApp account was not found." }, { status: 404 });
     if (account.status !== "connected") return NextResponse.json({ error: "provider_not_connected", message: "WhatsApp account must be verified and connected before outbound messages can be queued." }, { status: 409 });
-    const idempotencyKey = typeof body?.idempotencyKey === "string" && body.idempotencyKey.length <= 200 ? body.idempotencyKey : crypto.randomUUID();
-    const messageId = await queueWhatsAppOutboundMessage({ organizationId, accountId, to, body: messageBody, idempotencyKey });
+    const requestedIdempotencyKey = request.headers.get("Idempotency-Key") ?? (typeof body?.idempotencyKey === "string" ? body.idempotencyKey : "");
+    const idempotencyKey = requestedIdempotencyKey.trim();
+    if (idempotencyKey.length > 200) return NextResponse.json({ error: "validation_error", message: "Idempotency-Key must be 200 characters or fewer." }, { status: 422 });
+    const effectiveIdempotencyKey = idempotencyKey || crypto.randomUUID();
+    const messageId = await queueWhatsAppOutboundMessage({ organizationId, accountId, to, body: messageBody, idempotencyKey: effectiveIdempotencyKey });
     if (!messageId) return NextResponse.json({ queued: false, message: "This outbound message was already queued with the same idempotency key." });
     await recordAuditEvent({ organizationId, actorUserId: actor.user.id, eventType: "whatsapp.message.queued", targetType: "whatsapp_message", targetId: messageId, action: "send", decision: "allowed" });
     return NextResponse.json({ queued: true, messageId, status: "queued" }, { status: 202 });
