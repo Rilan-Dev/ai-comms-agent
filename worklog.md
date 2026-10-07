@@ -612,3 +612,8 @@ Never write "Phase complete" without evidence.
 - Reconciliation migration commit: `44f09a1dd7354c336abc243785257d7fb5fc57b1`.
 - WhatsApp migration fix commit: `062d186959caa0e32d4ec240f066bc2a468dfaac`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0007_actions_ai_voice_audit.sql:115`: the partially-created `ai_usage_events` table already existed without `request_id`, while the migration immediately created a unique index using that column.
+- Added an idempotent `request_id text` reconciliation before the table/index operations. No application feature code changed.
+- Migration fix commit: `ffd16c83cb33e54cbbeb3708a787923cbe6144df`.
+- No CI/Vercel wait and no migration PASS claimed.
