@@ -307,3 +307,8 @@ Never write "Phase complete" without evidence.
 - Fixed the concrete migration error reported at line 347: `app_is_agent_member` runs with `search_path = public` but referenced the application table `agents` unqualified, causing `relation "agents" does not exist`. Qualified the affected RLS helper table references in `0002_application_domain.sql` to the actual `aca` schema (`agents`, `email_accounts`, `email_threads`, `whatsapp_accounts`, `conversations`). No application/runtime code was changed.
 - Migration fix commit: `7ce96cd470cd4ebd82cf27a9e1977247bbe3b204`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration rerun failure reported at `0002_application_domain.sql:326`: PostgreSQL rejected `agents_member_visibility` because the policy already existed from the earlier partial migration.
+- Root cause: all application-domain RLS policies were created unconditionally, so a retry after partial application was not idempotent. Wrapped all 34 policy creations in `pg_policies` existence guards using `DO $$ ... END $$` and dynamic `CREATE POLICY` execution. Existing policy definitions and security expressions were preserved.
+- Migration fix commit: `b6c53baf1ad9a78380cc6bebaad6e457d2fb7d94`.
+- No CI/Vercel wait and no migration PASS claimed.
