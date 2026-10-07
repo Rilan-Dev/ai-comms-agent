@@ -141,8 +141,18 @@ ALTER TABLE whatsapp_contacts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE whatsapp_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE whatsapp_webhook_events ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY whatsapp_accounts_member_visibility ON whatsapp_accounts FOR SELECT TO authenticated
-USING (can_access_organization(organization_id));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'whatsapp_accounts'
+      AND policyname = 'whatsapp_accounts_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY whatsapp_accounts_member_visibility ON whatsapp_accounts FOR SELECT TO authenticated
+USING (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
 CREATE POLICY whatsapp_accounts_admin_manage ON whatsapp_accounts FOR ALL TO authenticated
 USING (can_manage_organization(organization_id))
 WITH CHECK (can_manage_organization(organization_id));
