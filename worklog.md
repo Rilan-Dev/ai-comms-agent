@@ -1969,3 +1969,17 @@ No provider credentials were introduced and no external provider success is fabr
 ChatGPT continued final product hardening without waiting for CI/Vercel. Added forward-only migration 0019 to persist UUID correlation IDs on email approval actions and WhatsApp messages. Agent-generated email/WhatsApp actions now carry the originating execution correlation; worker completion/failure audit records retain it. WhatsApp inbound messages receive a UUID correlation and use it as the execution ID so downstream audit persistence remains type-safe. Audit repository read models now return correlation IDs. No provider credentials or live provider success were fabricated.
 
 Next implementation: deterministic cross-surface E2E fixtures and duplicate-action/idempotency coverage, followed by final runtime/deployment preparation.
+
+
+## Task ID: 12
+## Phase: 4 — Cross-surface scheduled execution hardening
+
+- **Status**: implemented; continue development-first execution
+- **Owner**: ChatGPT
+- Added `supabase/migrations/0021_scheduled_run_idempotency.sql`.
+- Added a unique PostgreSQL constraint index for `(scheduled_job_id, fire_at)`.
+- Updated `claimDueScheduledJobs()` to persist the exact due `fire_at` and safely ignore a duplicate claim for the same fire.
+- Added `apps/worker/tests/scheduling-idempotency.test.ts` as deterministic contract coverage.
+- No provider credentials, live provider success, CI success, or Vercel readiness is claimed.
+
+**Next:** continue cross-surface duplicate-action/E2E fixture hardening across email approval, WhatsApp, scheduling/automation, organization isolation, and audit correlation.
