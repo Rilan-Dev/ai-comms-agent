@@ -232,7 +232,7 @@ CREATE TABLE IF NOT EXISTS ai_usage_events (
  agent_id uuid REFERENCES agents(id) ON DELETE SET NULL, provider text, model text, surface text, input_tokens bigint, output_tokens bigint,
  latency_ms integer, metadata jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now()
 );
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1
@@ -248,7 +248,7 @@ BEGIN
       REFERENCES ai_provider_configs(id)
       DEFERRABLE INITIALLY DEFERRED;
   END IF;
-END $;
+END $$;
 
 CREATE TABLE IF NOT EXISTS summaries (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
