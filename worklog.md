@@ -443,3 +443,8 @@ Never write "Phase complete" without evidence.
 - Fixed `scripts/reset-and-migrate.sh` to invoke `migrate.sh` through the shell directly instead of the failing exec-path form, while preserving the separate migrate-only script.
 - These are migration/schema error fixes only; no application feature code was changed.
 - No CI/Vercel wait and no full migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0004_messaging.sql:65`: the partially-created `whatsapp_contacts` table already existed without `organization_id`, while the migration requires that column.
+- Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the WhatsApp contact table/index operations. No application feature code changed.
+- Migration fix commit: `0231fc3b23b93e9da382e8010a65d19336fe1678`.
+- No CI/Vercel wait and no migration PASS claimed.
