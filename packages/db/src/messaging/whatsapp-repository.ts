@@ -130,11 +130,11 @@ export async function completeWhatsAppInbound(messageId: string, status: "comple
   return r.rows.length > 0;
 }
 
-export async function queueWhatsAppOutboundMessage(input: { organizationId: string; accountId: string; contactId?: string | null; to: string; body: string; idempotencyKey: string }) {
+export async function queueWhatsAppOutboundMessage(input: { organizationId: string; accountId: string; contactId?: string | null; to: string; body: string; idempotencyKey: string; correlationId?: string | null }) {
   const contactId = input.contactId ?? await upsertWhatsAppContact({ organizationId: input.organizationId, accountId: input.accountId, phoneNumber: input.to });
   const r = await query<Row>(
-    "INSERT INTO whatsapp_messages (organization_id, whatsapp_account_id, contact_id, direction, message_type, body, status, idempotency_key) VALUES ($1,$2,$3,'outbound','text',$4,'queued',$5) ON CONFLICT (organization_id, idempotency_key) DO NOTHING RETURNING id",
-    [input.organizationId, input.accountId, contactId, input.body, input.idempotencyKey],
+    "INSERT INTO whatsapp_messages (organization_id, whatsapp_account_id, contact_id, direction, message_type, body, status, idempotency_key, correlation_id) VALUES ($1,$2,$3,'outbound','text',$4,'queued',$5,$6) ON CONFLICT (organization_id, idempotency_key) DO NOTHING RETURNING id",
+    [input.organizationId, input.accountId, contactId, input.body, input.idempotencyKey, input.correlationId ?? null],
   );
   return r.rows[0]?.id ? String(r.rows[0].id) : null;
 }
