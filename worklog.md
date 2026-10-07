@@ -432,3 +432,8 @@ Never write "Phase complete" without evidence.
 - Made all 18 email-domain RLS policy creations idempotent using `pg_policies` existence guards, preserving each existing policy definition. No application feature code changed.
 - Migration fix commit: `dbc633ff3a9c692f240420ae90968ff3e23595a6`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_email_domain.sql:256`: `agent_email_accounts_email_account_fk` already existed from the partial migration, so the unconditional foreign-key creation failed on retry.
+- Made that foreign-key creation idempotent with a `pg_constraint` existence guard scoped to `aca.agent_email_accounts`. No application feature code changed.
+- Migration fix commit: `76a8cf0d0cebe3461883f382527b17257406ef4e`.
+- No CI/Vercel wait and no migration PASS claimed.
