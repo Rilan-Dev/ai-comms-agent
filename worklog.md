@@ -1947,3 +1947,10 @@ ChatGPT continued the realtime voice vertical slice without waiting for CI/Verce
 - Duplicate queue responses are surfaced truthfully to the user and do not fabricate a second send.
 - No provider credentials or external sends were used or claimed.
 - Development continues into final cross-surface E2E hardening without waiting for CI/Vercel.
+
+
+## 2026-10-07 — Cross-surface audit correlation hardening
+- Extended the PostgreSQL audit repository to persist and return `correlation_id`.
+- Agent worker actions now attach their execution ID to audit records for WhatsApp queueing and email approval creation.
+- Manual WhatsApp outbound queueing now creates a correlation ID for its audit record.
+- This closes a cross-surface observability gap required by the architecture: external actions can now be traced from the initiating operation into the audit stream.
