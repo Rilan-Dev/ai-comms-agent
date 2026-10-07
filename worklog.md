@@ -580,3 +580,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the `email_messages` table/index operations. No application feature code changed.
 - Migration fix commit: `60cc15b97fd494051789bb98e8dc277b4298c6b7`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_phase4_schema_alignment.sql:72`: the PL/pgSQL block used malformed `DO $` / `END $;` dollar delimiters.
+- Corrected the block to `DO $$` / `END $$;`. No application feature code changed.
+- Migration fix commit: `f0369597c550d6e6b01eca0a286f7253863f8a1d`.
+- No CI/Vercel wait and no migration PASS claimed.
