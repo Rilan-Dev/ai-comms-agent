@@ -28,13 +28,25 @@ CREATE TABLE IF NOT EXISTS whatsapp_accounts (
   updated_at timestamptz NOT NULL DEFAULT now(),
   deleted_at timestamptz
 );
+ALTER TABLE whatsapp_accounts
+  ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+
 CREATE UNIQUE INDEX IF NOT EXISTS whatsapp_accounts_org_phone_uniq
 ON whatsapp_accounts(organization_id, phone_number_id) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS whatsapp_accounts_org_status_idx ON whatsapp_accounts(organization_id,status);
 
-ALTER TABLE agent_whatsapp_accounts
-  ADD CONSTRAINT agent_whatsapp_accounts_account_fk
-  FOREIGN KEY (whatsapp_account_id) REFERENCES whatsapp_accounts(id) ON DELETE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'aca.agent_whatsapp_accounts'::regclass
+      AND conname = 'agent_whatsapp_accounts_account_fk'
+  ) THEN
+    ALTER TABLE agent_whatsapp_accounts
+      ADD CONSTRAINT agent_whatsapp_accounts_account_fk
+      FOREIGN KEY (whatsapp_account_id) REFERENCES whatsapp_accounts(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS whatsapp_contacts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
