@@ -40,6 +40,7 @@ export async function executeProductActions(context: Context, params: Record<str
         to,
         body,
         idempotencyKey: "agent:" + context.agentId + ":execution:" + context.executionId + ":whatsapp:" + to,
+        correlationId: context.executionId,
       });
       await recordAuditEvent({ organizationId: context.organizationId, actorUserId: null, agentId: context.agentId, eventType: "whatsapp.message.queued", targetType: "whatsapp_message", targetId: messageId, action: "send_whatsapp", decision: messageId ? "queued" : "duplicate", correlationId: context.executionId, metadata: { executionId: context.executionId, recipient: to } });
       results.push({ type, status: messageId ? "queued" : "duplicate", messageId: messageId ?? null });
@@ -69,6 +70,7 @@ export async function executeProductActions(context: Context, params: Record<str
         draftId: stringValue(action.draftId),
         recipientSnapshot: { ...recipientSnapshot, generatedOutput: context.output },
         requestedBy: null,
+        correlationId: context.executionId,
       });
       await recordAuditEvent({ organizationId: context.organizationId, actorUserId: null, agentId: context.agentId, eventType: "email.action.requested", targetType: "email_action", targetId: approval.id, action: actionType, decision: "pending_approval", correlationId: context.executionId, metadata: { executionId: context.executionId, emailAccountId } });
       results.push({ type, status: "pending_approval", actionId: approval.id });
