@@ -564,3 +564,9 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the conversation-message table/policy operations. No application feature code changed.
 - Migration fix commit: `43a95b1ec94d0d8f2328368a309b16c84b392597`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Performed a migration-chain scan for the recurring `organization_id` failure class after the reported `0007_actions_ai_voice_audit.sql:36` failure. The root pattern was confirmed: later `CREATE TABLE IF NOT EXISTS` statements can preserve partially-created tenant tables that lack `organization_id`, causing subsequent indexes/policies to fail.
+- Added pre-creation idempotent organization-column reconciliation for the affected tenant tables in `0003_email_domain.sql` (`email_accounts`), `0003_phase4_schema_alignment.sql` (`api_keys`), `0004_messaging.sql` (`whatsapp_contacts`), `0007_actions_ai_voice_audit.sql` (email actions/approvals, AI provider/usage, voice sessions/telemetry, audit events), and `0008_api_keys_knowledge_storage.sql` (API keys, knowledge documents/chunks, storage objects).
+- These guards only alter an already-existing table when it is missing `organization_id`; clean databases retain the original table definitions. No application feature code or project-control documentation was changed.
+- Fix commits: `729960758f68a0783ba8997c3b1de975fce550df`, `10b820ce7699e356f56eaadce9c05ac64eab14fa`, `0df4821b0ec0da207bdbd8e2cbb442e93d178169`, `d2745af12adf6f7740c491358e48d4a331bc6a78`, `4c8bb1236880ef4bc4f922c57ac7490219705d69`.
+- No CI/Vercel wait and no migration PASS claimed.
