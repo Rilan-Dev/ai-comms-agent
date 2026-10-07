@@ -183,7 +183,7 @@ BEGIN
     'agents','agent_versions','agent_deployments','agent_email_accounts',
     'agent_whatsapp_accounts'
   ] LOOP
-    IF to_regclass('public.' || required_table) IS NULL THEN
+    IF to_regclass('aca.' || required_table) IS NULL THEN
       RAISE EXCEPTION 'Phase 4 foundation schema missing required table: %', required_table;
     END IF;
   END LOOP;
