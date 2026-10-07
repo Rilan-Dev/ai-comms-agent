@@ -637,3 +637,8 @@ Never write "Phase complete" without evidence.
 - Made the seven remaining unconditional API/knowledge/storage RLS policy creations in this migration idempotent with `pg_policies` existence guards, preserving their existing definitions. The existing storage visibility guard remains unchanged.
 - Migration fix commit: `de17b2f982e00cd69b29a7b81715f7b8e07a9bdc`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0009_rls_helper_hardening.sql:49`: standalone PostgreSQL does not provide the Supabase `anon` role, so unconditional `REVOKE ... FROM anon` failed.
+- Made both `anon` revocations conditional on the role existing; existing Supabase-style environments retain the same revocation behavior, while standalone PostgreSQL can apply the migration without creating an unnecessary runtime role.
+- Migration fix commit: `1df463f4d3c31355412377fca3b78380dae274b0`.
+- No CI/Vercel wait and no migration PASS claimed.
