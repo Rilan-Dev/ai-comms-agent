@@ -40,6 +40,13 @@ $$;
 REVOKE EXECUTE ON FUNCTION create_organization_with_owner(text,text,uuid) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION create_organization_with_owner(text,text,uuid) FROM anon;
 GRANT EXECUTE ON FUNCTION create_organization_with_owner(text,text,uuid) TO authenticated;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    CREATE ROLE service_role NOLOGIN;
+  END IF;
+END $$;
+
 GRANT EXECUTE ON FUNCTION create_organization_with_owner(text,text,uuid) TO service_role;
 
 GRANT EXECUTE ON FUNCTION transfer_organization_ownership(uuid,uuid,membership_role) TO service_role;
