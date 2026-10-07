@@ -367,3 +367,8 @@ Never write "Phase complete" without evidence.
 - Changed the reset wrapper to invoke the existing migration-only script explicitly through Bash: `exec bash "${MIGRATE_SCRIPT}"`. The standalone `scripts/migrate.sh` remains unchanged and continues to be the migration-only command.
 - Reset-wrapper fix commit: `d7da23146ffe1cdc3b325743b098fb5f96781916`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete reset-script failure where invoking the migration helper still produced `Permission denied` on the local `scripts/migrate.sh` path despite the reset wrapper using an interpreter invocation.
+- Hardened `scripts/reset-and-migrate.sh` to invoke the migration helper through an explicit `/usr/bin/env bash` interpreter, avoiding reliance on executable permission handling for the helper file.
+- Reset/migration script fix commit: `3cb7b28c42dd62a2f0a60d06749cd404bba05471`.
+- No CI/Vercel wait and no migration PASS claimed.
