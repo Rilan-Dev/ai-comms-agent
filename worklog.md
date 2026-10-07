@@ -352,3 +352,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the email-label table/index operations. No application feature code changed.
 - Migration fix commit: `a3a77a2ccd25fbc7b9dd5f9df6631fbcd2bedc0d`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_email_domain.sql:111`: the partially-created `email_threads` table already existed without `organization_id`, while the migration requires that column.
+- Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the email-thread table/index operations. No application feature code changed.
+- Migration fix commit: `e631489dfda4f313ce7bd6bdd6a62f9c2c011083`.
+- No CI/Vercel wait and no migration PASS claimed.
