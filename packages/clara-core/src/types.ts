@@ -1,46 +1,109 @@
-/** @ts-nocheck
- * Clara type re-exports
+/**
+ * Local Clara contracts.
  *
- * Re-exports key types from Clara's ai-core and voice-core modules.
- * These are type-only imports (no runtime dependency) used by the host
- * application to interact with Clara's interfaces.
- *
- * The vendored Clara submodule is intentionally optional in host checkouts.
- * @ts-nocheck is used at this immutable-boundary re-export so downstream
- * package consumers do not turn an absent optional submodule into a host
- * typecheck failure. When the submodule is present, these remain the exact
- * Clara contracts.
+ * These contracts are intentionally self-contained. The ai-reusable-libraries
+ * repository under vendor/clara is a reference source only and is never a
+ * runtime/build dependency of this application.
  */
 
-// AI core types
-// @ts-ignore — the optional Clara submodule may be absent in host checkouts.
-export type {
-  AIProvider,
-  ChatMessage,
-  TokenUsage,
-  ChatOptions,
-  EmbedOptions,
-  LLMProvider,
-  EmbeddingProviderId,
-  ProviderConfig,
-// @ts-ignore — suppress the unresolved optional submodule at the module specifier.
-} from "../../../vendor/clara/clara-core/source/src/modules/ai-core/types";
+export type AIProvider = "openai" | "gemini" | "sarvam";
 
-// Voice core types
-// @ts-ignore — the optional Clara submodule may be absent in host checkouts.
-export type {
-  VoiceProvider,
-  VoiceProviderService,
-  ConversationalVoiceService,
-// @ts-ignore — suppress the unresolved optional submodule at the module specifier.
-} from "../../../vendor/clara/clara-core/source/src/modules/voice-core/types";
+export interface ChatMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
 
-// RAG grounding types
-// @ts-ignore — the optional Clara submodule may be absent in host checkouts.
-export type {
-  GroundingRagMode,
-  GroundingRequest,
-  GroundedSource,
-  GroundedContext,
-// @ts-ignore — suppress the unresolved optional submodule at the module specifier.
-} from "../../../vendor/clara/clara-core/source/src/modules/rag/grounding";
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+}
+
+export interface ChatOptions {
+  temperature?: number;
+  maxTokens?: number;
+  stop?: string[];
+  reasoningEffort?: "low" | "medium" | "high" | null;
+  onUsage?: (usage: TokenUsage) => void;
+}
+
+export interface EmbedOptions {
+  onUsage?: (usage: TokenUsage) => void;
+}
+
+export interface LLMProvider {
+  chatStream(messages: ChatMessage[], options?: ChatOptions): AsyncGenerator<string, void, unknown>;
+  embedText(text: string, options?: EmbedOptions): Promise<number[]>;
+  embedBatch(texts: string[], options?: EmbedOptions): Promise<number[][]>;
+  getProviderName(): string;
+  getModelName(type: "chat" | "embedding"): string;
+  getEmbeddingDimension(): number;
+}
+
+export type EmbeddingProviderId = AIProvider | "tei";
+
+export interface ProviderConfig {
+  provider: EmbeddingProviderId;
+  apiKey?: string;
+  baseUrl?: string;
+  chatModel?: string;
+  embeddingModel?: string;
+  embeddingDimension?: number;
+}
+
+export type VoiceProvider = "openai" | "gemini" | "sarvam" | "elevenlabs";
+export interface VoiceProviderService { readonly provider: VoiceProvider; }
+export interface ConversationalVoiceService extends VoiceProviderService {}
+
+export type GroundingRagMode = "classic" | "hybrid" | "agentic";
+export interface GroundingRequest {
+  kbId: string;
+  query: string;
+  searchQuery?: string;
+  topK?: number;
+  ragMode?: GroundingRagMode;
+  surface?: "search" | "workspace" | "voice" | "embed";
+  sessionId?: string | null;
+  userId?: string | null;
+  admission?: "external";
+  channel?: "chat" | "voice";
+}
+export interface GroundedSource {
+  id: string;
+  snippet: string;
+  metadata?: Record<string, unknown>;
+}
+export interface GroundedContext {
+  ok: boolean;
+  result: { sources: GroundedSource[] };
+  error?: string;
+}
+
+export interface ClaraRuntimeContext {
+  orgId: string | null;
+  agentId: string | null;
+  kbId: string;
+  userId?: string | null;
+  sessionId?: string | null;
+}
+
+export interface ClaraAgentTurnRequest extends ClaraRuntimeContext {
+  messages: ChatMessage[];
+  surface?: "chat" | "realtime" | "embed";
+  ragMode?: GroundingRagMode;
+}
+
+export interface ResolvedAIConfig {
+  provider: AIProvider;
+  model: string;
+  maxTokens: number | null;
+  temperature: number | null;
+  assistantConfig: { systemPrompt?: string | null };
+}
+
+export interface ClaraAgentTurn {
+  config: ResolvedAIConfig;
+  providerName: string;
+  model: string;
+  stream: AsyncGenerator<string, void, unknown>;
+  grounding: GroundedContext;
+}
