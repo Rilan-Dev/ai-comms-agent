@@ -20,6 +20,7 @@ export async function processRoutedWhatsAppInbound(limit = 10) {
     const contactId = text(message.contact_id);
     const from = text(message.phone_number);
     const body = text(message.body);
+    const executionId = text(message.correlation_id) || messageId;
 
     try {
       if (!agentId || !accountId || !contactId || !from) {
@@ -32,7 +33,6 @@ export async function processRoutedWhatsAppInbound(limit = 10) {
         continue;
       }
 
-      const executionId = text(message.correlation_id) || messageId;
       const result = await dispatchAgentExecution({
         executionId,
         organizationId,
