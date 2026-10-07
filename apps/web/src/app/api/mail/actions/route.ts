@@ -73,6 +73,10 @@ export async function POST(request: Request) {
       };
     }
 
+    const headerKey = request.headers.get("Idempotency-Key")?.trim() ?? "";
+    const bodyKey = typeof body?.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
+    const idempotencyKey = (headerKey || bodyKey).slice(0, 200) || null;
+
     const action = await createEmailAction({
       organizationId,
       emailAccountId,
@@ -80,9 +84,10 @@ export async function POST(request: Request) {
       draftId,
       recipientSnapshot: snapshot,
       requestedBy: subject.user.id,
+      idempotencyKey,
     });
 
-    await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: "email.action.requested", targetType: "email_action", targetId: String(action.id), action: String(actionType), decision: "pending_approval", metadata: { emailAccountId, draftId } });
+    await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: "email.action.requested", targetType: "email_action", targetId: String(action.id), action: String(actionType), decision: "pending_approval", metadata: { emailAccountId, draftId, idempotencyKey } });
     return NextResponse.json({
       action,
       status: "pending_approval",
