@@ -4,7 +4,10 @@
     "baseUrl": ".",
     "paths": {
       "@/*": [
-        "../../vendor/clara/clara-core/source/src/*"
+        "./src/*"
+      ],
+      "@/modules/*": [
+        "../../vendor/clara/clara-core/source/src/modules/*"
       ]
     },
     "outDir": "./dist",
