@@ -12,7 +12,7 @@ DO $$ BEGIN
   END IF;
 END $$;
 
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
@@ -23,7 +23,7 @@ BEGIN
       ADD CONSTRAINT voice_telemetry_session_fk
       FOREIGN KEY (voice_session_id) REFERENCES voice_sessions(id) ON DELETE CASCADE;
   END IF;
-END $;
+END $$;
 
 -- Canonical audit names. Preserve existing Phase 4 columns if already
 -- normalized; otherwise rename the initial implementation's equivalents.
@@ -47,27 +47,27 @@ ALTER TABLE api_keys ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_messaging_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE summary_sources ENABLE ROW LEVEL SECURITY;
 
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=current_schema() AND tablename='api_keys' AND policyname='api_keys_member_visibility') THEN
     EXECUTE $policy$CREATE POLICY api_keys_member_visibility ON api_keys USING (app_is_org_member(organization_id));$policy$;
   END IF;
-END $;
+END $$;
 
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=current_schema() AND tablename='agent_messaging_assignments' AND policyname='agent_messaging_assignments_member_visibility') THEN
     EXECUTE $policy$CREATE POLICY agent_messaging_assignments_member_visibility ON agent_messaging_assignments USING (app_is_agent_member(agent_id));$policy$;
   END IF;
-END $;
+END $$;
 
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=current_schema() AND tablename='summary_sources' AND policyname='summary_sources_member_visibility') THEN
     EXECUTE $policy$CREATE POLICY summary_sources_member_visibility ON summary_sources
   USING (EXISTS (SELECT 1 FROM summaries s WHERE s.id=summary_sources.summary_id AND app_is_org_member(s.organization_id)));$policy$;
   END IF;
-END $;
+END $$;
 
 INSERT INTO schema_migration_markers(key,value)
 VALUES ('phase4-cleanup','canonical column names, FK and RLS hardening')
