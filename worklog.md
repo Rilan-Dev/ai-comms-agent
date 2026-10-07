@@ -332,3 +332,8 @@ Never write "Phase complete" without evidence.
 - Made the five foundation RLS policy creations idempotent using `pg_policies` existence guards while preserving their existing policy definitions. No application feature behavior was changed.
 - Migration fix commit: `9477da4f2e71492ee955a6c127d8aea05d9b1a86`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_email_domain.sql:34`: an existing `email_accounts` table from the partial migration lacked `deleted_at`, but the migration immediately used that column in a partial unique index predicate.
+- Added an idempotent `ALTER TABLE email_accounts ADD COLUMN IF NOT EXISTS deleted_at timestamptz` immediately before the index creation. No application feature code changed.
+- Migration fix commit: `a13abd2461bcd7b1191ea9e9bf135b545209cf94`.
+- No CI/Vercel wait and no migration PASS claimed.
