@@ -166,6 +166,10 @@ ALTER TABLE email_messages
   ADD COLUMN IF NOT EXISTS from_email text;
 
 CREATE INDEX IF NOT EXISTS email_messages_sender_idx ON email_messages(organization_id, from_email);
+ALTER TABLE email_messages
+  ADD COLUMN IF NOT EXISTS action_required boolean,
+  ADD COLUMN IF NOT EXISTS action_deadline timestamptz;
+
 CREATE INDEX IF NOT EXISTS email_messages_action_idx ON email_messages(organization_id, action_required, received_at DESC);
 
 ALTER TABLE email_messages
