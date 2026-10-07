@@ -427,3 +427,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `ALTER TABLE email_sync_events ADD COLUMN IF NOT EXISTS received_at timestamptz` before the affected index creation. No application feature code changed.
 - Migration fix commit: `3a22367969ab151abafcf302a9b03e2caf51e272`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_email_domain.sql:299`: the `email_accounts_member_visibility` RLS policy already existed from the partial migration.
+- Made all 18 email-domain RLS policy creations idempotent using `pg_policies` existence guards, preserving each existing policy definition. No application feature code changed.
+- Migration fix commit: `dbc633ff3a9c692f240420ae90968ff3e23595a6`.
+- No CI/Vercel wait and no migration PASS claimed.
