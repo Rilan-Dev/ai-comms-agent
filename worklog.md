@@ -312,3 +312,8 @@ Never write "Phase complete" without evidence.
 - Root cause: all application-domain RLS policies were created unconditionally, so a retry after partial application was not idempotent. Wrapped all 34 policy creations in `pg_policies` existence guards using `DO $$ ... END $$` and dynamic `CREATE POLICY` execution. Existing policy definitions and security expressions were preserved.
 - Migration fix commit: `b6c53baf1ad9a78380cc6bebaad6e457d2fb7d94`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0002_application_domain.sql:477`: child RLS helper functions used unqualified `app_is_org_member(...)` while their `SECURITY DEFINER` search path is `public`, so PostgreSQL could not resolve the function in the `aca` schema.
+- Qualified the nested calls as `aca.app_is_org_member(...)` in `app_is_agent_member`, `app_is_email_account_member`, and `app_is_whatsapp_account_member`. No RLS policy logic or application feature code was changed.
+- Migration fix commit: `0099fd35c776a2dcc8681c18adb9b4a159f2f8d0`.
+- No CI/Vercel wait and no migration PASS claimed.
