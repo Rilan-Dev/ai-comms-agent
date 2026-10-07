@@ -606,3 +606,9 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `created_at timestamptz NOT NULL DEFAULT now()` reconciliation before the table/index operations. No application feature code changed.
 - Migration fix commit: `c8183c4a02faf275970d1247cc47262d92f125ae`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Applied a one-pass migration hardening fix for partially-applied schemas: added `0000_created_at_reconciliation.sql`, which idempotently restores the expected `created_at timestamptz NOT NULL DEFAULT now()` column across all application tables whose authoritative schema defines `created_at`. It checks both `aca` and legacy `public` locations and does nothing when the table does not yet exist.
+- Fixed the current `0004_messaging.sql:65` failure at the same time: the WhatsApp contact reconciliation now detects `whatsapp_contacts` through the active search path instead of only `aca.whatsapp_contacts`, so an existing legacy/public table receives the required `organization_id` column.
+- Reconciliation migration commit: `44f09a1dd7354c336abc243785257d7fb5fc57b1`.
+- WhatsApp migration fix commit: `062d186959caa0e32d4ec240f066bc2a468dfaac`.
+- No CI/Vercel wait and no migration PASS claimed.
