@@ -162,6 +162,9 @@ ALTER TABLE email_messages
   ADD COLUMN IF NOT EXISTS search_vector tsvector;
 
 CREATE INDEX IF NOT EXISTS email_messages_search_idx ON email_messages USING gin(search_vector);
+ALTER TABLE email_messages
+  ADD COLUMN IF NOT EXISTS from_email text;
+
 CREATE INDEX IF NOT EXISTS email_messages_sender_idx ON email_messages(organization_id, from_email);
 CREATE INDEX IF NOT EXISTS email_messages_action_idx ON email_messages(organization_id, action_required, received_at DESC);
 
