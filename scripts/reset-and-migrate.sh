@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 MIGRATE_SCRIPT="${SCRIPT_DIR}/migrate.sh"
 
 command -v psql >/dev/null || { echo "psql is required" >&2; exit 1; }
-[[ -x "${MIGRATE_SCRIPT}" ]] || { echo "scripts/migrate.sh must exist and be executable" >&2; exit 1; }
+[[ -f "${MIGRATE_SCRIPT}" ]] || { echo "scripts/migrate.sh is required" >&2; exit 1; }
 
 if [[ "${RESET_DATABASE_CONFIRM:-}" != "YES" ]]; then
   echo "ERROR: this permanently drops the application database schemas (aca and private)." >&2
