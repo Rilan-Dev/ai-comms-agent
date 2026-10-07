@@ -46,9 +46,19 @@ AS $$
 $$;
 
 REVOKE EXECUTE ON FUNCTION is_active_organization_member(uuid,uuid) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION is_active_organization_member(uuid,uuid) FROM anon;
+DO $
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    REVOKE EXECUTE ON FUNCTION is_active_organization_member(uuid,uuid) FROM anon;
+  END IF;
+END $;
 GRANT EXECUTE ON FUNCTION is_active_organization_member(uuid,uuid) TO authenticated;
 
 REVOKE EXECUTE ON FUNCTION is_active_organization_admin_or_owner(uuid,uuid) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION is_active_organization_admin_or_owner(uuid,uuid) FROM anon;
+DO $
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    REVOKE EXECUTE ON FUNCTION is_active_organization_admin_or_owner(uuid,uuid) FROM anon;
+  END IF;
+END $;
 GRANT EXECUTE ON FUNCTION is_active_organization_admin_or_owner(uuid,uuid) TO authenticated;
