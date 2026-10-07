@@ -1,12 +1,12 @@
 -- Phase 4: API access, knowledge/search metadata and storage references.
 
-DO $
+DO $$
 BEGIN
   IF to_regclass('aca.api_keys') IS NOT NULL THEN
     ALTER TABLE api_keys
       ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
   END IF;
-END $;
+END $$;
 
 CREATE TABLE IF NOT EXISTS api_keys (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -24,13 +24,13 @@ CREATE TABLE IF NOT EXISTS api_keys (
 CREATE UNIQUE INDEX IF NOT EXISTS api_keys_hash_uniq ON api_keys(hashed_key);
 CREATE INDEX IF NOT EXISTS api_keys_org_idx ON api_keys(organization_id,created_at DESC);
 
-DO $
+DO $$
 BEGIN
   IF to_regclass('aca.knowledge_documents') IS NOT NULL THEN
     ALTER TABLE knowledge_documents
       ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
   END IF;
-END $;
+END $$;
 
 CREATE TABLE IF NOT EXISTS knowledge_documents (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -53,13 +53,13 @@ ON knowledge_documents(organization_id,storage_bucket,storage_path)
 WHERE storage_path IS NOT NULL;
 CREATE INDEX IF NOT EXISTS knowledge_documents_org_idx ON knowledge_documents(organization_id,created_at DESC);
 
-DO $
+DO $$
 BEGIN
   IF to_regclass('aca.knowledge_chunks') IS NOT NULL THEN
     ALTER TABLE knowledge_chunks
       ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
   END IF;
-END $;
+END $$;
 
 CREATE TABLE IF NOT EXISTS knowledge_chunks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -79,13 +79,13 @@ CREATE INDEX IF NOT EXISTS knowledge_chunks_org_idx ON knowledge_chunks(organiza
 CREATE UNIQUE INDEX IF NOT EXISTS knowledge_chunks_hash_uniq
 ON knowledge_chunks(document_id,content_hash);
 
-DO $
+DO $$
 BEGIN
   IF to_regclass('aca.storage_objects') IS NOT NULL THEN
     ALTER TABLE storage_objects
       ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
   END IF;
-END $;
+END $$;
 
 CREATE TABLE IF NOT EXISTS storage_objects (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
