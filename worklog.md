@@ -206,3 +206,15 @@ Never write "Phase complete" without evidence.
 - **File changed:** `supabase/migrations/0001_identity_rbac.sql`.
 - **Commit:** `99b271bb109745f55bc8e7ca82f2c7bffced0faf`.
 - No migration PASS is claimed and no CI/Vercel wait was performed.
+
+
+## 2026-10-07 — Fix identity helper schema qualification
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete migration error fix only; no feature development and no project-control documentation changes.
+- The migration reached the security-definer identity helpers and failed with `relation "public.organization_memberships" does not exist`.
+- Root cause: the project identity tables are created in the `aca` schema, while both private helper functions explicitly referenced `public.organization_memberships` with an empty search path.
+- Changed both helper queries to explicitly reference `aca.organization_memberships` while retaining the security-definer `SET search_path = ''` boundary.
+- **File changed:** `supabase/migrations/0001_identity_rbac.sql`.
+- **Commit:** `8782abcbcc4f56a6a7e01f837439f6b56fa2b143`.
+- No migration PASS is claimed and no CI/Vercel wait was performed.
