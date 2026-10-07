@@ -479,3 +479,8 @@ Never write "Phase complete" without evidence.
 - Made the messaging migration's RLS policy creation idempotent using `pg_policies` existence guards while preserving the existing policy definitions. No application feature code changed.
 - Migration fix commit: `e508582b50919f640883cbcd069d237897fe8b18`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0004_messaging.sql:161`: the WhatsApp RLS policy section contained malformed nested `DO $$`/dynamic-policy delimiters, causing `syntax error at or near "BEGIN"`.
+- Replaced the malformed WhatsApp policy section with four valid idempotent policy blocks covering accounts, contacts, messages, and webhook events, preserving the intended policy names and access expressions.
+- Migration fix commit: `79a13ba9936065bc2b3cb82a8d07d8a8afaeaecc`.
+- No CI/Vercel wait and no migration PASS claimed.
