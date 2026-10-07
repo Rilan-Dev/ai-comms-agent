@@ -611,3 +611,9 @@ The remaining Clara package diagnostics are the intentional optional vendored-su
 - WhatsApp outbound now accepts a stable `Idempotency-Key` header and preserves that key through client retries.
 - Continue with deterministic cross-surface E2E fixtures and sensitive-action idempotency/audit coverage, then deployment/runtime preparation.
 - CI/Vercel remain deferred validation gates under the active development-first instruction.
+
+
+### 2026-10-07 — Audit trace continuation
+- Sensitive cross-surface execution now persists `correlation_id` through the audit repository, including agent execution → email approval and WhatsApp outbound paths.
+- Continue deterministic E2E fixture coverage for email → approval → send, WhatsApp routing, scheduling, chat/voice, cross-organization isolation, and duplicate-action behavior.
+- Do not wait for CI/Vercel; verification remains deferred until the development set is complete.
