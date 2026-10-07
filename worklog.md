@@ -254,3 +254,15 @@ Never write "Phase complete" without evidence.
 - **File changed:** `supabase/migrations/0002_application_domain.sql`.
 - **Commit:** `a1b14de535873d0c56a1bd04cf405e8e59db0200`.
 - No migration PASS is claimed and no CI/Vercel wait was performed. The next rerun should surface the next concrete migration error, if any.
+
+
+## 2026-10-07 — Fix application-domain provider FK idempotency
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete migration error fix only; no feature development and no project-control documentation changes.
+- The self-hosted rerun progressed through the application-domain schema and failed at `0002_application_domain.sql:235` because `agent_ai_settings_provider_fk` already existed.
+- Root cause: the migration used an unconditional `ALTER TABLE ... ADD CONSTRAINT`, so rerunning against the partially initialized database was not idempotent.
+- Replaced the unconditional provider foreign-key addition with a guarded `DO $$ ... END $$` block that checks `pg_constraint` before adding the constraint.
+- **File changed:** `supabase/migrations/0002_application_domain.sql`.
+- **Migration commit:** `d89e4249ff31aa1da6de89ffe697e802c22f3239`.
+- No migration PASS is claimed and no CI/Vercel wait was performed.
