@@ -50,7 +50,7 @@ END $$;
 
 DO $$
 BEGIN
-  IF to_regclass('aca.whatsapp_contacts') IS NOT NULL THEN
+  IF to_regclass('whatsapp_contacts') IS NOT NULL THEN
     ALTER TABLE whatsapp_contacts
       ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
   END IF;
