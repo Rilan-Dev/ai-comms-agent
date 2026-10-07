@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION transfer_organization_ownership(
 RETURNS SETOF organization_memberships
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = aca, public
 AS $$
 DECLARE
   current_owner organization_memberships%ROWTYPE;
