@@ -286,3 +286,8 @@ Never write "Phase complete" without evidence.
 - Fixed concrete migration error in `supabase/migrations/0002_application_domain.sql`: the provider FK guard opened with `DO $$` but still closed with `END $;`, causing PostgreSQL syntax error at line 249. Corrected only the closing delimiter to `END $$;`; no migration behavior changed.
 - Migration fix commit: `ac44c29ef4449ea9dd9d15e2a5802ffb211fc04f`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed concrete migration syntax defect in `supabase/migrations/0002_application_domain.sql`: the provider FK idempotency block had both an invalid `DO $` opener and `END $;` closer. Corrected the pair to `DO $$` / `END $$;` without changing migration logic.
+- Performed a static delimiter audit of the migration files surfaced by the repository migration search; no additional exact `DO $` or `END $;` delimiter defects were found outside this block.
+- Migration fix commit: `aed0bea938c963588ddd61417374406efe4d8460`.
+- No CI/Vercel wait and no migration PASS claimed; database execution remains the authoritative runtime check.
