@@ -652,3 +652,8 @@ Never write "Phase complete" without evidence.
 - Added idempotent creation of `anon` and `authenticated` as `NOLOGIN` roles when absent before applying the ownership-RPC privilege operations. Existing roles remain unchanged.
 - Migration fix commit: `8b256ca1d442cf1e3ab75cc6ee022f8a7d9575f0`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0012_server_identity_rpcs.sql:43`: standalone PostgreSQL did not have the Supabase `service_role` role required by the identity RPC grants.
+- Added an idempotent creation of `service_role` as `NOLOGIN` before the grants. Existing environments with the role are unchanged; no application feature code changed.
+- Migration fix commit: `9068829818ba0755d980e3b6eb5814d3032763ed`.
+- No CI/Vercel wait and no migration PASS claimed.
