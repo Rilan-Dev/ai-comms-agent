@@ -134,6 +134,9 @@ CREATE TABLE IF NOT EXISTS automation_rules (
 );
 CREATE INDEX IF NOT EXISTS automation_rules_org_enabled_idx ON automation_rules(organization_id,enabled);
 
+ALTER TABLE automation_runs
+  ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now();
+
 CREATE TABLE IF NOT EXISTS automation_runs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   automation_rule_id uuid NOT NULL REFERENCES automation_rules(id) ON DELETE CASCADE,
