@@ -494,3 +494,8 @@ Never write "Phase complete" without evidence.
 - Corrected all malformed `DO` block delimiters in this migration to `DO $$` / `END $$;`, including the reported voice-telemetry FK block and the three RLS policy blocks, preserving their logic.
 - Migration fix commit: `b2f5b81f6b153922a4422a2ab84f7a76d6cd3b85`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0004_phase4_schema_cleanup.sql:24`: malformed PL/pgSQL dollar delimiters used `DO $` / `END $;` instead of valid `DO $$` / `END $$;`.
+- Corrected all four malformed DO blocks in the migration. No application feature code changed.
+- Migration fix commit: `bced51111290c78d1fecd3b8ab470bcc7894a902`.
+- No CI/Vercel wait and no migration PASS claimed.
