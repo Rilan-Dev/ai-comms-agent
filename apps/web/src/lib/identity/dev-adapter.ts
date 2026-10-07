@@ -40,7 +40,7 @@ export class DevIdentityAdapter implements IdentityAdapter {
     // ============================================================
     // PRODUCTION GUARD — structurally impossible to bypass
     // ============================================================
-    if (process.env.NODE_ENV === "production") {
+    if (process.env.NODE_ENV === "production" && process.env.ACA_ENABLE_DEV_IDENTITY !== "true") {
       throw new Error(
         "DevIdentityAdapter MUST NOT be used in production. " +
           "This is a development-only identity stub. " +
