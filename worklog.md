@@ -407,3 +407,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the email sync-state table/index operations. No application feature code changed.
 - Migration fix commit: `bc73182b34b6596e21686b5e0c57b4a7cf69096c`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_email_domain.sql:220`: the partially-created `email_sync_states` table already existed without the required `status` column.
+- Added an idempotent `status email_sync_status NOT NULL DEFAULT 'idle'` reconciliation before the table definition is reused. No application feature code changed.
+- Migration fix commit: `069f89c1d526fdaa27910913c167c3ef0fb23630`.
+- No CI/Vercel wait and no migration PASS claimed.
