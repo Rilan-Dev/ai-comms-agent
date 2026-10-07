@@ -97,7 +97,7 @@ export async function listAgentsForWhatsAppAccount(organizationId: string, accou
 
 export async function insertWhatsAppInboundMessage(input: { organizationId: string; accountId: string; agentId?: string | null; contactId?: string | null; providerMessageId: string; messageType: string; body?: string | null; media?: Record<string, unknown>; providerTimestamp?: string | null }) {
   const r = await query<Row>(
-    "INSERT INTO whatsapp_messages (organization_id, whatsapp_account_id, agent_id, contact_id, direction, provider_message_id, message_type, body, media, status, processing_status, provider_timestamp) VALUES ($1,$2,$3,$4,'inbound',$5,$6,$7,$8::jsonb,'received',CASE WHEN $3 IS NULL THEN 'received' ELSE 'routed' END,$9) ON CONFLICT DO NOTHING RETURNING id",
+    "INSERT INTO whatsapp_messages (organization_id, whatsapp_account_id, agent_id, contact_id, direction, provider_message_id, message_type, body, media, status, processing_status, provider_timestamp, correlation_id) VALUES ($1,$2,$3,$4,'inbound',$5,$6,$7,$8::jsonb,'received',CASE WHEN $3 IS NULL THEN 'received' ELSE 'routed' END,$9,gen_random_uuid()) ON CONFLICT DO NOTHING RETURNING id",
     [input.organizationId, input.accountId, input.agentId ?? null, input.contactId ?? null, input.providerMessageId, input.messageType, input.body ?? null, JSON.stringify(input.media ?? {}), input.providerTimestamp ?? null],
   );
   return { inserted: r.rows.length > 0, id: r.rows[0]?.id ? String(r.rows[0].id) : null };
