@@ -474,3 +474,8 @@ Never write "Phase complete" without evidence.
 - Made that policy creation idempotent with a `pg_policies` existence guard while preserving its definition. No application feature code changed.
 - Migration fix commit: `bd993f53dd1af59482f0fbf2ec5beb1267b769fc`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0004_messaging.sql:158`: the `whatsapp_accounts_admin_manage` RLS policy already existed from the earlier partial migration.
+- Made the messaging migration's RLS policy creation idempotent using `pg_policies` existence guards while preserving the existing policy definitions. No application feature code changed.
+- Migration fix commit: `e508582b50919f640883cbcd069d237897fe8b18`.
+- No CI/Vercel wait and no migration PASS claimed.
