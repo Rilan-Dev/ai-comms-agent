@@ -248,6 +248,10 @@ importers:
         version: 5.9.3
 
   packages/clara-core:
+    dependencies:
+      '@ai-comms-agent/db':
+        specifier: workspace:*
+        version: link:../db
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
