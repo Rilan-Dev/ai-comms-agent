@@ -12,6 +12,7 @@ services:
       - ../.env.docker
     environment:
       NODE_ENV: production
+      ACA_ENABLE_DEV_IDENTITY: "true"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
