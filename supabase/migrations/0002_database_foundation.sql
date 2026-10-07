@@ -144,25 +144,75 @@ ALTER TABLE agent_deployments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_email_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_whatsapp_accounts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY agents_org_member ON agents FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'agents'
+      AND policyname = 'agents_org_member'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY agents_org_member ON agents FOR ALL TO authenticated
 USING (can_access_organization(organization_id))
-WITH CHECK (can_manage_organization(organization_id));
+WITH CHECK (can_manage_organization(organization_id));$policy$;
+  END IF;
+END $$;
 
-CREATE POLICY agent_versions_org_member ON agent_versions FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'agent_versions'
+      AND policyname = 'agent_versions_org_member'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY agent_versions_org_member ON agent_versions FOR ALL TO authenticated
 USING (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_versions.agent_id AND can_access_organization(a.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_versions.agent_id AND can_manage_organization(a.organization_id)));
+WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_versions.agent_id AND can_manage_organization(a.organization_id)));$policy$;
+  END IF;
+END $$;
 
-CREATE POLICY agent_deployments_org_member ON agent_deployments FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'agent_deployments'
+      AND policyname = 'agent_deployments_org_member'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY agent_deployments_org_member ON agent_deployments FOR ALL TO authenticated
 USING (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_deployments.agent_id AND can_access_organization(a.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_deployments.agent_id AND can_manage_organization(a.organization_id)));
+WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_deployments.agent_id AND can_manage_organization(a.organization_id)));$policy$;
+  END IF;
+END $$;
 
-CREATE POLICY agent_email_accounts_org_member ON agent_email_accounts FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'agent_email_accounts'
+      AND policyname = 'agent_email_accounts_org_member'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY agent_email_accounts_org_member ON agent_email_accounts FOR ALL TO authenticated
 USING (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_email_accounts.agent_id AND can_access_organization(a.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_email_accounts.agent_id AND can_manage_organization(a.organization_id)));
+WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_email_accounts.agent_id AND can_manage_organization(a.organization_id)));$policy$;
+  END IF;
+END $$;
 
-CREATE POLICY agent_whatsapp_accounts_org_member ON agent_whatsapp_accounts FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'agent_whatsapp_accounts'
+      AND policyname = 'agent_whatsapp_accounts_org_member'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY agent_whatsapp_accounts_org_member ON agent_whatsapp_accounts FOR ALL TO authenticated
 USING (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_whatsapp_accounts.agent_id AND can_access_organization(a.organization_id)))
-WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_whatsapp_accounts.agent_id AND can_manage_organization(a.organization_id)));
+WITH CHECK (EXISTS (SELECT 1 FROM agents a WHERE a.id=agent_whatsapp_accounts.agent_id AND can_manage_organization(a.organization_id)));$policy$;
+  END IF;
+END $$;
 
 INSERT INTO permissions(name, description) VALUES
  ('organization.read','Read organization'),
