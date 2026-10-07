@@ -59,6 +59,10 @@ export async function createEmailAction(input: CreateEmailActionInput) {
      VALUES ($1,$2,$3,$4,'pending_approval',$5,$6::jsonb,$7,$8,COALESCE($9::timestamptz, now() + interval '15 minutes'),$10,$11)
      ON CONFLICT (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL
      DO UPDATE SET idempotency_key = EXCLUDED.idempotency_key
+       WHERE email_actions.email_account_id = EXCLUDED.email_account_id
+         AND email_actions.action_type = EXCLUDED.action_type
+         AND email_actions.content_hash = EXCLUDED.content_hash
+         AND email_actions.draft_id IS NOT DISTINCT FROM EXCLUDED.draft_id
      RETURNING *`,
     [
       input.organizationId,
@@ -75,7 +79,9 @@ export async function createEmailAction(input: CreateEmailActionInput) {
     ],
   );
   const row = r.rows[0];
-  if (!row) throw new Error("Email action insert returned no row");
+  if (!row) {
+    throw new Error("Idempotency key already exists for a different email action payload");
+  }
   return action(row);
 }
 
