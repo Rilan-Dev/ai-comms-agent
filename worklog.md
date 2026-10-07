@@ -387,3 +387,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `search_vector tsvector` reconciliation before the search index creation. No application feature code changed.
 - Migration fix commit: `c483738969d138a7200b917803508134b4ec869e`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_email_domain.sql:165`: the existing partially-created `email_messages` table lacked `from_email`, but the migration created an index using that column before reconciling the table schema.
+- Added an idempotent `from_email text` column reconciliation before the sender index. No application feature code changed.
+- Migration fix commit: `7933244261e3039a8848b08cf77a83b5b1730a53`.
+- No CI/Vercel wait and no migration PASS claimed.
