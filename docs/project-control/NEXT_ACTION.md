@@ -664,3 +664,10 @@ Development-first execution continues without waiting for GitHub Actions or Verc
 - Added `apps/web/src/e2e/cross-surface-harness.ts`, an injected-operation harness that executes the stable scenario definitions without fabricating provider/runtime success.
 - Added `apps/web/tests/cross-surface-harness.test.ts` to lock scenario IDs and stable idempotency keys and prove the harness propagates them through ordered steps.
 - **Next implementation:** connect the harness to real application integration adapters for email approval/send, WhatsApp outbound, scheduler claims, organization isolation, and audit correlation. Continue remaining product hardening without waiting for CI/Vercel.
+
+
+### 2026-10-08 — Cross-surface continuation
+- WhatsApp outbound now preserves a generated correlation ID into the durable outbound queue record and the enqueue audit event.
+- Idempotent WhatsApp retries now return the existing message ID for the same valid payload instead of returning an ambiguous null result.
+- Added contract assertions for correlation propagation and retry identity.
+- **Next:** continue connecting the deterministic E2E scenarios to real application adapters, with focus on email approval/send, scheduler claim execution, organization isolation, and audit trace continuity. Do not wait for CI/Vercel.
