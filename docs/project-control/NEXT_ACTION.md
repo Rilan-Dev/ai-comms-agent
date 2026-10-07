@@ -658,3 +658,9 @@ Development-first execution continues without waiting for GitHub Actions or Verc
 - Added stable UUID fixtures and scenario definitions for email approval/send, WhatsApp outbound duplicate handling, scheduled execution duplicate protection, organization isolation, and audit trace continuity.
 - These fixtures are deterministic inputs for the final cross-surface E2E runner; they do not claim runtime verification.
 - **Next:** connect the fixture scenarios to the application's integration/E2E harness and close any remaining duplicate-action, isolation, and audit edge cases before final runtime/deployment verification.
+
+
+### 2026-10-07 — Deterministic E2E harness connected
+- Added `apps/web/src/e2e/cross-surface-harness.ts`, an injected-operation harness that executes the stable scenario definitions without fabricating provider/runtime success.
+- Added `apps/web/tests/cross-surface-harness.test.ts` to lock scenario IDs and stable idempotency keys and prove the harness propagates them through ordered steps.
+- **Next implementation:** connect the harness to real application integration adapters for email approval/send, WhatsApp outbound, scheduler claims, organization isolation, and audit correlation. Continue remaining product hardening without waiting for CI/Vercel.
