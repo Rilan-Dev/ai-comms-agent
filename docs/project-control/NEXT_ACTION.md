@@ -617,3 +617,10 @@ The remaining Clara package diagnostics are the intentional optional vendored-su
 - Sensitive cross-surface execution now persists `correlation_id` through the audit repository, including agent execution → email approval and WhatsApp outbound paths.
 - Continue deterministic E2E fixture coverage for email → approval → send, WhatsApp routing, scheduling, chat/voice, cross-organization isolation, and duplicate-action behavior.
 - Do not wait for CI/Vercel; verification remains deferred until the development set is complete.
+
+
+### 2026-10-07 — Cross-surface hardening continuation
+
+ChatGPT continued the final product-completion implementation without waiting for CI/Vercel. Email sensitive-action creation now supports organization-scoped idempotency keys through the Idempotency-Key header/body fallback, backed by a PostgreSQL partial unique index and conflict-safe repository insert. Added deterministic cross-surface contract coverage for email approval, WhatsApp outbound idempotency, scheduling/automation authorization, voice-session binding, and audit correlation persistence.
+
+**Next concrete implementation:** complete remaining cross-surface action correlation/idempotency propagation into worker execution and deterministic E2E fixtures for duplicate email approval, duplicate WhatsApp outbound, scheduled execution, organization isolation, and sensitive-action audit trails. Then prepare final runtime/deployment verification. Do not wait for CI/Vercel.
