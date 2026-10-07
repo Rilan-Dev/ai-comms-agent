@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     if (!kbId) return NextResponse.json({ error: "configuration_required", message: "CLARA_KB_ID is not configured." }, { status: 503 });
 
     const session = await claraRuntime.startRealtimeSession({ orgId: organizationId, agentId, kbId, userId: subject.user.id, sessionId: crypto.randomUUID() });
-    const persisted = await createVoiceSession({ organizationId, agentId, userId: subject.user.id, conversationId, provider: session.provider, model: session.model, voiceId: session.voiceId, metadata: { sessionEndpoint: session.sessionEndpoint } });
+    const persisted = await createVoiceSession({ organizationId, agentId, userId: subject.user.id, conversationId, provider: session.realtimeProvider, model: session.model, voiceId: session.voiceId, metadata: { sessionEndpoint: session.sessionEndpoint } });
     return NextResponse.json({ session: persisted, transport: session });
   } catch (error) {
     return authorizationErrorToResponse(error);
