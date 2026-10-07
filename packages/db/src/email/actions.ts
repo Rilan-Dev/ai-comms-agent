@@ -23,6 +23,7 @@ export interface CreateEmailActionInput {
   recipientSnapshot: Record<string, unknown>;
   requestedBy?: string | null;
   expiresAt?: string | null;
+  idempotencyKey?: string | null;
 }
 
 function action(row: Row) {
@@ -52,8 +53,10 @@ export async function createEmailAction(input: CreateEmailActionInput) {
   const contentHash = createHash("sha256").update(snapshot).digest("hex");
   const r = await query<Row>(
     `INSERT INTO email_actions
-      (organization_id, agent_id, email_account_id, action_type, status, draft_id, recipient_snapshot, content_hash, requested_by, expires_at)
-     VALUES ($1,$2,$3,$4,'pending_approval',$5,$6::jsonb,$7,$8,COALESCE($9::timestamptz, now() + interval '15 minutes'))
+      (organization_id, agent_id, email_account_id, action_type, status, draft_id, recipient_snapshot, content_hash, requested_by, expires_at, idempotency_key)
+     VALUES ($1,$2,$3,$4,'pending_approval',$5,$6::jsonb,$7,$8,COALESCE($9::timestamptz, now() + interval '15 minutes'),$10)
+     ON CONFLICT (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL
+     DO UPDATE SET idempotency_key = EXCLUDED.idempotency_key
      RETURNING *`,
     [
       input.organizationId,
@@ -65,6 +68,7 @@ export async function createEmailAction(input: CreateEmailActionInput) {
       contentHash,
       input.requestedBy ?? null,
       input.expiresAt ?? null,
+      input.idempotencyKey ?? null,
     ],
   );
   const row = r.rows[0];
