@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS agent_deployments (
  version_id uuid NOT NULL REFERENCES agent_versions(id), environment deployment_environment NOT NULL,
  deployed_by uuid REFERENCES users(id), deployed_at timestamptz NOT NULL DEFAULT now(), retired_at timestamptz
 );
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
@@ -68,7 +68,7 @@ BEGIN
       FOREIGN KEY (current_deployment_id) REFERENCES agent_deployments(id)
       DEFERRABLE INITIALLY DEFERRED;
   END IF;
-END $;
+END $$;
 
 CREATE TABLE IF NOT EXISTS agent_ai_settings (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), agent_id uuid NOT NULL UNIQUE REFERENCES agents(id) ON DELETE CASCADE,
