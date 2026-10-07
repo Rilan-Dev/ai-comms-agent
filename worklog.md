@@ -372,3 +372,8 @@ Never write "Phase complete" without evidence.
 - Hardened `scripts/reset-and-migrate.sh` to invoke the migration helper through an explicit `/usr/bin/env bash` interpreter, avoiding reliance on executable permission handling for the helper file.
 - Reset/migration script fix commit: `3cb7b28c42dd62a2f0a60d06749cd404bba05471`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_email_domain.sql:159`: the partially-created `email_messages` table already existed without `organization_id`, while the migration requires that column.
+- Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the email-message table/index operations. No application feature code changed.
+- Migration fix commit: `6085e1dc9d9097d0e1d861dcf789eff4f8bd1e91`.
+- No CI/Vercel wait and no migration PASS claimed.
