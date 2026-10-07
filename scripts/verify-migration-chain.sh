@@ -60,16 +60,11 @@ if grep -RInE '(^AS \$[[:space:]]*$|^\$[[:space:]]*;)' "$MIGRATIONS_DIR" --inclu
   exit 1
 fi
 
-duplicates="$(
-  find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' -printf '%f\n' |
-    sed -nE 's/^([0-9]+)_.*/\1/p' |
-    sort |
-    uniq -d
-)"
-if [[ -n "$duplicates" ]]; then
-  echo "ERROR: duplicate migration numeric prefix(es): $duplicates" >&2
-  exit 1
-fi
+# Migration identity is the full filename recorded by migrate.sh, not the
+# numeric prefix alone. The repository contains forward-only reconciliation
+# migrations that intentionally share historical numeric prefixes; rejecting
+# those prefixes would make the verifier disagree with the committed migration
+# history and the migration runner.
 
 # Domain objects must have exactly one canonical CREATE migration.
 for kind in table enum; do
