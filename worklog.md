@@ -575,3 +575,8 @@ Never write "Phase complete" without evidence.
 - Corrected only that migration block; no application feature code or reset/migrate scripts were changed.
 - Migration fix commit: `6fb9b144da5fd08743c4792234fd792ce03fcf52`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete clean-reset migration failure reported at `supabase/migrations/0003_email_domain.sql:167`: `email_messages` was created by the preceding foundation migration without `organization_id`, but the email-domain migration immediately required that column.
+- Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the `email_messages` table/index operations. No application feature code changed.
+- Migration fix commit: `60cc15b97fd494051789bb98e8dc277b4298c6b7`.
+- No CI/Vercel wait and no migration PASS claimed.
