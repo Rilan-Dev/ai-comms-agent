@@ -504,3 +504,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `started_at timestamptz NOT NULL DEFAULT now()` reconciliation before the index creation. No application feature code changed.
 - Migration fix commit: `ef06eba4a097f3b7e730d3016d7440d05bb02678`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0006_conversations_scheduling.sql:62`: the partially-created `conversation_turns` table already existed without `correlation_id`, while the migration immediately created an index on that column.
+- Added an idempotent `correlation_id uuid NOT NULL DEFAULT gen_random_uuid()` reconciliation before the unique correlation index. No application feature code changed.
+- Migration fix commit: `e97067135ed6e353674785eaa066adca02fa0634`.
+- No CI/Vercel wait and no migration PASS claimed.
