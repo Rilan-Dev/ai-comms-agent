@@ -6,7 +6,6 @@ WORKDIR /workspace
 COPY pnpm-lock.yaml package.json pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps ./apps
 COPY packages ./packages
-COPY vendor ./vendor
 RUN pnpm install --no-frozen-lockfile
 
 FROM base AS web
