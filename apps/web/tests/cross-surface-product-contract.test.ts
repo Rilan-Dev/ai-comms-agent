@@ -25,6 +25,10 @@ describe("cross-surface product completion contract", () => {
     expect(whatsappRoute).toContain("whatsapp.message.queued");
     expect(whatsappRoute).toContain("idempotency_conflict");
     expect(whatsappRoute).toContain("status: 409");
+    expect(whatsappRoute).toContain("const correlationId = crypto.randomUUID()");
+    expect(whatsappRoute).toContain("correlationId, targetType: \"whatsapp_message\"");
+    expect(whatsappRepository).toContain("correlationId?: string | null");
+    expect(whatsappRepository).toContain("return row.id ? String(row.id) : null");
     expect(whatsappRepository).toContain("Idempotency key already exists for a different WhatsApp payload");
   });
 
