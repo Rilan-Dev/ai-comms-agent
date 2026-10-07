@@ -1963,3 +1963,9 @@ ChatGPT continued the final product-completion implementation under the developm
 No provider credentials were introduced and no external provider success is fabricated. CI/Vercel remain non-blocking under the user's development-first instruction.
 
 **Next:** propagate correlation/idempotency through worker execution and build deterministic duplicate-action, approval, WhatsApp, scheduling, voice/chat, and organization-isolation E2E fixtures; then prepare final deployment/runtime verification.
+
+## 2026-10-07 — Cross-surface execution correlation
+
+ChatGPT continued final product hardening without waiting for CI/Vercel. Added forward-only migration 0019 to persist UUID correlation IDs on email approval actions and WhatsApp messages. Agent-generated email/WhatsApp actions now carry the originating execution correlation; worker completion/failure audit records retain it. WhatsApp inbound messages receive a UUID correlation and use it as the execution ID so downstream audit persistence remains type-safe. Audit repository read models now return correlation IDs. No provider credentials or live provider success were fabricated.
+
+Next implementation: deterministic cross-surface E2E fixtures and duplicate-action/idempotency coverage, followed by final runtime/deployment preparation.
