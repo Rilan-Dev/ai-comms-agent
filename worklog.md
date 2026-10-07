@@ -524,3 +524,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `enabled boolean NOT NULL DEFAULT true` reconciliation before the index creation. No application feature code changed.
 - Migration fix commit: `6ccceae068167b0b0c03d1145ec12bcf3f41cb56`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0006_conversations_scheduling.sql:94`: the partially-created `scheduled_jobs` table lacked `next_run_at`, while the migration immediately indexed that column.
+- Reconciled `scheduled_jobs` with idempotent additions for `next_run_at` and `last_run_at` alongside the existing `enabled` reconciliation. No application feature code changed.
+- Migration fix commit: `b42daf3c02090d51cd39515b3c3b943957047225`.
+- No CI/Vercel wait and no migration PASS claimed.
