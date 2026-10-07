@@ -49,6 +49,9 @@ CREATE TABLE IF NOT EXISTS email_account_credentials (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE email_account_credentials
+  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+
 CREATE INDEX IF NOT EXISTS email_credentials_org_idx ON email_account_credentials(organization_id);
 
 CREATE TABLE IF NOT EXISTS email_folders (
