@@ -1,6 +1,17 @@
 -- Phase 4 scheduling/automation runtime fields.
 -- Forward-only; PostgreSQL 15+.
 
+-- Reconcile the canonical scheduler column names before indexing runtime state.
+ALTER TABLE scheduled_jobs
+  ADD COLUMN IF NOT EXISTS next_fire_at timestamptz;
+UPDATE scheduled_jobs
+SET next_fire_at = COALESCE(next_fire_at, next_run_at)
+WHERE next_fire_at IS NULL;
+
+ALTER TABLE automation_rules
+  ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active';
+
+
 ALTER TABLE scheduled_jobs
   ADD COLUMN IF NOT EXISTS timezone text NOT NULL DEFAULT 'UTC',
   ADD COLUMN IF NOT EXISTS catch_up_minutes integer NOT NULL DEFAULT 60,
