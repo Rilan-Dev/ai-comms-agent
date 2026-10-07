@@ -107,23 +107,83 @@ ALTER TABLE knowledge_documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_chunks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE storage_objects ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY api_keys_admin_visibility ON api_keys FOR SELECT TO authenticated
-USING (can_manage_organization(organization_id));
-CREATE POLICY api_keys_admin_manage ON api_keys FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'api_keys'
+      AND policyname = 'api_keys_admin_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY api_keys_admin_visibility ON api_keys FOR SELECT TO authenticated
+USING (can_manage_organization(organization_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'api_keys'
+      AND policyname = 'api_keys_admin_manage'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY api_keys_admin_manage ON api_keys FOR ALL TO authenticated
 USING (can_manage_organization(organization_id))
-WITH CHECK (can_manage_organization(organization_id));
+WITH CHECK (can_manage_organization(organization_id));$policy$;
+  END IF;
+END $$;
 
-CREATE POLICY knowledge_documents_member_visibility ON knowledge_documents FOR SELECT TO authenticated
-USING (can_access_organization(organization_id));
-CREATE POLICY knowledge_documents_member_manage ON knowledge_documents FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'knowledge_documents'
+      AND policyname = 'knowledge_documents_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY knowledge_documents_member_visibility ON knowledge_documents FOR SELECT TO authenticated
+USING (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'knowledge_documents'
+      AND policyname = 'knowledge_documents_member_manage'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY knowledge_documents_member_manage ON knowledge_documents FOR ALL TO authenticated
 USING (can_access_organization(organization_id))
-WITH CHECK (can_access_organization(organization_id));
+WITH CHECK (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
 
-CREATE POLICY knowledge_chunks_member_visibility ON knowledge_chunks FOR SELECT TO authenticated
-USING (can_access_organization(organization_id));
-CREATE POLICY knowledge_chunks_member_manage ON knowledge_chunks FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'knowledge_chunks'
+      AND policyname = 'knowledge_chunks_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY knowledge_chunks_member_visibility ON knowledge_chunks FOR SELECT TO authenticated
+USING (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'knowledge_chunks'
+      AND policyname = 'knowledge_chunks_member_manage'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY knowledge_chunks_member_manage ON knowledge_chunks FOR ALL TO authenticated
 USING (can_access_organization(organization_id))
-WITH CHECK (can_access_organization(organization_id));
+WITH CHECK (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
 
 DO $$
 BEGIN
@@ -137,6 +197,16 @@ BEGIN
 USING (can_access_organization(organization_id));$policy$;
   END IF;
 END $$;
-CREATE POLICY storage_objects_member_manage ON storage_objects FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'storage_objects'
+      AND policyname = 'storage_objects_member_manage'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY storage_objects_member_manage ON storage_objects FOR ALL TO authenticated
 USING (can_access_organization(organization_id))
-WITH CHECK (can_access_organization(organization_id));
+WITH CHECK (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
