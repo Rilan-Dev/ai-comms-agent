@@ -322,3 +322,8 @@ Never write "Phase complete" without evidence.
 - The foundation migration now creates a `NOLOGIN` `authenticated` role when absent, then grants the required function execution privileges. Existing Supabase deployments where the role already exists are unchanged.
 - Migration fix commit: `d060594403a5b20bf2ced692acddb614c922a6b9`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0002_database_foundation.sql:190`: the Phase 4 foundation assertion checked required tables under `public`, while this deployment stores them under `aca` via the configured search path.
+- Changed the assertion from `to_regclass('public.' || required_table)` to `to_regclass('aca.' || required_table)`. No schema objects or application behavior were changed.
+- Migration fix commit: `7d811be4967cc81720392d93d0741d2c6c639c4d`.
+- No CI/Vercel wait and no migration PASS claimed.
