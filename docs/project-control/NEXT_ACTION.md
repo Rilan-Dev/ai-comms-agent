@@ -605,3 +605,9 @@ The remaining Clara package diagnostics are the intentional optional vendored-su
 - Commit: `51cdfb824fd0a3e34426db03c67c76db31557155`.
 - Clara optional vendored-source diagnostics remain an intentional structural-check boundary when `vendor/clara` is not initialized.
 - Continue final cross-surface authorization/idempotency/error hardening and deterministic E2E coverage; do not wait for CI/Vercel.
+
+
+### 2026-10-07 — Cross-surface idempotency continuation
+- WhatsApp outbound now accepts a stable `Idempotency-Key` header and preserves that key through client retries.
+- Continue with deterministic cross-surface E2E fixtures and sensitive-action idempotency/audit coverage, then deployment/runtime preparation.
+- CI/Vercel remain deferred validation gates under the active development-first instruction.
