@@ -176,6 +176,9 @@ ALTER TABLE email_messages
   ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE,
   ADD COLUMN IF NOT EXISTS search_vector tsvector;
 
+ALTER TABLE email_attachments
+  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+
 CREATE TABLE IF NOT EXISTS email_attachments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   message_id uuid NOT NULL REFERENCES email_messages(id) ON DELETE CASCADE,
