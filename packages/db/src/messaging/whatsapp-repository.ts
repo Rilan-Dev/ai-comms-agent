@@ -147,7 +147,7 @@ export async function queueWhatsAppOutboundMessage(input: { organizationId: stri
   if (String(row.whatsapp_account_id) !== input.accountId || String(row.contact_id) !== String(contactId) || String(row.body ?? "") !== input.body) {
     throw new Error("Idempotency key already exists for a different WhatsApp payload");
   }
-  return null;
+  return row.id ? String(row.id) : null;
 }
 
 export async function listQueuedWhatsAppOutbound(limit = 20) {
