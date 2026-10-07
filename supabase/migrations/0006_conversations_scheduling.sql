@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS conversations (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE conversations
+  ADD COLUMN IF NOT EXISTS started_at timestamptz NOT NULL DEFAULT now();
+
 CREATE INDEX IF NOT EXISTS conversations_org_last_message_idx
 ON conversations(organization_id,last_message_at DESC);
 CREATE INDEX IF NOT EXISTS conversations_agent_idx ON conversations(agent_id,started_at DESC);
