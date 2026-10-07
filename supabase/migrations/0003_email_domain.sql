@@ -251,9 +251,18 @@ CREATE UNIQUE INDEX IF NOT EXISTS email_sync_events_provider_event_uniq
 CREATE INDEX IF NOT EXISTS email_sync_events_org_received_idx
   ON email_sync_events(organization_id, received_at DESC);
 
-ALTER TABLE agent_email_accounts
-  ADD CONSTRAINT agent_email_accounts_email_account_fk
-  FOREIGN KEY (email_account_id) REFERENCES email_accounts(id) ON DELETE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'agent_email_accounts_email_account_fk'
+      AND conrelid = 'aca.agent_email_accounts'::regclass
+  ) THEN
+    ALTER TABLE agent_email_accounts
+      ADD CONSTRAINT agent_email_accounts_email_account_fk
+      FOREIGN KEY (email_account_id) REFERENCES email_accounts(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 
 CREATE OR REPLACE FUNCTION update_email_updated_at()
 RETURNS TRIGGER AS $$
