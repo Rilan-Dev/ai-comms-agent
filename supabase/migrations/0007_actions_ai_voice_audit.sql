@@ -4,6 +4,14 @@ DO $$ BEGIN
   CREATE TYPE email_action_status AS ENUM ('pending_approval','approved','rejected','completed','failed','expired','cancelled');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
+DO $
+BEGIN
+  IF to_regclass('aca.email_actions') IS NOT NULL THEN
+    ALTER TABLE email_actions
+      ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+  END IF;
+END $;
+
 CREATE TABLE IF NOT EXISTS email_actions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -24,6 +32,14 @@ CREATE TABLE IF NOT EXISTS email_actions (
 CREATE INDEX IF NOT EXISTS email_actions_org_status_idx ON email_actions(organization_id,status,requested_at DESC);
 CREATE INDEX IF NOT EXISTS email_actions_pending_idx ON email_actions(status,expires_at) WHERE status='pending_approval';
 
+DO $
+BEGIN
+  IF to_regclass('aca.email_action_approvals') IS NOT NULL THEN
+    ALTER TABLE email_action_approvals
+      ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+  END IF;
+END $;
+
 CREATE TABLE IF NOT EXISTS email_action_approvals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email_action_id uuid NOT NULL REFERENCES email_actions(id) ON DELETE CASCADE,
@@ -34,6 +50,14 @@ CREATE TABLE IF NOT EXISTS email_action_approvals (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS email_action_approvals_org_idx ON email_action_approvals(organization_id,created_at DESC);
+
+DO $
+BEGIN
+  IF to_regclass('aca.ai_provider_configs') IS NOT NULL THEN
+    ALTER TABLE ai_provider_configs
+      ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+  END IF;
+END $;
 
 CREATE TABLE IF NOT EXISTS ai_provider_configs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -61,6 +85,14 @@ CREATE TABLE IF NOT EXISTS agent_ai_settings (
 );
 CREATE INDEX IF NOT EXISTS agent_ai_settings_agent_idx ON agent_ai_settings(agent_id);
 
+DO $
+BEGIN
+  IF to_regclass('aca.ai_usage_events') IS NOT NULL THEN
+    ALTER TABLE ai_usage_events
+      ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+  END IF;
+END $;
+
 CREATE TABLE IF NOT EXISTS ai_usage_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -81,6 +113,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS ai_usage_request_uniq ON ai_usage_events(organ
 CREATE INDEX IF NOT EXISTS ai_usage_org_created_idx ON ai_usage_events(organization_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS ai_usage_agent_created_idx ON ai_usage_events(agent_id,created_at DESC);
 
+DO $
+BEGIN
+  IF to_regclass('aca.voice_sessions') IS NOT NULL THEN
+    ALTER TABLE voice_sessions
+      ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+  END IF;
+END $;
+
 CREATE TABLE IF NOT EXISTS voice_sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -98,6 +138,14 @@ CREATE TABLE IF NOT EXISTS voice_sessions (
 );
 CREATE INDEX IF NOT EXISTS voice_sessions_org_started_idx ON voice_sessions(organization_id,started_at DESC);
 
+DO $
+BEGIN
+  IF to_regclass('aca.voice_telemetry') IS NOT NULL THEN
+    ALTER TABLE voice_telemetry
+      ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+  END IF;
+END $;
+
 CREATE TABLE IF NOT EXISTS voice_telemetry (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -112,6 +160,14 @@ CREATE TABLE IF NOT EXISTS voice_telemetry (
 );
 CREATE INDEX IF NOT EXISTS voice_telemetry_session_idx ON voice_telemetry(voice_session_id,created_at);
 CREATE INDEX IF NOT EXISTS voice_telemetry_org_metric_idx ON voice_telemetry(organization_id,metric_name,created_at DESC);
+
+DO $
+BEGIN
+  IF to_regclass('aca.audit_events') IS NOT NULL THEN
+    ALTER TABLE audit_events
+      ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+  END IF;
+END $;
 
 CREATE TABLE IF NOT EXISTS audit_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
