@@ -64,6 +64,9 @@ CREATE TABLE IF NOT EXISTS whatsapp_contacts (
 );
 CREATE INDEX IF NOT EXISTS whatsapp_contacts_org_idx ON whatsapp_contacts(organization_id);
 
+ALTER TABLE whatsapp_messages
+  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+
 CREATE TABLE IF NOT EXISTS whatsapp_messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
