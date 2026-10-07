@@ -13,6 +13,7 @@ export default function WhatsAppClient({ organizationId }: { organizationId: str
   const [messages, setMessages] = useState<Array<{ id: string; direction: string; body?: string | null; status: string; phone_number?: string | null; display_name?: string | null; created_at: string }>>([]);
   const [recipient, setRecipient] = useState("");
   const [messageBody, setMessageBody] = useState("");
+  const [sendIdempotencyKey, setSendIdempotencyKey] = useState<string | null>(null);
 
   async function load() {
     try {
@@ -50,9 +51,11 @@ export default function WhatsAppClient({ organizationId }: { organizationId: str
   async function sendMessage() {
     setBusy(true); setNotice(null);
     try {
-      const r = await fetch("/api/whatsapp/messages", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ organizationId, accountId: selectedAccountId, to: recipient, body: messageBody, idempotencyKey: crypto.randomUUID() }) });
+      const idempotencyKey = sendIdempotencyKey ?? crypto.randomUUID();
+      if (!sendIdempotencyKey) setSendIdempotencyKey(idempotencyKey);
+      const r = await fetch("/api/whatsapp/messages", { method: "POST", headers: { "content-type": "application/json", "Idempotency-Key": idempotencyKey }, body: JSON.stringify({ organizationId, accountId: selectedAccountId, to: recipient, body: messageBody }) });
       const d = await r.json(); if (!r.ok) throw new Error(d.message ?? "Could not queue WhatsApp message.");
-      setMessageBody(""); setNotice("Message queued. The worker will send it only after the account is verified.");
+      setMessageBody(""); setSendIdempotencyKey(null); setNotice(d.queued === false ? "This message was already queued; no duplicate was created." : "Message queued. The worker will send it only after the account is verified.");
     } catch (e) { setNotice(e instanceof Error ? e.message : "Could not queue WhatsApp message."); } finally { setBusy(false); }
   }
 
