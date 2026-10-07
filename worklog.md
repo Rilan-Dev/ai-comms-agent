@@ -2015,3 +2015,14 @@ Next implementation: deterministic cross-surface E2E fixtures and duplicate-acti
 - **File changed:** `apps/worker/src/messaging/whatsapp-inbound-worker.ts`.
 - **Commit:** `56896ede9cf5d041452421dab2c6f91998b3181a`.
 - No CI/Vercel wait was performed. No typecheck pass is claimed until the user reruns `npm run typecheck`.
+
+
+## 2026-10-07 — Manual Docker Clara submodule initialization correction
+
+- **Owner:** ChatGPT
+- **Scope:** Error-fixing only; no feature development and no project-control documentation changes.
+- User ran `bash scripts/manual-up.sh`; the Docker build reached the web image and failed with webpack TS/Module not found for `../../../vendor/clara/clara-core/source/src/modules/ai-platform-core/clara-runtime`. The repository declares `vendor/clara` as a git submodule, and Docker build context does not initialize submodules automatically.
+- Updated the existing manual-up script to synchronize and initialize the pinned `vendor/clara` submodule before invoking the existing Docker Compose build. This ensures the immutable Clara runtime file is present in the Docker build context without copying or modifying Clara source.
+- **File changed:** `scripts/manual-up.sh`.
+- **Commit:** `f4f104f2b39c8b77a692c692045421d66adb2e08`.
+- No CI/Vercel wait was performed. No Docker build pass is claimed until the user reruns the manual-up command.
