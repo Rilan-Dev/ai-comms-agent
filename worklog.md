@@ -585,3 +585,8 @@ Never write "Phase complete" without evidence.
 - Corrected the block to `DO $$` / `END $$;`. No application feature code changed.
 - Migration fix commit: `f0369597c550d6e6b01eca0a286f7253863f8a1d`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_phase4_schema_alignment.sql:72`: a PL/pgSQL `DO` block used malformed dollar delimiters (`DO $` / `END $;`).
+- Corrected the block to `DO $$` / `END $$;` without changing its migration logic.
+- Migration fix commit: `17c39ddf92ade986618d5287f4f6aa551daf7e5f`.
+- No CI/Vercel wait and no migration PASS claimed.
