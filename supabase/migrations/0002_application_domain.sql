@@ -323,19 +323,149 @@ END $$;
 
 -- Policies are intentionally explicit per tenant-bearing table. Child tables
 -- inherit tenant membership through their parent relationships.
-CREATE POLICY agents_member_visibility ON agents USING (app_is_org_member(organization_id));
-CREATE POLICY email_accounts_member_visibility ON email_accounts USING (app_is_org_member(organization_id));
-CREATE POLICY whatsapp_accounts_member_visibility ON whatsapp_accounts USING (app_is_org_member(organization_id));
-CREATE POLICY conversations_member_visibility ON conversations USING (app_is_org_member(organization_id));
-CREATE POLICY scheduled_jobs_member_visibility ON scheduled_jobs USING (app_is_org_member(organization_id));
-CREATE POLICY automation_rules_member_visibility ON automation_rules USING (app_is_org_member(organization_id));
-CREATE POLICY email_actions_member_visibility ON email_actions USING (app_is_org_member(organization_id));
-CREATE POLICY ai_provider_configs_member_visibility ON ai_provider_configs USING (app_is_org_member(organization_id));
-CREATE POLICY ai_usage_events_member_visibility ON ai_usage_events USING (app_is_org_member(organization_id));
-CREATE POLICY summaries_member_visibility ON summaries USING (app_is_org_member(organization_id));
-CREATE POLICY voice_sessions_member_visibility ON voice_sessions USING (app_is_org_member(organization_id));
-CREATE POLICY audit_events_member_visibility ON audit_events USING (app_is_org_member(organization_id));
-CREATE POLICY storage_objects_member_visibility ON storage_objects USING (app_is_org_member(organization_id));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'agents'
+      AND policyname = 'agents_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY agents_member_visibility ON agents USING (app_is_org_member(organization_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_accounts'
+      AND policyname = 'email_accounts_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_accounts_member_visibility ON email_accounts USING (app_is_org_member(organization_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'whatsapp_accounts'
+      AND policyname = 'whatsapp_accounts_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY whatsapp_accounts_member_visibility ON whatsapp_accounts USING (app_is_org_member(organization_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'conversations'
+      AND policyname = 'conversations_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY conversations_member_visibility ON conversations USING (app_is_org_member(organization_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'scheduled_jobs'
+      AND policyname = 'scheduled_jobs_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY scheduled_jobs_member_visibility ON scheduled_jobs USING (app_is_org_member(organization_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'automation_rules'
+      AND policyname = 'automation_rules_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY automation_rules_member_visibility ON automation_rules USING (app_is_org_member(organization_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_actions'
+      AND policyname = 'email_actions_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_actions_member_visibility ON email_actions USING (app_is_org_member(organization_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'ai_provider_configs'
+      AND policyname = 'ai_provider_configs_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY ai_provider_configs_member_visibility ON ai_provider_configs USING (app_is_org_member(organization_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'ai_usage_events'
+      AND policyname = 'ai_usage_events_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY ai_usage_events_member_visibility ON ai_usage_events USING (app_is_org_member(organization_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'summaries'
+      AND policyname = 'summaries_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY summaries_member_visibility ON summaries USING (app_is_org_member(organization_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'voice_sessions'
+      AND policyname = 'voice_sessions_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY voice_sessions_member_visibility ON voice_sessions USING (app_is_org_member(organization_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'audit_events'
+      AND policyname = 'audit_events_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY audit_events_member_visibility ON audit_events USING (app_is_org_member(organization_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'storage_objects'
+      AND policyname = 'storage_objects_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY storage_objects_member_visibility ON storage_objects USING (app_is_org_member(organization_id));$policy$;
+  END IF;
+END $$;
 
 -- Child-table RLS derives organization membership through a security-definer
 -- EXISTS chain. Policies are fail-closed when app.user_id is absent.
@@ -358,41 +488,251 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   )
 $$;
 
-CREATE POLICY agent_versions_member_visibility ON agent_versions USING (app_is_agent_member(agent_id));
-CREATE POLICY agent_deployments_member_visibility ON agent_deployments USING (app_is_agent_member(agent_id));
-CREATE POLICY agent_ai_settings_member_visibility ON agent_ai_settings USING (app_is_agent_member(agent_id));
-CREATE POLICY agent_email_accounts_member_visibility ON agent_email_accounts USING (app_is_agent_member(agent_id));
-CREATE POLICY email_account_credentials_member_visibility ON email_account_credentials USING (app_is_email_account_member(email_account_id));
-CREATE POLICY email_folders_member_visibility ON email_folders USING (app_is_email_account_member(email_account_id));
-CREATE POLICY email_labels_member_visibility ON email_labels USING (app_is_email_account_member(email_account_id));
-CREATE POLICY email_threads_member_visibility ON email_threads USING (app_is_email_account_member(email_account_id));
-CREATE POLICY email_messages_member_visibility ON email_messages USING (app_is_email_account_member(email_account_id));
-CREATE POLICY email_sync_states_member_visibility ON email_sync_states USING (app_is_email_account_member(email_account_id));
-CREATE POLICY email_sync_events_member_visibility ON email_sync_events USING (app_is_email_account_member(email_account_id));
-CREATE POLICY email_attachments_member_visibility ON email_attachments USING (
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'agent_versions'
+      AND policyname = 'agent_versions_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY agent_versions_member_visibility ON agent_versions USING (app_is_agent_member(agent_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'agent_deployments'
+      AND policyname = 'agent_deployments_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY agent_deployments_member_visibility ON agent_deployments USING (app_is_agent_member(agent_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'agent_ai_settings'
+      AND policyname = 'agent_ai_settings_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY agent_ai_settings_member_visibility ON agent_ai_settings USING (app_is_agent_member(agent_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'agent_email_accounts'
+      AND policyname = 'agent_email_accounts_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY agent_email_accounts_member_visibility ON agent_email_accounts USING (app_is_agent_member(agent_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_account_credentials'
+      AND policyname = 'email_account_credentials_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_account_credentials_member_visibility ON email_account_credentials USING (app_is_email_account_member(email_account_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_folders'
+      AND policyname = 'email_folders_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_folders_member_visibility ON email_folders USING (app_is_email_account_member(email_account_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_labels'
+      AND policyname = 'email_labels_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_labels_member_visibility ON email_labels USING (app_is_email_account_member(email_account_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_threads'
+      AND policyname = 'email_threads_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_threads_member_visibility ON email_threads USING (app_is_email_account_member(email_account_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_messages'
+      AND policyname = 'email_messages_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_messages_member_visibility ON email_messages USING (app_is_email_account_member(email_account_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_sync_states'
+      AND policyname = 'email_sync_states_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_sync_states_member_visibility ON email_sync_states USING (app_is_email_account_member(email_account_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_sync_events'
+      AND policyname = 'email_sync_events_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_sync_events_member_visibility ON email_sync_events USING (app_is_email_account_member(email_account_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_attachments'
+      AND policyname = 'email_attachments_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_attachments_member_visibility ON email_attachments USING (
   EXISTS (SELECT 1 FROM email_messages m WHERE m.id=email_attachments.email_message_id AND app_is_email_account_member(m.email_account_id))
-);
-CREATE POLICY whatsapp_contacts_member_visibility ON whatsapp_contacts USING (app_is_whatsapp_account_member(whatsapp_account_id));
-CREATE POLICY whatsapp_messages_member_visibility ON whatsapp_messages USING (app_is_whatsapp_account_member(whatsapp_account_id));
-CREATE POLICY whatsapp_webhook_events_member_visibility ON whatsapp_webhook_events USING (app_is_whatsapp_account_member(whatsapp_account_id));
-CREATE POLICY conversation_messages_member_visibility ON conversation_messages USING (
+);$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'whatsapp_contacts'
+      AND policyname = 'whatsapp_contacts_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY whatsapp_contacts_member_visibility ON whatsapp_contacts USING (app_is_whatsapp_account_member(whatsapp_account_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'whatsapp_messages'
+      AND policyname = 'whatsapp_messages_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY whatsapp_messages_member_visibility ON whatsapp_messages USING (app_is_whatsapp_account_member(whatsapp_account_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'whatsapp_webhook_events'
+      AND policyname = 'whatsapp_webhook_events_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY whatsapp_webhook_events_member_visibility ON whatsapp_webhook_events USING (app_is_whatsapp_account_member(whatsapp_account_id));$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'conversation_messages'
+      AND policyname = 'conversation_messages_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY conversation_messages_member_visibility ON conversation_messages USING (
   EXISTS (SELECT 1 FROM conversations c WHERE c.id=conversation_messages.conversation_id AND app_is_org_member(c.organization_id))
-);
-CREATE POLICY conversation_turns_member_visibility ON conversation_turns USING (
+);$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'conversation_turns'
+      AND policyname = 'conversation_turns_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY conversation_turns_member_visibility ON conversation_turns USING (
   EXISTS (SELECT 1 FROM conversations c WHERE c.id=conversation_turns.conversation_id AND app_is_org_member(c.organization_id))
-);
-CREATE POLICY scheduled_job_runs_member_visibility ON scheduled_job_runs USING (
+);$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'scheduled_job_runs'
+      AND policyname = 'scheduled_job_runs_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY scheduled_job_runs_member_visibility ON scheduled_job_runs USING (
   EXISTS (SELECT 1 FROM scheduled_jobs j WHERE j.id=scheduled_job_runs.scheduled_job_id AND app_is_org_member(j.organization_id))
-);
-CREATE POLICY automation_runs_member_visibility ON automation_runs USING (
+);$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'automation_runs'
+      AND policyname = 'automation_runs_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY automation_runs_member_visibility ON automation_runs USING (
   EXISTS (SELECT 1 FROM automation_rules r WHERE r.id=automation_runs.automation_rule_id AND app_is_org_member(r.organization_id))
-);
-CREATE POLICY email_action_approvals_member_visibility ON email_action_approvals USING (
+);$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_action_approvals'
+      AND policyname = 'email_action_approvals_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_action_approvals_member_visibility ON email_action_approvals USING (
   EXISTS (SELECT 1 FROM email_actions a WHERE a.id=email_action_approvals.action_id AND app_is_org_member(a.organization_id))
-);
-CREATE POLICY voice_telemetry_member_visibility ON voice_telemetry USING (
+);$policy$;
+  END IF;
+END $$;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'voice_telemetry'
+      AND policyname = 'voice_telemetry_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY voice_telemetry_member_visibility ON voice_telemetry USING (
   EXISTS (SELECT 1 FROM voice_sessions s WHERE s.id=voice_telemetry.session_id AND app_is_org_member(s.organization_id))
-);
+);$policy$;
+  END IF;
+END $$;
 
 -- Service-side workers use the service_role/database owner and are not exposed
 -- to browser sessions. Browser-facing writes remain subject to explicit
