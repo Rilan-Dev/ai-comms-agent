@@ -357,3 +357,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the email-thread table/index operations. No application feature code changed.
 - Migration fix commit: `e631489dfda4f313ce7bd6bdd6a62f9c2c011083`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Added `scripts/reset-and-migrate.sh` for self-hosted seeding/reset workflows. It requires explicit `RESET_DATABASE_CONFIRM=YES`, drops and recreates only the application `aca` and `private` schemas, then delegates to the existing `scripts/migrate.sh`.
+- Kept `scripts/migrate.sh` as the migration-only path; it was not changed.
+- Reset-and-migrate commits: `53dd4fa899815403d45a5da201b122c13c5efb0e`, followed by `57dfc8e52bbbb90cd28dab12be3eee41854a4299` to make invocation independent of executable-bit state.
+- No CI/Vercel wait and no migration PASS claimed.
