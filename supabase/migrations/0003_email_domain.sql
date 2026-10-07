@@ -113,10 +113,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS email_threads_provider_uniq
 CREATE INDEX IF NOT EXISTS email_threads_org_last_message_idx
   ON email_threads(organization_id, last_message_at DESC);
 
-ALTER TABLE email_messages
-  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE,
-  ADD COLUMN IF NOT EXISTS search_vector tsvector;
-
 CREATE TABLE IF NOT EXISTS email_messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email_account_id uuid NOT NULL REFERENCES email_accounts(id) ON DELETE CASCADE,
