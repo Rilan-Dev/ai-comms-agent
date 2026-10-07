@@ -32,7 +32,7 @@ export async function processRoutedWhatsAppInbound(limit = 10) {
         continue;
       }
 
-      const executionId = "whatsapp-" + messageId;
+      const executionId = text(message.correlation_id) || messageId;
       const result = await dispatchAgentExecution({
         executionId,
         organizationId,
@@ -67,6 +67,7 @@ export async function processRoutedWhatsAppInbound(limit = 10) {
         targetId: messageId,
         action: "execute",
         decision: "allowed",
+        correlationId: executionId,
         metadata: { executionId, agentId, actionCount: result.actions?.length ?? 0 },
       });
       completed += 1;
@@ -81,6 +82,7 @@ export async function processRoutedWhatsAppInbound(limit = 10) {
         targetId: messageId,
         action: "execute",
         decision: "denied",
+        correlationId: executionId,
         metadata: { agentId, error: reason },
       });
       failed += 1;
