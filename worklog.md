@@ -98,3 +98,13 @@ Never write "Phase complete" without evidence.
 - **File changed:** `scripts/manual-up.sh`.
 - **Commit:** `bb37dc5e6985adc420dd904595c497adcb29542c`.
 - No CI/Vercel wait and no runtime PASS claimed.
+
+
+## 2026-10-07 — Remove obsolete Clara vendor tsconfig alias
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete build-boundary error correction only; no project-control documentation changes.
+- The local Clara package no longer imports `vendor/clara`, but its package tsconfig still declared a `@/modules/*` path into the reference repository. Removed that obsolete path alias so the local package cannot accidentally resolve Clara application modules from the reference source.
+- **File changed:** `packages/clara-core/tsconfig.json`.
+- **Commit:** `f01b42b7dc68ecbd48ebaa4f0ceb559c403583cf`.
+- No CI/Vercel wait and no Docker PASS claimed.
