@@ -38,3 +38,14 @@ Never write "Phase complete" without evidence.
 - Host web typecheck also reported `surface` as an unknown property on ClaraRuntimeContext in the realtime session route. The immutable Clara runtime contract accepts the context without `surface`; removed only that invalid field from the host call.
 - **Files changed:** scripts/pre-docker-check.sh, apps/web/src/app/api/voice/session/route.ts.
 - No CI/Vercel wait was performed. No Docker/typecheck pass is claimed; the remaining reported Clara source-closure errors still require the next concrete correction.
+
+
+## 2026-10-07 — Clara module-alias boundary correction
+
+- **Owner:** ChatGPT
+- **Scope:** Error-fixing only; no feature development and no project-control documentation changes.
+- The latest preflight showed that vendored Clara imports such as `@/modules/ai-core/*` were being resolved differently by the host applications. Web had only the host `@/*` mapping, so Clara module aliases were unresolved. Worker had an overly broad `@/*` mapping directly to the entire Clara source tree, which also incorrectly captured worker-owned host aliases.
+- Added a specific `@/modules/*` mapping to the immutable Clara module tree in both web and worker configs. Restored worker's general `@/*` mapping to its own `src/*`, so the Clara alias is narrow rather than replacing the worker host alias namespace.
+- **Files changed:** `apps/web/tsconfig.json`, `apps/worker/tsconfig.json`.
+- **Commits:** `a3dffe594b878527d5f1057d0af04abda975c2da`, `436adcce949f26a30604dcbef0d97fde180039ea`.
+- No CI/Vercel wait was performed. No typecheck/build pass is claimed. The remaining Clara host-bound aliases and external dependency errors still require concrete correction.
