@@ -596,3 +596,8 @@ Never write "Phase complete" without evidence.
 - Migration fix commit: `23e260b37bfdc791385ce6017b61cdf7301b66a4`.
 - Confirmed `scripts/reset-and-migrate.sh` on authoritative `main` already invokes migration via `bash "${MIGRATE_SCRIPT}"`; no additional reset-script code change was necessary for the reported local permission symptom.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete PostgreSQL dollar-quote syntax defect reported during `0004_messaging.sql`: malformed `DO $ ... END $;` blocks were corrected to `DO $$ ... END $$;`.
+- Performed the same targeted malformed-dollar-quote audit across the migration files and corrected the corresponding malformed blocks in `0007_actions_ai_voice_audit.sql` and `0008_api_keys_knowledge_storage.sql`; `0003_phase4_schema_alignment.sql` was inspected and its current block is already correctly quoted.
+- No migration logic or application behavior was changed; only malformed dollar delimiters were corrected.
+- Migration fixes committed on `main` in the affected migration updates; no CI/Vercel wait and no migration PASS claimed.
