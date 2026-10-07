@@ -544,3 +544,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the `automation_runs` index creation. No application feature code changed.
 - Migration fix commit: `7bd66dfdad09f0ca4ba69303aef6e68f396411b4`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0006_conversations_scheduling.sql:154`: the partially-created `automation_runs` table already existed without `created_at`, while the migration subsequently altered/indexed that column.
+- Added an idempotent `created_at timestamptz NOT NULL DEFAULT now()` reconciliation before the `automation_runs` table definition. No application feature code changed.
+- Migration fix commit: `2f7adfa5501cf50605ad1e20915be483abb8fdd6`.
+- No CI/Vercel wait and no migration PASS claimed.
