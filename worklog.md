@@ -647,3 +647,8 @@ Never write "Phase complete" without evidence.
 - Corrected both blocks to `DO $$ ... END $$;` without changing the security logic or privileges.
 - Migration fix commit: `e3362d8fdda22606a82d5a4449755c66f3339750`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0011_ownership_transfer.sql:79`: standalone PostgreSQL did not have the Supabase `anon` role, so the unconditional `REVOKE ... FROM anon` failed.
+- Added idempotent creation of `anon` and `authenticated` as `NOLOGIN` roles when absent before applying the ownership-RPC privilege operations. Existing roles remain unchanged.
+- Migration fix commit: `8b256ca1d442cf1e3ab75cc6ee022f8a7d9575f0`.
+- No CI/Vercel wait and no migration PASS claimed.
