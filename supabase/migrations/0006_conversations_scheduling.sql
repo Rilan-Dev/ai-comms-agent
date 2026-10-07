@@ -63,6 +63,9 @@ CREATE TABLE IF NOT EXISTS conversation_turns (
   completed_at timestamptz
 );
 ALTER TABLE conversation_turns
+  ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE conversation_turns
   ADD COLUMN IF NOT EXISTS correlation_id uuid NOT NULL DEFAULT gen_random_uuid();
 CREATE UNIQUE INDEX IF NOT EXISTS conversation_turns_correlation_uniq ON conversation_turns(correlation_id);
 CREATE INDEX IF NOT EXISTS conversation_turns_org_created_idx ON conversation_turns(organization_id,created_at DESC);
