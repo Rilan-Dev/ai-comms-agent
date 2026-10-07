@@ -13,6 +13,14 @@ DO $$ BEGIN
   CREATE TYPE email_sync_status AS ENUM ('idle', 'running', 'paused', 'error');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
+DO $
+BEGIN
+  IF to_regclass('aca.email_accounts') IS NOT NULL THEN
+    ALTER TABLE email_accounts
+      ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+  END IF;
+END $;
+
 CREATE TABLE IF NOT EXISTS email_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
