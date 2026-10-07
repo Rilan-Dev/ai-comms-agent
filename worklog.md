@@ -514,3 +514,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the conversation-turn table/index operations. No application feature code changed.
 - Migration fix commit: `fb9d34a9a51312e043b475b51242c9b36e97d869`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0006_conversations_scheduling.sql:68`: the partially-created `conversation_turns` table already existed without `created_at`, while the migration immediately created an index on `organization_id, created_at`.
+- Added an idempotent `created_at timestamptz NOT NULL DEFAULT now()` reconciliation before the existing correlation/index operations. No application feature code changed.
+- Migration fix commit: `674d4e93dc442db9aef8acba850e3722ecfda35f`.
+- No CI/Vercel wait and no migration PASS claimed.
