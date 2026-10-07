@@ -151,3 +151,15 @@ Never write "Phase complete" without evidence.
   - The worker launched compiled `dist/index.js`, but the workspace DB package intentionally exposes its TypeScript source entrypoint, causing Node ESM to fail on `packages/db/src/email/connection-test` at runtime. Changed the worker start command to use the installed `tsx` runtime against `src/index.ts`, matching the workspace package source boundary.
 - **Files changed:** `apps/web/src/app/api/organizations/[orgId]/route.ts`, `apps/web/src/app/api/organizations/[orgId]/members/route.ts`, `apps/web/src/app/api/organizations/[id]/route.ts` (removed), `apps/web/src/app/api/organizations/[id]/members/route.ts` (removed), `apps/worker/package.json`, and `worklog.md`.
 - No CI/Vercel wait and no runtime PASS claimed; the next manual startup should surface any remaining concrete runtime error.
+
+
+## 2026-10-07 — Fix migration-chain verifier prefix false positive
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete error-fixing only; no feature development, no project-control documentation changes, and no migration SQL modification.
+- The self-hosted migration verification command reported duplicate numeric prefixes for 0002, 0003, 0004, 0015, and 0019. The committed migration runner identifies migrations by their full filenames, and the repository intentionally contains forward-only reconciliation/lifecycle migrations sharing historical numeric prefixes. The verifier's numeric-prefix uniqueness check therefore rejected the repository's actual migration history even though the migration filenames themselves are distinct.
+- Removed only that false-positive verifier rule. Existing required-file checks, SQL safety checks, canonical-object duplicate checks, and early-RLS-helper checks remain unchanged.
+- **File changed:** scripts/verify-migration-chain.sh.
+- **Commit:** d06bad01f377d49a84c3c33b52b27f07cb72e61a.
+- No CI/Vercel wait was performed and no migration/runtime PASS is claimed.
+- **Remaining concrete operational issue:** the local PostgreSQL server is published on host port `65432`, while the script fallback defaults to the separate verification database on `127.0.0.1:55432`. The self-hosted database must be targeted explicitly with `DATABASE_URL` before applying migrations.
