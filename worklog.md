@@ -554,3 +554,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the `summary_sources` table/index operations. No application feature code changed.
 - Migration fix commit: `eb729bbe2be57569f6b1ec6fe214edf957ad6f3c`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0006_conversations_scheduling.sql:207`: `conversations_member_visibility` already existed from the partial migration.
+- Made all 20 conversation/scheduling/automation/summary RLS policy creations in migration 0006 idempotent using `pg_policies` existence guards, preserving each existing policy definition.
+- Migration fix commit: `e5469bb48e20732ce86dc889c2d68a4d8fb70ad9`.
+- No CI/Vercel wait and no migration PASS claimed.
