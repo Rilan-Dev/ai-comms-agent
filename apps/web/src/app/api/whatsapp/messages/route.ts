@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     const effectiveIdempotencyKey = idempotencyKey || crypto.randomUUID();
     const messageId = await queueWhatsAppOutboundMessage({ organizationId, accountId, to, body: messageBody, idempotencyKey: effectiveIdempotencyKey });
     if (!messageId) return NextResponse.json({ queued: false, message: "This outbound message was already queued with the same idempotency key." });
-    await recordAuditEvent({ organizationId, actorUserId: actor.user.id, eventType: "whatsapp.message.queued", targetType: "whatsapp_message", targetId: messageId, action: "send", decision: "allowed" });
+    await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId: crypto.randomUUID(), eventType: "whatsapp.message.queued", targetType: "whatsapp_message", targetId: messageId, action: "send", decision: "allowed" });
     return NextResponse.json({ queued: true, messageId, status: "queued" }, { status: 202 });
   } catch (error) { return authorizationErrorToResponse(error); }
 }
