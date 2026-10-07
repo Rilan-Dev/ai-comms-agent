@@ -469,3 +469,8 @@ Never write "Phase complete" without evidence.
 - Made that policy creation idempotent with a `pg_policies` existence guard while preserving the existing policy definition. No application feature code changed.
 - Migration fix commit: `41243f3847a38134d82914f89fc3521d25475878`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0004_messaging.sql:161`: the partially-applied migration already had the `whatsapp_contacts_member_visibility` RLS policy.
+- Made that policy creation idempotent with a `pg_policies` existence guard while preserving its definition. No application feature code changed.
+- Migration fix commit: `bd993f53dd1af59482f0fbf2ec5beb1267b769fc`.
+- No CI/Vercel wait and no migration PASS claimed.
