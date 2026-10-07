@@ -112,6 +112,9 @@ CREATE TABLE IF NOT EXISTS whatsapp_webhook_events (
   processed_at timestamptz,
   error text
 );
+ALTER TABLE whatsapp_webhook_events
+  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+
 CREATE UNIQUE INDEX IF NOT EXISTS whatsapp_webhook_provider_event_uniq
 ON whatsapp_webhook_events(whatsapp_account_id, provider_event_id)
 WHERE provider_event_id IS NOT NULL;
