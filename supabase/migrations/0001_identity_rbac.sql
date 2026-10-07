@@ -428,8 +428,8 @@ CREATE OR REPLACE FUNCTION create_organization_with_owner(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY INVOKER
-SET search_path = public
-AS $$
+SET search_path = aca, public
+AS $
 DECLARE
   v_org organizations%ROWTYPE;
   v_membership organization_memberships%ROWTYPE;
@@ -454,7 +454,7 @@ CREATE OR REPLACE FUNCTION transfer_organization_ownership(
 RETURNS SETOF organization_memberships
 LANGUAGE plpgsql
 SECURITY INVOKER
-SET search_path = public
+SET search_path = aca, public
 AS $$
 DECLARE
   v_current_owner organization_memberships%ROWTYPE;
