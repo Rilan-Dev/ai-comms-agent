@@ -87,3 +87,14 @@ Never write "Phase complete" without evidence.
 - **Files changed:** `packages/clara-core/src/types.ts`, `packages/clara-core/src/runtime.ts`, `packages/clara-core/src/index.ts`, `packages/clara-core/package.json`, `docker/Dockerfile`, `worklog.md`.
 - No CI/Vercel wait was performed. No Docker build PASS is claimed until the self-hosted server rebuilds from the new main tip.
 - **Next concrete verification:** pull latest `main`, run `bash scripts/pre-docker-check.sh`, then `bash scripts/manual-up.sh`. If the next reported error is application-owned, fix that concrete error without restoring any vendor build dependency.
+
+
+## 2026-10-07 — Correct manual Docker web endpoint message
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete self-hosted Docker startup error correction only; no project-control documentation changes.
+- The manual Compose stack publishes container port 3000 on host port 3300, while `scripts/manual-up.sh` incorrectly reported `http://localhost:3000`.
+- Corrected the startup message to report the actual host endpoint `http://localhost:3300`.
+- **File changed:** `scripts/manual-up.sh`.
+- **Commit:** `bb37dc5e6985adc420dd904595c497adcb29542c`.
+- No CI/Vercel wait and no runtime PASS claimed.
