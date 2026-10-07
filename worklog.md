@@ -519,3 +519,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `created_at timestamptz NOT NULL DEFAULT now()` reconciliation before the existing correlation/index operations. No application feature code changed.
 - Migration fix commit: `674d4e93dc442db9aef8acba850e3722ecfda35f`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0006_conversations_scheduling.sql:91`: the existing `scheduled_jobs` table from the partial schema lacked the `enabled` column, but the migration immediately indexed `scheduled_jobs(enabled,next_run_at)`.
+- Added an idempotent `enabled boolean NOT NULL DEFAULT true` reconciliation before the index creation. No application feature code changed.
+- Migration fix commit: `6ccceae068167b0b0c03d1145ec12bcf3f41cb56`.
+- No CI/Vercel wait and no migration PASS claimed.
