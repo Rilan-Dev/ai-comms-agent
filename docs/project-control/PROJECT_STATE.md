@@ -394,3 +394,6 @@ ChatGPT continued development-first implementation without waiting for CI/Vercel
 - Automated agent actions now require the email account to belong to the organization and be bound to the executing agent, and automated email/WhatsApp requests emit audit events.
 - Overview dashboard no longer presents fabricated live metrics; it loads persisted organization counts/activity with truthful configuration and empty states.
 - Product-completion contract coverage added for these boundaries. Development continues toward full cross-surface E2E.
+
+### 2026-10-07 — Scheduled run idempotency hardening
+ChatGPT added migration 0021 and worker claim protection so each scheduled job/fire timestamp can produce at most one durable scheduled run. Development continues under the Phase 4 development-first execution mode; runtime/deployment validation remains a later milestone.
