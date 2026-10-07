@@ -73,6 +73,9 @@ CREATE TABLE IF NOT EXISTS email_folders (
 );
 CREATE INDEX IF NOT EXISTS email_folders_org_idx ON email_folders(organization_id);
 
+ALTER TABLE email_labels
+  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+
 CREATE TABLE IF NOT EXISTS email_labels (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email_account_id uuid NOT NULL REFERENCES email_accounts(id) ON DELETE CASCADE,
