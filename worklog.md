@@ -1983,3 +1983,12 @@ Next implementation: deterministic cross-surface E2E fixtures and duplicate-acti
 - No provider credentials, live provider success, CI success, or Vercel readiness is claimed.
 
 **Next:** continue cross-surface duplicate-action/E2E fixture hardening across email approval, WhatsApp, scheduling/automation, organization isolation, and audit correlation.
+
+
+## 2026-10-07 — Deterministic E2E harness connection
+- **Owner:** ChatGPT
+- Connected the existing stable cross-surface scenario catalogue to a reusable injected-operation harness at `apps/web/src/e2e/cross-surface-harness.ts`.
+- Added a web test contract covering ordered step execution, stable idempotency-key propagation, and deterministic scenario/key uniqueness.
+- The harness intentionally does not fabricate provider connectivity or runtime verification; real integration adapters remain the next implementation layer.
+- CI/Vercel were not awaited and no runtime pass is claimed.
+- **Next:** connect the harness to real application integration adapters for email approval/send, WhatsApp outbound, scheduler claims, organization isolation, and audit correlation, then continue remaining product hardening.
