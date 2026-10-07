@@ -1954,3 +1954,12 @@ ChatGPT continued the realtime voice vertical slice without waiting for CI/Verce
 - Agent worker actions now attach their execution ID to audit records for WhatsApp queueing and email approval creation.
 - Manual WhatsApp outbound queueing now creates a correlation ID for its audit record.
 - This closes a cross-surface observability gap required by the architecture: external actions can now be traced from the initiating operation into the audit stream.
+
+
+### 2026-10-07 — Cross-surface sensitive-action hardening
+
+ChatGPT continued the final product-completion implementation under the development-first directive. Added migration 0020_email_action_idempotency.sql with an organization-scoped partial unique index for stable email action retry keys. Extended createEmailAction() and /api/mail/actions to preserve a caller-supplied Idempotency-Key (or body fallback) so transient retries cannot create duplicate approval actions. Added cross-surface-product-contract.test.ts covering the email approval/idempotency boundary, WhatsApp outbound idempotency, scheduling/automation authorization, voice session ownership, and audit correlation persistence.
+
+No provider credentials were introduced and no external provider success is fabricated. CI/Vercel remain non-blocking under the user's development-first instruction.
+
+**Next:** propagate correlation/idempotency through worker execution and build deterministic duplicate-action, approval, WhatsApp, scheduling, voice/chat, and organization-isolation E2E fixtures; then prepare final deployment/runtime verification.
