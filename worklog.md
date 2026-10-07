@@ -27,3 +27,14 @@ Never write "Phase complete" without evidence.
 - **File changed:** `scripts/pre-docker-check.sh`.
 - **Commit:** `fedadbe8133c7f855b5c8d3912007f418209c344`.
 - No CI/Vercel wait was performed. No Docker build pass is claimed.
+
+
+## 2026-10-07 — Docker preflight and Clara voice context error corrections
+
+- **Owner:** ChatGPT
+- **Scope:** Error-fixing only; no feature development and no project-control documentation changes.
+- User preflight reported `[FAIL] vendor/clara submodule is not declared` even though `.gitmodules` contains the `vendor/clara` declaration. The preflight grep expression was over-escaped, so it failed to recognize the valid declaration.
+- Corrected the submodule declaration regex in `scripts/pre-docker-check.sh` without changing the preflight's intended checks.
+- Host web typecheck also reported `surface` as an unknown property on ClaraRuntimeContext in the realtime session route. The immutable Clara runtime contract accepts the context without `surface`; removed only that invalid field from the host call.
+- **Files changed:** scripts/pre-docker-check.sh, apps/web/src/app/api/voice/session/route.ts.
+- No CI/Vercel wait was performed. No Docker/typecheck pass is claimed; the remaining reported Clara source-closure errors still require the next concrete correction.
