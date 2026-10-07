@@ -657,3 +657,9 @@ Never write "Phase complete" without evidence.
 - Added an idempotent creation of `service_role` as `NOLOGIN` before the grants. Existing environments with the role are unchanged; no application feature code changed.
 - Migration fix commit: `9068829818ba0755d980e3b6eb5814d3032763ed`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete local runtime failures shown in the Docker logs: the manual stack was running with `NODE_ENV=production` while its existing identity implementation was development-only, causing `ensureDevSeed MUST NOT be called in production` and the Agents page/overview to fail. The manual compose now explicitly enables the local development identity mode via `ACA_ENABLE_DEV_IDENTITY=true`; production deployments without that explicit flag remain protected by the existing guards.
+- Fixed the worker crash caused by an invalid/missing `CREDENTIALS_MASTER_KEY`: worker startup now validates the key and keeps the worker process alive while disabling only WhatsApp credential-dependent loops until a valid 32-byte key is configured. Other worker loops remain enabled.
+- No vendor/Clara source was changed and no application feature behavior outside the reported runtime failures was altered.
+- Runtime fix commits: `e980173c8df964c9b258025dfa3c43820548c0d9`, `98797cdcca61b92d86966071602b92d2b2ec1711`, `91e6bfea10e43bb767a5c5f07a5a01665c89993f`, `8e49c50842a23e849b28ad64849fe5d22f89f7fc`.
+- No CI/Vercel wait and no claim of external runtime verification.
