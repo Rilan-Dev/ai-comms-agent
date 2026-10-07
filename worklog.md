@@ -529,3 +529,8 @@ Never write "Phase complete" without evidence.
 - Reconciled `scheduled_jobs` with idempotent additions for `next_run_at` and `last_run_at` alongside the existing `enabled` reconciliation. No application feature code changed.
 - Migration fix commit: `b42daf3c02090d51cd39515b3c3b943957047225`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure at `supabase/migrations/0006_conversations_scheduling.sql:113`: an existing partial `scheduled_job_runs` table lacked `organization_id`, but the migration expected it.
+- Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the table definition. No application feature code changed.
+- Migration fix commit: `232de7af6989da69662ab399d3771a3429cb087e`.
+- No CI/Vercel wait and no migration PASS claimed.
