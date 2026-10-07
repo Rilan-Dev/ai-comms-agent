@@ -24,4 +24,4 @@ CREATE SCHEMA private;
 SQL
 
 echo "Database reset complete. Running migrations..."
-exec "${BASH}" "${MIGRATE_SCRIPT}"
+exec /usr/bin/env bash "${MIGRATE_SCRIPT}"
