@@ -1937,3 +1937,13 @@ ChatGPT continued the realtime voice vertical slice without waiting for CI/Verce
 - **File changed:** `apps/web/src/app/api/whatsapp/webhook/route.ts`.
 - **Commit:** `f35782d22cb95fcbb3def84affa1107277084df7`.
 - No CI/Vercel wait was performed. No typecheck pass is claimed until the user reruns `npm run typecheck`.
+
+
+## 2026-10-07 — Cross-surface outbound idempotency hardening
+- **Owner:** ChatGPT
+- Added standard `Idempotency-Key` header support to the WhatsApp outbound API while retaining body-key compatibility for deterministic callers.
+- Invalid keys longer than 200 characters now fail validation instead of silently falling back to a new random key.
+- WhatsApp UI now preserves one idempotency key across a retry of the same send attempt, preventing a transient network retry from creating a second outbound message.
+- Duplicate queue responses are surfaced truthfully to the user and do not fabricate a second send.
+- No provider credentials or external sends were used or claimed.
+- Development continues into final cross-surface E2E hardening without waiting for CI/Vercel.
