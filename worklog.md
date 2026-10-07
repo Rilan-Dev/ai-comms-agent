@@ -377,3 +377,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the email-message table/index operations. No application feature code changed.
 - Migration fix commit: `6085e1dc9d9097d0e1d861dcf789eff4f8bd1e91`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_email_domain.sql:164`: the partially-created `email_messages` table already existed without `search_vector`, while a later index/operation referenced it.
+- Reconciled `email_messages` after its `CREATE TABLE IF NOT EXISTS` with idempotent `organization_id` and `search_vector` column additions. Kept the fresh-table definition's generated `search_vector` intact; existing partial tables receive a compatible `tsvector` column. No application feature code changed.
+- Migration fix commits: `482b18bbd5767ab1e14bc3f7e51187532f0f6bd5`, `cf2c178747a828cd58bc13f98abfed4a9fe6b498`, `219561fb5e1c642c126353de06173e3656267357`.
+- No CI/Vercel wait and no migration PASS claimed.
