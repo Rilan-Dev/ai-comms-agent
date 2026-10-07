@@ -499,3 +499,8 @@ Never write "Phase complete" without evidence.
 - Corrected all four malformed DO blocks in the migration. No application feature code changed.
 - Migration fix commit: `bced51111290c78d1fecd3b8ab470bcc7894a902`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0006_conversations_scheduling.sql:26`: the pre-existing `conversations` table lacked `started_at`, while the migration's agent index referenced that column.
+- Added an idempotent `started_at timestamptz NOT NULL DEFAULT now()` reconciliation before the index creation. No application feature code changed.
+- Migration fix commit: `ef06eba4a097f3b7e730d3016d7440d05bb02678`.
+- No CI/Vercel wait and no migration PASS claimed.
