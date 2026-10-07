@@ -152,6 +152,9 @@ BEGIN
   END IF;
 END $$;
 
+ALTER TABLE voice_telemetry
+  ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now();
+
 CREATE TABLE IF NOT EXISTS voice_telemetry (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
