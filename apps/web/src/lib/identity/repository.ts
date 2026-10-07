@@ -43,7 +43,7 @@ export function getIdentityAdapter(): IdentityAdapter {
  * Creates a dev organization + dev user with owner role.
  */
 export async function ensureDevSeed(): Promise<void> {
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production" && process.env.ACA_ENABLE_DEV_IDENTITY !== "true") {
     throw new Error("ensureDevSeed MUST NOT be called in production.");
   }
   if (_seeded) return;
