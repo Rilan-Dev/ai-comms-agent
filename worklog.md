@@ -397,3 +397,8 @@ Never write "Phase complete" without evidence.
 - Added idempotent reconciliation for `action_required` and `action_deadline` before the action index. No application feature code changed.
 - Migration fix commit: `e946af3861e60e0479e1db1cb3a791a3cba7f850`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_email_domain.sql:195`: the partially-created `email_attachments` table already existed without `organization_id`, while the migration requires that column.
+- Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the email-attachment table/index operations. No application feature code changed.
+- Migration fix commit: `1f958df61abd68502204ffb72c2924d518ad72cf`.
+- No CI/Vercel wait and no migration PASS claimed.
