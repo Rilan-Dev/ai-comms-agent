@@ -136,7 +136,18 @@ export async function queueWhatsAppOutboundMessage(input: { organizationId: stri
     "INSERT INTO whatsapp_messages (organization_id, whatsapp_account_id, contact_id, direction, message_type, body, status, idempotency_key, correlation_id) VALUES ($1,$2,$3,'outbound','text',$4,'queued',$5,$6) ON CONFLICT (organization_id, idempotency_key) DO NOTHING RETURNING id",
     [input.organizationId, input.accountId, contactId, input.body, input.idempotencyKey, input.correlationId ?? null],
   );
-  return r.rows[0]?.id ? String(r.rows[0].id) : null;
+  if (r.rows[0]?.id) return String(r.rows[0].id);
+
+  const existing = await query<Row>(
+    "SELECT whatsapp_account_id, contact_id, body FROM whatsapp_messages WHERE organization_id = $1 AND idempotency_key = $2 AND direction = 'outbound' LIMIT 1",
+    [input.organizationId, input.idempotencyKey],
+  );
+  const row = existing.rows[0];
+  if (!row) throw new Error("WhatsApp idempotency conflict could not be resolved");
+  if (String(row.whatsapp_account_id) !== input.accountId || String(row.contact_id) !== String(contactId) || String(row.body ?? "") !== input.body) {
+    throw new Error("Idempotency key already exists for a different WhatsApp payload");
+  }
+  return null;
 }
 
 export async function listQueuedWhatsAppOutbound(limit = 20) {
