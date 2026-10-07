@@ -617,3 +617,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `request_id text` reconciliation before the table/index operations. No application feature code changed.
 - Migration fix commit: `ffd16c83cb33e54cbbeb3708a787923cbe6144df`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0007_actions_ai_voice_audit.sql:167`: the partially-created `voice_telemetry` table already existed without `created_at`, while the migration immediately created indexes using that column.
+- Added an idempotent `created_at timestamptz NOT NULL DEFAULT now()` reconciliation before the `voice_telemetry` table/index operations. No application feature code changed.
+- Migration fix commit: `c5128cacfbd137db6c3e15980be36900259f059e`.
+- No CI/Vercel wait and no migration PASS claimed.
