@@ -232,7 +232,23 @@ CREATE TABLE IF NOT EXISTS ai_usage_events (
  agent_id uuid REFERENCES agents(id) ON DELETE SET NULL, provider text, model text, surface text, input_tokens bigint, output_tokens bigint,
  latency_ms integer, metadata jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now()
 );
-ALTER TABLE agent_ai_settings ADD CONSTRAINT agent_ai_settings_provider_fk FOREIGN KEY(ai_provider_config_id) REFERENCES ai_provider_configs(id) DEFERRABLE INITIALLY DEFERRED;
+DO $
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE c.conname = 'agent_ai_settings_provider_fk'
+      AND n.nspname = current_schema()
+  ) THEN
+    ALTER TABLE agent_ai_settings
+      ADD CONSTRAINT agent_ai_settings_provider_fk
+      FOREIGN KEY(ai_provider_config_id)
+      REFERENCES ai_provider_configs(id)
+      DEFERRABLE INITIALLY DEFERRED;
+  END IF;
+END $;
 
 CREATE TABLE IF NOT EXISTS summaries (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
