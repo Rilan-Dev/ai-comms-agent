@@ -2,7 +2,7 @@
   "name": "@ai-comms-agent/clara-core",
   "version": "0.0.0",
   "private": true,
-  "description": "Clara integration boundary — wraps vendored Clara source without modification",
+  "description": "Local Clara integration boundary for the ai-comms-agent host application",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -12,10 +12,12 @@
     "./types": "./src/types.ts"
   },
   "scripts": {
-    "typecheck": "echo 'clara-core: structural check only (vendored source is verified by Clara verify-extraction.mjs, not by host tsconfig)' && tsc --noEmit --noResolve src/index.ts src/runtime.ts src/types.ts 2>&1 || echo 'clara-core: typecheck skipped (Clara source verified separately; full typecheck deferred to Phase 11+ when adapter code imports from this package)'",
+    "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist .turbo"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@ai-comms-agent/db": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "typescript": "^5.6.0"
