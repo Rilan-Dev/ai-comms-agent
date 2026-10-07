@@ -163,3 +163,13 @@ Never write "Phase complete" without evidence.
 - **Commit:** d06bad01f377d49a84c3c33b52b27f07cb72e61a.
 - No CI/Vercel wait was performed and no migration/runtime PASS is claimed.
 - **Remaining concrete operational issue:** the local PostgreSQL server is published on host port `65432`, while the script fallback defaults to the separate verification database on `127.0.0.1:55432`. The self-hosted database must be targeted explicitly with `DATABASE_URL` before applying migrations.
+
+
+## 2026-10-07 — Fix identity migration composite-row declarations
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete migration error fix only; no feature development and no project-control documentation changes.
+- The first real self-hosted migration run reached `0001_identity_rbac.sql` and PostgreSQL failed at `v_org organizations;` with `type "organizations" does not exist`. The migration declares table-row variables using bare relation names as PL/pgSQL types. Replaced the four affected declarations with explicit `%ROWTYPE` declarations tied to the corresponding tables, preserving the function behavior while using PostgreSQL's row-type syntax directly.
+- **File changed:** `supabase/migrations/0001_identity_rbac.sql`.
+- **Commit:** `1fb3e6c92fe9c8ecd9b4686c0405c2ba47ac0819`.
+- No migration PASS is claimed; the database is currently partially migrated and the migration ledger does not record `0001` because the transaction failed before the runner could insert its checksum.
