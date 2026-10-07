@@ -295,3 +295,7 @@ Never write "Phase complete" without evidence.
 - Fixed the concrete migration failure reported after the latest pull: `supabase/migrations/0002_application_domain.sql` still contained an invalid `DO $` opener and `END $;` closer for the `agent_ai_settings_provider_fk` guard. Corrected both delimiters to `DO $$` and `END $$;`. No migration logic was changed.
 - Migration fix commit: `9ea5fc280ec3a9b4df92d0e6b9f424a3460a3b9c`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Corrected the actual authoritative `main` copy of `supabase/migrations/0002_application_domain.sql` after runtime evidence showed it still contained `DO $` / `END $;`. Replaced the complete provider-FK guard with valid `DO $$ ... END $$;` syntax and confirmed the GitHub `main` file now contains the corrected block at lines 235-251.
+- Migration code commit: `efe4de6e8e6c4c1f32018131127801a1db64956a`.
+- No CI/Vercel wait and no migration PASS claimed.
