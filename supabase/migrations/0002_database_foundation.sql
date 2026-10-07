@@ -129,8 +129,13 @@ $$;
 
 REVOKE EXECUTE ON FUNCTION can_access_organization(uuid) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION can_manage_organization(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION can_access_organization(uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION can_manage_organization(uuid) TO authenticated;
+DO $
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    GRANT EXECUTE ON FUNCTION can_access_organization(uuid) TO authenticated;
+    GRANT EXECUTE ON FUNCTION can_manage_organization(uuid) TO authenticated;
+  END IF;
+END $;
 
 ALTER TABLE agents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_versions ENABLE ROW LEVEL SECURITY;
