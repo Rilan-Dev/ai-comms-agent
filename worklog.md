@@ -559,3 +559,8 @@ Never write "Phase complete" without evidence.
 - Made all 20 conversation/scheduling/automation/summary RLS policy creations in migration 0006 idempotent using `pg_policies` existence guards, preserving each existing policy definition.
 - Migration fix commit: `e5469bb48e20732ce86dc889c2d68a4d8fb70ad9`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0006_conversations_scheduling.sql:251`: the existing `conversation_messages` table lacked `organization_id`, but its RLS policy requires that column for `can_access_organization(organization_id)`.
+- Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the conversation-message table/policy operations. No application feature code changed.
+- Migration fix commit: `43a95b1ec94d0d8f2328368a309b16c84b392597`.
+- No CI/Vercel wait and no migration PASS claimed.
