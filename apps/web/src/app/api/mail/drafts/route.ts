@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createLocalDraft, updateLocalDraftForOrganization, listLocalDraftsForOrganization, deleteLocalDraftForOrganization, recordAuditEvent } from "@ai-comms-agent/db";
+import { createLocalDraft, updateLocalDraftForOrganization, getLocalDraftForOrganization, listLocalDraftsForOrganization, deleteLocalDraftForOrganization, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
     if (!organizationId) return NextResponse.json({ error: "validation_error", message: "Organization is required." }, { status: 422 });
     await authorize(request, { organizationId: asOrganizationId(organizationId), role: "member" }, getIdentityAdapter(), getIdentityRepository());
     if (messageId) {
-      const draft = await updateLocalDraftForOrganization(organizationId, messageId, {});
+      const draft = await getLocalDraftForOrganization(organizationId, messageId);
       if (!draft) return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization." }, { status: 404 });
       return NextResponse.json({ draft });
     }
