@@ -35,6 +35,14 @@ describe("approval-safe email action contract", () => {
     expect(actionRoute).not.toContain("loadCredentials");
   });
 
+
+  it("preserves a stable idempotency key across email action retries", () => {
+    expect(actionRoute).toContain("Idempotency-Key");
+    expect(actionRoute).toContain("body?.idempotencyKey");
+    expect(actionRepository).toContain("idempotency_key");
+    expect(actionRepository).toContain("ON CONFLICT (organization_id, idempotency_key)");
+  });
+
   it("requires approval before provider send/reply/forward", () => {
     expect(executor).toContain("status = 'approved'");
     expect(executor).toContain("connected.sendDraft");
