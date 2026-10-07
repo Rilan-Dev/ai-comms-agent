@@ -236,6 +236,9 @@ CREATE TABLE IF NOT EXISTS email_sync_events (
   processed_at timestamptz,
   error text
 );
+ALTER TABLE email_sync_events
+  ADD COLUMN IF NOT EXISTS provider_event_id text;
+
 CREATE UNIQUE INDEX IF NOT EXISTS email_sync_events_provider_event_uniq
   ON email_sync_events(email_account_id, provider_event_id)
   WHERE provider_event_id IS NOT NULL;
