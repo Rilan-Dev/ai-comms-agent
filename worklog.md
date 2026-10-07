@@ -459,3 +459,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the WhatsApp-message index operations. No application feature code changed.
 - Migration fix commit: `dbebdcd9ea1d7550c1b396600db65d884aed538c`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0004_messaging.sql:119`: the partially-created `whatsapp_webhook_events` table already existed without `organization_id`, while the migration creates an index using that column.
+- Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the webhook indexes. No application feature code changed.
+- Migration fix commit: `d7d82a905f80858db125c16a4fc383c07ec2fd65`.
+- No CI/Vercel wait and no migration PASS claimed.
