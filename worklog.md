@@ -266,3 +266,15 @@ Never write "Phase complete" without evidence.
 - **File changed:** `supabase/migrations/0002_application_domain.sql`.
 - **Migration commit:** `d89e4249ff31aa1da6de89ffe697e802c22f3239`.
 - No migration PASS is claimed and no CI/Vercel wait was performed.
+
+
+## 2026-10-07 — Fix provider FK dollar-quote terminator
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete migration error fix only; no feature development and no project-control documentation changes.
+- The migration rerun reached `0002_application_domain.sql:249` and PostgreSQL failed with `syntax error at or near "$"` on the provider FK `DO` block.
+- Root cause: the idempotent block had been changed to `DO $$` but its closing delimiter remained `END $;`, leaving the dollar-quoted block unterminated.
+- Corrected the closing delimiter to `END $$;`, preserving the existing `pg_constraint` guard.
+- **File changed:** `supabase/migrations/0002_application_domain.sql`.
+- **Migration commit:** `d4d02d89ce4d0d3ab6481c90c112fbca02c89ff0`.
+- No migration PASS is claimed and no CI/Vercel wait was performed.
