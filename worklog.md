@@ -327,3 +327,8 @@ Never write "Phase complete" without evidence.
 - Changed the assertion from `to_regclass('public.' || required_table)` to `to_regclass('aca.' || required_table)`. No schema objects or application behavior were changed.
 - Migration fix commit: `7d811be4967cc81720392d93d0741d2c6c639c4d`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0002_database_foundation.sql:149`: the `agents_org_member` RLS policy already existed from the earlier partial migration.
+- Made the five foundation RLS policy creations idempotent using `pg_policies` existence guards while preserving their existing policy definitions. No application feature behavior was changed.
+- Migration fix commit: `9477da4f2e71492ee955a6c127d8aea05d9b1a86`.
+- No CI/Vercel wait and no migration PASS claimed.
