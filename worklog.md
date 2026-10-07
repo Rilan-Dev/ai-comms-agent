@@ -73,3 +73,17 @@ Never write "Phase complete" without evidence.
 - **File changed:** `scripts/pre-docker-check.sh`.
 - **Commit:** `3909c28dccbd06d1793b2167bb68fd18ed8a193a`.
 - No CI/Vercel wait was performed. No Docker build pass is claimed until the user reruns the preflight.
+
+
+## 2026-10-07 — Remove vendor Clara from application build graph
+
+- **Owner:** ChatGPT
+- **Scope:** User-authorized concrete error fix to make the Docker self-hosted application buildable; no project-control documentation changes and no modification of `vendor/clara`.
+- The worker Docker build failed because `packages/clara-core/src/runtime.ts` and `types.ts` re-exported immutable Clara source from `vendor/clara`. TypeScript therefore traversed the reference repository and its original Clara application-only aliases/infrastructure, producing the reported vendor diagnostics.
+- Replaced the vendor re-export boundary with local Clara contracts and a host-owned runtime implementation. The local boundary preserves the application-facing `claraRuntime` methods used by web/worker: provider resolution, voice resolution, retrieval, chat streaming, realtime session metadata, and the narrow `rag_search` tool.
+- Added a local PostgreSQL knowledge-chunk retrieval adapter so chat/voice can use host-owned knowledge data without importing Clara's original RAG graph. Provider chat uses server-side HTTP APIs and supports OpenAI-compatible providers plus Gemini's native generate-content endpoint; provider selection remains environment-controlled.
+- Removed the Clara reference tree from the Dockerfile build context. `vendor/clara` remains reference-only and is no longer required to build or run the application image.
+- Declared the Clara package's host DB dependency explicitly.
+- **Files changed:** `packages/clara-core/src/types.ts`, `packages/clara-core/src/runtime.ts`, `packages/clara-core/src/index.ts`, `packages/clara-core/package.json`, `docker/Dockerfile`, `worklog.md`.
+- No CI/Vercel wait was performed. No Docker build PASS is claimed until the self-hosted server rebuilds from the new main tip.
+- **Next concrete verification:** pull latest `main`, run `bash scripts/pre-docker-check.sh`, then `bash scripts/manual-up.sh`. If the next reported error is application-owned, fix that concrete error without restoring any vendor build dependency.
