@@ -200,6 +200,9 @@ CREATE INDEX IF NOT EXISTS email_attachments_org_idx ON email_attachments(organi
 ALTER TABLE email_sync_states
   ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
 
+ALTER TABLE email_sync_states
+  ADD COLUMN IF NOT EXISTS status email_sync_status NOT NULL DEFAULT 'idle';
+
 CREATE TABLE IF NOT EXISTS email_sync_states (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email_account_id uuid NOT NULL UNIQUE REFERENCES email_accounts(id) ON DELETE CASCADE,
