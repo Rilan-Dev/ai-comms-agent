@@ -5,6 +5,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@/modules/*": [
+        "../../vendor/clara/clara-core/source/src/modules/*"
       ]
     },
     "jsx": "preserve",
