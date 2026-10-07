@@ -627,3 +627,8 @@ Never write "Phase complete" without evidence.
 - Made the Phase 7 audit/actions/AI/voice RLS policy creations idempotent with `pg_policies` guards, preserving the existing policy definitions. No application feature code changed.
 - Migration fix commit: `eb452fb7a07ec0772049816bab78a7fba8fc9fec`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0008_api_keys_knowledge_storage.sql:129`: the `storage_objects_member_visibility` RLS policy already existed from the partial migration.
+- Made that policy creation idempotent with a `pg_policies` existence guard while preserving the existing policy definition.
+- Migration fix commit: `e1748b2d819f3a59fcb2545be3613e0159d7a1e2`.
+- No CI/Vercel wait and no migration PASS claimed.
