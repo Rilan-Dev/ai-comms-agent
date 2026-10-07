@@ -242,3 +242,15 @@ Never write "Phase complete" without evidence.
 - **File changed:** `supabase/migrations/0002_application_domain.sql`.
 - **Commit:** `5559ad90e971c77522e35684e4919839574e6419`.
 - No migration PASS is claimed and no CI/Vercel wait was performed.
+
+
+## 2026-10-07 — Fix application-domain migration dollar-quoting syntax
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete migration error fix only; no feature development and no project-control documentation changes.
+- The self-hosted rerun progressed past the previously fixed agent foreign-key idempotency block, then PostgreSQL failed at `0002_application_domain.sql:58` with `syntax error at or near "$"` on `DO $`.
+- Root cause: the newly added idempotent foreign-key block used an invalid single-dollar delimiter (`DO $` / `END $;`). PostgreSQL requires the matching dollar-quoted delimiter.
+- Corrected that block to use `DO $$` and `END $$;`, preserving the constraint-existence checks and retry-safe behavior.
+- **File changed:** `supabase/migrations/0002_application_domain.sql`.
+- **Commit:** `a1b14de535873d0c56a1bd04cf405e8e59db0200`.
+- No migration PASS is claimed and no CI/Vercel wait was performed. The next rerun should surface the next concrete migration error, if any.
