@@ -301,7 +301,7 @@ CREATE OR REPLACE FUNCTION app_is_org_member(p_org uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT EXISTS (
     SELECT 1 FROM aca.organization_memberships
-    WHERE organization_id=p_org AND user_id=current_app_user_id()
+    WHERE organization_id=p_org AND user_id=aca.current_app_user_id()
       AND status='active'
   )
 $$;
