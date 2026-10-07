@@ -184,3 +184,14 @@ Never write "Phase complete" without evidence.
 - **File changed:** `supabase/migrations/0001_identity_rbac.sql`.
 - **Commit:** `64eb989fc63dd20e6f40c4149136c570f0e3dece`.
 - No migration PASS is claimed and no CI/Vercel wait was performed.
+
+
+## 2026-10-07 — Fix identity migration dollar-quoting syntax
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete migration error fix only; no feature development and no project-control documentation changes.
+- The self-hosted rerun reached `create_organization_with_owner` but PostgreSQL stopped at line 434 with `syntax error at or near "$"`. The function definition had an invalid single-dollar `AS $` delimiter; PostgreSQL requires the matching dollar-quoted delimiter.
+- Restored the function body delimiter to `AS $$`, matching the closing `$$;` and the other PL/pgSQL functions in the migration.
+- **File changed:** `supabase/migrations/0001_identity_rbac.sql`.
+- **Commit:** `ce42db423c5275a7c0aa9faf39fca79901dec4e5`.
+- No migration PASS is claimed and no CI/Vercel wait was performed.
