@@ -437,3 +437,9 @@ Never write "Phase complete" without evidence.
 - Made that foreign-key creation idempotent with a `pg_constraint` existence guard scoped to `aca.agent_email_accounts`. No application feature code changed.
 - Migration fix commit: `76a8cf0d0cebe3461883f382527b17257406ef4e`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Comprehensive migration-chain reanalysis continued after the clean-reset run exposed `0004_messaging.sql: deleted_at does not exist` on `whatsapp_accounts`.
+- Corrected the migration chain for clean-schema execution: `0004_messaging.sql` now reconciles `whatsapp_accounts.deleted_at` and guards its redundant agent WhatsApp FK; `0004_phase4_schema_cleanup.sql` preserves canonical `voice_session_id` and guards its cleanup RLS policies; `0009_rls_helper_hardening.sql`, `0011_ownership_transfer.sql`, and `0012_server_identity_rpcs.sql` use the `aca` application schema; `0018_scheduling_runtime.sql` reconciles `next_fire_at` from the existing `next_run_at` and adds the missing automation-rule status before indexing.
+- Fixed `scripts/reset-and-migrate.sh` to invoke `migrate.sh` through the shell directly instead of the failing exec-path form, while preserving the separate migrate-only script.
+- These are migration/schema error fixes only; no application feature code was changed.
+- No CI/Vercel wait and no full migration PASS claimed.
