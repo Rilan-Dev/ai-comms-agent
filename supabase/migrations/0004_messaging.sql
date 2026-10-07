@@ -157,11 +157,21 @@ CREATE POLICY whatsapp_accounts_admin_manage ON whatsapp_accounts FOR ALL TO aut
 USING (can_manage_organization(organization_id))
 WITH CHECK (can_manage_organization(organization_id));
 
-CREATE POLICY whatsapp_contacts_member_visibility ON whatsapp_contacts FOR SELECT TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'whatsapp_contacts'
+      AND policyname = 'whatsapp_contacts_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY whatsapp_contacts_member_visibility ON whatsapp_contacts FOR SELECT TO authenticated
 USING (can_access_organization(organization_id));
 CREATE POLICY whatsapp_contacts_member_manage ON whatsapp_contacts FOR ALL TO authenticated
 USING (can_access_organization(organization_id))
-WITH CHECK (can_access_organization(organization_id));
+WITH CHECK (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
 
 CREATE POLICY whatsapp_messages_member_visibility ON whatsapp_messages FOR SELECT TO authenticated
 USING (can_access_organization(organization_id));
