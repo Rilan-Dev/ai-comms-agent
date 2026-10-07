@@ -412,3 +412,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `status email_sync_status NOT NULL DEFAULT 'idle'` reconciliation before the table definition is reused. No application feature code changed.
 - Migration fix commit: `069f89c1d526fdaa27910913c167c3ef0fb23630`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_email_domain.sql:241`: the partially-created `email_sync_events` table already existed without `provider_event_id`, while the migration's partial unique index predicate referenced that column.
+- Added an idempotent `provider_event_id text` reconciliation before the index creation. No application feature code changed.
+- Migration fix commit: `91e95b9df74b19178783e0410f1be1cb2512e198`.
+- No CI/Vercel wait and no migration PASS claimed.
