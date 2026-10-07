@@ -89,6 +89,9 @@ CREATE TABLE IF NOT EXISTS email_labels (
 );
 CREATE INDEX IF NOT EXISTS email_labels_org_idx ON email_labels(organization_id);
 
+ALTER TABLE email_threads
+  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+
 CREATE TABLE IF NOT EXISTS email_threads (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email_account_id uuid NOT NULL REFERENCES email_accounts(id) ON DELETE CASCADE,
