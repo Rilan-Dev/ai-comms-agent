@@ -448,3 +448,9 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the WhatsApp contact table/index operations. No application feature code changed.
 - Migration fix commit: `0231fc3b23b93e9da382e8010a65d19336fe1678`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0004_messaging.sql:92`: the partially-created `whatsapp_messages` table lacked `idempotency_key`, but the migration immediately referenced it in a partial unique index.
+- Also corrected the existing `whatsapp_contacts` reconciliation ordering so the `organization_id` ALTER runs after `CREATE TABLE IF NOT EXISTS`, preventing a fresh-database failure.
+- Added the idempotent `idempotency_key` column reconciliation before its indexes. No application feature code changed.
+- Migration fix commit: `c6dd42ea154451a36d30394a47b4c88bb8bbe3fb`.
+- No CI/Vercel wait and no migration PASS claimed.
