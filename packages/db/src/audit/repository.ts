@@ -23,7 +23,7 @@ export type AuditEventFilters = {
 };
 
 function mapAuditRows(rows:Record<string,unknown>[]):AuditEvent[]{
- return rows.map((row)=>({id:String(row.id),organizationId:String(row.organization_id),actorUserId:(row.actor_user_id as string|null)??null,agentId:(row.agent_id as string|null)??null,eventType:String(row.event_type??"unknown"),targetType:(row.target_type as string|null)??null,targetId:(row.target_id as string|null)??null,action:(row.action as string|null)??null,decision:(row.decision as string|null)??null,metadata:row.metadata&&typeof row.metadata==="object"&&!Array.isArray(row.metadata)?row.metadata as Record<string,unknown>:{},createdAt:String(row.created_at)}));
+ return rows.map((row)=>({id:String(row.id),organizationId:String(row.organization_id),actorUserId:(row.actor_user_id as string|null)??null,agentId:(row.agent_id as string|null)??null,eventType:String(row.event_type??"unknown"),targetType:(row.target_type as string|null)??null,targetId:(row.target_id as string|null)??null,action:(row.action as string|null)??null,decision:(row.decision as string|null)??null,correlationId:(row.correlation_id as string|null)??null,metadata:row.metadata&&typeof row.metadata==="object"&&!Array.isArray(row.metadata)?row.metadata as Record<string,unknown>:{},createdAt:String(row.created_at)}));
 }
 
 export async function listOrganizationAuditEvents(organizationId:string,limit=100,filters:AuditEventFilters={}):Promise<AuditEvent[]>{
