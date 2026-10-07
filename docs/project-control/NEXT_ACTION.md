@@ -639,3 +639,10 @@ ChatGPT continued the final product-completion implementation without waiting fo
 Development-first execution continues without waiting for GitHub Actions or Vercel. The current product-completion target remains cross-surface hardening rather than a new menu: email approval/send idempotency and correlation, WhatsApp outbound/inbound correlation, durable scheduling/automation execution, Clara chat/voice authorization, organization isolation, and audit trace continuity. Runtime/deployment evidence is intentionally deferred to the final verification milestone.
 
 **Next implementation:** finish deterministic cross-surface scenario fixtures and close remaining duplicate-action/idempotency edge cases, then continue final product completion work across any remaining Mail/WhatsApp/Chat/Voice gaps before the final runtime/deployment milestone.
+
+
+### 2026-10-07 — Idempotency conflict hardening
+- Email action creation now treats an existing organization-scoped Idempotency-Key as the same request only when mailbox, action type, draft, and content hash match.
+- A conflicting payload using the same key is rejected instead of silently returning the original action.
+- Added deterministic contract coverage for the conflict behavior.
+- **Next:** continue remaining cross-surface duplicate-action/E2E fixture hardening, then final product-completion implementation before runtime/deployment verification. Do not wait for CI/Vercel.
