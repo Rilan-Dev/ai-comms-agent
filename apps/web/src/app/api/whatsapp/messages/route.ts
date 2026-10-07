@@ -37,9 +37,10 @@ export async function POST(request: Request) {
     const idempotencyKey = requestedIdempotencyKey.trim();
     if (idempotencyKey.length > 200) return NextResponse.json({ error: "validation_error", message: "Idempotency-Key must be 200 characters or fewer." }, { status: 422 });
     const effectiveIdempotencyKey = idempotencyKey || crypto.randomUUID();
+    const correlationId = crypto.randomUUID();
     let messageId: string | null;
     try {
-      messageId = await queueWhatsAppOutboundMessage({ organizationId, accountId, to, body: messageBody, idempotencyKey: effectiveIdempotencyKey });
+      messageId = await queueWhatsAppOutboundMessage({ organizationId, accountId, to, body: messageBody, idempotencyKey: effectiveIdempotencyKey, correlationId });
     } catch (error) {
       if (error instanceof Error && error.message === "Idempotency key already exists for a different WhatsApp payload") {
         return NextResponse.json({ error: "idempotency_conflict", message: "This Idempotency-Key was already used for a different WhatsApp message." }, { status: 409 });
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
       throw error;
     }
     if (!messageId) return NextResponse.json({ queued: false, message: "This outbound message was already queued with the same idempotency key." });
-    await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId: crypto.randomUUID(), eventType: "whatsapp.message.queued", targetType: "whatsapp_message", targetId: messageId, action: "send", decision: "allowed" });
-    return NextResponse.json({ queued: true, messageId, status: "queued" }, { status: 202 });
+    await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId, eventType: "whatsapp.message.queued", targetType: "whatsapp_message", targetId: messageId, action: "send", decision: "allowed" });
+    return NextResponse.json({ queued: true, messageId, status: "queued", correlationId }, { status: 202 });
   } catch (error) { return authorizationErrorToResponse(error); }
 }
