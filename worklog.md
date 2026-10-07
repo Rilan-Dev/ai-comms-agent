@@ -195,3 +195,14 @@ Never write "Phase complete" without evidence.
 - **File changed:** `supabase/migrations/0001_identity_rbac.sql`.
 - **Commit:** `ce42db423c5275a7c0aa9faf39fca79901dec4e5`.
 - No migration PASS is claimed and no CI/Vercel wait was performed.
+
+
+## 2026-10-07 — Correct persisted migration delimiter fix
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete migration error fix only; no feature development and no project-control documentation changes.
+- The rerun still reported `syntax error at or near "$"` at line 434. Inspection of the authoritative `main` file showed the invalid `AS $` delimiter was still present; the prior attempted correction had not actually changed the migration source.
+- Corrected `create_organization_with_owner()` from `AS $` to the valid `AS $$` delimiter.
+- **File changed:** `supabase/migrations/0001_identity_rbac.sql`.
+- **Commit:** `99b271bb109745f55bc8e7ca82f2c7bffced0faf`.
+- No migration PASS is claimed and no CI/Vercel wait was performed.
