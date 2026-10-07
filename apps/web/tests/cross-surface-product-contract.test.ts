@@ -8,12 +8,15 @@ const scheduleRoute = readFileSync(resolve(__dirname, "../src/app/api/organizati
 const automationRoute = readFileSync(resolve(__dirname, "../src/app/api/organizations/[orgId]/automations/route.ts"), "utf8");
 const voiceTurnRoute = readFileSync(resolve(__dirname, "../src/app/api/voice/turn/route.ts"), "utf8");
 const auditRepository = readFileSync(resolve(__dirname, "../../../packages/db/src/audit/repository.ts"), "utf8");
+const emailActionRepository = readFileSync(resolve(__dirname, "../../../packages/db/src/email/actions.ts"), "utf8");
 
 describe("cross-surface product completion contract", () => {
   it("keeps email send behind pending approval and stable retry identity", () => {
     expect(emailActionRoute).toContain("pending_approval");
     expect(emailActionRoute).toContain("Idempotency-Key");
     expect(emailActionRoute).toContain("email.action.requested");
+    expect(emailActionRepository).toContain("Idempotency key already exists for a different email action payload");
+    expect(emailActionRepository).toContain("content_hash = EXCLUDED.content_hash");
   });
 
   it("keeps WhatsApp outbound idempotent and audited", () => {
