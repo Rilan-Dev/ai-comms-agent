@@ -299,3 +299,7 @@ Never write "Phase complete" without evidence.
 - Corrected the actual authoritative `main` copy of `supabase/migrations/0002_application_domain.sql` after runtime evidence showed it still contained `DO $` / `END $;`. Replaced the complete provider-FK guard with valid `DO $$ ... END $$;` syntax and confirmed the GitHub `main` file now contains the corrected block at lines 235-251.
 - Migration code commit: `efe4de6e8e6c4c1f32018131127801a1db64956a`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration error reported after `0002_application_domain.sql` reached the helper-function section: `app_is_org_member` runs with `search_path = public`, while `current_app_user_id()` is created in the `aca` schema. Qualified the call as `aca.current_app_user_id()` so PostgreSQL resolves the helper under the actual application schema. No other migration logic changed.
+- Migration fix commit: `ca206244c366034b682e9957c833d105f9faf4cd`.
+- No CI/Vercel wait and no migration PASS claimed.
