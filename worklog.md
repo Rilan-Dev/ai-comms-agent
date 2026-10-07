@@ -422,3 +422,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the email-sync-event indexes. No application feature code changed.
 - Migration fix commit: `db24bcac5649d58d7e0b412f82ddfa13cd141046`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_email_domain.sql:249`: the partially-created `email_sync_events` table lacked `received_at`, while the migration creates an index using that column.
+- Added an idempotent `ALTER TABLE email_sync_events ADD COLUMN IF NOT EXISTS received_at timestamptz` before the affected index creation. No application feature code changed.
+- Migration fix commit: `3a22367969ab151abafcf302a9b03e2caf51e272`.
+- No CI/Vercel wait and no migration PASS claimed.
