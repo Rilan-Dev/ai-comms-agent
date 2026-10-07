@@ -536,7 +536,7 @@ SET search_path = ''
 AS $$
   SELECT EXISTS (
     SELECT 1
-    FROM public.organization_memberships m
+    FROM aca.organization_memberships m
     WHERE m.organization_id = p_organization_id
       AND m.user_id = p_user_id
       AND m.status = 'active'
@@ -555,7 +555,7 @@ SET search_path = ''
 AS $$
   SELECT EXISTS (
     SELECT 1
-    FROM public.organization_memberships m
+    FROM aca.organization_memberships m
     WHERE m.organization_id = p_organization_id
       AND m.user_id = p_user_id
       AND m.status = 'active'
