@@ -622,3 +622,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `created_at timestamptz NOT NULL DEFAULT now()` reconciliation before the `voice_telemetry` table/index operations. No application feature code changed.
 - Migration fix commit: `c5128cacfbd137db6c3e15980be36900259f059e`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0007_actions_ai_voice_audit.sql:225`: the `email_actions_member_visibility` RLS policy already existed from the earlier partial migration.
+- Made the Phase 7 audit/actions/AI/voice RLS policy creations idempotent with `pg_policies` guards, preserving the existing policy definitions. No application feature code changed.
+- Migration fix commit: `eb452fb7a07ec0772049816bab78a7fba8fc9fec`.
+- No CI/Vercel wait and no migration PASS claimed.
