@@ -429,7 +429,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY INVOKER
 SET search_path = aca, public
-AS $
+AS $$
 DECLARE
   v_org organizations%ROWTYPE;
   v_membership organization_memberships%ROWTYPE;
