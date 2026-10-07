@@ -28,6 +28,9 @@ CREATE INDEX IF NOT EXISTS conversations_org_last_message_idx
 ON conversations(organization_id,last_message_at DESC);
 CREATE INDEX IF NOT EXISTS conversations_agent_idx ON conversations(agent_id,started_at DESC);
 
+ALTER TABLE conversation_messages
+  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+
 CREATE TABLE IF NOT EXISTS conversation_messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id uuid NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
