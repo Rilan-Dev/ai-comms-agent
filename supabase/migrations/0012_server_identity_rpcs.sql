@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION create_organization_with_owner(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = aca, public
 AS $$
 DECLARE
   created_org organizations%ROWTYPE;
@@ -15,7 +15,7 @@ DECLARE
 BEGIN
   IF NULLIF(current_setting('app.user_id', true), '')::uuid IS NOT NULL AND NULLIF(current_setting('app.user_id', true), '')::uuid <> p_owner_id THEN
     IF NOT EXISTS (
-      SELECT 1 FROM organization_memberships
+      SELECT 1 FROM aca.organization_memberships
       WHERE organization_id IS NULL AND false
     ) THEN
       RAISE EXCEPTION 'Authenticated caller may only create an organization for self' USING ERRCODE='insufficient_privilege';
