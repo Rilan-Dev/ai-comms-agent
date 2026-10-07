@@ -11,6 +11,12 @@ import type {
   ResolvedAIConfig,
 } from "./types";
 
+export type {
+  ClaraRuntimeContext,
+  ClaraAgentTurnRequest,
+  ClaraAgentTurn,
+} from "./types";
+
 type StreamChunk = { choices?: Array<{ delta?: { content?: string | null } }> };
 
 function env(name: string): string | undefined {
