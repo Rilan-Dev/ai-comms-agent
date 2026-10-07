@@ -165,11 +165,14 @@ export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise
     );
     const claims:ScheduledJobClaim[]=[];
     for(const row of jobs.rows){
+      const fireAt = row.next_fire_at ? String(row.next_fire_at) : null;
+      if (!fireAt) continue;
       const run=await client.query<Row>(
-        "INSERT INTO scheduled_job_runs (scheduled_job_id,status,result) VALUES ($1,'running',$2::jsonb) RETURNING id",
-        [row.id,JSON.stringify({claimedAt:nowIso})],
+        "INSERT INTO scheduled_job_runs (scheduled_job_id,fire_at,status,result) VALUES ($1,$2::timestamptz,'running',$3::jsonb) ON CONFLICT (scheduled_job_id,fire_at) DO NOTHING RETURNING id",
+        [row.id,fireAt,JSON.stringify({claimedAt:nowIso})],
       );
-      claims.push({runId:String(run.rows[0]?.id),id:String(row.id),agentId:String(row.agent_id),organizationId:String(row.organization_id),intent:String(row.intent),params:(row.params??{}) as Record<string,unknown>,cron:row.cron?String(row.cron):null,nextFireAt:row.next_fire_at?String(row.next_fire_at):null,timezone:String(row.timezone??"UTC"),catchUpMinutes:Number(row.catch_up_minutes??60)});
+      if (!run.rows[0]?.id) continue;
+      claims.push({runId:String(run.rows[0].id),id:String(row.id),agentId:String(row.agent_id),organizationId:String(row.organization_id),intent:String(row.intent),params:(row.params??{}) as Record<string,unknown>,cron:row.cron?String(row.cron):null,nextFireAt:fireAt,timezone:String(row.timezone??"UTC"),catchUpMinutes:Number(row.catch_up_minutes??60)});
     }
     return claims;
   });
