@@ -108,3 +108,13 @@ Never write "Phase complete" without evidence.
 - **File changed:** `packages/clara-core/tsconfig.json`.
 - **Commit:** `f01b42b7dc68ecbd48ebaa4f0ceb559c403583cf`.
 - No CI/Vercel wait and no Docker PASS claimed.
+
+
+## 2026-10-07 — Add required self-hosted Clara runtime configuration template
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete Docker runtime configuration correction only; no project-control documentation changes.
+- The new local Clara runtime reads provider configuration from server-side environment variables, while the Docker template previously contained no AI provider or `CLARA_KB_ID` settings. Added explicit OpenAI/Gemini/Sarvam provider settings, OpenAI realtime defaults, and a local Clara KB identifier placeholder to prevent an otherwise correctly built container from starting without the configuration boundary required by the chat/voice routes.
+- **File changed:** `.env.docker.example`.
+- **Commit:** `81bda0a4f12184fe569d38a927db52297880dd4c`.
+- No credentials were added and no CI/Vercel wait was performed.
