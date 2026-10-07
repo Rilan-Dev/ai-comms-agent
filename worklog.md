@@ -392,3 +392,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `from_email text` column reconciliation before the sender index. No application feature code changed.
 - Migration fix commit: `7933244261e3039a8848b08cf77a83b5b1730a53`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_email_domain.sql:169`: the partially-created `email_messages` table lacked `action_required`, while the migration attempted to create an index using that column.
+- Added idempotent reconciliation for `action_required` and `action_deadline` before the action index. No application feature code changed.
+- Migration fix commit: `e946af3861e60e0479e1db1cb3a791a3cba7f850`.
+- No CI/Vercel wait and no migration PASS claimed.
