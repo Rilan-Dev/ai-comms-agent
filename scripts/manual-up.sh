@@ -16,5 +16,5 @@ docker compose -f infra/docker-compose.manual.yml build --pull
 docker compose -f infra/docker-compose.manual.yml up -d
 
 echo "Application stack is starting."
-echo "Web: http://localhost:3000"
+echo "Web: http://localhost:3300"
 echo "Infrastructure: external (Postgres / Redis / RabbitMQ / Qdrant)"
