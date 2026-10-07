@@ -40,6 +40,9 @@ BEGIN
   END IF;
 END $$;
 
+ALTER TABLE email_action_approvals
+  ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now();
+
 CREATE TABLE IF NOT EXISTS email_action_approvals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email_action_id uuid NOT NULL REFERENCES email_actions(id) ON DELETE CASCADE,
