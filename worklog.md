@@ -230,3 +230,15 @@ Never write "Phase complete" without evidence.
 - **File changed:** `supabase/migrations/0002_application_domain.sql`.
 - **Commit:** `2e5e2b268820c599e292dedaf57422e105956dd6`.
 - No migration PASS is claimed and no CI/Vercel wait was performed.
+
+
+## 2026-10-07 — Fix application-domain migration constraint idempotency
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete migration error fix only; no feature development and no project-control documentation changes.
+- Migration rerun failed at `0002_application_domain.sql:48` because `agents_current_version_fk` already existed from the earlier partially applied migration.
+- Root cause: the migration used unconditional `ALTER TABLE ... ADD CONSTRAINT` statements, so a retry after partial application was not idempotent.
+- Wrapped both agent foreign-key additions in an existence check against `pg_constraint`, covering both the reported constraint and the immediately paired deployment constraint so the same retry cannot fail at the next identical statement.
+- **File changed:** `supabase/migrations/0002_application_domain.sql`.
+- **Commit:** `5559ad90e971c77522e35684e4919839574e6419`.
+- No migration PASS is claimed and no CI/Vercel wait was performed.
