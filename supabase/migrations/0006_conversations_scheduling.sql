@@ -148,6 +148,9 @@ CREATE TABLE IF NOT EXISTS automation_runs (
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(automation_rule_id,idempotency_key)
 );
+ALTER TABLE automation_runs
+  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+
 CREATE INDEX IF NOT EXISTS automation_runs_org_created_idx ON automation_runs(organization_id,created_at DESC);
 
 CREATE TABLE IF NOT EXISTS summaries (
