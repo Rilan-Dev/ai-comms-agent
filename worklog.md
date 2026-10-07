@@ -291,3 +291,7 @@ Never write "Phase complete" without evidence.
 - Performed a static delimiter audit of the migration files surfaced by the repository migration search; no additional exact `DO $` or `END $;` delimiter defects were found outside this block.
 - Migration fix commit: `aed0bea938c963588ddd61417374406efe4d8460`.
 - No CI/Vercel wait and no migration PASS claimed; database execution remains the authoritative runtime check.
+
+- Fixed the concrete migration failure reported after the latest pull: `supabase/migrations/0002_application_domain.sql` still contained an invalid `DO $` opener and `END $;` closer for the `agent_ai_settings_provider_fk` guard. Corrected both delimiters to `DO $$` and `END $$;`. No migration logic was changed.
+- Migration fix commit: `9ea5fc280ec3a9b4df92d0e6b9f424a3460a3b9c`.
+- No CI/Vercel wait and no migration PASS claimed.
