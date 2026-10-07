@@ -509,3 +509,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `correlation_id uuid NOT NULL DEFAULT gen_random_uuid()` reconciliation before the unique correlation index. No application feature code changed.
 - Migration fix commit: `e97067135ed6e353674785eaa066adca02fa0634`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0006_conversations_scheduling.sql:65`: the partially-created `conversation_turns` table already existed without `organization_id`, while the migration requires that column.
+- Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the conversation-turn table/index operations. No application feature code changed.
+- Migration fix commit: `fb9d34a9a51312e043b475b51242c9b36e97d869`.
+- No CI/Vercel wait and no migration PASS claimed.
