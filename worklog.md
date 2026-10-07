@@ -129,3 +129,14 @@ Never write "Phase complete" without evidence.
 - **File changed:** `packages/clara-core/src/runtime.ts`.
 - **Commit:** `d7e4cb4660c232d70f1cdec6fae31680bd18f2d6`.
 - No CI/Vercel wait and no Docker PASS claimed; the next server build should surface the next concrete error if one remains.
+
+
+## 2026-10-07 — Fix voice session provider property build error
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete Docker web-build error fix only; no feature development, no project-control documentation changes, and no vendor modification.
+- The self-hosted Docker web build failed with TS2339 because the local Clara runtime realtime-session contract returns `realtimeProvider`, while `apps/web/src/app/api/voice/session/route.ts` attempted to persist the nonexistent `session.provider` property.
+- Updated the voice-session persistence call to use `session.realtimeProvider`, matching the local Clara runtime contract and the existing voice-session repository input.
+- **File changed:** `apps/web/src/app/api/voice/session/route.ts`.
+- **Commit:** 3b3a48d8edc0b00c995c7ed8fe2e575a64f906ab.
+- No CI/Vercel wait and no Docker build PASS claimed; the next manual build should surface the next concrete error if one remains.
