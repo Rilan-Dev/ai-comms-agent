@@ -253,3 +253,7 @@ The worker execution boundary now calls Clara's immutable `claraRuntime.createCh
 - Overview metrics/activity are now loaded from persisted organization state instead of hard-coded demo values.
 - Added product-completion contract tests for authorization, export, overview integrity, and cross-tenant execution boundaries.
 - Continue cross-surface E2E hardening without waiting for CI/Vercel.
+
+### 2026-10-07 — Scheduled fire idempotency hardening
+
+ChatGPT continued development-first cross-surface hardening. Scheduled job claims now persist the exact `fire_at` timestamp and use a PostgreSQL unique index on `(scheduled_job_id, fire_at)` with conflict-safe claiming, preventing duplicate run creation when multiple worker ticks race on the same due fire. Added a deterministic worker contract fixture for the migration/repository boundary. Runtime validation remains deferred; do not wait for CI/Vercel.
