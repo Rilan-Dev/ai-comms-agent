@@ -464,3 +464,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the webhook indexes. No application feature code changed.
 - Migration fix commit: `d7d82a905f80858db125c16a4fc383c07ec2fd65`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0004_messaging.sql:145`: the partially-applied migration already had the `whatsapp_accounts_member_visibility` RLS policy.
+- Made that policy creation idempotent with a `pg_policies` existence guard while preserving the existing policy definition. No application feature code changed.
+- Migration fix commit: `41243f3847a38134d82914f89fc3521d25475878`.
+- No CI/Vercel wait and no migration PASS claimed.
