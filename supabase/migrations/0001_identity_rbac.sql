@@ -431,8 +431,8 @@ SECURITY INVOKER
 SET search_path = public
 AS $$
 DECLARE
-  v_org organizations;
-  v_membership organization_memberships;
+  v_org organizations%ROWTYPE;
+  v_membership organization_memberships%ROWTYPE;
 BEGIN
   INSERT INTO organizations (name, slug)
   VALUES (p_name, p_slug)
@@ -457,8 +457,8 @@ SECURITY INVOKER
 SET search_path = public
 AS $$
 DECLARE
-  v_current_owner organization_memberships;
-  v_target organization_memberships;
+  v_current_owner organization_memberships%ROWTYPE;
+  v_target organization_memberships%ROWTYPE;
 BEGIN
   IF p_new_owner_role = 'owner' THEN
     RAISE EXCEPTION 'New owner replacement role must be non-owner';
