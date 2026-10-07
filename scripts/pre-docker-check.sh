@@ -24,7 +24,7 @@ fi
 
 if [[ ! -f .gitmodules ]]; then
   fail ".gitmodules is missing"
-elif git config -f .gitmodules --get-regexp '^submodule\\..*\\.path$' | grep -q 'vendor/clara'; then
+elif git config -f .gitmodules --get-regexp '^submodule\..*\.path$' | grep -q 'vendor/clara'; then
   git submodule sync -- vendor/clara >/dev/null
   git submodule update --init --recursive vendor/clara >/dev/null
   if [[ -f vendor/clara/clara-core/source/src/modules/ai-platform-core/clara-runtime.ts ]]; then
