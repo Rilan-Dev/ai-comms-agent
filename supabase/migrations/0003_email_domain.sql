@@ -295,56 +295,245 @@ ALTER TABLE email_attachments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_sync_states ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_sync_events ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY email_accounts_member_visibility ON email_accounts FOR SELECT TO authenticated
-USING (can_access_organization(organization_id));
-CREATE POLICY email_accounts_admin_manage ON email_accounts FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_accounts'
+      AND policyname = 'email_accounts_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_accounts_member_visibility ON email_accounts FOR SELECT TO authenticated
+USING (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_accounts'
+      AND policyname = 'email_accounts_admin_manage'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_accounts_admin_manage ON email_accounts FOR ALL TO authenticated
 USING (can_manage_organization(organization_id))
-WITH CHECK (can_manage_organization(organization_id));
+WITH CHECK (can_manage_organization(organization_id));$policy$;
+  END IF;
+END $$;
 
-CREATE POLICY email_credentials_admin_visibility ON email_account_credentials FOR SELECT TO authenticated
-USING (can_manage_organization(organization_id));
-CREATE POLICY email_credentials_admin_manage ON email_account_credentials FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_account_credentials'
+      AND policyname = 'email_credentials_admin_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_credentials_admin_visibility ON email_account_credentials FOR SELECT TO authenticated
+USING (can_manage_organization(organization_id));$policy$;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_account_credentials'
+      AND policyname = 'email_credentials_admin_manage'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_credentials_admin_manage ON email_account_credentials FOR ALL TO authenticated
 USING (can_manage_organization(organization_id))
-WITH CHECK (can_manage_organization(organization_id));
+WITH CHECK (can_manage_organization(organization_id));$policy$;
+  END IF;
+END $$;
 
-CREATE POLICY email_folders_member_visibility ON email_folders FOR SELECT TO authenticated
-USING (can_access_organization(organization_id));
-CREATE POLICY email_folders_member_manage ON email_folders FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_folders'
+      AND policyname = 'email_folders_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_folders_member_visibility ON email_folders FOR SELECT TO authenticated
+USING (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_folders'
+      AND policyname = 'email_folders_member_manage'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_folders_member_manage ON email_folders FOR ALL TO authenticated
 USING (can_access_organization(organization_id))
-WITH CHECK (can_access_organization(organization_id));
+WITH CHECK (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
 
-CREATE POLICY email_labels_member_visibility ON email_labels FOR SELECT TO authenticated
-USING (can_access_organization(organization_id));
-CREATE POLICY email_labels_member_manage ON email_labels FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_labels'
+      AND policyname = 'email_labels_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_labels_member_visibility ON email_labels FOR SELECT TO authenticated
+USING (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_labels'
+      AND policyname = 'email_labels_member_manage'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_labels_member_manage ON email_labels FOR ALL TO authenticated
 USING (can_access_organization(organization_id))
-WITH CHECK (can_access_organization(organization_id));
+WITH CHECK (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
 
-CREATE POLICY email_threads_member_visibility ON email_threads FOR SELECT TO authenticated
-USING (can_access_organization(organization_id));
-CREATE POLICY email_threads_member_manage ON email_threads FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_threads'
+      AND policyname = 'email_threads_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_threads_member_visibility ON email_threads FOR SELECT TO authenticated
+USING (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_threads'
+      AND policyname = 'email_threads_member_manage'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_threads_member_manage ON email_threads FOR ALL TO authenticated
 USING (can_access_organization(organization_id))
-WITH CHECK (can_access_organization(organization_id));
+WITH CHECK (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
 
-CREATE POLICY email_messages_member_visibility ON email_messages FOR SELECT TO authenticated
-USING (can_access_organization(organization_id));
-CREATE POLICY email_messages_member_manage ON email_messages FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_messages'
+      AND policyname = 'email_messages_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_messages_member_visibility ON email_messages FOR SELECT TO authenticated
+USING (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_messages'
+      AND policyname = 'email_messages_member_manage'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_messages_member_manage ON email_messages FOR ALL TO authenticated
 USING (can_access_organization(organization_id))
-WITH CHECK (can_access_organization(organization_id));
+WITH CHECK (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
 
-CREATE POLICY email_attachments_member_visibility ON email_attachments FOR SELECT TO authenticated
-USING (can_access_organization(organization_id));
-CREATE POLICY email_attachments_member_manage ON email_attachments FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_attachments'
+      AND policyname = 'email_attachments_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_attachments_member_visibility ON email_attachments FOR SELECT TO authenticated
+USING (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_attachments'
+      AND policyname = 'email_attachments_member_manage'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_attachments_member_manage ON email_attachments FOR ALL TO authenticated
 USING (can_access_organization(organization_id))
-WITH CHECK (can_access_organization(organization_id));
+WITH CHECK (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
 
-CREATE POLICY email_sync_states_admin_visibility ON email_sync_states FOR SELECT TO authenticated
-USING (can_manage_organization(organization_id));
-CREATE POLICY email_sync_states_admin_manage ON email_sync_states FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_sync_states'
+      AND policyname = 'email_sync_states_admin_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_sync_states_admin_visibility ON email_sync_states FOR SELECT TO authenticated
+USING (can_manage_organization(organization_id));$policy$;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_sync_states'
+      AND policyname = 'email_sync_states_admin_manage'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_sync_states_admin_manage ON email_sync_states FOR ALL TO authenticated
 USING (can_manage_organization(organization_id))
-WITH CHECK (can_manage_organization(organization_id));
+WITH CHECK (can_manage_organization(organization_id));$policy$;
+  END IF;
+END $$;
 
-CREATE POLICY email_sync_events_admin_visibility ON email_sync_events FOR SELECT TO authenticated
-USING (can_manage_organization(organization_id));
-CREATE POLICY email_sync_events_admin_manage ON email_sync_events FOR ALL TO authenticated
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_sync_events'
+      AND policyname = 'email_sync_events_admin_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_sync_events_admin_visibility ON email_sync_events FOR SELECT TO authenticated
+USING (can_manage_organization(organization_id));$policy$;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'email_sync_events'
+      AND policyname = 'email_sync_events_admin_manage'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY email_sync_events_admin_manage ON email_sync_events FOR ALL TO authenticated
 USING (can_manage_organization(organization_id))
-WITH CHECK (can_manage_organization(organization_id));
+WITH CHECK (can_manage_organization(organization_id));$policy$;
+  END IF;
+END $$;
