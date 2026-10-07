@@ -96,6 +96,9 @@ BEGIN
   END IF;
 END $$;
 
+ALTER TABLE ai_usage_events
+  ADD COLUMN IF NOT EXISTS request_id text;
+
 CREATE TABLE IF NOT EXISTS ai_usage_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
