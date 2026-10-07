@@ -601,3 +601,8 @@ Never write "Phase complete" without evidence.
 - Performed the same targeted malformed-dollar-quote audit across the migration files and corrected the corresponding malformed blocks in `0007_actions_ai_voice_audit.sql` and `0008_api_keys_knowledge_storage.sql`; `0003_phase4_schema_alignment.sql` was inspected and its current block is already correctly quoted.
 - No migration logic or application behavior was changed; only malformed dollar delimiters were corrected.
 - Migration fixes committed on `main` in the affected migration updates; no CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0007_actions_ai_voice_audit.sql:52`: the partially-created `email_action_approvals` table already existed without `created_at`, while the migration's index requires that column.
+- Added an idempotent `created_at timestamptz NOT NULL DEFAULT now()` reconciliation before the table/index operations. No application feature code changed.
+- Migration fix commit: `c8183c4a02faf275970d1247cc47262d92f125ae`.
+- No CI/Vercel wait and no migration PASS claimed.
