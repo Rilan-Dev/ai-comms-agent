@@ -278,3 +278,7 @@ Never write "Phase complete" without evidence.
 - **File changed:** `supabase/migrations/0002_application_domain.sql`.
 - **Migration commit:** `d4d02d89ce4d0d3ab6481c90c112fbca02c89ff0`.
 - No migration PASS is claimed and no CI/Vercel wait was performed.
+
+- Fixed concrete migration error in `supabase/migrations/0002_application_domain.sql`: the provider FK guard opened with `DO $$` but closed with `END $;`, causing PostgreSQL syntax error at line 249. Corrected only the closing delimiter to `END $$;`; no migration behavior changed.
+- Migration fix commit: `cc8822973c5fde7a7d6b3d1318bab82782406cef`.
+- No CI/Vercel wait and no migration PASS claimed.
