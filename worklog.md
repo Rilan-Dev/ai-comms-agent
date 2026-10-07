@@ -303,3 +303,7 @@ Never write "Phase complete" without evidence.
 - Fixed the concrete migration error reported after `0002_application_domain.sql` reached the helper-function section: `app_is_org_member` runs with `search_path = public`, while `current_app_user_id()` is created in the `aca` schema. Qualified the call as `aca.current_app_user_id()` so PostgreSQL resolves the helper under the actual application schema. No other migration logic changed.
 - Migration fix commit: `ca206244c366034b682e9957c833d105f9faf4cd`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration error reported at line 347: `app_is_agent_member` runs with `search_path = public` but referenced the application table `agents` unqualified, causing `relation "agents" does not exist`. Qualified the affected RLS helper table references in `0002_application_domain.sql` to the actual `aca` schema (`agents`, `email_accounts`, `email_threads`, `whatsapp_accounts`, `conversations`). No application/runtime code was changed.
+- Migration fix commit: `7ce96cd470cd4ebd82cf27a9e1977247bbe3b204`.
+- No CI/Vercel wait and no migration PASS claimed.
