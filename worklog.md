@@ -337,3 +337,8 @@ Never write "Phase complete" without evidence.
 - Added an idempotent `ALTER TABLE email_accounts ADD COLUMN IF NOT EXISTS deleted_at timestamptz` immediately before the index creation. No application feature code changed.
 - Migration fix commit: `a13abd2461bcd7b1191ea9e9bf135b545209cf94`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_email_domain.sql:52`: the partially-created `email_account_credentials` table already existed without `organization_id`, while the migration attempted to create an index on that column.
+- Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the index creation. No application feature code changed.
+- Migration fix commit: `29701da0ddd6f04d7e22a1c0f970fc2f32feb513`.
+- No CI/Vercel wait and no migration PASS claimed.
