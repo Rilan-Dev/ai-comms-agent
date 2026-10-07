@@ -317,3 +317,8 @@ Never write "Phase complete" without evidence.
 - Qualified the nested calls as `aca.app_is_org_member(...)` in `app_is_agent_member`, `app_is_email_account_member`, and `app_is_whatsapp_account_member`. No RLS policy logic or application feature code was changed.
 - Migration fix commit: `0099fd35c776a2dcc8681c18adb9b4a159f2f8d0`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0002_database_foundation.sql:132`: PostgreSQL rejected `GRANT ... TO authenticated` because the standalone PostgreSQL deployment does not have an `authenticated` role.
+- The foundation migration now creates a `NOLOGIN` `authenticated` role when absent, then grants the required function execution privileges. Existing Supabase deployments where the role already exists are unchanged.
+- Migration fix commit: `d060594403a5b20bf2ced692acddb614c922a6b9`.
+- No CI/Vercel wait and no migration PASS claimed.
