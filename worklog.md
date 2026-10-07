@@ -590,3 +590,9 @@ Never write "Phase complete" without evidence.
 - Corrected the block to `DO $$` / `END $$;` without changing its migration logic.
 - Migration fix commit: `17c39ddf92ade986618d5287f4f6aa551daf7e5f`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_phase4_schema_alignment.sql:72`: the `api_keys` reconciliation block used malformed PostgreSQL dollar delimiters (`DO $` / `END $`).
+- Corrected the block to `DO $$` / `END $$;`. No application feature behavior changed.
+- Migration fix commit: `23e260b37bfdc791385ce6017b61cdf7301b66a4`.
+- Confirmed `scripts/reset-and-migrate.sh` on authoritative `main` already invokes migration via `bash "${MIGRATE_SCRIPT}"`; no additional reset-script code change was necessary for the reported local permission symptom.
+- No CI/Vercel wait and no migration PASS claimed.
