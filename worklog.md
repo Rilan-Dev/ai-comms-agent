@@ -140,3 +140,14 @@ Never write "Phase complete" without evidence.
 - **File changed:** `apps/web/src/app/api/voice/session/route.ts`.
 - **Commit:** 3b3a48d8edc0b00c995c7ed8fe2e575a64f906ab.
 - No CI/Vercel wait and no Docker build PASS claimed; the next manual build should surface the next concrete error if one remains.
+
+
+## 2026-10-07 — Fix self-hosted runtime startup errors
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete runtime error fixes only; no feature development, no project-control documentation changes, and no vendor modification.
+- Manual Docker startup exposed two concrete runtime defects after both images built successfully:
+  - Next.js rejected sibling organization routes using different dynamic parameter names (`[id]` and `[orgId]`). Consolidated the legacy organization and members endpoints under the existing `[orgId]` route family and removed the duplicate `[id]` route family.
+  - The worker launched compiled `dist/index.js`, but the workspace DB package intentionally exposes its TypeScript source entrypoint, causing Node ESM to fail on `packages/db/src/email/connection-test` at runtime. Changed the worker start command to use the installed `tsx` runtime against `src/index.ts`, matching the workspace package source boundary.
+- **Files changed:** `apps/web/src/app/api/organizations/[orgId]/route.ts`, `apps/web/src/app/api/organizations/[orgId]/members/route.ts`, `apps/web/src/app/api/organizations/[id]/route.ts` (removed), `apps/web/src/app/api/organizations/[id]/members/route.ts` (removed), `apps/worker/package.json`, and `worklog.md`.
+- No CI/Vercel wait and no runtime PASS claimed; the next manual startup should surface any remaining concrete runtime error.
