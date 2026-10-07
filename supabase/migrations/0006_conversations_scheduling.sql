@@ -99,6 +99,9 @@ CREATE INDEX IF NOT EXISTS scheduled_jobs_org_idx ON scheduled_jobs(organization
 ALTER TABLE scheduled_job_runs
   ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
 
+ALTER TABLE scheduled_job_runs
+  ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now();
+
 CREATE TABLE IF NOT EXISTS scheduled_job_runs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   scheduled_job_id uuid NOT NULL REFERENCES scheduled_jobs(id) ON DELETE CASCADE,
