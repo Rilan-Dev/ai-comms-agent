@@ -362,3 +362,8 @@ Never write "Phase complete" without evidence.
 - Kept `scripts/migrate.sh` as the migration-only path; it was not changed.
 - Reset-and-migrate commits: `53dd4fa899815403d45a5da201b122c13c5efb0e`, followed by `57dfc8e52bbbb90cd28dab12be3eee41854a4299` to make invocation independent of executable-bit state.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete `reset-and-migrate.sh` execution failure: the script invoked `scripts/migrate.sh` directly, but the checked-out file did not have executable permission, causing `Permission denied` after the database reset.
+- Changed the reset wrapper to invoke the existing migration-only script explicitly through Bash: `exec bash "${MIGRATE_SCRIPT}"`. The standalone `scripts/migrate.sh` remains unchanged and continues to be the migration-only command.
+- Reset-wrapper fix commit: `d7da23146ffe1cdc3b325743b098fb5f96781916`.
+- No CI/Vercel wait and no migration PASS claimed.
