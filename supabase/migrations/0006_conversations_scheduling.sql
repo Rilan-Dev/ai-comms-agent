@@ -170,6 +170,9 @@ CREATE TABLE IF NOT EXISTS summaries (
 );
 CREATE INDEX IF NOT EXISTS summaries_org_created_idx ON summaries(organization_id,created_at DESC);
 
+ALTER TABLE summary_sources
+  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+
 CREATE TABLE IF NOT EXISTS summary_sources (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   summary_id uuid NOT NULL REFERENCES summaries(id) ON DELETE CASCADE,
