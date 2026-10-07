@@ -88,6 +88,9 @@ CREATE TABLE IF NOT EXISTS scheduled_jobs (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE scheduled_jobs
+  ADD COLUMN IF NOT EXISTS enabled boolean NOT NULL DEFAULT true;
+
 CREATE INDEX IF NOT EXISTS scheduled_jobs_due_idx ON scheduled_jobs(enabled,next_run_at);
 CREATE INDEX IF NOT EXISTS scheduled_jobs_org_idx ON scheduled_jobs(organization_id);
 
