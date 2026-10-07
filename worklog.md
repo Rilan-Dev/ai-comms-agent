@@ -1992,3 +1992,15 @@ Next implementation: deterministic cross-surface E2E fixtures and duplicate-acti
 - The harness intentionally does not fabricate provider connectivity or runtime verification; real integration adapters remain the next implementation layer.
 - CI/Vercel were not awaited and no runtime pass is claimed.
 - **Next:** connect the harness to real application integration adapters for email approval/send, WhatsApp outbound, scheduler claims, organization isolation, and audit correlation, then continue remaining product hardening.
+
+
+## 2026-10-07 — Audit repository correlationId mapping correction
+
+- **Owner:** ChatGPT
+- **Scope:** Error-fixing only; no feature development and no project-control documentation changes.
+- User reran `npm run typecheck`; `packages/shared` and `packages/clara-core` passed, while `packages/db` failed at `src/audit/repository.ts(26,2)` with TS2322 because `mapAuditRows()` returned an `AuditEvent` without the required `correlationId` property.
+- The SQL query already selected `correlation_id`; the mapper simply omitted that selected field.
+- Added `correlationId:(row.correlation_id as string|null)??null` to `mapAuditRows()`. No runtime query or audit behavior was otherwise changed.
+- **File changed:** `packages/db/src/audit/repository.ts`.
+- **Commit:** `50bcfcc8589aa493dcbcc3269dc041cadb75b051`.
+- No CI/Vercel wait was performed. No typecheck pass is claimed until the user reruns `npm run typecheck`.
