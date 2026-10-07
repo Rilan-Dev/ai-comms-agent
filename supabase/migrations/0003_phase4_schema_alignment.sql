@@ -65,6 +65,14 @@ ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS target_type text;
 ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS target_id uuid;
 ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS correlation_id uuid;
 
+DO $
+BEGIN
+  IF to_regclass('aca.api_keys') IS NOT NULL THEN
+    ALTER TABLE api_keys
+      ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+  END IF;
+END $;
+
 CREATE TABLE IF NOT EXISTS api_keys (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
