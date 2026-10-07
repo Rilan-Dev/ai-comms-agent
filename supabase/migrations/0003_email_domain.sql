@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS email_accounts (
   updated_at timestamptz NOT NULL DEFAULT now(),
   deleted_at timestamptz
 );
+ALTER TABLE email_accounts
+  ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+
 CREATE UNIQUE INDEX IF NOT EXISTS email_accounts_org_address_uniq
   ON email_accounts(organization_id, email_address) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS email_accounts_org_status_idx ON email_accounts(organization_id, status);
