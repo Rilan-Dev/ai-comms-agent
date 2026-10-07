@@ -715,3 +715,8 @@ Latest source correction: `apps/web/src/app/api/email-accounts/route.ts` was rep
 - Voice transcript bridge, shared transport contract, organization settings read, member read, and member role/status management are implemented.
 - Runtime/browser verification is intentionally deferred under the active project-owner development-first instruction.
 - No provider credentials or live external connectivity are claimed.
+
+### 2026-10-07 — Deterministic E2E fixture foundation
+- Added `apps/web/src/e2e/fixtures/cross-surface-scenarios.ts` with stable IDs and five cross-surface scenario definitions.
+- This is implementation scaffolding only; no runtime test result is claimed.
+- Runtime/deployment validation remains deferred under the active development-first instruction.
