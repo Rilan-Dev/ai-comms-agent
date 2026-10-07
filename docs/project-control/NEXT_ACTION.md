@@ -646,3 +646,10 @@ Development-first execution continues without waiting for GitHub Actions or Verc
 - A conflicting payload using the same key is rejected instead of silently returning the original action.
 - Added deterministic contract coverage for the conflict behavior.
 - **Next:** continue remaining cross-surface duplicate-action/E2E fixture hardening, then final product-completion implementation before runtime/deployment verification. Do not wait for CI/Vercel.
+
+
+### 2026-10-07 — Scheduled execution duplicate protection
+- Added forward-only migration `0021_scheduled_run_idempotency.sql` with a unique `(scheduled_job_id, fire_at)` index.
+- Scheduler claims now persist `fire_at` and use `ON CONFLICT DO NOTHING` so the same scheduled fire cannot create duplicate runs under concurrent worker claims.
+- Added deterministic scheduling idempotency contract coverage.
+- **Next:** continue remaining deterministic cross-surface fixtures and duplicate-action coverage for email approval, WhatsApp outbound, scheduled/automation execution, organization isolation, and audit traces. CI/Vercel remain non-blocking.
