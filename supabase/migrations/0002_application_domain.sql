@@ -342,19 +342,19 @@ CREATE POLICY storage_objects_member_visibility ON storage_objects USING (app_is
 CREATE OR REPLACE FUNCTION app_is_agent_member(p_agent uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT EXISTS (
-    SELECT 1 FROM agents a WHERE a.id=p_agent AND app_is_org_member(a.organization_id)
+    SELECT 1 FROM aca.agents a WHERE a.id=p_agent AND app_is_org_member(a.organization_id)
   )
 $$;
 CREATE OR REPLACE FUNCTION app_is_email_account_member(p_account uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT EXISTS (
-    SELECT 1 FROM email_accounts e WHERE e.id=p_account AND app_is_org_member(e.organization_id)
+    SELECT 1 FROM aca.email_accounts e WHERE e.id=p_account AND app_is_org_member(e.organization_id)
   )
 $$;
 CREATE OR REPLACE FUNCTION app_is_whatsapp_account_member(p_account uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT EXISTS (
-    SELECT 1 FROM whatsapp_accounts w WHERE w.id=p_account AND app_is_org_member(w.organization_id)
+    SELECT 1 FROM aca.whatsapp_accounts w WHERE w.id=p_account AND app_is_org_member(w.organization_id)
   )
 $$;
 
