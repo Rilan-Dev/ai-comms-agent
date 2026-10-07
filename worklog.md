@@ -642,3 +642,8 @@ Never write "Phase complete" without evidence.
 - Made both `anon` revocations conditional on the role existing; existing Supabase-style environments retain the same revocation behavior, while standalone PostgreSQL can apply the migration without creating an unnecessary runtime role.
 - Migration fix commit: `1df463f4d3c31355412377fca3b78380dae274b0`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0009_rls_helper_hardening.sql:52`: both conditional `DO` blocks used malformed `DO $ ... END $;` delimiters, causing PostgreSQL syntax failure.
+- Corrected both blocks to `DO $$ ... END $$;` without changing the security logic or privileges.
+- Migration fix commit: `e3362d8fdda22606a82d5a4449755c66f3339750`.
+- No CI/Vercel wait and no migration PASS claimed.
