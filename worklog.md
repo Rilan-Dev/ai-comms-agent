@@ -218,3 +218,15 @@ Never write "Phase complete" without evidence.
 - **File changed:** `supabase/migrations/0001_identity_rbac.sql`.
 - **Commit:** `8782abcbcc4f56a6a7e01f837439f6b56fa2b143`.
 - No migration PASS is claimed and no CI/Vercel wait was performed.
+
+
+## 2026-10-07 — Fix application-domain identity schema qualification
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete migration error fix only; no feature development and no project-control documentation changes.
+- Migration progressed through `0001_identity_rbac.sql` and failed in `0002_application_domain.sql` with `relation "organization_memberships" does not exist` inside `app_is_org_member()`.
+- Root cause: `organization_memberships` is stored in the project `aca` schema, while the function uses `SET search_path = public` and referenced the table without qualification.
+- Changed the function query to explicitly reference `aca.organization_memberships`.
+- **File changed:** `supabase/migrations/0002_application_domain.sql`.
+- **Commit:** `2e5e2b268820c599e292dedaf57422e105956dd6`.
+- No migration PASS is claimed and no CI/Vercel wait was performed.
