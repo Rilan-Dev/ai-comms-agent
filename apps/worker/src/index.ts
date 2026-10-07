@@ -1,4 +1,4 @@
-import { isPostgresConfigured } from "@ai-comms-agent/db";
+import { isPostgresConfigured, parseCredentialsMasterKey } from "@ai-comms-agent/db";
 import { startProviderDraftSyncLoop } from "./email/provider-draft-worker";
 import { processApprovedEmailActions } from "./email/action-worker";
 import { processQueuedWhatsAppMessages, verifyPendingWhatsAppAccounts } from "./messaging/whatsapp-worker";
@@ -23,6 +23,17 @@ function healthCheck() {
   ];
   const claraCorePkg = possibleClaraPaths.some((p) => existsSync(resolve(p)));
 
+  let credentialsMasterKeyConfigured = false;
+  const rawCredentialsMasterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
+  if (rawCredentialsMasterKey) {
+    try {
+      parseCredentialsMasterKey(rawCredentialsMasterKey);
+      credentialsMasterKeyConfigured = true;
+    } catch {
+      credentialsMasterKeyConfigured = false;
+    }
+  }
+
   const checks = {
     worker: "ok" as const,
     shared_package: "ok" as const,
@@ -32,6 +43,7 @@ function healthCheck() {
     rabbitmq_configured: Boolean(process.env.RABBITMQ_URL),
     redis_configured: Boolean(process.env.REDIS_URL),
     qdrant_configured: Boolean(process.env.QDRANT_URL),
+    credentials_master_key_configured: credentialsMasterKeyConfigured,
   };
 
   return checks;
@@ -49,9 +61,13 @@ function main() {
 
   const stopProviderDraftSync = startProviderDraftSyncLoop();
   const actionTimer = setInterval(() => { void processApprovedEmailActions(); }, 5_000);
-  const whatsappTimer = setInterval(() => { void processQueuedWhatsAppMessages(); }, 5_000);
+  const whatsappTimer = checks.credentials_master_key_configured
+    ? setInterval(() => { void processQueuedWhatsAppMessages(); }, 5_000)
+    : undefined;
   const whatsappInboundTimer = setInterval(() => { void processRoutedWhatsAppInbound(); }, 5_000);
-  const whatsappVerifyTimer = setInterval(() => { void verifyPendingWhatsAppAccounts(); }, 10_000);
+  const whatsappVerifyTimer = checks.credentials_master_key_configured
+    ? setInterval(() => { void verifyPendingWhatsAppAccounts(); }, 10_000)
+    : undefined;
   const schedulerTimer = setInterval(() => { void processScheduledJobs(); }, 15_000);
   const interval = setInterval(() => { log("health check", healthCheck()); }, HEALTH_INTERVAL_MS);
 
@@ -59,8 +75,8 @@ function main() {
     log(`received ${signal} — shutting down`);
     clearInterval(interval);
     stopProviderDraftSync();
-    clearInterval(actionTimer); clearInterval(whatsappTimer); clearInterval(whatsappInboundTimer);
-    clearInterval(whatsappVerifyTimer); clearInterval(schedulerTimer);
+    clearInterval(actionTimer); if (whatsappTimer) clearInterval(whatsappTimer); clearInterval(whatsappInboundTimer);
+    if (whatsappVerifyTimer) clearInterval(whatsappVerifyTimer); clearInterval(schedulerTimer);
     process.exit(0);
   };
 
