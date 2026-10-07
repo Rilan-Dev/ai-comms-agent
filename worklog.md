@@ -62,3 +62,14 @@ Never write "Phase complete" without evidence.
 - **Files changed:** `apps/web/tsconfig.json`, `apps/worker/tsconfig.json`, `scripts/pre-docker-check.sh`, `scripts/manual-up.sh`, `apps/worker/src/index.ts`.
 - **Commits:** `f0348b5ca05b881f036ed213370425ea1656a2ba`, `07bf330d88051af2e8c0219f14c436e62f8e3c8c`, `c6db13191521799e675078f7c69a7aa1523d8613`, `d454c48fd81394011400b6854201fd9659660225`, `48a0b026aadceb28048338d04580e747eafcf490`.
 - No CI/Vercel wait was performed. No typecheck, preflight, or Docker pass is claimed.
+
+
+## 2026-10-07 — Exclude Clara reference vendor from Docker preflight
+
+- **Owner:** ChatGPT
+- **Scope:** Error-fixing only; no feature development and no project-control documentation changes.
+- User requested that the Clara reference-library vendor be excluded from `scripts/pre-docker-check.sh` checks. Updated the preflight so TypeScript failures consisting only of `vendor/clara` diagnostics are reported as warnings rather than application failures. Application diagnostics remain visible and still fail the preflight.
+- Removed the Clara reference-library boundary scan from this preflight because `vendor/clara` is explicitly reference-only and is not itself an application build input.
+- **File changed:** `scripts/pre-docker-check.sh`.
+- **Commit:** `3909c28dccbd06d1793b2167bb68fd18ed8a193a`.
+- No CI/Vercel wait was performed. No Docker build pass is claimed until the user reruns the preflight.
