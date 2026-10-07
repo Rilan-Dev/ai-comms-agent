@@ -8,6 +8,12 @@ if [[ ! -f .env.docker ]]; then
   exit 1
 fi
 
+# The Clara runtime is provided by the git submodule at vendor/clara. Ensure
+# the working tree contains the pinned submodule contents before Docker builds
+# the application image; Docker build context does not initialize gitlinks.
+git submodule sync -- vendor/clara
+git submodule update --init --recursive vendor/clara
+
 # This compose file intentionally starts application containers only.
 # PostgreSQL, Redis, RabbitMQ, and Qdrant are external services and are never
 # created, managed, or networked as Compose services by this script.
