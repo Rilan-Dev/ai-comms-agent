@@ -162,6 +162,10 @@ CREATE INDEX IF NOT EXISTS email_messages_search_idx ON email_messages USING gin
 CREATE INDEX IF NOT EXISTS email_messages_sender_idx ON email_messages(organization_id, from_email);
 CREATE INDEX IF NOT EXISTS email_messages_action_idx ON email_messages(organization_id, action_required, received_at DESC);
 
+ALTER TABLE email_messages
+  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS search_vector tsvector;
+
 CREATE TABLE IF NOT EXISTS email_attachments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   message_id uuid NOT NULL REFERENCES email_messages(id) ON DELETE CASCADE,
