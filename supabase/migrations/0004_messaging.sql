@@ -48,13 +48,13 @@ BEGIN
   END IF;
 END $$;
 
-DO $
+DO $$
 BEGIN
   IF to_regclass('aca.whatsapp_contacts') IS NOT NULL THEN
     ALTER TABLE whatsapp_contacts
       ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
   END IF;
-END $;
+END $$;
 
 CREATE TABLE IF NOT EXISTS whatsapp_contacts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
