@@ -85,9 +85,10 @@ export async function POST(request: Request) {
       recipientSnapshot: snapshot,
       requestedBy: subject.user.id,
       idempotencyKey,
+      correlationId: crypto.randomUUID(),
     });
 
-    await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: "email.action.requested", targetType: "email_action", targetId: String(action.id), action: String(actionType), decision: "pending_approval", metadata: { emailAccountId, draftId, idempotencyKey } });
+    await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: "email.action.requested", targetType: "email_action", targetId: String(action.id), action: String(actionType), decision: "pending_approval", correlationId: action.correlationId, metadata: { emailAccountId, draftId, idempotencyKey } });
     return NextResponse.json({
       action,
       status: "pending_approval",
@@ -117,7 +118,7 @@ export async function PATCH(request: Request) {
     );
     const action = await decideEmailAction(organizationId, actionId, subject.user.id, decision, typeof body?.comment === "string" ? body.comment.slice(0, 1000) : null);
     if (!action) return NextResponse.json({ error: "conflict", message: "The action is no longer pending, has expired, or does not belong to this organization." }, { status: 409 });
-    await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: `email.action.${decision}`, targetType: "email_action", targetId: actionId, action: decision, decision: "allowed", metadata: { comment: typeof body?.comment === "string" ? body.comment.slice(0, 1000) : null } });
+    await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: `email.action.${decision}`, targetType: "email_action", targetId: actionId, action: decision, decision: "allowed", correlationId: action.correlationId, metadata: { comment: typeof body?.comment === "string" ? body.comment.slice(0, 1000) : null } });
     return NextResponse.json({ action });
   } catch (error) {
     return authorizationErrorToResponse(error);
