@@ -125,8 +125,18 @@ CREATE POLICY knowledge_chunks_member_manage ON knowledge_chunks FOR ALL TO auth
 USING (can_access_organization(organization_id))
 WITH CHECK (can_access_organization(organization_id));
 
-CREATE POLICY storage_objects_member_visibility ON storage_objects FOR SELECT TO authenticated
-USING (can_access_organization(organization_id));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = current_schema()
+      AND tablename = 'storage_objects'
+      AND policyname = 'storage_objects_member_visibility'
+  ) THEN
+    EXECUTE $policy$CREATE POLICY storage_objects_member_visibility ON storage_objects FOR SELECT TO authenticated
+USING (can_access_organization(organization_id));$policy$;
+  END IF;
+END $$;
 CREATE POLICY storage_objects_member_manage ON storage_objects FOR ALL TO authenticated
 USING (can_access_organization(organization_id))
 WITH CHECK (can_access_organization(organization_id));
