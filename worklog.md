@@ -2004,3 +2004,14 @@ Next implementation: deterministic cross-surface E2E fixtures and duplicate-acti
 - **File changed:** `packages/db/src/audit/repository.ts`.
 - **Commit:** `50bcfcc8589aa493dcbcc3269dc041cadb75b051`.
 - No CI/Vercel wait was performed. No typecheck pass is claimed until the user reruns `npm run typecheck`.
+
+
+## 2026-10-07 — WhatsApp inbound executionId scope correction
+
+- **Owner:** ChatGPT
+- **Scope:** Error-fixing only; no feature development and no project-control documentation changes.
+- User reran `npm run typecheck`; `packages/shared`, `packages/clara-core`, and `packages/db` passed, while `apps/worker` failed with TS2304 at `apps/worker/src/messaging/whatsapp-inbound-worker.ts(85,24)`: `executionId` was referenced from the `catch` block outside the scope where it had been declared.
+- Moved the existing `executionId` derivation to the per-message scope before the `try` block and removed the inner redeclaration. This preserves the existing correlation behavior for both success and failure audit records and changes only variable scope.
+- **File changed:** `apps/worker/src/messaging/whatsapp-inbound-worker.ts`.
+- **Commit:** `56896ede9cf5d041452421dab2c6f91998b3181a`.
+- No CI/Vercel wait was performed. No typecheck pass is claimed until the user reruns `npm run typecheck`.
