@@ -239,6 +239,9 @@ CREATE TABLE IF NOT EXISTS email_sync_events (
 ALTER TABLE email_sync_events
   ADD COLUMN IF NOT EXISTS provider_event_id text;
 
+ALTER TABLE email_sync_events
+  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+
 CREATE UNIQUE INDEX IF NOT EXISTS email_sync_events_provider_event_uniq
   ON email_sync_events(email_account_id, provider_event_id)
   WHERE provider_event_id IS NOT NULL;
