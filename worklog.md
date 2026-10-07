@@ -570,3 +570,8 @@ Never write "Phase complete" without evidence.
 - These guards only alter an already-existing table when it is missing `organization_id`; clean databases retain the original table definitions. No application feature code or project-control documentation was changed.
 - Fix commits: `729960758f68a0783ba8997c3b1de975fce550df`, `10b820ce7699e356f56eaadce9c05ac64eab14fa`, `0df4821b0ec0da207bdbd8e2cbb442e93d178169`, `d2745af12adf6f7740c491358e48d4a331bc6a78`, `4c8bb1236880ef4bc4f922c57ac7490219705d69`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0003_email_domain.sql:20`: malformed PL/pgSQL dollar delimiters used `DO $` / `END $;` instead of `DO $$` / `END $$;`.
+- Corrected only that migration block; no application feature code or reset/migrate scripts were changed.
+- Migration fix commit: `6fb9b144da5fd08743c4792234fd792ce03fcf52`.
+- No CI/Vercel wait and no migration PASS claimed.
