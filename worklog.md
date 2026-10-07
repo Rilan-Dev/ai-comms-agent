@@ -118,3 +118,14 @@ Never write "Phase complete" without evidence.
 - **File changed:** `.env.docker.example`.
 - **Commit:** `81bda0a4f12184fe569d38a927db52297880dd4c`.
 - No credentials were added and no CI/Vercel wait was performed.
+
+
+## 2026-10-07 — Fix Clara runtime contract export build error
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete Docker build error fix only; no feature development, no project-control documentation changes, and no vendor modification.
+- The self-hosted Docker worker build reached the local Clara package but failed with TS2459 because `packages/clara-core/src/index.ts` re-exported `ClaraRuntimeContext`, `ClaraAgentTurnRequest`, and `ClaraAgentTurn` from `runtime.ts`, while `runtime.ts` only imported those types from `types.ts` and did not re-export them.
+- Re-exported the three local Clara contract types from `runtime.ts`, restoring the package's declared public API without reintroducing any `vendor/clara` dependency.
+- **File changed:** `packages/clara-core/src/runtime.ts`.
+- **Commit:** `d7e4cb4660c232d70f1cdec6fae31680bd18f2d6`.
+- No CI/Vercel wait and no Docker PASS claimed; the next server build should surface the next concrete error if one remains.
