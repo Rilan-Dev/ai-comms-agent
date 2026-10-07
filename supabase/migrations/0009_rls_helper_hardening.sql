@@ -10,13 +10,13 @@ RETURNS boolean
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = aca, public
 AS $$
   SELECT NULLIF(current_setting('app.user_id', true), '')::uuid IS NOT NULL
     AND p_user_id = NULLIF(current_setting('app.user_id', true), '')::uuid
     AND EXISTS (
       SELECT 1
-      FROM organization_memberships m
+      FROM aca.organization_memberships m
       WHERE m.organization_id = p_organization_id
         AND m.user_id = NULLIF(current_setting('app.user_id', true), '')::uuid
         AND m.status = 'active'
@@ -31,13 +31,13 @@ RETURNS boolean
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = aca, public
 AS $$
   SELECT NULLIF(current_setting('app.user_id', true), '')::uuid IS NOT NULL
     AND p_user_id = NULLIF(current_setting('app.user_id', true), '')::uuid
     AND EXISTS (
       SELECT 1
-      FROM organization_memberships m
+      FROM aca.organization_memberships m
       WHERE m.organization_id = p_organization_id
         AND m.user_id = NULLIF(current_setting('app.user_id', true), '')::uuid
         AND m.status = 'active'
