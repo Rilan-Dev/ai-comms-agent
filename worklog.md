@@ -632,3 +632,8 @@ Never write "Phase complete" without evidence.
 - Made that policy creation idempotent with a `pg_policies` existence guard while preserving the existing policy definition.
 - Migration fix commit: `e1748b2d819f3a59fcb2545be3613e0159d7a1e2`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0008_api_keys_knowledge_storage.sql:111`: the partially-applied database already contained the `api_keys_admin_visibility` RLS policy, while this migration recreated it unconditionally.
+- Made the seven remaining unconditional API/knowledge/storage RLS policy creations in this migration idempotent with `pg_policies` existence guards, preserving their existing definitions. The existing storage visibility guard remains unchanged.
+- Migration fix commit: `de17b2f982e00cd69b29a7b81715f7b8e07a9bdc`.
+- No CI/Vercel wait and no migration PASS claimed.
