@@ -73,11 +73,11 @@ export async function processApprovedEmailActions(limit = 10) {
       const value = result.value as { kind: string; ref: { message_id: string; provider_message_id: string } };
       if (action.actionType === "send_email" && action.draftId) await markLocalDraftSentForOrganization(action.organizationId, action.draftId, value.ref.provider_message_id);
       await completeEmailAction(action.id, "completed", { provider: account.provider, kind: value.kind, providerMessageId: value.ref.provider_message_id });
-      await recordAuditEvent({ organizationId: action.organizationId, actorUserId: action.approvedBy, eventType: "email.action.completed", targetType: "email_action", targetId: action.id, action: action.actionType, decision: "allowed", metadata: { provider: account.provider, providerMessageId: value.ref.provider_message_id } });
+      await recordAuditEvent({ organizationId: action.organizationId, actorUserId: action.approvedBy, eventType: "email.action.completed", targetType: "email_action", targetId: action.id, action: action.actionType, decision: "allowed", correlationId: action.correlationId, metadata: { provider: account.provider, providerMessageId: value.ref.provider_message_id } });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Provider execution failed";
       await completeEmailAction(action.id, "failed", {}, message);
-      await recordAuditEvent({ organizationId: action.organizationId, actorUserId: action.approvedBy, eventType: "email.action.failed", targetType: "email_action", targetId: action.id, action: action.actionType, decision: "denied", metadata: { error: message } });
+      await recordAuditEvent({ organizationId: action.organizationId, actorUserId: action.approvedBy, eventType: "email.action.failed", targetType: "email_action", targetId: action.id, action: action.actionType, decision: "denied", correlationId: action.correlationId, metadata: { error: message } });
     }
   }
   return { processed };
