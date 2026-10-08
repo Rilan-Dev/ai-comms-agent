@@ -121,3 +121,10 @@ Task:
 <TASK>
 
 Classify it as SAFE-LOCAL, AUTHORIZED, or MATERIAL-CHANGE. Execute safe/already-authorized work without disturbing active agents. For material change, record impact and route for authorization. Record the session, work, lessons, blockers, and exact next action.
+
+
+## User-friendly invocation guide
+
+For the clearest situation-based instructions and minimal-effort copy/paste prompts, use `docs/project-control/HOW_TO_USE_AGENTS.md` first. This is the human-facing guide; this file remains the role invocation reference.
+
+The user may start a fresh chat with any registered role at any time. The role must recover repository state, shared memory, central session/event/handoff/backlog records, role-local memory/worklog, authorization, and NEXT_ACTION itself. No previous chat transcript is required.
