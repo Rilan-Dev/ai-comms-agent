@@ -805,3 +805,12 @@ Next: continue deterministic audit/event assertions and remaining cross-surface 
 - Added injectable provider-event bridge test coverage proving automation failure isolation.
 - No provider credentials, external delivery, CI success, or Vercel readiness claimed.
 - **Next**: continue remaining communication-loop edge cases and deterministic E2E/audit/idempotency hardening.
+
+
+### 2026-10-08 — Cross-surface duplicate/conflict hardening
+- ChatGPT continued implementation without waiting for CI/Vercel.
+- Deterministic PostgreSQL cross-surface adapters now explicitly reject conflicting email approval payloads and conflicting WhatsApp outbound payloads when the same idempotency key is reused.
+- Scheduled-fire scenario now performs a second claim and fails if a duplicate durable run is created.
+- Corrected email and WhatsApp worker imports to use the existing shared provider retry classifier rather than leaving an unresolved runtime/type boundary.
+- No provider delivery is fabricated; verification remains a later milestone.
+- Latest implementation commit: `64485e8c9478c6881f488f00ae624a3657e17a07`.
