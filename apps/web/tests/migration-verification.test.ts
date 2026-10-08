@@ -202,6 +202,28 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
     });
   });
 
+  describe("Application-owned authentication", () => {
+    it("creates password credentials, opaque sessions, and login-attempt tables", () => {
+      const authMigration = readFileSync(
+        resolve(__dirname, "../../../supabase/migrations/0022_application_authentication.sql"),
+        "utf8",
+      );
+      expect(authMigration).toContain("CREATE TABLE IF NOT EXISTS aca.auth_credentials");
+      expect(authMigration).toContain("CREATE TABLE IF NOT EXISTS aca.auth_sessions");
+      expect(authMigration).toContain("CREATE TABLE IF NOT EXISTS aca.auth_login_attempts");
+      expect(authMigration).toContain("REVOKE ALL ON aca.auth_credentials FROM PUBLIC");
+    });
+
+    it("does not introduce hosted Supabase Auth runtime calls", () => {
+      const loginSource = readFileSync(
+        resolve(__dirname, "../src/app/api/auth/login/route.ts"),
+        "utf8",
+      );
+      expect(loginSource).not.toContain("SUPABASE_URL");
+      expect(loginSource).not.toContain("/auth/v1/token");
+    });
+  });
+
   describe("Core identity tables", () => {
     it("contains organizations table with unique slug", () => {
       expect(migrationSql).toContain("CREATE TABLE IF NOT EXISTS organizations");
