@@ -1,6 +1,7 @@
 import { loadWhatsAppCredential, listQueuedWhatsAppOutbound, markWhatsAppOutboundFailed, markWhatsAppOutboundSent, parseCredentialsMasterKey, recordAuditEvent } from "@ai-comms-agent/db";
 import { getWhatsAppAccountForOrganization, listPendingWhatsAppAccounts, updateWhatsAppAccountStatus } from "@ai-comms-agent/db";
 import { emitProviderEvent } from "../events/provider-events";
+import { isRetryableProviderError } from "../email/retry";
 
 const GRAPH_HOST = "https://graph.facebook.com";
 
