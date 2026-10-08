@@ -1030,3 +1030,17 @@ ChatGPT takeover correction for the reported inactive login experience:
 
 ### 2026-10-09 — Authentication false-success loop fix
 FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` loop to session creation occurring before active organization-membership authorization. `loginWithPassword` now requires at least one active membership before creating `aca-access-token`; otherwise it records the failed provisioning attempt and returns `account_not_provisioned`. The login route maps this to HTTP 403, and auth-boundary regression coverage locks the guard. No membership is auto-created/reactivated. Commit: `197e6535eab0cafde3e84db8f0605b7a174b3b03`. Runtime deployment/verification remains OPS-01 scope.
+
+
+### 2026-10-09 — Live PostgreSQL audit schema drift correction
+
+- **Owner:** ChatGPT
+- **Scope:** FIX-01 runtime error correction; no feature-scope expansion.
+- User supplied live Docker logs after the owner→admin authorization correction. The web process was healthy, but /api/overview failed on PostgreSQL 42703 for missing audit_events.decision, and /api/agents failed on missing audit_events.agent_id. Worker health simultaneously confirmed PostgreSQL was configured and reachable.
+- Root cause was two-layer schema drift: manual startup rebuilt containers without applying the migration chain, and older existing audit_events tables were not reconciled by CREATE TABLE IF NOT EXISTS.
+- Added supabase/migrations/0023_audit_schema_reconciliation.sql with idempotent agent_id and decision additions plus indexes.
+- Updated scripts/manual-up.sh to run the canonical scripts/migrate.sh against the DATABASE_URL resolved from .env.docker before starting Compose.
+- Added static regression coverage in apps/web/tests/migration-verification.test.ts for the reconciliation and manual-start migration boundary.
+- **Commits:** 54f2c883c4c7250f9e83c6bde8e1c6a8fe64d83a, 7fe343eb06e96344e9f53dddb8488801b38fa4df, 25c37101d8fc4c2520d6ee0b4586cb723b2d46a9.
+- **Verification:** Source changes are committed. Live runtime has not yet been re-tested after applying migration 0023; no runtime PASS is claimed.
+- **Next:** pull current main, rerun bash scripts/manual-up.sh, then retry /api/overview and authenticated agent creation. Continue development without waiting for CI/Vercel.
