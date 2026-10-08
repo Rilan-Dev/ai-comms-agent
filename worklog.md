@@ -843,3 +843,22 @@ Next: continue deterministic audit/event assertions and remaining cross-surface 
 - Hardened deterministic cross-surface E2E coverage so duplicate concurrent email approval deliveries can produce exactly one state transition.
 - Corrected WhatsApp outbound failure persistence so provider error details are stored in `provider_error` instead of being discarded.
 - No provider delivery is fabricated and no validation gate was treated as blocking development.
+
+
+## Task ID: 15
+## Phase: Product Completion — WhatsApp Provider Status Isolation
+
+- **Status**: implemented
+- **Owner**: ChatGPT
+- **Date**: 2026-10-08
+
+### Changes
+- Scoped WhatsApp provider-status updates by both organization and WhatsApp account in the authoritative PostgreSQL repository.
+- Updated the signed WhatsApp webhook handler to pass the resolved organization/account scope into status mutation.
+- Added deterministic regression coverage proving the account/organization predicate and webhook propagation are present.
+- This prevents a provider-message-ID collision from mutating another tenant/account's message.
+- No provider credentials or external delivery success were fabricated.
+- CI/Vercel were not awaited, per the active development-first instruction.
+
+### Next
+Continue remaining Mail/WhatsApp/Chat/Voice edge-case hardening and deterministic audit/event assertions, then prepare final runtime/deployment verification.
