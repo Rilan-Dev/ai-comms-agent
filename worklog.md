@@ -956,3 +956,15 @@ ChatGPT takeover correction for the reported inactive login experience:
 - No CI/Vercel wait and no migration PASS claimed.
 
 - Fixed the reported worker PostgreSQL error `invalid input value for enum whatsapp_status: "pending"` by reconciling the existing WhatsApp account status enum expected by the worker. The migration now safely adds the required `organization_id` shape before WhatsApp contact/message operations; no application feature code changed.
+
+
+
+## 2026-10-08 — Streamline reset-and-migrate logging
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete reset-script logging improvement only; no migration SQL or application feature changes.
+- The reset-and-migrate command previously exposed the full PostgreSQL migration transcript, including routine NOTICE/CREATE/ALTER output, making the successful reset flow difficult to read and obscuring the actionable error when a migration failed.
+- Updated `scripts/reset-and-migrate.sh` to capture reset/migration output internally, show concise success summaries with applied/skipped migration counts, and on failure surface only the relevant ERROR context plus a path to the preserved full log.
+- `scripts/migrate.sh` remains unchanged and continues to provide its existing detailed output when run directly.
+- No CI/Vercel wait was performed and no migration PASS is claimed beyond the user-provided successful migration run.
+- **Commit:** f3db252f2d092bac21c86a2521edc2581999bdcc.
