@@ -23,3 +23,16 @@ A fresh chat may invoke any agent at any time. The next agent must be able to di
 ## Concurrency rule
 
 Multiple sessions may be ACTIVE simultaneously. Session records are coordination evidence only; they do not grant authorization and do not require another agent to stop.
+
+
+### FIX01-MAIL-TENANT-20261009 — 2026-10-09
+- **Agent:** FIX-01 / Sentinel
+- **Invocation:** Diagnose and fix the user's `/api/email-accounts` 403 `not_member` response.
+- **Started from:** `main` after audit migration 0024 source correction.
+- **Scope:** Root-cause diagnosis, minimal source fix, regression test, project-control records.
+- **Status:** HANDOFF
+- **Completed:** Found that `/mail/accounts` chose `getDevOrgId()`; changed it to use the authenticated active organization and added a static test.
+- **Pending:** User/runtime deployment must pull latest main, apply migration 0024, and retry with a fresh session. No runtime PASS claimed.
+- **Blockers:** Runtime access and deployment confirmation are external to this source correction.
+- **Handoff:** ISS-009 / EVT-FIX01-MAIL-TENANT-20261009.
+- **Next action:** Follow `docs/project-control/NEXT_ACTION.md`; do not weaken membership authorization.
