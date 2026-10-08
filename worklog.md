@@ -1146,3 +1146,5 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Prevented an OAuth configuration edit from changing the Google client ID while silently retaining the previous client's secret. The API now requires the new secret when the client ID changes; regression coverage added.
 - Commits: `8ce79d36` migration-prefix test correction; `4a7d9c9f` client ID/secret pairing guard; `286d2bea` regression assertion.
 - Tests were not executed. Deployment, migrations 0024–0026, Google callback allowlisting and end-to-end OAuth remain pending.
+
+- Follow-up correction: legacy migrations already contain historical duplicate prefixes (for example 0002/0003), so the regression assertion was narrowed to require exactly one 0025 WhatsApp migration and exactly one 0026 Gmail migration rather than imposing a repository-wide numbering rule. The test has not been run.
