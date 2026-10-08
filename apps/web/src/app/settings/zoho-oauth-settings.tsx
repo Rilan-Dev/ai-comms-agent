@@ -78,6 +78,7 @@ export function ZohoOAuthSettings({ organizationId }: { organizationId: string }
       </div>
       {notice ? <p role="status" className="mt-4 rounded-xl border bg-muted/30 px-4 py-3 text-sm">{notice}</p> : null}
       <p className="mt-4 break-all rounded-xl border bg-muted/20 p-3 text-xs"><strong>Current callback URI:</strong> {callback}</p>
+      {callback.startsWith("http://") && !callback.includes("localhost") && !callback.includes("127.0.0.1") ? <p role="alert" className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs">This is a non-local HTTP callback. Use an HTTPS domain and register the callback URI in Zoho API Console before connecting.</p> : null}
       <div className="mt-5 space-y-3">
         {loading ? <p className="text-sm text-muted-foreground">Loading configurations…</p> : configs.length === 0 ? <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No Zoho OAuth clients configured yet.</p> : configs.map((config) => (
           <div key={config.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4">
