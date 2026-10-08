@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository, activateVoiceSessionForOrganization, createVoiceSession, endVoiceSessionForOrganization, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, recordVoiceTelemetry } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, activateVoiceSessionForOrganization, configureStartingVoiceSessionForOrganization, createVoiceSession, endVoiceSessionForOrganization, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, recordVoiceTelemetry } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -24,9 +24,38 @@ export async function POST(request: Request) {
     const kbId = process.env.CLARA_KB_ID?.trim();
     if (!kbId) return NextResponse.json({ error: "configuration_required", message: "CLARA_KB_ID is not configured." }, { status: 503 });
 
-    const session = await claraRuntime.startRealtimeSession({ orgId: organizationId, agentId, kbId, userId: subject.user.id, sessionId: crypto.randomUUID() });
-    const persisted = await createVoiceSession({ organizationId, agentId, userId: subject.user.id, conversationId, provider: session.realtimeProvider, model: session.model, voiceId: session.voiceId, metadata: { sessionEndpoint: session.sessionEndpoint } });
-    return NextResponse.json({ session: persisted, transport: session });
+    // Persist the lifecycle record before requesting realtime transport details,
+    // so failures cannot leave an untracked session that the UI believes started.
+    const persisted = await createVoiceSession({ organizationId, agentId, userId: subject.user.id, conversationId });
+    try {
+      const transport = await claraRuntime.startRealtimeSession({
+        orgId: organizationId,
+        agentId,
+        kbId,
+        userId: subject.user.id,
+        sessionId: String(persisted.id),
+      });
+      const configured = await configureStartingVoiceSessionForOrganization({
+        organizationId,
+        sessionId: String(persisted.id),
+        provider: transport.realtimeProvider,
+        model: transport.model,
+        voiceId: transport.voiceId,
+        metadata: { sessionEndpoint: transport.sessionEndpoint },
+      });
+      if (!configured) {
+        await endVoiceSessionForOrganization(organizationId, String(persisted.id), "error");
+        return NextResponse.json({ error: "session_start_failed", message: "Voice session could not be initialized." }, { status: 409 });
+      }
+      return NextResponse.json({ session: configured, transport });
+    } catch (error) {
+      try {
+        await endVoiceSessionForOrganization(organizationId, String(persisted.id), "error");
+      } catch (cleanupError) {
+        console.error("[voice/session] failed to close an unsuccessful start", cleanupError);
+      }
+      throw error;
+    }
   } catch (error) {
     return authorizationErrorToResponse(error);
   }
