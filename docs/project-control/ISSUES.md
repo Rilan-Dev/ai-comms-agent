@@ -147,3 +147,13 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - Fixed `scripts/manual-up.sh` to translate the hostname for the migration subprocess and added `apps/web/tests/manual-deploy-migration-host.test.ts`.
 - Commits: `6e1decb7031ca28c685565cc15e475c2867e1d95`, `740d3d4d57e2b3e38b0975aad7cc23d2d9ed2ea9`.
 - **Status remains in_progress** until `bash scripts/manual-up.sh` confirms the migration chain completes and authenticated runtime requests succeed.
+
+
+### ISS-008 follow-up — legacy audit columns still required (2026-10-09)
+- **Symptom:** After migration 0023 completed and the rebuilt web/worker containers started, authenticated agent creation failed with PostgreSQL SQLSTATE 23502: null value in `audit_events.resource_type`.
+- **Root cause:** The live `aca.audit_events` table predates the current audit contract and still contains legacy `resource_type` and `outcome` columns marked NOT NULL. The current repository writer inserts `target_type` and `decision`; `CREATE TABLE IF NOT EXISTS` and migration 0023 did not reconcile the nullability of the retired columns.
+- **Remedy:** Added forward-only migration `0024_audit_legacy_column_compatibility.sql`. It conditionally drops NOT NULL from legacy columns only when they exist and are currently NOT NULL, preserving existing rows and leaving current columns/contracts unchanged.
+- **Regression prevention:** Added static tests that assert both legacy columns are reconciled conditionally.
+- **Commits:** migration `14bea1c3`; test `4ef3921d`.
+- **Verification:** User-provided logs confirm migrations through 0023 and application startup; 0024 has not yet been applied to the live database. Runtime agent creation remains failing/unverified until the new migration is applied and the request is retried.
+- **Next action:** pull main and run `bash scripts/manual-up.sh`; then retry authenticated agent creation. Share only redacted error output if it still fails.
