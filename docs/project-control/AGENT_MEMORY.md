@@ -91,5 +91,5 @@ If shared memory conflicts with current repository state or current requirements
 
 
 ### DEV-01 / Forge — 2026-10-09 migration sequencing
-- Check migration filename prefixes across the whole repository before adding a migration; never reuse a numeric sequence even when the runner keys its ledger by filename.
+- Check existing migration filenames before adding a migration and avoid colliding with the current/latest sequence even though older historical migration groups contain duplicate prefixes. The recent sequence is guarded by a regression test.
 - Gmail OAuth configuration migration is `0026_gmail_oauth_configuration.sql`; WhatsApp outbound claim lifecycle is `0025_whatsapp_outbound_claim_lifecycle.sql`.
