@@ -50,8 +50,9 @@ export class PostgresAuthRepository {
     organizationSlug: string;
   }): Promise<{ userId: string; organizationId: string | null }> {
     return withTransaction(async (client) => {
+      await client.query("LOCK TABLE aca.auth_credentials IN SHARE ROW EXCLUSIVE MODE");
       const credentials = await client.query<{ count: string }>(
-        "SELECT count(*)::text AS count FROM aca.auth_credentials FOR UPDATE",
+        "SELECT count(*)::text AS count FROM aca.auth_credentials",
       );
       if (Number(credentials.rows[0]?.count ?? 0) > 0) {
         throw new Error("already_initialized");
