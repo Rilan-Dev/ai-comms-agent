@@ -474,3 +474,7 @@ Gmail OAuth client registrations are now organization-scoped platform configurat
 
 ### 2026-10-09 — WhatsApp outbound concurrency correction
 Added migration 0025 for the outbound `executing` state, atomic `SKIP LOCKED` claims, stale-lease fail-closed recovery, and late provider-success persistence-conflict auditing. Added worker regression tests. Validation remains pending; no CI/Vercel/runtime pass is claimed.
+
+
+### 2026-10-09 — Migration sequence correction
+Gmail OAuth configuration is sequenced as `0026_gmail_oauth_configuration.sql`; `0025_whatsapp_outbound_claim_lifecycle.sql` retains sequence 0025. The Gmail migration regression test now asserts unique numeric migration prefixes. Migrations and runtime remain unverified; no PASS is claimed.
