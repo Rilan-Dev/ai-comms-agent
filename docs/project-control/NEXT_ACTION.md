@@ -12,10 +12,10 @@ role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
   Deploy and configure the multi-client Gmail OAuth implementation now committed to main.
-  Migration 0025 adds organization-scoped OAuth clients; Settings encrypts client secrets;
+  Migration 0026 adds organization-scoped OAuth clients; Settings encrypts client secrets;
   /mail/accounts selects an enabled client; OAuth start/callback use that saved client;
   worker token refresh uses the client credentials inside the encrypted mailbox credential.
-  Pull main and run bash scripts/manual-up.sh to apply pending migrations 0024 and 0025.
+  Pull main and run bash scripts/manual-up.sh to apply pending migrations 0024, 0025 (WhatsApp claim lifecycle), and 0026 (Gmail OAuth configuration).
   Then add OAuth client records in Settings, register the displayed callback URI in Google
   Cloud Console, and retry Gmail connection. Keep CREDENTIALS_MASTER_KEY server-only.
   Do not wait for CI/Vercel; no tests, build, migration, or runtime OAuth PASS is claimed.
