@@ -1062,3 +1062,13 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Added a focused regression test for this host/container boundary.
 - Commits: `6e1decb7031ca28c685565cc15e475c2867e1d95`, `740d3d4d57e2b3e38b0975aad7cc23d2d9ed2ea9`, `b32b016b29a4caabeb00ddfc1c1aea0b48dc949f`.
 - Runtime status remains unverified: the migration chain has not yet been shown to complete, and the old containers may still be serving the previous schema. Next: pull main and run `bash scripts/manual-up.sh`; then test the application only after migrations complete.
+
+
+### 2026-10-09 — Legacy audit schema compatibility correction
+- **Owner:** ChatGPT / FIX-01 Sentinel
+- **Observed symptom:** User successfully applied migration chain through 0023 and rebuilt/restarted web and worker. Worker logs report configured dependencies and ready state; authenticated agent creation then fails with PostgreSQL 23502 because `audit_events.resource_type` is NULL.
+- **Root cause:** An older deployed `audit_events` table retains legacy NOT NULL `resource_type` and `outcome` columns. Current application writes `target_type` and `decision`, so the old columns reject otherwise-valid audit inserts. Migration 0023 only reconciled `agent_id` and `decision`.
+- **Remedy:** Added forward-only `0024_audit_legacy_column_compatibility.sql`, conditionally dropping NOT NULL on the retired columns when present; added static migration regression tests.
+- **Commits:** `14bea1c3` (migration), `4ef3921d` (test).
+- **Verification boundary:** The user's output proves migration 0023 completed and the new images built/started. It does not prove migration 0024 or authenticated agent creation yet. No full runtime PASS is claimed.
+- **Next:** Pull current main and rerun `bash scripts/manual-up.sh`; retry authenticated agent creation. Continue source work without waiting for CI/Vercel.
