@@ -1,4 +1,4 @@
-import { query } from "../client";
+import { query, withTransaction } from "../client";
 
 export interface AuthCredentialRecord {
   userId: string;
@@ -40,6 +40,68 @@ export class PostgresAuthRepository {
   async countCredentials(): Promise<number> {
     const result = await query<{ count: string }>(`SELECT count(*)::text AS count FROM aca.auth_credentials`);
     return Number(result.rows[0]?.count ?? 0);
+  }
+
+  async bootstrapInitialAccount(input: {
+    email: string;
+    name: string;
+    passwordHash: string;
+    organizationName: string;
+    organizationSlug: string;
+  }): Promise<{ userId: string; organizationId: string | null }> {
+    return withTransaction(async (client) => {
+      const credentials = await client.query<{ count: string }>(
+        "SELECT count(*)::text AS count FROM aca.auth_credentials FOR UPDATE",
+      );
+      if (Number(credentials.rows[0]?.count ?? 0) > 0) {
+        throw new Error("already_initialized");
+      }
+
+      let user = await client.query<Record<string, unknown>>(
+        "SELECT id, status FROM aca.users WHERE email = $1 AND deleted_at IS NULL FOR UPDATE",
+        [input.email],
+      );
+
+      let userId: string;
+      if (user.rows[0]) {
+        if (String(user.rows[0].status) !== "active") throw new Error("account_unavailable");
+        userId = String(user.rows[0].id);
+        await client.query(
+          "UPDATE aca.users SET name = $2, updated_at = now() WHERE id = $1",
+          [userId, input.name],
+        );
+      } else {
+        const inserted = await client.query<Record<string, unknown>>(
+          "INSERT INTO aca.users (email, name, status) VALUES ($1, $2, 'active') RETURNING id",
+          [input.email, input.name],
+        );
+        userId = String(inserted.rows[0]?.id);
+      }
+
+      await client.query(
+        "INSERT INTO aca.auth_credentials (user_id, password_hash) VALUES ($1, $2)",
+        [userId, input.passwordHash],
+      );
+
+      const membership = await client.query<{ organization_id: string }>(
+        "SELECT organization_id FROM aca.organization_memberships WHERE user_id = $1 ORDER BY created_at ASC LIMIT 1",
+        [userId],
+      );
+      if (membership.rows[0]) {
+        return { userId, organizationId: membership.rows[0].organization_id };
+      }
+
+      const org = await client.query<Record<string, unknown>>(
+        "INSERT INTO aca.organizations (name, slug, status) VALUES ($1, $2, 'active') RETURNING id",
+        [input.organizationName, input.organizationSlug],
+      );
+      const organizationId = String(org.rows[0]?.id);
+      await client.query(
+        "INSERT INTO aca.organization_memberships (organization_id, user_id, role, status) VALUES ($1, $2, 'owner', 'active')",
+        [organizationId, userId],
+      );
+      return { userId, organizationId };
+    });
   }
 
   async upsertPassword(userId: string, passwordHash: string): Promise<void> {
