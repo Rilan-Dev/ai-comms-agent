@@ -14,6 +14,7 @@ import { CapabilityNotSupported } from "@ai-comms-agent/shared";
 import { createEmailProviderRegistry } from "./registry";
 import { verifyEmailProviderConnection } from "./provider-verification";
 import { emitProviderEvent } from "../events/provider-events";
+import { isRetryableProviderError } from "./retry";
 
 export async function processApprovedEmailActions(limit = 10) {
   if (!process.env.DATABASE_URL) return { processed: 0 };
