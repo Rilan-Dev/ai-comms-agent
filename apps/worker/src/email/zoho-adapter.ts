@@ -58,9 +58,14 @@ export class ZohoAdapter implements EmailProvider {
   private refreshToken?: string;
   private expiresAt?: number;
   private refreshPromise?: Promise<void>;
+  private oauthClientId?: string;
+  private oauthClientSecret?: string;
 
   async connect(credentials: EmailCredentials): Promise<void> {
     if (!credentials.access_token) throw new Error("Zoho requires an OAuth access token");
+    const stored = credentials as unknown as Record<string, unknown>;
+    this.oauthClientId = typeof stored.zoho_client_id === "string" ? stored.zoho_client_id : undefined;
+    this.oauthClientSecret = typeof stored.zoho_client_secret === "string" ? stored.zoho_client_secret : undefined;
     this.accessToken = credentials.access_token;
     this.refreshToken = credentials.refresh_token;
     this.apiDomain = normalizeZohoApiDomain(required(credentials.api_domain, "api_domain"));
@@ -80,6 +85,8 @@ export class ZohoAdapter implements EmailProvider {
     this.accountId = undefined;
     this.expiresAt = undefined;
     this.refreshPromise = undefined;
+    this.oauthClientId = undefined;
+    this.oauthClientSecret = undefined;
   }
 
   capabilities(): CapabilitySet { return { ...CAPABILITIES }; }
@@ -90,9 +97,9 @@ export class ZohoAdapter implements EmailProvider {
     if (this.refreshPromise) return this.refreshPromise;
     const accountsDomain = zohoAccountsDomain(this.apiDomain!);
     this.refreshPromise = (async () => {
-      const clientId = process.env.ZOHO_OAUTH_CLIENT_ID;
-      const clientSecret = process.env.ZOHO_OAUTH_CLIENT_SECRET;
-      if (!clientId || !clientSecret) throw new Error("Zoho OAuth client configuration is missing");
+      const clientId = this.oauthClientId;
+      const clientSecret = this.oauthClientSecret;
+      if (!clientId || !clientSecret) throw new Error("Zoho OAuth client configuration is missing from the encrypted account credential.");
       const response = await fetch(`${accountsDomain}/oauth/v2/token`, {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
