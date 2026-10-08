@@ -12,6 +12,7 @@ import type { DraftParams, EmailCredentials } from "@ai-comms-agent/shared";
 import { CapabilityNotSupported } from "@ai-comms-agent/shared";
 import { createEmailProviderRegistry } from "./registry";
 import { verifyEmailProviderConnection } from "./provider-verification";
+import { emitProviderEvent } from "../events/provider-events";
 
 export async function processApprovedEmailActions(limit = 10) {
   if (!process.env.DATABASE_URL) return { processed: 0 };
@@ -73,10 +74,12 @@ export async function processApprovedEmailActions(limit = 10) {
       const value = result.value as { kind: string; ref: { message_id: string; provider_message_id: string } };
       if (action.actionType === "send_email" && action.draftId) await markLocalDraftSentForOrganization(action.organizationId, action.draftId, value.ref.provider_message_id);
       await completeEmailAction(action.id, "completed", { provider: account.provider, kind: value.kind, providerMessageId: value.ref.provider_message_id });
+      await emitProviderEvent({ type: "email.action.completed", organizationId: action.organizationId, actionId: action.id, actionType: action.actionType, emailAccountId: action.emailAccountId, correlationId: action.correlationId, metadata: { provider: account.provider, providerMessageId: value.ref.provider_message_id } });
       await recordAuditEvent({ organizationId: action.organizationId, actorUserId: action.approvedBy, eventType: "email.action.completed", targetType: "email_action", targetId: action.id, action: action.actionType, decision: "allowed", correlationId: action.correlationId, metadata: { provider: account.provider, providerMessageId: value.ref.provider_message_id } });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Provider execution failed";
       await completeEmailAction(action.id, "failed", {}, message);
+      await emitProviderEvent({ type: "email.action.failed", organizationId: action.organizationId, actionId: action.id, actionType: action.actionType, emailAccountId: action.emailAccountId, correlationId: action.correlationId, metadata: { error: message } });
       await recordAuditEvent({ organizationId: action.organizationId, actorUserId: action.approvedBy, eventType: "email.action.failed", targetType: "email_action", targetId: action.id, action: action.actionType, decision: "denied", correlationId: action.correlationId, metadata: { error: message } });
     }
   }
