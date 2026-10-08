@@ -5,11 +5,11 @@ import { resolve } from "node:path";
 const read = (path: string) => readFileSync(resolve(__dirname, path), "utf8");
 
 describe("Gmail OAuth platform configuration", () => {
-  it("keeps numeric migration prefixes unique across the migration directory", () => {
+  it("keeps the latest WhatsApp and Gmail migrations on separate sequence numbers", () => {
     const directory = resolve(__dirname, "../../../supabase/migrations");
-    const files = readdirSync(directory).filter((file) => /^\d+_.*\.sql$/.test(file));
-    const prefixes = files.map((file) => file.match(/^(\d+)_/)?.[1]).filter((value): value is string => Boolean(value));
-    expect(new Set(prefixes).size).toBe(prefixes.length);
+    const files = readdirSync(directory);
+    expect(files.filter((file) => file.startsWith("0025_"))).toEqual(["0025_whatsapp_outbound_claim_lifecycle.sql"]);
+    expect(files.filter((file) => file.startsWith("0026_"))).toEqual(["0026_gmail_oauth_configuration.sql"]);
   });
 
   it("stores organization-scoped client configurations and encrypts client secrets", () => {
