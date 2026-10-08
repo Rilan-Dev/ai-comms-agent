@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { GmailOAuthSettings } from "./gmail-oauth-settings";
+import { ZohoOAuthSettings } from "./zoho-oauth-settings";
 
 type Organization = { id: string; name: string; slug: string; status: string };
 type Member = { id: string; role: string; status: string; user: { id: string; email: string; name: string | null; status: string } | null };
@@ -117,6 +118,7 @@ export default function SettingsPage() {
       </section>
 
       <GmailOAuthSettings organizationId={organization?.id ?? ""} />
+      <ZohoOAuthSettings organizationId={organization?.id ?? ""} />
 
       <section className="rounded-2xl border bg-background p-5">
         {notice ? <div className="mb-4 rounded-xl border bg-muted/30 px-4 py-3 text-sm">{notice}</div> : null}
