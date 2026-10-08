@@ -1014,3 +1014,16 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Updated the agents page to read `aca-access-token` from `cookies()` and pass it explicitly to the identity resolver, matching the authoritative layout authentication boundary. No auth policy or credential behavior was weakened.
 - Web fix commit: `117602a5e909f14eaf219ffe41082cfe62e06060`.
 - No CI/Vercel wait and no runtime PASS claimed.
+
+### 2026-10-09 — FIX-01 Sentinel browser authentication redirect correction
+- **Task:** Fix the reported browser symptom where password login returns a successful response but the browser is immediately sent back to `/login?reason=not_provisioned` instead of the dashboard.
+- **Authorization:** FIX-01/Sentinel error remediation; smallest corrective change only. No feature or deployment scope expansion.
+- **Symptom:** `http://100.72.192.28:3300/login?reason=not_provisioned` accepted valid credentials, then protected-page resolution failed and returned to login.
+- **Root cause:** The login endpoint uses the PostgreSQL-backed local session path, but the shared identity-adapter selector still allowed `ACA_ENABLE_DEV_IDENTITY=true` to select the development adapter even when `NODE_ENV=production`. The development adapter expects `x-dev-user-id`, so a normal authenticated browser session resolved as no user and the root layout correctly redirected to `not_provisioned`.
+- **Failed approach:** The earlier correction only changed the root layout to read `aca-access-token` from Next.js `cookies()`; that preserved the session cookie boundary but did not prevent production adapter selection from switching to the development identity path.
+- **Remedy:** Production now unconditionally selects `LocalIdentityAdapter`; the dev adapter is selectable only when `NODE_ENV !== "production"` and `ACA_ENABLE_DEV_IDENTITY=true`. Added regression protection to `apps/web/tests/auth-boundary.test.ts` for the production selector boundary.
+- **Files:** `apps/web/src/lib/identity/repository.ts`, `apps/web/tests/auth-boundary.test.ts`.
+- **Evidence:** Source trace showed `POST /api/auth/login` creates the PostgreSQL session, while `getAuthenticatedAppContext()` resolves through the shared adapter selector; the previous selector permitted the dev adapter in production. No runtime/deployment PASS is claimed.
+- **Prevention:** Never allow a development identity selector flag to override the production authentication boundary. Production adapter selection must be gated by environment, not by the dev flag alone.
+- **Commits:** `931e77a489234a5f60404598aa82554b747c3513`, `19eac2ee44cfbabb736996e020ad4f804478ee6a`.
+- **Next action:** Deploy/restart the updated web runtime and reproduce the login flow; if the same redirect remains, route runtime/environment evidence to OPS-01 rather than expanding FIX-01 scope.
