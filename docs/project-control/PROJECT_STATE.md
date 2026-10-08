@@ -478,3 +478,7 @@ Added migration 0025 for the outbound `executing` state, atomic `SKIP LOCKED` cl
 
 ### 2026-10-09 — Migration sequence correction
 Gmail OAuth configuration is sequenced as `0026_gmail_oauth_configuration.sql`; `0025_whatsapp_outbound_claim_lifecycle.sql` retains sequence 0025. The Gmail migration regression test now asserts unique numeric migration prefixes. Migrations and runtime remain unverified; no PASS is claimed.
+
+
+### 2026-10-09 — Dynamic OAuth callbacks and Zoho settings
+Gmail and Zoho OAuth callbacks now derive from the active request origin and the exact URI is signed into state for token exchange. Zoho now has organization-scoped encrypted OAuth client settings, selection on Mail Accounts, and per-account client credentials for worker refresh. Migration 0027 adds Zoho OAuth configuration. Public callbacks require HTTPS; Google does not accept raw IP callback hosts. Deployment and end-to-end tests remain pending.
