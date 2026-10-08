@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
-import { PostgresAuthRepository, PostgresIdentityRepository } from "@ai-comms-agent/db";
-import { asUserId } from "@ai-comms-agent/shared";
-import { assertSameOrigin, setPassword, ValidationError } from "@/lib/identity/local-auth";
+import { PostgresAuthRepository } from "@ai-comms-agent/db";
+import { assertSameOrigin, setPassword, ValidationError, validateEmail, validatePasswordForCreation } from "@/lib/identity/local-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -38,25 +37,24 @@ export async function POST(request: Request) {
     }
     if (typeof body.password !== "string") throw new ValidationError("Password is required.");
 
+    validateEmail(email);
+    validatePasswordForCreation(body.password);
+
     const auth = new PostgresAuthRepository();
     if (await auth.countCredentials() > 0) {
       return NextResponse.json({ error: "already_initialized", message: "Initial authentication is already initialized." }, { status: 409 });
     }
 
-    const identity = new PostgresIdentityRepository();
-    let user = await identity.getUserByEmail(email);
-    if (!user) user = await identity.createUser({ email, name });
-    if (user.status !== "active") {
-      return NextResponse.json({ error: "account_unavailable", message: "The initial account is not active." }, { status: 409 });
-    }
+    const { hashPasswordForStorage } = await import("@/lib/identity/local-auth");
+    const result = await auth.bootstrapInitialAccount({
+      email,
+      name,
+      passwordHash: await hashPasswordForStorage(body.password),
+      organizationName,
+      organizationSlug,
+    });
 
-    await setPassword({ userId: user.id, password: body.password });
-    const memberships = await identity.getMembershipsForUser(asUserId(user.id));
-    if (memberships.length === 0) {
-      await identity.createOrganizationWithOwner({ name: organizationName, slug: organizationSlug, ownerId: asUserId(user.id) });
-    }
-
-    return NextResponse.json({ ok: true, userId: user.id });
+    return NextResponse.json({ ok: true, userId: result.userId, organizationId: result.organizationId });
   } catch (error) {
     if (error instanceof ValidationError) return NextResponse.json({ error: error.code, message: error.message }, { status: 400 });
     console.error("[auth/bootstrap]", error);
