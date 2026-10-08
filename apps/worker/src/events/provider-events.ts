@@ -38,11 +38,14 @@ export function providerEventToAutomationEvent(event: ProviderEvent) {
   };
 }
 
-export async function emitProviderEvent(event: ProviderEvent) {
+export async function emitProviderEventWith(
+  event: ProviderEvent,
+  evaluator: (mapped: ReturnType<typeof providerEventToAutomationEvent>) => Promise<unknown>,
+) {
   try {
     return {
       deliveredToAutomation: true,
-      result: await evaluateAutomationEvent(providerEventToAutomationEvent(event)),
+      result: await evaluator(providerEventToAutomationEvent(event)),
     };
   } catch (error) {
     // Provider delivery state is authoritative. Automation is downstream and
@@ -53,4 +56,8 @@ export async function emitProviderEvent(event: ProviderEvent) {
       error: error instanceof Error ? error.message : "Automation event delivery failed",
     };
   }
+}
+
+export async function emitProviderEvent(event: ProviderEvent) {
+  return emitProviderEventWith(event, evaluateAutomationEvent);
 }
