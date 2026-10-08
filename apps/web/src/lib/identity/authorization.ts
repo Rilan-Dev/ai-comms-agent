@@ -95,7 +95,20 @@ export function requirePermission(subject: AuthSubject, permission: PermissionNa
  * Throws ForbiddenError if none match.
  */
 export function requireRole(subject: AuthSubject, ...roles: MembershipRole[]): void {
-  if (!subject.membership || !roles.includes(subject.membership.role)) {
+  if (!subject.membership) {
+    throw new ForbiddenError(
+      "insufficient_role",
+      `Requires one of: ${roles.join(", ")}`,
+    );
+  }
+
+  // Owner is the highest organization role and must satisfy admin-level
+  // guards. Callers that need to exclude owners can require an exact role
+  // through a dedicated check; ordinary "admin" capability gates are
+  // intentionally hierarchical.
+  const role = subject.membership.role;
+  const satisfies = roles.includes(role) || (role === "owner" && roles.includes("admin"));
+  if (!satisfies) {
     throw new ForbiddenError(
       "insufficient_role",
       `Requires one of: ${roles.join(", ")}`,
