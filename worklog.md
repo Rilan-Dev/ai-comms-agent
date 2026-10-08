@@ -1127,9 +1127,15 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 ## 2026-10-09 — Gmail OAuth moved to platform settings
 
 - User requirement: no Gmail OAuth client IDs/secrets hard-coded in code or .env; support multiple configurable Gmail OAuth clients.
-- Source changes: added migration 0025_gmail_oauth_configuration.sql; organization-scoped settings CRUD with encrypted client-secret persistence; Settings UI; selectable OAuth client on the mail account screen; OAuth start/callback use saved configuration; encrypted mailbox credential payload includes matching client credentials for worker token refresh.
+- Source changes: added migration 0026_gmail_oauth_configuration.sql; organization-scoped settings CRUD with encrypted client-secret persistence; Settings UI; selectable OAuth client on the mail account screen; OAuth start/callback use saved configuration; encrypted mailbox credential payload includes matching client credentials for worker token refresh.
 - Security design: OAuth client secret is never returned to the browser. Existing CREDENTIALS_MASTER_KEY stays server-only and encrypts stored secrets; it must not itself be stored in the database it protects. Gmail OAuth state signing now derives from this existing key, eliminating the Gmail-specific SESSION_SIGNING_KEY requirement.
 - Environment cleanup: removed Gmail OAuth client ID/secret/redirect URI entries from .env.example; provider configuration belongs in Settings.
 - Commits: bf02ac6d migration, 37518326 settings API, 4ad9578c start route, 951ce1f8 callback integration, 78bb9d2c encrypted per-account client persistence, 6980d091 worker refresh, 5b7ba0bf settings UI, e2279785 connection selector, dd947b50 static tests.
 - Verification boundary: tests/build/runtime were not run. Migration 0025 and Gmail OAuth flow are pending live verification; no PASS is claimed.
 - Next: pull current main, run bash scripts/manual-up.sh (must apply migrations 0024 and 0025), add OAuth client configuration in Settings, allowlist the displayed redirect URI in Google Cloud Console, and retry from /mail/accounts.
+
+
+## 2026-10-09 — Gmail OAuth migration sequencing correction
+- Repository inspection found the WhatsApp outbound lifecycle migration already occupied prefix 0025. Resequenced Gmail OAuth configuration to `0026_gmail_oauth_configuration.sql` and updated the migration regression test plus current project-control references.
+- Migration SQL body is unchanged and idempotent. If an environment applied the old filename already, the renamed migration may run once more under its new ledger key; `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` preserve safe behavior for the current schema.
+- Runtime deployment and OAuth flow remain pending; no verification PASS claimed.
