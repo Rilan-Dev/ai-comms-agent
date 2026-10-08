@@ -862,3 +862,8 @@ Next: continue deterministic audit/event assertions and remaining cross-surface 
 
 ### Next
 Continue remaining Mail/WhatsApp/Chat/Voice edge-case hardening and deterministic audit/event assertions, then prepare final runtime/deployment verification.
+
+
+## 2026-10-08 — Scheduled execution audit correlation
+
+ChatGPT hardened the scheduler boundary so every scheduled run completion and failure emits an organization-scoped audit event keyed to the durable scheduled-run UUID as both target and correlation ID. Configuration-required failures and execution exceptions are now traceable without changing provider delivery behavior. Added deterministic source coverage. CI/Vercel were not awaited.
