@@ -82,9 +82,6 @@ CREATE TABLE IF NOT EXISTS whatsapp_contacts (
 );
 
 
-ALTER TABLE whatsapp_messages
-  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
-
 CREATE TABLE IF NOT EXISTS whatsapp_messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -102,6 +99,10 @@ CREATE TABLE IF NOT EXISTS whatsapp_messages (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+
+ALTER TABLE whatsapp_messages
+  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE whatsapp_messages
   ADD COLUMN IF NOT EXISTS idempotency_key text;
