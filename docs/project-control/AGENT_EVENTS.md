@@ -65,3 +65,11 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - Commits: bf02ac6d, 37518326, 4ad9578c, 78bb9d2c, 6980d091, 5b7ba0bf, e2279785, dd947b50.
 - Verification: tests/build/migrations/live OAuth not run. No PASS claimed.
 - Related issue: ISS-010; NEXT_ACTION.md.
+
+
+### EVT-DEV01-GMAIL-OAUTH-SEQUENCE-20261009 — MIGRATION AND EDIT VALIDATION HARDENING
+- Owner: DEV-01 / Forge (ChatGPT primary implementer)
+- Changes: moved Gmail OAuth configuration migration to 0026 because 0025 is already used by WhatsApp outbound claim lifecycle; removed the duplicate-prefix file; added a regression test for the latest two migration slots; require a matching new secret when a saved Google OAuth client ID changes.
+- Commits: migration resequence `90aed0dd`, old-file removal `71c4399d`, migration test correction `b8fcab61`, client ID/secret guard `4a7d9c9f`, test `286d2bea`.
+- Validation: source and documentation committed; tests, deployment, migration application and live Google OAuth remain unverified.
+- Next action: pull `main`, run `bash scripts/manual-up.sh` to apply 0024–0026, configure the OAuth client in Settings, register the exact callback URI in Google Cloud Console, and test mailbox connection.
