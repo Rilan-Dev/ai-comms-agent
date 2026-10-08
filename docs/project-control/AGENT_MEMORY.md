@@ -80,3 +80,11 @@ If shared memory conflicts with current repository state or current requirements
 - **Remedy:** Use `getAuthenticatedAppContext()` with request headers in the server page and pass that membership's organization ID into both the query and client; keep API membership/role authorization intact.
 - **Prevention:** Every tenant-scoped server page must derive its organization from the authenticated request context, not dev seed globals or arbitrary client values. Add regression tests for this boundary.
 - **Related record:** ISS-009; commits `4536332f`, `7a3cfba2`.
+
+
+### DEV-01 / Forge — 2026-10-09
+- Issue/symptom: Gmail OAuth start required static GMAIL_OAUTH_CLIENT_ID and SESSION_SIGNING_KEY environment configuration; user needs multiple configurable Gmail OAuth clients.
+- Root cause: OAuth start/callback were environment-bound and always used the development identity context.
+- Remedy: Persist organization-scoped OAuth client records, encrypt client secrets with the existing server-side credentials master key, expose admin-only Settings CRUD, let mailbox connection select a client, and store the selected client credentials inside the encrypted account credential envelope so worker refresh uses the same client.
+- Prevention: Provider-specific client registrations are runtime configuration data, not code constants or deployment env vars. Keep only the root encryption key as infrastructure secret; never store the root key in the database it protects or expose provider secrets to the browser.
+- Related record: ISS-010; migration 0025_gmail_oauth_configuration.sql.
