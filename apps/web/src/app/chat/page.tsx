@@ -1,5 +1,6 @@
 import { PostgresAgentRepository, getOrCreateChatConversation, listChatMessages } from "@ai-comms-agent/db";
-import { ensureDevSeed, getDevOrgId } from "@/lib/identity/repository";
+import { getAuthenticatedAppContext } from "@/lib/identity/repository";
+import { headers } from "next/headers";
 import { ChatClient } from "./chat-client";
 
 export const dynamic = "force-dynamic";
@@ -10,8 +11,8 @@ export default async function ChatPage() {
   }
 
   try {
-    await ensureDevSeed();
-    const organizationId = getDevOrgId();
+    const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: await headers() }));
+    const organizationId = context?.organizationId;
     if (!organizationId) throw new Error("Organization context is unavailable.");
 
     const agents = await new PostgresAgentRepository().list(organizationId);
