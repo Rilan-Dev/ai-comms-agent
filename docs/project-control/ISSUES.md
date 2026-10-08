@@ -199,3 +199,12 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - Resequenced Gmail configuration migration to 0026 because 0025 is used by WhatsApp outbound claim lifecycle. Added a migration-prefix uniqueness assertion to prevent recurrence.
 - Editing a saved OAuth client ID now requires entering the matching new client secret; blank secret still preserves the existing secret only when the client ID is unchanged.
 - Source changes are committed; automated tests and live migration/OAuth remain unverified.
+
+
+## ISS-011 — OAuth callback origin and Zoho client configuration
+- **Opened:** 2026-10-09
+- **Severity:** high
+- **Owner:** ChatGPT
+- **Status:** in_progress (source changes committed; deployment/provider registration pending)
+- **Description:** Gmail callback resolution used stale `NEXT_PUBLIC_APP_URL` and Zoho OAuth required environment client credentials and lacked settings UI. Both providers now derive callback URLs from the active request origin; Zoho has organization-scoped OAuth client settings and the account selector. Provider callback URIs must still be registered in provider consoles, and public callbacks must use HTTPS. Google does not allow raw IP hosts for web redirect URIs.
+- **Next:** pull main, run manual deployment for migrations 0024–0027, access the app through its HTTPS domain, register the exact displayed callbacks, and test Gmail and Zoho consent/token/worker refresh flows. Do not claim runtime acceptance until evidence is available.
