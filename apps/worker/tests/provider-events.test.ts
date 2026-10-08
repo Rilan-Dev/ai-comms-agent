@@ -65,3 +65,30 @@ test("automation bridge failure cannot convert a provider success into a provide
   assert.equal(result.result, null);
   assert.equal(result.error, "automation database unavailable");
 });
+
+
+test("provider metadata cannot override canonical routing or correlation identity", () => {
+  const mapped = providerEventToAutomationEvent({
+    type: "email.action.completed",
+    organizationId: "org-canonical",
+    actionId: "action-canonical",
+    actionType: "send_email",
+    emailAccountId: "account-canonical",
+    correlationId: "corr-canonical",
+    metadata: {
+      organizationId: "org-attacker",
+      actionId: "action-attacker",
+      emailAccountId: "account-attacker",
+      correlationId: "corr-attacker",
+      messageId: "message-attacker",
+      retryAttempts: 2,
+    },
+  });
+
+  assert.equal(mapped.payload.organizationId, "org-canonical");
+  assert.equal(mapped.payload.actionId, "action-canonical");
+  assert.equal(mapped.payload.emailAccountId, "account-canonical");
+  assert.equal(mapped.payload.correlationId, "corr-canonical");
+  assert.equal(mapped.payload.messageId, "message-attacker");
+  assert.equal(mapped.payload.retryAttempts, 2);
+});
