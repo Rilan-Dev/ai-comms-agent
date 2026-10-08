@@ -51,3 +51,10 @@ Startup memory order:
 4. normal project-control state and applicable architecture/plan
 
 WORK-01 / Rover can execute SAFE-LOCAL or already AUTHORIZED daily work while other agents continue. MATERIAL-CHANGE work is routed for authorization.
+
+
+## User agent quick guide
+
+**Start here for human copy/paste usage:** read `docs/project-control/HOW_TO_USE_AGENTS.md`.
+
+It explains which agent to call, when to use DEV-01 / FIX-01 / OPS-01 / WORK-01, how to start a fresh chat and continue where you left off, how to run daily work, how to invoke agents concurrently, how memory is recovered, and ready-to-paste prompts for common situations.
