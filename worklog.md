@@ -777,3 +777,12 @@ Next: continue deterministic audit/event assertions and remaining cross-surface 
 - Hardened the PostgreSQL connection factory to establish `aca,public` as the application search path at connection startup, fixing the schema boundary for existing unqualified repositories.
 - Added authentication validation/static migration tests.
 - No GitHub Actions/Vercel wait was performed and no runtime verification PASS is claimed.
+
+
+### 2026-10-08 — Authentication final hardening
+
+- Production identity factory now uses `LocalIdentityAdapter`; the development identity adapter is enabled only by explicit `ACA_ENABLE_DEV_IDENTITY=true`.
+- PostgreSQL pool connections now set `search_path=aca,public` at connection startup so existing repository queries resolve the canonical application schema consistently.
+- First-account bootstrap is now atomic in PostgreSQL and cannot leave a credential initialized without its owner organization after a partial failure.
+- Password changes retain the current browser session while revoking all other sessions.
+- Authentication remains development-complete for the current slice; runtime/CI/Vercel verification is intentionally deferred per project-owner instruction.
