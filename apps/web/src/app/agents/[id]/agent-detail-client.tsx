@@ -46,7 +46,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   }
   async function retire() {
     setBusy(true);
-    try { const p=await call(`/api/agents/${agent.id}`,{method:"DELETE",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId})}); setAgent(p.agent); notify({kind:"success",title:"Agent paused"}); setShowConfirm(null); } catch(e){notify({kind:"error",title:"Could not pause agent",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
+    try { const p=await call(`/api/agents/${agent.id}`,{method:"DELETE",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId})}); setAgent(p.agent); notify({kind:"success",title:"Agent paused"}); setShowConfirm(null); } catch(e){notify({kind:"error",title:"Could not pause agent",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
   useEffect(() => {
     if (tab !== "channels") return;
@@ -61,22 +61,22 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
         if (!cancelled) notify({ kind:"error", title:"Email accounts unavailable", message:error instanceof Error ? error.message : "Unable to load email accounts." });
       });
     return () => { cancelled = true; };
-  }, [tab, organizationId, devUserId, notify]);
+  }, [tab, organizationId, _removedDevUserId, notify]);
 
   useEffect(() => {
     if (tab !== "activity") return;
     let cancelled = false; setAuditLoading(true);
     const url = "/api/agents/" + agent.id + "/audit?organizationId=" + encodeURIComponent(organizationId) + "&limit=50";
-    fetch(url,{headers:{"x-dev-user-id":devUserId}})
+    fetch(url,{headers:{"x-dev-user-id":_removedDevUserId}})
       .then(async response => { const payload=await response.json(); if(!response.ok) throw new Error(payload.message??"Audit history could not be loaded."); if(!cancelled) setAuditEvents(payload.events??[]); })
       .catch(error => { if(!cancelled) notify({kind:"error",title:"Activity unavailable",message:error instanceof Error?error.message:"Unable to load audit history."}); })
       .finally(() => { if(!cancelled) setAuditLoading(false); });
     return () => { cancelled=true; };
-  },[tab,agent.id,organizationId,devUserId,notify]);
+  },[tab,agent.id,organizationId,_removedDevUserId,notify]);
   async function saveAgent(event:React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true);
     try {
-      const p=await call(`/api/agents/${agent.id}`,{method:"PATCH",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId,name:editName,slug:editSlug,description:editDescription})});
+      const p=await call(`/api/agents/${agent.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,name:editName,slug:editSlug,description:editDescription})});
       setAgent(p.agent);
       notify({kind:"success",title:"Agent details saved",message:"The persisted agent identity was updated."});
     } catch(e) {
@@ -89,19 +89,19 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) { notify({kind:"error",title:"Invalid configuration",message:"Version configuration must be a JSON object."}); return; }
     setBusy(true);
     try {
-      const p=await call(`/api/agents/${agent.id}/versions`,{method:"POST",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId,config:parsed})});
+      const p=await call(`/api/agents/${agent.id}/versions`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,config:parsed})});
       setVersions((v)=>[p.version,...v]); setVersionConfig(JSON.stringify(p.version.config ?? {},null,2));
       notify({kind:"success",title:"Version created",message:`Version ${p.version.versionNumber} is ready for deployment.`});
     } catch(e){notify({kind:"error",title:"Could not create version",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
   async function runTest() {
     setBusy(true); setTestResult(null);
-    try { const p=await call(`/api/agents/${agent.id}/simulate`,{method:"POST",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId})}); setTestResult(p); } catch(e){notify({kind:"error",title:"Configuration test failed",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
+    try { const p=await call(`/api/agents/${agent.id}/simulate`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId})}); setTestResult(p); } catch(e){notify({kind:"error",title:"Configuration test failed",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
   async function unbindEmail(emailAccountId:string) {
     setBusy(true);
     try {
-      const p=await call(`/api/agents/${agent.id}/channels`,{method:"PATCH",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId,action:"unbind_email",emailAccountId})});
+      const p=await call(`/api/agents/${agent.id}/channels`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,action:"unbind_email",emailAccountId})});
       setEmailBindings(p.emailBindings); notify({kind:"success",title:"Email account unbound",message:"The agent no longer has access to that mailbox."});
     } catch(e){notify({kind:"error",title:"Could not unbind email",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
@@ -109,7 +109,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   async function unbindWhatsApp() {
     setBusy(true);
     try {
-      const p=await call(`/api/agents/${agent.id}/channels`,{method:"PATCH",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId,action:"unbind_whatsapp"})});
+      const p=await call(`/api/agents/${agent.id}/channels`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,action:"unbind_whatsapp"})});
       setWhatsappBinding(p.whatsappBinding); notify({kind:"success",title:"WhatsApp account unbound",message:"The agent is no longer connected to WhatsApp."});
     } catch(e){notify({kind:"error",title:"Could not unbind WhatsApp",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
@@ -117,7 +117,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   async function saveChannels() {
     setBusy(true);
     try {
-      const p=await call(`/api/agents/${agent.id}/channels`,{method:"PATCH",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId,emailAccountId,whatsappAccountId,emailRole})});
+      const p=await call(`/api/agents/${agent.id}/channels`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,emailAccountId,whatsappAccountId,emailRole})});
       setEmailBindings(p.emailBindings); setWhatsappBinding(p.whatsappBinding);
       notify({kind:"success",title:"Channels saved"});
     } catch(e) { notify({kind:"error",title:"Channels could not be saved",message:e instanceof Error?e.message:"Unknown error"}); }
@@ -133,7 +133,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
     let rateLimits: unknown;
     try { securityPolicy=JSON.parse(String(form.get("securityPolicy")??"{}")); rateLimits=JSON.parse(String(form.get("rateLimits")??"{}")); } catch { notify({kind:"error",title:"Invalid policy JSON",message:"Security policy and rate limits must be valid JSON objects."}); setBusy(false); return; }
     if (!securityPolicy || typeof securityPolicy !== "object" || Array.isArray(securityPolicy) || !rateLimits || typeof rateLimits !== "object" || Array.isArray(rateLimits)) { notify({kind:"error",title:"Invalid policy JSON",message:"Security policy and rate limits must be JSON objects."}); setBusy(false); return; }
-    try { const p=await call(`/api/agents/${agent.id}/policy`,{method:"PATCH",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId,securityPolicy,allowedTools,allowedSenders,blockedSenders,rateLimits})}); setPolicy(p.policy); notify({kind:"success",title:"Policy saved"}); } catch(e){notify({kind:"error",title:"Policy could not be saved",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
+    try { const p=await call(`/api/agents/${agent.id}/policy`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,securityPolicy,allowedTools,allowedSenders,blockedSenders,rateLimits})}); setPolicy(p.policy); notify({kind:"success",title:"Policy saved"}); } catch(e){notify({kind:"error",title:"Policy could not be saved",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
 
   return <main className="mx-auto max-w-[1500px] space-y-6 p-5 sm:p-7 lg:p-9">
