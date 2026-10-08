@@ -23,8 +23,8 @@
  * This is NOT a security boundary — it's a convenience for local development.
  * The header is not trusted in production (the adapter throws before reading it).
  *
- * Production authentication will be implemented in a future phase via a real
- * IdentityAdapter implementation (Supabase Auth, Auth0, etc.).
+ * Production authentication is implemented by the PostgreSQL-backed local session
+ * adapter. This development stub remains only for explicit local UI testing.
  */
 
 import type { IdentityAdapter, User, UserId } from "@ai-comms-agent/shared";
