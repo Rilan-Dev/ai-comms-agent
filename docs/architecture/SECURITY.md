@@ -19,10 +19,10 @@ This is a Phase 1 document. Implementation details (library choices, exact polic
 
 ### Auth flows
 
-- Login: `POST /api/auth/login { email, password }` → set cookies → return user
+- Login: `POST /api/auth/login { email, password }` → validate input → rate-limit/lockout checks → scrypt password verification → create hashed opaque session → set HttpOnly cookie → return user
 - Magic link: `POST /api/auth/magic { email }` → email link → `GET /api/auth/magic/verify?token=...` → set cookies
 - OAuth: `GET /api/auth/oauth/{provider}` → redirect → callback → set cookies
-- MFA: after primary auth, if `mfa_enabled`, return `mfa_required` → `POST /api/auth/mfa { code }` → set cookies
+
 - Logout: `POST /api/auth/logout` → clear cookies → revoke refresh token
 
 ---
@@ -268,3 +268,4 @@ Security is verified in Phase 17 (security hardening) and Phase 18 (end-to-end t
 - Encryption verification: credentials in DB are ciphertext; decrypt with KEK only.
 
 These checks are exit criteria for Phase 17.
+\n\n### Application-owned authentication\n\nAuthentication does not depend on Supabase Auth or another hosted identity provider. Password verifiers and revocable opaque sessions are stored in PostgreSQL under `aca.auth_credentials` and `aca.auth_sessions`. Passwords are never stored plaintext; session tokens are never stored plaintext. Login failures are recorded and account lockout is applied after repeated failures. Protected API routes resolve the session to an active application user and then apply organization membership/RBAC. The one-time `AUTH_BOOTSTRAP_TOKEN` flow exists only to initialize the first credential; it is disabled after initialization.\n
