@@ -1008,3 +1008,9 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the WhatsApp-contact table/index operations. No application feature code changed.
 - Migration fix commit: `95a0de3945faf15ad206bdc13dbb8b82a2ce9a54`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete web runtime error reported by the `/agents` page: `Authenticated application identity could not be resolved.`
+- Root cause: the root layout explicitly reconstructs the `aca-access-token` cookie from `cookies()`, but `apps/web/src/app/agents/page.tsx` passed only `headers()` into `getAuthenticatedAppContext`; during the affected RSC render that header snapshot did not contain the browser session cookie.
+- Updated the agents page to read `aca-access-token` from `cookies()` and pass it explicitly to the identity resolver, matching the authoritative layout authentication boundary. No auth policy or credential behavior was weakened.
+- Web fix commit: `117602a5e909f14eaf219ffe41082cfe62e06060`.
+- No CI/Vercel wait and no runtime PASS claimed.
