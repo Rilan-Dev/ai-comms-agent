@@ -862,3 +862,9 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Found both WhatsApp and Gmail OAuth migrations numbered `0025`.
 - Gmail OAuth migration is now `0026_gmail_oauth_configuration.sql`; WhatsApp keeps `0025_whatsapp_outbound_claim_lifecycle.sql`.
 - Regression test points at the corrected filename. No migration/test/build/runtime execution was performed; no PASS claimed.
+
+
+### 2026-10-09 — Dynamic OAuth and Zoho provider configuration
+- Source changes committed: request-derived Gmail/Zoho callback URLs; signed state carries the exact redirect URI used at token exchange; organization-scoped Zoho OAuth configuration API/UI; per-account Zoho client credentials for refresh; migration 0027.
+- Regression coverage added/updated in `apps/web/tests/gmail-oauth-settings.test.ts`, `apps/web/tests/zoho-oauth-settings.test.ts`, and `apps/worker/tests/zoho-adapter-security.test.ts`.
+- Tests, typecheck, build, migrations, Google/Zoho provider-console registration, and live OAuth have not been executed here. Status remains unverified; no PASS claimed.
