@@ -43,6 +43,14 @@ export async function getOrCreateChatConversation(organizationId: string, agentI
   });
 }
 
+export async function getChatConversation(organizationId: string, conversationId: string, agentId?: string) {
+  const r = await query<Row>(
+    "SELECT * FROM conversations WHERE organization_id=$1 AND id=$2 AND channel='chat'" + (agentId ? " AND agent_id=$3" : "") + " LIMIT 1",
+    agentId ? [organizationId, conversationId, agentId] : [organizationId, conversationId],
+  );
+  return r.rows[0] ? mapConversation(r.rows[0]) : null;
+}
+
 export async function listChatMessages(organizationId: string, conversationId: string, limit = 100) {
   const safeLimit = Math.min(Math.max(limit, 1), 200);
   const r = await query<Row>(
