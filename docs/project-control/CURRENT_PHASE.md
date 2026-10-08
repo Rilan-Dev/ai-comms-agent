@@ -316,3 +316,6 @@ Email approval list/detail endpoints now require operator-level `organization.up
 
 ### 2026-10-08 — Browser authentication entry-point correction
 The authentication boundary was present in source, but the browser experience was incomplete for first-run environments. ChatGPT has now made `/login` and `/setup` explicit public entry points, added return-path preservation after login, and exposed the one-time bootstrap flow through a dedicated first-run UI. Protected application pages and API routes remain fail-closed. `AUTH_BOOTSTRAP_TOKEN` remains server-only; no development bypass is introduced.
+
+### 2026-10-09 — Voice and email action boundary continuation
+The AI Voice workspace now uses authenticated tenant context; voice turn responses fail closed across session-end races; voice startup persists a starting row before Clara setup and marks failed startup terminal where possible. Email action claim/completion SQL transitions are tenant-scoped. Continue provider outcome/idempotency and audit continuity hardening without waiting for CI/Vercel.
