@@ -33,3 +33,14 @@ This file is the audit index for the governance-only APCP update. It is not proj
 This update is governance-only. It does not modify product implementation plans, phase objectives, acceptance criteria, architecture decisions, product code, deployment targets, or verification results.
 
 When governance changes again, update this index in the same governance change.
+
+| docs/project-control/AGENT_OPERATIONS.md | Situation-based copy/paste prompts and WORK-01 contract |
+| docs/project-control/AGENT_MEMORY.md | Shared cross-agent lessons |
+| docs/project-control/AGENT_EVENTS.md | Central material event log |
+| docs/project-control/AGENT_SESSIONS.md | Central cross-chat session register |
+| docs/project-control/AGENT_HANDOFF.md | Cross-agent handoff context |
+| docs/project-control/AGENT_BACKLOG.md | Cross-agent ownership/dependency backlog |
+| docs/project-control/agents/<ROLE>/MEMORY.md | Role-local durable memory |
+| docs/project-control/agents/<ROLE>/WORKLOG.md | Role-local append-only worklog |
+
+The update remains governance-only and does not modify product scope, implementation plans, architecture decisions, or verification results.
