@@ -124,3 +124,18 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - Added a production auth-boundary regression assertion for the membership guard and error route.
 - This is fail-closed: it does not reactivate memberships or invent an organization. Any genuinely unprovisioned account must be provisioned through the authorized organization workflow.
 - Commit chain ends at `197e6535eab0cafde3e84db8f0605b7a174b3b03`.
+
+
+## ISS-008 — Manual runtime database schema drift breaks audit and agent writes
+
+- **Opened:** 2026-10-09
+- **Severity:** high
+- **Owner:** ChatGPT
+- **Status:** in_progress
+- **Description:** After the owner→admin authorization correction was deployed, authenticated requests reached the organization boundary but the live PostgreSQL schema was behind the application contract. `/api/overview` failed with PostgreSQL `42703` because `audit_events.decision` did not exist; agent creation failed because `audit_events.agent_id` did not exist. The worker health check showed PostgreSQL connectivity/configuration was present, so this is schema drift / missing migration application rather than missing database connectivity.
+- **Root cause:** `scripts/manual-up.sh` rebuilt and started the containers but did not run `scripts/migrate.sh`. In addition, older databases can already have `audit_events`; the original `CREATE TABLE IF NOT EXISTS` migration does not add newly required columns to an existing table. Therefore rebuilding the application could not reconcile the deployed schema.
+- **Remedy:** Added forward-only migration `0023_audit_schema_reconciliation.sql` to add missing `audit_events.agent_id` and `audit_events.decision` columns and indexes idempotently. Updated `scripts/manual-up.sh` to resolve `DATABASE_URL` from `.env.docker`, run the canonical migration ledger before starting the application, and then start Compose with the same env file. Added static regression coverage for both the reconciliation migration and startup migration boundary.
+- **Prevention:** Manual deployment now applies the same forward-only migration chain before exposing the rebuilt application. Existing audit tables are explicitly reconciled by a new migration rather than relying on `CREATE TABLE IF NOT EXISTS`.
+- **Evidence:** Live web logs at 2026-10-08T21:52–21:53Z showed `column "decision" does not exist` and `column "agent_id" of relation "audit_events" does not exist`; worker logs simultaneously reported `postgres_configured:true` and `worker ready`. The manual startup script previously contained no migration invocation.
+- **Commits:** `54f2c883c4c7250f9e83c6bde8e1c6a8fe64d83a` (migration), `7fe343eb06e96344e9f53dddb8488801b38fa4df` (manual startup migration), `25c37101d8fc4c2520d6ee0b4586cb723b2d46a9` (regression coverage).
+- **Next action:** Rebuild/pull current `main`, run `bash scripts/manual-up.sh` so the migration chain is applied before startup, then retry authenticated overview and agent creation. Do not wait for CI/Vercel.
