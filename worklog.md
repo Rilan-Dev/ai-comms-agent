@@ -1044,3 +1044,13 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - **Commits:** 54f2c883c4c7250f9e83c6bde8e1c6a8fe64d83a, 7fe343eb06e96344e9f53dddb8488801b38fa4df, 25c37101d8fc4c2520d6ee0b4586cb723b2d46a9.
 - **Verification:** Source changes are committed. Live runtime has not yet been re-tested after applying migration 0023; no runtime PASS is claimed.
 - **Next:** pull current main, rerun bash scripts/manual-up.sh, then retry /api/overview and authenticated agent creation. Continue development without waiting for CI/Vercel.
+
+
+## 2026-10-09 — Migration ledger initialization failure
+
+- Manual deployment pulled `main` through `a4fbdf9` and rebuilt both application images successfully, but `scripts/manual-up.sh` stopped at the canonical migration step with `ERROR: unable to initialize migration ledger.`
+- This means the application was not restarted by this invocation; the previously running web/worker containers remained in place. The subsequent API probe used a placeholder token and correctly returned `401 unauthorized`, so it provides no evidence about the audit-schema fix.
+- The migration wrapper previously filtered diagnostics too aggressively (`sed -n '/ERROR:/,$p'`), which can hide libpq errors that do not begin with the literal `ERROR:` prefix. `scripts/migrate.sh` now preserves and prints the final PostgreSQL connection/DDL diagnostic on ledger initialization failure.
+- Added a static regression assertion so migration-ledger failures continue to expose the underlying PostgreSQL diagnostic.
+- Diagnostic commit: `867db12ac62bb16355da2de0fd81cd558f3913e2`; regression test commit: `63a5461b38f0d96a21ab590e0e3eac280517160c`; control-state next-action update: `1747eda91b7b8e5dca78a2f308a44d87bebaa12d`.
+- Next: rerun the current migration path and capture the real PostgreSQL error without exposing credentials; verify the configured `DATABASE_URL` is the intended writable database and that the migration principal can create `_aca_schema_migrations`. Do not weaken authentication/RBAC or bypass the migration ledger.
