@@ -1,3 +1,4 @@
+import { recordAuditEvent } from "@ai-comms-agent/db";
 import { evaluateAutomationEvent } from "../automation/automation-engine";
 
 export type ProviderEvent =
@@ -50,10 +51,27 @@ export async function emitProviderEventWith(
   } catch (error) {
     // Provider delivery state is authoritative. Automation is downstream and
     // must never turn a successful external side effect into a false failure.
+    const message = error instanceof Error ? error.message : "Automation event delivery failed";
+    try {
+      await recordAuditEvent({
+        organizationId: event.organizationId,
+        actorUserId: null,
+        eventType: "automation.provider_event_delivery_failed",
+        targetType: "provider_event",
+        targetId: "actionId" in event ? event.actionId : event.messageId,
+        action: event.type,
+        decision: "denied",
+        correlationId: event.correlationId ?? null,
+        metadata: { error: message, providerEventType: event.type },
+      });
+    } catch {
+      // Audit persistence is best-effort here; never rethrow into the
+      // provider outcome path after an external side effect.
+    }
     return {
       deliveredToAutomation: false,
       result: null,
-      error: error instanceof Error ? error.message : "Automation event delivery failed",
+      error: message,
     };
   }
 }
