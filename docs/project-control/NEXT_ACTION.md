@@ -11,11 +11,13 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Continue final Product Completion hardening across the full communication loop:
-  email provider/account lifecycle, Mail actions, WhatsApp inbound/outbound, schedules
-  and automations, Clara chat, realtime voice, Settings/RBAC, Activity/Audit. Add
-  cross-surface authorization/idempotency/error handling and deterministic E2E fixtures,
-  then prepare the final deployment/runtime verification milestone.
+  Continue final Product Completion hardening while correcting the newly observed
+  live PostgreSQL schema drift. The source correction is committed: forward-only
+  audit schema reconciliation (0023) plus manual startup migration application.
+  Next operational step is to pull current main and rerun scripts/manual-up.sh so
+  the canonical migration ledger is applied before the rebuilt application starts,
+  then retry overview and authenticated agent creation. After that, continue the
+  remaining Mail/WhatsApp/Chat/Voice edge hardening and deterministic audit/E2E work.
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
@@ -23,21 +25,8 @@ constraints:
   source_of_truth: "GitHub main"
   clara: "Reuse Clara Core; do not modify Clara source"
   deployment: "Self-hosted Docker is the current deployment path"
-  validation: "Verification is a later acceptance gate; development continues under the approved development-first override."
+  validation: "Runtime acceptance remains a later milestone; do not wait for CI/Vercel"
 ```
-
-## STOP instruction
-
-**Z.AI must STOP after this correction commit.**
-
-Z.AI must NOT:
-- start Phase 4 implementation
-- provision production Supabase
-- implement email/WhatsApp/agent/scheduling/voice
-- modify Clara source
-- make any unrelated code changes
-
-Z.AI is in **STOP** state, awaiting ChatGPT's final Phase 3 acceptance decision.
 
 ---
 
