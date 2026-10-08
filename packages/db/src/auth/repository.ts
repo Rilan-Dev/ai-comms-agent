@@ -115,6 +115,12 @@ export class PostgresAuthRepository {
        WHERE user_id = $1 AND revoked_at IS NULL`, [userId]);
   }
 
+  async revokeAllUserSessionsExcept(userId: string, tokenHash: string): Promise<void> {
+    await query(
+      `UPDATE aca.auth_sessions SET revoked_at = now()
+       WHERE user_id = $1 AND token_hash <> $2 AND revoked_at IS NULL`, [userId, tokenHash]);
+  }
+
   async purgeExpiredSessions(): Promise<void> {
     await query(`DELETE FROM aca.auth_sessions WHERE expires_at < now() - interval '30 days' OR revoked_at < now() - interval '30 days'`);
   }
