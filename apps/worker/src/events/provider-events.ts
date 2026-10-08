@@ -39,5 +39,18 @@ export function providerEventToAutomationEvent(event: ProviderEvent) {
 }
 
 export async function emitProviderEvent(event: ProviderEvent) {
-  return evaluateAutomationEvent(providerEventToAutomationEvent(event));
+  try {
+    return {
+      deliveredToAutomation: true,
+      result: await evaluateAutomationEvent(providerEventToAutomationEvent(event)),
+    };
+  } catch (error) {
+    // Provider delivery state is authoritative. Automation is downstream and
+    // must never turn a successful external side effect into a false failure.
+    return {
+      deliveredToAutomation: false,
+      result: null,
+      error: error instanceof Error ? error.message : "Automation event delivery failed",
+    };
+  }
 }
