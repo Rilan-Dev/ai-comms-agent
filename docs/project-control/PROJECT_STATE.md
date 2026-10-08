@@ -435,3 +435,7 @@ Latest implementation: 64485e8c9478c6881f488f00ae624a3657e17a07. Cross-surface d
 
 ### 2026-10-08 — Communication-loop edge hardening
 Provider event routing identity is now fail-closed against metadata overrides, and voice turn accounting rejects inactive/ended sessions at both route and repository layers. Latest implementation commit: `0c0a23b9bbda2574960e0c4355d631318e3cd37e`. Continue cross-surface edge hardening without waiting for CI/Vercel.
+
+
+### 2026-10-08 — Sensitive approval visibility hardening
+Pending and individual email approval content is now restricted to `organization.update` operators, preventing read-only members/viewers from inspecting sensitive action snapshots. Latest implementation checkpoint: `3488b3b585c8779f706dea646d78b2f4ff880657c`.
