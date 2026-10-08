@@ -18,6 +18,7 @@ export {
 } from "./client";
 
 export { type IdentityRepository } from "./identity/repository";
+export { PostgresAuthRepository, type AuthCredentialRecord, type AuthSessionRecord } from "./auth";
 export { InMemoryIdentityRepository, OwnerInvariantError } from "./identity/in-memory";
 export { PostgresIdentityRepository, SupabaseIdentityRepository } from "./identity/supabase";
 
