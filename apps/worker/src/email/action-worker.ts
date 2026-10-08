@@ -80,13 +80,13 @@ export async function processApprovedEmailActions(limit = 10) {
       });
       const value = result.value as { kind: string; ref: { message_id: string; provider_message_id: string } };
       if (action.actionType === "send_email" && action.draftId) await markLocalDraftSentForOrganization(action.organizationId, action.draftId, value.ref.provider_message_id);
-      await completeEmailAction(action.id, "completed", { provider: account.provider, kind: value.kind, providerMessageId: value.ref.provider_message_id, retryAttempts });
+      await completeEmailAction(action.id, action.organizationId, "completed", { provider: account.provider, kind: value.kind, providerMessageId: value.ref.provider_message_id, retryAttempts });
       await emitProviderEvent({ type: "email.action.completed", organizationId: action.organizationId, actionId: action.id, actionType: action.actionType, emailAccountId: action.emailAccountId, correlationId: action.correlationId, metadata: { provider: account.provider, providerMessageId: value.ref.provider_message_id, retryAttempts } });
       await recordAuditEvent({ organizationId: action.organizationId, actorUserId: action.approvedBy, eventType: "email.action.completed", targetType: "email_action", targetId: action.id, action: action.actionType, decision: "allowed", correlationId: action.correlationId, metadata: { provider: account.provider, providerMessageId: value.ref.provider_message_id } });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Provider execution failed";
       const retryable = isRetryableProviderError(error);
-      await completeEmailAction(action.id, "failed", {}, message);
+      await completeEmailAction(action.id, action.organizationId, "failed", {}, message);
       await emitProviderEvent({ type: "email.action.failed", organizationId: action.organizationId, actionId: action.id, actionType: action.actionType, emailAccountId: action.emailAccountId, correlationId: action.correlationId, metadata: { error: message, retryAttempts, retryable } });
       await recordAuditEvent({ organizationId: action.organizationId, actorUserId: action.approvedBy, eventType: "email.action.failed", targetType: "email_action", targetId: action.id, action: action.actionType, decision: "denied", correlationId: action.correlationId, metadata: { error: message } });
     }
