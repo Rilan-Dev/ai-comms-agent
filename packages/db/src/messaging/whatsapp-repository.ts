@@ -162,7 +162,7 @@ export async function markWhatsAppOutboundSent(messageId: string, providerMessag
 }
 
 export async function markWhatsAppOutboundFailed(messageId: string, error: string) {
-  const r = await query<Row>("UPDATE whatsapp_messages SET status = 'failed', updated_at = now() WHERE id = $1 AND direction = 'outbound' AND status = 'queued' RETURNING id", [messageId]);
+  const r = await query<Row>("UPDATE whatsapp_messages SET status = 'failed', provider_error = left($2,2000), updated_at = now() WHERE id = $1 AND direction = 'outbound' AND status = 'queued' RETURNING id", [messageId, error]);
   return r.rows.length > 0;
 }
 
