@@ -698,3 +698,26 @@ Never write "Phase complete" without evidence.
 - Added provider-event routing contract tests.
 - No external provider delivery or credential success is claimed.
 - **Next:** harden sensitive-action retry/failure semantics and deterministic audit/event assertions.
+
+
+### Task — 2026-10-08 — Provider retry/failure outcome hardening
+
+- Status: implemented
+- Owner: ChatGPT
+
+Implemented the next cross-surface hardening boundary without waiting for external verification services.
+
+### Changes
+- Extended the shared provider retry policy with an onRetry telemetry callback.
+- Email action worker now records retry attempt count on completed/failed action outcomes and emits retryability/error metadata on failures.
+- WhatsApp outbound worker now records retry attempt count and retryability/error metadata on provider outcomes.
+- Exposed deterministic provider-event mapping as a pure function so identity/correlation propagation can be tested without invoking automation execution.
+- Added deterministic worker test coverage for retry telemetry and provider-event identity/error propagation.
+
+### Boundary preserved
+- Clara source remains unchanged.
+- Provider credentials remain worker-only.
+- No external provider success is fabricated.
+- CI/Vercel remain non-blocking under the active development-first instruction.
+
+Next: continue deterministic audit/event assertions and remaining cross-surface edge cases before final runtime/deployment verification.
