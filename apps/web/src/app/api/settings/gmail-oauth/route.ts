@@ -4,6 +4,7 @@ import { encryptCredential, parseCredentialsMasterKey, query } from "@ai-comms-a
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
+import { getOAuthRedirectUri } from "@/lib/oauth/redirect-uri";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +14,7 @@ function masterKey() {
 }
 
 function redirectUri(request: Request) {
-  const configured = process.env.NEXT_PUBLIC_APP_URL;
-  const base = configured ? new URL(configured) : new URL(request.url);
-  return new URL("/api/oauth/gmail/callback", base).toString();
+  return getOAuthRedirectUri(request, "gmail");
 }
 
 async function requireAdmin(request: Request, organizationId: string) {
@@ -35,7 +34,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       configurations: result.rows.map((row) => ({
         id: String(row.id), label: String(row.label), clientId: String(row.client_id),
-        redirectUri: String(row.redirect_uri), enabled: row.enabled === true,
+        redirectUri: redirectUri(request), enabled: row.enabled === true,
         createdAt: row.created_at, updatedAt: row.updated_at, secretConfigured: true,
       })),
     });
