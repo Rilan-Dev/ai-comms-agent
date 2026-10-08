@@ -48,6 +48,21 @@ BEGIN
   END IF;
 END $$;
 
+DO $
+BEGIN
+  IF to_regclass('aca.whatsapp_accounts') IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1
+       FROM pg_attribute
+       WHERE attrelid = 'aca.whatsapp_accounts'::regclass
+         AND attname = 'organization_id'
+         AND NOT attisdropped
+     ) THEN
+    ALTER TABLE aca.whatsapp_accounts
+      ADD COLUMN organization_id uuid REFERENCES aca.organizations(id) ON DELETE CASCADE;
+  END IF;
+END $;
+
 CREATE TABLE IF NOT EXISTS whatsapp_contacts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
