@@ -23,8 +23,8 @@ export type ProviderEvent =
  * Worker-owned bridge from provider outcomes into host automation.
  * Provider callbacks never execute agent work inside a web request.
  */
-export async function emitProviderEvent(event: ProviderEvent) {
-  return evaluateAutomationEvent({
+export function providerEventToAutomationEvent(event: ProviderEvent) {
+  return {
     type: event.type,
     payload: {
       organizationId: event.organizationId,
@@ -35,5 +35,9 @@ export async function emitProviderEvent(event: ProviderEvent) {
       correlationId: event.correlationId ?? undefined,
       ...event.metadata,
     },
-  });
+  };
+}
+
+export async function emitProviderEvent(event: ProviderEvent) {
+  return evaluateAutomationEvent(providerEventToAutomationEvent(event));
 }
