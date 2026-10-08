@@ -82,3 +82,5 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - Regression coverage added/updated: Gmail settings, Zoho settings/callback, and Zoho worker refresh.
 - Validation: source reviewed; tests/build/typecheck/runtime not run. No PASS claimed.
 - Next: pull main; run manual deploy for migrations 0024–0027; use HTTPS DNS domain and register exact provider callback URIs; verify both providers end-to-end.
+
+- Follow-up hardening: reject all raw IP callback hosts (including HTTPS) and simplify IPv6 hostname normalization. This is source-reviewed only; tests have not been executed.
