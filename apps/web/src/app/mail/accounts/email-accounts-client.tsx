@@ -29,6 +29,8 @@ export function EmailAccountsClient({
   const [accounts, setAccounts] = useState(initialAccounts);
   const [gmailConfigs, setGmailConfigs] = useState<Array<{ id: string; label: string; enabled: boolean }>>([]);
   const [selectedGmailConfig, setSelectedGmailConfig] = useState("");
+  const [zohoConfigs, setZohoConfigs] = useState<Array<{ id: string; label: string; enabled: boolean }>>([]);
+  const [selectedZohoConfig, setSelectedZohoConfig] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [showImapForm, setShowImapForm] = useState(false);
@@ -55,6 +57,12 @@ export function EmailAccountsClient({
   }, [organizationId]);
 
   useEffect(() => {
+    void fetch("/api/settings/zoho-oauth?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" })
+      .then(async (response) => { const body = await response.json().catch(() => ({})); if (!response.ok) return; const configs = (body.configurations ?? []).filter((item: { enabled: boolean }) => item.enabled); setZohoConfigs(configs); setSelectedZohoConfig((current) => current || configs[0]?.id || ""); })
+      .catch(() => undefined);
+  }, [organizationId]);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("connected") === "gmail") setNotice("Gmail authorization completed. The account is pending worker verification and initial synchronization.");
     if (params.get("connected") === "zoho") setNotice("Zoho authorization completed. The account is pending worker verification and initial synchronization.");
@@ -71,7 +79,8 @@ export function EmailAccountsClient({
       return;
     }
     if (account.provider === "zoho") {
-      window.location.assign(`/api/oauth/zoho/start?accountId=${encodeURIComponent(account.id)}`);
+      if (!selectedZohoConfig) { setNotice("Add and enable a Zoho OAuth client in Settings before reconnecting Zoho Mail."); return; }
+      window.location.assign(`/api/oauth/zoho/start?configId=${encodeURIComponent(selectedZohoConfig)}&accountId=${encodeURIComponent(account.id)}`);
       return;
     }
     setBusy(account.id);
@@ -224,15 +233,21 @@ export function EmailAccountsClient({
                   {gmailConfigs.length === 0 ? <option value="">No enabled clients — configure in Settings</option> : gmailConfigs.map((config) => <option key={config.id} value={config.id}>{config.label}</option>)}
                 </select>
               </label>
+            ) : provider.id === "zoho" ? (
+              <label className="mt-4 grid gap-1.5 text-xs font-medium text-muted-foreground">OAuth client
+                <select value={selectedZohoConfig} onChange={(event) => setSelectedZohoConfig(event.target.value)} className="h-10 rounded-xl border bg-background px-3 text-sm text-foreground">
+                  {zohoConfigs.length === 0 ? <option value="">No enabled clients — configure in Settings</option> : zohoConfigs.map((config) => <option key={config.id} value={config.id}>{config.label}</option>)}
+                </select>
+              </label>
             ) : null}
             <button
               type="button"
               onClick={() => {
                 if (provider.id === "gmail") { if (!selectedGmailConfig) { setNotice("Add and enable a Gmail OAuth client in Settings before connecting Gmail."); return; } window.location.assign(`/api/oauth/gmail/start?configId=${encodeURIComponent(selectedGmailConfig)}`); }
-                if (provider.id === "zoho") window.location.assign("/api/oauth/zoho/start");
+                if (provider.id === "zoho") { if (!selectedZohoConfig) { setNotice("Add and enable a Zoho OAuth client in Settings before connecting Zoho Mail."); return; } window.location.assign(`/api/oauth/zoho/start?configId=${encodeURIComponent(selectedZohoConfig)}`); }
                 if (provider.id === "imap_smtp") setShowImapForm(true);
               }}
-              disabled={provider.id === "gmail" && !selectedGmailConfig}
+              disabled={(provider.id === "gmail" && !selectedGmailConfig) || (provider.id === "zoho" && !selectedZohoConfig)}
               className="mt-5 h-10 w-full rounded-xl border bg-muted/40 text-sm font-semibold transition hover:bg-muted disabled:opacity-50"
             >
               {provider.id === "gmail" ? "Connect with Google" : provider.id === "zoho" ? "Connect with Zoho" : "Configure mailbox"}
