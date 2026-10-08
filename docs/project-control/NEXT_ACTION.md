@@ -706,3 +706,6 @@ ChatGPT connected email and WhatsApp worker success/failure outcomes to the work
 - No automatic replay is introduced where an external side effect may already have happened.
 
 **Next concrete implementation:** continue deterministic audit/event assertions and remaining Mail/WhatsApp/Chat/Voice edge cases, then prepare final runtime/deployment verification. Do not wait for CI/Vercel.
+
+### Authentication correction — 2026-10-08
+The next acceptance prerequisite is runtime verification of the new production authentication boundary. Required evidence: unauthenticated page redirect to /login, invalid/expired session rejection, valid Supabase Auth session mapped to an active application membership, and protected API 401/403 behavior. Configure a real Supabase project only through the approved infrastructure workflow; do not invent credentials or use another application's Supabase project. Phase 4 remains unauthorized.
