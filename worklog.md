@@ -664,3 +664,12 @@ Never write "Phase complete" without evidence.
 - Runtime fix commits: `e980173c8df964c9b258025dfa3c43820548c0d9`, `98797cdcca61b92d86966071602b92d2b2ec1711`, `91e6bfea10e43bb767a5c5f07a5a01665c89993f`, `8e49c50842a23e849b28ad64849fe5d22f89f7fc`.
 - No CI/Vercel wait and no claim of external runtime verification.
 \n\n## Task — Durable automation event idempotency\n\n- **Owner:** ChatGPT\n- **Status:** implemented; verification deferred by development-first directive.\n- Added migration `0015_automation_event_idempotency.sql` with nullable `trigger_event_key` and a partial unique index on `(automation_rule_id, trigger_event_key)`.\n- Updated the automation repository to create runs with conflict-safe insertion.\n- Updated the worker automation engine to derive stable event keys from `eventId`, `messageId`, `actionId`, or `correlationId`.\n- Duplicate provider/WhatsApp deliveries now become no-op automation evaluations instead of duplicate executions.\n- Added deterministic unit coverage for event-key selection.\n- No provider credentials, Clara source, or deployment configuration changed. CI/Vercel were not awaited.\n
+
+## Task — Chat cross-agent conversation isolation
+
+- **Owner:** ChatGPT
+- **Status:** implemented; verification deferred by development-first directive.
+- Added `getChatConversation(organizationId, conversationId, agentId)` to the PostgreSQL conversation repository.
+- Chat streaming now rejects a supplied conversation unless it belongs to both the authorized organization and selected agent.
+- Existing conversation creation already enforces organization/agent ownership; this closes the explicit-ID path that bypassed that invariant.
+- No Clara source changes and no provider credentials were introduced.
