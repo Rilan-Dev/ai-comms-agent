@@ -1,5 +1,6 @@
 import {
   claimApprovedEmailAction,
+  recoverStaleExecutingEmailActions,
   completeEmailAction,
   listApprovedEmailActions,
   getLocalDraftForOrganization,
@@ -17,6 +18,10 @@ import { emitProviderEvent } from "../events/provider-events";
 export async function processApprovedEmailActions(limit = 10) {
   if (!process.env.DATABASE_URL) return { processed: 0 };
   let processed = 0;
+  const recovered = await recoverStaleExecutingEmailActions();
+  for (const action of recovered) {
+    await recordAuditEvent({ organizationId: action.organizationId, actorUserId: null, eventType: "email.action.execution_interrupted", targetType: "email_action", targetId: action.id, action: action.actionType, decision: "denied", correlationId: action.correlationId, metadata: { providerOutcomeUnknown: true, manualVerificationRequired: true } });
+  }
   const actions = await listApprovedEmailActions(limit);
   for (const candidate of actions) {
     const action = await claimApprovedEmailAction(candidate.id);
