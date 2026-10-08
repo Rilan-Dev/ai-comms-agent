@@ -133,7 +133,7 @@ export async function GET(request: Request) {
     const organizationId = url.searchParams.get("organizationId") ?? "";
     const actionId = url.searchParams.get("actionId") ?? "";
     if (!organizationId || !actionId) return NextResponse.json({ error: "validation_error" }, { status: 422 });
-    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.update" }, getIdentityAdapter(), getIdentityRepository());
     const action = await getEmailActionForOrganization(organizationId, actionId);
     return action ? NextResponse.json({ action }) : NextResponse.json({ error: "not_found" }, { status: 404 });
   } catch (error) {
