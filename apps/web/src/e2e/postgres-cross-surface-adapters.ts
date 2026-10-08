@@ -183,7 +183,7 @@ export function createPostgresCrossSurfaceSteps(
         if (foreignAction) throw new Error("Cross-organization email action was visible");
         const foreignAccount = await getWhatsAppAccountForOrganization(fixture.otherOrganizationId, fixture.whatsappAccountId);
         if (foreignAccount) throw new Error("Cross-organization WhatsApp account was visible");
-        const foreignAudit = await listOrganizationAuditEvents(fixture.otherOrganizationId, 100, { correlationId: fixture.correlationId });
+        const foreignAudit = await listOrganizationAuditEvents(fixture.otherOrganizationId, 100);
         if (foreignAudit.some((event) => event.correlationId === fixture.correlationId)) {
           throw new Error("Cross-organization audit event was visible");
         }
@@ -192,7 +192,7 @@ export function createPostgresCrossSurfaceSteps(
     {
       name: "verify audit correlation",
       execute: async () => {
-        const events = await listOrganizationAuditEvents(fixture.organizationId, 100, { correlationId: fixture.correlationId });
+        const events = await listOrganizationAuditEvents(fixture.organizationId, 100);
         if (!events.some((event) => event.correlationId === fixture.correlationId)) {
           throw new Error("Cross-surface audit correlation was not found");
         }
