@@ -73,6 +73,17 @@ export async function loginWithPassword(input: {
     throw new InvalidCredentialsError();
   }
 
+  // Authentication is not sufficient for application access. The protected
+  // application boundary also requires an active organization membership.
+  // Refuse to mint a session when that authorization context is missing;
+  // otherwise the browser reports a successful login and immediately falls
+  // back to /login?reason=not_provisioned.
+  const memberships = await identity.getMembershipsForUser(user.id);
+  if (!memberships.some((item) => item.status === "active")) {
+    await auth.recordLoginAttempt({ subjectKey: email, succeeded: false, ipAddress: input.ipAddress, userAgent: input.userAgent });
+    throw new AccountNotProvisionedError();
+  }
+
   await auth.setCredentialLock(credential.userId, 0, null);
   await auth.recordLoginAttempt({ subjectKey: email, succeeded: true, ipAddress: input.ipAddress, userAgent: input.userAgent });
 
@@ -157,6 +168,13 @@ export class ValidationError extends Error {
 export class InvalidCredentialsError extends Error {
   readonly code = "invalid_credentials";
   constructor(message = "Email or password is incorrect.") {
+    super(message);
+  }
+}
+
+export class AccountNotProvisionedError extends Error {
+  readonly code = "account_not_provisioned";
+  constructor(message = "Your account is not provisioned for an active organization workspace.") {
     super(message);
   }
 }
