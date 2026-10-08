@@ -5,7 +5,9 @@ const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout", "/api/hea
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const requestHeaders = new Headers(request.headers);\n  requestHeaders.set("x-pathname", pathname);\n  if (PUBLIC_PATHS.some(path => pathname === path || pathname.startsWith(path + "/"))) return NextResponse.next({ request: { headers: requestHeaders } });
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+  if (PUBLIC_PATHS.some(path => pathname === path || pathname.startsWith(path + "/"))) return NextResponse.next({ request: { headers: requestHeaders } });
   if (pathname.startsWith("/_next/") || pathname === "/favicon.ico") return NextResponse.next({ request: { headers: requestHeaders } });
 
   // API routes deliberately return JSON 401/403 rather than redirecting.
