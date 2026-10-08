@@ -117,7 +117,7 @@ export async function GET(request: Request) {
           provider: "gmail",
           emailAddress: profile.emailAddress,
           displayName: profile.emailAddress,
-          connectionConfig: { historyId: profile.historyId ?? null, oauthScope: tokens.scope ?? null },
+          connectionConfig: { historyId: profile.historyId ?? null, oauthScope: tokens.scope ?? null, oauthConfigId: oauthConfig.id },
           status: "pending",
           capabilities,
         });
@@ -128,6 +128,9 @@ export async function GET(request: Request) {
       refresh_token: tokens.refresh_token,
       expires_at: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000).toISOString() : undefined,
       scope: tokens.scope,
+      oauth_client_id: clientId,
+      oauth_client_secret: clientSecret,
+      oauth_config_id: oauthConfig.id,
     }, masterKey);
     await repository.updateStatus(account.id, "pending");
 
