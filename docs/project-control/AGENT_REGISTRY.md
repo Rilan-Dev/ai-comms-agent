@@ -31,3 +31,9 @@ When an agent discovers work owned by another agent:
 ## Fresh-session rule
 
 Every invocation is recoverable from GitHub. The agent must not require prior chat history to determine role, scope, authorization, blockers, lessons, verification state, and NEXT_ACTION.md.
+
+## WORK-01 / Rover
+
+Add WORK-01 / Rover as an independently invokable daily-worker role. It may perform SAFE-LOCAL or already AUTHORIZED maintenance, diagnostics, docs/tests, cleanup, and small compatible enhancements. It must classify unplanned work and route MATERIAL-CHANGE work for explicit authorization.
+
+Every role reads shared AGENT_MEMORY.md first, then its role-local memory/worklog. Any role may be invoked while another role is active.
