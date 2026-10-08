@@ -288,3 +288,9 @@ Authentication correction (2026-10-08): the previous Phase 3 implementation expo
 
 ### 2026-10-08 — Authentication security correction
 Authentication is now application-owned and PostgreSQL-native. Supabase Auth is not required. The production session adapter uses hashed opaque cookies mapped to active application users; password credentials are salted scrypt verifiers; login lockout, same-origin validation, logout/revocation, password change, and one-time bootstrap are implemented. This work supersedes the previous Supabase Auth dependency in the login route without changing the product objective.
+
+
+### 2026-10-08 — Provider identity + voice session hardening
+- Provider-event payload construction now prevents informational metadata from overriding canonical tenant/action/message/account/correlation identity.
+- Voice turn increments are now active-session-only at both application and SQL update boundaries, closing the stale-session race.
+- Continue development-first cross-surface hardening; runtime/deployment verification remains deferred.
