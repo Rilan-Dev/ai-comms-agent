@@ -878,3 +878,10 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Added `/setup` and `/api/auth/bootstrap` to the public-path allowlist while preserving the server-side token gate.
 - Login now preserves a safe `next` route after authentication and provides a first-time setup link.
 - No development authentication bypass was added.
+
+
+### 2026-10-08 — Browser authentication path correction
+- Corrected the login client redirect source that contained an invalid escaped newline sequence.
+- Corrected the root server layout so the unauthenticated first-run `/setup` page is not redirected back to `/login`; protected application pages still require the authoritative PostgreSQL session context.
+- Added deterministic auth-boundary regression coverage for the setup exception and login redirect syntax.
+- **Next:** continue communication-loop product hardening and deterministic audit/idempotency assertions; final runtime/deployment verification remains later and CI/Vercel are non-blocking.
