@@ -1093,3 +1093,12 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - **Commits:** `3ada3490ec91398e0f239c086bcbe9289063de96`, `8dda47141678033b90d2530183527b44807221f6`, `75bf41fd8eade96ed7fdc3fc6d2e580074b94a91`, `f1bcabd9eed9c8f073d8de4a287dbfd25bde6d22`.
 - **Validation:** not run; do not treat implementation as verified. Continue development without waiting for CI/Vercel.
 - **Next:** inspect realtime session start/activation failure paths and ensure abandoned/failed starts transition to an explicit terminal state with audit/telemetry continuity.
+
+
+### 2026-10-09 — Voice session start lifecycle hardening
+- Voice session creation now persists a durable `starting` row before requesting Clara realtime transport details.
+- Transport/configuration failures attempt to transition the persisted session to terminal `error`; a failed configuration update no longer returns a session as successfully started.
+- Added a repository operation that only configures a session still in `starting` and not ended, preventing late setup from overwriting a terminal lifecycle state.
+- Added regression coverage for persistence-before-start and terminal cleanup.
+- Commits: `c2db972702478f60729ccd336edb99bb6d6f72bf`, `4ce7306f86c8143216364bfca45e7a8e41b2fee1`, `2dc3bcf58c5f62821e8a34b54cdb32d4270dafbe`, `5572d1e9437784bd6f377f547fc704c456ca7a0f`, `f73d7149b5a8c389487852a6f38d4965aba52cd0`.
+- Verification was not run and remains pending; no CI/Vercel/runtime success is claimed.
