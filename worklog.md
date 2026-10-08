@@ -907,3 +907,8 @@ ChatGPT takeover correction for the reported inactive login experience:
 - User should rerun `git pull --ff-only origin main && pnpm run typecheck`.
 - Phase 3 acceptance remains pending until runtime verification is green.
 - Phase 4 remains NOT AUTHORIZED.
+
+- Fixed the reported browser login redirect failure: the login endpoint always marked the session cookie `Secure` when `NODE_ENV=production`, even when the application was accessed over plain HTTP at `http://100.72.192.28:3300`. Browsers therefore did not return the cookie on the redirected request, so middleware sent the user back to `/login?next=/`.
+- The auth cookie now derives `secure` from `X-Forwarded-Proto` (when present) or the request URL protocol, preserving Secure cookies on HTTPS while allowing the explicitly HTTP deployment to retain its session.
+- Auth fix commit: `52fb3318c28f11f3bcc9314c117200f780399e90`.
+- No CI/Vercel wait and no broader authentication feature changes were made.
