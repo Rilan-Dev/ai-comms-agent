@@ -5,11 +5,11 @@ const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout", "/api/hea
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (PUBLIC_PATHS.some(path => pathname === path || pathname.startsWith(path + "/"))) return NextResponse.next();
-  if (pathname.startsWith("/_next/") || pathname === "/favicon.ico") return NextResponse.next();
+  const requestHeaders = new Headers(request.headers);\n  requestHeaders.set("x-pathname", pathname);\n  if (PUBLIC_PATHS.some(path => pathname === path || pathname.startsWith(path + "/"))) return NextResponse.next({ request: { headers: requestHeaders } });
+  if (pathname.startsWith("/_next/") || pathname === "/favicon.ico") return NextResponse.next({ request: { headers: requestHeaders } });
 
   // API routes deliberately return JSON 401/403 rather than redirecting.
-  if (pathname.startsWith("/api/")) return NextResponse.next();
+  if (pathname.startsWith("/api/")) return NextResponse.next({ request: { headers: requestHeaders } });
 
   const accessToken = request.cookies.get("aca-access-token")?.value;
   if (!accessToken) {
@@ -17,7 +17,7 @@ export function middleware(request: NextRequest) {
     login.searchParams.set("next", pathname);
     return NextResponse.redirect(login);
   }
-  return NextResponse.next();
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"] };
