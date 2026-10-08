@@ -995,3 +995,11 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Replaced that reconciliation with an explicit idempotent `ALTER TABLE aca.whatsapp_contacts ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES aca.organizations(id) ON DELETE CASCADE` after the table creation. No application feature code changed.
 - Migration fix commit: `25e55489b287677674a381d4c5cefd4ae77593ad`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0004_messaging.sql:65`: the partially-created `whatsapp_contacts` table existed without `organization_id`, while the migration expected it for subsequent indexing.
+- Reconciled `whatsapp_contacts.organization_id` before dependent operations and corrected `whatsapp_messages.organization_id` reconciliation ordering so the table is created before the column alteration. No application feature code changed.
+- Also improved migration/reset CLI output so normal runs show only concise `APPLY/SKIP/OK/PASS` status lines, while failures show the relevant PostgreSQL error context instead of raw CREATE/ALTER/NOTICE output.
+- Migration/schema fix commit: `e86c3453cb4c5c58bda1e7472a70161ecfd369b9`.
+- Migration output commit: `857efa253ff3c84d175a30880e8063c465d4ecbb`.
+- Reset output commit: `606cf51f25d4b425ac2b389993fa05eabd73d37f`.
+- No CI/Vercel wait and no migration PASS claimed from these edits.
