@@ -749,3 +749,10 @@ The latest concrete implementation checkpoint is cross-surface hardening: determ
 - WhatsApp outbound failures now persist the provider error in the authoritative message row instead of discarding the error argument.
 - Runtime/CI/Vercel validation remains deferred under the active development-first instruction; no success is claimed.
 - **Next:** continue remaining Mail/WhatsApp/Chat/Voice edge cases and audit/idempotency assertions before final runtime/deployment preparation.
+
+
+### 2026-10-08 — WhatsApp provider-status isolation hardening
+- Provider status callbacks are now organization + WhatsApp-account scoped before mutating a message, preventing a provider message ID collision from crossing account/tenant boundaries.
+- The webhook now passes the resolved account scope into the repository update.
+- Added deterministic regression coverage for the repository predicate and webhook scope propagation.
+- **Next:** continue remaining Mail/WhatsApp/Chat/Voice edge cases and deterministic audit/event assertions; do not wait for CI/Vercel.
