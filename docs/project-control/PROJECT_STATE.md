@@ -451,3 +451,10 @@ Pending and individual email approval content is now restricted to `organization
 ### 2026-10-09 — Audit schema compatibility update
 
 The user-provided runtime logs show migration 0023 applied and the web/worker containers started, but authenticated agent creation then failed because the existing audit_events table still required legacy resource_type/outcome columns. Forward-only migration 0024 and static regression coverage are now committed. Runtime acceptance remains pending until 0024 is applied and the failing request is retried.
+
+
+### 2026-10-09 — Mailbox tenant-context correction
+- `/mail/accounts` now uses the authenticated user's active organization instead of the seeded development organization. The API's `not_member` response was correct and should not be bypassed.
+- Source commit: `4536332fdee1de3b2a0c060d581b3939c769f08a`; static regression test: `7a3cfba20cabc6fad88b313c258320c5961c06af`.
+- Project-control records: ISS-009, EVT-FIX01-MAIL-TENANT-20261009, FIX01-MAIL-TENANT-20261009.
+- Runtime status remains unverified. The independent migration 0024 deployment/retry requirement from ISS-008 remains pending.
