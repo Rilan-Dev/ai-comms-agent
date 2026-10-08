@@ -55,3 +55,13 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Commits:** `4536332f` (source), `7a3cfba2` (test).
 - **Remaining:** Pull current main, apply pending migration 0024 via `bash scripts/manual-up.sh`, sign in with a fresh session, and retry from the UI. Runtime not yet verified.
 - **Related:** ISS-009; NEXT_ACTION.md.
+
+
+### EVT-DEV01-GMAIL-OAUTH-20261009 — CONFIGURABLE MULTI-CLIENT SOURCE IMPLEMENTATION
+- Owner: DEV-01 / Forge (ChatGPT primary implementer)
+- Requirement: configure multiple Gmail OAuth client IDs/secrets through Settings, not .env or source constants.
+- Remedy: migration 0025; organization-scoped encrypted OAuth config API; Settings management UI; selected-client Gmail start/callback; encrypted per-account client data for worker refresh; static regression tests.
+- Security: OAuth client secrets are never returned to the browser. CREDENTIALS_MASTER_KEY remains a server-only root encryption key; Gmail OAuth state no longer requires SESSION_SIGNING_KEY.
+- Commits: bf02ac6d, 37518326, 4ad9578c, 78bb9d2c, 6980d091, 5b7ba0bf, e2279785, dd947b50.
+- Verification: tests/build/migrations/live OAuth not run. No PASS claimed.
+- Related issue: ISS-010; NEXT_ACTION.md.
