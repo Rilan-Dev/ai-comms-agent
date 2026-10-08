@@ -236,3 +236,9 @@ The recovery procedure is documented in `CHAT_CONTINUITY.md`.
 > **ChatGPT leads. Z.AI builds. GitHub remembers. Tests provide evidence. Vercel deploys. Supabase persists. The user owns the product decisions. No ChatGPT conversation is the source of truth.**
 >
 > **Z.AI does not build first and document later. Phase 1 defines the system completely. ChatGPT reviews and approves Phase 1. Only then does Phase 2 begin development.**
+
+## APCP Adaptive Control Layer
+
+The newer cross-project adaptive layer is documented in `docs/project-control/ADAPTIVE_PROJECT_CONTROL.md` and `docs/project-control/NAVIGATION.md`. It supplements these existing rules and does not change the current product plan.
+
+Additional rules: current explicit requirements may supersede earlier requirements; material changes require impact analysis and updated authorization; plans/prompts/commits/agent claims do not grant authorization; completed work may be reopened under a current authorized requirement; phase/task/checklist completion is a boundary; NEXT_ACTION.md is the execution pointer; fresh sessions recover from repository state; DEV-01/Forge, FIX-01/Sentinel and OPS-01/Shipwright retain separate roles; other-agent blockers are routed; independent work continues without repeated async polling; implementation/verification/closure remain distinct; significant incidents leave durable lessons; governance-only updates do not alter product scope or implementation plans.
