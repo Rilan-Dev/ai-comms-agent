@@ -16,6 +16,7 @@ describe("Gmail OAuth platform configuration", () => {
     const route = read("../src/app/api/settings/gmail-oauth/route.ts");
     expect(route).toContain("gmail_oauth_configs");
     expect(route).toContain("encryptCredential(clientSecret, key)");
+    expect(route).toContain("Enter the new client secret when changing the Google OAuth client ID.");
     expect(route).toContain('role: "admin"');
     expect(route).not.toContain("GMAIL_OAUTH_CLIENT_SECRET");
     expect(route).not.toContain("return { clientSecret");
