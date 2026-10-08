@@ -786,3 +786,10 @@ Next: continue deterministic audit/event assertions and remaining cross-surface 
 - First-account bootstrap is now atomic in PostgreSQL and cannot leave a credential initialized without its owner organization after a partial failure.
 - Password changes retain the current browser session while revoking all other sessions.
 - Authentication remains development-complete for the current slice; runtime/CI/Vercel verification is intentionally deferred per project-owner instruction.
+
+
+## 2026-10-08 — Chat organization authorization hardening
+- Chat POST now validates that the requested agent belongs to the authenticated organization before any conversation lookup/creation or Clara invocation.
+- Added deterministic static regression coverage for lookup ordering and fail-closed not-found behavior.
+- No provider delivery, CI success, Vercel success, or runtime acceptance is claimed.
+- Next: continue Mail/WhatsApp/Chat/Voice edge cases and audit/event assertions, then final runtime/deployment preparation.
