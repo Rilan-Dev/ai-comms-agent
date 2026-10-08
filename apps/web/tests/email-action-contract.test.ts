@@ -26,6 +26,15 @@ describe("approval-safe email action contract", () => {
     expect(actionRepository).toContain("AND (expires_at IS NULL OR expires_at > now())");
   });
 
+  it("scopes worker claim and completion transitions to the owning organization", () => {
+    expect(actionRepository).toContain("export async function claimApprovedEmailAction(actionId: string, organizationId: string)");
+    expect(actionRepository).toContain("AND organization_id = $2");
+    expect(actionRepository).toContain("export async function completeEmailAction(\n  actionId: string,\n  organizationId: string,");
+    expect(actionRepository).toContain("WHERE id = $1 AND organization_id = $5 AND status = 'executing'");
+    expect(executor).toContain("claimApprovedEmailAction(actionId, organizationId)");
+    expect(executor).toContain('completeEmailAction(claimed.id, organizationId, "completed"');
+  });
+
   it("keeps provider credentials and execution inside the worker", () => {
     expect(executor).toContain("parseCredentialsMasterKey");
     expect(executor).toContain("loadCredentials");
