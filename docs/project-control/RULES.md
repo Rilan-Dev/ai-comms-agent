@@ -242,3 +242,11 @@ The recovery procedure is documented in `CHAT_CONTINUITY.md`.
 The newer cross-project adaptive layer is documented in `docs/project-control/ADAPTIVE_PROJECT_CONTROL.md` and `docs/project-control/NAVIGATION.md`. It supplements these existing rules and does not change the current product plan.
 
 Additional rules: current explicit requirements may supersede earlier requirements; material changes require impact analysis and updated authorization; plans/prompts/commits/agent claims do not grant authorization; completed work may be reopened under a current authorized requirement; phase/task/checklist completion is a boundary; NEXT_ACTION.md is the execution pointer; fresh sessions recover from repository state; DEV-01/Forge, FIX-01/Sentinel and OPS-01/Shipwright retain separate roles; other-agent blockers are routed; independent work continues without repeated async polling; implementation/verification/closure remain distinct; significant incidents leave durable lessons; governance-only updates do not alter product scope or implementation plans.
+
+14. Agent invocation is explicit: DEV-01/Forge, FIX-01/Sentinel, and OPS-01/Shipwright are independently invokable roles.
+15. Invoking a role selects its behavior; it does not grant authorization or expand project scope.
+16. An agent invoked in a separate chat may work while another agent is active; it must recover state from GitHub and must not require interruption of the other session.
+17. Each agent must follow its role skill, route work owned by another role, record dependencies/lessons, and continue independent authorized work.
+18. Agent-specific work must not silently mutate another role's responsibilities, product scope, phase authorization, or closure state.
+19. `AGENT_INVOCATION.md` is the copy/paste assignment entry point; `AGENT_SKILLS.md` is the behavioral contract; `AGENT_REGISTRY.md` is the ownership map; `FILES.md` is the governance audit index.
+
