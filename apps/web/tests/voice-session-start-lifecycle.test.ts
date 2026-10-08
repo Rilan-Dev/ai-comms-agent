@@ -7,7 +7,7 @@ const route = readFileSync(
   "utf8",
 );
 const repository = readFileSync(
-  resolve(__dirname, "../../packages/db/src/voice/repository.ts"),
+  resolve(__dirname, "../../../packages/db/src/voice/repository.ts"),
   "utf8",
 );
 
