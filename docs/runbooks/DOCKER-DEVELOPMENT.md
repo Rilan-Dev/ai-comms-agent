@@ -67,7 +67,6 @@ DATABASE_SSL_REJECT_UNAUTHORIZED=false
 REDIS_URL=redis://127.0.0.1:6379
 RABBITMQ_URL=amqp://aca:aca_local_dev@127.0.0.1:5672
 QDRANT_URL=http://127.0.0.1:6333
-NEXT_PUBLIC_APP_URL=http://localhost:3000
 CREDENTIALS_MASTER_KEY=<generated-secret>
 SESSION_SIGNING_KEY=<generated-secret>
 ~~~
@@ -245,3 +244,5 @@ git push origin <branch>
 
 ## 14. Production boundary
 Do not use this document as a production deployment procedure. Production requires separately approved PostgreSQL/Supabase, Redis, RabbitMQ, Qdrant, worker hosting, secrets, backups, monitoring, provider credentials, migrations and runtime verification.
+
+OAuth callback URLs are calculated from the host used to access the application. Localhost can be used for local testing; any non-local OAuth callback must use HTTPS and be registered in the provider console. Do not set a fixed `NEXT_PUBLIC_APP_URL` just to control OAuth callbacks.
