@@ -93,3 +93,10 @@ If shared memory conflicts with current repository state or current requirements
 ### DEV-01 / Forge — 2026-10-09 migration sequencing
 - Check existing migration filenames before adding a migration and avoid colliding with the current/latest sequence even though older historical migration groups contain duplicate prefixes. The recent sequence is guarded by a regression test.
 - Gmail OAuth configuration migration is `0026_gmail_oauth_configuration.sql`; WhatsApp outbound claim lifecycle is `0025_whatsapp_outbound_claim_lifecycle.sql`.
+
+
+### DEV-01 / Forge — Dynamic OAuth callback origins (2026-10-09)
+- Do not derive provider callback URLs from a fixed `NEXT_PUBLIC_APP_URL`; derive from the incoming public request origin and carry the exact callback URI in signed OAuth state so code exchange uses the same value.
+- Public OAuth callbacks require HTTPS and provider-side exact redirect URI registration. Google web clients reject raw IP hosts; an HTTP private IP cannot be made valid by code changes alone.
+- OAuth client IDs/secrets belong in organization-scoped Settings and encrypted persistence; worker refresh must use the per-account client used at consent, not global env defaults.
+- Zoho now follows the same multi-client UI pattern as Gmail; migration 0027 must be applied before settings work.
