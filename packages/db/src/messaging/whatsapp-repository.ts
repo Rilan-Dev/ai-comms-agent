@@ -166,10 +166,10 @@ export async function markWhatsAppOutboundFailed(messageId: string, error: strin
   return r.rows.length > 0;
 }
 
-export async function applyWhatsAppProviderStatus(input: { providerMessageId: string; status: "sent" | "delivered" | "read" | "failed"; error?: string | null; timestamp?: string | null }) {
+export async function applyWhatsAppProviderStatus(input: { organizationId: string; accountId: string; providerMessageId: string; status: "sent" | "delivered" | "read" | "failed"; error?: string | null; timestamp?: string | null }) {
   const r = await query<Row>(
-    "UPDATE whatsapp_messages SET status = CASE WHEN $1 = 'failed' THEN 'failed' WHEN $1 = 'read' THEN 'read' WHEN $1 = 'delivered' AND status NOT IN ('read') THEN 'delivered' WHEN $1 = 'sent' AND status NOT IN ('delivered','read') THEN 'sent' ELSE status END, provider_error = CASE WHEN $1 = 'failed' THEN left($4,2000) ELSE provider_error END, delivered_at = CASE WHEN $1 IN ('delivered','read') THEN COALESCE(delivered_at, $2::timestamptz) ELSE delivered_at END, read_at = CASE WHEN $1 = 'read' THEN COALESCE(read_at, $2::timestamptz) ELSE read_at END, updated_at = now() WHERE provider_message_id = $3 RETURNING id, organization_id, whatsapp_account_id",
-    [input.status, input.timestamp ?? new Date().toISOString(), input.providerMessageId, input.error ?? null],
+    "UPDATE whatsapp_messages SET status = CASE WHEN $1 = 'failed' THEN 'failed' WHEN $1 = 'read' THEN 'read' WHEN $1 = 'delivered' AND status NOT IN ('read') THEN 'delivered' WHEN $1 = 'sent' AND status NOT IN ('delivered','read') THEN 'sent' ELSE status END, provider_error = CASE WHEN $1 = 'failed' THEN left($5,2000) ELSE provider_error END, delivered_at = CASE WHEN $1 IN ('delivered','read') THEN COALESCE(delivered_at, $2::timestamptz) ELSE delivered_at END, read_at = CASE WHEN $1 = 'read' THEN COALESCE(read_at, $2::timestamptz) ELSE read_at END, updated_at = now() WHERE provider_message_id = $3 AND organization_id = $4 AND whatsapp_account_id = $6 RETURNING id, organization_id, whatsapp_account_id",
+    [input.status, input.timestamp ?? new Date().toISOString(), input.providerMessageId, input.organizationId, input.error ?? null, input.accountId],
   );
   return r.rows[0] ? { id: String(r.rows[0].id), organizationId: String(r.rows[0].organization_id), accountId: String(r.rows[0].whatsapp_account_id) } : null;
 }
