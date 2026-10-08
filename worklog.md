@@ -763,3 +763,17 @@ Next: continue deterministic audit/event assertions and remaining cross-surface 
 - No production credentials were invented or committed.
 - Phase 4 remains unauthorized until authentication runtime evidence and final Phase 3 acceptance are complete.
 
+
+
+### 2026-10-08 — PostgreSQL-native authentication implementation
+
+- **Owner:** ChatGPT
+- **Objective:** remove the remaining Supabase Auth runtime dependency and make authentication fully application-owned because no additional Supabase project is available.
+- Added forward-only migration `0022_application_authentication.sql` with `aca.auth_credentials`, `aca.auth_sessions`, and `aca.auth_login_attempts`.
+- Added salted scrypt password hashing/verification, generic credential failures, five-failure/15-minute lockout, session expiry/revocation, HttpOnly session cookies, same-origin validation, client-IP normalization, current-session resolution, logout, password change, and one-time first-account bootstrap.
+- Added authenticated password-change UI in Settings.
+- Removed the production Supabase identity adapter and replaced the login path with PostgreSQL-owned sessions.
+- Updated API/security/runbook/environment documentation to state that Supabase Auth is not required.
+- Hardened the PostgreSQL connection factory to establish `aca,public` as the application search path at connection startup, fixing the schema boundary for existing unqualified repositories.
+- Added authentication validation/static migration tests.
+- No GitHub Actions/Vercel wait was performed and no runtime verification PASS is claimed.
