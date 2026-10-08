@@ -793,3 +793,15 @@ Next: continue deterministic audit/event assertions and remaining cross-surface 
 - Added deterministic static regression coverage for lookup ordering and fail-closed not-found behavior.
 - No provider delivery, CI success, Vercel success, or runtime acceptance is claimed.
 - Next: continue Mail/WhatsApp/Chat/Voice edge cases and audit/event assertions, then final runtime/deployment preparation.
+
+
+## Task ID: 12
+## Phase: Product Completion — Cross-Surface Hardening
+
+- **Status**: implemented; runtime verification intentionally deferred.
+- **Owner**: ChatGPT
+- Provider-event automation failures are now isolated from authoritative email/WhatsApp provider outcomes, preventing downstream automation errors from falsely marking completed external actions as failed.
+- Provider-event delivery failures now emit an organization/correlation-scoped audit event on a best-effort basis.
+- Added injectable provider-event bridge test coverage proving automation failure isolation.
+- No provider credentials, external delivery, CI success, or Vercel readiness claimed.
+- **Next**: continue remaining communication-loop edge cases and deterministic E2E/audit/idempotency hardening.
