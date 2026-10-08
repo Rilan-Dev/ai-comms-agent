@@ -49,3 +49,11 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** Live runtime and Google OAuth credentials are user-operated; no runtime PASS claimed.
 - **Handoff:** ISS-010 / EVT-DEV01-GMAIL-OAUTH-20261009.
 - **Next action:** Follow NEXT_ACTION.md; keep CREDENTIALS_MASTER_KEY server-only and never return client secrets to the browser.
+
+
+## 2026-10-09 — Dynamic OAuth callback + Zoho client settings
+- Read project-control continuity and NEXT_ACTION before editing.
+- Completed source changes on main for request-derived Gmail/Zoho callbacks and multi-client Zoho OAuth management, including encrypted secrets and worker refresh credentials.
+- Added migration 0027 and source-level regression tests. Tests/build/typecheck/live migration and provider flows were not run.
+- Important operator constraint: current raw HTTP private IP cannot be used as the public OAuth callback. Use an HTTPS DNS domain; Google additionally rejects raw IP hosts. Exact callback URI must be registered in the provider console.
+- Next action remains deployment/configuration and end-to-end testing; see NEXT_ACTION.md.
