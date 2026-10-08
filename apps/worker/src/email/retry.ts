@@ -4,6 +4,7 @@ export interface RetryPolicy {
   maxDelayMs?: number;
   shouldRetry?: (error: unknown, attempt: number) => boolean;
   sleep?: (delayMs: number) => Promise<void>;
+  onRetry?: (context: { attempt: number; nextAttempt: number; delayMs: number; error: unknown }) => void | Promise<void>;
 }
 
 export function isRetryableProviderError(error: unknown): boolean {
@@ -20,6 +21,7 @@ export async function withProviderRetry<T>(operation: () => Promise<T>, policy: 
   const maxDelayMs = Math.max(baseDelayMs, policy.maxDelayMs ?? 2_000);
   const shouldRetry = policy.shouldRetry ?? ((error) => isRetryableProviderError(error));
   const sleep = policy.sleep ?? ((delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)));
+  const onRetry = policy.onRetry ?? (() => undefined);
 
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -29,6 +31,7 @@ export async function withProviderRetry<T>(operation: () => Promise<T>, policy: 
       lastError = error;
       if (attempt >= maxAttempts || !shouldRetry(error, attempt)) throw error;
       const delay = Math.min(maxDelayMs, baseDelayMs * 2 ** (attempt - 1));
+      await onRetry({ attempt, nextAttempt: attempt + 1, delayMs: delay, error });
       await sleep(delay);
     }
   }
