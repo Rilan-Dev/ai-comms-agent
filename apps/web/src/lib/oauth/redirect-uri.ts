@@ -18,7 +18,7 @@ export function getOAuthRedirectUri(request: Request, provider: "gmail" | "zoho"
 
 export function assertOAuthRedirectUriSecure(redirectUri: string): void {
   const url = new URL(redirectUri);
-  const hostname = url.hostname.replace(/^\\[|\\]$/g, "");
+  const hostname = url.hostname.replace("[", "").replace("]", "");
   const local = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
   if (!local && isIP(hostname)) {
     throw new Error("OAuth provider callbacks require a DNS domain; raw IP callback hosts are not supported.");
