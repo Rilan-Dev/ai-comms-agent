@@ -16,13 +16,20 @@ export function automationMatches(rule:Pick<Rule,"trigger"|"conditions">,event:E
   return !rule.conditions || Object.keys(rule.conditions).length===0 || objectEqualsSubset(event.payload,rule.conditions);
 }
 
+function stableEventKey(event:Event){
+  const candidate = event.payload.eventId ?? event.payload.messageId ?? event.payload.actionId ?? event.payload.correlationId;
+  return typeof candidate === "string" && candidate.trim() ? event.type + ":" + candidate.trim() : null;
+}
+
 export async function evaluateAutomationEvent(event:Event){
   if(!process.env.DATABASE_URL) return {matched:0,started:0,failed:0};
   const rules=await listActiveAutomationRules(); let matched=0,started=0,failed=0;
   for(const rule of rules as unknown as Rule[]){
     if(!automationMatches(rule,event)) continue;
     matched++;
-    const runId=await createAutomationRun(rule.id,{eventType:event.type}); if(!runId){failed++;continue;}
+    const eventKey=stableEventKey(event);
+    const runId=await createAutomationRun(rule.id,{eventType:event.type,eventKey},eventKey);
+    if(!runId) continue;
     try{
       const result=await dispatchAgentExecution({executionId:runId,organizationId:rule.organizationId,agentId:rule.agentId,source:"automation",intent:"automation.execute",params:{actions:rule.actions,event:event.payload},requestedAt:new Date().toISOString()});
       if(result.status==="configuration_required") await failAutomationRun(runId,result.reason); else await completeAutomationRun(runId,{status:result.status,executionId:result.executionId,output:result.output??null,provider:result.provider??null,model:result.model??null});
