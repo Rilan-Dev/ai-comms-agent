@@ -779,3 +779,9 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Provider event canonical identity fields cannot be overridden by provider metadata.
 - Voice turn increments require active sessions at both API and SQL boundaries.
 - Runtime/CI/Vercel verification is intentionally deferred per project-owner instruction; no success is claimed.
+
+
+### Latest security edge hardening — 2026-10-08
+- Email approval list/detail access now requires `organization.update`; approval content is no longer exposed to `organization.read` viewers.
+- Latest implementation checkpoint: `3488b3b585c8779f706dea646d78b2f4ff880657c`.
+- Runtime/CI/Vercel verification remains intentionally deferred; no PASS is claimed.
