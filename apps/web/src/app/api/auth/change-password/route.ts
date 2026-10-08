@@ -12,7 +12,9 @@ export async function POST(request: Request) {
     if (typeof body?.currentPassword !== "string" || typeof body?.newPassword !== "string") {
       throw new ValidationError("Current password and new password are required.");
     }
-    const sessionTokenHash = getSessionTokenHash(request);\n    if (!sessionTokenHash) return NextResponse.json({ error: "unauthorized", message: "Authentication required" }, { status: 401 });\n    await changePassword({ userId: user.id, currentPassword: body.currentPassword, newPassword: body.newPassword, currentSessionTokenHash: sessionTokenHash });
+    const sessionTokenHash = getSessionTokenHash(request);
+    if (!sessionTokenHash) return NextResponse.json({ error: "unauthorized", message: "Authentication required" }, { status: 401 });
+    await changePassword({ userId: user.id, currentPassword: body.currentPassword, newPassword: body.newPassword, currentSessionTokenHash: sessionTokenHash });
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof ValidationError) return NextResponse.json({ error: error.code, message: error.message }, { status: 400 });
