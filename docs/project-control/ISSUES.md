@@ -157,3 +157,18 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Commits:** migration `14bea1c3`; test `4ef3921d`.
 - **Verification:** User-provided logs confirm migrations through 0023 and application startup; 0024 has not yet been applied to the live database. Runtime agent creation remains failing/unverified until the new migration is applied and the request is retried.
 - **Next action:** pull main and run `bash scripts/manual-up.sh`; then retry authenticated agent creation. Share only redacted error output if it still fails.
+
+
+## ISS-009 — Email accounts page selects development organization instead of authenticated tenant
+
+- **Opened:** 2026-10-09
+- **Severity:** high
+- **Owner:** ChatGPT / FIX-01 Sentinel
+- **Status:** source fix committed; runtime retry pending
+- **Symptom:** `POST /api/email-accounts` returned HTTP 403 with `reason: not_member` for the organization ID submitted by the email-account screen.
+- **Root cause:** `apps/web/src/app/mail/accounts/page.tsx` called `ensureDevSeed()` and used `getDevOrgId()` to load accounts and initialize the client. That development organization is not necessarily the authenticated user's active organization. The API's membership denial was correct; the page was supplying the wrong tenant context.
+- **Remedy:** The page now calls `getAuthenticatedAppContext()` with request headers and uses that active membership's `organizationId` for both the account query and client. This follows the existing `/mail/inbox` pattern. Added `apps/web/tests/email-account-organization-context.test.ts`.
+- **Security invariant:** Do not weaken `authorize()`, auto-create membership, or trust arbitrary organization IDs to make this request pass. The UI must use the authenticated tenant; the API must continue enforcing membership and role.
+- **Commits:** page fix `4536332f`; regression test `7a3cfba2`.
+- **Verification:** Source commits are present. No live retry or runtime PASS has been observed yet. The pending migration 0024 also still needs to be applied per ISS-008 before re-testing the overall flow.
+- **Next:** pull main, run `bash scripts/manual-up.sh`, sign in with a fresh session, and retry the account test from `/mail/accounts`. Redact tokens and provider credentials from any logs.
