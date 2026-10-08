@@ -34,7 +34,7 @@ describe("production authentication boundary", () => {
 
   it("selects the real adapter in production and keeps the dev adapter development-only", () => {
     const repository = read("src/lib/identity/repository.ts");
-    expect(repository).toContain('process.env.NODE_ENV === "production"');
+    expect(repository).toContain('process.env.ACA_ENABLE_DEV_IDENTITY === "true"');
     expect(repository).toContain("new LocalIdentityAdapter");
     expect(repository).toContain("new DevIdentityAdapter");
   });
