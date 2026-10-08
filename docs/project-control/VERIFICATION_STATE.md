@@ -744,3 +744,9 @@ Latest source correction: `apps/web/src/app/api/email-accounts/route.ts` was rep
 - Email and WhatsApp worker outcomes now retain deterministic retry attempt counts and retryability classification.
 - Added deterministic provider-event mapping tests for identity/correlation/retry/error propagation.
 - Runtime provider delivery and CI/Vercel status remain intentionally unclaimed; development continues independently.
+
+### 2026-10-08 — Abandoned execution fail-closed hardening
+- Email worker stale execution recovery is fail-closed and auditable; automatic replay is intentionally avoided because provider outcome may be unknown after a crash.
+- WhatsApp inbound stale execution recovery is fail-closed and auditable for the same duplicate-side-effect reason.
+- Added deterministic contract coverage for both recovery boundaries.
+- Runtime verification remains deferred under the development-first instruction.
