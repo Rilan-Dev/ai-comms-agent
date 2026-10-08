@@ -14,6 +14,7 @@ export interface PostgresConfig {
   idleTimeoutMillis?: number;
   connectionTimeoutMillis?: number;
   ssl?: boolean | { rejectUnauthorized: boolean };
+  options?: string;
 }
 
 let pool: Pool | undefined;
@@ -30,15 +31,11 @@ export function getPostgresConfigFromEnv(): PostgresConfig | null {
     ssl: process.env.DATABASE_SSL === "true"
       ? { rejectUnauthorized: process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false" }
       : false,
+    options: "-c search_path=aca,public",
   };
 }
 
 function configurePool(next: Pool): Pool {
-  next.on("connect", (client) => {
-    void client.query("SET search_path TO aca, public").catch((error) => {
-      console.error("[db] failed to set application search_path", error);
-    });
-  });
   next.on("error", (error) => {
     console.error("[db] PostgreSQL pool error", error);
   });
