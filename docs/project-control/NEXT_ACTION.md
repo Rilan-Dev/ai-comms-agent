@@ -709,3 +709,10 @@ ChatGPT connected email and WhatsApp worker success/failure outcomes to the work
 
 ### Authentication correction — 2026-10-08
 The next acceptance prerequisite is runtime verification of the new production authentication boundary. Required evidence: unauthenticated page redirect to /login, invalid/expired session rejection, valid Supabase Auth session mapped to an active application membership, and protected API 401/403 behavior. Configure a real Supabase project only through the approved infrastructure workflow; do not invent credentials or use another application's Supabase project. Phase 4 remains unauthorized.
+
+
+### 2026-10-08 — Authentication implementation continuation
+- ChatGPT is implementing authentication as a PostgreSQL-native application capability because no additional Supabase project is available and the product must not depend on Supabase Auth.
+- Implemented password credentials, salted scrypt verification, opaque SHA-256 session hashes, HttpOnly session cookies, session expiry/revocation, login failure tracking/lockout, same-origin checks, account-status checks, current-session resolution, password change, and one-time first-account bootstrap.
+- Next implementation remains cross-surface product completion; authentication is now the shared security boundary for all protected menus and APIs.
+- Do not wait for GitHub Actions or Vercel before continuing development.
