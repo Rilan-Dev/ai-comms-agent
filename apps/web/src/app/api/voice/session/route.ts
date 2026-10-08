@@ -52,7 +52,13 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ session: updated });
     }
     if (action === "turn") {
-      await incrementVoiceSessionTurnForOrganization(organizationId, sessionId);
+      if (session.status !== "active") {
+        return NextResponse.json({ error: "session_not_active", message: "Voice turns require an active voice session." }, { status: 409 });
+      }
+      const incremented = await incrementVoiceSessionTurnForOrganization(organizationId, sessionId);
+      if (!incremented) {
+        return NextResponse.json({ error: "session_not_active", message: "Voice session ended before the turn could be recorded." }, { status: 409 });
+      }
       return NextResponse.json({ ok: true });
     }
     if (action === "telemetry") {
