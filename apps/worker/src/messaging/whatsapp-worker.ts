@@ -1,4 +1,4 @@
-import { loadWhatsAppCredential, listQueuedWhatsAppOutbound, markWhatsAppOutboundFailed, markWhatsAppOutboundSent, parseCredentialsMasterKey, recordAuditEvent } from "@ai-comms-agent/db";
+import { loadWhatsAppCredential, claimQueuedWhatsAppOutbound, recoverStaleWhatsAppOutbound, markWhatsAppOutboundFailed, markWhatsAppOutboundSent, parseCredentialsMasterKey, recordAuditEvent } from "@ai-comms-agent/db";
 import { getWhatsAppAccountForOrganization, listPendingWhatsAppAccounts, updateWhatsAppAccountStatus } from "@ai-comms-agent/db";
 import { emitProviderEvent } from "../events/provider-events";
 import { isRetryableProviderError } from "../email/retry";
@@ -47,7 +47,28 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
   const masterKey = process.env.CREDENTIALS_MASTER_KEY ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY) : null;
   if (!masterKey) return { processed: 0 };
   let processed = 0;
-  const messages = await listQueuedWhatsAppOutbound(limit);
+  for (const stale of await recoverStaleWhatsAppOutbound()) {
+    await emitProviderEvent({
+      type: "whatsapp.message.failed",
+      organizationId: stale.organizationId,
+      messageId: stale.id,
+      accountId: stale.accountId,
+      correlationId: stale.correlationId,
+      metadata: { providerOutcomeUnknown: true, manualVerificationRequired: true, recoveredStaleExecution: true },
+    });
+    await recordAuditEvent({
+      organizationId: stale.organizationId,
+      actorUserId: null,
+      eventType: "whatsapp.message.execution_interrupted",
+      targetType: "whatsapp_message",
+      targetId: stale.id,
+      action: "send",
+      decision: "denied",
+      correlationId: stale.correlationId,
+      metadata: { providerOutcomeUnknown: true, manualVerificationRequired: true },
+    });
+  }
+  const messages = await claimQueuedWhatsAppOutbound(limit);
   for (const message of messages) {
     processed += 1;
     const retryAttempts = 1;
