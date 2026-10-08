@@ -772,3 +772,10 @@ Latest source correction: `apps/web/src/app/api/email-accounts/route.ts` was rep
 
 ### 2026-10-08 — Cross-surface hardening continuation
 Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added deterministic cross-surface conflict/duplicate assertions and corrected provider retry classifier imports. No CI PASS or Vercel READY claim is made.
+
+
+### Latest development-first hardening — 2026-10-08
+- Latest implementation commit: `0c0a23b9bbda2574960e0c4355d631318e3cd37e`.
+- Provider event canonical identity fields cannot be overridden by provider metadata.
+- Voice turn increments require active sessions at both API and SQL boundaries.
+- Runtime/CI/Vercel verification is intentionally deferred per project-owner instruction; no success is claimed.
