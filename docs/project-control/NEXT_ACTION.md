@@ -727,3 +727,7 @@ The next acceptance prerequisite is runtime verification of the new production a
 
 ### 2026-10-08 — Provider outcome isolation hardening
 ChatGPT corrected a cross-surface failure mode in the worker provider-event bridge: downstream automation evaluation failures are now isolated from authoritative provider delivery outcomes. A successful email/WhatsApp provider side effect can no longer be rewritten as a failed provider action merely because automation evaluation failed afterward. Added deterministic coverage through an injectable evaluator. Continue with remaining communication-loop edge cases and audit/idempotency hardening without waiting for CI/Vercel.
+
+
+### 2026-10-08 — Cross-surface hardening continuation
+The latest concrete implementation checkpoint is cross-surface hardening: deterministic E2E adapters now assert conflicting email/WhatsApp idempotency payloads are rejected and scheduled duplicate claims do not create a second durable run. Provider worker imports were corrected to use the shared retry classifier. Continue with remaining communication-loop edge cases and deterministic audit assertions; do not wait for CI/Vercel.
