@@ -2,18 +2,18 @@ import { NextResponse } from "next/server";
 import { asMembershipId, asOrganizationId, asUserId } from "@ai-comms-agent/shared";
 import type { MembershipRole, MembershipStatus } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
-import { ensureDevSeed, getDevOrgId, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
+import { getAuthenticatedAppContext, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 
 export const dynamic = "force-dynamic";
 
 async function organizationIdFrom(request: Request): Promise<string | null> {
-  const raw = new URL(request.url).searchParams.get("organizationId")?.trim() || getDevOrgId();
+  const context = await getAuthenticatedAppContext(request);
+  const raw = new URL(request.url).searchParams.get("organizationId")?.trim() || context?.organizationId || null;
   return raw || null;
 }
 
 export async function GET(request: Request) {
   try {
-    await ensureDevSeed();
     const rawId = await organizationIdFrom(request);
     if (!rawId) return NextResponse.json({ error: "configuration_required", message: "An organization context is required." }, { status: 422 });
     await authorize(request, { organizationId: asOrganizationId(rawId), permission: "organization.members.read" }, getIdentityAdapter(), getIdentityRepository());
@@ -30,7 +30,6 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    await ensureDevSeed();
     const body = await request.json().catch(() => null);
     const rawId = typeof body?.organizationId === "string" ? body.organizationId.trim() : await organizationIdFrom(request);
     const membershipId = typeof body?.membershipId === "string" ? body.membershipId.trim() : "";
