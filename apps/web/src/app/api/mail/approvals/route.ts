@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     await ensureDevSeed();
     const organizationId = new URL(request.url).searchParams.get("organizationId") ?? "";
     if (!organizationId) return NextResponse.json({ error: "validation_error", message: "organizationId is required." }, { status: 422 });
-    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.update" }, getIdentityAdapter(), getIdentityRepository());
     return NextResponse.json({ actions: await listPendingEmailActionsForOrganization(organizationId) });
   } catch (error) {
     return authorizationErrorToResponse(error);
