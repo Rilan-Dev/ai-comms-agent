@@ -17,7 +17,7 @@ export default function LoginPage() {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.message ?? "Sign in failed.");
       const next = new URLSearchParams(window.location.search).get("next");
-      router.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/"); router.refresh();
+      window.location.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
     } catch (err) { setError(err instanceof Error ? err.message : "Sign in failed."); }
     finally { setBusy(false); }
   }
