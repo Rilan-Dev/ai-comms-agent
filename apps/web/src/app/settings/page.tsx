@@ -12,6 +12,10 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [savingMember, setSavingMember] = useState("");
   const [notice, setNotice] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     void Promise.all([
@@ -51,6 +55,20 @@ export default function SettingsPage() {
     } finally {
       setSavingMember("");
     }
+  }
+
+
+  async function changePassword() {
+    if (newPassword !== confirmPassword) { setNotice("New passwords do not match."); return; }
+    setChangingPassword(true); setNotice("");
+    try {
+      const response = await fetch("/api/auth/change-password", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ currentPassword, newPassword }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.message ?? "Password change failed.");
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+      setNotice("Password changed. All other sessions have been signed out.");
+    } catch (e) { setNotice(e instanceof Error ? e.message : "Password change failed."); }
+    finally { setChangingPassword(false); }
   }
 
   return (
