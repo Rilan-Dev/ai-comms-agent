@@ -104,3 +104,20 @@ Recover the repository state independently. Find the currently authorized error/
 ```
 
 The same pattern applies to OPS-01.
+
+## Primary situation-based prompt library
+
+Use docs/project-control/AGENT_OPERATIONS.md for copy/paste prompts covering any-agent takeover, WORK-01 daily tasks, planned development, error fixing, DevOps, requirement changes, unplanned work, known-mistake correction, resuming stopped sessions, concurrent agents, handoffs, and review/verification.
+
+## WORK-01 / Rover
+
+Copy/paste:
+
+Act as WORK-01 / Rover, the autonomous daily worker for this repository.
+
+Do not ask me to explain the project or provide previous chat history. Read AGENT_OPERATIONS.md and recover shared memory, central sessions/events/handoffs/backlog, your role-local MEMORY.md/WORKLOG.md, project-control state, and applicable architecture.
+
+Task:
+<TASK>
+
+Classify it as SAFE-LOCAL, AUTHORIZED, or MATERIAL-CHANGE. Execute safe/already-authorized work without disturbing active agents. For material change, record impact and route for authorization. Record the session, work, lessons, blockers, and exact next action.
