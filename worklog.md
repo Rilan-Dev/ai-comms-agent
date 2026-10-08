@@ -1072,3 +1072,13 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - **Commits:** `14bea1c3` (migration), `4ef3921d` (test).
 - **Verification boundary:** The user's output proves migration 0023 completed and the new images built/started. It does not prove migration 0024 or authenticated agent creation yet. No full runtime PASS is claimed.
 - **Next:** Pull current main and rerun `bash scripts/manual-up.sh`; retry authenticated agent creation. Continue source work without waiting for CI/Vercel.
+
+
+## 2026-10-09 — Email accounts API forbidden due to wrong organization context
+
+- **Observed:** User's `POST /api/email-accounts` request returned `403 forbidden`, `reason=not_member`.
+- **Root cause:** The `/mail/accounts` server page initialized its client with `getDevOrgId()` after `ensureDevSeed()`, not the authenticated user's active organization. The authorization API correctly denied access to an organization where that user had no membership.
+- **Fix:** Updated `apps/web/src/app/mail/accounts/page.tsx` to derive the organization from `getAuthenticatedAppContext(new Request(...headers()))`, matching the inbox page. Added static regression coverage ensuring the page uses authenticated organization context and does not seed/select the dev organization.
+- **Commits:** `4536332fdee1de3b2a0c060d581b3939c769f08a` (fix), `7a3cfba20cabc6fad88b313c258320c5961c06af` (test).
+- **Verification boundary:** Source changes committed; tests have not been run and live request has not yet been retried. No runtime PASS is claimed.
+- **Next:** Pull `main`, run `bash scripts/manual-up.sh` to apply pending migration 0024, sign in with a fresh session, and retry from the account UI. Do not weaken tenant authorization or reuse exposed session/provider secrets.
