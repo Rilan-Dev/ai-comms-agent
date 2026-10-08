@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { appendConversationMessage, getOrCreateChatConversation, listChatMessages } from "@ai-comms-agent/db";
+import { appendConversationMessage, getChatConversation, getOrCreateChatConversation, listChatMessages } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -32,9 +32,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "configuration_required", message: "CLARA_KB_ID is not configured." }, { status: 503 });
     }
 
-    const conversation = body?.conversationId
-      ? { id: String(body.conversationId) }
+    const requestedConversationId = typeof body?.conversationId === "string" ? body.conversationId.trim() : "";
+    const conversation = requestedConversationId
+      ? await getChatConversation(organizationId, requestedConversationId, agentId)
       : await getOrCreateChatConversation(organizationId, agentId);
+    if (!conversation) {
+      return NextResponse.json({ error: "not_found", message: "Conversation was not found for this organization and agent." }, { status: 404 });
+    }
 
     const history = await listChatMessages(organizationId, conversation.id, 40);
     await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "user", content });
