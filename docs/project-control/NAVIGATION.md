@@ -39,3 +39,15 @@ For role-specific autonomous work, use `docs/project-control/AGENT_REGISTRY.md`,
 - Agent invocation does not interrupt or require completion of another agent's session.
 - Agent identity selects behavior; repository authorization selects permitted work.
 
+
+## Independent agent and daily-worker layer
+
+Use AGENT_OPERATIONS.md as the copy/paste control center.
+
+Startup memory order:
+1. AGENT_MEMORY.md
+2. AGENT_EVENTS.md / AGENT_SESSIONS.md / AGENT_HANDOFF.md / AGENT_BACKLOG.md
+3. agents/<ROLE>/MEMORY.md and WORKLOG.md
+4. normal project-control state and applicable architecture/plan
+
+WORK-01 / Rover can execute SAFE-LOCAL or already AUTHORIZED daily work while other agents continue. MATERIAL-CHANGE work is routed for authorization.
