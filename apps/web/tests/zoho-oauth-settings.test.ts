@@ -1,9 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { assertOAuthRedirectUriSecure, getOAuthRedirectUri } from "../src/lib/oauth/redirect-uri";
 const read = (path: string) => readFileSync(resolve(__dirname, path), "utf8");
 
 describe("Zoho OAuth settings and dynamic callback", () => {
+  it("builds callback URLs from the active request host without a static app URL", () => {
+    const request = new Request("https://mail.example.com/api/settings/zoho-oauth?organizationId=org");
+    expect(getOAuthRedirectUri(request, "gmail")).toBe("https://mail.example.com/api/oauth/gmail/callback");
+    expect(getOAuthRedirectUri(request, "zoho")).toBe("https://mail.example.com/api/oauth/zoho/callback");
+    expect(() => assertOAuthRedirectUriSecure("https://mail.example.com/api/oauth/zoho/callback")).not.toThrow();
+  });
+  it("allows localhost HTTP for development but rejects public HTTP and raw IP callback hosts", () => {
+    expect(() => assertOAuthRedirectUriSecure("http://localhost:3000/api/oauth/gmail/callback")).not.toThrow();
+    expect(() => assertOAuthRedirectUriSecure("http://100.72.192.28:3300/api/oauth/gmail/callback")).toThrow(/HTTPS/);
+  });
+
   it("stores organization-scoped Zoho clients with encrypted secrets", () => {
     const route = read("../src/app/api/settings/zoho-oauth/route.ts");
     expect(route).toContain("zoho_oauth_configs");
