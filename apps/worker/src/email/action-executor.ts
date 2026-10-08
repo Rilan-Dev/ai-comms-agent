@@ -89,14 +89,14 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
       return connected.forward(String(source.provider_message_id), recipients);
     });
 
-    const completed = await completeEmailAction(claimed.id, "completed", {
+    const completed = await completeEmailAction(claimed.id, organizationId, "completed", {
       provider: account.provider,
       result: result.value ?? null,
     });
     return completed;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Email action failed";
-    await completeEmailAction(claimed.id, "failed", {}, message);
+    await completeEmailAction(claimed.id, organizationId, "failed", {}, message);
     throw error;
   }
 }
