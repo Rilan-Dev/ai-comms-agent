@@ -917,3 +917,9 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the WhatsApp-contact table/index operations. No application feature code changed.
 - Migration fix commit: `92341cd17297f6ec66061a772c3c5ab849d4e438`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete worker runtime failure: `column "result" of relation "email_actions" does not exist` from `packages/db/src/email/actions.ts`.
+- Root cause: `email_actions` can already exist from the earlier application-domain migration, so `CREATE TABLE IF NOT EXISTS` in migration 0007 does not reconcile the later `result` column.
+- Added an idempotent `ALTER TABLE email_actions ADD COLUMN IF NOT EXISTS result jsonb NOT NULL DEFAULT '{}'::jsonb` before the 0007 table definition. No worker behavior was changed.
+- Migration fix commit: `cb903a4ea6174f3c809f3e4f97b65d054acca875`.
+- No CI/Vercel wait and no runtime PASS claimed.
