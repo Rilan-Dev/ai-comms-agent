@@ -954,3 +954,5 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Migration fix commit: `afffabf5876b5184163d4173c41632c98c4fdc94`.
 - The supplied user/membership/session query confirms the existing user has an active owner membership and an unrevoked session; that information was not changed by this fix.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the reported worker PostgreSQL error `invalid input value for enum whatsapp_status: "pending"` by reconciling the existing WhatsApp account status enum expected by the worker. The migration now safely adds the required `organization_id` shape before WhatsApp contact/message operations; no application feature code changed.
