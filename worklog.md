@@ -933,3 +933,8 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the WhatsApp-contact table/index operations. No application feature code changed.
 - Migration fix commit: `639e85b213306dcec32445fe8b03229ac83284c1`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete browser error on the setup page: Chromium rejected the HTML `pattern="[a-z0-9][a-z0-9-]{2,62}"` under the modern RegExp `v` flag because the hyphen was not escaped inside the character class.
+- Escaped the hyphen in the organization-slug input pattern; server-side slug validation remains unchanged.
+- UI fix commit: `d1bbf5072223dda7f5fbfa2dbfc097caf70c8bea`.
+- The reported `POST /api/auth/bootstrap 409` is the server's explicit `already_initialized` response when `auth.countCredentials() > 0`; I did not weaken that one-time bootstrap guard without evidence that the credential exists in the intended reset database.
