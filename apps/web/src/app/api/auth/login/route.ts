@@ -22,9 +22,11 @@ export async function POST(request: Request) {
     });
 
     const response = NextResponse.json({ ok: true, user: result.user });
+    const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+    const requestProtocol = forwardedProto || new URL(request.url).protocol.replace(":", "");
     response.cookies.set(ACCESS_TOKEN_COOKIE, result.sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: requestProtocol === "https",
       sameSite: "lax",
       path: "/",
       expires: result.expiresAt,
