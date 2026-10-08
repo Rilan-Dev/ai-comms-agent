@@ -740,3 +740,26 @@ Closed a worker-crash failure mode across sensitive communication paths.
 Automatic replay is deliberately not performed after an abandoned external side effect. This prevents duplicate email sends or duplicate WhatsApp/agent responses.
 
 Next: continue deterministic audit/event assertions and remaining cross-surface edge cases before final runtime/deployment verification.
+
+## Task ID: 12
+## Phase: 3 — Production Authentication Boundary Correction
+
+- **Status**: implementation_complete_awaiting_runtime_verification
+- **Objective**: Close the gap between authorization and real browser authentication without starting Phase 4 business features.
+- **Architect / Developer**: ChatGPT
+- **Date**: 2026-10-08
+
+### Implemented
+- Supabase Auth production identity adapter validates the HttpOnly access-token cookie against Supabase Auth, then maps the authenticated email to the authoritative application user record.
+- Added login and logout endpoints with HttpOnly, SameSite=Lax cookies.
+- Added `/login` UI and protected-page middleware. API routes retain JSON 401/403 behavior rather than browser redirects.
+- Added server-side application identity/membership validation for protected page renders.
+- Removed `x-dev-user-id` from agent browser clients; development identity remains available only for local development and explicitly cannot be used by the production adapter.
+- Added authentication boundary static tests and Supabase Auth environment documentation.
+- CI now provisions a disposable PostgreSQL service and applies the Phase 3 migration before runtime owner/RLS checks.
+
+### Acceptance boundary
+- No production Supabase project was provisioned or borrowed from another application.
+- No production credentials were invented or committed.
+- Phase 4 remains unauthorized until authentication runtime evidence and final Phase 3 acceptance are complete.
+
