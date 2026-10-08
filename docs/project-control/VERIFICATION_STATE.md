@@ -834,3 +834,9 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Added `apps/web/tests/voice-turn-lifecycle-guard.test.ts`.
 - Latest implementation commits: `3ada3490ec91398e0f239c086bcbe9289063de96`, `8dda47141678033b90d2530183527b44807221f6`, `75bf41fd8eade96ed7fdc3fc6d2e580074b94a91`, `f1bcabd9eed9c8f073d8de4a287dbfd25bde6d22`.
 - Tests/build/runtime/deployment were not run; verification remains pending by the active development-first instruction. No pass is claimed.
+
+
+### 2026-10-09 — Cross-surface lifecycle hardening
+- Voice workspace tenant-context and voice turn/start lifecycle regression tests added.
+- Email action claim and completion updates are organization-scoped; worker callers now pass the organization ID and the email action contract test guards the SQL boundary.
+- Tests/build/runtime/deployment were not run under the active development-first instruction. Verification remains pending.
