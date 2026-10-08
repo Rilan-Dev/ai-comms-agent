@@ -139,3 +139,11 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Evidence:** Live web logs at 2026-10-08T21:52–21:53Z showed `column "decision" does not exist` and `column "agent_id" of relation "audit_events" does not exist`; worker logs simultaneously reported `postgres_configured:true` and `worker ready`. The manual startup script previously contained no migration invocation.
 - **Commits:** `54f2c883c4c7250f9e83c6bde8e1c6a8fe64d83a` (migration), `7fe343eb06e96344e9f53dddb8488801b38fa4df` (manual startup migration), `25c37101d8fc4c2520d6ee0b4586cb723b2d46a9` (regression coverage).
 - **Next action:** Rebuild/pull current `main`, run `bash scripts/manual-up.sh` so the migration chain is applied before startup, then retry authenticated overview and agent creation. Do not wait for CI/Vercel.
+
+
+### 2026-10-09 — ISS-008 follow-up: host-side migration DNS failure
+- The next migration attempt exposed the actual database boundary error: `psql: could not translate host name "host.docker.internal" to address`.
+- This is expected when the migration script runs in the host shell rather than inside a Compose container. The PostgreSQL service is published to host port `65432`; only the host-side migration URL must use `127.0.0.1`. The app containers retain `host.docker.internal` in `.env.docker`.
+- Fixed `scripts/manual-up.sh` to translate the hostname for the migration subprocess and added `apps/web/tests/manual-deploy-migration-host.test.ts`.
+- Commits: `6e1decb7031ca28c685565cc15e475c2867e1d95`, `740d3d4d57e2b3e38b0975aad7cc23d2d9ed2ea9`.
+- **Status remains in_progress** until `bash scripts/manual-up.sh` confirms the migration chain completes and authenticated runtime requests succeed.
