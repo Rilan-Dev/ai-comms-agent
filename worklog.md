@@ -968,3 +968,7 @@ ChatGPT takeover correction for the reported inactive login experience:
 - `scripts/migrate.sh` remains unchanged and continues to provide its existing detailed output when run directly.
 - No CI/Vercel wait was performed and no migration PASS is claimed beyond the user-provided successful migration run.
 - **Commit:** f3db252f2d092bac21c86a2521edc2581999bdcc.
+
+- Improved `scripts/reset-and-migrate.sh` so reset and migration command output is streamed live to the terminal while still being retained in the temporary failure log. The standalone `scripts/migrate.sh` remains unchanged and continues to provide migration-only execution.
+- Concrete operational fix commit: `c52521c49a5616aab2deafab58a02b81d57c1c17`.
+- No CI/Vercel wait.
