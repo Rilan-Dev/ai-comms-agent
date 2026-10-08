@@ -110,6 +110,11 @@ export async function changePassword(input: { userId: string; currentPassword: s
   await auth.revokeAllUserSessionsExcept(input.userId, input.currentSessionTokenHash);
 }
 
+export function getSessionTokenHash(request: Request): string | null {
+  const token = parseCookie(request.headers.get("cookie"), ACCESS_TOKEN_COOKIE);
+  return token ? hashSessionToken(token) : null;
+}
+
 export async function revokeCurrentSession(request: Request): Promise<void> {
   const token = parseCookie(request.headers.get("cookie"), ACCESS_TOKEN_COOKIE);
   if (!token) return;
