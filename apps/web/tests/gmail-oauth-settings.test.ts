@@ -32,6 +32,14 @@ describe("Gmail OAuth platform configuration", () => {
     expect(callback).not.toContain("SESSION_SIGNING_KEY");
   });
 
+  it("refreshes tokens with the per-account client rather than environment defaults", () => {
+    const adapter = read("../../../apps/worker/src/email/gmail-adapter.ts");
+    expect(adapter).toContain("stored.oauth_client_id");
+    expect(adapter).toContain("stored.oauth_client_secret");
+    expect(adapter).not.toContain("process.env.GMAIL_OAUTH_CLIENT_ID");
+    expect(adapter).not.toContain("process.env.GMAIL_OAUTH_CLIENT_SECRET");
+  });
+
   it("provides a UI for managing multiple OAuth clients and selecting one to connect", () => {
     const settings = read("../src/app/settings/gmail-oauth-settings.tsx");
     const accounts = read("../src/app/mail/accounts/email-accounts-client.tsx");
