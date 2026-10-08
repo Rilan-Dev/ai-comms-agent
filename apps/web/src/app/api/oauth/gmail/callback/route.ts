@@ -1,4 +1,6 @@
 import { createHmac } from "node:crypto";
+import { parseCredentialsMasterKey } from "@ai-comms-agent/db";
+import { loadGmailOAuthConfiguration } from "@/lib/oauth/gmail-config";
 import { NextResponse } from "next/server";
 import { PostgresEmailAccountRepository, parseCredentialsMasterKey, recordAuditEvent } from "@ai-comms-agent/db";
 import { getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -7,9 +9,10 @@ import { authorize } from "@/lib/identity/authorization";
 export const dynamic = "force-dynamic";
 
 function verify(encoded: string, signature: string) {
-  const secret = process.env.SESSION_SIGNING_KEY;
-  if (!secret) return false;
-  const expected = createHmac("sha256", secret).update(encoded).digest("base64url");
+  const raw = process.env.CREDENTIALS_MASTER_KEY;
+  if (!raw) return false;
+  const key = parseCredentialsMasterKey(raw);
+  const expected = createHmac("sha256", key).update(encoded).digest("base64url");
   return expected === signature;
 }
 
@@ -34,13 +37,13 @@ export async function GET(request: Request) {
   if (!stateCookie || stateCookie !== state) return oauthError("Invalid or expired Gmail OAuth session.", request);
   const [encoded, signature] = state.split(".");
   if (!encoded || !signature || !verify(encoded, signature)) return oauthError("Invalid Gmail OAuth state.", request);
-  let payload: { organizationId: string; userId: string; accountId?: string; exp: number };
+  let payload: { organizationId: string; userId: string; configId: string; accountId?: string; exp: number };
   try {
     payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
   } catch {
     return oauthError("Invalid Gmail OAuth state.", request);
   }
-  if (!payload.organizationId || !payload.userId || payload.exp < Date.now()) return oauthError("Gmail OAuth state has expired.", request);
+  if (!payload.organizationId || !payload.userId || !payload.configId || payload.exp < Date.now()) return oauthError("Gmail OAuth state has expired.", request);
 
   try {
     await authorize(
@@ -53,10 +56,9 @@ export async function GET(request: Request) {
     return oauthError("You are not authorized to connect an email account for this organization.", request, 403);
   }
 
-  const clientId = process.env.GMAIL_OAUTH_CLIENT_ID;
-  const clientSecret = process.env.GMAIL_OAUTH_CLIENT_SECRET;
-  const redirectUri = process.env.GMAIL_OAUTH_REDIRECT_URI ?? `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/oauth/gmail/callback`;
-  if (!clientId || !clientSecret) return oauthError("Gmail OAuth is not configured on the server.", request, 503);
+  const oauthConfig = await loadGmailOAuthConfiguration(payload.organizationId, payload.configId).catch(() => null);
+  if (!oauthConfig) return oauthError("The selected Gmail OAuth configuration was removed or disabled.", request, 409);
+  const { clientId, clientSecret, redirectUri } = oauthConfig;
 
   try {
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -107,7 +109,7 @@ export async function GET(request: Request) {
       ? await repository.updateConnection(existing.id, {
           emailAddress: profile.emailAddress,
           displayName: profile.emailAddress,
-          connectionConfig: { historyId: profile.historyId ?? null, oauthScope: tokens.scope ?? null },
+          connectionConfig: { historyId: profile.historyId ?? null, oauthScope: tokens.scope ?? null, oauthConfigId: oauthConfig.id },
           status: "pending",
           capabilities,
         })
