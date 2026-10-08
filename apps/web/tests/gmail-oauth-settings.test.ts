@@ -18,6 +18,8 @@ describe("Gmail OAuth platform configuration", () => {
     expect(route).toContain("encryptCredential(clientSecret, key)");
     expect(route).toContain("Enter the new client secret when changing the Google OAuth client ID.");
     expect(route).toContain('role: "admin"');
+    expect(route).toContain("getOAuthRedirectUri(request, \"gmail\")");
+    expect(route).not.toContain("NEXT_PUBLIC_APP_URL");
     expect(route).not.toContain("GMAIL_OAUTH_CLIENT_SECRET");
     expect(route).not.toContain("return { clientSecret");
   });
@@ -26,6 +28,8 @@ describe("Gmail OAuth platform configuration", () => {
     const route = read("../src/app/api/oauth/gmail/start/route.ts");
     expect(route).toContain("loadGmailOAuthConfiguration(context.organizationId, configId)");
     expect(route).toContain("configId");
+    expect(route).toContain("redirectUri,");
+    expect(route).toContain("assertOAuthRedirectUriSecure(redirectUri)");
     expect(route).toContain("getAuthenticatedAppContext(request)");
     expect(route).not.toContain("GMAIL_OAUTH_CLIENT_ID");
     expect(route).not.toContain("SESSION_SIGNING_KEY");
@@ -34,6 +38,8 @@ describe("Gmail OAuth platform configuration", () => {
   it("uses the saved OAuth client at callback and stores client credentials encrypted with account tokens", () => {
     const callback = read("../src/app/api/oauth/gmail/callback/route.ts");
     expect(callback).toContain("loadGmailOAuthConfiguration(payload.organizationId, payload.configId)");
+    expect(callback).toContain("payload.redirectUri");
+    expect(callback).toContain("assertOAuthRedirectUriSecure(redirectUri)");
     expect(callback).toContain("oauth_client_id: clientId");
     expect(callback).toContain("oauth_client_secret: clientSecret");
     expect(callback).not.toContain("GMAIL_OAUTH_CLIENT_ID");
