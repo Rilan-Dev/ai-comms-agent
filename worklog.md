@@ -984,3 +984,9 @@ ChatGPT takeover correction for the reported inactive login experience:
 - **File changed:** `apps/web/src/app/layout.tsx`.
 - **Commit:** `3cd19bdb4b6e34fb02e0e8ef93af2ac38af56310`.
 - No CI/Vercel wait was performed and no runtime PASS is claimed.
+
+- Fixed the concrete browser authentication navigation failure: after `POST /api/auth/login` returned success, the login page used Next client navigation plus `router.refresh()`, which could retain the login RSC state and re-enter the server authentication redirect before the newly-set session cookie was observed.
+- Changed successful login completion to a full browser navigation with `window.location.replace()`, ensuring the browser performs a fresh document request with the newly-set `aca-access-token` cookie.
+- Authentication API, session creation, cookie security attributes, and authorization logic were otherwise unchanged.
+- Login navigation fix commit: `56f9088a7366ad8e71b66b7c1f2d1671cbeaaa5a`.
+- No CI/Vercel wait and no continuous verification performed.
