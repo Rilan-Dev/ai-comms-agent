@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { loadGmailOAuthConfiguration } from "@/lib/oauth/gmail-config";
+import { assertOAuthRedirectUriSecure, getOAuthRedirectUri } from "@/lib/oauth/redirect-uri";
 import { NextResponse } from "next/server";
 import { PostgresEmailAccountRepository, parseCredentialsMasterKey, recordAuditEvent } from "@ai-comms-agent/db";
 import { getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -36,13 +37,13 @@ export async function GET(request: Request) {
   if (!stateCookie || stateCookie !== state) return oauthError("Invalid or expired Gmail OAuth session.", request);
   const [encoded, signature] = state.split(".");
   if (!encoded || !signature || !verify(encoded, signature)) return oauthError("Invalid Gmail OAuth state.", request);
-  let payload: { organizationId: string; userId: string; configId: string; accountId?: string; exp: number };
+  let payload: { organizationId: string; userId: string; configId: string; redirectUri: string; accountId?: string; exp: number };
   try {
     payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
   } catch {
     return oauthError("Invalid Gmail OAuth state.", request);
   }
-  if (!payload.organizationId || !payload.userId || !payload.configId || payload.exp < Date.now()) return oauthError("Gmail OAuth state has expired.", request);
+  if (!payload.organizationId || !payload.userId || !payload.configId || !payload.redirectUri || payload.exp < Date.now()) return oauthError("Gmail OAuth state has expired.", request);
 
   try {
     await authorize(
@@ -57,7 +58,15 @@ export async function GET(request: Request) {
 
   const oauthConfig = await loadGmailOAuthConfiguration(payload.organizationId, payload.configId).catch(() => null);
   if (!oauthConfig) return oauthError("The selected Gmail OAuth configuration was removed or disabled.", request, 409);
-  const { clientId, clientSecret, redirectUri } = oauthConfig;
+  const { clientId, clientSecret } = oauthConfig;
+  let redirectUri: string;
+  try {
+    redirectUri = getOAuthRedirectUri(request, "gmail");
+    if (redirectUri !== payload.redirectUri) return oauthError("The callback host changed during authorization. Restart Gmail connection from the same application URL.", request, 400);
+    assertOAuthRedirectUriSecure(redirectUri);
+  } catch (error) {
+    return oauthError(error instanceof Error ? error.message : "A valid HTTPS callback is required.", request, 400);
+  }
 
   try {
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
