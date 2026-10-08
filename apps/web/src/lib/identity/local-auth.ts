@@ -1,11 +1,10 @@
 import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
-import { promisify } from "node:util";
 import type { IdentityAdapter, User } from "@ai-comms-agent/shared";
 import { asUserId } from "@ai-comms-agent/shared";
 import { PostgresAuthRepository, PostgresIdentityRepository } from "@ai-comms-agent/db";
 
-const scrypt = promisify(scryptCallback);
+const scrypt = (password: string, salt: Buffer, keylen: number, options: { N: number; r: number; p: number; maxmem: number }): Promise<Buffer> => new Promise((resolve, reject) => { scryptCallback(password, salt, keylen, options, (error, derivedKey) => { if (error) reject(error); else resolve(derivedKey as Buffer); }); });
 export const ACCESS_TOKEN_COOKIE = "aca-access-token";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
 const PASSWORD_MIN_LENGTH = 12;
@@ -172,8 +171,11 @@ async function verifyPassword(password: string, encoded: string): Promise<boolea
   const parts = encoded.split("$");
   if (parts.length !== 6 || parts[0] !== "scrypt") return false;
   const n = Number(parts[1]), r = Number(parts[2]), p = Number(parts[3]);
-  const salt = Buffer.from(parts[4], "hex");
-  const expected = Buffer.from(parts[5], "hex");
+  const saltHex = parts[4];
+  const expectedHex = parts[5];
+  if (!saltHex || !expectedHex) return false;
+  const salt = Buffer.from(saltHex, "hex");
+  const expected = Buffer.from(expectedHex, "hex");
   if (!Number.isSafeInteger(n) || !Number.isSafeInteger(r) || !Number.isSafeInteger(p) || salt.length < 16 || expected.length !== 64) return false;
   try {
     const derived = await scrypt(password, salt, expected.length, { N: n, r, p, maxmem: 64 * 1024 * 1024 }) as Buffer;
