@@ -1,10 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 const read = (path: string) => readFileSync(resolve(__dirname, path), "utf8");
 
 describe("Gmail OAuth platform configuration", () => {
+  it("keeps numeric migration prefixes unique across the migration directory", () => {
+    const directory = resolve(__dirname, "../../../supabase/migrations");
+    const files = readdirSync(directory).filter((file) => /^\\d+_.*\\.sql$/.test(file));
+    const prefixes = files.map((file) => file.match(/^(\\d+)_/)?.[1]).filter((value): value is string => Boolean(value));
+    expect(new Set(prefixes).size).toBe(prefixes.length);
+  });
+
   it("stores organization-scoped client configurations and encrypts client secrets", () => {
     const route = read("../src/app/api/settings/gmail-oauth/route.ts");
     expect(route).toContain("gmail_oauth_configs");
