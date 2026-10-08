@@ -466,3 +466,7 @@ The user-provided runtime logs show migration 0023 applied and the web/worker co
 - Voice start now persists a starting record before Clara transport setup and attempts terminal error state on startup failure.
 - Email action claim/completion transitions now include organization scope in their atomic SQL updates.
 - Implementation commits include 3ada3490, 75bf41fd, 2dc3bcf5, 0d773b0e, 7de1b068, and 0f72bdec. Validation remains pending; no CI/Vercel/runtime pass is claimed.
+
+
+### 2026-10-09 — Configurable multi-client Gmail OAuth
+Gmail OAuth client registrations are now organization-scoped platform configuration, managed through Settings and encrypted at rest. Mailbox connection UI selects an enabled client; the OAuth callback uses that exact client and stores its credentials only in the encrypted mailbox credential envelope for worker refresh. Gmail-specific client IDs/secrets and SESSION_SIGNING_KEY are no longer required as OAuth configuration variables; CREDENTIALS_MASTER_KEY remains server-only infrastructure. Source issue ISS-010. Migration 0025 and live OAuth remain unverified.
