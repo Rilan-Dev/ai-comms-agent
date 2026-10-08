@@ -1,6 +1,7 @@
 import { PostgresAgentRepository } from "@ai-comms-agent/db";
 import { AgentsClient } from "./agents-client";
-import { getAuthenticatedAppContext } from "@/lib/identity/repository";\nimport { headers } from "next/headers";
+import { getAuthenticatedAppContext } from "@/lib/identity/repository";
+import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
