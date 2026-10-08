@@ -7,7 +7,9 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 describe("production authentication boundary", () => {
   it("has a public login page and auth endpoints", () => {
-    expect(read("src/app/login/page.tsx")).toContain("/api/auth/login");
+    const login = read("src/app/login/page.tsx");
+    expect(login).toContain("/api/auth/login");
+    expect(login).not.toContain("\\\\n      router.replace");
     expect(read("src/app/api/auth/login/route.ts")).toContain("loginWithPassword");
     expect(read("src/app/api/auth/logout/route.ts")).toContain("aca-access-token");
   });
@@ -16,7 +18,14 @@ describe("production authentication boundary", () => {
     const middleware = read("src/middleware.ts");
     expect(middleware).toContain('request.cookies.get("aca-access-token")?.value');
     expect(middleware).toContain('new URL("/login", request.url)');
+    expect(middleware).toContain('const PUBLIC_PATHS = ["/login", "/setup"');
     expect(middleware).toContain('if (pathname.startsWith("/api/"))');
+  });
+
+  it("keeps first-run setup public while protecting the application shell", () => {
+    const layout = read("src/app/layout.tsx");
+    expect(layout).toContain('!pathname.startsWith("/login") && !pathname.startsWith("/setup")');
+    expect(layout).toContain('pathname.startsWith("/login") || pathname.startsWith("/setup")');
   });
 
   it("uses PostgreSQL-owned sessions for production identity resolution", () => {
