@@ -760,3 +760,11 @@ Latest source correction: `apps/web/src/app/api/email-accounts/route.ts` was rep
 - Runtime auth verification is pending because no ai-comms-agent Supabase project is currently provisioned/configured. Existing Supabase projects were not reused.
 - Vercel latest deployments remain rate-limited/canceled; no latest READY claim.
 - **Phase 3 acceptance: PENDING. Phase 4: NOT AUTHORIZED.**
+
+
+### 2026-10-08 — Authentication implementation evidence state
+- Source implementation: completed for the current development slice.
+- Added migration 0022, auth repository, local session adapter, login/logout/me/change-password/bootstrap routes, Settings password UI, and authentication tests.
+- Runtime verification: intentionally deferred under the user's development-first instruction.
+- No Supabase Auth project, publishable key, or hosted identity dependency is required.
+- No CI/Vercel PASS is claimed.
