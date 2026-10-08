@@ -89,9 +89,14 @@ export class GmailAdapter implements EmailProvider {
   private refreshToken?: string;
   private expiresAt?: number;
   private refreshPromise?: Promise<void>;
+  private oauthClientId?: string;
+  private oauthClientSecret?: string;
 
   async connect(credentials: EmailCredentials): Promise<void> {
     if (!credentials.access_token) throw new Error("Gmail requires an OAuth access token");
+    const stored = credentials as unknown as Record<string, unknown>;
+    this.oauthClientId = typeof stored.oauth_client_id === "string" ? stored.oauth_client_id : undefined;
+    this.oauthClientSecret = typeof stored.oauth_client_secret === "string" ? stored.oauth_client_secret : undefined;
     this.accessToken = credentials.access_token;
     this.refreshToken = credentials.refresh_token;
     this.expiresAt = credentials.expires_at ? Date.parse(credentials.expires_at) : undefined;
@@ -103,6 +108,8 @@ export class GmailAdapter implements EmailProvider {
     this.refreshToken = undefined;
     this.expiresAt = undefined;
     this.refreshPromise = undefined;
+    this.oauthClientId = undefined;
+    this.oauthClientSecret = undefined;
   }
   async discoverCapabilities(): Promise<CapabilitySet> { return { ...CAPABILITIES }; }
   capabilities(): CapabilitySet { return { ...CAPABILITIES }; }
@@ -111,9 +118,9 @@ export class GmailAdapter implements EmailProvider {
     if (!this.refreshToken) throw new Error("Gmail access token expired and no refresh token is available");
     if (this.refreshPromise) return this.refreshPromise;
     this.refreshPromise = (async () => {
-      const clientId = process.env.GMAIL_OAUTH_CLIENT_ID;
-      const clientSecret = process.env.GMAIL_OAUTH_CLIENT_SECRET;
-      if (!clientId || !clientSecret) throw new Error("Gmail OAuth client configuration is missing");
+      const clientId = this.oauthClientId;
+      const clientSecret = this.oauthClientSecret;
+      if (!clientId || !clientSecret) throw new Error("Gmail OAuth client configuration is missing from the encrypted account credential.");
       const response = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
