@@ -44,3 +44,12 @@ When governance changes again, update this index in the same governance change.
 | docs/project-control/agents/<ROLE>/WORKLOG.md | Role-local append-only worklog |
 
 The update remains governance-only and does not modify product scope, implementation plans, architecture decisions, or verification results.
+
+
+## User-facing agent usage
+
+| File | Purpose |
+|---|---|
+| docs/project-control/HOW_TO_USE_AGENTS.md | Primary human guide: agent selection, fresh-chat continuation, daily work, concurrent agents, memory, stop conditions, and copy/paste prompts |
+
+The user-facing guide is convenience documentation only. It does not create authorization or override APCP governance.
