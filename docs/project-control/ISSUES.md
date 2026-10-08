@@ -172,3 +172,18 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Commits:** page fix `4536332f`; regression test `7a3cfba2`.
 - **Verification:** Source commits are present. No live retry or runtime PASS has been observed yet. The pending migration 0024 also still needs to be applied per ISS-008 before re-testing the overall flow.
 - **Next:** pull main, run `bash scripts/manual-up.sh`, sign in with a fresh session, and retry the account test from `/mail/accounts`. Redact tokens and provider credentials from any logs.
+
+
+## ISS-010 — Gmail OAuth provider configuration is environment-bound
+
+- **Opened:** 2026-10-09
+- **Severity:** high
+- **Owner:** ChatGPT / DEV-01
+- **Status:** source implementation committed; migration/runtime verification pending
+- **Symptom:** `GET /api/oauth/gmail/start` returned `provider_configuration_required` and instructed the operator to set `GMAIL_OAUTH_CLIENT_ID` and `SESSION_SIGNING_KEY` on the server.
+- **Requirement:** OAuth client IDs/secrets must be configurable through platform Settings, not static code or per-provider environment variables. The platform must support multiple Gmail OAuth clients and allow selecting the client when connecting a mailbox.
+- **Remedy:** Added organization-scoped `gmail_oauth_configs` table in migration `0025_gmail_oauth_configuration.sql`; Settings CRUD encrypts client secrets using the existing platform credential encryption key; Gmail account connection UI selects among enabled configurations; OAuth start/callback use the selected stored client; worker credentials retain that account's client ID/secret inside the existing encrypted credential envelope for token refresh. Gmail OAuth state no longer requires `SESSION_SIGNING_KEY`; it is signed with the existing server-only `CREDENTIALS_MASTER_KEY`.
+- **Security boundary:** `CREDENTIALS_MASTER_KEY` remains an infrastructure secret because it encrypts database secrets. Do not store the key that encrypts the database secrets inside that same database. OAuth client secrets are never returned to the browser. Admin/owner authorization and tenant scope remain enforced.
+- **Commits:** migration `bf02ac6d`; settings API `37518326`; OAuth start `4ad9578c`; callback `951ce1f8` / `78bb9d2c`; worker refresh `6980d091`; settings UI `5b7ba0bf`; account selector `e2279785`; tests `dd947b50`.
+- **Verification:** Static test source is committed; tests, build, migration application and live OAuth flow have not been run. No runtime PASS is claimed.
+- **Next:** Pull current main and run `bash scripts/manual-up.sh` to apply migrations 0024 and 0025, configure one or more clients in Settings, add the callback URI to Google Cloud Console, and retry Gmail connection.
