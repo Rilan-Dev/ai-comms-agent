@@ -2,6 +2,8 @@ import { createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
 import { PostgresEmailAccountRepository, parseCredentialsMasterKey, recordAuditEvent } from "@ai-comms-agent/db";
 import { getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
+import { loadZohoOAuthConfiguration } from "@/lib/oauth/zoho-config";
+import { assertOAuthRedirectUriSecure, getOAuthRedirectUri } from "@/lib/oauth/redirect-uri";
 import { authorize } from "@/lib/identity/authorization";
 
 export const dynamic = "force-dynamic";
@@ -33,8 +35,9 @@ function normalizeZohoApiDomain(value: string): string | null {
 }
 
 function verify(encoded: string, signature: string) {
-  const secret = process.env.SESSION_SIGNING_KEY;
-  if (!secret) return false;
+  const raw = process.env.CREDENTIALS_MASTER_KEY;
+  if (!raw) return false;
+  const secret = parseCredentialsMasterKey(raw);
   const expected = createHmac("sha256", secret).update(encoded).digest("base64url");
   return expected === signature;
 }
@@ -63,20 +66,27 @@ export async function GET(request: Request) {
   const [encoded, signature] = state.split(".");
   if (!encoded || !signature || !verify(encoded, signature)) return oauthError("Invalid Zoho OAuth state.", request);
 
-  let payload: { organizationId: string; userId: string; accountId?: string; dataCenter: string; exp: number };
+  let payload: { organizationId: string; userId: string; configId: string; redirectUri: string; accountId?: string; dataCenter: string; exp: number };
   try {
     payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
   } catch {
     return oauthError("Invalid Zoho OAuth state.", request);
   }
-  if (!payload.organizationId || !payload.userId || payload.exp < Date.now()) return oauthError("Zoho OAuth state has expired.", request);
+  if (!payload.organizationId || !payload.userId || !payload.configId || !payload.redirectUri || payload.exp < Date.now()) return oauthError("Zoho OAuth state has expired.", request);
 
   const accountsDomain = ACCOUNT_DOMAINS[payload.dataCenter];
-  const clientId = process.env.ZOHO_OAUTH_CLIENT_ID;
-  const clientSecret = process.env.ZOHO_OAUTH_CLIENT_SECRET;
-  const redirectUri = process.env.ZOHO_OAUTH_REDIRECT_URI ??
-    `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/oauth/zoho/callback`;
-  if (!accountsDomain || !clientId || !clientSecret) return oauthError("Zoho OAuth is not configured on the server.", request, 503);
+  const oauthConfig = await loadZohoOAuthConfiguration(payload.organizationId, payload.configId).catch(() => null);
+  if (!accountsDomain || !oauthConfig || oauthConfig.dataCenter !== payload.dataCenter) return oauthError("The selected Zoho OAuth configuration was removed or disabled.", request, 409);
+  const clientId = oauthConfig.clientId;
+  const clientSecret = oauthConfig.clientSecret;
+  let redirectUri: string;
+  try {
+    redirectUri = getOAuthRedirectUri(request, "zoho");
+    if (redirectUri !== payload.redirectUri) return oauthError("The callback host changed during authorization. Restart Zoho connection from the same application URL.", request, 400);
+    assertOAuthRedirectUriSecure(redirectUri);
+  } catch (error) {
+    return oauthError(error instanceof Error ? error.message : "A valid HTTPS callback is required.", request, 400);
+  }
 
   try {
     await authorize(
@@ -173,6 +183,9 @@ export async function GET(request: Request) {
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
       expires_at: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000).toISOString() : undefined,
+      zoho_client_id: clientId,
+      zoho_client_secret: clientSecret,
+      zoho_config_id: oauthConfig.id,
     }, masterKey);
     await repository.updateStatus(account.id, "pending");
 
