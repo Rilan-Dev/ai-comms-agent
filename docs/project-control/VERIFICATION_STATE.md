@@ -384,7 +384,7 @@ takeover:
   primary_implementer: "ChatGPT"
   previous_implementer: "Z.AI"
   takeover_date: "2026-10-04"
-  current_commit: "3a8af9f3f8eecc96badd8f24dbce087d510f483e"
+  current_commit: "c7c646f19551136d8d8decc827651891ea188780"
   latest_change:
     migration_owner_invariant: "Deferred constraint triggers validate affected organizations for membership and direct organization changes."
     migration_tests: "Static migration checks now cover owner invariants, RLS recursion helpers, and PostgreSQL dollar-quote syntax."
@@ -752,7 +752,7 @@ Latest source correction: `apps/web/src/app/api/email-accounts/route.ts` was rep
 - Runtime verification remains deferred under the development-first instruction.
 
 ### Authentication boundary correction — 2026-10-08
-- Latest code: ca452b473114342887234a0b1379bfd78af1a9d9.
+- Latest code: c7c646f19551136d8d8decc827651891ea188780.
 - Added production Supabase Auth adapter and login/logout session endpoints.
 - Added protected-page middleware and server-side application identity validation.
 - Removed development identity headers from agent UI clients.
