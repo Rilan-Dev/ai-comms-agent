@@ -673,3 +673,15 @@ Never write "Phase complete" without evidence.
 - Chat streaming now rejects a supplied conversation unless it belongs to both the authorized organization and selected agent.
 - Existing conversation creation already enforces organization/agent ownership; this closes the explicit-ID path that bypassed that invariant.
 - No Clara source changes and no provider credentials were introduced.
+
+
+## Task ID: 13
+## Phase: Product Completion — Deterministic Cross-Surface Scenario Runner
+
+- **Status**: implemented; runtime verification deferred by development-first directive.
+- **Owner**: ChatGPT
+- Added a PostgreSQL-backed cross-surface adapter for approval-gated email retries, WhatsApp outbound retries, scheduled-job claims, organization isolation, and correlation-scoped audit reads.
+- Added an executable scenario runner connecting those database steps to the stable cross-surface scenario harness.
+- Added deterministic runner tests and preserved the no-fabricated-provider-delivery boundary.
+- Latest implementation commit: `ae79d161f8fb313a38d4e869c40ad499407b5695`.
+- **Next:** harden sensitive-action worker execution/error routing and preserve correlation/audit continuity through success and failure outcomes.
