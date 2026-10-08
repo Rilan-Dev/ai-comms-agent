@@ -848,3 +848,11 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Gmail OAuth state signing now uses the existing server-only CREDENTIALS_MASTER_KEY; Gmail no longer requires SESSION_SIGNING_KEY or GMAIL_OAUTH_CLIENT_ID/SECRET/REDIRECT_URI environment variables.
 - Static regression tests committed at apps/web/tests/gmail-oauth-settings.test.ts.
 - Tests/build/runtime were not run. Migrations 0024/0025 and the Google consent/callback/token refresh path still require live verification; no PASS is claimed.
+
+
+### 2026-10-09 — WhatsApp outbound concurrency safety
+- Added forward-only migration `0025_whatsapp_outbound_claim_lifecycle.sql` to support an `executing` state.
+- Replaced select-only queue reads with an atomic `FOR UPDATE SKIP LOCKED` claim, preventing concurrent worker processes from sending the same queued row.
+- Sent/failed persistence transitions now require an active execution claim. Stale executing rows fail closed with provider-outcome-unknown/manual-review metadata rather than being requeued.
+- Late Meta success after claim loss now emits an explicit persistence-conflict event and audit record with provider message ID.
+- Added worker regression coverage. Tests/build/runtime/deployment remain unrun and pending.
