@@ -11,14 +11,11 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Deploy and configure the multi-client Gmail OAuth implementation now committed to main.
-  Migration 0026 adds organization-scoped OAuth clients; Settings encrypts client secrets;
-  /mail/accounts selects an enabled client; OAuth start/callback use that saved client;
-  worker token refresh uses the client credentials inside the encrypted mailbox credential.
-  Pull main and run bash scripts/manual-up.sh to apply pending migrations 0024, 0025 (WhatsApp claim lifecycle), and 0026 (Gmail OAuth configuration).
-  Migration sequencing is now unique (0025 WhatsApp, 0026 Gmail); editing a client ID requires its matching secret. Then add OAuth client records in Settings, register the displayed callback URI in Google
-  Cloud Console, and retry Gmail connection. Keep CREDENTIALS_MASTER_KEY server-only.
-  Do not wait for CI/Vercel; no tests, build, migration, or runtime OAuth PASS is claimed.
+  Deploy the dynamic, request-origin OAuth callbacks and multi-client Gmail + Zoho configuration committed to main.
+  Pull main and run bash scripts/manual-up.sh to apply pending migrations 0024–0027 (0024 audit compatibility, 0025 WhatsApp lifecycle, 0026 Gmail OAuth clients, 0027 Zoho OAuth clients).
+  Settings manages organization-scoped OAuth client IDs/secrets for both providers; secrets are encrypted at rest and never returned to the browser. Worker token refresh uses the saved per-mailbox OAuth client.
+  Callback URLs follow the host used to access the app; no fixed NEXT_PUBLIC_APP_URL is used for OAuth. Use an HTTPS domain for non-local OAuth, access Settings through that domain, and register the exact callback URI in the Google Cloud Console or Zoho API Console. Google rejects raw IP callback hosts. Domain changes do not require an application redeploy, but provider-console redirect URI registration is still required.
+  Keep CREDENTIALS_MASTER_KEY server-only. Do not wait for CI/Vercel; tests, build, migration application, and end-to-end OAuth remain unverified.
 
 
 constraints:
