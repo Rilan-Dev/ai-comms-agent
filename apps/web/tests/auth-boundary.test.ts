@@ -12,6 +12,11 @@ describe("production authentication boundary", () => {
     expect(login).not.toContain("\\\\n      router.replace");
     expect(read("src/app/api/auth/login/route.ts")).toContain("loginWithPassword");
     expect(read("src/app/api/auth/logout/route.ts")).toContain("aca-access-token");
+    const auth = read("src/lib/identity/local-auth.ts");
+    expect(auth).toContain("getMembershipsForUser(user.id)");
+    expect(auth).toContain("AccountNotProvisionedError");
+    expect(auth).toContain("throw new AccountNotProvisionedError()");
+    expect(read("src/app/api/auth/login/route.ts")).toContain("status: 403");
   });
 
   it("redirects browser pages without an authentication cookie", () => {
