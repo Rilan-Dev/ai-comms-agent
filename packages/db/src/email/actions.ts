@@ -165,6 +165,7 @@ export async function claimApprovedEmailAction(actionId: string, organizationId:
 
 export async function completeEmailAction(
   actionId: string,
+  organizationId: string,
   status: "completed" | "failed",
   result?: Record<string, unknown>,
   error?: string | null,
@@ -172,9 +173,9 @@ export async function completeEmailAction(
   const r = await query<Row>(
     `UPDATE email_actions
      SET status = $2, result = $3::jsonb, error = $4, completed_at = now()
-     WHERE id = $1 AND status = 'executing'
+     WHERE id = $1 AND organization_id = $5 AND status = 'executing'
      RETURNING *`,
-    [actionId, status, JSON.stringify(result ?? {}), error ?? null],
+    [actionId, status, JSON.stringify(result ?? {}), error ?? null, organizationId],
   );
   return r.rows[0] ? action(r.rows[0]) : null;
 }
