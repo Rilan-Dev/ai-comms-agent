@@ -45,13 +45,11 @@ The worker host (single host running workers, RabbitMQ, Qdrant, ClamAV, voice re
   - `RABBITMQ_URL` (CloudAMQP or worker host)
   - `QDRANT_URL`
   - `QDRANT_API_KEY` (if Qdrant Cloud)
-  - `ZOHO_OAUTH_CLIENT_ID`, `ZOHO_OAUTH_CLIENT_SECRET`
   - `WHATSAPP_APP_SECRET` (for webhook signature verification)
   - `WHATSAPP_SYSTEM_USER_TOKEN` (if workers share it; otherwise per-worker)
   - `OPENAI_API_KEY` (if platform-default; org-level keys are in DB)
   - `GEMINI_API_KEY`, `SARVAM_API_KEY`, `ELEVENLABS_API_KEY` (same)
   - `CLAMAV_HOST` (worker host; not needed on Vercel)
-  - `NEXT_PUBLIC_APP_URL`
 
 Vercel preview deploys get the same env vars (no separate staging env in Phase 1; Phase 17 may add a staging PostgreSQL project).
 
@@ -243,3 +241,10 @@ The application must not assume that PostgreSQL, Redis, RabbitMQ, or Qdrant are 
 Required external connection variables are documented in `.env.example`: DATABASE_URL, optional DIRECT_URL, REDIS_URL, RABBITMQ_URL, QDRANT_URL, and QDRANT_API_KEY where applicable. Gmail OAuth client registrations are managed through authenticated platform Settings and encrypted with the server-only CREDENTIALS_MASTER_KEY. No committed `.env` file is permitted.
 
 The Docker Compose infrastructure files are intentionally profile-gated with `local-infra`. A plain `docker compose up` must not create these four services. The full manual stack opts in explicitly via `scripts/manual-up.sh`.
+
+
+## 4. OAuth callback URL behavior
+
+Gmail and Zoho OAuth callback URLs are derived from the public origin used for the active request; they are not pinned to `NEXT_PUBLIC_APP_URL`. The start route signs the exact callback URI into OAuth state and the callback uses the same URI during token exchange. When changing domains, access Settings through the new domain and register the displayed callback URI with the corresponding provider client in Google Cloud Console or Zoho API Console. This avoids an application redeploy, but provider-side redirect URI registration is still required.
+
+Public OAuth callbacks require HTTPS. Google does not accept a non-local raw IP address as a production redirect host, and HTTP is permitted only for localhost development. For a self-hosted server, use a domain with TLS (for example a Cloudflare/Tailscale HTTPS endpoint) rather than an HTTP private IP callback.
