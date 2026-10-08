@@ -4,6 +4,7 @@ import { parseCredentialsMasterKey } from "@ai-comms-agent/db";
 import { authorize } from "@/lib/identity/authorization";
 import { getAuthenticatedAppContext, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { loadGmailOAuthConfiguration } from "@/lib/oauth/gmail-config";
+import { assertOAuthRedirectUriSecure, getOAuthRedirectUri } from "@/lib/oauth/redirect-uri";
 
 export const dynamic = "force-dynamic";
 
@@ -46,12 +47,21 @@ export async function GET(request: Request) {
   const config = await loadGmailOAuthConfiguration(context.organizationId, configId);
   if (!config) return NextResponse.json({ error: "oauth_configuration_not_found", message: "The selected Gmail OAuth configuration is unavailable or disabled." }, { status: 404 });
 
+  let redirectUri: string;
+  try {
+    redirectUri = getOAuthRedirectUri(request, "gmail");
+    assertOAuthRedirectUriSecure(redirectUri);
+  } catch (error) {
+    return NextResponse.json({ error: "https_callback_required", message: error instanceof Error ? error.message : "A valid HTTPS callback is required." }, { status: 400 });
+  }
+
   const verifier = randomBytes(32).toString("base64url");
   const nonce = randomBytes(16).toString("base64url");
   const payload = JSON.stringify({
     organizationId: context.organizationId,
     userId: context.user.id,
     configId: config.id,
+    redirectUri,
     ...(accountId ? { accountId } : {}),
     nonce,
     exp: Date.now() + 10 * 60_000,
@@ -61,7 +71,7 @@ export async function GET(request: Request) {
   const response = NextResponse.redirect(
     `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
       client_id: config.clientId,
-      redirect_uri: config.redirectUri,
+      redirect_uri: redirectUri,
       response_type: "code",
       access_type: "offline",
       prompt: "consent",
