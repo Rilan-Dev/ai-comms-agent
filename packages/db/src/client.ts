@@ -33,8 +33,20 @@ export function getPostgresConfigFromEnv(): PostgresConfig | null {
   };
 }
 
+function configurePool(next: Pool): Pool {
+  next.on("connect", (client) => {
+    void client.query("SET search_path TO aca, public").catch((error) => {
+      console.error("[db] failed to set application search_path", error);
+    });
+  });
+  next.on("error", (error) => {
+    console.error("[db] PostgreSQL pool error", error);
+  });
+  return next;
+}
+
 export function getPostgresPool(config?: PostgresConfig): Pool {
-  if (config) return new Pool(config);
+  if (config) return configurePool(new Pool(config));
   if (pool) return pool;
 
   const resolved = getPostgresConfigFromEnv();
@@ -42,10 +54,7 @@ export function getPostgresPool(config?: PostgresConfig): Pool {
     throw new Error("PostgreSQL is not configured. Set DATABASE_URL.");
   }
 
-  pool = new Pool(resolved);
-  pool.on("error", (error) => {
-    console.error("[db] PostgreSQL pool error", error);
-  });
+  pool = configurePool(new Pool(resolved));
   return pool;
 }
 
