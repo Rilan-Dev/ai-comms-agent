@@ -7,8 +7,8 @@ const read = (path: string) => readFileSync(resolve(__dirname, path), "utf8");
 describe("Gmail OAuth platform configuration", () => {
   it("keeps numeric migration prefixes unique across the migration directory", () => {
     const directory = resolve(__dirname, "../../../supabase/migrations");
-    const files = readdirSync(directory).filter((file) => /^\\d+_.*\\.sql$/.test(file));
-    const prefixes = files.map((file) => file.match(/^(\\d+)_/)?.[1]).filter((value): value is string => Boolean(value));
+    const files = readdirSync(directory).filter((file) => /^\d+_.*\.sql$/.test(file));
+    const prefixes = files.map((file) => file.match(/^(\d+)_/)?.[1]).filter((value): value is string => Boolean(value));
     expect(new Set(prefixes).size).toBe(prefixes.length);
   });
 
