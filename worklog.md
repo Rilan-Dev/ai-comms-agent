@@ -685,3 +685,16 @@ Never write "Phase complete" without evidence.
 - Added deterministic runner tests and preserved the no-fabricated-provider-delivery boundary.
 - Latest implementation commit: `ae79d161f8fb313a38d4e869c40ad499407b5695`.
 - **Next:** harden sensitive-action worker execution/error routing and preserve correlation/audit continuity through success and failure outcomes.
+
+
+## Task ID: 14
+## Phase: Product Completion — Sensitive-Action Provider Outcome Routing
+
+- **Status**: implemented; runtime/provider verification deferred by development-first directive.
+- **Owner**: ChatGPT
+- Added a worker-owned provider event bridge into automation evaluation.
+- Email approved-action success/failure paths now emit deterministic provider events carrying action/account/correlation identifiers.
+- WhatsApp outbound success/failure paths now emit deterministic provider events carrying message/account/correlation identifiers.
+- Added provider-event routing contract tests.
+- No external provider delivery or credential success is claimed.
+- **Next:** harden sensitive-action retry/failure semantics and deterministic audit/event assertions.
