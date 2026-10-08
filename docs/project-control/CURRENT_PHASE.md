@@ -276,3 +276,9 @@ Email and WhatsApp worker outcomes now emit provider events into the automation 
 ChatGPT completed the next cross-surface hardening step without waiting for CI/Vercel. Email and WhatsApp provider workers now preserve deterministic retry-attempt counts and transient/permanent classification in completion/failure metadata and automation provider events. The shared retry utility exposes bounded retry telemetry, and provider-event mapping now has deterministic unit coverage for organization, action/message, correlation, retry and error identity.
 
 **Next:** continue deterministic cross-surface failure/retry and audit assertions, then close remaining Mail/WhatsApp/Chat/Voice edge cases before final runtime/deployment verification.
+
+### 2026-10-08 — Abandoned execution fail-closed hardening
+
+ChatGPT hardened worker crash semantics for sensitive communication execution. Stale email actions are now failed closed with `providerOutcomeUnknown` and manual-verification audit events instead of being automatically replayed. Stale WhatsApp inbound agent executions are likewise failed closed to prevent duplicate downstream responses after a worker crash. Deterministic contract tests cover both recovery boundaries.
+
+**Next:** continue cross-surface audit/event assertions and remaining Mail/WhatsApp/Chat/Voice edge cases before final runtime/deployment verification.
