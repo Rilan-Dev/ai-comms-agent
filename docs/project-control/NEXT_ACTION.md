@@ -11,15 +11,14 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Continue cross-surface Mail/WhatsApp/Chat/Voice edge hardening. Latest fixes
-  scope the AI Voice workspace to the authenticated user's active organization
-  (never the development seed organization), and make voice turn handling reject
-  non-active sessions and discard a generated response if the session ends before
-  its turn counter can be atomically incremented. Next inspect and harden the
-  voice-session start/activation lifecycle so a failed or abandoned realtime
-  startup cannot leave a durable session stuck in starting, then continue the
-  remaining Mail/WhatsApp/Chat/Voice audit, idempotency, and race boundaries.
-  Do not wait for CI/Vercel; record validation as pending rather than claiming it.
+  Continue cross-surface Mail/WhatsApp/Chat/Voice edge hardening. Recent changes
+  fix AI Voice tenant context, reject turns on inactive sessions and discard
+  responses when a session ends mid-turn, and persist a durable starting voice
+  session before requesting Clara transport. Failed startup/configuration now
+  attempts to mark that session as error. Next harden provider-side message
+  execution and audit/idempotency race boundaries across Mail and WhatsApp,
+  then review chat/voice cancellation and terminal-state behavior. Do not wait
+  for CI/Vercel; keep verification pending until deliberately run.
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
