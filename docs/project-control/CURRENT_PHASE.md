@@ -284,3 +284,7 @@ ChatGPT hardened worker crash semantics for sensitive communication execution. S
 **Next:** continue cross-surface audit/event assertions and remaining Mail/WhatsApp/Chat/Voice edge cases before final runtime/deployment verification.
 
 Authentication correction (2026-10-08): the previous Phase 3 implementation exposed only authorization APIs and a development identity stub. This was insufficient for a production browser boundary. ChatGPT added a Supabase Auth production adapter, HttpOnly access/refresh-token cookies, login/logout endpoints, protected-page middleware, server-side application identity validation, and removed x-dev-user-id from production UI clients. An authenticated IdP account without a provisioned application user/membership is denied access. Phase 4 remains unauthorized until Phase 3 acceptance.
+
+
+### 2026-10-08 — Authentication security correction
+Authentication is now application-owned and PostgreSQL-native. Supabase Auth is not required. The production session adapter uses hashed opaque cookies mapped to active application users; password credentials are salted scrypt verifiers; login lockout, same-origin validation, logout/revocation, password change, and one-time bootstrap are implemented. This work supersedes the previous Supabase Auth dependency in the login route without changing the product objective.
