@@ -990,3 +990,8 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Authentication API, session creation, cookie security attributes, and authorization logic were otherwise unchanged.
 - Login navigation fix commit: `56f9088a7366ad8e71b66b7c1f2d1671cbeaaa5a`.
 - No CI/Vercel wait and no continuous verification performed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0004_messaging.sql` for `whatsapp_contacts.organization_id`: the migration's prior conditional reconciliation could fail to reconcile an existing relation depending on schema resolution, leaving the subsequent organization index without the required column.
+- Replaced that reconciliation with an explicit idempotent `ALTER TABLE aca.whatsapp_contacts ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES aca.organizations(id) ON DELETE CASCADE` after the table creation. No application feature code changed.
+- Migration fix commit: `25e55489b287677674a381d4c5cefd4ae77593ad`.
+- No CI/Vercel wait and no migration PASS claimed.
