@@ -71,3 +71,12 @@ If shared memory conflicts with current repository state or current requirements
 - **Remedy:** Use a forward-only conditional migration to relax NOT NULL on retired compatibility columns, guarded by `information_schema.columns`; retain historical data and don't manually alter production schema.
 - **Prevention:** For every live schema-drift incident, compare the full set of required/legacy columns and constraints against current INSERT statements, not just missing-column errors.
 - **Related record:** ISS-008; migration `0024_audit_legacy_column_compatibility.sql`; commits `14bea1c3`, `4ef3921d`.
+
+
+### FIX-01 / Sentinel — 2026-10-09
+- **Issue/symptom:** `POST /api/email-accounts` returned `403 not_member` for the organization ID selected by the UI.
+- **Root cause:** The email-account server page used the seeded development organization rather than the active organization resolved for the authenticated user.
+- **Failed approach:** Treating every `not_member` response as a membership-provisioning defect or weakening the authorization check would hide a client tenant-context bug and risk cross-tenant access.
+- **Remedy:** Use `getAuthenticatedAppContext()` with request headers in the server page and pass that membership's organization ID into both the query and client; keep API membership/role authorization intact.
+- **Prevention:** Every tenant-scoped server page must derive its organization from the authenticated request context, not dev seed globals or arbitrary client values. Add regression tests for this boundary.
+- **Related record:** ISS-009; commits `4536332f`, `7a3cfba2`.
