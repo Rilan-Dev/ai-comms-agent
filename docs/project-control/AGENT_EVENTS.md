@@ -73,3 +73,12 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - Commits: migration resequence `90aed0dd`, old-file removal `71c4399d`, migration test correction `b8fcab61`, client ID/secret guard `4a7d9c9f`, test `286d2bea`.
 - Validation: source and documentation committed; tests, deployment, migration application and live Google OAuth remain unverified.
 - Next action: pull `main`, run `bash scripts/manual-up.sh` to apply 0024–0026, configure the OAuth client in Settings, register the exact callback URI in Google Cloud Console, and test mailbox connection.
+
+
+### EVT-DEV01-DYNAMIC-OAUTH-ZOHO-20261009 — REQUEST-ORIGIN CALLBACKS AND ZOHO UI
+- Owner: DEV-01 / Forge (ChatGPT primary implementer)
+- Changes: dynamic callback URI helper; Gmail start/callback uses request-origin callback in signed state; HTTPS and DNS-host checks; organization-scoped Zoho OAuth configuration migration/API/UI; Zoho selector in Mail Accounts; worker token refresh uses per-account saved OAuth credentials.
+- Migration: `0027_zoho_oauth_configuration.sql`.
+- Regression coverage added/updated: Gmail settings, Zoho settings/callback, and Zoho worker refresh.
+- Validation: source reviewed; tests/build/typecheck/runtime not run. No PASS claimed.
+- Next: pull main; run manual deploy for migrations 0024–0027; use HTTPS DNS domain and register exact provider callback URIs; verify both providers end-to-end.
