@@ -721,3 +721,22 @@ Implemented the next cross-surface hardening boundary without waiting for extern
 - CI/Vercel remain non-blocking under the active development-first instruction.
 
 Next: continue deterministic audit/event assertions and remaining cross-surface edge cases before final runtime/deployment verification.
+
+### Task — 2026-10-08 — Abandoned execution fail-closed hardening
+
+- Status: implemented
+- Owner: ChatGPT
+
+Closed a worker-crash failure mode across sensitive communication paths.
+
+### Changes
+- Added stale email action recovery that marks abandoned `executing` actions failed with explicit provider-outcome-unknown metadata.
+- Added an email audit event requiring manual verification instead of replaying a potentially already-sent message.
+- Added stale WhatsApp inbound recovery that marks abandoned `processing` messages failed when downstream execution outcome is unknown.
+- Added a WhatsApp audit event requiring manual verification instead of replaying an inbound command.
+- Added deterministic contract tests for both recovery paths.
+
+### Safety boundary
+Automatic replay is deliberately not performed after an abandoned external side effect. This prevents duplicate email sends or duplicate WhatsApp/agent responses.
+
+Next: continue deterministic audit/event assertions and remaining cross-surface edge cases before final runtime/deployment verification.
