@@ -11,18 +11,15 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Continue final Product Completion hardening while correcting the newly observed
-  live PostgreSQL schema drift. The source correction is committed: forward-only
-  audit schema reconciliation (0023) plus manual startup migration application.
-  The manual deployment migration failed because the host shell could not resolve
-  `host.docker.internal` (`psql: could not translate host name`). PostgreSQL is
-  published on host port 65432, so the host-side migration must translate that
-  hostname to `127.0.0.1` while leaving the original `.env.docker` URL unchanged
-  for app containers. This correction is committed in `6e1decb`; a regression test
-  is committed in `740d3d4`. Pull main and rerun `bash scripts/manual-up.sh`; if the
-  migration fails again, capture its PostgreSQL diagnostic. Only after the migration
-  succeeds, retry overview and authenticated agent creation. After runtime recovery, continue the remaining
-  Mail/WhatsApp/Chat/Voice edge hardening and deterministic audit/E2E work.
+  Correct the newly observed legacy audit schema drift. Migration 0023 added
+  agent_id/decision, but the live older audit_events table still has legacy
+  resource_type and outcome columns marked NOT NULL. Current application writes
+  target_type/decision, so agent creation fails with SQLSTATE 23502 on resource_type.
+  Forward-only migration 0024 now makes the retired columns nullable when present;
+  static regression coverage was added. Pull main and rerun bash scripts/manual-up.sh
+  so 0024 is applied before retrying overview and authenticated agent creation.
+  Do not edit schema manually or bypass the migration ledger. Once this write succeeds,
+  continue remaining Mail/WhatsApp/Chat/Voice edge hardening and deterministic audit/E2E work.
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
