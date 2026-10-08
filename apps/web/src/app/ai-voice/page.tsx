@@ -1,5 +1,6 @@
 import { PostgresAgentRepository } from "@ai-comms-agent/db";
-import { ensureDevSeed, getDevOrgId } from "@/lib/identity/repository";
+import { getAuthenticatedAppContext } from "@/lib/identity/repository";
+import { headers } from "next/headers";
 import { VoiceWorkspace } from "./voice-workspace";
 
 export const dynamic = "force-dynamic";
@@ -7,8 +8,10 @@ export const dynamic = "force-dynamic";
 export default async function AIVoicePage() {
   if (!process.env.DATABASE_URL) return <Unavailable body="PostgreSQL is required for voice sessions." />;
   try {
-    await ensureDevSeed();
-    const organizationId = getDevOrgId();
+    const context = await getAuthenticatedAppContext(
+      new Request("http://localhost", { headers: await headers() }),
+    );
+    const organizationId = context?.organizationId;
     if (!organizationId) return <Unavailable body="Organization context is unavailable." />;
     const agents = await new PostgresAgentRepository().list(organizationId);
     if (!agents.length) return <Unavailable body="Create an agent before starting a voice session." actionHref="/agents/new" actionLabel="Create agent" />;
