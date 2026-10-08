@@ -14,7 +14,12 @@ CREATE TABLE IF NOT EXISTS _aca_schema_migrations (
 SQL
 then
   echo "ERROR: unable to initialize migration ledger." >&2
-  sed -n '/ERROR:/,$p' "$TMP_ERR" | tail -12 >&2
+  if [[ -s "$TMP_ERR" ]]; then
+    echo "ERROR: PostgreSQL connection/DDL diagnostic:" >&2
+    tail -12 "$TMP_ERR" >&2
+  else
+    echo "ERROR: psql returned no diagnostic output." >&2
+  fi
   exit 1
 fi
 
