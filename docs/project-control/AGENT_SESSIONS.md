@@ -36,3 +36,16 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** Runtime access and deployment confirmation are external to this source correction.
 - **Handoff:** ISS-009 / EVT-FIX01-MAIL-TENANT-20261009.
 - **Next action:** Follow `docs/project-control/NEXT_ACTION.md`; do not weaken membership authorization.
+
+
+### DEV01-GMAIL-OAUTH-SETTINGS-20261009 — 2026-10-09
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Replace environment-bound Gmail OAuth with platform-managed multiple client configurations.
+- **Started from:** main during user-reported provider_configuration_required response.
+- **Scope:** Migration, authenticated settings API/UI, OAuth start/callback, worker refresh credentials, regression test and control records.
+- **Status:** HANDOFF
+- **Completed:** Added organization-scoped OAuth client storage, encrypted secret CRUD, UI configuration, per-connection client selection, callback use of the saved client, and encrypted account-level client credentials for worker refresh.
+- **Pending:** Pull main; run manual deployment migration chain through 0025; configure OAuth client(s); register callback URI in Google Cloud Console; test end-to-end.
+- **Blockers:** Live runtime and Google OAuth credentials are user-operated; no runtime PASS claimed.
+- **Handoff:** ISS-010 / EVT-DEV01-GMAIL-OAUTH-20261009.
+- **Next action:** Follow NEXT_ACTION.md; keep CREDENTIALS_MASTER_KEY server-only and never return client secrets to the browser.
