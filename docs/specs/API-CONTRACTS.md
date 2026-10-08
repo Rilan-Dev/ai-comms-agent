@@ -9,7 +9,7 @@ This is a Phase 1 document. Exact request/response shapes are validated in Phase
 ## 1. Conventions
 
 - **Base URL**: `https://<vercel-domain>/api`
-- **Auth**: HttpOnly cookies (`session` JWT, `refresh` token). All routes require auth unless marked `public`.
+- **Auth**: PostgreSQL-backed opaque session in an HttpOnly `aca-access-token` cookie. The raw session token is never persisted. All routes require auth unless marked `public`.
 - **Tenant scoping**: every tenant-scoped route takes `organization_id` from the session (selected org) or as a path/param.
 - **Content type**: `application/json` for REST; `text/event-stream` for SSE; `application/json` over WebSocket for realtime events.
 - **Errors**: RFC 7807 problem+json shape:
@@ -32,17 +32,11 @@ This is a Phase 1 document. Exact request/response shapes are validated in Phase
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/api/auth/login` | PostgreSQL-backed email + password login. Sets an opaque HttpOnly session cookie. |
-| POST | `/api/auth/magic` | Request magic link. |
-| GET | `/api/auth/magic/verify` | Verify magic link token. Sets cookies. |
-| GET | `/api/auth/oauth/{provider}` | Start OAuth flow (google, github). |
-| GET | `/api/auth/oauth/{provider}/callback` | OAuth callback. Sets cookies. |
-| POST | `/api/auth/mfa` | Verify MFA code (after primary auth). |
-| POST | `/api/auth/refresh` | Refresh session JWT. |
-| POST | `/api/auth/logout` | Logout. Clears cookies. Revokes refresh token. |
-| GET | `/api/auth/me` | Current user + memberships. |
-
----
+| POST | `/api/auth/login` | Validate email/password, apply lockout/rate-limit policy, create an opaque PostgreSQL session. |
+| POST | `/api/auth/bootstrap` | One-time initial account/org setup using `AUTH_BOOTSTRAP_TOKEN`; disabled after the first credential exists. |
+| GET | `/api/auth/me` | Resolve the current active application user from the session cookie. |
+| POST | `/api/auth/change-password` | Verify the current password, enforce password policy, replace the verifier, revoke other sessions. |
+| POST | `/api/auth/logout` | Revoke the current server-side session and clear the cookie. |
 
 ## 3. Organization routes
 
