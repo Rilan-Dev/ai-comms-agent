@@ -2,22 +2,48 @@
 set -euo pipefail
 DB_URL="${DATABASE_URL:-postgresql://aca:aca_local_dev@127.0.0.1:55432/aca_verify}"
 MIGRATIONS_DIR="${MIGRATIONS_DIR:-supabase/migrations}"
-command -v psql >/dev/null || { echo "psql is required" >&2; exit 1; }
-command -v sha256sum >/dev/null || { echo "sha256sum is required" >&2; exit 1; }
-psql "$DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+TMP_ERR="$(mktemp "${TMPDIR:-/tmp}/ai-comms-agent-migrate.XXXXXX.err")"
+trap 'rm -f -- "${TMP_ERR}"' EXIT
+command -v psql >/dev/null || { echo "ERROR: psql is required." >&2; exit 1; }
+command -v sha256sum >/dev/null || { echo "ERROR: sha256sum is required." >&2; exit 1; }
+
+if ! psql "$DB_URL" -v ON_ERROR_STOP=1 -q >/dev/null 2>"$TMP_ERR" <<'SQL'
 CREATE TABLE IF NOT EXISTS _aca_schema_migrations (
   version text PRIMARY KEY, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now()
 );
 SQL
+then
+  echo "ERROR: unable to initialize migration ledger." >&2
+  sed -n '/ERROR:/,$p' "$TMP_ERR" | tail -12 >&2
+  exit 1
+fi
+
 shopt -s nullglob
 migrations=("$MIGRATIONS_DIR"/*.sql)
 for file in "${migrations[@]}"; do
   version="$(basename "$file")"
   checksum="$(sha256sum "$file" | awk '{print $1}')"
   applied="$(psql "$DB_URL" -Atqc "SELECT checksum FROM _aca_schema_migrations WHERE version = '$version'")"
-  if [[ -n "$applied" ]]; then [[ "$applied" == "$checksum" ]] || { echo "ERROR: migration changed after application: $version" >&2; exit 2; }; echo "SKIP $version"; continue; fi
+  if [[ -n "$applied" ]]; then
+    if [[ "$applied" != "$checksum" ]]; then
+      echo "ERROR: migration checksum changed after application: $version" >&2
+      exit 2
+    fi
+    echo "SKIP  $version"
+    continue
+  fi
+
   echo "APPLY $version"
-  psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$file"
-  psql "$DB_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO _aca_schema_migrations(version, checksum) VALUES ('$version', '$checksum')"
+  : >"$TMP_ERR"
+  if ! psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f "$file" >/dev/null 2>"$TMP_ERR"; then
+    echo "ERROR: migration failed: $version" >&2
+    grep -E '(^|: )ERROR:|^DETAIL:|^HINT:|^CONTEXT:|^STATEMENT:' "$TMP_ERR" | tail -12 >&2 || tail -12 "$TMP_ERR" >&2
+    exit 1
+  fi
+  if ! psql "$DB_URL" -v ON_ERROR_STOP=1 -q -c "INSERT INTO _aca_schema_migrations(version, checksum) VALUES ('$version', '$checksum')" >/dev/null 2>"$TMP_ERR"; then
+    echo "ERROR: failed to record migration: $version" >&2
+    tail -12 "$TMP_ERR" >&2
+    exit 1
+  fi
 done
-echo "Migration check: PASS"
+echo "PASS: migration chain complete."
