@@ -64,6 +64,27 @@ export function createPostgresCrossSurfaceSteps(
       },
     },
     {
+      name: "reject conflicting email idempotency payload",
+      execute: async (context) => {
+        let rejected = false;
+        try {
+          await createEmailAction({
+            organizationId: fixture.organizationId,
+            agentId: fixture.agentId,
+            emailAccountId: fixture.emailAccountId,
+            actionType: "send_email",
+            recipientSnapshot: { ...fixture.recipientSnapshot, subject: "Conflicting payload" },
+            requestedBy: fixture.userId,
+            idempotencyKey: context.idempotencyKey,
+            correlationId: fixture.correlationId,
+          });
+        } catch (error) {
+          rejected = error instanceof Error && error.message.includes("Idempotency key already exists");
+        }
+        if (!rejected) throw new Error("Conflicting email idempotency payload was accepted");
+      },
+    },
+    {
       name: "approve email action",
       execute: async () => {
         if (!emailActionId) throw new Error("Email approval was not created");
@@ -117,12 +138,42 @@ export function createPostgresCrossSurfaceSteps(
       },
     },
     {
+      name: "reject conflicting WhatsApp idempotency payload",
+      execute: async (context) => {
+        const account = await getWhatsAppAccountForOrganization(
+          fixture.organizationId,
+          fixture.whatsappAccountId,
+        );
+        if (!account) throw new Error("WhatsApp fixture is incomplete");
+        let rejected = false;
+        try {
+          await queueWhatsAppOutboundMessage({
+            organizationId: fixture.organizationId,
+            accountId: account.id,
+            to: fixture.to,
+            body: "Conflicting WhatsApp payload",
+            idempotencyKey: context.idempotencyKey,
+            correlationId: fixture.correlationId,
+          });
+        } catch (error) {
+          rejected = error instanceof Error && error.message.includes("Idempotency key already exists");
+        }
+        if (!rejected) throw new Error("Conflicting WhatsApp idempotency payload was accepted");
+      },
+    },
+    {
       name: "claim scheduled execution",
       execute: async () => {
         if (!fixture.scheduledJobId) return;
-        const claims = await claimDueScheduledJobs(25, new Date().toISOString());
+        const now = new Date().toISOString();
+        const claims = await claimDueScheduledJobs(25, now);
         const claim = claims.find((item) => item.organizationId === fixture.organizationId && item.id === fixture.scheduledJobId);
         if (!claim) throw new Error("Expected scheduled job was not claimable");
+
+        const duplicateClaims = await claimDueScheduledJobs(25, now);
+        if (duplicateClaims.some((item) => item.id === fixture.scheduledJobId)) {
+          throw new Error("Scheduled fire created a duplicate durable run");
+        }
       },
     },
     {
