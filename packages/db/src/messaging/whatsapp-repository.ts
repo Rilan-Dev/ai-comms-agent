@@ -185,3 +185,29 @@ export async function updateWhatsAppAccountStatus(organizationId: string, accoun
   const r = await query<Row>("UPDATE whatsapp_accounts SET status = $1, last_error = CASE WHEN $1 = 'error' THEN left($2,2000) ELSE NULL END, phone_number = COALESCE($3, phone_number), display_name = COALESCE($4, display_name), connected_at = CASE WHEN $1 = 'connected' THEN now() ELSE connected_at END, updated_at = now() WHERE id = $5 AND organization_id = $6 AND deleted_at IS NULL RETURNING id", [status, lastError ?? null, phoneNumber ?? null, displayName ?? null, accountId, organizationId]);
   return r.rows.length > 0;
 }
+
+
+/**
+ * Fail closed on abandoned inbound processing. Replaying automatically could
+ * duplicate an agent response after the worker crashed after execution.
+ */
+export async function recoverStaleWhatsAppInbound(maxAgeMinutes = 15) {
+  const safeAge = Math.min(Math.max(Math.floor(maxAgeMinutes), 1), 24 * 60);
+  const r = await query<Row>(
+    `UPDATE whatsapp_messages
+     SET processing_status = 'failed',
+         provider_error = 'Worker processing interrupted; downstream execution outcome is unknown. Manual review required.',
+         updated_at = now()
+     WHERE direction = 'inbound'
+       AND processing_status = 'processing'
+       AND updated_at < now() - make_interval(mins => $1)
+     RETURNING id, organization_id, correlation_id, agent_id`,
+    [safeAge],
+  );
+  return r.rows.map((row) => ({
+    id: String(row.id),
+    organizationId: String(row.organization_id),
+    correlationId: row.correlation_id ? String(row.correlation_id) : null,
+    agentId: row.agent_id ? String(row.agent_id) : null,
+  }));
+}
