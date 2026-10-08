@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { PostgresAuthRepository } from "@ai-comms-agent/db";
-import { assertSameOrigin, setPassword, ValidationError, validateEmail, validatePasswordForCreation } from "@/lib/identity/local-auth";
+import { assertSameOrigin, ValidationError, validateEmail, validatePasswordForCreation } from "@/lib/identity/local-auth";
 
 export const dynamic = "force-dynamic";
 
