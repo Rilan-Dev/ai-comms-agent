@@ -57,6 +57,7 @@ export {
   claimApprovedEmailAction,
   listApprovedEmailActions,
   completeEmailAction,
+  recoverStaleExecutingEmailActions,
   type CreateEmailActionInput,
   type EmailActionType,
   type EmailActionStatus,
