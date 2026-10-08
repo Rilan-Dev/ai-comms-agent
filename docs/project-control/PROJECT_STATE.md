@@ -410,3 +410,14 @@ ChatGPT added migration 0021 and worker claim protection so each scheduled job/f
 ChatGPT continued cross-surface hardening without waiting for CI/Vercel. Latest code/control checkpoint: 65dc65c46084ba51f0eb842c4a75789c56bf1680. Sensitive email actions and WhatsApp inbound executions now fail closed after abandoned worker leases, with manual-verification audit continuity rather than automatic replay.
 
 Authentication is now a Phase 3 security correction. The protected UI requires an application-authenticated session; production identity uses Supabase Auth and maps to an active application user/membership. Latest code commit: c7c646f19551136d8d8decc827651891ea188780. Phase 4 remains unauthorized.
+
+
+### 2026-10-08 — Authentication boundary corrected
+
+- **Authentication:** PostgreSQL-native and application-owned; no Supabase Auth runtime dependency.
+- **Credentials:** `aca.auth_credentials` stores salted scrypt password verifiers and lock state; plaintext passwords are never persisted.
+- **Sessions:** `aca.auth_sessions` stores only SHA-256 token hashes with expiry/revocation metadata; browser receives an HttpOnly session cookie.
+- **Abuse controls:** failed-login history, five-failure lockout window, generic invalid-credential responses, bounded password policy, origin validation, IP normalization.
+- **Lifecycle:** login, logout, current-session resolution, password change, session revocation, and one-time bootstrap are implemented.
+- **UI:** Settings now exposes authenticated password change with session revocation feedback.
+- **No Supabase project is required for application authentication.** PostgreSQL remains the authoritative runtime dependency.
