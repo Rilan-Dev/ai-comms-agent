@@ -77,20 +77,8 @@ CREATE TABLE IF NOT EXISTS whatsapp_contacts (
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(whatsapp_account_id, phone_number)
 );
-DO $$
-BEGIN
-  IF to_regclass('aca.whatsapp_contacts') IS NOT NULL
-     AND NOT EXISTS (
-       SELECT 1
-       FROM pg_attribute
-       WHERE attrelid = 'aca.whatsapp_contacts'::regclass
-         AND attname = 'organization_id'
-         AND NOT attisdropped
-     ) THEN
-    ALTER TABLE aca.whatsapp_contacts
-      ADD COLUMN organization_id uuid REFERENCES aca.organizations(id) ON DELETE CASCADE;
-  END IF;
-END $$;
+ALTER TABLE aca.whatsapp_contacts
+  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES aca.organizations(id) ON DELETE CASCADE;
 
 CREATE INDEX IF NOT EXISTS whatsapp_contacts_org_idx
   ON aca.whatsapp_contacts(organization_id);
