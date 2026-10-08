@@ -844,10 +844,10 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 
 ## 2026-10-09 — Configurable multi-client Gmail OAuth
 
-- Added migration 0025_gmail_oauth_configuration.sql, organization-scoped settings CRUD with encrypted client secrets, Settings UI, OAuth-client selector on the mailbox screen, stored-client OAuth start/callback, and account-specific worker token refresh configuration.
+- Added migration 0026_gmail_oauth_configuration.sql, organization-scoped settings CRUD with encrypted client secrets, Settings UI, OAuth-client selector on the mailbox screen, stored-client OAuth start/callback, and account-specific worker token refresh configuration.
 - Gmail OAuth state signing now uses the existing server-only CREDENTIALS_MASTER_KEY; Gmail no longer requires SESSION_SIGNING_KEY or GMAIL_OAUTH_CLIENT_ID/SECRET/REDIRECT_URI environment variables.
 - Static regression tests committed at apps/web/tests/gmail-oauth-settings.test.ts.
-- Tests/build/runtime were not run. Migrations 0024/0025 and the Google consent/callback/token refresh path still require live verification; no PASS is claimed.
+- Tests/build/runtime were not run. Migrations 0024/0025/0026 and the Google consent/callback/token refresh path still require live verification; no PASS is claimed.
 
 
 ### 2026-10-09 — WhatsApp outbound concurrency safety
@@ -856,3 +856,9 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Sent/failed persistence transitions now require an active execution claim. Stale executing rows fail closed with provider-outcome-unknown/manual-review metadata rather than being requeued.
 - Late Meta success after claim loss now emits an explicit persistence-conflict event and audit record with provider message ID.
 - Added worker regression coverage. Tests/build/runtime/deployment remain unrun and pending.
+
+
+### 2026-10-09 — Migration sequence collision correction
+- Found both WhatsApp and Gmail OAuth migrations numbered `0025`.
+- Gmail OAuth migration is now `0026_gmail_oauth_configuration.sql`; WhatsApp keeps `0025_whatsapp_outbound_claim_lifecycle.sql`.
+- Regression test points at the corrected filename. No migration/test/build/runtime execution was performed; no PASS claimed.
