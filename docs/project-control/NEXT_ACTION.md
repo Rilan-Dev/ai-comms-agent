@@ -672,3 +672,6 @@ Development-first execution continues without waiting for GitHub Actions or Verc
 - Added contract assertions for correlation propagation and retry identity.
 - **Next:** continue connecting the deterministic E2E scenarios to real application adapters, with focus on email approval/send, scheduler claim execution, organization isolation, and audit trace continuity. Do not wait for CI/Vercel.
 \n\n### 2026-10-08 — Automation idempotency hardening\nImplemented durable automation event deduplication. `automation_runs` now accepts an optional `trigger_event_key` with a partial unique index per automation rule; the worker derives deterministic keys from eventId/messageId/actionId/correlationId and skips duplicate deliveries. This prevents webhook/provider retry storms from executing the same automation twice. Continue next with remaining cross-surface communication-loop hardening.\n
+
+### 2026-10-08 — Chat authorization hardening
+The persistent Chat stream now resolves a supplied conversation through an organization + agent scoped database lookup before reading history or invoking Clara. A conversation ID from another agent in the same organization is rejected instead of being trusted from the browser. Continue with remaining cross-surface authorization and retry/error hardening. 
