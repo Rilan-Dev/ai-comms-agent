@@ -458,3 +458,11 @@ The user-provided runtime logs show migration 0023 applied and the web/worker co
 - Source commit: `4536332fdee1de3b2a0c060d581b3939c769f08a`; static regression test: `7a3cfba20cabc6fad88b313c258320c5961c06af`.
 - Project-control records: ISS-009, EVT-FIX01-MAIL-TENANT-20261009, FIX01-MAIL-TENANT-20261009.
 - Runtime status remains unverified. The independent migration 0024 deployment/retry requirement from ISS-008 remains pending.
+
+
+### 2026-10-09 — Cross-surface lifecycle hardening
+- AI Voice workspace now resolves the authenticated organization instead of the development seed org.
+- Voice turn route rejects non-active sessions and fails closed if the session becomes inactive before the atomic turn count update.
+- Voice start now persists a starting record before Clara transport setup and attempts terminal error state on startup failure.
+- Email action claim/completion transitions now include organization scope in their atomic SQL updates.
+- Implementation commits include 3ada3490, 75bf41fd, 2dc3bcf5, 0d773b0e, 7de1b068, and 0f72bdec. Validation remains pending; no CI/Vercel/runtime pass is claimed.
