@@ -33,6 +33,11 @@ describe("production authentication boundary", () => {
     expect(layout).toContain('pathname.startsWith("/login") || pathname.startsWith("/setup")');
   });
 
+  it("treats owner as satisfying admin-level authorization guards", () => {
+    const authorization = read("src/lib/identity/authorization.ts");
+    expect(authorization).toContain('role === "owner" && roles.includes("admin")');
+  });
+
   it("uses PostgreSQL-owned sessions for production identity resolution", () => {
     const adapter = read("src/lib/identity/local-auth.ts");
     expect(adapter).toContain("getActiveSession");
