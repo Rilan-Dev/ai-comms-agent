@@ -1054,3 +1054,11 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Added a static regression assertion so migration-ledger failures continue to expose the underlying PostgreSQL diagnostic.
 - Diagnostic commit: `867db12ac62bb16355da2de0fd81cd558f3913e2`; regression test commit: `63a5461b38f0d96a21ab590e0e3eac280517160c`; control-state next-action update: `1747eda91b7b8e5dca78a2f308a44d87bebaa12d`.
 - Next: rerun the current migration path and capture the real PostgreSQL error without exposing credentials; verify the configured `DATABASE_URL` is the intended writable database and that the migration principal can create `_aca_schema_migrations`. Do not weaken authentication/RBAC or bypass the migration ledger.
+
+
+### 2026-10-09 — Host-side PostgreSQL migration hostname correction
+- The migration diagnostic established the concrete cause: the host-shell `psql` process could not resolve `host.docker.internal`; this name was being passed from the Docker Compose environment into a host-run migration command.
+- Corrected `scripts/manual-up.sh` to translate only the migration-process URL hostname to `127.0.0.1`, using the existing published PostgreSQL port. The `.env.docker` value remains unchanged for app containers, where `host.docker.internal` is appropriate.
+- Added a focused regression test for this host/container boundary.
+- Commits: `6e1decb7031ca28c685565cc15e475c2867e1d95`, `740d3d4d57e2b3e38b0975aad7cc23d2d9ed2ea9`, `b32b016b29a4caabeb00ddfc1c1aea0b48dc949f`.
+- Runtime status remains unverified: the migration chain has not yet been shown to complete, and the old containers may still be serving the previous schema. Next: pull main and run `bash scripts/manual-up.sh`; then test the application only after migrations complete.
