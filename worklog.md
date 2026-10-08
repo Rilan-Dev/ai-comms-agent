@@ -885,3 +885,25 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Corrected the root server layout so the unauthenticated first-run `/setup` page is not redirected back to `/login`; protected application pages still require the authoritative PostgreSQL session context.
 - Added deterministic auth-boundary regression coverage for the setup exception and login redirect syntax.
 - **Next:** continue communication-loop product hardening and deterministic audit/idempotency assertions; final runtime/deployment verification remains later and CI/Vercel are non-blocking.
+
+
+## Task ID: 12
+## Phase: 3 — Local Typecheck Regression Fixes
+
+- **Status**: fixes implemented; local rerun requested
+- **Owner**: ChatGPT
+- **Source evidence**: local `pnpm run typecheck` reported 5 web errors after main advanced to `c9ab2a7`.
+
+### Corrections
+
+1. Removed stale `_removedDevUserId` dependency from the agent activity effect.
+2. Updated the PostgreSQL cross-surface E2E adapter to use the current `AuditEventFilters` contract; correlation IDs remain available on returned events and are asserted after retrieval.
+3. Replaced the Node `promisify(scrypt)` usage with an explicitly typed Promise wrapper compatible with the current Node 24 typings.
+4. Added safe guards for parsed password-hash components before `Buffer.from`, eliminating undefined-index type errors.
+
+### Verification
+
+- These corrections are committed directly to `main`.
+- User should rerun `git pull --ff-only origin main && pnpm run typecheck`.
+- Phase 3 acceptance remains pending until runtime verification is green.
+- Phase 4 remains NOT AUTHORIZED.
