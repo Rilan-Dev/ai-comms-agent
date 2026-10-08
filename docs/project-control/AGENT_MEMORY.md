@@ -62,3 +62,12 @@ Append lessons under the owning agent section:
 ## Memory conflict rule
 
 If shared memory conflicts with current repository state or current requirements, ignore the stale memory, record the conflict in AGENT_EVENTS.md or ISSUES.md when material, and follow current repository truth.
+
+
+### FIX-01 / Sentinel — 2026-10-09
+- **Issue/symptom:** Live agent creation failed with SQLSTATE 23502 on `audit_events.resource_type` after the latest migration chain passed.
+- **Root cause:** `CREATE TABLE IF NOT EXISTS` does not reconcile old table shape. The live database kept retired `resource_type` and `outcome` NOT NULL columns while current code writes `target_type` and `decision`.
+- **Failed approach:** Adding only missing current columns (`agent_id`, `decision`) was insufficient because legacy constraints still rejected new writes.
+- **Remedy:** Use a forward-only conditional migration to relax NOT NULL on retired compatibility columns, guarded by `information_schema.columns`; retain historical data and don't manually alter production schema.
+- **Prevention:** For every live schema-drift incident, compare the full set of required/legacy columns and constraints against current INSERT statements, not just missing-column errors.
+- **Related record:** ISS-008; migration `0024_audit_legacy_column_compatibility.sql`; commits `14bea1c3`, `4ef3921d`.
