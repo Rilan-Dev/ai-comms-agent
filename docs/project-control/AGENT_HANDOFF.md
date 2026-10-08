@@ -22,3 +22,15 @@ Cross-agent handoff register. A handoff transfers context, not authority.
 - The receiving agent must independently recover current authorization.
 - A handoff can be accepted while the sending agent continues unrelated independent work.
 - Close or supersede stale handoffs when state changes materially.
+
+### HOF-FIX01-OPS-AUTH-20261009 — 2026-10-09
+- **From:** FIX-01 / Sentinel
+- **To:** OPS-01
+- **Reason:** The reported login loop remains on the live self-hosted HTTP runtime after the source-level authentication corrections are already present on `main`.
+- **Repository state:** `main` at `2ab9c66640cc5132bc7f7686d0f008015b79620d`
+- **Work completed:** Recovered project-control state and traced middleware → login POST → session cookie → root layout → application identity context. Current source already reads the cookie explicitly and uses PostgreSQL-backed session resolution.
+- **Remaining work:** On `100.72.192.28:3300`, identify whether the running build is stale or whether session/account/membership/database configuration differs from the successful login request. Apply the smallest runtime correction and preserve fail-closed auth.
+- **Evidence/records:** ISS-007; EVT-FIX01-AUTH-20261009; `apps/web/src/app/layout.tsx`; `apps/web/src/app/login/page.tsx`; `apps/web/src/lib/identity/repository.ts`; `apps/web/src/lib/identity/local-auth.ts`.
+- **Authorization:** User's explicit FIX-01 bug-remediation request authorizes diagnosis/correction of this incident; OPS-01 must independently confirm runtime/deployment scope before changing infrastructure.
+- **Stop condition:** Stop after the live runtime cause is corrected or a concrete missing external dependency/configuration is identified and recorded; do not weaken auth or expand product scope.
+- **Status:** OPEN
