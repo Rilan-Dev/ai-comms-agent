@@ -63,6 +63,9 @@ BEGIN
   END IF;
 END $$;
 
+ALTER TABLE whatsapp_contacts
+  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES aca.organizations(id) ON DELETE CASCADE;
+
 CREATE TABLE IF NOT EXISTS whatsapp_contacts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -77,11 +80,7 @@ CREATE TABLE IF NOT EXISTS whatsapp_contacts (
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(whatsapp_account_id, phone_number)
 );
-ALTER TABLE aca.whatsapp_contacts
-  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES aca.organizations(id) ON DELETE CASCADE;
 
-CREATE INDEX IF NOT EXISTS whatsapp_contacts_org_idx
-  ON aca.whatsapp_contacts(organization_id);
 
 ALTER TABLE whatsapp_messages
   ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
