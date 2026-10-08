@@ -85,17 +85,16 @@ export function createPostgresCrossSurfaceSteps(
       },
     },
     {
-      name: "approve email action",
+      name: "approve email action exactly once under duplicate delivery",
       execute: async () => {
         if (!emailActionId) throw new Error("Email approval was not created");
-        const approved = await decideEmailAction(
-          fixture.organizationId,
-          emailActionId,
-          fixture.userId,
-          "approved",
-        );
-        if (!approved || approved.status !== "approved") {
-          throw new Error("Email action approval failed");
+        const results = await Promise.all([
+          decideEmailAction(fixture.organizationId, emailActionId, fixture.userId, "approved"),
+          decideEmailAction(fixture.organizationId, emailActionId, fixture.userId, "approved"),
+        ]);
+        const successful = results.filter((value) => value?.status === "approved");
+        if (successful.length !== 1) {
+          throw new Error("Duplicate approval delivery did not collapse to exactly one state transition");
         }
       },
     },
