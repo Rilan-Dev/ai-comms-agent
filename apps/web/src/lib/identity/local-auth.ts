@@ -1,4 +1,5 @@
-import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";\nimport { isIP } from "node:net";
+import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import { isIP } from "node:net";
 import { promisify } from "node:util";
 import type { IdentityAdapter, User } from "@ai-comms-agent/shared";
 import { asUserId } from "@ai-comms-agent/shared";
@@ -177,7 +178,13 @@ async function verifyPassword(password: string, encoded: string): Promise<boolea
   }
 }
 
-export function normalizeIpAddress(value: string | null): string | null {\n  if (!value) return null;\n  const candidate = value.trim();\n  return isIP(candidate) ? candidate : null;\n}\n\nexport function hashSessionToken(token: string): string {
+export function normalizeIpAddress(value: string | null): string | null {
+  if (!value) return null;
+  const candidate = value.trim();
+  return isIP(candidate) ? candidate : null;
+}
+
+export function hashSessionToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
 }
 
