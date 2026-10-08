@@ -1148,3 +1148,10 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Tests were not executed. Deployment, migrations 0024–0026, Google callback allowlisting and end-to-end OAuth remain pending.
 
 - Follow-up correction: legacy migrations already contain historical duplicate prefixes (for example 0002/0003), so the regression assertion was narrowed to require exactly one 0025 WhatsApp migration and exactly one 0026 Gmail migration rather than imposing a repository-wide numbering rule. The test has not been run.
+
+
+## 2026-10-09 — Dynamic OAuth callbacks and Zoho client management
+- Removed OAuth dependence on fixed `NEXT_PUBLIC_APP_URL`: settings shows callback URI for the current request origin; OAuth start signs the exact callback URI into state; callbacks exchange the code using that same URI.
+- Added HTTPS enforcement for non-local OAuth callback origins. A non-local HTTP address (such as the current private IP URL) cannot complete OAuth; Google also disallows raw IP hosts. Use a TLS-enabled domain and register the exact callback URI with each provider console. This is a provider requirement, not a redeploy requirement.
+- Added migration 0027, Zoho organization-scoped encrypted OAuth settings API/UI, Zoho client selector in Mail Accounts, and per-account Zoho client credentials for worker token refresh. Updated worker refresh regression coverage and added web source-level tests for OAuth configuration/callback behavior.
+- Validation: source inspection only; tests/build/typecheck/migrations/live OAuth not run. No PASS claimed. Next: pull main, run `bash scripts/manual-up.sh`, configure HTTPS provider callback URLs and verify both flows.
