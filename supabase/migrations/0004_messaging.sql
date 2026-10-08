@@ -56,6 +56,9 @@ BEGIN
   END IF;
 END $$;
 
+ALTER TABLE whatsapp_contacts
+  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+
 CREATE TABLE IF NOT EXISTS whatsapp_contacts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
