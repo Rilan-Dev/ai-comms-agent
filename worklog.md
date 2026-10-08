@@ -1122,3 +1122,14 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - **Regression coverage:** added `apps/worker/tests/whatsapp-outbound-claim-lifecycle.test.ts` for atomic claims, terminal recovery, and late provider outcome handling.
 - **Commits:** `d083b2c1aa1b723965a30be61f442eab6f4490f1`, `245239fca55639473fa50b80e10c87a708a826f0`, `e845ee6a60aa5f2029e806a155ef216a8b846649`, `9b9dec22084077a39f21db590b9cd24abed06633`, `f914fa0903ec028bc9d3093ef355aaec7a437e77`, `2fa43769a2a0f9a96bf73097f457d8dab41d96ed`, `b36d48dcafc9bc1a143b6d20d7d675c478cbf5b0`.
 - **Validation:** not run; no CI/Vercel/runtime PASS claimed. Continue implementation as instructed.
+
+
+## 2026-10-09 — Gmail OAuth moved to platform settings
+
+- User requirement: no Gmail OAuth client IDs/secrets hard-coded in code or .env; support multiple configurable Gmail OAuth clients.
+- Source changes: added migration 0025_gmail_oauth_configuration.sql; organization-scoped settings CRUD with encrypted client-secret persistence; Settings UI; selectable OAuth client on the mail account screen; OAuth start/callback use saved configuration; encrypted mailbox credential payload includes matching client credentials for worker token refresh.
+- Security design: OAuth client secret is never returned to the browser. Existing CREDENTIALS_MASTER_KEY stays server-only and encrypts stored secrets; it must not itself be stored in the database it protects. Gmail OAuth state signing now derives from this existing key, eliminating the Gmail-specific SESSION_SIGNING_KEY requirement.
+- Environment cleanup: removed Gmail OAuth client ID/secret/redirect URI entries from .env.example; provider configuration belongs in Settings.
+- Commits: bf02ac6d migration, 37518326 settings API, 4ad9578c start route, 951ce1f8 callback integration, 78bb9d2c encrypted per-account client persistence, 6980d091 worker refresh, 5b7ba0bf settings UI, e2279785 connection selector, dd947b50 static tests.
+- Verification boundary: tests/build/runtime were not run. Migration 0025 and Gmail OAuth flow are pending live verification; no PASS is claimed.
+- Next: pull current main, run bash scripts/manual-up.sh (must apply migrations 0024 and 0025), add OAuth client configuration in Settings, allowlist the displayed redirect URI in Google Cloud Console, and retry from /mail/accounts.
