@@ -90,6 +90,7 @@ export {
   listAgentsForWhatsAppAccount,
   applyWhatsAppProviderStatus,
   claimRoutedWhatsAppInbound,
+  recoverStaleWhatsAppInbound,
   completeWhatsAppInbound,
   getWhatsAppAccountForAgent,
 } from "./messaging/whatsapp-repository";
