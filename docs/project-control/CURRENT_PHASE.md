@@ -294,3 +294,7 @@ Authentication is now application-owned and PostgreSQL-native. Supabase Auth is 
 - Provider-event payload construction now prevents informational metadata from overriding canonical tenant/action/message/account/correlation identity.
 - Voice turn increments are now active-session-only at both application and SQL update boundaries, closing the stale-session race.
 - Continue development-first cross-surface hardening; runtime/deployment verification remains deferred.
+
+
+### 2026-10-08 — Sensitive approval visibility hardening
+Email approval list/detail endpoints now require operator-level `organization.update` permission so viewers cannot inspect sensitive recipient/content snapshots. Continue cross-surface hardening.
