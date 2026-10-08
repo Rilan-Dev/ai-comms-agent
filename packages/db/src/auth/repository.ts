@@ -1,4 +1,4 @@
-import { query, withTransaction } from "../client";
+import { query } from "../client";
 
 export interface AuthCredentialRecord {
   userId: string;
@@ -37,7 +37,12 @@ export class PostgresAuthRepository {
     return row ? this.toCredential(row) : null;
   }
 
-  async countCredentials(): Promise<number> {\n    const result = await query<{ count: string }>(`SELECT count(*)::text AS count FROM aca.auth_credentials`);\n    return Number(result.rows[0]?.count ?? 0);\n  }\n\n  async upsertPassword(userId: string, passwordHash: string): Promise<void> {
+  async countCredentials(): Promise<number> {
+    const result = await query<{ count: string }>(`SELECT count(*)::text AS count FROM aca.auth_credentials`);
+    return Number(result.rows[0]?.count ?? 0);
+  }
+
+  async upsertPassword(userId: string, passwordHash: string): Promise<void> {
     await query(
       `INSERT INTO aca.auth_credentials (user_id, password_hash)
        VALUES ($1, $2)
