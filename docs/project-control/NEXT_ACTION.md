@@ -11,17 +11,15 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Fix the email-account tenant-context defect before the next runtime retry. The
-  /mail/accounts server page was selecting getDevOrgId() after ensureDevSeed(),
-  while the authenticated user belongs to a different organization. This caused
-  POST /api/email-accounts to correctly reject the supplied development org with
-  403 reason=not_member. The page now derives organizationId from
-  getAuthenticatedAppContext() using the request headers, matching /mail/inbox.
-  A static regression test guards this boundary. Next, pull main and run
-  bash scripts/manual-up.sh so pending migration 0024 is applied, then sign in
-  afresh and retry email-account testing using the organization selected by the
-  authenticated application context. Never bypass membership authorization.
-  Continue remaining Mail/WhatsApp/Chat/Voice edge hardening after this fix.
+  Continue cross-surface Mail/WhatsApp/Chat/Voice edge hardening. Latest fixes
+  scope the AI Voice workspace to the authenticated user's active organization
+  (never the development seed organization), and make voice turn handling reject
+  non-active sessions and discard a generated response if the session ends before
+  its turn counter can be atomically incremented. Next inspect and harden the
+  voice-session start/activation lifecycle so a failed or abandoned realtime
+  startup cannot leave a durable session stuck in starting, then continue the
+  remaining Mail/WhatsApp/Chat/Voice audit, idempotency, and race boundaries.
+  Do not wait for CI/Vercel; record validation as pending rather than claiming it.
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
