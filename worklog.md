@@ -1082,3 +1082,14 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - **Commits:** `4536332fdee1de3b2a0c060d581b3939c769f08a` (fix), `7a3cfba20cabc6fad88b313c258320c5961c06af` (test).
 - **Verification boundary:** Source changes committed; tests have not been run and live request has not yet been retried. No runtime PASS is claimed.
 - **Next:** Pull `main`, run `bash scripts/manual-up.sh` to apply pending migration 0024, sign in with a fresh session, and retry from the account UI. Do not weaken tenant authorization or reuse exposed session/provider secrets.
+
+
+## 2026-10-09 — Voice tenant isolation and turn lifecycle
+
+- **Problem:** the AI Voice workspace still selected `getDevOrgId()` after seeding development data, unlike the authenticated-context pattern already used by Mail. A signed-in user could therefore see an empty/wrong agent list and submit requests for the wrong organization.
+- **Fix:** the page now resolves `getAuthenticatedAppContext()` from the request headers and uses that active organization for the agent query. Added a regression test that prohibits development-org selection/seeding in this page.
+- **Race hardening:** the voice turn route now requires `status === "active"`, not merely `ended_at IS NULL`. After Clara finishes streaming, it checks the repository's atomic active-session turn increment result; if the session ended during generation, it returns 409 and does not expose the generated response as a successful turn.
+- **Regression tests:** added tenant-context and lifecycle-guard static tests.
+- **Commits:** `3ada3490ec91398e0f239c086bcbe9289063de96`, `8dda47141678033b90d2530183527b44807221f6`, `75bf41fd8eade96ed7fdc3fc6d2e580074b94a91`, `f1bcabd9eed9c8f073d8de4a287dbfd25bde6d22`.
+- **Validation:** not run; do not treat implementation as verified. Continue development without waiting for CI/Vercel.
+- **Next:** inspect realtime session start/activation failure paths and ensure abandoned/failed starts transition to an explicit terminal state with audit/telemetry continuity.
