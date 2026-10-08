@@ -31,7 +31,7 @@ phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
 current_commit: "6588c9a0af5d4c4e1e26a229dbfeadfe8522ee70"
 current_commit_short: "6588c9a0"
 current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/6588c9a0af5d4c4e1e26a229dbfeadfe8522ee70"
-last_verified_commit: "pending_final_chatgpt_acceptance"
+last_verified_commit: "pending_runtime_acceptance"
 
 open_blockers:
   - "Runtime verification still pending for the PostgreSQL migration set; development continuation is explicitly authorized"
@@ -421,3 +421,9 @@ Authentication is now a Phase 3 security correction. The protected UI requires a
 - **Lifecycle:** login, logout, current-session resolution, password change, session revocation, and one-time bootstrap are implemented.
 - **UI:** Settings now exposes authenticated password change with session revocation feedback.
 - **No Supabase project is required for application authentication.** PostgreSQL remains the authoritative runtime dependency.
+
+
+### 2026-10-08 — Provider outcome isolation hardening
+- ChatGPT hardened the worker provider-event boundary so downstream automation evaluation failures cannot mutate an already-successful external provider outcome into a false failure state.
+- Added deterministic injectable-evaluator coverage for the isolation contract.
+- Current implementation continues under the development-first directive; CI/Vercel remain non-blocking and no runtime/deployment success is claimed.
