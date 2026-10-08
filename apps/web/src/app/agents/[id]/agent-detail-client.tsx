@@ -61,13 +61,13 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
         if (!cancelled) notify({ kind:"error", title:"Email accounts unavailable", message:error instanceof Error ? error.message : "Unable to load email accounts." });
       });
     return () => { cancelled = true; };
-  }, [tab, organizationId, _removedDevUserId, notify]);
+  }, [tab, organizationId, notify]);
 
   useEffect(() => {
     if (tab !== "activity") return;
     let cancelled = false; setAuditLoading(true);
     const url = "/api/agents/" + agent.id + "/audit?organizationId=" + encodeURIComponent(organizationId) + "&limit=50";
-    fetch(url,{headers:{"x-dev-user-id":_removedDevUserId}})
+    fetch(url)
       .then(async response => { const payload=await response.json(); if(!response.ok) throw new Error(payload.message??"Audit history could not be loaded."); if(!cancelled) setAuditEvents(payload.events??[]); })
       .catch(error => { if(!cancelled) notify({kind:"error",title:"Activity unavailable",message:error instanceof Error?error.message:"Unable to load audit history."}); })
       .finally(() => { if(!cancelled) setAuditLoading(false); });
