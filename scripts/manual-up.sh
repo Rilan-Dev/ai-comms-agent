@@ -21,6 +21,10 @@ if [[ -z "$migration_db_url" ]]; then
   echo "ERROR: DATABASE_URL is required in .env.docker for the manual deployment migration." >&2
   exit 1
 fi
+# Migrations execute in the host shell, while the app uses the same URL inside
+# Docker. On Docker Desktop/Windows, host.docker.internal may only resolve from
+# containers; use the published localhost port for the host-side psql process.
+migration_db_url="${migration_db_url//host.docker.internal/127.0.0.1}"
 DATABASE_URL="$migration_db_url" bash scripts/migrate.sh
 
 docker compose --env-file .env.docker -f infra/docker-compose.manual.yml up -d
