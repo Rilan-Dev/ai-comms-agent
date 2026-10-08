@@ -928,3 +928,8 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Root cause was an existing/previously-created `email_actions` table missing the runtime `result` column. Added forward-only migration `0022_email_action_result.sql` with an idempotent `ADD COLUMN IF NOT EXISTS result jsonb NOT NULL DEFAULT '{}'::jsonb`.
 - Migration fix commit: `cd5895cccedc78e4175a817e7bee05ec4693e77d`.
 - No application feature behavior changed; no CI/Vercel wait.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0004_messaging.sql:65`: the partially-created `whatsapp_contacts` table already existed without `organization_id`, while the migration requires that column.
+- Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the WhatsApp-contact table/index operations. No application feature code changed.
+- Migration fix commit: `639e85b213306dcec32445fe8b03229ac83284c1`.
+- No CI/Vercel wait and no migration PASS claimed.
