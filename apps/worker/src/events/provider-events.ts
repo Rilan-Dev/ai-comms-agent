@@ -28,13 +28,16 @@ export function providerEventToAutomationEvent(event: ProviderEvent) {
   return {
     type: event.type,
     payload: {
+      ...event.metadata,
+      // Canonical routing/identity fields must win over provider metadata.
+      // Provider metadata is informational and cannot retarget an event across
+      // organizations, actions, messages, accounts, or correlations.
       organizationId: event.organizationId,
       actionId: "actionId" in event ? event.actionId : undefined,
       messageId: "messageId" in event ? event.messageId : undefined,
       accountId: "accountId" in event ? event.accountId : undefined,
       emailAccountId: "emailAccountId" in event ? event.emailAccountId : undefined,
       correlationId: event.correlationId ?? undefined,
-      ...event.metadata,
     },
   };
 }
