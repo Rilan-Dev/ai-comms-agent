@@ -840,3 +840,11 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Voice workspace tenant-context and voice turn/start lifecycle regression tests added.
 - Email action claim and completion updates are organization-scoped; worker callers now pass the organization ID and the email action contract test guards the SQL boundary.
 - Tests/build/runtime/deployment were not run under the active development-first instruction. Verification remains pending.
+
+
+## 2026-10-09 — Configurable multi-client Gmail OAuth
+
+- Added migration 0025_gmail_oauth_configuration.sql, organization-scoped settings CRUD with encrypted client secrets, Settings UI, OAuth-client selector on the mailbox screen, stored-client OAuth start/callback, and account-specific worker token refresh configuration.
+- Gmail OAuth state signing now uses the existing server-only CREDENTIALS_MASTER_KEY; Gmail no longer requires SESSION_SIGNING_KEY or GMAIL_OAUTH_CLIENT_ID/SECRET/REDIRECT_URI environment variables.
+- Static regression tests committed at apps/web/tests/gmail-oauth-settings.test.ts.
+- Tests/build/runtime were not run. Migrations 0024/0025 and the Google consent/callback/token refresh path still require live verification; no PASS is claimed.
