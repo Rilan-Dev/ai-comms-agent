@@ -102,6 +102,7 @@ export { getOrCreateChatConversation, getChatConversation, listChatMessages, app
 
 export {
   createVoiceSession,
+  configureStartingVoiceSessionForOrganization,
   activateVoiceSessionForOrganization,
   incrementVoiceSessionTurnForOrganization,
   endVoiceSessionForOrganization,
