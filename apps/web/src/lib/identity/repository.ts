@@ -34,9 +34,9 @@ export function getIdentityRepository(): IdentityRepository {
 
 export function getIdentityAdapter(): IdentityAdapter {
   if (!_identityAdapter) {
-    _identityAdapter = process.env.NODE_ENV === "production"
-      ? new LocalIdentityAdapter()
-      : new DevIdentityAdapter(getIdentityRepository());
+    _identityAdapter = process.env.ACA_ENABLE_DEV_IDENTITY === "true"
+      ? new DevIdentityAdapter(getIdentityRepository())
+      : new LocalIdentityAdapter();
   }
   return _identityAdapter;
 }
