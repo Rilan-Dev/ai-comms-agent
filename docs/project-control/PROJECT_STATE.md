@@ -427,3 +427,7 @@ Authentication is now a Phase 3 security correction. The protected UI requires a
 - ChatGPT hardened the worker provider-event boundary so downstream automation evaluation failures cannot mutate an already-successful external provider outcome into a false failure state.
 - Added deterministic injectable-evaluator coverage for the isolation contract.
 - Current implementation continues under the development-first directive; CI/Vercel remain non-blocking and no runtime/deployment success is claimed.
+
+
+### 2026-10-08 — Cross-surface hardening continuation
+Latest implementation: 64485e8c9478c6881f488f00ae624a3657e17a07. Cross-surface deterministic adapters now cover conflicting email/WhatsApp idempotency payload rejection and scheduled duplicate-fire suppression; worker retry classification imports were corrected. Runtime/CI/Vercel verification remains intentionally deferred.
