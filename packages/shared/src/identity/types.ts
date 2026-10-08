@@ -5,9 +5,9 @@
  * docs/architecture/SECURITY_MODEL.md §4 (Agent permissions / RBAC).
  *
  * Phase 3 scope: identity abstraction + organization/membership/role/permission
- * model + server-side authorization. No production authentication — the
- * application owns authorization; authentication is delegated to a future
- * identity provider via the IdentityAdapter interface.
+ * model + server-side authorization. Authentication is application-owned and
+ * provider-neutral: PostgreSQL-backed password credentials + opaque sessions
+ * resolve the authenticated user before authorization is evaluated.
  */
 
 // ============================================================================
@@ -164,11 +164,9 @@ export interface AuthSubject {
 // ============================================================================
 
 /**
- * The application owns authorization. Authentication is delegated to a future
- * identity provider (Supabase Auth, Auth0, etc.) via this interface.
- *
- * Phase 3 uses a dev-only stub implementation (clearly marked). Production
- * implementations will be added in a future phase.
+ * The application owns both authentication and authorization. The production
+ * adapter resolves a PostgreSQL-backed opaque session. Development may use the
+ * explicitly guarded dev adapter for local UI work.
  */
 export interface IdentityAdapter {
   /**
