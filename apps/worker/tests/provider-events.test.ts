@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { providerEventToAutomationEvent } from "../src/events/provider-events";
+import { emitProviderEventWith, providerEventToAutomationEvent } from "../src/events/provider-events";
 
 test("provider event mapping preserves organization and correlation identity", () => {
   const mapped = providerEventToAutomationEvent({
@@ -46,4 +46,22 @@ test("WhatsApp provider event mapping preserves message identity and outcome met
   assert.equal(mapped.payload.correlationId, "corr-2");
   assert.equal(mapped.payload.retryAttempts, 3);
   assert.equal(mapped.payload.retryable, false);
+});
+
+
+test("automation bridge failure cannot convert a provider success into a provider failure", async () => {
+  const result = await emitProviderEventWith(
+    {
+      type: "whatsapp.message.sent",
+      organizationId: "org-1",
+      messageId: "message-1",
+      accountId: "wa-1",
+      correlationId: "corr-1",
+    },
+    async () => { throw new Error("automation database unavailable"); },
+  );
+
+  assert.equal(result.deliveredToAutomation, false);
+  assert.equal(result.result, null);
+  assert.equal(result.error, "automation database unavailable");
 });
