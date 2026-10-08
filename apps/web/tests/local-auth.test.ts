@@ -4,6 +4,7 @@ import {
   ValidationError,
   hashSessionToken,
   normalizeEmail,
+  normalizeIpAddress,
   validateEmail,
   validatePasswordForCreation,
   validatePasswordForLogin,
@@ -31,6 +32,12 @@ describe("application-owned authentication", () => {
     expect(() => validatePasswordForLogin("x")).not.toThrow();
     expect(() => validatePasswordForLogin("")).toThrow(ValidationError);
     expect(() => validatePasswordForLogin("x".repeat(129))).toThrow(ValidationError);
+  });
+
+  it("normalizes client IP metadata before database persistence", () => {
+    expect(normalizeIpAddress("203.0.113.10")).toBe("203.0.113.10");
+    expect(normalizeIpAddress("2001:db8::1")).toBe("2001:db8::1");
+    expect(normalizeIpAddress("attacker, 203.0.113.10")).toBeNull();
   });
 
   it("hashes session tokens deterministically and never stores the raw token", () => {
