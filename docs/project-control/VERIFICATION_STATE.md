@@ -816,3 +816,12 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - **Source remedy:** migration `0024_audit_legacy_column_compatibility.sql` is committed, with static regression assertions in `apps/web/tests/migration-verification.test.ts`.
 - **Status:** migration 0024 has not yet been applied to the live runtime; authenticated agent creation and overview are not accepted as passing. No end-to-end runtime PASS is claimed.
 - **Next:** pull latest `main`, run `bash scripts/manual-up.sh`, then retry authenticated agent creation with the browser's existing valid session. Do not paste session cookies or credentials into chat.
+
+
+## 2026-10-09 — Email account tenant-context correction
+
+- **User-provided evidence:** `POST /api/email-accounts` returned HTTP 403 with `reason=not_member` for the organization ID supplied by the mail account page.
+- **Source finding:** The page selected the development organization via `getDevOrgId()`, while the authorization boundary resolves membership for the authenticated user.
+- **Correction:** `/mail/accounts` now derives its organization using `getAuthenticatedAppContext()`, consistent with `/mail/inbox`. Static regression coverage was added.
+- **Commits:** `4536332fdee1de3b2a0c060d581b3939c769f08a`, `7a3cfba20cabc6fad88b313c258320c5961c06af`.
+- **Verification status:** Tests have not been run and the live request has not been retried. No runtime PASS is claimed. Migration 0024 remains a separate pending deployment prerequisite.
