@@ -750,3 +750,13 @@ Latest source correction: `apps/web/src/app/api/email-accounts/route.ts` was rep
 - WhatsApp inbound stale execution recovery is fail-closed and auditable for the same duplicate-side-effect reason.
 - Added deterministic contract coverage for both recovery boundaries.
 - Runtime verification remains deferred under the development-first instruction.
+
+### Authentication boundary correction — 2026-10-08
+- Latest code: ca452b473114342887234a0b1379bfd78af1a9d9.
+- Added production Supabase Auth adapter and login/logout session endpoints.
+- Added protected-page middleware and server-side application identity validation.
+- Removed development identity headers from agent UI clients.
+- Added auth-boundary static tests and documented Supabase Auth environment variables.
+- Runtime auth verification is pending because no ai-comms-agent Supabase project is currently provisioned/configured. Existing Supabase projects were not reused.
+- Vercel latest deployments remain rate-limited/canceled; no latest READY claim.
+- **Phase 3 acceptance: PENDING. Phase 4: NOT AUTHORIZED.**
