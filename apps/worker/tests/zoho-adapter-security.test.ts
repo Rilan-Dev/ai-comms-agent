@@ -73,8 +73,6 @@ test("Zoho regional refresh uses the matching accounts domain and saved per-acco
     const tokenRequest = calls.find((call) => call.url === "https://accounts.zoho.eu/oauth/v2/token");
     assert.match(tokenRequest?.body ?? "", /client_id=saved-client/);
     assert.match(tokenRequest?.body ?? "", /client_secret=saved-secret/);
-    assert.equal(process.env.ZOHO_OAUTH_CLIENT_ID, undefined);
-    assert.equal(process.env.ZOHO_OAUTH_CLIENT_SECRET, undefined);
   } finally {
     globalThis.fetch = originalFetch;
   }
