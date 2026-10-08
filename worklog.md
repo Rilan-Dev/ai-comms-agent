@@ -1112,3 +1112,13 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Added regression assertions in `apps/web/tests/email-action-contract.test.ts` for the scoped claim/completion SQL and executor arguments.
 - Commits: `0d773b0ec8ae5034763e217fefab2c0a62b4d933`, `9615d2c8f6fda856fa984f3f00716cc2e9dc372f`, `794de3b188300a0bbb268a1781de766d9d304fce`, `7de1b068e96918df86d219cc64dc5ccdae3b926d`, `0105ff3bda7d1b983276b50b2531d9811d0e2d0a`, `baefe3294c9003e04f43ec5d1382f47388f7ba89`, `0f72bdec18dfa0f5325146b200e1a093956c4364`.
 - Validation remains pending; no CI/Vercel pass is claimed.
+
+
+## 2026-10-09 — WhatsApp outbound worker claim safety
+
+- **Root risk:** the WhatsApp worker selected queued outbound rows without an atomic claim. Multiple worker processes could select the same row and send duplicate externally visible messages.
+- **Fix:** added forward-only migration `0025_whatsapp_outbound_claim_lifecycle.sql` with an `executing` state and partial claim index. Replaced read-only selection with a single `FOR UPDATE SKIP LOCKED` claim operation. Sent/failed transitions now require `status = 'executing'`.
+- **Crash safety:** abandoned executing sends transition to failed with explicit provider-outcome-unknown/manual-verification messaging; they are not automatically requeued. If a provider success arrives after the claim was lost, the worker records a persistence-conflict provider event and audit entry with the provider message ID rather than falsely claiming the DB transition succeeded.
+- **Regression coverage:** added `apps/worker/tests/whatsapp-outbound-claim-lifecycle.test.ts` for atomic claims, terminal recovery, and late provider outcome handling.
+- **Commits:** `d083b2c1aa1b723965a30be61f442eab6f4490f1`, `245239fca55639473fa50b80e10c87a708a826f0`, `e845ee6a60aa5f2029e806a155ef216a8b846649`, `9b9dec22084077a39f21db590b9cd24abed06633`, `f914fa0903ec028bc9d3093ef355aaec7a437e77`, `2fa43769a2a0f9a96bf73097f457d8dab41d96ed`, `b36d48dcafc9bc1a143b6d20d7d675c478cbf5b0`.
+- **Validation:** not run; no CI/Vercel/runtime PASS claimed. Continue implementation as instructed.
