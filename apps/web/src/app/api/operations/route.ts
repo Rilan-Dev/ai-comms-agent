@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { query } from "@ai-comms-agent/db";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
-import { ensureDevSeed, getDevOrgId, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
+import { getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +13,10 @@ export async function GET(request: Request) {
     if (!process.env.DATABASE_URL) {
       return NextResponse.json({ error: "database_not_configured", message: "PostgreSQL is required for operations health." }, { status: 503 });
     }
-    await ensureDevSeed();
     const url = new URL(request.url);
-    const rawId = url.searchParams.get("organizationId")?.trim() || getDevOrgId();
+    const authenticated = await getIdentityAdapter().resolveUser(request);
+    const memberships = authenticated ? await getIdentityRepository().getMembershipsForUser(authenticated.id) : [];
+    const rawId = url.searchParams.get("organizationId")?.trim() || memberships.find((m) => m.status === "active")?.organizationId;
     if (!rawId) return NextResponse.json({ error: "configuration_required", message: "An organization context is required." }, { status: 422 });
     await authorize(request, { organizationId: asOrganizationId(rawId), permission: "audit.read" }, getIdentityAdapter(), getIdentityRepository());
 
