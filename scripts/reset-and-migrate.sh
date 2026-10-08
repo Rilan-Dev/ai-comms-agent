@@ -25,7 +25,7 @@ if [[ "${RESET_DATABASE_CONFIRM:-}" != "YES" ]]; then
 fi
 
 echo "Resetting application database..."
-if ! psql "$DB_URL" -v ON_ERROR_STOP=1 >"$LOG_FILE" 2>&1 <<'SQL'
+if ! psql "$DB_URL" -v ON_ERROR_STOP=1 2>&1 <<'SQL' | tee -a "$LOG_FILE"
 DROP SCHEMA IF EXISTS aca CASCADE;
 DROP SCHEMA IF EXISTS private CASCADE;
 CREATE SCHEMA aca;
@@ -42,7 +42,7 @@ echo "OK: application schemas reset."
 
 echo "Applying migrations..."
 cd -- "${SCRIPT_DIR}/.."
-if ! bash "$MIGRATE_SCRIPT" >>"$LOG_FILE" 2>&1; then
+if ! bash "$MIGRATE_SCRIPT" 2>&1 | tee -a "$LOG_FILE"; then
   KEEP_LOG=1
   echo "ERROR: migration failed." >&2
   awk '
