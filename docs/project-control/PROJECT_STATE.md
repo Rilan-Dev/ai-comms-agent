@@ -431,3 +431,7 @@ Authentication is now a Phase 3 security correction. The protected UI requires a
 
 ### 2026-10-08 — Cross-surface hardening continuation
 Latest implementation: 64485e8c9478c6881f488f00ae624a3657e17a07. Cross-surface deterministic adapters now cover conflicting email/WhatsApp idempotency payload rejection and scheduled duplicate-fire suppression; worker retry classification imports were corrected. Runtime/CI/Vercel verification remains intentionally deferred.
+
+
+### 2026-10-08 — Communication-loop edge hardening
+Provider event routing identity is now fail-closed against metadata overrides, and voice turn accounting rejects inactive/ended sessions at both route and repository layers. Latest implementation commit: `0c0a23b9bbda2574960e0c4355d631318e3cd37e`. Continue cross-surface edge hardening without waiting for CI/Vercel.
