@@ -552,3 +552,22 @@ describe("Migration failure diagnostics", () => {
     expect(migrateSql).toContain('tail -12 "$TMP_ERR"');
   });
 });
+
+
+describe("Legacy audit schema compatibility migration (0024)", () => {
+  const legacyAuditPath = resolve(__dirname, "../../../supabase/migrations/0024_audit_legacy_column_compatibility.sql");
+  const legacyAuditSql = readFileSync(legacyAuditPath, "utf8");
+
+  it("makes retired resource_type and outcome columns optional on older databases", () => {
+    expect(legacyAuditSql).toContain("column_name = 'resource_type'");
+    expect(legacyAuditSql).toContain("column_name = 'outcome'");
+    expect(legacyAuditSql).toContain("ALTER TABLE audit_events ALTER COLUMN resource_type DROP NOT NULL");
+    expect(legacyAuditSql).toContain("ALTER TABLE audit_events ALTER COLUMN outcome DROP NOT NULL");
+  });
+
+  it("checks column existence and nullability before applying compatibility changes", () => {
+    expect(legacyAuditSql).toContain("information_schema.columns");
+    expect(legacyAuditSql).toContain("table_schema = current_schema()");
+    expect(legacyAuditSql).toContain("is_nullable = 'NO'");
+  });
+});
