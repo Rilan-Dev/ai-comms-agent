@@ -28,9 +28,9 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "debacf79bb65dd0c174808ef50eb68b636fe760b"
-current_commit_short: "debacf79"
-current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/a11995f1a5909a78538f076563a74288e76ec1c4"
+current_commit: "65dc65c46084ba51f0eb842c4a75789c56bf1680"
+current_commit_short: "65dc65c4"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/65dc65c46084ba51f0eb842c4a75789c56bf1680"
 last_verified_commit: "development-first validation deferred"
 
 open_blockers:
@@ -404,3 +404,7 @@ ChatGPT added migration 0021 and worker claim protection so each scheduled job/f
 - Sensitive email and WhatsApp provider outcomes now emit worker-owned automation events on success/failure with stable identifiers and correlation continuity.
 - Runtime/provider/CI/Vercel verification remains intentionally deferred and is not claimed as passed.
 - **Next implementation:** sensitive-action retry/failure semantics and deterministic audit/event assertions.
+
+
+### 2026-10-08 — Development-first fail-closed recovery
+ChatGPT continued cross-surface hardening without waiting for CI/Vercel. Latest code/control checkpoint: 65dc65c46084ba51f0eb842c4a75789c56bf1680. Sensitive email actions and WhatsApp inbound executions now fail closed after abandoned worker leases, with manual-verification audit continuity rather than automatic replay.
