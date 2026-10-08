@@ -1139,3 +1139,10 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Repository inspection found the WhatsApp outbound lifecycle migration already occupied prefix 0025. Resequenced Gmail OAuth configuration to `0026_gmail_oauth_configuration.sql` and updated the migration regression test plus current project-control references.
 - Migration SQL body is unchanged and idempotent. If an environment applied the old filename already, the renamed migration may run once more under its new ledger key; `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` preserve safe behavior for the current schema.
 - Runtime deployment and OAuth flow remain pending; no verification PASS claimed.
+
+
+## 2026-10-09 — Gmail OAuth configuration follow-up hardening
+- Corrected a test regex that initially escaped the migration prefix pattern incorrectly; the assertion now inspects numeric prefixes and checks uniqueness.
+- Prevented an OAuth configuration edit from changing the Google client ID while silently retaining the previous client's secret. The API now requires the new secret when the client ID changes; regression coverage added.
+- Commits: `8ce79d36` migration-prefix test correction; `4a7d9c9f` client ID/secret pairing guard; `286d2bea` regression assertion.
+- Tests were not executed. Deployment, migrations 0024–0026, Google callback allowlisting and end-to-end OAuth remain pending.
