@@ -742,3 +742,10 @@ The latest concrete implementation checkpoint is cross-surface hardening: determ
 ### 2026-10-08 — Sensitive approval visibility hardening
 - Email approval payloads contain recipient/content snapshots; pending approval listing and individual action retrieval now require `organization.update` instead of `organization.read`, matching approve/reject authority.
 - **Next:** continue remaining Mail/WhatsApp/Chat/Voice edge cases and deterministic audit/event assertions. Do not wait for CI/Vercel.
+
+
+### 2026-10-08 — Communication-loop edge hardening
+- Deterministic cross-surface PostgreSQL scenario coverage now treats duplicate concurrent email approval delivery as a race and requires exactly one successful approval transition.
+- WhatsApp outbound failures now persist the provider error in the authoritative message row instead of discarding the error argument.
+- Runtime/CI/Vercel validation remains deferred under the active development-first instruction; no success is claimed.
+- **Next:** continue remaining Mail/WhatsApp/Chat/Voice edge cases and audit/idempotency assertions before final runtime/deployment preparation.
