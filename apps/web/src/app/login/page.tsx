@@ -16,7 +16,8 @@ export default function LoginPage() {
       const response = await fetch("/api/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.message ?? "Sign in failed.");
-      const next = new URLSearchParams(window.location.search).get("next");\n      router.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/"); router.refresh();
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/"); router.refresh();
     } catch (err) { setError(err instanceof Error ? err.message : "Sign in failed."); }
     finally { setBusy(false); }
   }
