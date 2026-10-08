@@ -807,3 +807,12 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - `/api/auth/bootstrap` is explicitly public to the middleware but remains protected by the server-only `AUTH_BOOTSTRAP_TOKEN` and one-time credential check.
 - No auth bypass or client-side secret was added.
 - Runtime verification/deployment evidence for the latest commit remains pending; do not claim READY.
+
+## Live manual deployment evidence — 2026-10-09
+
+- **User-provided evidence:** `scripts/migrate.sh` completed successfully through `0023_audit_schema_reconciliation.sql`; `scripts/manual-up.sh` rebuilt both web and worker images, reran the migration chain, and started both containers.
+- **Observed runtime state:** worker reports its configured PostgreSQL/Redis/RabbitMQ/Qdrant dependencies and ready state; Next.js web reports ready. This is startup evidence only.
+- **Remaining failure:** authenticated agent creation fails with PostgreSQL SQLSTATE `23502`, because the live legacy `audit_events.resource_type` column is still NOT NULL and current writes use `target_type`. The legacy `outcome` column is also reconciled by the same correction.
+- **Source remedy:** migration `0024_audit_legacy_column_compatibility.sql` is committed, with static regression assertions in `apps/web/tests/migration-verification.test.ts`.
+- **Status:** migration 0024 has not yet been applied to the live runtime; authenticated agent creation and overview are not accepted as passing. No end-to-end runtime PASS is claimed.
+- **Next:** pull latest `main`, run `bash scripts/manual-up.sh`, then retry authenticated agent creation with the browser's existing valid session. Do not paste session cookies or credentials into chat.
