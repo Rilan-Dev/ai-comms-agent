@@ -28,7 +28,7 @@ This is a Phase 1 document. Implementation is produced across Phases 3 (auth/RBA
 
 The user registers OAuth clients with each provider before the relevant phase:
 
-- **Gmail OAuth client:** registered in Google Cloud Console; redirect URI = `https://<our-domain>/api/oauth/gmail/callback`; scopes = `https://mail.google.com/` (or narrower `gmail.modify`); client ID + secret in Vercel env vars (`GMAIL_OAUTH_CLIENT_ID`, `GMAIL_OAUTH_CLIENT_SECRET`).
+- **Gmail OAuth client:** registered in Google Cloud Console; redirect URI is shown in the platform Settings UI; scopes = `https://www.googleapis.com/auth/gmail.modify`. Organization admins add one or more client IDs/secrets in Settings. Secrets are encrypted at rest with the server-only `CREDENTIALS_MASTER_KEY` and never returned to the browser.
 - **Zoho OAuth client:** registered in Zoho API Console; redirect URI = `https://<our-domain>/api/oauth/zoho/callback`; scopes = `ZohoMail.messages.ALL`; client ID + secret in Vercel env vars.
 - **Google login OAuth client:** registered in Google Cloud Console; redirect URI = `https://<our-domain>/api/auth/oauth/google/callback`; scopes = `openid email profile`; client ID + secret in Vercel env vars.
 - **GitHub OAuth App:** registered in GitHub Developer Settings; redirect URI = `https://<our-domain>/api/auth/oauth/github/callback`; scopes = `read:user user:email`; client ID + secret in Vercel env vars.
