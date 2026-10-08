@@ -867,3 +867,14 @@ Continue remaining Mail/WhatsApp/Chat/Voice edge-case hardening and deterministi
 ## 2026-10-08 — Scheduled execution audit correlation
 
 ChatGPT hardened the scheduler boundary so every scheduled run completion and failure emits an organization-scoped audit event keyed to the durable scheduled-run UUID as both target and correlation ID. Configuration-required failures and execution exceptions are now traceable without changing provider delivery behavior. Added deterministic source coverage. CI/Vercel were not awaited.
+
+
+## 2026-10-08 — Browser authentication entry-point correction
+
+ChatGPT takeover correction for the reported inactive login experience:
+- Confirmed the repository already contained application-owned password authentication, session cookies, protected-page middleware, server-side identity resolution, and `/api/auth/login`.
+- Identified the practical first-run gap: the UI exposed login but did not provide a clear initialization path when the database had no credential, and the middleware did not list `/setup`/bootstrap as explicit public browser entry points.
+- Added a dedicated `/setup` page using the existing one-time `AUTH_BOOTSTRAP_TOKEN` bootstrap endpoint.
+- Added `/setup` and `/api/auth/bootstrap` to the public-path allowlist while preserving the server-side token gate.
+- Login now preserves a safe `next` route after authentication and provides a first-time setup link.
+- No development authentication bypass was added.
