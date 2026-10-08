@@ -193,8 +193,11 @@ export async function listActiveAutomationRules(){
   const r=await query<Row>("SELECT * FROM automation_rules WHERE status='active' ORDER BY created_at ASC");
   return r.rows.map(automation);
 }
-export async function createAutomationRun(ruleId:string, result:Record<string,unknown>={}){
-  const r=await query<Row>("INSERT INTO automation_runs (automation_rule_id,status,result) VALUES ($1,'running',$2::jsonb) RETURNING id",[ruleId,JSON.stringify(result)]);
+export async function createAutomationRun(ruleId:string, result:Record<string,unknown>={}, triggerEventKey?:string|null){
+  const r=await query<Row>(
+    "INSERT INTO automation_runs (automation_rule_id,status,result,trigger_event_key) VALUES ($1,'running',$2::jsonb,$3) ON CONFLICT (automation_rule_id,trigger_event_key) WHERE trigger_event_key IS NOT NULL DO NOTHING RETURNING id",
+    [ruleId,JSON.stringify(result),triggerEventKey ?? null],
+  );
   return r.rows[0]?String(r.rows[0].id):null;
 }
 export async function completeAutomationRun(runId:string,result:Record<string,unknown>={}){
