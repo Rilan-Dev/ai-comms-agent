@@ -93,7 +93,7 @@ export async function loginWithPassword(input: {
 export async function setPassword(input: { userId: string; password: string }): Promise<void> {
   validatePasswordForCreation(input.password);
   const auth = new PostgresAuthRepository();
-  await auth.upsertPassword(input.userId, await hashPassword(input.password));
+  await auth.upsertPassword(input.userId, await hashPasswordForStorage(input.password));
 }
 
 export async function changePassword(input: { userId: string; currentPassword: string; newPassword: string; currentSessionTokenHash: string }): Promise<void> {
@@ -106,7 +106,7 @@ export async function changePassword(input: { userId: string; currentPassword: s
   if (input.currentPassword === input.newPassword) {
     throw new ValidationError("New password must be different from the current password.");
   }
-  await auth.upsertPassword(input.userId, await hashPassword(input.newPassword));
+  await auth.upsertPassword(input.userId, await hashPasswordForStorage(input.newPassword));
   await auth.revokeAllUserSessionsExcept(input.userId, input.currentSessionTokenHash);
 }
 
@@ -162,7 +162,7 @@ export class InvalidCredentialsError extends Error {
   }
 }
 
-async function hashPassword(password: string): Promise<string> {
+export async function hashPasswordForStorage(password: string): Promise<string> {
   const salt = randomBytes(16);
   const derived = await scrypt(password, salt, 64, { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 }) as Buffer;
   return `scrypt$32768$8$1$${salt.toString("hex")}$${derived.toString("hex")}`;
