@@ -11,14 +11,18 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Continue cross-surface Mail/WhatsApp/Chat/Voice edge hardening. Recent changes
-  fix AI Voice tenant context, reject turns on inactive sessions and discard
-  responses when a session ends mid-turn, and persist a durable starting voice
-  session before requesting Clara transport. Failed startup/configuration now
-  attempts to mark that session as error. Next harden provider-side message
-  execution and audit/idempotency race boundaries across Mail and WhatsApp,
-  then review chat/voice cancellation and terminal-state behavior. Do not wait
-  for CI/Vercel; keep verification pending until deliberately run.
+  Complete and deploy the configurable multi-client Gmail OAuth implementation.
+  Source now includes organization-scoped gmail_oauth_configs storage (migration
+  0025), encrypted client-secret management in Settings, a Gmail OAuth client
+  selector on /mail/accounts, OAuth start/callback using the selected saved client,
+  and account-encrypted client credentials for worker token refresh. SESSION_SIGNING_KEY
+  is no longer required for the Gmail OAuth state; state signing derives from the
+  existing server-only CREDENTIALS_MASTER_KEY. Pull main and run
+  bash scripts/manual-up.sh to apply migrations 0024 and 0025. Then open Settings,
+  add a Google OAuth client ID/secret, register the displayed callback URL in Google
+  Cloud Console, and connect Gmail from /mail/accounts. Do not wait for CI/Vercel;
+  do not claim runtime PASS until the user retries successfully.
+
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
