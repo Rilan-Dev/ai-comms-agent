@@ -45,12 +45,14 @@ export async function activateVoiceSessionForOrganization(
 export async function incrementVoiceSessionTurnForOrganization(
   organizationId: string,
   sessionId: string,
-): Promise<void> {
-  await query(
+): Promise<boolean> {
+  const result = await query(
     `UPDATE voice_sessions SET turn_count = turn_count + 1
-     WHERE id = $1 AND organization_id = $2 AND ended_at IS NULL`,
+     WHERE id = $1 AND organization_id = $2 AND status = 'active' AND ended_at IS NULL
+     RETURNING id`,
     [sessionId, organizationId],
   );
+  return result.rows.length === 1;
 }
 
 export async function endVoiceSessionForOrganization(
