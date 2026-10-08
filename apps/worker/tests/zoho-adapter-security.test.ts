@@ -47,16 +47,12 @@ test("Zoho adapter accepts supported regional Mail API origins", async () => {
 });
 
 
-test("Zoho regional refresh uses the matching accounts domain", async () => {
+test("Zoho regional refresh uses the matching accounts domain and saved per-account client", async () => {
   const originalFetch = globalThis.fetch;
-  const originalClientId = process.env.ZOHO_OAUTH_CLIENT_ID;
-  const originalClientSecret = process.env.ZOHO_OAUTH_CLIENT_SECRET;
-  process.env.ZOHO_OAUTH_CLIENT_ID = "client";
-  process.env.ZOHO_OAUTH_CLIENT_SECRET = "secret";
-  const calls: string[] = [];
-  globalThis.fetch = async (input) => {
+  const calls: Array<{ url: string; body?: string }> = [];
+  globalThis.fetch = async (input, init) => {
     const url = String(input);
-    calls.push(url);
+    calls.push({ url, body: typeof init?.body === "string" ? init.body : undefined });
     if (url.startsWith("https://mail.zoho.eu/api/accounts")) {
       return new Response(JSON.stringify({ data: [{ accountId: "123", emailAddress: "user@example.eu" }] }), { status: 200 });
     }
@@ -67,12 +63,20 @@ test("Zoho regional refresh uses the matching accounts domain", async () => {
   };
   try {
     const adapter = new ZohoAdapter();
-    await adapter.connect({ credential_type: "oauth_token", access_token: "expired-token", refresh_token: "refresh", api_domain: "https://mail.zoho.eu", account_id: "123", expires_at: new Date(Date.now() - 1000).toISOString() });
-    assert.ok(calls.includes("https://accounts.zoho.eu/oauth/v2/token"));
+    await adapter.connect({
+      credential_type: "oauth_token", access_token: "expired-token", refresh_token: "refresh",
+      api_domain: "https://mail.zoho.eu", account_id: "123",
+      zoho_client_id: "saved-client", zoho_client_secret: "saved-secret",
+      expires_at: new Date(Date.now() - 1000).toISOString(),
+    } as any);
+    assert.ok(calls.some((call) => call.url === "https://accounts.zoho.eu/oauth/v2/token"));
+    const tokenRequest = calls.find((call) => call.url === "https://accounts.zoho.eu/oauth/v2/token");
+    assert.match(tokenRequest?.body ?? "", /client_id=saved-client/);
+    assert.match(tokenRequest?.body ?? "", /client_secret=saved-secret/);
+    assert.equal(process.env.ZOHO_OAUTH_CLIENT_ID, undefined);
+    assert.equal(process.env.ZOHO_OAUTH_CLIENT_SECRET, undefined);
   } finally {
     globalThis.fetch = originalFetch;
-    if (originalClientId === undefined) delete process.env.ZOHO_OAUTH_CLIENT_ID; else process.env.ZOHO_OAUTH_CLIENT_ID = originalClientId;
-    if (originalClientSecret === undefined) delete process.env.ZOHO_OAUTH_CLIENT_SECRET; else process.env.ZOHO_OAUTH_CLIENT_SECRET = originalClientSecret;
   }
 });
 
