@@ -298,3 +298,10 @@ Authentication is now application-owned and PostgreSQL-native. Supabase Auth is 
 
 ### 2026-10-08 — Sensitive approval visibility hardening
 Email approval list/detail endpoints now require operator-level `organization.update` permission so viewers cannot inspect sensitive recipient/content snapshots. Continue cross-surface hardening.
+
+
+### 2026-10-08 — Communication-loop edge hardening
+- Deterministic cross-surface PostgreSQL scenario coverage now treats duplicate concurrent email approval delivery as a race and requires exactly one successful approval transition.
+- WhatsApp outbound failures now persist the provider error in the authoritative message row instead of discarding the error argument.
+- Runtime/CI/Vercel validation remains deferred under the active development-first instruction; no success is claimed.
+- **Next:** continue remaining Mail/WhatsApp/Chat/Voice edge cases and audit/idempotency assertions before final runtime/deployment preparation.
