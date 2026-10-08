@@ -912,3 +912,8 @@ ChatGPT takeover correction for the reported inactive login experience:
 - The auth cookie now derives `secure` from `X-Forwarded-Proto` (when present) or the request URL protocol, preserving Secure cookies on HTTPS while allowing the explicitly HTTP deployment to retain its session.
 - Auth fix commit: `52fb3318c28f11f3bcc9314c117200f780399e90`.
 - No CI/Vercel wait and no broader authentication feature changes were made.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0004_messaging.sql:65`: the partially-created `whatsapp_contacts` table already existed without `organization_id`, while the migration requires that column.
+- Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the WhatsApp-contact table/index operations. No application feature code changed.
+- Migration fix commit: `92341cd17297f6ec66061a772c3c5ab849d4e438`.
+- No CI/Vercel wait and no migration PASS claimed.
