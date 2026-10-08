@@ -8,7 +8,7 @@ import { useNotifications } from "@/components/notifications";
 type Check = { key: string; label: string; ok: boolean; detail?: string };
 type AuditEvent = { id:string; eventType:string; action:string|null; decision:string|null; createdAt:string; metadata:Record<string,unknown> };
 
-export function AgentDetailClient({ organizationId, devUserId, initialAgent, initialVersions, initialPolicy, initialEmailBindings, initialWhatsAppBinding }: { organizationId: string; devUserId: string; initialAgent: Agent; initialVersions: AgentVersion[]; initialPolicy: AgentPolicy | null; initialEmailBindings: AgentEmailBinding[]; initialWhatsAppBinding: AgentWhatsAppBinding | null }) {
+export function AgentDetailClient({ organizationId, initialAgent, initialVersions, initialPolicy, initialEmailBindings, initialWhatsAppBinding }: { organizationId: string; initialAgent: Agent; initialVersions: AgentVersion[]; initialPolicy: AgentPolicy | null; initialEmailBindings: AgentEmailBinding[]; initialWhatsAppBinding: AgentWhatsAppBinding | null }) {
   const router = useRouter();
   const { notify } = useNotifications();
   const [agent, setAgent] = useState(initialAgent);
@@ -42,7 +42,7 @@ export function AgentDetailClient({ organizationId, devUserId, initialAgent, ini
   async function deploy() {
     const version=versions.find((v)=>v.id===selectedVersionId) ?? versions[0]; if(!version) { notify({kind:"error",title:"No version available",message:"Create a configuration version before deploying."}); return; }
     setBusy(true);
-    try { const p=await call(`/api/agents/${agent.id}/deploy`,{method:"POST",headers:{"content-type":"application/json","x-dev-user-id":devUserId},body:JSON.stringify({organizationId,versionId:version.id,environment:"production"})}); setAgent({...agent,status:"active",currentVersionId:version.id,currentDeploymentId:p.deployment.id}); setSelectedVersionId(version.id); notify({kind:"success",title:"Agent deployed",message:`Version ${version.versionNumber} is now active.`}); setShowConfirm(null); } catch(e){notify({kind:"error",title:"Deployment failed",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
+    try { const p=await call(`/api/agents/${agent.id}/deploy`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,versionId:version.id,environment:"production"})}); setAgent({...agent,status:"active",currentVersionId:version.id,currentDeploymentId:p.deployment.id}); setSelectedVersionId(version.id); notify({kind:"success",title:"Agent deployed",message:`Version ${version.versionNumber} is now active.`}); setShowConfirm(null); } catch(e){notify({kind:"error",title:"Deployment failed",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
   async function retire() {
     setBusy(true);
@@ -51,7 +51,7 @@ export function AgentDetailClient({ organizationId, devUserId, initialAgent, ini
   useEffect(() => {
     if (tab !== "channels") return;
     let cancelled = false;
-    fetch(`/api/email-accounts?organizationId=${encodeURIComponent(organizationId)}`, { headers: { "x-dev-user-id": devUserId } })
+    fetch(`/api/email-accounts?organizationId=${encodeURIComponent(organizationId)}`, { headers: {} })
       .then(async (response) => {
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.message ?? "Email accounts could not be loaded.");
