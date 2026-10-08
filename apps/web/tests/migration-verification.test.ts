@@ -510,3 +510,34 @@ describe("WhatsApp runtime hardening migration (0017)", () => {
     expect(sql).toContain("COALESCE(agent_id, '00000000-0000-0000-0000-000000000000'::uuid)");
   });
 });
+
+
+describe("Audit schema reconciliation migration (0023)", () => {
+  const reconciliationSql = readFileSync(
+    resolve(__dirname, "../../../supabase/migrations/0023_audit_schema_reconciliation.sql"),
+    "utf8",
+  );
+
+  it("adds audit columns required by the current repository contract to legacy tables", () => {
+    expect(reconciliationSql).toContain("ADD COLUMN IF NOT EXISTS agent_id uuid");
+    expect(reconciliationSql).toContain("ADD COLUMN IF NOT EXISTS decision text");
+  });
+
+  it("uses forward-only idempotent indexes for the reconciled audit columns", () => {
+    expect(reconciliationSql).toContain("CREATE INDEX IF NOT EXISTS audit_events_agent_created_idx");
+    expect(reconciliationSql).toContain("CREATE INDEX IF NOT EXISTS audit_events_org_decision_idx");
+  });
+});
+
+describe("Manual deployment migration boundary", () => {
+  const manualUpSql = readFileSync(
+    resolve(__dirname, "../../../scripts/manual-up.sh"),
+    "utf8",
+  );
+
+  it("applies the PostgreSQL migration chain before starting the application", () => {
+    expect(manualUpSql).toContain("bash scripts/migrate.sh");
+    expect(manualUpSql).toContain("DATABASE_URL");
+    expect(manualUpSql).toContain("docker compose --env-file .env.docker");
+  });
+});
