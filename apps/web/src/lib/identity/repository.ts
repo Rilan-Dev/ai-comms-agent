@@ -1,8 +1,8 @@
 /**
  * Identity repository singleton for the web app.
  *
- * Phase 3: uses InMemoryIdentityRepository for local development.
- * Phase 4 will replace this with a Supabase-backed implementation.
+ * Development may use the explicit dev identity stub. Production uses the
+ * PostgreSQL-backed identity/session adapter.
  *
  * The repository is seeded with a development organization + user so the
  * authorization API can be tested locally.
@@ -12,7 +12,7 @@ import { InMemoryIdentityRepository, PostgresIdentityRepository } from "@ai-comm
 import type { IdentityRepository } from "@ai-comms-agent/db";
 import { asUserId, asOrganizationId } from "@ai-comms-agent/shared";
 import { DevIdentityAdapter } from "./dev-adapter";
-import { SupabaseIdentityAdapter } from "./supabase-adapter";
+import { LocalIdentityAdapter } from "./local-auth";
 import type { IdentityAdapter } from "@ai-comms-agent/shared";
 
 // ============================================================================
@@ -35,7 +35,7 @@ export function getIdentityRepository(): IdentityRepository {
 export function getIdentityAdapter(): IdentityAdapter {
   if (!_identityAdapter) {
     _identityAdapter = process.env.NODE_ENV === "production"
-      ? new SupabaseIdentityAdapter(getIdentityRepository())
+      ? new LocalIdentityAdapter()
       : new DevIdentityAdapter(getIdentityRepository());
   }
   return _identityAdapter;
