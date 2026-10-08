@@ -11,15 +11,15 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Continue cross-surface Mail/WhatsApp/Chat/Voice hardening. Voice workspace
-  tenant context, active-session turn guards, durable voice startup, and
-  organization-scoped email-action claim/completion are implemented with
-  regression tests. WhatsApp outbound now uses an atomic SKIP LOCKED claim,
-  an executing lifecycle state, fail-closed stale-lease recovery, and explicit
-  audit/provider-event handling if Meta accepts a send after the database claim
-  is lost. Next inspect chat streaming cancellation and worker/audit failure
-  isolation, then continue approval, webhook, and scheduling idempotency edges.
-  Do not wait for CI/Vercel; keep all unrun verification marked pending.
+  Deploy and configure the multi-client Gmail OAuth implementation now committed to main.
+  Migration 0025 adds organization-scoped OAuth clients; Settings encrypts client secrets;
+  /mail/accounts selects an enabled client; OAuth start/callback use that saved client;
+  worker token refresh uses the client credentials inside the encrypted mailbox credential.
+  Pull main and run bash scripts/manual-up.sh to apply pending migrations 0024 and 0025.
+  Then add OAuth client records in Settings, register the displayed callback URI in Google
+  Cloud Console, and retry Gmail connection. Keep CREDENTIALS_MASTER_KEY server-only.
+  Do not wait for CI/Vercel; no tests, build, migration, or runtime OAuth PASS is claimed.
+
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
