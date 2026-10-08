@@ -681,3 +681,9 @@ The persistent Chat stream now resolves a supplied conversation through an organ
 ChatGPT connected the PostgreSQL cross-surface adapter to an executable scenario runner and added deterministic runner coverage. The runner now exercises approval idempotency, WhatsApp outbound idempotency, scheduled-job claiming, organization-isolation assertions, and correlation-scoped audit continuity without fabricating provider delivery.
 
 **Next concrete implementation:** harden sensitive-action worker execution/error routing and make provider execution outcomes flow back into the same correlation/audit boundary. Continue without waiting for CI/Vercel.
+
+
+### 2026-10-08 — Sensitive-action provider outcome routing
+ChatGPT connected email and WhatsApp worker success/failure outcomes to the worker-owned automation event bridge. Provider outcomes now carry stable action/message identifiers and correlation IDs into automation evaluation while retaining existing audit writes. No provider credentials or external delivery are fabricated.
+
+**Next concrete implementation:** complete failure/retry semantics for sensitive actions and deterministic audit/event assertions, then continue the remaining communication-loop hardening.
