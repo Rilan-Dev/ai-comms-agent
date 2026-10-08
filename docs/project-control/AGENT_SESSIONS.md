@@ -45,7 +45,7 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Scope:** Migration, authenticated settings API/UI, OAuth start/callback, worker refresh credentials, regression test and control records.
 - **Status:** HANDOFF
 - **Completed:** Added organization-scoped OAuth client storage, encrypted secret CRUD, UI configuration, per-connection client selection, callback use of the saved client, and encrypted account-level client credentials for worker refresh.
-- **Pending:** Pull main; run manual deployment migration chain through 0025; configure OAuth client(s); register callback URI in Google Cloud Console; test end-to-end.
+- **Pending:** Pull main; run manual deployment migration chain through 0026; configure OAuth client(s); register callback URI in Google Cloud Console; test end-to-end.
 - **Blockers:** Live runtime and Google OAuth credentials are user-operated; no runtime PASS claimed.
 - **Handoff:** ISS-010 / EVT-DEV01-GMAIL-OAUTH-20261009.
 - **Next action:** Follow NEXT_ACTION.md; keep CREDENTIALS_MASTER_KEY server-only and never return client secrets to the browser.
