@@ -923,3 +923,8 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Added an idempotent `ALTER TABLE email_actions ADD COLUMN IF NOT EXISTS result jsonb NOT NULL DEFAULT '{}'::jsonb` before the 0007 table definition. No worker behavior was changed.
 - Migration fix commit: `cb903a4ea6174f3c809f3e4f97b65d054acca875`.
 - No CI/Vercel wait and no runtime PASS claimed.
+
+- Fixed the concrete worker startup error: `column "result" of relation "email_actions" does not exist` from `recoverStaleExecutingEmailActions`.
+- Root cause was an existing/previously-created `email_actions` table missing the runtime `result` column. Added forward-only migration `0022_email_action_result.sql` with an idempotent `ADD COLUMN IF NOT EXISTS result jsonb NOT NULL DEFAULT '{}'::jsonb`.
+- Migration fix commit: `cd5895cccedc78e4175a817e7bee05ec4693e77d`.
+- No application feature behavior changed; no CI/Vercel wait.
