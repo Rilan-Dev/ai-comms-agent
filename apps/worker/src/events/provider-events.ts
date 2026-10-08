@@ -1,0 +1,39 @@
+import { evaluateAutomationEvent } from "../automation/automation-engine";
+
+export type ProviderEvent =
+  | {
+      type: "email.action.completed" | "email.action.failed";
+      organizationId: string;
+      actionId: string;
+      actionType: string;
+      emailAccountId: string;
+      correlationId?: string | null;
+      metadata?: Record<string, unknown>;
+    }
+  | {
+      type: "whatsapp.message.sent" | "whatsapp.message.failed" | "whatsapp.message.delivered" | "whatsapp.message.read";
+      organizationId: string;
+      messageId: string;
+      accountId: string;
+      correlationId?: string | null;
+      metadata?: Record<string, unknown>;
+    };
+
+/**
+ * Worker-owned bridge from provider outcomes into host automation.
+ * Provider callbacks never execute agent work inside a web request.
+ */
+export async function emitProviderEvent(event: ProviderEvent) {
+  return evaluateAutomationEvent({
+    type: event.type,
+    payload: {
+      organizationId: event.organizationId,
+      actionId: "actionId" in event ? event.actionId : undefined,
+      messageId: "messageId" in event ? event.messageId : undefined,
+      accountId: "accountId" in event ? event.accountId : undefined,
+      emailAccountId: "emailAccountId" in event ? event.emailAccountId : undefined,
+      correlationId: event.correlationId ?? undefined,
+      ...event.metadata,
+    },
+  });
+}
