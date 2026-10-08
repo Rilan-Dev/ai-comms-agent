@@ -62,10 +62,13 @@ export async function POST(request: Request) {
 
     if (id) {
       const existing = await query<Record<string, unknown>>(
-        "SELECT id FROM gmail_oauth_configs WHERE id = $1 AND organization_id = $2",
+        "SELECT id, client_id FROM gmail_oauth_configs WHERE id = $1 AND organization_id = $2",
         [id, organizationId],
       );
       if (!existing.rows[0]) return NextResponse.json({ error: "not_found", message: "OAuth configuration was not found." }, { status: 404 });
+      if (!clientSecret && String(existing.rows[0].client_id) !== clientId) {
+        return NextResponse.json({ error: "validation_error", message: "Enter the new client secret when changing the Google OAuth client ID." }, { status: 422 });
+      }
       if (clientSecret) {
         const ciphertext = encryptCredential(clientSecret, key);
         await query(
