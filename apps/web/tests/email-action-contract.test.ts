@@ -49,4 +49,13 @@ describe("approval-safe email action contract", () => {
     expect(executor).toContain("connected.reply");
     expect(executor).toContain("connected.forward");
   });
+
+  it("fails closed on abandoned worker execution instead of auto-replaying", () => {
+    expect(actionRepository).toContain("recoverStaleExecutingEmailActions");
+    expect(actionRepository).toContain("provider outcome is unknown");
+    expect(actionRepository).toContain("providerOutcomeUnknown");
+    expect(executor).toContain("email.action.execution_interrupted");
+    expect(executor).toContain("manualVerificationRequired");
+  });
+
 });
