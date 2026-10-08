@@ -814,3 +814,13 @@ Next: continue deterministic audit/event assertions and remaining cross-surface 
 - Corrected email and WhatsApp worker imports to use the existing shared provider retry classifier rather than leaving an unresolved runtime/type boundary.
 - No provider delivery is fabricated; verification remains a later milestone.
 - Latest implementation commit: `64485e8c9478c6881f488f00ae624a3657e17a07`.
+
+
+## Task — Provider identity and voice session edge hardening
+
+- **Owner:** ChatGPT
+- **Status:** implemented; runtime verification deferred by development-first directive.
+- Hardened provider automation event mapping so canonical organization/action/message/account/email-account/correlation identifiers override informational metadata and cannot be retargeted by payload fields.
+- Hardened voice turn accounting so only active, non-ended sessions can increment turns; the route and repository both fail closed on races/session termination.
+- No provider credentials, external delivery, Clara source, or production deployment changes.
+- Continue with remaining communication-loop edge cases and deterministic audit/event assertions without waiting for CI/Vercel.
