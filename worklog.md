@@ -824,3 +824,12 @@ Next: continue deterministic audit/event assertions and remaining cross-surface 
 - Hardened voice turn accounting so only active, non-ended sessions can increment turns; the route and repository both fail closed on races/session termination.
 - No provider credentials, external delivery, Clara source, or production deployment changes.
 - Continue with remaining communication-loop edge cases and deterministic audit/event assertions without waiting for CI/Vercel.
+
+
+## Task — Sensitive approval visibility hardening
+
+- **Owner:** ChatGPT
+- **Status:** implemented; runtime verification deferred by development-first directive.
+- Restricted pending email approval list/detail endpoints to `organization.update`, matching approval/rejection authority.
+- Prevented read-only organization members from inspecting recipient/body snapshots embedded in sensitive email actions.
+- No provider credentials, external delivery, Clara source, or deployment changes.
