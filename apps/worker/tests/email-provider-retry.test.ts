@@ -39,3 +39,27 @@ test("retry classifier treats transient provider failures as retryable", () => {
   assert.equal(isRetryableProviderError(new Error("IMAP authentication failed")), false);
   assert.equal(isRetryableProviderError(new Error("invalid refresh token")), false);
 });
+
+
+test("provider retry exposes deterministic retry telemetry", async () => {
+  const retries: Array<{ attempt: number; nextAttempt: number; delayMs: number }> = [];
+  let attempts = 0;
+  await withProviderRetry(
+    async () => {
+      attempts += 1;
+      if (attempts < 3) throw new Error("HTTP 503 temporary outage");
+      return "ok";
+    },
+    {
+      baseDelayMs: 5,
+      sleep: async () => {},
+      onRetry: ({ attempt, nextAttempt, delayMs }) => {
+        retries.push({ attempt, nextAttempt, delayMs });
+      },
+    },
+  );
+  assert.deepEqual(retries, [
+    { attempt: 1, nextAttempt: 2, delayMs: 5 },
+    { attempt: 2, nextAttempt: 3, delayMs: 10 },
+  ]);
+});
