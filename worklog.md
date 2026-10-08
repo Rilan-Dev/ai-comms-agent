@@ -972,3 +972,15 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Improved `scripts/reset-and-migrate.sh` so reset and migration command output is streamed live to the terminal while still being retained in the temporary failure log. The standalone `scripts/migrate.sh` remains unchanged and continues to provide migration-only execution.
 - Concrete operational fix commit: `c52521c49a5616aab2deafab58a02b81d57c1c17`.
 - No CI/Vercel wait.
+
+
+## 2026-10-08 — Fix protected-page session cookie propagation
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete browser authentication error fix only; no feature development, no project-control documentation changes, and no vendor modification.
+- User reported that password login succeeds but the browser is redirected back to `/login?reason=not_provisioned` instead of reaching the dashboard.
+- The protected root layout was reconstructing the authentication request from the Next.js `headers()` snapshot. Hardened this boundary to read the `aca-access-token` directly from Next.js `cookies()` and pass that exact session cookie into the server-side application-identity resolver.
+- This preserves the existing PostgreSQL session and organization-membership authorization rules; it does not add a development-auth bypass or weaken provisioning checks.
+- **File changed:** `apps/web/src/app/layout.tsx`.
+- **Commit:** `3cd19bdb4b6e34fb02e0e8ef93af2ac38af56310`.
+- No CI/Vercel wait was performed and no runtime PASS is claimed.
