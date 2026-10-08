@@ -257,3 +257,9 @@ The worker execution boundary now calls Clara's immutable `claraRuntime.createCh
 ### 2026-10-07 — Scheduled fire idempotency hardening
 
 ChatGPT continued development-first cross-surface hardening. Scheduled job claims now persist the exact `fire_at` timestamp and use a PostgreSQL unique index on `(scheduled_job_id, fire_at)` with conflict-safe claiming, preventing duplicate run creation when multiple worker ticks race on the same due fire. Added a deterministic worker contract fixture for the migration/repository boundary. Runtime validation remains deferred; do not wait for CI/Vercel.
+
+
+### 2026-10-08 — Deterministic cross-surface scenario runner
+The deterministic PostgreSQL E2E path is now executable through a dedicated scenario runner. It connects the existing stable fixtures to real database repositories for email approval retries, WhatsApp outbound retries, scheduled claims, organization isolation, and correlation-scoped audit reads. Provider delivery remains intentionally external and un-fabricated.
+
+**Next:** sensitive-action worker execution/error routing, including deterministic failure propagation and audit continuity.
