@@ -731,3 +731,9 @@ ChatGPT corrected a cross-surface failure mode in the worker provider-event brid
 
 ### 2026-10-08 — Cross-surface hardening continuation
 The latest concrete implementation checkpoint is cross-surface hardening: deterministic E2E adapters now assert conflicting email/WhatsApp idempotency payloads are rejected and scheduled duplicate claims do not create a second durable run. Provider worker imports were corrected to use the shared retry classifier. Continue with remaining communication-loop edge cases and deterministic audit assertions; do not wait for CI/Vercel.
+
+
+### 2026-10-08 — Communication-loop edge hardening continuation
+- Provider automation event mapping now treats organization/action/message/account/email-account/correlation identifiers as canonical and prevents provider metadata from overriding them.
+- Voice turn accounting now requires an active session both at the API boundary and database update, failing closed with a conflict when a session ended between checks.
+- **Next concrete implementation:** continue remaining Mail/WhatsApp/Chat/Voice edge cases and deterministic audit/event assertions. Do not wait for CI/Vercel.
