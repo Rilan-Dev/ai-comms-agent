@@ -29,7 +29,7 @@ function credentialsFor(
 export async function executeApprovedEmailAction(actionId: string, organizationId: string) {
   const action = await getEmailActionForOrganization(organizationId, actionId);
   if (!action) throw new Error("Email action not found");
-  const claimed = await claimApprovedEmailAction(actionId);
+  const claimed = await claimApprovedEmailAction(actionId, organizationId);
   if (!claimed) throw new Error("Email action is not approved, expired, or already executing");
 
   try {
