@@ -32,6 +32,8 @@ describe("WhatsApp outbound claim lifecycle", () => {
     expect(repository).toContain("provider outcome is unknown. Manual verification required.");
     expect(worker).toContain("whatsapp.message.execution_interrupted");
     expect(worker).toContain("manualVerificationRequired: true");
+    expect(worker).toContain("persistenceConflict: true");
+    expect(worker).toContain("providerAccepted: true");
   });
 
   it("allows the executing state in the forward-only schema migration", () => {
