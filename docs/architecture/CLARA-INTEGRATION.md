@@ -76,7 +76,7 @@ For each capability, we decide: **REUSE** (use Clara directly), **ADAPTER** (wra
 | WhatsApp | APP-SPECIFIC | Clara does not provide WhatsApp; we build the WhatsApp integration |
 | Scheduling | APP-SPECIFIC | We build scheduled jobs (PostgreSQL-backed) |
 | Automation rules | APP-SPECIFIC | We build automation rules |
-| Auth (login, MFA, session) | APP-SPECIFIC | We build auth (Supabase Auth or custom) |
+| Auth (login, password sessions) | APP-SPECIFIC | We build PostgreSQL-backed application authentication; no hosted auth dependency |
 | RBAC | APP-SPECIFIC | We build RBAC |
 | Webhook receivers (WhatsApp, Gmail, Zoho) | APP-SPECIFIC | We build webhook handlers |
 | Approval workflow | APP-SPECIFIC | We build the approval policy engine |
