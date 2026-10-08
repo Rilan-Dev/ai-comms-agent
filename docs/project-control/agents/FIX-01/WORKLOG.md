@@ -27,3 +27,11 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Blockers/dependencies:** OPS-01 live runtime/container/database access.
 - **Lesson:** The redirect reason identifies the branch: `next=/` means cookie absent at middleware; `reason=not_provisioned` means the request passed middleware with a cookie but server application context was null. Do not repeat client-navigation fixes until the runtime session/user/membership state is inspected.
 - **Next action:** OPS-01 independently recover runtime authorization and correct the smallest concrete deployment/runtime/database defect; FIX-01 remains available for any source defect uncovered by that evidence.
+
+### FIX-01-AUTH-FIX-20261009
+- Authorization: user explicitly requested FIX-01 to fix the login-loop and commit to the same branch.
+- Root cause: valid credentials were sufficient for session creation even when application provisioning lacked an active organization membership; protected layout then rejected the new session.
+- Remedy: membership check before session creation; explicit 403 `account_not_provisioned`; regression assertion in `auth-boundary.test.ts`.
+- Prevention: never treat credential authentication as equivalent to application provisioning.
+- Commit: `197e6535eab0cafde3e84db8f0605b7a174b3b03`.
+- Next: OPS-01 deploy/restart and perform one runtime browser verification; no CI/Vercel waiting.
