@@ -36,3 +36,11 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Owner:** OPS-01
 - **Suggested next action:** Inspect the actual service at `100.72.192.28:3300`: confirm the running image/commit contains the current auth fixes, confirm web requests use the intended `DATABASE_URL`, and inspect the authenticated account's active `organization_memberships` plus the newly-created `auth_sessions` row. If runtime code is stale, rebuild/restart from current `main`; otherwise correct the concrete runtime state without weakening authentication.
 - **Related records:** ISS-007; HOF-FIX01-OPS-AUTH-20261009; auth source files; commits `52fb3318c28f11f3bcc9314c117200f780399e90`, `56f9088a7366ad8e71b66b7c1f2d1671cbeaaa5a`, `3cd19bdb4b6e34fb02e0e8ef93af2ac38af56310`.
+
+### EVT-FIX01-AUTH-20261009-FIX — SOURCE REMEDIATION
+- Owner: FIX-01 / Sentinel
+- Type: FIX
+- Symptom: login API reported success, browser entered protected shell, then returned to `/login?reason=not_provisioned`.
+- Root cause: session issuance occurred before application authorization context (active organization membership) was checked.
+- Remedy: require an active organization membership before minting the session; return `403 account_not_provisioned` otherwise.
+- Prevention: authentication and application provisioning are now enforced at the same login boundary, preventing false-success sessions and the redirect loop.
