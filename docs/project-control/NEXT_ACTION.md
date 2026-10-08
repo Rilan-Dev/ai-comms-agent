@@ -675,3 +675,9 @@ Development-first execution continues without waiting for GitHub Actions or Verc
 
 ### 2026-10-08 — Chat authorization hardening
 The persistent Chat stream now resolves a supplied conversation through an organization + agent scoped database lookup before reading history or invoking Clara. A conversation ID from another agent in the same organization is rejected instead of being trusted from the browser. Continue with remaining cross-surface authorization and retry/error hardening. 
+
+
+### 2026-10-08 — Deterministic cross-surface scenario runner
+ChatGPT connected the PostgreSQL cross-surface adapter to an executable scenario runner and added deterministic runner coverage. The runner now exercises approval idempotency, WhatsApp outbound idempotency, scheduled-job claiming, organization-isolation assertions, and correlation-scoped audit continuity without fabricating provider delivery.
+
+**Next concrete implementation:** harden sensitive-action worker execution/error routing and make provider execution outcomes flow back into the same correlation/audit boundary. Continue without waiting for CI/Vercel.
