@@ -938,3 +938,8 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Escaped the hyphen in the organization-slug input pattern; server-side slug validation remains unchanged.
 - UI fix commit: `d1bbf5072223dda7f5fbfa2dbfc097caf70c8bea`.
 - The reported `POST /api/auth/bootstrap 409` is the server's explicit `already_initialized` response when `auth.countCredentials() > 0`; I did not weaken that one-time bootstrap guard without evidence that the credential exists in the intended reset database.
+
+- Fixed the concrete migration failure in `0004_messaging.sql`: the existing `whatsapp_contacts` table could lack `organization_id`, but the reconciliation was positioned before table creation and therefore did not reliably reconcile the already-existing table. The migration now creates/reuses the table first, then applies `ADD COLUMN IF NOT EXISTS organization_id`, followed by the index.
+- Fixed the reset helper's migration invocation path: it now changes to the repository root and invokes `bash ./scripts/migrate.sh`, avoiding the failing resolved `/docker/ai-comms-agent/scripts/migrate.sh` execution path while keeping `scripts/migrate.sh` independently usable.
+- Migration/reset fix commits: `9883c324597634fd5193ef2f20e59c1db05c10a5`, `77a1dc9b1533b763b9fc30c9c6da1bf7dff0e55c`.
+- No CI/Vercel wait and no migration PASS claimed.
