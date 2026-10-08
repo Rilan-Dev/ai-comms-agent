@@ -1,3 +1,5 @@
+import { isIP } from "node:net";
+
 /**
  * Builds a provider callback from the host the user actually accessed.
  * NEXT_PUBLIC_APP_URL is deliberately not used: it can become stale after a
@@ -16,7 +18,11 @@ export function getOAuthRedirectUri(request: Request, provider: "gmail" | "zoho"
 
 export function assertOAuthRedirectUriSecure(redirectUri: string): void {
   const url = new URL(redirectUri);
-  const local = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
+  const hostname = url.hostname.replace(/^\\[|\\]$/g, "");
+  const local = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  if (!local && isIP(hostname)) {
+    throw new Error("OAuth provider callbacks require a DNS domain; raw IP callback hosts are not supported.");
+  }
   if (url.protocol !== "https:" && !(url.protocol === "http:" && local)) {
     throw new Error("OAuth callbacks require HTTPS on non-local hosts. Open this application using its HTTPS domain, then register the displayed callback URI with the provider.");
   }
