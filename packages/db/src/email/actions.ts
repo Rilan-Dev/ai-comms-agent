@@ -149,15 +149,16 @@ export async function listApprovedEmailActions(limit = 10) {
   return r.rows.map(action);
 }
 
-export async function claimApprovedEmailAction(actionId: string) {
+export async function claimApprovedEmailAction(actionId: string, organizationId: string) {
   const r = await query<Row>(
     `UPDATE email_actions
      SET status = 'executing'
      WHERE id = $1
+       AND organization_id = $2
        AND status = 'approved'
        AND (expires_at IS NULL OR expires_at > now())
      RETURNING *`,
-    [actionId],
+    [actionId, organizationId],
   );
   return r.rows[0] ? action(r.rows[0]) : null;
 }
