@@ -716,3 +716,10 @@ The next acceptance prerequisite is runtime verification of the new production a
 - Implemented password credentials, salted scrypt verification, opaque SHA-256 session hashes, HttpOnly session cookies, session expiry/revocation, login failure tracking/lockout, same-origin checks, account-status checks, current-session resolution, password change, and one-time first-account bootstrap.
 - Next implementation remains cross-surface product completion; authentication is now the shared security boundary for all protected menus and APIs.
 - Do not wait for GitHub Actions or Vercel before continuing development.
+
+
+### 2026-10-08 — Chat organization-boundary hardening
+- Chat stream now resolves the requested agent through the organization-scoped PostgreSQL agent repository before opening/creating a conversation or invoking Clara.
+- A forged or stale agent ID from another organization now fails closed with `404 not_found` before conversation access.
+- Added deterministic route-order regression coverage.
+- **Next:** continue remaining Mail/WhatsApp/Chat/Voice edge-case hardening and deterministic audit/event assertions, then prepare final runtime/deployment verification. CI/Vercel remain non-blocking.
