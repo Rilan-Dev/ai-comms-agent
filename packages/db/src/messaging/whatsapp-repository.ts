@@ -150,20 +150,65 @@ export async function queueWhatsAppOutboundMessage(input: { organizationId: stri
   return row.id ? String(row.id) : null;
 }
 
-export async function listQueuedWhatsAppOutbound(limit = 20) {
+export async function claimQueuedWhatsAppOutbound(limit = 20) {
   const safeLimit = Math.min(Math.max(limit, 1), 50);
-  const r = await query<Row>("SELECT m.*, c.phone_number FROM whatsapp_messages m JOIN whatsapp_contacts c ON c.id = m.contact_id WHERE m.direction = 'outbound' AND m.status = 'queued' ORDER BY m.created_at ASC LIMIT $1", [safeLimit]);
+  const r = await query<Row>(
+    `WITH candidates AS (
+       SELECT id FROM whatsapp_messages
+       WHERE direction = 'outbound' AND status = 'queued'
+       ORDER BY created_at ASC, id ASC
+       FOR UPDATE SKIP LOCKED
+       LIMIT $1
+     ),
+     claimed AS (
+       UPDATE whatsapp_messages m
+       SET status = 'executing', updated_at = now()
+       FROM candidates c
+       WHERE m.id = c.id AND m.status = 'queued'
+       RETURNING m.*
+     )
+     SELECT claimed.*, contacts.phone_number
+     FROM claimed
+     JOIN whatsapp_contacts contacts ON contacts.id = claimed.contact_id
+     ORDER BY claimed.created_at ASC, claimed.id ASC`,
+    [safeLimit],
+  );
   return r.rows;
 }
 
 export async function markWhatsAppOutboundSent(messageId: string, providerMessageId: string) {
-  const r = await query<Row>("UPDATE whatsapp_messages SET status = 'sent', provider_message_id = $1, updated_at = now() WHERE id = $2 AND direction = 'outbound' AND status = 'queued' RETURNING id", [providerMessageId, messageId]);
+  const r = await query<Row>("UPDATE whatsapp_messages SET status = 'sent', provider_message_id = $1, updated_at = now() WHERE id = $2 AND direction = 'outbound' AND status = 'executing' RETURNING id", [providerMessageId, messageId]);
   return r.rows.length > 0;
 }
 
 export async function markWhatsAppOutboundFailed(messageId: string, error: string) {
-  const r = await query<Row>("UPDATE whatsapp_messages SET status = 'failed', provider_error = left($2,2000), updated_at = now() WHERE id = $1 AND direction = 'outbound' AND status = 'queued' RETURNING id", [messageId, error]);
+  const r = await query<Row>("UPDATE whatsapp_messages SET status = 'failed', provider_error = left($2,2000), updated_at = now() WHERE id = $1 AND direction = 'outbound' AND status = 'executing' RETURNING id", [messageId, error]);
   return r.rows.length > 0;
+}
+
+/**
+ * Do not requeue abandoned outbound sends: Meta may have accepted the request
+ * before the worker died. Record an unknown outcome for manual verification.
+ */
+export async function recoverStaleWhatsAppOutbound(maxAgeMinutes = 15) {
+  const safeAge = Math.min(Math.max(Math.floor(maxAgeMinutes), 1), 24 * 60);
+  const r = await query<Row>(
+    `UPDATE whatsapp_messages
+     SET status = 'failed',
+         provider_error = 'Worker execution interrupted; provider outcome is unknown. Manual verification required.',
+         updated_at = now()
+     WHERE direction = 'outbound'
+       AND status = 'executing'
+       AND updated_at < now() - make_interval(mins => $1)
+     RETURNING id, organization_id, whatsapp_account_id, correlation_id`,
+    [safeAge],
+  );
+  return r.rows.map((row) => ({
+    id: String(row.id),
+    organizationId: String(row.organization_id),
+    accountId: String(row.whatsapp_account_id),
+    correlationId: row.correlation_id ? String(row.correlation_id) : null,
+  }));
 }
 
 export async function applyWhatsAppProviderStatus(input: { organizationId: string; accountId: string; providerMessageId: string; status: "sent" | "delivered" | "read" | "failed"; error?: string | null; timestamp?: string | null }) {
