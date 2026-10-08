@@ -25,7 +25,7 @@ export async function processApprovedEmailActions(limit = 10) {
   }
   const actions = await listApprovedEmailActions(limit);
   for (const candidate of actions) {
-    const action = await claimApprovedEmailAction(candidate.id);
+    const action = await claimApprovedEmailAction(candidate.id, candidate.organizationId);
     if (!action) continue;
     processed += 1;
     let retryAttempts = 1;
