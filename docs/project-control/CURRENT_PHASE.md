@@ -269,3 +269,10 @@ The deterministic PostgreSQL E2E path is now executable through a dedicated scen
 Email and WhatsApp worker outcomes now emit provider events into the automation engine on both success and failure paths. The bridge is worker-owned, preserves correlation IDs, and supplies deterministic action/message identifiers for event deduplication. Existing audit persistence remains in place.
 
 **Next:** harden retry/failure semantics and deterministic event/audit assertions.
+
+
+### 2026-10-08 — Provider retry/failure hardening
+
+ChatGPT completed the next cross-surface hardening step without waiting for CI/Vercel. Email and WhatsApp provider workers now preserve deterministic retry-attempt counts and transient/permanent classification in completion/failure metadata and automation provider events. The shared retry utility exposes bounded retry telemetry, and provider-event mapping now has deterministic unit coverage for organization, action/message, correlation, retry and error identity.
+
+**Next:** continue deterministic cross-surface failure/retry and audit assertions, then close remaining Mail/WhatsApp/Chat/Voice edge cases before final runtime/deployment verification.
