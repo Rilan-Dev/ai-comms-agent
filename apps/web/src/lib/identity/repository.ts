@@ -12,6 +12,7 @@ import { InMemoryIdentityRepository, PostgresIdentityRepository } from "@ai-comm
 import type { IdentityRepository } from "@ai-comms-agent/db";
 import { asUserId, asOrganizationId } from "@ai-comms-agent/shared";
 import { DevIdentityAdapter } from "./dev-adapter";
+import { SupabaseIdentityAdapter } from "./supabase-adapter";
 import type { IdentityAdapter } from "@ai-comms-agent/shared";
 
 // ============================================================================
@@ -19,7 +20,7 @@ import type { IdentityAdapter } from "@ai-comms-agent/shared";
 // ============================================================================
 
 let _repo: IdentityRepository | null = null;
-let _identityAdapter: DevIdentityAdapter | null = null;
+let _identityAdapter: IdentityAdapter | null = null;
 let _seeded = false;
 
 export function getIdentityRepository(): IdentityRepository {
@@ -33,7 +34,9 @@ export function getIdentityRepository(): IdentityRepository {
 
 export function getIdentityAdapter(): IdentityAdapter {
   if (!_identityAdapter) {
-    _identityAdapter = new DevIdentityAdapter(getIdentityRepository());
+    _identityAdapter = process.env.NODE_ENV === "production"
+      ? new SupabaseIdentityAdapter(getIdentityRepository())
+      : new DevIdentityAdapter(getIdentityRepository());
   }
   return _identityAdapter;
 }
@@ -108,4 +111,16 @@ export function getDevUserId(): string | undefined {
  */
 export function getDevOrgId(): string | undefined {
   return (globalThis as { __ACA_DEV_ORG_ID?: string }).__ACA_DEV_ORG_ID;
+}
+
+
+/** Resolve the authenticated application user and a default active organization for a page. */
+export async function getAuthenticatedAppContext(request: Request) {
+  const adapter = getIdentityAdapter();
+  const user = await adapter.resolveUser(request);
+  if (!user || user.status !== "active") return null;
+  const memberships = await getIdentityRepository().getMembershipsForUser(user.id);
+  const membership = memberships.find((item) => item.status === "active");
+  if (!membership) return null;
+  return { user, membership, organizationId: membership.organizationId };
 }
