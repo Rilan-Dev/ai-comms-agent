@@ -27,6 +27,24 @@ export async function createVoiceSession(input: CreateVoiceSessionInput): Promis
   return result.rows[0];
 }
 
+export async function configureStartingVoiceSessionForOrganization(input: {
+  organizationId: string;
+  sessionId: string;
+  provider: string;
+  model: string;
+  voiceId: string;
+  metadata?: Record<string, unknown>;
+}): Promise<Row | null> {
+  const result = await query<Row>(
+    `UPDATE voice_sessions
+     SET provider = $1, model = $2, voice_id = $3, metadata = $4::jsonb
+     WHERE id = $5 AND organization_id = $6 AND status = 'starting' AND ended_at IS NULL
+     RETURNING id, organization_id, agent_id, user_id, conversation_id, provider, model, voice_id, status, started_at, connected_at, ended_at, duration_seconds, turn_count, metadata`,
+    [input.provider, input.model, input.voiceId, JSON.stringify(input.metadata ?? {}), input.sessionId, input.organizationId],
+  );
+  return result.rows[0] ?? null;
+}
+
 export async function activateVoiceSessionForOrganization(
   organizationId: string,
   sessionId: string,
