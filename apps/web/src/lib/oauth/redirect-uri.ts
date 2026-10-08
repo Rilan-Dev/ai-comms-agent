@@ -11,9 +11,13 @@
 export function getOAuthRedirectUri(request: Request, provider: "gmail" | "zoho"): string {
   const current = new URL(request.url);
   if (current.username || current.password) throw new Error("Invalid application origin.");
-  const local = current.hostname === "localhost" || current.hostname === "127.0.0.1" || current.hostname === "[::1]";
-  if (current.protocol !== "https:" && !(current.protocol === "http:" && local)) {
+  return new URL(`/api/oauth/${provider}/callback`, current.origin).toString();
+}
+
+export function assertOAuthRedirectUriSecure(redirectUri: string): void {
+  const url = new URL(redirectUri);
+  const local = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && local)) {
     throw new Error("OAuth callbacks require HTTPS on non-local hosts. Open this application using its HTTPS domain, then register the displayed callback URI with the provider.");
   }
-  return new URL(`/api/oauth/${provider}/callback`, current.origin).toString();
 }
