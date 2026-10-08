@@ -763,3 +763,7 @@ The latest concrete implementation checkpoint is cross-surface hardening: determ
 - Configuration-required and exception paths are both covered; no external provider success is fabricated.
 - Added deterministic worker source coverage.
 - Continue remaining communication-loop edge hardening without waiting for CI/Vercel.
+
+
+### 2026-10-08 — Immediate browser access path
+Deploy/rebuild the latest main commit and verify the browser flow: unauthenticated `/` redirects to `/login`; `/login` renders; first-run `/setup` can initialize the first owner when `AUTH_BOOTSTRAP_TOKEN` is configured; successful login returns to the requested path; protected API calls return JSON 401 without a session and authenticated calls resolve the organization context. Keep Phase 4 authorization separate from this verification.
