@@ -44,3 +44,14 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - Root cause: session issuance occurred before application authorization context (active organization membership) was checked.
 - Remedy: require an active organization membership before minting the session; return `403 account_not_provisioned` otherwise.
 - Prevention: authentication and application provisioning are now enforced at the same login boundary, preventing false-success sessions and the redirect loop.
+
+
+### EVT-FIX01-MAIL-TENANT-20261009 — SOURCE FIX COMMITTED
+- **Owner:** FIX-01 / Sentinel
+- **Type:** FIX
+- **Symptom:** `POST /api/email-accounts` returned `403 not_member` for the organization ID supplied by the account page.
+- **Root cause:** `/mail/accounts` selected the seeded development organization rather than the authenticated user's active organization.
+- **Remedy:** Page now derives the tenant from `getAuthenticatedAppContext()`; added static regression coverage. API membership/role enforcement remains unchanged.
+- **Commits:** `4536332f` (source), `7a3cfba2` (test).
+- **Remaining:** Pull current main, apply pending migration 0024 via `bash scripts/manual-up.sh`, sign in with a fresh session, and retry from the UI. Runtime not yet verified.
+- **Related:** ISS-009; NEXT_ACTION.md.
