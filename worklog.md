@@ -1003,3 +1003,8 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Migration output commit: `857efa253ff3c84d175a30880e8063c465d4ecbb`.
 - Reset output commit: `606cf51f25d4b425ac2b389993fa05eabd73d37f`.
 - No CI/Vercel wait and no migration PASS claimed from these edits.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0004_messaging.sql:65`: the partially-created `whatsapp_contacts` table already existed without `organization_id`, while the migration requires that column.
+- Added an idempotent `organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE` reconciliation before the WhatsApp-contact table/index operations. No application feature code changed.
+- Migration fix commit: `95a0de3945faf15ad206bdc13dbb8b82a2ce9a54`.
+- No CI/Vercel wait and no migration PASS claimed.
