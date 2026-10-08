@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { decryptCredential, encryptCredential, parseCredentialsMasterKey, query } from "@ai-comms-agent/db";
+import { encryptCredential, parseCredentialsMasterKey, query } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
