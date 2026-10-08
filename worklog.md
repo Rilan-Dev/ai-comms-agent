@@ -1102,3 +1102,13 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Added regression coverage for persistence-before-start and terminal cleanup.
 - Commits: `c2db972702478f60729ccd336edb99bb6d6f72bf`, `4ce7306f86c8143216364bfca45e7a8e41b2fee1`, `2dc3bcf58c5f62821e8a34b54cdb32d4270dafbe`, `5572d1e9437784bd6f377f547fc704c456ca7a0f`, `f73d7149b5a8c389487852a6f38d4965aba52cd0`.
 - Verification was not run and remains pending; no CI/Vercel/runtime success is claimed.
+
+
+## 2026-10-09 — Email action tenant-scoped worker transitions
+
+- Hardened `claimApprovedEmailAction` so the atomic approved→executing transition requires both action ID and organization ID.
+- Hardened `completeEmailAction` so executing→completed/failed transitions also require the owning organization ID.
+- Updated both the direct approved-action executor and worker loop to pass the organization scope.
+- Added regression assertions in `apps/web/tests/email-action-contract.test.ts` for the scoped claim/completion SQL and executor arguments.
+- Commits: `0d773b0ec8ae5034763e217fefab2c0a62b4d933`, `9615d2c8f6fda856fa984f3f00716cc2e9dc372f`, `794de3b188300a0bbb268a1781de766d9d304fce`, `7de1b068e96918df86d219cc64dc5ccdae3b926d`, `0105ff3bda7d1b983276b50b2531d9811d0e2d0a`, `baefe3294c9003e04f43ec5d1382f47388f7ba89`, `0f72bdec18dfa0f5325146b200e1a093956c4364`.
+- Validation remains pending; no CI/Vercel pass is claimed.
