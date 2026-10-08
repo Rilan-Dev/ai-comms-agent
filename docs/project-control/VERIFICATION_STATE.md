@@ -720,3 +720,11 @@ Latest source correction: `apps/web/src/app/api/email-accounts/route.ts` was rep
 - Added `apps/web/src/e2e/fixtures/cross-surface-scenarios.ts` with stable IDs and five cross-surface scenario definitions.
 - This is implementation scaffolding only; no runtime test result is claimed.
 - Runtime/deployment validation remains deferred under the active development-first instruction.
+
+
+### 2026-10-08 — Deterministic cross-surface runner implementation
+- Added PostgreSQL-backed cross-surface adapter steps and an executable scenario runner.
+- Covered email approval idempotency, WhatsApp outbound idempotency, scheduled claims, cross-organization visibility checks, and correlation-scoped audit continuity.
+- Added deterministic source-level runner tests; runtime execution remains deferred under the development-first instruction.
+- Latest implementation commit: `ae79d161f8fb313a38d4e869c40ad499407b5695`.
+- No provider delivery, CI PASS, or Vercel READY claim is made.
