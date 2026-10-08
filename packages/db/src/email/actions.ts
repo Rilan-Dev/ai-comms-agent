@@ -177,3 +177,29 @@ export async function completeEmailAction(
   );
   return r.rows[0] ? action(r.rows[0]) : null;
 }
+
+
+/**
+ * Fail closed on actions whose worker lease was abandoned.
+ * We deliberately do not return them to "approved": the provider may have
+ * accepted the request before the worker crashed, so automatic replay could
+ * create a duplicate externally-visible message.
+ */
+export async function recoverStaleExecutingEmailActions(maxAgeMinutes = 15) {
+  const safeAge = Math.min(Math.max(Math.floor(maxAgeMinutes), 1), 24 * 60);
+  const r = await query<Row>(
+    `UPDATE email_actions
+     SET status = 'failed',
+         error = 'Worker execution interrupted; provider outcome is unknown. Manual verification required.',
+         completed_at = now(),
+         result = jsonb_build_object(
+           'recoveredStaleExecution', true,
+           'providerOutcomeUnknown', true
+         )
+     WHERE status = 'executing'
+       AND requested_at < now() - make_interval(mins => $1)
+     RETURNING *`,
+    [safeAge],
+  );
+  return r.rows.map(action);
+}
