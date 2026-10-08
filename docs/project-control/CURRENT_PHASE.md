@@ -319,3 +319,7 @@ The authentication boundary was present in source, but the browser experience wa
 
 ### 2026-10-09 — Voice and email action boundary continuation
 The AI Voice workspace now uses authenticated tenant context; voice turn responses fail closed across session-end races; voice startup persists a starting row before Clara setup and marks failed startup terminal where possible. Email action claim/completion SQL transitions are tenant-scoped. Continue provider outcome/idempotency and audit continuity hardening without waiting for CI/Vercel.
+
+
+### 2026-10-09 — WhatsApp outbound execution race hardening
+The outbound worker now atomically claims queued messages using PostgreSQL row locks and a durable `executing` status. Stale execution is failed closed because Meta may have accepted the send; a late provider success after claim loss is recorded as a persistence conflict with audit continuity. Forward-only migration 0025 and worker contract coverage were added. Continue implementation without waiting for CI/Vercel.
