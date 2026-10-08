@@ -305,3 +305,10 @@ Email approval list/detail endpoints now require operator-level `organization.up
 - WhatsApp outbound failures now persist the provider error in the authoritative message row instead of discarding the error argument.
 - Runtime/CI/Vercel validation remains deferred under the active development-first instruction; no success is claimed.
 - **Next:** continue remaining Mail/WhatsApp/Chat/Voice edge cases and audit/idempotency assertions before final runtime/deployment preparation.
+
+
+### 2026-10-08 — Scheduled execution audit correlation
+- Scheduled run completion/failure now persists organization-scoped audit events using the durable run UUID as target and correlation identifier.
+- Configuration-required and exception paths are both covered; no external provider success is fabricated.
+- Added deterministic worker source coverage.
+- Continue remaining communication-loop edge hardening without waiting for CI/Vercel.
