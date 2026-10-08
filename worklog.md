@@ -948,3 +948,9 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Restored the commands as separate shell lines so reset can invoke the existing `scripts/migrate.sh` normally. No migration SQL or application feature code changed.
 - Reset-script fix commit: `9bc07dbc2f2ccae10f972efdde0786ee29548bdd`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete migration failure reported at `supabase/migrations/0004_messaging.sql:65`: the existing `whatsapp_contacts` table lacked `organization_id`, and the subsequent organization index could not be created.
+- Hardened the reconciliation to inspect the explicit `aca.whatsapp_contacts` table/column and add `organization_id` when missing, then create the index against the explicit `aca` schema. No application feature code changed.
+- Migration fix commit: `afffabf5876b5184163d4173c41632c98c4fdc94`.
+- The supplied user/membership/session query confirms the existing user has an active owner membership and an unrevoked session; that information was not changed by this fix.
+- No CI/Vercel wait and no migration PASS claimed.
