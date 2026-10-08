@@ -11,15 +11,17 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Correct the newly observed legacy audit schema drift. Migration 0023 added
-  agent_id/decision, but the live older audit_events table still has legacy
-  resource_type and outcome columns marked NOT NULL. Current application writes
-  target_type/decision, so agent creation fails with SQLSTATE 23502 on resource_type.
-  Forward-only migration 0024 now makes the retired columns nullable when present;
-  static regression coverage was added. Pull main and rerun bash scripts/manual-up.sh
-  so 0024 is applied before retrying overview and authenticated agent creation.
-  Do not edit schema manually or bypass the migration ledger. Once this write succeeds,
-  continue remaining Mail/WhatsApp/Chat/Voice edge hardening and deterministic audit/E2E work.
+  Fix the email-account tenant-context defect before the next runtime retry. The
+  /mail/accounts server page was selecting getDevOrgId() after ensureDevSeed(),
+  while the authenticated user belongs to a different organization. This caused
+  POST /api/email-accounts to correctly reject the supplied development org with
+  403 reason=not_member. The page now derives organizationId from
+  getAuthenticatedAppContext() using the request headers, matching /mail/inbox.
+  A static regression test guards this boundary. Next, pull main and run
+  bash scripts/manual-up.sh so pending migration 0024 is applied, then sign in
+  afresh and retry email-account testing using the organization selected by the
+  authenticated application context. Never bypass membership authorization.
+  Continue remaining Mail/WhatsApp/Chat/Voice edge hardening after this fix.
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
