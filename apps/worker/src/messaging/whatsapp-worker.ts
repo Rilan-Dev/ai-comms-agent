@@ -1,5 +1,6 @@
 import { loadWhatsAppCredential, listQueuedWhatsAppOutbound, markWhatsAppOutboundFailed, markWhatsAppOutboundSent, parseCredentialsMasterKey, recordAuditEvent } from "@ai-comms-agent/db";
 import { getWhatsAppAccountForOrganization, listPendingWhatsAppAccounts, updateWhatsAppAccountStatus } from "@ai-comms-agent/db";
+import { emitProviderEvent } from "../events/provider-events";
 
 const GRAPH_HOST = "https://graph.facebook.com";
 
@@ -65,10 +66,12 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
       const providerMessageId = typeof payload?.messages?.[0]?.id === "string" ? payload.messages[0].id : "";
       if (!providerMessageId) throw new Error("Meta WhatsApp API returned no message ID");
       await markWhatsAppOutboundSent(String(message.id), providerMessageId);
+      await emitProviderEvent({ type: "whatsapp.message.sent", organizationId: String(message.organization_id), messageId: String(message.id), accountId: String(message.whatsapp_account_id), correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { providerMessageId } });
       await recordAuditEvent({ organizationId: String(message.organization_id), actorUserId: null, eventType: "whatsapp.message.sent", targetType: "whatsapp_message", targetId: String(message.id), action: "send", decision: "allowed", correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { providerMessageId } });
     } catch (error) {
       const messageText = error instanceof Error ? error.message : "WhatsApp send failed";
       await markWhatsAppOutboundFailed(String(message.id), messageText);
+      await emitProviderEvent({ type: "whatsapp.message.failed", organizationId: String(message.organization_id), messageId: String(message.id), accountId: String(message.whatsapp_account_id), correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { error: messageText } });
       await recordAuditEvent({ organizationId: String(message.organization_id), actorUserId: null, eventType: "whatsapp.message.failed", targetType: "whatsapp_message", targetId: String(message.id), action: "send", decision: "denied", correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { error: messageText } });
     }
   }
