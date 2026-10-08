@@ -34,3 +34,11 @@ Cross-agent handoff register. A handoff transfers context, not authority.
 - **Authorization:** User's explicit FIX-01 bug-remediation request authorizes diagnosis/correction of this incident; OPS-01 must independently confirm runtime/deployment scope before changing infrastructure.
 - **Stop condition:** Stop after the live runtime cause is corrected or a concrete missing external dependency/configuration is identified and recorded; do not weaken auth or expand product scope.
 - **Status:** OPEN
+
+### HOF-FIX01-AUTH-FIX-20261009
+- From: FIX-01 / Sentinel
+- To: OPS-01 / runtime verification as needed
+- State: SOURCE FIX COMMITTED
+- Commit: `197e6535eab0cafde3e84db8f0605b7a174b3b03`
+- Change: require an active organization membership before creating a login session; return explicit 403 for unprovisioned accounts; add regression protection.
+- Remaining runtime action: deploy/restart the commit in the affected environment and verify a provisioned account reaches the application shell. Do not wait for CI/Vercel; runtime verification remains OPS-01 scope.
