@@ -541,3 +541,14 @@ describe("Manual deployment migration boundary", () => {
     expect(manualUpSql).toContain("docker compose --env-file .env.docker");
   });
 });
+
+describe("Migration failure diagnostics", () => {
+  it("preserves the PostgreSQL diagnostic when migration-ledger initialization fails", () => {
+    const migrateSql = readFileSync(
+      resolve(__dirname, "../../../scripts/migrate.sh"),
+      "utf8",
+    );
+    expect(migrateSql).toContain('ERROR: PostgreSQL connection/DDL diagnostic:');
+    expect(migrateSql).toContain('tail -12 "$TMP_ERR"');
+  });
+});
