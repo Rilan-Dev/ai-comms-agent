@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ACCESS_TOKEN_COOKIE, InvalidCredentialsError, ValidationError, assertSameOrigin, loginWithPassword, normalizeEmail, validateEmail } from "@/lib/identity/local-auth";
+import { ACCESS_TOKEN_COOKIE, InvalidCredentialsError, ValidationError, assertSameOrigin, loginWithPassword, normalizeEmail, normalizeIpAddress, validateEmail } from "@/lib/identity/local-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const result = await loginWithPassword({
       email,
       password: body.password,
-      ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+      ipAddress: normalizeIpAddress(request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null),
       userAgent: request.headers.get("user-agent"),
     });
 
