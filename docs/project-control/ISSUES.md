@@ -194,3 +194,8 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Remedy:** the Gmail configuration migration is now sequenced as `0026_gmail_oauth_configuration.sql`; WhatsApp retains `0025_whatsapp_outbound_claim_lifecycle.sql`. Gmail migration test and current deployment instructions now reference 0026.
 - **Compatibility:** the migration body is unchanged and uses `CREATE TABLE/INDEX IF NOT EXISTS`, so a database that had already applied the old Gmail filename can safely apply the renamed migration; the migration ledger will contain both filenames in that case.
 - **Verification:** source/docs only; migration has not been applied or runtime-verified.
+
+### 2026-10-09 — Gmail OAuth follow-up safeguards
+- Resequenced Gmail configuration migration to 0026 because 0025 is used by WhatsApp outbound claim lifecycle. Added a migration-prefix uniqueness assertion to prevent recurrence.
+- Editing a saved OAuth client ID now requires entering the matching new client secret; blank secret still preserves the existing secret only when the client ID is unchanged.
+- Source changes are committed; automated tests and live migration/OAuth remain unverified.
