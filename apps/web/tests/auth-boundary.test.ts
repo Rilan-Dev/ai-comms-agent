@@ -8,7 +8,7 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 describe("production authentication boundary", () => {
   it("has a public login page and auth endpoints", () => {
     expect(read("src/app/login/page.tsx")).toContain("/api/auth/login");
-    expect(read("src/app/api/auth/login/route.ts")).toContain("grant_type=password");
+    expect(read("src/app/api/auth/login/route.ts")).toContain("loginWithPassword");
     expect(read("src/app/api/auth/logout/route.ts")).toContain("aca-access-token");
   });
 
@@ -19,12 +19,12 @@ describe("production authentication boundary", () => {
     expect(middleware).toContain('if (pathname.startsWith("/api/"))');
   });
 
-  it("uses Supabase Auth for production identity resolution", () => {
-    const adapter = read("src/lib/identity/supabase-adapter.ts");
-    expect(adapter).toContain("/auth/v1/user");
-    expect(adapter).toContain("SUPABASE_URL");
-    expect(adapter).toContain("SUPABASE_PUBLISHABLE_KEY");
-    expect(adapter).toContain("getUserByEmail");
+  it("uses PostgreSQL-owned sessions for production identity resolution", () => {
+    const adapter = read("src/lib/identity/local-auth.ts");
+    expect(adapter).toContain("getActiveSession");
+    expect(adapter).toContain("hashSessionToken");
+    expect(adapter).toContain("status !== \"active\"");
+    expect(adapter).not.toContain("SUPABASE_URL");
   });
 
   it("does not expose development identity headers from production UI clients", () => {
@@ -35,7 +35,7 @@ describe("production authentication boundary", () => {
   it("selects the real adapter in production and keeps the dev adapter development-only", () => {
     const repository = read("src/lib/identity/repository.ts");
     expect(repository).toContain('process.env.NODE_ENV === "production"');
-    expect(repository).toContain("new SupabaseIdentityAdapter");
+    expect(repository).toContain("new LocalIdentityAdapter");
     expect(repository).toContain("new DevIdentityAdapter");
   });
 });
