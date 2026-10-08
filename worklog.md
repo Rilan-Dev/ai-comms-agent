@@ -833,3 +833,13 @@ Next: continue deterministic audit/event assertions and remaining cross-surface 
 - Restricted pending email approval list/detail endpoints to `organization.update`, matching approval/rejection authority.
 - Prevented read-only organization members from inspecting recipient/body snapshots embedded in sensitive email actions.
 - No provider credentials, external delivery, Clara source, or deployment changes.
+
+
+## Task ID: 15
+## Product Completion — Communication Loop Edge Hardening
+
+- **Status**: implemented; runtime/CI/Vercel validation intentionally deferred by development-first instruction.
+- **Owner**: ChatGPT
+- Hardened deterministic cross-surface E2E coverage so duplicate concurrent email approval deliveries can produce exactly one state transition.
+- Corrected WhatsApp outbound failure persistence so provider error details are stored in `provider_error` instead of being discarded.
+- No provider delivery is fabricated and no validation gate was treated as blocking development.
