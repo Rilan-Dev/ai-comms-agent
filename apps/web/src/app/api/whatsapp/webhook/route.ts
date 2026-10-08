@@ -52,6 +52,8 @@ export async function POST(request: Request) {
         const providerStatus = typeof status?.status === "string" ? status.status : "";
         if (!providerMessageId || !["sent", "delivered", "read", "failed"].includes(providerStatus)) continue;
         const result = await applyWhatsAppProviderStatus({
+          organizationId: account.organization_id,
+          accountId: account.id,
           providerMessageId,
           status: providerStatus as "sent" | "delivered" | "read" | "failed",
           error: Array.isArray(status?.errors) && status.errors[0] ? String(JSON.stringify(status.errors[0])).slice(0, 2000) : null,
