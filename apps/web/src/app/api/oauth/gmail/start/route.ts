@@ -1,13 +1,21 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
-import { ensureDevSeed, getDevOrgId, getDevUserId } from "@/lib/identity/repository";
+import { parseCredentialsMasterKey } from "@ai-comms-agent/db";
+import { authorize } from "@/lib/identity/authorization";
+import { getAuthenticatedAppContext, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
+import { loadGmailOAuthConfiguration } from "@/lib/oauth/gmail-config";
 
 export const dynamic = "force-dynamic";
 
+function signingKey(): Buffer | null {
+  const raw = process.env.CREDENTIALS_MASTER_KEY;
+  return raw ? parseCredentialsMasterKey(raw) : null;
+}
+
 function sign(value: string) {
-  const secret = process.env.SESSION_SIGNING_KEY;
-  if (!secret) throw new Error("SESSION_SIGNING_KEY is not configured");
-  return createHmac("sha256", secret).update(value).digest("base64url");
+  const key = signingKey();
+  if (!key) throw new Error("Platform credential encryption is not configured");
+  return createHmac("sha256", key).update(value).digest("base64url");
 }
 
 function pkceChallenge(verifier: string) {
@@ -15,30 +23,45 @@ function pkceChallenge(verifier: string) {
 }
 
 export async function GET(request: Request) {
-  await ensureDevSeed();
-  const clientId = process.env.GMAIL_OAUTH_CLIENT_ID;
-  const redirectUri = process.env.GMAIL_OAUTH_REDIRECT_URI ?? `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/oauth/gmail/callback`;
-  const organizationId = getDevOrgId();
-  const userId = getDevUserId();
-  const accountId = new URL(request.url).searchParams.get("accountId") || undefined;
+  const context = await getAuthenticatedAppContext(request);
+  if (!context) return NextResponse.json({ error: "unauthorized", message: "Sign in before connecting Gmail." }, { status: 401 });
 
-  if (!clientId || !process.env.SESSION_SIGNING_KEY || !organizationId || !userId) {
-    return NextResponse.json({
-      error: "provider_configuration_required",
-      message: "Gmail OAuth is not configured. Set GMAIL_OAUTH_CLIENT_ID and SESSION_SIGNING_KEY on the server.",
-    }, { status: 503 });
+  try {
+    await authorize(request, { organizationId: context.organizationId as never, role: "admin" }, getIdentityAdapter(), getIdentityRepository());
+  } catch {
+    return NextResponse.json({ error: "forbidden", message: "Organization admin access is required to connect Gmail." }, { status: 403 });
   }
+
+  const url = new URL(request.url);
+  const configId = url.searchParams.get("configId")?.trim() ?? "";
+  const accountId = url.searchParams.get("accountId")?.trim() || undefined;
+  if (!configId) return NextResponse.json({ error: "oauth_configuration_required", message: "Choose a Gmail OAuth client in Settings before connecting an account." }, { status: 422 });
+
+  const key = signingKey();
+  if (!key) return NextResponse.json({
+    error: "platform_encryption_key_required",
+    message: "The platform credential-encryption key is required to protect OAuth secrets and state. Gmail client IDs and secrets are configured in Settings, not environment variables.",
+  }, { status: 503 });
+
+  const config = await loadGmailOAuthConfiguration(context.organizationId, configId);
+  if (!config) return NextResponse.json({ error: "oauth_configuration_not_found", message: "The selected Gmail OAuth configuration is unavailable or disabled." }, { status: 404 });
 
   const verifier = randomBytes(32).toString("base64url");
   const nonce = randomBytes(16).toString("base64url");
-  const payload = JSON.stringify({ organizationId, userId, ...(accountId ? { accountId } : {}), nonce, exp: Date.now() + 10 * 60_000 });
+  const payload = JSON.stringify({
+    organizationId: context.organizationId,
+    userId: context.user.id,
+    configId: config.id,
+    ...(accountId ? { accountId } : {}),
+    nonce,
+    exp: Date.now() + 10 * 60_000,
+  });
   const encoded = Buffer.from(payload).toString("base64url");
   const state = `${encoded}.${sign(encoded)}`;
-
   const response = NextResponse.redirect(
     `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
+      client_id: config.clientId,
+      redirect_uri: config.redirectUri,
       response_type: "code",
       access_type: "offline",
       prompt: "consent",
@@ -48,7 +71,6 @@ export async function GET(request: Request) {
       code_challenge_method: "S256",
     }).toString()}`,
   );
-
   response.cookies.set("gmail_oauth_verifier", verifier, {
     httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: 600, path: "/",
   });
