@@ -51,7 +51,7 @@ describe("Gmail OAuth platform configuration", () => {
   });
 
   it("defines a tenant-scoped persistent OAuth client table", () => {
-    const migration = read("../../../supabase/migrations/0025_gmail_oauth_configuration.sql");
+    const migration = read("../../../supabase/migrations/0026_gmail_oauth_configuration.sql");
     expect(migration).toContain("organization_id uuid NOT NULL REFERENCES organizations(id)");
     expect(migration).toContain("client_secret_ciphertext bytea NOT NULL");
     expect(migration).toContain("gmail_oauth_configs_org_enabled_idx");
