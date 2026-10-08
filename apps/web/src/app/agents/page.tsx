@@ -1,7 +1,7 @@
 import { PostgresAgentRepository } from "@ai-comms-agent/db";
 import { AgentsClient } from "./agents-client";
 import { getAuthenticatedAppContext } from "@/lib/identity/repository";
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,11 @@ export default async function AgentsPage() {
     return <main className="mx-auto max-w-3xl p-6 lg:p-10"><div className="rounded-3xl border bg-background p-8 shadow-sm"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Agents</p><h1 className="mt-2 text-2xl font-semibold">PostgreSQL is required</h1><p className="mt-3 text-sm leading-6 text-muted-foreground">Agent records are no longer backed by demo data. Configure DATABASE_URL for the application runtime, then reload this page.</p></div></main>;
   }
   try {
-    const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: await headers() }));
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get("aca-access-token")?.value;
+    const authHeaders = new Headers();
+    if (accessToken) authHeaders.set("cookie", `aca-access-token=${encodeURIComponent(accessToken)}`);
+    const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: authHeaders }));
     if (!context) throw new Error("Authenticated application identity could not be resolved.");
     const agents = await new PostgresAgentRepository().list(context.organizationId);
     return <AgentsClient organizationId={context.organizationId} initialAgents={agents} />;
