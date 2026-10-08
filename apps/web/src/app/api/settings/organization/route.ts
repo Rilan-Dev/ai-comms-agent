@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
-import { ensureDevSeed, getDevOrgId, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
+import { getAuthenticatedAppContext, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    await ensureDevSeed();
     const url = new URL(request.url);
-    const rawId = url.searchParams.get("organizationId")?.trim() || getDevOrgId();
+    const context = await getAuthenticatedAppContext(request);
+    const rawId = url.searchParams.get("organizationId")?.trim() || context?.organizationId || "";
     if (!rawId) return NextResponse.json({ error: "configuration_required", message: "An organization context is required." }, { status: 422 });
 
     const subject = await authorize(request, { organizationId: asOrganizationId(rawId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
