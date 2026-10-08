@@ -13,13 +13,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const pathname = (await headers()).get("x-pathname") ?? "";
   // Middleware handles the fast unauthenticated redirect. This server-side
   // check is the authoritative application-identity boundary for page renders.
-  if (!pathname.startsWith("/login")) {
+  if (!pathname.startsWith("/login") && !pathname.startsWith("/setup")) {
     const requestHeaders = await headers();
     const request = new Request("http://localhost", { headers: requestHeaders });
     const context = await getAuthenticatedAppContext(request);
     if (!context) redirect("/login?reason=not_provisioned");
   }
 
-  if (pathname.startsWith("/login")) return <html lang="en"><body>{children}</body></html>;
+  if (pathname.startsWith("/login") || pathname.startsWith("/setup")) return <html lang="en"><body>{children}</body></html>;
   return <html lang="en"><body><NotificationProvider><div className="flex min-h-screen bg-background"><Sidebar /><div className="flex min-w-0 flex-1 flex-col"><TopBar /><div className="min-h-0 flex-1">{children}</div></div></div></NotificationProvider></body></html>;
 }
