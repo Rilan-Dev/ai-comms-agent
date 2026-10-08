@@ -28,9 +28,9 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "6588c9a0af5d4c4e1e26a229dbfeadfe8522ee70"
-current_commit_short: "6588c9a0"
-current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/6588c9a0af5d4c4e1e26a229dbfeadfe8522ee70"
+current_commit: "393d72fa529fdeaa70bce5a7aca083233ec59c6f"
+current_commit_short: "393d72fa"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/393d72fa529fdeaa70bce5a7aca083233ec59c6f"
 last_verified_commit: "pending_runtime_acceptance"
 
 open_blockers:
@@ -44,8 +44,8 @@ required_decision:
 
 next_action:
   actor: "ChatGPT"
-  action: "Finish Email Accounts provider lifecycle and discovery persistence"
-  then: "Proceed to Mail vertical slice after Email Accounts implementation is complete and later acceptance evidence is available"
+  action: "Apply migration 0024 to reconcile legacy audit_events resource_type/outcome constraints, then retry authenticated agent creation"
+  then: "Continue remaining Mail/WhatsApp/Chat/Voice edge hardening and deterministic audit/E2E work without waiting for CI/Vercel"
 
 phase2_summary:
   status: "implementation_complete_awaiting_review"
@@ -446,3 +446,8 @@ Pending and individual email approval content is now restricted to `organization
 - WhatsApp outbound failures now persist the provider error in the authoritative message row instead of discarding the error argument.
 - Runtime/CI/Vercel validation remains deferred under the active development-first instruction; no success is claimed.
 - **Next:** continue remaining Mail/WhatsApp/Chat/Voice edge cases and audit/idempotency assertions before final runtime/deployment preparation.
+
+
+### 2026-10-09 — Audit schema compatibility update
+
+The user-provided runtime logs show migration 0023 applied and the web/worker containers started, but authenticated agent creation then failed because the existing audit_events table still required legacy resource_type/outcome columns. Forward-only migration 0024 and static regression coverage are now committed. Runtime acceptance remains pending until 0024 is applied and the failing request is retried.
