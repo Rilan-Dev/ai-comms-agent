@@ -146,3 +146,11 @@ A new FIX-01 or OPS-01 session does not need DEV-01 to stop first. Likewise, DEV
 
 The role prompt is an execution instruction, not a source of project authority.
 
+
+## Independent-agent continuity extension
+
+The same repository-first recovery model applies to DEV-01 / Forge, FIX-01 / Sentinel, OPS-01 / Shipwright, and WORK-01 / Rover.
+
+A fresh role session reads AGENT_MEMORY.md first, then central events/sessions/handoffs/backlog, then its role-local MEMORY.md/WORKLOG.md, then the normal project-control state. This allows any agent to be invoked without a project briefing or previous chat transcript.
+
+WORK-01 may execute SAFE-LOCAL or already AUTHORIZED daily work, but it cannot bypass authorization for a MATERIAL-CHANGE. Memory is supplementary; repository truth and current authorization remain authoritative.
