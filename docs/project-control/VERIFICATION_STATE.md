@@ -785,3 +785,10 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Email approval list/detail access now requires `organization.update`; approval content is no longer exposed to `organization.read` viewers.
 - Latest implementation checkpoint: `3488b3b585c8779f706dea646d78b2f4ff880657c`.
 - Runtime/CI/Vercel verification remains intentionally deferred; no PASS is claimed.
+
+
+### 2026-10-08 — Communication-loop edge hardening
+- Deterministic cross-surface PostgreSQL scenario coverage now treats duplicate concurrent email approval delivery as a race and requires exactly one successful approval transition.
+- WhatsApp outbound failures now persist the provider error in the authoritative message row instead of discarding the error argument.
+- Runtime/CI/Vercel validation remains deferred under the active development-first instruction; no success is claimed.
+- **Next:** continue remaining Mail/WhatsApp/Chat/Voice edge cases and audit/idempotency assertions before final runtime/deployment preparation.
