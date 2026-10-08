@@ -737,3 +737,10 @@ Latest source correction: `apps/web/src/app/api/email-accounts/route.ts` was rep
 - Added deterministic source-level provider-event routing coverage.
 - Runtime/provider delivery validation remains deferred by the development-first instruction.
 - Latest implementation commit: `fba28b721d8ca1f6e36aa4106f134d2dd3075af9`.
+
+
+### 2026-10-08 — Provider retry/failure hardening
+- Added bounded retry telemetry to the shared provider retry helper.
+- Email and WhatsApp worker outcomes now retain deterministic retry attempt counts and retryability classification.
+- Added deterministic provider-event mapping tests for identity/correlation/retry/error propagation.
+- Runtime provider delivery and CI/Vercel status remain intentionally unclaimed; development continues independently.
