@@ -697,3 +697,12 @@ ChatGPT connected email and WhatsApp worker success/failure outcomes to the work
 - No provider delivery or CI/Vercel success is claimed.
 
 **Next concrete implementation:** continue deterministic cross-surface audit/event assertions and remaining Mail/WhatsApp/Chat/Voice edge-case hardening, then prepare final runtime/deployment verification. Do not wait for CI/Vercel.
+
+### 2026-10-08 — Abandoned execution fail-closed hardening
+- Stale email actions no longer remain permanently executing after a worker crash; they transition to failed with provider outcome unknown and require manual verification.
+- Stale WhatsApp inbound executions no longer remain permanently processing; they transition to failed with downstream outcome unknown and require manual verification.
+- Both recovery paths emit organization/correlation-aware audit events.
+- Added deterministic contract tests for both fail-closed recovery boundaries.
+- No automatic replay is introduced where an external side effect may already have happened.
+
+**Next concrete implementation:** continue deterministic audit/event assertions and remaining Mail/WhatsApp/Chat/Voice edge cases, then prepare final runtime/deployment verification. Do not wait for CI/Vercel.
