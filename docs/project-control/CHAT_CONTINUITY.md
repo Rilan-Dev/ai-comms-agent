@@ -154,3 +154,10 @@ The same repository-first recovery model applies to DEV-01 / Forge, FIX-01 / Sen
 A fresh role session reads AGENT_MEMORY.md first, then central events/sessions/handoffs/backlog, then its role-local MEMORY.md/WORKLOG.md, then the normal project-control state. This allows any agent to be invoked without a project briefing or previous chat transcript.
 
 WORK-01 may execute SAFE-LOCAL or already AUTHORIZED daily work, but it cannot bypass authorization for a MATERIAL-CHANGE. Memory is supplementary; repository truth and current authorization remain authoritative.
+
+
+## Human invocation and fresh-chat usage
+
+The user does not need to carry project context between chats. For a fresh session, the preferred copy/paste instructions are in `docs/project-control/HOW_TO_USE_AGENTS.md`. The invoked agent must recover the project from GitHub and durable project-control records rather than requiring the previous conversation.
+
+The user may invoke DEV-01, FIX-01, OPS-01, or WORK-01 while another agent is active. The new session must work independently, avoid conflicting edits, route dependencies, and continue any independent valid work without repeated waiting/polling.
