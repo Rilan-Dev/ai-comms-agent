@@ -408,3 +408,5 @@ ChatGPT added migration 0021 and worker claim protection so each scheduled job/f
 
 ### 2026-10-08 — Development-first fail-closed recovery
 ChatGPT continued cross-surface hardening without waiting for CI/Vercel. Latest code/control checkpoint: 65dc65c46084ba51f0eb842c4a75789c56bf1680. Sensitive email actions and WhatsApp inbound executions now fail closed after abandoned worker leases, with manual-verification audit continuity rather than automatic replay.
+
+Authentication is now a Phase 3 security correction. The protected UI requires an application-authenticated session; production identity uses Supabase Auth and maps to an active application user/membership. Latest code commit: ca452b473114342887234a0b1379bfd78af1a9d9. Phase 4 remains unauthorized.
