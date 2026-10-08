@@ -312,3 +312,7 @@ Email approval list/detail endpoints now require operator-level `organization.up
 - Configuration-required and exception paths are both covered; no external provider success is fabricated.
 - Added deterministic worker source coverage.
 - Continue remaining communication-loop edge hardening without waiting for CI/Vercel.
+
+
+### 2026-10-08 — Browser authentication entry-point correction
+The authentication boundary was present in source, but the browser experience was incomplete for first-run environments. ChatGPT has now made `/login` and `/setup` explicit public entry points, added return-path preservation after login, and exposed the one-time bootstrap flow through a dedicated first-run UI. Protected application pages and API routes remain fail-closed. `AUTH_BOOTSTRAP_TOKEN` remains server-only; no development bypass is introduced.
