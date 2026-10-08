@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ACCESS_TOKEN_COOKIE, InvalidCredentialsError, ValidationError, assertSameOrigin, loginWithPassword, normalizeEmail, normalizeIpAddress, validateEmail } from "@/lib/identity/local-auth";
+import { ACCESS_TOKEN_COOKIE, AccountNotProvisionedError, InvalidCredentialsError, ValidationError, assertSameOrigin, loginWithPassword, normalizeEmail, normalizeIpAddress, validateEmail } from "@/lib/identity/local-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +38,9 @@ export async function POST(request: Request) {
     }
     if (error instanceof InvalidCredentialsError) {
       return NextResponse.json({ error: error.code, message: error.message }, { status: 401 });
+    }
+    if (error instanceof AccountNotProvisionedError) {
+      return NextResponse.json({ error: error.code, message: error.message }, { status: 403 });
     }
     console.error("[auth/login]", error);
     return NextResponse.json({ error: "internal_server_error", message: "Authentication service is temporarily unavailable." }, { status: 500 });
