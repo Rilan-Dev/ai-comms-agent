@@ -263,3 +263,9 @@ ChatGPT continued development-first cross-surface hardening. Scheduled job claim
 The deterministic PostgreSQL E2E path is now executable through a dedicated scenario runner. It connects the existing stable fixtures to real database repositories for email approval retries, WhatsApp outbound retries, scheduled claims, organization isolation, and correlation-scoped audit reads. Provider delivery remains intentionally external and un-fabricated.
 
 **Next:** sensitive-action worker execution/error routing, including deterministic failure propagation and audit continuity.
+
+
+### 2026-10-08 — Sensitive-action provider outcome routing
+Email and WhatsApp worker outcomes now emit provider events into the automation engine on both success and failure paths. The bridge is worker-owned, preserves correlation IDs, and supplies deterministic action/message identifiers for event deduplication. Existing audit persistence remains in place.
+
+**Next:** harden retry/failure semantics and deterministic event/audit assertions.
