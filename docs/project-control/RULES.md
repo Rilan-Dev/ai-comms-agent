@@ -250,3 +250,13 @@ Additional rules: current explicit requirements may supersede earlier requiremen
 18. Agent-specific work must not silently mutate another role's responsibilities, product scope, phase authorization, or closure state.
 19. `AGENT_INVOCATION.md` is the copy/paste assignment entry point; `AGENT_SKILLS.md` is the behavioral contract; `AGENT_REGISTRY.md` is the ownership map; `FILES.md` is the governance audit index.
 
+
+## APCP independent-agent continuity rules
+
+20. WORK-01/Rover is independently invokable for SAFE-LOCAL and already AUTHORIZED daily maintenance and small compatible work.
+21. WORK-01 must classify unplanned work; MATERIAL-CHANGE requires requirement/impact reconciliation and explicit authorization.
+22. Any registered agent can be invoked in a fresh chat while another agent is active; it recovers state independently and does not require the old chat.
+23. AGENT_MEMORY.md is shared lesson memory; agents/<ROLE>/MEMORY.md and WORKLOG.md are role-local; central sessions/events/handoffs/backlog preserve coordination.
+24. Memory and coordination records never outrank current requirements, repository state, or authorization.
+25. Significant mistakes must be recorded with root cause, remedy, and prevention so future agents avoid recurrence.
+26. Concurrent agents must avoid destructive overlap and must continue independent work where available.
