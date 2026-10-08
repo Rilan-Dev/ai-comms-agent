@@ -96,7 +96,7 @@ export async function setPassword(input: { userId: string; password: string }): 
   await auth.upsertPassword(input.userId, await hashPassword(input.password));
 }
 
-export async function changePassword(input: { userId: string; currentPassword: string; newPassword: string }): Promise<void> {
+export async function changePassword(input: { userId: string; currentPassword: string; newPassword: string; currentSessionTokenHash: string }): Promise<void> {
   validatePasswordForCreation(input.newPassword);
   const auth = new PostgresAuthRepository();
   const credential = await auth.getCredentialByUserId(input.userId);
@@ -107,7 +107,7 @@ export async function changePassword(input: { userId: string; currentPassword: s
     throw new ValidationError("New password must be different from the current password.");
   }
   await auth.upsertPassword(input.userId, await hashPassword(input.newPassword));
-  await auth.revokeAllUserSessions(input.userId);
+  await auth.revokeAllUserSessionsExcept(input.userId, input.currentSessionTokenHash);
 }
 
 export async function revokeCurrentSession(request: Request): Promise<void> {
