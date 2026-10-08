@@ -12,6 +12,9 @@ BEGIN
   END IF;
 END $$;
 
+ALTER TABLE email_actions
+  ADD COLUMN IF NOT EXISTS result jsonb NOT NULL DEFAULT '{}'::jsonb;
+
 CREATE TABLE IF NOT EXISTS email_actions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
