@@ -45,7 +45,6 @@ The worker host (single host running workers, RabbitMQ, Qdrant, ClamAV, voice re
   - `RABBITMQ_URL` (CloudAMQP or worker host)
   - `QDRANT_URL`
   - `QDRANT_API_KEY` (if Qdrant Cloud)
-  - `GMAIL_OAUTH_CLIENT_ID`, `GMAIL_OAUTH_CLIENT_SECRET`
   - `ZOHO_OAUTH_CLIENT_ID`, `ZOHO_OAUTH_CLIENT_SECRET`
   - `WHATSAPP_APP_SECRET` (for webhook signature verification)
   - `WHATSAPP_SYSTEM_USER_TOKEN` (if workers share it; otherwise per-worker)
@@ -241,6 +240,6 @@ Phase 19 is the final phase before production acceptance. ChatGPT review gates e
 
 The application must not assume that PostgreSQL, Redis, RabbitMQ, or Qdrant are co-located with the Next.js process. Vercel receives connection URLs through encrypted project environment variables; it does not run Docker Compose or provision these dependencies.
 
-Required external connection variables are documented in `.env.example`: DATABASE_URL, optional DIRECT_URL, REDIS_URL, RABBITMQ_URL, QDRANT_URL, and QDRANT_API_KEY where applicable. No committed `.env` file is permitted.
+Required external connection variables are documented in `.env.example`: DATABASE_URL, optional DIRECT_URL, REDIS_URL, RABBITMQ_URL, QDRANT_URL, and QDRANT_API_KEY where applicable. Gmail OAuth client registrations are managed through authenticated platform Settings and encrypted with the server-only CREDENTIALS_MASTER_KEY. No committed `.env` file is permitted.
 
 The Docker Compose infrastructure files are intentionally profile-gated with `local-infra`. A plain `docker compose up` must not create these four services. The full manual stack opts in explicitly via `scripts/manual-up.sh`.
