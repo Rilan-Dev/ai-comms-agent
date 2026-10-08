@@ -1027,3 +1027,6 @@ ChatGPT takeover correction for the reported inactive login experience:
 - **Prevention:** Never allow a development identity selector flag to override the production authentication boundary. Production adapter selection must be gated by environment, not by the dev flag alone.
 - **Commits:** `931e77a489234a5f60404598aa82554b747c3513`, `19eac2ee44cfbabb736996e020ad4f804478ee6a`.
 - **Next action:** Deploy/restart the updated web runtime and reproduce the login flow; if the same redirect remains, route runtime/environment evidence to OPS-01 rather than expanding FIX-01 scope.
+
+### 2026-10-09 — Authentication false-success loop fix
+FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` loop to session creation occurring before active organization-membership authorization. `loginWithPassword` now requires at least one active membership before creating `aca-access-token`; otherwise it records the failed provisioning attempt and returns `account_not_provisioned`. The login route maps this to HTTP 403, and auth-boundary regression coverage locks the guard. No membership is auto-created/reactivated. Commit: `197e6535eab0cafde3e84db8f0605b7a174b3b03`. Runtime deployment/verification remains OPS-01 scope.
