@@ -14,14 +14,14 @@ action: |
   Continue final Product Completion hardening while correcting the newly observed
   live PostgreSQL schema drift. The source correction is committed: forward-only
   audit schema reconciliation (0023) plus manual startup migration application.
-  The manual deployment rerun reached the canonical migration step but
-  failed with "unable to initialize migration ledger". Do not retry the application
-  endpoint yet. First rerun the current main migration path and capture the now-
-  preserved PostgreSQL diagnostic from scripts/migrate.sh; determine whether the
-  configured DATABASE_URL points to the intended writable database and whether the
-  migration user can create the _aca_schema_migrations ledger. Correct only that
-  database/deployment boundary if needed, then rerun migrations and retry overview
-  plus authenticated agent creation. After runtime recovery, continue the remaining
+  The manual deployment migration failed because the host shell could not resolve
+  `host.docker.internal` (`psql: could not translate host name`). PostgreSQL is
+  published on host port 65432, so the host-side migration must translate that
+  hostname to `127.0.0.1` while leaving the original `.env.docker` URL unchanged
+  for app containers. This correction is committed in `6e1decb`; a regression test
+  is committed in `740d3d4`. Pull main and rerun `bash scripts/manual-up.sh`; if the
+  migration fails again, capture its PostgreSQL diagnostic. Only after the migration
+  succeeds, retry overview and authenticated agent creation. After runtime recovery, continue the remaining
   Mail/WhatsApp/Chat/Voice edge hardening and deterministic audit/E2E work.
 
 constraints:
