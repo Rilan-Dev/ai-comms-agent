@@ -103,3 +103,17 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Status:** in_progress
 - **Description:** Phase 4 schema migrations are implemented directly by ChatGPT. Runtime application against disposable PostgreSQL is required before Phase 4 acceptance. GitHub Actions and Vercel completion are not prerequisites for continued implementation.
 - **Resolution plan:** Continue schema alignment, collect runtime migration/RLS evidence when execution is available, then accept or correct Phase 4.
+
+## ISS-007 — Live browser login returns to not_provisioned after successful password authentication
+
+- **Opened:** 2026-10-09
+- **Severity:** high
+- **Owner:** OPS-01
+- **Status:** in_progress
+- **Description:** At `http://100.72.192.28:3300`, the user reports that `POST /api/auth/login` succeeds but the browser returns to `/login?reason=not_provisioned` instead of the application home/dashboard.
+- **Root-cause trace:** Current `main` already contains the prior source fixes: HTTP-aware session-cookie security (`52fb3318...`), full browser navigation after login (`56f9088a...`), and explicit cookie propagation in the protected root layout (`3cd19bdb...`). In current source, `reason=not_provisioned` is emitted by the root layout only when middleware has allowed the request through with a cookie and `getAuthenticatedAppContext()` resolves to null. The remaining concrete runtime causes are invalid/revoked/expired session, inactive user, absent/inactive organization membership, stale application build, or inconsistent runtime database/environment. The exact runtime branch cannot be confirmed because the private host is not reachable from this execution environment.
+- **Failed approaches:** Router/RSC refresh navigation fix; explicit cookie propagation in the root layout; HTTP-aware Secure-cookie correction. Those source changes are present on `main` but the live symptom persists.
+- **Remedy:** Route live-runtime inspection to OPS-01. Verify running build revision, session cookie/session row, active user, active membership, and shared `DATABASE_URL`; rebuild/restart only when stale deployment is confirmed. Do not weaken the fail-closed provisioning/auth boundary.
+- **Prevention lesson:** Distinguish middleware `login?next=/` (cookie absent) from layout `login?reason=not_provisioned` (cookie present but application context unresolved). Trace the full request state and runtime database before changing login UI again.
+- **Evidence:** `main` at `2ab9c66640cc5132bc7f7686d0f008015b79620d`; source/commit ancestry confirms the earlier fixes are present; direct curl from this environment cannot reach `100.72.192.28:3300`, so no live-runtime PASS/FAIL is claimed.
+- **Next action:** OPS-01 performs live runtime diagnosis and the smallest infrastructure/runtime correction, then records evidence back to ISS-007.
