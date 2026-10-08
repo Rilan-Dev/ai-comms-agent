@@ -756,3 +756,10 @@ The latest concrete implementation checkpoint is cross-surface hardening: determ
 - The webhook now passes the resolved account scope into the repository update.
 - Added deterministic regression coverage for the repository predicate and webhook scope propagation.
 - **Next:** continue remaining Mail/WhatsApp/Chat/Voice edge cases and deterministic audit/event assertions; do not wait for CI/Vercel.
+
+
+### 2026-10-08 — Scheduled execution audit correlation
+- Scheduled run completion/failure now persists organization-scoped audit events using the durable run UUID as target and correlation identifier.
+- Configuration-required and exception paths are both covered; no external provider success is fabricated.
+- Added deterministic worker source coverage.
+- Continue remaining communication-loop edge hardening without waiting for CI/Vercel.
