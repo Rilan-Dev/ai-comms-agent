@@ -737,3 +737,8 @@ The latest concrete implementation checkpoint is cross-surface hardening: determ
 - Provider automation event mapping now treats organization/action/message/account/email-account/correlation identifiers as canonical and prevents provider metadata from overriding them.
 - Voice turn accounting now requires an active session both at the API boundary and database update, failing closed with a conflict when a session ended between checks.
 - **Next concrete implementation:** continue remaining Mail/WhatsApp/Chat/Voice edge cases and deterministic audit/event assertions. Do not wait for CI/Vercel.
+
+
+### 2026-10-08 — Sensitive approval visibility hardening
+- Email approval payloads contain recipient/content snapshots; pending approval listing and individual action retrieval now require `organization.update` instead of `organization.read`, matching approve/reject authority.
+- **Next:** continue remaining Mail/WhatsApp/Chat/Voice edge cases and deterministic audit/event assertions. Do not wait for CI/Vercel.
