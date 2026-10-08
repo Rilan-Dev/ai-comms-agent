@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const NAV_ITEMS = [
   { label: "Overview", href: "/", icon: "⌂" },
@@ -22,6 +22,13 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function signOut() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  }
   return (
     <aside className="hidden w-[252px] shrink-0 flex-col border-r bg-background/95 md:flex">
       <div className="flex h-[72px] items-center gap-3 border-b px-5">
@@ -45,7 +52,7 @@ export function Sidebar() {
           })}
         </ul>
       </nav>
-      <div className="border-t p-3"><a href="/operations" className="block rounded-xl border bg-muted/40 p-3 transition hover:bg-muted"><p className="text-xs font-semibold">Operations</p><p className="mt-1 text-[11px] text-muted-foreground">Health, runtime signals and infrastructure status</p></a></div>
+      <div className="border-t p-3 space-y-2"><a href="/operations" className="block rounded-xl border bg-muted/40 p-3 transition hover:bg-muted"><p className="text-xs font-semibold">Operations</p><p className="mt-1 text-[11px] text-muted-foreground">Health, runtime signals and infrastructure status</p></a><button type="button" onClick={() => void signOut()} className="w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground">Sign out</button></div>
     </aside>
   );
 }
