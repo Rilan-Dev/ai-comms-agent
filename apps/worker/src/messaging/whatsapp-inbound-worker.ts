@@ -1,4 +1,4 @@
-import { claimRoutedWhatsAppInbound, completeWhatsAppInbound, recordAuditEvent } from "@ai-comms-agent/db";
+import { claimRoutedWhatsAppInbound, completeWhatsAppInbound, recoverStaleWhatsAppInbound, recordAuditEvent } from "@ai-comms-agent/db";
 import { dispatchAgentExecution } from "../agent/execution-dispatcher";
 import { evaluateAutomationEvent } from "../automation/automation-engine";
 
@@ -8,6 +8,10 @@ function text(value: unknown) {
 
 export async function processRoutedWhatsAppInbound(limit = 10) {
   if (!process.env.DATABASE_URL) return { processed: 0, completed: 0, failed: 0 };
+  const recovered = await recoverStaleWhatsAppInbound();
+  for (const message of recovered) {
+    await recordAuditEvent({ organizationId: message.organizationId, actorUserId: null, eventType: "whatsapp.inbound.execution_interrupted", targetType: "whatsapp_message", targetId: message.id, action: "execute", decision: "denied", correlationId: message.correlationId, metadata: { downstreamOutcomeUnknown: true, manualVerificationRequired: true, agentId: message.agentId } });
+  }
   const messages = await claimRoutedWhatsAppInbound(limit);
   let completed = 0;
   let failed = 0;
