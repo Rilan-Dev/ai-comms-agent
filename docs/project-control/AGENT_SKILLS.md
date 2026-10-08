@@ -68,3 +68,14 @@ At a phase/task/checklist boundary:
 - If the next action is already authorized, continue.
 - If not authorized, stop only that workstream and record the exact missing authorization.
 - Never infer authorization from a commit, previous chat, plan, or agent claim.
+
+## WORK-01 / Rover skill
+
+Use for daily, non-planned, or small scoped work that can be completed without disturbing active implementation.
+
+- Read shared AGENT_MEMORY.md first and then role-local memory/worklog.
+- Classify each task as SAFE-LOCAL, AUTHORIZED, or MATERIAL-CHANGE.
+- Execute SAFE-LOCAL and already AUTHORIZED work.
+- For MATERIAL-CHANGE, record impact and route for authorization; do not silently expand scope.
+- Avoid overlapping active work and never revert another agent's work for convenience.
+- Route substantial bugs to FIX-01 and operational issues to OPS-01.
