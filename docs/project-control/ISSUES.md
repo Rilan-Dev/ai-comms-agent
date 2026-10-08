@@ -117,3 +117,10 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Prevention lesson:** Distinguish middleware `login?next=/` (cookie absent) from layout `login?reason=not_provisioned` (cookie present but application context unresolved). Trace the full request state and runtime database before changing login UI again.
 - **Evidence:** `main` at `2ab9c66640cc5132bc7f7686d0f008015b79620d`; source/commit ancestry confirms the earlier fixes are present; direct curl from this environment cannot reach `100.72.192.28:3300`, so no live-runtime PASS/FAIL is claimed.
 - **Next action:** OPS-01 performs live runtime diagnosis and the smallest infrastructure/runtime correction, then records evidence back to ISS-007.
+
+### 2026-10-09 — FIX-01 corrective source hardening
+- Root-cause boundary confirmed in current source: password authentication could return success and mint a session before checking whether the user had any active organization membership; the next protected render then rejected that session as `not_provisioned`, creating the reported success → login-loop experience.
+- Corrected `loginWithPassword` to require at least one active organization membership before session creation. Unprovisioned accounts now receive `403 account_not_provisioned` and no authenticated session is minted.
+- Added a production auth-boundary regression assertion for the membership guard and error route.
+- This is fail-closed: it does not reactivate memberships or invent an organization. Any genuinely unprovisioned account must be provisioned through the authorized organization workflow.
+- Commit chain ends at `197e6535eab0cafde3e84db8f0605b7a174b3b03`.
