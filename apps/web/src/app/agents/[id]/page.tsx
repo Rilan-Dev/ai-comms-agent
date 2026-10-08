@@ -1,13 +1,13 @@
 import { PostgresAgentRepository } from "@ai-comms-agent/db";
 import { AgentDetailClient } from "./agent-detail-client";
-import { getAuthenticatedAppContext } from "@/lib/identity/repository";
+import { getAuthenticatedAppContext } from "@/lib/identity/repository";\nimport { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
 export default async function AgentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   if (!process.env.DATABASE_URL) return <main className="mx-auto max-w-3xl p-6 lg:p-10"><div className="rounded-3xl border bg-background p-8 shadow-sm"><h1 className="text-2xl font-semibold">PostgreSQL is required</h1><p className="mt-3 text-sm text-muted-foreground">Persisted agent details require DATABASE_URL.</p></div></main>;
   try {
-    const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: { cookie: "" } }));
+    const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: await headers() }));
     if (!context) throw new Error("Authenticated application identity could not be resolved.");
     const organizationId=context.organizationId;
     const { id }=await params; const repo=new PostgresAgentRepository(); const agent=await repo.get(organizationId,id);
