@@ -89,7 +89,32 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
       if (!response.ok) throw new Error(typeof payload?.error?.message === "string" ? payload.error.message : "Meta WhatsApp API request failed");
       const providerMessageId = typeof payload?.messages?.[0]?.id === "string" ? payload.messages[0].id : "";
       if (!providerMessageId) throw new Error("Meta WhatsApp API returned no message ID");
-      await markWhatsAppOutboundSent(String(message.id), providerMessageId);
+      const persistedSent = await markWhatsAppOutboundSent(String(message.id), providerMessageId);
+      if (!persistedSent) {
+        // A stale-lease recovery may have closed this row while the provider
+        // request was in flight. Preserve the confirmed provider ID for manual
+        // reconciliation instead of claiming the database transition succeeded.
+        await emitProviderEvent({
+          type: "whatsapp.message.failed",
+          organizationId: String(message.organization_id),
+          messageId: String(message.id),
+          accountId: String(message.whatsapp_account_id),
+          correlationId: message.correlation_id ? String(message.correlation_id) : null,
+          metadata: { providerMessageId, providerAccepted: true, persistenceConflict: true, manualVerificationRequired: true },
+        });
+        await recordAuditEvent({
+          organizationId: String(message.organization_id),
+          actorUserId: null,
+          eventType: "whatsapp.message.persistence_conflict",
+          targetType: "whatsapp_message",
+          targetId: String(message.id),
+          action: "send",
+          decision: "denied",
+          correlationId: message.correlation_id ? String(message.correlation_id) : null,
+          metadata: { providerMessageId, providerAccepted: true, manualVerificationRequired: true },
+        });
+        continue;
+      }
       await emitProviderEvent({ type: "whatsapp.message.sent", organizationId: String(message.organization_id), messageId: String(message.id), accountId: String(message.whatsapp_account_id), correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { providerMessageId, retryAttempts } });
       await recordAuditEvent({ organizationId: String(message.organization_id), actorUserId: null, eventType: "whatsapp.message.sent", targetType: "whatsapp_message", targetId: String(message.id), action: "send", decision: "allowed", correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { providerMessageId } });
     } catch (error) {
