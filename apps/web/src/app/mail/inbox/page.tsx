@@ -1,5 +1,6 @@
 import { listInboxMessages, PostgresEmailAccountRepository } from "@ai-comms-agent/db";
-import { ensureDevSeed, getDevOrgId } from "@/lib/identity/repository";
+import { getAuthenticatedAppContext } from "@/lib/identity/repository";
+import { headers } from "next/headers";
 import { InboxClient } from "./inbox-client";
 
 export const dynamic = "force-dynamic";
@@ -7,9 +8,9 @@ export const dynamic = "force-dynamic";
 export default async function MailInboxPage() {
   if (!process.env.DATABASE_URL) return <EmptyState title="Mail needs PostgreSQL" body="Configure DATABASE_URL to load persisted mailbox data. No preview messages are shown." />;
   try {
-    await ensureDevSeed();
-    const organizationId = getDevOrgId();
-    if (!organizationId) throw new Error("Development organization could not be resolved.");
+    const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: await headers() }));
+    const organizationId = context?.organizationId;
+    if (!organizationId) throw new Error("Organization context is unavailable.");
     const messages = await listInboxMessages(organizationId, { limit: 100 });
     return <InboxClient organizationId={organizationId} initialMessages={messages as never[]} />;
   } catch (error) {
