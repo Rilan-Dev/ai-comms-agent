@@ -728,3 +728,12 @@ Latest source correction: `apps/web/src/app/api/email-accounts/route.ts` was rep
 - Added deterministic source-level runner tests; runtime execution remains deferred under the development-first instruction.
 - Latest implementation commit: `ae79d161f8fb313a38d4e869c40ad499407b5695`.
 - No provider delivery, CI PASS, or Vercel READY claim is made.
+
+
+### 2026-10-08 — Sensitive-action provider outcome routing implementation
+- Added worker-owned `provider-events` bridge into automation evaluation.
+- Email approved-action success/failure paths now emit provider events with action/account/correlation identifiers.
+- WhatsApp outbound success/failure paths now emit provider events with message/account/correlation identifiers.
+- Added deterministic source-level provider-event routing coverage.
+- Runtime/provider delivery validation remains deferred by the development-first instruction.
+- Latest implementation commit: `fba28b721d8ca1f6e36aa4106f134d2dd3075af9`.
