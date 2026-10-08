@@ -687,3 +687,13 @@ ChatGPT connected the PostgreSQL cross-surface adapter to an executable scenario
 ChatGPT connected email and WhatsApp worker success/failure outcomes to the worker-owned automation event bridge. Provider outcomes now carry stable action/message identifiers and correlation IDs into automation evaluation while retaining existing audit writes. No provider credentials or external delivery are fabricated.
 
 **Next concrete implementation:** complete failure/retry semantics for sensitive actions and deterministic audit/event assertions, then continue the remaining communication-loop hardening.
+
+
+### 2026-10-08 — Provider retry/failure hardening completed
+- Shared provider retry policy now exposes deterministic retry telemetry (attempt, nextAttempt, delayMs).
+- Email action failures/completions persist retry attempt count; failures also preserve retryability classification in automation/audit metadata.
+- WhatsApp outbound failures/completions preserve retry attempt count and retryability classification.
+- Provider event mapping has deterministic tests covering organization, action/message identity, correlation, retry metadata and failure details.
+- No provider delivery or CI/Vercel success is claimed.
+
+**Next concrete implementation:** continue deterministic cross-surface audit/event assertions and remaining Mail/WhatsApp/Chat/Voice edge-case hardening, then prepare final runtime/deployment verification. Do not wait for CI/Vercel.
