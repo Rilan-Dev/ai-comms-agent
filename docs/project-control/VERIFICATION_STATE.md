@@ -825,3 +825,12 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - **Correction:** `/mail/accounts` now derives its organization using `getAuthenticatedAppContext()`, consistent with `/mail/inbox`. Static regression coverage was added.
 - **Commits:** `4536332fdee1de3b2a0c060d581b3939c769f08a`, `7a3cfba20cabc6fad88b313c258320c5961c06af`.
 - **Verification status:** Tests have not been run and the live request has not been retried. No runtime PASS is claimed. Migration 0024 remains a separate pending deployment prerequisite.
+
+
+### 2026-10-09 — Voice tenant and lifecycle hardening
+- Updated `apps/web/src/app/ai-voice/page.tsx` to derive organization context from the authenticated application session, matching the inbox and email accounts surfaces; removed dev-org selection and dev seeding from this page.
+- Added `apps/web/tests/voice-workspace-organization-context.test.ts` to guard tenant scoping.
+- Updated `apps/web/src/app/api/voice/turn/route.ts` to reject every non-active session and to return a conflict rather than exposing a generated response if the session becomes inactive before the turn counter update succeeds.
+- Added `apps/web/tests/voice-turn-lifecycle-guard.test.ts`.
+- Latest implementation commits: `3ada3490ec91398e0f239c086bcbe9289063de96`, `8dda47141678033b90d2530183527b44807221f6`, `75bf41fd8eade96ed7fdc3fc6d2e580074b94a91`, `f1bcabd9eed9c8f073d8de4a287dbfd25bde6d22`.
+- Tests/build/runtime/deployment were not run; verification remains pending by the active development-first instruction. No pass is claimed.
