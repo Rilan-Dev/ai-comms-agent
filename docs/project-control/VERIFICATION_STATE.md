@@ -799,3 +799,11 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Configuration-required and exception paths are both covered; no external provider success is fabricated.
 - Added deterministic worker source coverage.
 - Continue remaining communication-loop edge hardening without waiting for CI/Vercel.
+
+
+### 2026-10-08 — Browser authentication entry-point correction
+- `/login` is a public browser entry point and preserves a safe `next` path after successful authentication.
+- `/setup` is a public first-run UI for the existing one-time bootstrap endpoint.
+- `/api/auth/bootstrap` is explicitly public to the middleware but remains protected by the server-only `AUTH_BOOTSTRAP_TOKEN` and one-time credential check.
+- No auth bypass or client-side secret was added.
+- Runtime verification/deployment evidence for the latest commit remains pending; do not claim READY.
