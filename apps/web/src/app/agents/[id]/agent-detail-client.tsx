@@ -72,7 +72,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
       .catch(error => { if(!cancelled) notify({kind:"error",title:"Activity unavailable",message:error instanceof Error?error.message:"Unable to load audit history."}); })
       .finally(() => { if(!cancelled) setAuditLoading(false); });
     return () => { cancelled=true; };
-  },[tab,agent.id,organizationId,_removedDevUserId,notify]);
+  },[tab,agent.id,organizationId,notify]);
   async function saveAgent(event:React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true);
     try {
