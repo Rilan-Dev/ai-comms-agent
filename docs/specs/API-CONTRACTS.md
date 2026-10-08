@@ -32,7 +32,7 @@ This is a Phase 1 document. Exact request/response shapes are validated in Phase
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/api/auth/login` | Email + password login. Sets cookies. |
+| POST | `/api/auth/login` | PostgreSQL-backed email + password login. Sets an opaque HttpOnly session cookie. |
 | POST | `/api/auth/magic` | Request magic link. |
 | GET | `/api/auth/magic/verify` | Verify magic link token. Sets cookies. |
 | GET | `/api/auth/oauth/{provider}` | Start OAuth flow (google, github). |
