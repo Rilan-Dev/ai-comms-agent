@@ -943,3 +943,8 @@ ChatGPT takeover correction for the reported inactive login experience:
 - Fixed the reset helper's migration invocation path: it now changes to the repository root and invokes `bash ./scripts/migrate.sh`, avoiding the failing resolved `/docker/ai-comms-agent/scripts/migrate.sh` execution path while keeping `scripts/migrate.sh` independently usable.
 - Migration/reset fix commits: `9883c324597634fd5193ef2f20e59c1db05c10a5`, `77a1dc9b1533b763b9fc30c9c6da1bf7dff0e55c`.
 - No CI/Vercel wait and no migration PASS claimed.
+
+- Fixed the concrete reset-script failure: `scripts/reset-and-migrate.sh` contained a literal `\n` between the `cd` and `exec` commands, causing `cd: too many arguments`.
+- Restored the commands as separate shell lines so reset can invoke the existing `scripts/migrate.sh` normally. No migration SQL or application feature code changed.
+- Reset-script fix commit: `9bc07dbc2f2ccae10f972efdde0786ee29548bdd`.
+- No CI/Vercel wait and no migration PASS claimed.
