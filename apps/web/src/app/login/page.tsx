@@ -16,7 +16,7 @@ export default function LoginPage() {
       const response = await fetch("/api/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.message ?? "Sign in failed.");
-      router.replace("/"); router.refresh();
+      const next = new URLSearchParams(window.location.search).get("next");\n      router.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/"); router.refresh();
     } catch (err) { setError(err instanceof Error ? err.message : "Sign in failed."); }
     finally { setBusy(false); }
   }
@@ -31,7 +31,7 @@ export default function LoginPage() {
           {error ? <div role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">{error}</div> : null}
           <button disabled={busy} className="h-11 w-full rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Signing in…" : "Sign in"}</button>
         </form>
-        <p className="mt-6 text-center text-xs leading-5 text-muted-foreground">Access is restricted to provisioned organization members. New accounts are created through the organization invitation process.</p>
+        <div className="mt-6 flex items-center justify-between gap-4 text-xs text-muted-foreground"><span>Restricted workspace</span><a href="/setup" className="font-medium text-foreground underline-offset-4 hover:underline">First-time setup</a></div>
       </div>
     </div>
   </main>;
