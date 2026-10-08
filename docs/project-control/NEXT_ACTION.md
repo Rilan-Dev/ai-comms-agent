@@ -723,3 +723,7 @@ The next acceptance prerequisite is runtime verification of the new production a
 - A forged or stale agent ID from another organization now fails closed with `404 not_found` before conversation access.
 - Added deterministic route-order regression coverage.
 - **Next:** continue remaining Mail/WhatsApp/Chat/Voice edge-case hardening and deterministic audit/event assertions, then prepare final runtime/deployment verification. CI/Vercel remain non-blocking.
+
+
+### 2026-10-08 — Provider outcome isolation hardening
+ChatGPT corrected a cross-surface failure mode in the worker provider-event bridge: downstream automation evaluation failures are now isolated from authoritative provider delivery outcomes. A successful email/WhatsApp provider side effect can no longer be rewritten as a failed provider action merely because automation evaluation failed afterward. Added deterministic coverage through an injectable evaluator. Continue with remaining communication-loop edge cases and audit/idempotency hardening without waiting for CI/Vercel.
