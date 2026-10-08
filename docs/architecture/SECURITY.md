@@ -19,11 +19,13 @@ This is a Phase 1 document. Implementation details (library choices, exact polic
 
 ### Auth flows
 
-- Login: `POST /api/auth/login { email, password }` → validate input → rate-limit/lockout checks → scrypt password verification → create hashed opaque session → set HttpOnly cookie → return user
-- Magic link: `POST /api/auth/magic { email }` → email link → `GET /api/auth/magic/verify?token=...` → set cookies
-- OAuth: `GET /api/auth/oauth/{provider}` → redirect → callback → set cookies
+- Login: `POST /api/auth/login { email, password }` → validate/normalize → rate-limit and lockout checks → scrypt verification → create a hashed opaque PostgreSQL session → set `HttpOnly`, `SameSite=Lax` cookie → return user.
+- Bootstrap: `POST /api/auth/bootstrap` is protected by a one-time `AUTH_BOOTSTRAP_TOKEN`, creates the first application credential and initial owner organization, and returns 409 after initialization.
+- Current session: `GET /api/auth/me` resolves the cookie token by SHA-256 hash, rejects revoked/expired sessions, and resolves the active application user.
+- Change password: `POST /api/auth/change-password` requires the current authenticated session, validates the new password, replaces the verifier, and revokes all sessions for that user.
+- Logout: `POST /api/auth/logout` revokes the current server-side session and clears the cookie.
+- Authentication is application-owned and PostgreSQL-native. Supabase Auth, hosted OAuth, and magic-link services are not runtime dependencies.
 
-- Logout: `POST /api/auth/logout` → clear cookies → revoke refresh token
 
 ---
 
