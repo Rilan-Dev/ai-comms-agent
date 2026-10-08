@@ -14,10 +14,15 @@ action: |
   Continue final Product Completion hardening while correcting the newly observed
   live PostgreSQL schema drift. The source correction is committed: forward-only
   audit schema reconciliation (0023) plus manual startup migration application.
-  Next operational step is to pull current main and rerun scripts/manual-up.sh so
-  the canonical migration ledger is applied before the rebuilt application starts,
-  then retry overview and authenticated agent creation. After that, continue the
-  remaining Mail/WhatsApp/Chat/Voice edge hardening and deterministic audit/E2E work.
+  The manual deployment rerun reached the canonical migration step but
+  failed with "unable to initialize migration ledger". Do not retry the application
+  endpoint yet. First rerun the current main migration path and capture the now-
+  preserved PostgreSQL diagnostic from scripts/migrate.sh; determine whether the
+  configured DATABASE_URL points to the intended writable database and whether the
+  migration user can create the _aca_schema_migrations ledger. Correct only that
+  database/deployment boundary if needed, then rerun migrations and retry overview
+  plus authenticated agent creation. After runtime recovery, continue the remaining
+  Mail/WhatsApp/Chat/Voice edge hardening and deterministic audit/E2E work.
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
