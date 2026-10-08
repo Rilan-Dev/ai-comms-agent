@@ -16,7 +16,7 @@ export function automationMatches(rule:Pick<Rule,"trigger"|"conditions">,event:E
   return !rule.conditions || Object.keys(rule.conditions).length===0 || objectEqualsSubset(event.payload,rule.conditions);
 }
 
-function stableEventKey(event:Event){
+export function stableEventKey(event:Event){
   const candidate = event.payload.eventId ?? event.payload.messageId ?? event.payload.actionId ?? event.payload.correlationId;
   return typeof candidate === "string" && candidate.trim() ? event.type + ":" + candidate.trim() : null;
 }
