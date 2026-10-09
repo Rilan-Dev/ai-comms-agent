@@ -16,6 +16,9 @@ const compose = readFileSync(resolve(__dirname, "../src/app/mail/compose/compose
 const threads = readFileSync(resolve(__dirname, "../src/app/mail/threads/page.tsx"), "utf8");
 const accounts = readFileSync(resolve(__dirname, "../src/app/mail/accounts/email-accounts-client.tsx"), "utf8");
 const approvals = readFileSync(resolve(__dirname, "../src/app/mail/approvals/approvals-client.tsx"), "utf8");
+const whatsapp = readFileSync(resolve(__dirname, "../src/app/whatsapp/whatsapp-client.tsx"), "utf8");
+const automations = readFileSync(resolve(__dirname, "../src/app/automations/automations-client.tsx"), "utf8");
+const schedules = readFileSync(resolve(__dirname, "../src/app/schedules/schedules-client.tsx"), "utf8");
 
 describe("Lovable Agentic AI Studio UI adaptation", () => {
   it("uses the Lovable semantic palette and typography without replacing Tailwind tokens", () => {
@@ -121,5 +124,28 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(login).toContain("required");
     expect(login).toContain("setError");
     expect(login).toContain("window.location.replace");
+  });
+  it("adapts WhatsApp to the Lovable design while preserving secure account and idempotent send flows", () => {
+    expect(whatsapp).toContain('from "lucide-react"');
+    expect(whatsapp).toContain('font-display text-3xl');
+    expect(whatsapp).toContain('"/api/whatsapp/accounts"');
+    expect(whatsapp).toContain('"/api/whatsapp/messages"');
+    expect(whatsapp).toContain('"Idempotency-Key": idempotencyKey');
+    expect(whatsapp).toContain('type={secret ? "password" : "text"}');
+    expect(whatsapp).toContain("credentials were encrypted and stored");
+    expect(whatsapp).toContain("No persisted messages yet.");
+  });
+
+  it("keeps automation creation/archive and schedule recurrence/timezone controls in the Lovable theme", () => {
+    expect(automations).toContain('"/api/organizations/"+organizationId+"/automations"');
+    expect(automations).toContain("Create rule");
+    expect(automations).toContain("Archive");
+    expect(automations).toContain("rounded-md");
+    expect(schedules).toContain('"/api/organizations/" + organizationId + "/schedules"');
+    expect(schedules).toContain('aria-label="Cron expression"');
+    expect(schedules).toContain('aria-label="One-time fire time"');
+    expect(schedules).toContain("timezone");
+    expect(schedules).toContain("lastError");
+    expect(schedules).toContain("No schedules yet.");
   });
 });
