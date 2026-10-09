@@ -125,3 +125,13 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Verification:** Corrected focused test has not yet been rerun; no test PASS claimed.
 - **Next action:** Rerun focused Zoho OAuth settings Vitest and continue independent implementation without waiting for CI/Vercel.
 - **Related records:** ISS-014; BKL-010; FIX01-ZOHO-TEST-NEWLINES-20261009.
+
+
+### EVT-DEV01-LOVABLE-UI-20261009 — 2026-10-09
+- **Agent/session:** DEV-01 / Forge — DEV01-LOVABLE-UI-MIGRATION-20261009
+- **Type:** REQUIREMENT
+- **Summary:** User explicitly authorized migration of the existing application UI to the committed `source/lovable-ui` design, requiring the Lovable visual language, responsive behavior and iconography while preserving existing application functionality and frontend validations. This supersedes the older migration-note default of preserving the previous source UI theme; it does not authorize replacing the application framework or weakening server-side authorization.
+- **Impact:** scope
+- **Owner:** DEV-01 / Forge
+- **Suggested next action:** Continue screen-by-screen adaptation using Lovable tokens/components as visual reference; preserve Next.js app/server contracts and real persisted-data states. Route bugs to FIX-01 and infrastructure issues to OPS-01.
+- **Related records:** `source/lovable-ui/src/styles.css`, `source/lovable-ui/src/components/workspace-shell.tsx`, `source/lovable-ui/src/routes/index.tsx`, `apps/web/src/app/globals.css`, `apps/web/src/components/sidebar.tsx`, `apps/web/src/components/top-bar.tsx`, `apps/web/src/app/page.tsx`.
