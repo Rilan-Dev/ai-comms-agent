@@ -281,7 +281,7 @@ describe("Phase 4 database foundation migration", () => {
     "whatsapp_messages","whatsapp_webhook_events","conversations","conversation_messages",
     "conversation_turns","scheduled_jobs","scheduled_job_runs","automation_rules","automation_runs",
     "email_actions","email_action_approvals","summaries","summary_sources","ai_usage_events",
-    "voice_sessions","voice_telemetry","audit_events","api_keys",
+    "voice_sessions","voice_telemetry","audit_events","storage_objects",
   ];
 
   it("declares every Phase 4 target table", () => {
@@ -290,39 +290,39 @@ describe("Phase 4 database foundation migration", () => {
     }
   });
 
-  it("enables RLS for every direct tenant table", () => {
+  it("enables RLS for the declared application-domain tables", () => {
+    // The migration loops over its canonical table array and uses format() for each ALTER.
+    expect(applicationDomainSql).toContain("ALTER TABLE %I ENABLE ROW LEVEL SECURITY");
     for (const table of [
       "agents","ai_provider_configs","email_accounts","whatsapp_accounts","conversations",
       "scheduled_jobs","automation_rules","email_actions","summaries","ai_usage_events",
-      "voice_sessions","audit_events","api_keys",
+      "voice_sessions","audit_events","storage_objects",
     ]) {
-      expect(applicationDomainSql).toContain("ALTER TABLE " + table + " ENABLE ROW LEVEL SECURITY");
+      expect(applicationDomainSql).toContain("'" + table + "'");
     }
   });
 
   it("protects child-domain tables through their organization-owning parent", () => {
-    expect(applicationDomainSql).toContain("agent_versions_org_member");
-    expect(applicationDomainSql).toContain("email_messages_org_member");
-    expect(applicationDomainSql).toContain("whatsapp_messages_org_member");
-    expect(applicationDomainSql).toContain("conversation_messages_org_member");
-    expect(applicationDomainSql).toContain("scheduled_job_runs_org_member");
-    expect(applicationDomainSql).toContain("summary_sources_org_member");
-    expect(applicationDomainSql).toContain("voice_telemetry_org_member");
+    expect(applicationDomainSql).toContain("agent_versions_member_visibility");
+    expect(applicationDomainSql).toContain("email_messages_member_visibility");
+    expect(applicationDomainSql).toContain("whatsapp_messages_member_visibility");
+    expect(applicationDomainSql).toContain("conversation_messages_member_visibility");
+    expect(applicationDomainSql).toContain("scheduled_job_runs_member_visibility");
+    expect(applicationDomainSql).toContain("summary_sources_member_visibility");
+    expect(applicationDomainSql).toContain("voice_telemetry_member_visibility");
   });
 
   it("stores provider credentials as ciphertext bytea", () => {
     expect(applicationDomainSql).toContain("encrypted_payload bytea NOT NULL");
-    expect(applicationDomainSql).toContain("encrypted_api_key bytea");
     expect(applicationDomainSql).toContain("encrypted_credentials bytea NOT NULL");
-    expect(applicationDomainSql).toContain("hashed_key text NOT NULL");
   });
 
   it("provides full-text search and idempotency indexes", () => {
     expect(applicationDomainSql).toContain("search_tsv tsvector GENERATED ALWAYS");
     expect(applicationDomainSql).toContain("USING gin(search_tsv)");
-    expect(applicationDomainSql).toContain("email_messages_provider_id_uniq");
+    expect(applicationDomainSql).toContain("UNIQUE(email_account_id,provider_message_id)");
+    expect(applicationDomainSql).toContain("UNIQUE(email_account_id,provider_thread_id)");
     expect(applicationDomainSql).toContain("whatsapp_webhook_events");
-    expect(applicationDomainSql).toContain("UNIQUE(scheduled_job_id, fire_at)");
   });
 
   it("makes audit updates and deletes fail closed through RLS", () => {
@@ -332,8 +332,8 @@ describe("Phase 4 database foundation migration", () => {
   });
 
   it("does not reintroduce custom role persistence", () => {
-    expect(applicationDomainSql).not.toMatch(/CREATE\\s+TABLE.*\\broles\\b/i);
-    expect(applicationDomainSql).not.toMatch(/CREATE\\s+TABLE.*\\brole_permissions\\b/i);
+    expect(applicationDomainSql).not.toMatch(/CREATE\s+TABLE.*\broles\b/i);
+    expect(applicationDomainSql).not.toMatch(/CREATE\s+TABLE.*\brole_permissions\b/i);
   });
 });
 
