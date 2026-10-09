@@ -32,4 +32,6 @@ test("provider secrets stay in password inputs and are never rendered back as va
   assert.match(providers, /type="password"/);
   assert.match(gmail, /never returned to the browser/i);
   assert.match(zoho, /never returned to the browser/i);
+  assert.match(gmail, /role=\{\/\(failed\|could not\|error\|invalid\|unable\)\/i\.test\(notice\) \? "alert" : "status"\}/);
+  assert.match(zoho, /role=\{\/\(failed\|could not\|error\|invalid\|unable\)\/i\.test\(notice\) \? "alert" : "status"\}/);
 });
