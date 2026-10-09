@@ -94,3 +94,12 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Blockers/dependencies:** OPS-01 needs access to live PostgreSQL and Docker/runtime configuration to apply migration and roll out matching images; Redis response must be inspected after diagnostic patch.
 - **Lesson:** Do not infer Redis is usable from environment-variable presence or health checks; preserve bounded server error responses and never bypass the distributed lease on command failure.
 - **Next action:** OPS-01 apply migrations through `0029`, roll out web/worker images, and correct Redis AUTH/ACL/TLS/URL only from the exact Redis error. No runtime PASS claimed.
+
+### FIX01-INBOX-SCHEMA-REDIS-20261009 / 2026-10-09
+- **Task:** Continue production mail sync incident from new logs.
+- **Authorization:** User supplied fresh production logs and reported no emails in inbox after the sync endpoint returned queued.
+- **Actions:** Confirmed `202 queued` only acknowledges scheduling; worker cannot process while Redis AUTH returns WRONGPASS. Added forward-only migration `0030_email_messages_runtime_reconciliation.sql` for canonical inbox message columns and legacy-column backfills; added static migration assertions.
+- **Files:** `supabase/migrations/0030_email_messages_runtime_reconciliation.sql`, `apps/web/tests/migration-verification.test.ts`.
+- **Commits:** `69c51678c8c12e0a0c070214dc09db77e0758dae`, `e7a1e7ee396d542ffdf3edada895938a087b6a27`.
+- **Evidence:** Source commits only. Tests/build and runtime migration not run. Redis AUTH is still failing in user logs; no imported-message count or successful inbox query is established.
+- **Next action:** OPS-01 applies migrations 0029/0030, rolls out matching images, fixes Redis URL credentials/ACL, and verifies actual persisted email rows and inbox loading. Never bypass distributed locking.
