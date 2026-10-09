@@ -144,3 +144,11 @@ This is an explicit inventory, not a claim that every listed page is already mig
 ### Cross-route review finding — FIX-01 handoff
 
 The Audit page's CSV/JSON export links omit `organizationId`, and `apps/web/src/app/api/audit/export/route.ts` falls back to `getDevOrgId()` before authorization. FIX-01 should correct this to derive the active organization from authenticated membership context and add regression coverage. Until fixed and verified, do not claim tenant isolation for audit exports.
+
+
+## 2026-10-09 — Cross-route geometry and accessibility review (source only)
+
+- Normalized remaining `rounded-xl` / `rounded-2xl` / `rounded-3xl` card and control classes to compact `rounded-md` geometry across Overview, Inbox, Agents, Mail Accounts, Drafts, Compose, WhatsApp, Automations, Schedules, Chat, AI & Voice, Settings/provider subsections, Login/Setup, and Agent detail. Status pills using `rounded-full` are retained.
+- Agent detail tabs expose selected state via `aria-pressed`; the deploy/pause confirmation dialog now has `aria-labelledby`. Channel loading queries the organization-scoped WhatsApp API separately instead of expecting WhatsApp accounts in the email response.
+- Added a cross-route static contract assertion for compact geometry and key accessible states in `apps/web/tests/lovable-ui-migration.test.ts`.
+- **Not verified:** no test execution, typecheck, browser/responsive run, accessibility audit, or live API checks. A manual browser pass remains outstanding.
