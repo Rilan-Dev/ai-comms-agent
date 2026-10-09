@@ -140,3 +140,10 @@ If shared memory conflicts with current repository state or current requirements
 - **Remedy:** Use a forward-only idempotent migration for schema drift; retain a bounded Redis RESP error reply for diagnosis and cover WRONGPASS behavior.
 - **Prevention:** A running container/healthy worker is not proof that its database schema or Redis authentication is correct. Never disable distributed locking to make a worker proceed after lease acquisition errors.
 - **Status:** Source committed; live migration and Redis diagnosis pending OPS-01. No tests/runtime PASS claimed.
+
+
+### FIX-01 / Sentinel — 2026-10-09 — Live schema drift and Redis lease diagnostics
+- **Evidence:** Live app queries failed because the database lacked `ai_provider_configs.model` and `email_sync_states.last_attempt_at`; worker lease logs collapsed Redis server errors to a generic string.
+- **Remedy:** Use a forward-only idempotent migration for schema drift; retain a bounded Redis RESP error reply for diagnosis and cover WRONGPASS behavior.
+- **Prevention:** A running container/healthy worker is not proof that its database schema or Redis authentication is correct. Never disable distributed locking to make a worker proceed after lease acquisition errors.
+- **Status:** Source committed; live migration and Redis diagnosis pending OPS-01. No tests/runtime PASS claimed.
