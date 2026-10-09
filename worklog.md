@@ -1482,3 +1482,12 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Added static contract coverage and updated the route migration inventory / next action. See `docs/project-control/DEV-01/WORKLOG.md` for commit details.
 - Verification: tests/typecheck/build/browser/accessibility/live API were not run. No PASS claimed.
 - Next: cross-route responsive/accessibility review and remaining secondary controls; do not wait for CI/Vercel.
+
+
+## 2026-10-09 — Fix orphaned new-agent route
+
+- The standalone `/agents/new` page rendered fields but had no submit/API handler and did not persist its purpose field. The canonical Agents workspace already provides organization-scoped creation with slug validation, transactional initial configuration, notifications and navigation.
+- Replaced the nonfunctional duplicate form with a redirect to `/agents#new-agent` to ensure there is one canonical creation flow.
+- Added a static source-contract assertion and updated the migration inventory/NEXT_ACTION. Commits: `1cec6ca9` (redirect), `cb914148` (test), `a5a67d2e` (inventory), `43a2b1d8` (NEXT_ACTION).
+- Tests/typecheck/build/browser checks were not run. No PASS claimed.
+- Next: cross-route responsive/accessibility review and remaining secondary controls; do not wait for CI/Vercel.
