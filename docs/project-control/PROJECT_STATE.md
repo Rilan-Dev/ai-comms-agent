@@ -485,3 +485,8 @@ Gmail and Zoho OAuth callbacks now derive from the active request origin and the
 
 
 Current implementation update (2026-10-09): request-derived OAuth callbacks and multi-client Zoho settings are committed. See NEXT_ACTION.md for deployment. Tests, build, migrations, and live OAuth are unverified.
+
+
+## 2026-10-09 — Gmail/Zoho OAuth origin regression correction
+
+The callback helper previously used only `request.url`, which can expose an internal Next.js origin such as `https://localhost:3000` behind a reverse proxy. Source now resolves the public origin from validated `X-Forwarded-Host` and `X-Forwarded-Proto`, keeps callback/token-exchange URIs consistent, and returns callback navigation to the public origin. Gmail and Zoho Settings now warn if the server-generated callback origin differs from the browser origin. Reverse-proxy configuration and live OAuth remain unverified; see `NEXT_ACTION.md`, `ISSUES.md`, and `VERIFICATION_STATE.md` for the exact next step.
