@@ -93,3 +93,12 @@
 - Commits: Settings `95f6ba1e`, `40b7de7d`, `6923c521`, `71ba14f9`, `8758763c`; Login `c5a8531d`, `aa389dd4`; Setup `50bd0cb1`, `0b165d08`; tests `10e454d0`, `59d61f6c`, `dd9a83c2`; agent detail `4f2d49a1`, server fallback `b170e9ba`; inventory `665e1ba9`, `f3d8fdd7`; NEXT_ACTION `6724286e`, `40ec1a60`.
 - **Verification NOT RUN:** no tests, typecheck, build, browser, accessibility, or live API checks were executed. No PASS claimed.
 - **Next:** cross-route responsive/accessibility review and remaining secondary controls. Continue without CI/Vercel polling; route substantial functional defects to FIX-01 and runtime/deployment work to OPS-01.
+
+
+## 2026-10-09 — Canonical agent creation route correction
+
+- Source inspection found `apps/web/src/app/agents/new/page.tsx` was a standalone mock form: its Create button had no handler and its purpose field was not persisted. The canonical `apps/web/src/app/agents/agents-client.tsx` already implements organization-scoped creation, slug validation, notifications, and navigation to the created agent.
+- Replaced the broken duplicate form with a redirect to `/agents#new-agent` so users reach the real create flow instead of losing entered data into a nonfunctional button.
+- Added a static contract assertion that the route redirects to the canonical form anchor. Commits: redirect `1cec6ca9`, test `cb914148`, inventory `a5a67d2e`, NEXT_ACTION `43a2b1d8`.
+- **Verification NOT RUN:** tests/typecheck/build/browser checks. No PASS claimed.
+- **Next:** cross-route responsive/accessibility review and remaining secondary controls; do not wait for CI/Vercel.
