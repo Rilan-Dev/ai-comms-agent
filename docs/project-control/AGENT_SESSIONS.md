@@ -57,3 +57,16 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Added migration 0027 and source-level regression tests. Tests/build/typecheck/live migration and provider flows were not run.
 - Important operator constraint: current raw HTTP private IP cannot be used as the public OAuth callback. Use an HTTPS DNS domain; Google additionally rejects raw IP hosts. Exact callback URI must be registered in the provider console.
 - Next action remains deployment/configuration and end-to-end testing; see NEXT_ACTION.md.
+
+
+### DEV01-DRAFT-SEARCH-20261009 — 2026-10-09
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Recover repository state and continue the next authorized product-development action.
+- **Started from:** `main` before commit `8ccf1cb24039cb3bc745a51576a73ee68007e946`.
+- **Scope:** Continue connected-mailbox/Mail vertical slice; improve persisted draft discoverability; route unrelated defects to owning agents.
+- **Status:** ACTIVE
+- **Completed:** Added search to persisted Drafts UI across subject, body, recipients, and mailbox address; added a no-results state. Commit: `8ccf1cb24039cb3bc745a51576a73ee68007e946`.
+- **Pending:** Verify provider-synced drafts appear in the persisted list and continue Zoho/IMAP ingestion plus authorized agent-tool wiring.
+- **Blockers:** Tests and live provider verification were not run. Drafts page organization context and Inbox SQL search placeholders are routed to FIX-01.
+- **Handoff:** BKL-008 / EVT-DEV01-MAIL-ROUTING-20261009.
+- **Next action:** Trace provider sync persistence for Zoho and IMAP/SMTP and connect persisted mail/drafts to authorized agent tools; do not wait for CI/Vercel.
