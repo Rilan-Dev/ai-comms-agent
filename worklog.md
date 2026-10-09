@@ -1345,3 +1345,12 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Preserved the existing streamed chat API, conversation and agent switching, optimistic message flow, keyboard submission and visible error messages.
 - Added static UI contract assertions. Commits: `dee40027`, `10b87d65`; migration inventory `ad3bac37`; next action `a494342a`.
 - Verification remains NOT RUN. Next: AI & Voice, Knowledge, Activity.
+
+
+## 2026-10-09 — RabbitMQ email.sync producer/consumer source integration
+
+- Added `amqplib` dependency and a lockfile entry, then implemented `apps/worker/src/queues/email-sync-rabbitmq.ts`: durable `email.sync` main queue, durable 30-second retry queue dead-lettered back to main, durable DLQ, persistent messages, publisher confirms, correlation/idempotency metadata, prefetch=1, manual acknowledgements, bounded retry attempts, and confirmed retry/DLQ publication before acking the original.
+- Integrated a PostgreSQL-driven producer in `mailbox-sync-worker.ts` when `RABBITMQ_URL` is configured. The consumer dispatches account-specific jobs to the existing provider sync and PostgreSQL claim/idempotency path. When RabbitMQ is not configured, existing PostgreSQL polling remains the fallback.
+- Added `apps/worker/tests/email-sync-rabbitmq.test.ts` source assertions for topology, confirm publishing, ack/nack behavior, and worker integration.
+- Commits: `f53f1124`, `0741b7cf`, `7a350e49`, `7f9f0699`, `7f3fc212`, `02780cc8`, docs `8ddb87f2`, `15580b02`, `36d405a8`.
+- **Not verified:** tests/typecheck/build and frozen lockfile install were not run. No live RabbitMQ connection, reconnect behavior, queue delivery, retry/DLQ, Redis, IMAP, or PostgreSQL acceptance is claimed. Connection-loss auto-recovery remains a follow-up. Clara email indexing remains unimplemented; next inspect the supported Clara indexing boundary and implement a host adapter without direct Qdrant writes.
