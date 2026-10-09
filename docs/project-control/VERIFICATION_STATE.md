@@ -879,3 +879,10 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Regression tests cover internal `https://localhost:3000` plus public proxy headers, malformed forwarding headers, and Settings mismatch guidance.
 - **Not verified:** unit tests have not been executed; no typecheck/build, live reverse-proxy header check, migration deployment, or Google/Zoho OAuth flow has been run in this session. No PASS is claimed.
 - Required runtime action: configure proxy header overwrite/validation, deploy current main, access Settings through the intended public HTTPS domain, confirm exact displayed callback, then restart OAuth.
+
+## 2026-10-09 — AI configuration source evidence (not runtime acceptance)
+
+- Added organization-scoped AI runtime settings, provider settings APIs/UI, model catalog fetching, and Clara runtime database resolution.
+- Added migration `0028_organization_ai_runtime_settings.sql` and static regression assertions in `apps/web/tests/ai-runtime-settings.test.ts`.
+- Chat, voice, and worker knowledge-base selection now prefers the organization-scoped KB ID and retains `CLARA_KB_ID` as a compatibility fallback.
+- Tests, typecheck, builds, migration execution, live provider requests, chat streaming, voice transport, browser verification, and deployment were not executed. Runtime acceptance remains pending; no PASS is claimed.
