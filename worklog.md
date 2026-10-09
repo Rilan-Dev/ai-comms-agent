@@ -1337,3 +1337,11 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - The existing `apps/web/src/app/whatsapp/whatsapp-client.tsx` contains account management, credential submission, message polling and idempotent outbound queue actions, while `whatsapp/page.tsx` was still static at inspection. This is the immediate integration follow-up in current NEXT_ACTION; wire the existing client to authenticated organization context and do not imply the static button works.
 - Verification: no tests/typecheck/build/browser/runtime checks run; no PASS claimed.
 - Next: follow the latest `docs/project-control/NEXT_ACTION.md`, complete the WhatsApp route/client wiring, then continue remaining route groups. Route tenant-context bugs to FIX-01 and infrastructure to OPS-01.
+
+
+## 2026-10-09 — DEV-01 Chat UI continuation
+
+- Adapted the Clara Chat surface to compact Lovable visual styling and Lucide sparkle/send/voice icons.
+- Preserved the existing streamed chat API, conversation and agent switching, optimistic message flow, keyboard submission and visible error messages.
+- Added static UI contract assertions. Commits: `dee40027`, `10b87d65`; migration inventory `ad3bac37`; next action `a494342a`.
+- Verification remains NOT RUN. Next: AI & Voice, Knowledge, Activity.
