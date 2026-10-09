@@ -1578,3 +1578,16 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - **Commit:** `58730eb8b0fa46bfdd5fca581295209921582dbe` on `fix/migration-verification-phase4-contract`.
 - **Lockfile:** GitHub branch lockfile has exactly one `lockfileVersion` and one `importers` header. User's local working tree has a modified lockfile with two documents. Preserve local backups and reconcile the local file against the fetched PR branch before rerunning the focused test.
 - **Verification:** Fix committed; rerun focused Vitest is pending. No PASS claimed.
+
+### 2026-10-10 — FIX-01 worker/web test-contract correction
+
+- Reviewed the reported worker-suite failures and web email-action contract failures against the current branch source.
+- Standardized three worker contract tests on the worker package's existing Node test runner and replaced ESM-incompatible `__dirname` paths in six worker tests.
+- Applied bounded transient retries to provider capability discovery; corrected RFC 2047 encoded-word matching for IMAP header decoding.
+- Preserved informational message metadata for email provider events while keeping canonical organization/action/account/correlation values authoritative.
+- Corrected static contract coverage to ignore comments when checking Clara's PostgreSQL indexer for Qdrant/vector-reference writes.
+- Aligned tests with CRLF boundaries in IMAP literals, Zoho OAuth URLSearchParams refresh bodies and account-discovery requests, and the actual DB-repository/action-worker ownership of approval and stale-execution recovery.
+- Source commits were accepted on `fix/migration-verification-phase4-contract`; representative commits: `a45c5bea`, `c10ec941`, `d84ae1b6`, `3a56e8d7`, `4e1f5694`.
+- **Verification:** tests, typechecks, build, runtime integration, and deployment were not executed by the GitHub connector. No deployment success is claimed. Preserve `pnpm-lock.yaml` and the four local lockfile backup artifacts.
+- **Next:** pull/fetch the branch without overwriting local work; run the focused web email-action and migration tests, then the worker suite and web/worker typechecks. Correct any remaining concrete failures without weakening behavior or waiting for CI/Vercel.
+
