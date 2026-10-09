@@ -352,3 +352,15 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Additional narrow-screen correction (2026-10-09):** Chat's agent selector had been hidden below the `sm` breakpoint. It is now visible on mobile with a capped width and accessible name. Commits: `bc8e698f` and static assertion `ad7dc7f8`. Responsive/browser checks remain NOT RUN.
 
 - **Chat live-region refinement (2026-10-09):** Added polite announcements for thinking, response completion and response failure; visual thinking is hidden from assistive technology to avoid duplicate speech. Commits: `d9662da6`, assertions `529ed8b2`. Browser/screen-reader validation NOT RUN.
+
+### FIX01-PNPM-LOCKFILE-REGRESSION-20261009 — 2026-10-09
+- **Agent:** FIX-01 / Sentinel
+- **Invocation:** Diagnose repeated pnpm/Docker dependency resolution failure for missing `amqplib@2.2.0`; apply smallest correction and add regression protection.
+- **Started from:** User evidence at revisions through `1bbcfdb`; current main contains lockfile fix `27f04065`.
+- **Scope:** Lockfile root-cause recovery, focused static regression assertion, and durable project-control records only.
+- **Status:** HANDOFF
+- **Completed:** Confirmed current main has the normalized lockfile/package/snapshot records; added a focused lockfile integrity assertion to `apps/web/tests/migration-verification.test.ts` (commit `b9ba0c6738e32cf4ef8b670a4b65857a56eb50f2`); recorded cause and verification gap.
+- **Pending:** Pull latest main; run frozen install and typecheck. Do not claim pass before output is available.
+- **Blockers:** No dependency-equipped execution environment used during this session.
+- **Handoff:** None required; OPS-01 owns only any independent Docker daemon/base-image/network/build-host issue.
+- **Next action:** `pnpm install --frozen-lockfile` then `pnpm run typecheck`.
