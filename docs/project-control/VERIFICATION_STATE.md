@@ -1105,3 +1105,9 @@ source_review:
 - **Source analysis:** `pnpm-lock.yaml` had two concatenated YAML documents. The workspace document had the `apps/worker` importer but lacked the matching package and snapshot records.
 - **Correction:** Commit `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e` leaves one workspace lockfile document and restores those records.
 - **Verification status:** Source structure inspected; frozen install and typecheck NOT RUN after correction. Do not infer PASS.
+
+## 2026-10-09 — DEV-01 keyboard/status accessibility source follow-up
+
+- Source commits: Agent Detail modal/channel labels `d73099d6`; Chat log/status/composer `3d8ac3a3`; mobile sidebar focus containment `837b4b19`; static contract assertions `0a603b76`, `f8c3aefd`.
+- Intended source contracts: modal focus moves into the dialog, remains within the dialog on Tab/Shift+Tab, closes on Escape and restores focus; mobile navigation behaves similarly while open; chat exposes a labelled live log and polite status announcement; secondary channel selects have accessible names.
+- **Verification status: NOT RUN.** The source-contract tests were not executed. Typecheck, build, browser, keyboard-only, screen-reader, responsive viewport and live API checks were not run. No PASS claimed.
