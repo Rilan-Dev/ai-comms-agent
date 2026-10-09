@@ -26,6 +26,7 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(layout).toContain("md:ml-[248px]");
     expect(sidebar).toContain('href: "/agents"');
     expect(sidebar).toContain('href: "/mail/accounts"');
+    expect(sidebar).toContain("item.children?.some");
     expect(sidebar).toContain('href: "/ai-voice"');
     expect(sidebar).toContain("setMobileOpen(true)");
     expect(sidebar).toContain("/api/auth/logout");
