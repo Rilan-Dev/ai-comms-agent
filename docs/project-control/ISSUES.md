@@ -230,3 +230,15 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Security boundaries:** provider credentials are encrypted with `CREDENTIALS_MASTER_KEY`; plaintext keys are never returned by GET APIs; writes require `organization.update`; reads require active organization membership and `organization.read`.
 - **Not yet verified:** tests, typecheck, builds, migration application, live model catalog requests, live chat streaming, realtime voice transport, and deployment. No PASS is claimed.
 - **Remaining work:** continue the screen-by-screen configuration audit, cover voice-provider-specific credentials/transport readiness, add visible readiness checks and tests, then deploy and manually verify. Do not wait for CI/Vercel before continuing independent implementation.
+
+## ISS-012 — Gmail OAuth accounts remained pending because no mailbox sync consumer was running
+
+- **Opened:** 2026-10-09
+- **Severity:** blocker for connected-mailbox functionality
+- **Owner:** ChatGPT
+- **Status:** in_progress (source implementation committed; deployment/runtime verification pending)
+- **Symptoms:** OAuth callback persisted encrypted Gmail credentials but deliberately left the account `pending`. The worker process started provider-draft, WhatsApp, and scheduler loops, but had no Gmail mailbox sync loop. Consequently no initial import ran, `last_synced_at` stayed empty, and email content/drafts never reached PostgreSQL for AI use.
+- **Root causes fixed in source:** added a durable PostgreSQL-backed Gmail sync polling worker and wired it into worker startup/shutdown; added pagination for initial full mailbox import; persisted messages and threads idempotently; persisted refreshed OAuth access tokens back into encrypted account credentials; recovered expired Gmail history cursors by restarting a full paginated import; preserved an existing Google refresh token if a reconnect response omits one; added an organization-admin-only manual sync API and UI action; added automatic mailbox status refresh in the UI.
+- **Worker behavior:** polls pending/connected/error Gmail accounts, claims each account through `email_sync_states`, imports message details into `email_messages` and `email_threads`, discovers folders/labels, updates sync cursor/last-success state, marks successful mailboxes connected, and records retry/error state without exposing credentials.
+- **Remaining:** review/apply the complete migration chain through `0028`, deploy the web and worker images, verify a real mailbox transitions from pending to connected with a populated `last_synced_at`, confirm inbox/drafts are persisted, and validate refresh/revocation recovery. Tests/build/migration/live Google API execution have not been run from this environment; no runtime PASS is claimed.
+- **Operational dependency:** the worker must be running with the same PostgreSQL database and `CREDENTIALS_MASTER_KEY` as the web application. A web-only deployment cannot perform background synchronization.
