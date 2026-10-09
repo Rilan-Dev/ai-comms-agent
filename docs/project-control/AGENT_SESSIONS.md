@@ -396,3 +396,13 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Correction:** Rewrote the assertions to test the current least-privilege contract and grants rather than the superseded migration implementation.
 - **Commit:** 618c4cd57f0e7e433c4da5f50840cd6c8f612b9b.
 - **Verification:** Source only; focused migration Vitest NOT RUN.
+
+
+### FIX01-WEB-TYPECHECK-UI-DEPENDENCY-FOCUS-TEST-20261009
+- Agent: FIX-01 / Sentinel.
+- Status: HANDOFF — source corrected, local verification pending.
+- Invocation: User supplied web typecheck output with missing Lucide imports, focus trap TS18048 errors, and an undefined newAgentPage test variable.
+- Completed: Added Lucide to web dependencies and lockfile with published SRI; corrected strict indexed-access typing after the focusable-array guard in Agent Detail/sidebar; loaded the new-agent route in the migration test.
+- Commits: 8f09785a, 7b1136e6, 3e35c1f5, a9dcb8e5, 52a4e348.
+- Pending: Frozen install, focused migration Vitest, worker RabbitMQ contract test, and web/worker typechecks.
+- Next action: Pull latest main; install frozen; run focused tests and sequential typechecks. No PASS until actual execution output is available.
