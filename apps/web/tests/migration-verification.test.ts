@@ -342,23 +342,25 @@ describe("Phase 4 database security hardening migration", () => {
     expect(securitySql).not.toContain("auth.uid()");
   });
 
-  it("defines public membership helper wrappers over the Phase 3 private helpers", () => {
-    expect(securitySql).toContain("CREATE OR REPLACE FUNCTION public.is_active_organization_member");
-    expect(securitySql).toContain("private.is_active_organization_member(p_organization_id, p_user_id)");
-    expect(securitySql).toContain("CREATE OR REPLACE FUNCTION public.is_active_organization_admin_or_owner");
-    expect(securitySql).toContain("private.is_active_organization_admin_or_owner(p_organization_id, p_user_id)");
-  });
-
-  it("keeps policy wrappers SECURITY INVOKER", () => {
+  it("uses organization-scoped SECURITY INVOKER helpers over private membership checks", () => {
+    expect(securitySql).toContain("CREATE OR REPLACE FUNCTION public.can_access_organization");
+    expect(securitySql).toContain("CREATE OR REPLACE FUNCTION public.can_manage_organization");
+    expect(securitySql).toContain("private.is_active_organization_member");
+    expect(securitySql).toContain("private.is_active_organization_admin_or_owner");
     expect(securitySql).toContain("SECURITY INVOKER");
-    expect(securitySql).toContain("SELECT public.is_active_organization_member");
-    expect(securitySql).toContain("SELECT public.is_active_organization_admin_or_owner");
   });
 
-  it("revokes public execution of privileged membership helpers", () => {
-    expect(securitySql).toContain("REVOKE EXECUTE ON FUNCTION public.is_active_organization_member(uuid, uuid) FROM PUBLIC");
-    expect(securitySql).toContain("REVOKE EXECUTE ON FUNCTION public.is_active_organization_admin_or_owner(uuid, uuid) FROM PUBLIC");
-    expect(securitySql).toContain("GRANT EXECUTE ON FUNCTION public.is_active_organization_member(uuid, uuid) TO authenticated");
+  it("does not expose caller-selected user IDs through public membership helper functions", () => {
+    expect(securitySql).toContain("DROP FUNCTION IF EXISTS public.is_active_organization_member(uuid, uuid)");
+    expect(securitySql).toContain("DROP FUNCTION IF EXISTS public.is_active_organization_admin_or_owner(uuid, uuid)");
+    expect(securitySql).toContain("current_setting('app.user_id', true)");
+  });
+
+  it("revokes public execution of organization access helpers and grants authenticated execution", () => {
+    expect(securitySql).toContain("REVOKE EXECUTE ON FUNCTION public.can_access_organization(uuid) FROM PUBLIC");
+    expect(securitySql).toContain("REVOKE EXECUTE ON FUNCTION public.can_manage_organization(uuid) FROM PUBLIC");
+    expect(securitySql).toContain("GRANT EXECUTE ON FUNCTION public.can_access_organization(uuid) TO authenticated");
+    expect(securitySql).toContain("GRANT EXECUTE ON FUNCTION public.can_manage_organization(uuid) TO authenticated");
   });
 
   it("restricts secret-bearing tables to organization admins/owners", () => {
