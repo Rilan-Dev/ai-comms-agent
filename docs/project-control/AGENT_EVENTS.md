@@ -145,3 +145,13 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Owner:** OPS-01 for production migration/container rollout and Redis configuration; FIX-01 for source defects exposed by runtime evidence.
 - **Suggested next action:** Apply migrations through `0029` to the exact database used by both containers, roll out matching images, and inspect the specific Redis response. Preserve fail-closed locking.
 - **Related records:** ISS-015; BKL-011; commits `a4fab9df07deafa5fd47879217616e3cb6d1c03f`, `71616ac887f3efb79f90039245d6064c4662a77c`, `0fa3e751cae2e5105b212083e93a7cc87bf00468`.
+
+
+### EVT-FIX01-SCHEMA-REDIS-20261009 — 2026-10-09
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** ROUTE
+- **Summary:** User-reported live runtime failures show stale PostgreSQL schema for provider settings and mailbox sync, plus Redis lease command rejection. Added forward migration `0029`, surfaced bounded Redis error details, and added regression source.
+- **Impact:** cross-agent
+- **Owner:** OPS-01 for production migration/container rollout and Redis configuration; FIX-01 for source defects exposed by runtime evidence.
+- **Suggested next action:** Apply migrations through `0029` to the exact database used by both containers, roll out matching images, and inspect the specific Redis response. Preserve fail-closed locking.
+- **Related records:** ISS-015; BKL-011; commits `a4fab9df07deafa5fd47879217616e3cb6d1c03f`, `71616ac887f3efb79f90039245d6064c4662a77c`, `0fa3e751cae2e5105b212083e93a7cc87bf00468`.
