@@ -135,3 +135,11 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - Updated `docs/project-control/NEXT_ACTION.md` and `docs/architecture/INFRASTRUCTURE-INTEGRATION-STATUS.md` to reflect the additional source coverage.
 - Commits: test `d90d7756216609cd3ec772f1fc77b14089561ca6`; next action `6af2d9a0278f144981f72231ee6e9f87dda3500b`; architecture status `5adc59f407583356aba2a8cc6fc94429c3bc0a75`.
 - No tests, typechecks, or live IMAP checks were run. Continue implementation without waiting for CI/Vercel; next independent work remains the Clara Core indexing boundary and RabbitMQ queue integration.
+
+
+## 2026-10-09 — Email sync queue contract groundwork and Clara boundary audit
+
+- Added transport-neutral `email.sync` queue envelope builder and focused test source: `d4d9f9bcce45dfcc72d5a5fb8192d7564185844b`, `fac69129474eea539755d282ed053a32f588e27f`.
+- Envelope includes UUID validation, account/history idempotency key, correlation/message IDs, timestamps, bounded attempt count, producer/consumer and documented routing key.
+- Audited the local Clara boundary: retrieval exists, but no indexing method; local embed methods fail closed. Reference Clara Qdrant helpers are not a drop-in host API due to Clara-specific dependencies. Avoid direct Qdrant writes until a supported adapter boundary is defined.
+- RabbitMQ remains unimplemented. No test/typecheck/live broker run performed. Continue independent source implementation; do not wait for CI/Vercel.
