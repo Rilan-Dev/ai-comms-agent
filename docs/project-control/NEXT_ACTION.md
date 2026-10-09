@@ -6,6 +6,11 @@ The single exact next authorized action. Update this file on every commit.
 
 ## Current next action
 
+### Immediate user-reported Zoho OAuth defect
+
+The user reports that Zoho consent returns to the application but no mailbox appears, with `Zoho did not return the required token metadata.` Source correction committed in `apps/web/src/app/api/oauth/zoho/callback/route.ts` (`2cb976b`): token responses no longer require `api_domain`, regional Mail API hosts are selected from the signed/validated data-center setting, and token-exchange failures return actionable non-secret guidance. Static regression assertions committed (`53d96a0`). **Not tested and not live-verified.** Next, continue the queued UI migration and connected-mailbox integration work; when the user deploys/retries, capture the safe provider error outcome if the failure persists without sharing OAuth codes, state, verifier, or tokens.
+
+
 ```yaml
 actor: DEV-01 / Forge
 role: Product development under the existing project-owner development-first authorization
