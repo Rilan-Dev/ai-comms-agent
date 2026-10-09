@@ -35,6 +35,23 @@ function collectBody(part: any, mime: string): string {
   return "";
 }
 
+function htmlToText(html: string): string {
+  return html
+    .replace(/<(script|style|head|iframe|object|svg)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, " ")
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<\/(p|div|li|tr|h[1-6]|blockquote)\s*>/gi, "\n")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s+/g, "\n")
+    .trim();
+}
+
 function toMessage(raw: any): EmailMessage {
   const h = raw.payload?.headers;
   const labels = raw.labelIds ?? [];
@@ -54,7 +71,7 @@ function toMessage(raw: any): EmailMessage {
     cc_addresses: header(h, "Cc").split(",").map((v: string) => v.trim()).filter(Boolean),
     bcc_addresses: header(h, "Bcc").split(",").map((v: string) => v.trim()).filter(Boolean),
     subject: header(h, "Subject"),
-    text_body: collectBody(raw.payload, "text/plain") || raw.snippet || "",
+    text_body: collectBody(raw.payload, "text/plain") || htmlToText(collectBody(raw.payload, "text/html")) || raw.snippet || "",
     html_body: collectBody(raw.payload, "text/html") || undefined,
     snippet: raw.snippet ?? "",
     received_at: new Date(Number(raw.internalDate ?? Date.now())).toISOString(),
