@@ -240,3 +240,15 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** No dependency-equipped local/browser session was available through GitHub connector operations. Tests, typecheck, build and browser/runtime verification remain unexecuted.
 - **Handoff:** None. Route substantial source defects to FIX-01 and deployment/infrastructure issues to OPS-01.
 - **Next action:** Continue with the remaining Mail subpages under `docs/project-control/NEXT_ACTION.md`.
+
+### DEV01-LOVABLE-UI-MIGRATION-20261009 — 2026-10-09 (Mail screen group continuation)
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Continue the explicit owner-authorized Lovable UI migration.
+- **Started from:** Main after Inbox/Agents adaptation.
+- **Scope:** Visual adaptation of remaining Mail screens; preserve all API/auth/tenant/form validation and explicit approval behavior.
+- **Status:** ACTIVE
+- **Completed:** Adapted Accounts, Drafts, Threads, Compose and Approvals presentation; retained mailbox provider forms/actions, draft search/sync/edit/delete, draft save and approval request, explicit approve/reject decisions, and truthful empty/error states. Extended static UI contract coverage. Commits include `9da036ac`, `e84075eb`, `52be6d66`, `706b46eb`, `224146d0`, `a47edb72`, `737ab08e`, `e7bba79c`, `052eed69`, `c25fdf7c`.
+- **Pending:** WhatsApp, Automations, Schedules, Chat, AI & Voice, Knowledge, Activity, Audit, Operations and Settings visual adaptation.
+- **Blockers:** Tests/typecheck/build/browser/runtime checks remain unexecuted. BKL-012 routes a suspected Mail Approvals tenant-context defect to FIX-01.
+- **Handoff:** None for UI work; BKL-012 is a separate FIX-01 route.
+- **Next action:** Follow `docs/project-control/NEXT_ACTION.md`; do not wait for CI/Vercel.
