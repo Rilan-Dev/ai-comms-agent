@@ -27,3 +27,15 @@ test("agent detail preserves version, policy, channel, simulation and explicit d
   assert.match(detail, /setShowConfirm\("retire"\)/);
   assert.match(detail, /Version configuration must be valid JSON/);
 });
+
+const automationsPage = readFileSync(resolve(process.cwd(), "src/app/automations/page.tsx"), "utf8");
+const schedulesPage = readFileSync(resolve(process.cwd(), "src/app/schedules/page.tsx"), "utf8");
+
+test("automation and schedule pages use the authenticated organization context", () => {
+  for (const source of [automationsPage, schedulesPage]) {
+    assert.match(source, /getAuthenticatedAppContext/);
+    assert.match(source, /context\.organizationId/);
+    assert.match(source, /not_provisioned/);
+    assert.doesNotMatch(source, /ensureDevSeed|getDevOrgId/);
+  }
+});
