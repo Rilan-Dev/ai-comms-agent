@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { assertOAuthRedirectUriSecure, getOAuthRedirectUri } from "../src/lib/oauth/redirect-uri";
+import { assertOAuthRedirectUriSecure, getOAuthPublicOrigin, getOAuthRedirectUri } from "../src/lib/oauth/redirect-uri";
 const read = (path: string) => readFileSync(resolve(__dirname, path), "utf8");
 
 describe("Zoho OAuth settings and dynamic callback", () => {
@@ -11,6 +11,24 @@ describe("Zoho OAuth settings and dynamic callback", () => {
     expect(getOAuthRedirectUri(request, "zoho")).toBe("https://mail.example.com/api/oauth/zoho/callback");
     expect(() => assertOAuthRedirectUriSecure("https://mail.example.com/api/oauth/zoho/callback")).not.toThrow();
   });
+  it("prefers a validated public proxy origin over the internal localhost request URL", () => {
+    const request = new Request("https://localhost:3000/api/settings/gmail-oauth", {
+      headers: { "x-forwarded-host": "mail.example.com", "x-forwarded-proto": "https" },
+    });
+    expect(getOAuthPublicOrigin(request)).toBe("https://mail.example.com");
+    expect(getOAuthRedirectUri(request, "gmail")).toBe("https://mail.example.com/api/oauth/gmail/callback");
+    expect(getOAuthRedirectUri(request, "zoho")).toBe("https://mail.example.com/api/oauth/zoho/callback");
+  });
+
+  it("rejects missing or comma-separated proxy origin values instead of trusting a forwarding chain", () => {
+    expect(() => getOAuthPublicOrigin(new Request("https://localhost:3000", {
+      headers: { "x-forwarded-host": "mail.example.com, attacker.example" , "x-forwarded-proto": "https" },
+    }))).toThrow(/single validated/);
+    expect(() => getOAuthPublicOrigin(new Request("https://localhost:3000", {
+      headers: { "x-forwarded-host": "mail.example.com" },
+    }))).toThrow(/single validated/);
+  });
+
   it("allows localhost HTTP for development but rejects public HTTP and raw IP callback hosts", () => {
     expect(() => assertOAuthRedirectUriSecure("http://localhost:3000/api/oauth/gmail/callback")).not.toThrow();
     expect(() => assertOAuthRedirectUriSecure("http://100.72.192.28:3300/api/oauth/gmail/callback")).toThrow(/HTTPS/);
@@ -62,7 +80,7 @@ describe("Zoho OAuth settings and dynamic callback", () => {
   });
   it("derives callback origins from requests and requires HTTPS for public OAuth hosts", () => {
     const helper = read("../src/lib/oauth/redirect-uri.ts");
-    expect(helper).toContain("new URL(request.url)");
+    expect(helper).toContain("new URL(request.url)");\n    expect(helper).toContain("x-forwarded-host");\n    expect(helper).toContain("x-forwarded-proto");
     expect(helper).toContain("assertOAuthRedirectUriSecure");
     expect(helper).toContain("url.protocol !== \"https:\"");
     expect(helper).not.toContain("NEXT_PUBLIC_APP_URL");
