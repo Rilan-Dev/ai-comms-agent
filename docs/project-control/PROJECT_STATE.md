@@ -534,3 +534,7 @@ The latest logs show missing `email_messages.from_name` and Redis WRONGPASS; a q
 The WhatsApp route now mounts the existing API-backed client with authenticated organization context. The Connect WhatsApp Business CTA opens the encrypted Meta Cloud API credential form; account/message actions remain connected to existing APIs. Credentials are not represented as connected until Meta/webhook verification changes the persisted status. Commits: 58ba5541, 94878571, 49c94de3, 2cbe4ab9, 9eb3a168. Verification NOT RUN (tests/typecheck/build/browser/Meta/webhook).
 
 Next product UI action remains Knowledge UI with real organization-scoped persisted counts/status and working controls, then Activity → Audit → Operations → Settings/provider settings → Login/Setup → agent detail/version/history → responsive/accessibility review. OPS-01 still owns live schema/Redis runtime acceptance; FIX-01 owns separate substantial bugs. Do not wait for CI/Vercel.
+
+
+### 2026-10-09 — Inbox and sync cursor code review
+Additional source defects were found and corrected: migration 0030's PL/pgSQL block delimiter, inbox search parameter placeholders, and legacy JSONB-vs-text sync cursor incompatibility. Migration 0031 adds canonical `cursor_token`; worker reads/writes were aligned. Static regression assertions were added. Tests, migration execution, Redis AUTH, deployment, and actual email import remain unverified. OPS-01 owns live rollout and Redis correction; see ISS-016.
