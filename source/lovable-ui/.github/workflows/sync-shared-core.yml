@@ -1,0 +1,49 @@
+name: Propose shared-core sync to source app
+on:
+  push:
+    branches: [main]
+    paths: ["src/lib/ai-comms-shared/**"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: shared-core-sync-lovable-to-source
+  cancel-in-progress: false
+jobs:
+  propose-sync:
+    if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[shared-sync]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate cross-repository token
+        env:
+          SYNC_TOKEN: ${{ secrets.CROSS_REPO_SYNC_TOKEN }}
+        run: |
+          test -n "$SYNC_TOKEN" || { echo "::error::Set CROSS_REPO_SYNC_TOKEN in Actions secrets."; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          path: destination
+          ref: ${{ github.sha }}
+      - name: Checkout source repository
+        env:
+          SYNC_TOKEN: ${{ secrets.CROSS_REPO_SYNC_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${SYNC_TOKEN}@github.com/Rilan-Dev/ai-comms-agent.git" source
+          git -C source checkout main
+      - name: Mirror shared domain code into a review branch
+        env:
+          GH_TOKEN: ${{ secrets.CROSS_REPO_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -d destination/src/lib/ai-comms-shared
+          mkdir -p source/packages/ai-comms-shared
+          rsync -a --delete --exclude='README.md' destination/src/lib/ai-comms-shared/ source/packages/ai-comms-shared/
+          cd source
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="sync/lovable-to-source-${GITHUB_SHA::12}"
+          git checkout -b "$branch"
+          git add packages/ai-comms-shared
+          if git diff --cached --quiet; then echo "No shared-core changes to sync."; exit 0; fi
+          git commit -m "chore(sync): mirror shared core from Lovable [shared-sync]"
+          git push origin "$branch"
+          gh pr create --repo Rilan-Dev/ai-comms-agent --base main --head "$branch" --title "Sync shared core from Lovable app" --body "Automated review PR from destination commit $GITHUB_SHA. Only the shared domain-code directory is mirrored."
