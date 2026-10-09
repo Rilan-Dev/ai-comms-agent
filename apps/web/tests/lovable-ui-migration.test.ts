@@ -24,6 +24,9 @@ const chat = readFileSync(resolve(__dirname, "../src/app/chat/chat-client.tsx"),
 const voice = readFileSync(resolve(__dirname, "../src/app/ai-voice/voice-workspace.tsx"), "utf8");
 const knowledge = readFileSync(resolve(__dirname, "../src/app/knowledge/page.tsx"), "utf8");
 const knowledgeApi = readFileSync(resolve(__dirname, "../src/app/api/knowledge/route.ts"), "utf8");
+const activity = readFileSync(resolve(__dirname, "../src/app/activity/page.tsx"), "utf8");
+const audit = readFileSync(resolve(__dirname, "../src/app/audit/page.tsx"), "utf8");
+const auditApi = readFileSync(resolve(__dirname, "../src/app/api/audit/route.ts"), "utf8");
 
 describe("Lovable Agentic AI Studio UI adaptation", () => {
   it("uses the Lovable semantic palette and typography without replacing Tailwind tokens", () => {
@@ -186,6 +189,27 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(knowledgeApi).toContain("knowledge_chunks");
     expect(knowledgeApi).toContain("recentDocuments");
   });
+  it("adapts Activity to the Lovable timeline while retaining persisted organization events and filters", () => {
+    expect(activity).toContain('fetch("/api/audit?limit=50"');
+    expect(activity).toContain("No persisted activity yet");
+    expect(activity).toContain("aria-label");
+    expect(activity).toContain("eventFilter");
+    expect(activity).toContain("decisionFilter");
+    expect(activity).toContain("role=\"alert\"");
+    expect(activity).toContain('from "lucide-react"');
+  });
+
+  it("adapts Audit with live organization-scoped filters and preserves authorized exports", () => {
+    expect(audit).toContain('fetch("/api/audit?"');
+    expect(audit).toContain('"/api/audit/export?"');
+    expect(audit).toContain("format=csv");
+    expect(audit).toContain("format=json");
+    expect(audit).toContain("AbortController");
+    expect(audit).toContain("No audit events recorded yet");
+    expect(auditApi).toContain('permission: "organization.read"');
+    expect(auditApi).toContain("organization_id");
+  });
+
   it("adapts realtime voice visuals without changing Clara-owned session and safety boundaries", () => {
     expect(voice).toContain('from "lucide-react"');
     expect(voice).toContain("AudioLines");
