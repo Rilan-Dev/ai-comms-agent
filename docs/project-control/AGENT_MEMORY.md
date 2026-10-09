@@ -190,3 +190,9 @@ If shared memory conflicts with current repository state or current requirements
 - When restyling settings, preserve API contracts and all security cues: API keys/client secrets stay password inputs, saved secrets remain hidden, and OAuth callback-origin warnings/data-center choices must remain visible. Do not claim successful provider connectivity from a saved configuration alone.
 - Prefer the shared compact geometry and semantic border/background tokens across provider subcomponents; keep existing edit/delete confirmations and role/membership safeguards.
 - Related commits: `25d17e19`, `ecd6f403`, `68cb6fba`, `e324defd`, contract assertions `399b60a6`.
+
+
+### DEV-01 / Forge — Avoid duplicate agent creation flows (2026-10-09)
+- Before adapting secondary routes, verify every visible CTA has a real action. If an orphan create route duplicates an existing canonical flow but does not persist data, redirect to the canonical form rather than maintaining two divergent implementations.
+- Keep organization context, slug validation, persistence and initial version/policy creation in the existing Agents workspace.
+- Related commits: `1cec6ca9` redirect, `cb914148` static contract.
