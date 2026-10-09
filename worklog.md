@@ -1164,3 +1164,14 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - The route now maps hostname-resolution failures to an actionable `provider_connection_failed` response (HTTP 502) and provides clearer connection guidance for common network failures. It does not log or return mailbox credentials.
 - Route fix commit: `2b108c245d29abdbe1c660bc007c9a4aed9d1677`.
 - No CI/Vercel wait and no runtime PASS claimed.
+
+
+## 2026-10-09 — Gmail/Zoho callback public-origin correction
+
+- **Owner:** ChatGPT
+- **Symptom:** The user reports that Gmail OAuth Settings reverted to `https://localhost:3000/api/oauth/gmail/callback` despite configuring the real callback domain in Google Cloud Console.
+- **Root cause:** The shared helper only inspected `request.url`, which can contain the internal Next.js origin behind a reverse proxy.
+- **Implementation:** `getOAuthPublicOrigin()` now prefers a single `X-Forwarded-Host` and `X-Forwarded-Proto` pair, rejects incomplete or comma-separated forwarding values, and builds Gmail/Zoho callback URIs from that public origin. Both OAuth callbacks also return users to the public origin after success and use a safe fallback for error redirects. Added tests for the internal-localhost/public-domain proxy scenario and malformed forwarding chains. Documented the trusted-proxy requirements and next deployment steps.
+- **Commits:** `3e106cfd` helper; `64e1e6d6` Gmail callback redirect; `448c022e` Zoho callback redirect; `34821bee` regression tests.
+- **Verification:** Tests, typecheck/build, migration application, live proxy headers, and Google OAuth were not run here. No runtime PASS is claimed.
+- **Next:** Ensure the reverse proxy validates Host and overwrites `X-Forwarded-Host` / `X-Forwarded-Proto`; deploy current main; confirm the displayed callbacks use the public HTTPS domain; restart OAuth.
