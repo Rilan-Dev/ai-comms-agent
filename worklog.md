@@ -1190,3 +1190,17 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - **File changed:** `supabase/migrations/0020_email_credential_legacy_compat.sql`.
 - **Commit:** `536f8aff660bbff13b55c28b09dd673ea86378b2`.
 - No CI/Vercel wait was performed. No migration or OAuth success is claimed until the user applies the migration and retries Gmail OAuth.
+
+## 2026-10-09 — Organization-scoped AI configuration and Clara runtime wiring
+
+- **Owner:** ChatGPT
+- **Scope:** User-requested configuration-completeness correction after `POST /api/chat/stream` reported `CLARA_KB_ID is not configured`.
+- Added forward-only migration `0028_organization_ai_runtime_settings.sql` for per-organization Clara KB ID, default chat provider, realtime voice provider/model/voice, temperature, max tokens, and system prompt.
+- Added Settings UI for AI runtime settings and per-provider credential/model configuration.
+- Added organization-authorized settings APIs. Chat provider credentials are envelope-encrypted with the server-only `CREDENTIALS_MASTER_KEY`; API responses expose only whether a key exists, never its plaintext. OpenAI and Gemini model catalogs are fetched server-side; Sarvam uses the application's supported model entry.
+- Updated Clara runtime resolution to load saved organization provider/model and generation settings, decrypting the selected provider key server-side. Chat, voice session/turn, and worker execution now resolve the knowledge-base ID from organization settings first and retain `CLARA_KB_ID` as a compatibility fallback.
+- Added static regression coverage in `apps/web/tests/ai-runtime-settings.test.ts`.
+- **Source commits:** `86cc22fd`, `73d7fda5`, `4e5a54be`, `34ebd33f`, `e4f778c3`, `39351cf7`, `5d48d5ff`, `a4334223`, `709cef99`, `11ecaa2e`, `d8ef6f7e`, `7a3c9041`, `4faf94bd`, `bffd2f62`.
+- **Verification:** tests/typecheck/build/migration/live provider requests/chat streaming/voice transport/deployment were not run. No PASS is claimed.
+- **Important operational dependency:** deploy the latest `main` and apply migrations through `0028` using the documented self-hosted deployment flow before expecting the new Settings API to be available.
+- **Remaining scope:** continue the screen-wise configuration audit, including voice-specific credentials/transport support and a clear readiness view; do not wait for CI/Vercel while implementing independent work.
