@@ -172,3 +172,10 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - Commits: `239a38c936629486e3bfd1be2908f2d74e06193c`, `130c810e44f284f4e9b5390a27b3e2b1fa8a2a1a`, `c7bc510e3aedfa266713c48340cc2d0c3bcf9a3b`, `eeb717c5c4e0dbe79f493631e8b2c1024592776f`, `3ccad8c19694500961668fdfb60a8e41652a4af4`.
 - No tests/typecheck/build/browser/runtime checks were run; the contract test is source-only evidence at this point.
 - **Next:** Continue adapting Agents and Mail subpages, then remaining routes; preserve functionality and validation. Do not wait for CI/Vercel.
+
+
+### DEV01-LOVABLE-UI-MIGRATION-20261009 — Agents list alignment
+- Replaced decorative text glyphs on agent list and empty state with inline SVG sparkle iconography from the Lovable design language. Preserved existing agent POST flow, slugification/validation, notification feedback, status filtering and navigation.
+- Added test assertions for the SVG mark and preserved create flow in `apps/web/tests/lovable-ui-migration.test.ts`.
+- Commits: `0a79f7f3a9321d30dbc4d01fa5c611c1356d5021`, `2c949dc92d524f484d5e689603afd26106f9d801`.
+- Tests/typecheck/build/browser/runtime checks remain unexecuted. Continue with Mail subpages and remaining routes.
