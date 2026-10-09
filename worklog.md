@@ -1318,3 +1318,14 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - UI commits include `9de78b0f`, `c9641d9d`, `9da036ac`, `0e70c42e`, `e84075eb`, `52be6d66`, `706b46eb`, `295b038f`, `224146d0`, `a47edb72`, `737ab08e`, `c25fdf7c`. NEXT_ACTION update: `6325c6e091c38c7cf65d841622402b697fd4c677`.
 - Verification: source writes only; tests/typecheck/build/browser/runtime checks not executed.
 - Next: adapt WhatsApp, Automations, Schedules, Chat, AI & Voice, Knowledge, Activity, Audit, Operations and Settings. Continue independently without CI/Vercel polling; route bugs to FIX-01 and infrastructure to OPS-01.
+
+
+## 2026-10-09 — DEV-01 / Forge — Lovable UI continuation
+
+- Recovered active project state from GitHub and inspected the Lovable source design, migration plan, current NEXT_ACTION and prior UI work records.
+- Added exhaustive route-level status checklist at `docs/project-control/LOVABLE_UI_MIGRATION.md` so remaining UI work is explicit and not inferred from global CSS.
+- Adapted WhatsApp, Automations and Schedules visual presentation to Lovable compact neutral surfaces; added Lucide iconography to WhatsApp. Existing API contracts, encrypted secret handling, idempotent queueing, create/archive controls and recurrence/timezone controls were retained.
+- Added static contract assertions in `apps/web/tests/lovable-ui-migration.test.ts`.
+- Source commits: `3cf94c7f`, `c2dd6e6e`, `740b70d2`, test `2f1eecd5`, inventory `70738aa2` / `87cc0976`, next-action updates `056272db` / `7fc54b32`.
+- Tests/typecheck/build/browser/runtime verification NOT RUN. No PASS claimed.
+- Next: Chat → AI & Voice → Knowledge → Activity → Audit → Operations → Settings/provider settings → Login/Setup → agent detail/version/history → cross-route responsive/accessibility review. FIX-01 retains BKL-012; OPS-01 retains BKL-011.
