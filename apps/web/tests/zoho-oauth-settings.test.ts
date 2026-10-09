@@ -67,6 +67,7 @@ describe("Zoho OAuth settings and dynamic callback", () => {
   it("exposes Zoho OAuth configuration and selection in Settings and Mail", () => {
     expect(read("../src/app/settings/page.tsx")).toContain("<ZohoOAuthSettings");
     expect(read("../src/app/settings/zoho-oauth-settings.tsx")).toContain("Add OAuth client");
+    expect(read("../src/app/settings/zoho-oauth-settings.tsx")).toContain("X-Forwarded-Host");
     const accounts = read("../src/app/mail/accounts/email-accounts-client.tsx");
     expect(accounts).toContain("zohoConfigs.map");
     expect(accounts).toContain("selectedZohoConfig");
