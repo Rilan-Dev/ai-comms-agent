@@ -397,4 +397,19 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(setup).toContain('role="alert"');
   });
 
+
+  it("provides keyboard-managed confirmation dialogs and accessible chat status", () => {
+    expect(agentDetail).toContain("useRef<HTMLDivElement>(null)");
+    expect(agentDetail).toContain('event.key === "Escape"');
+    expect(agentDetail).toContain('event.key !== "Tab"');
+    expect(agentDetail).toContain("previousFocusRef.current?.focus()");
+    expect(agentDetail).toContain('aria-label="Email account to connect"');
+    expect(agentDetail).toContain('aria-label="Role for selected email account"');
+    expect(agentDetail).toContain('aria-label="WhatsApp account to connect"');
+    expect(agentDetail).toContain("overflow-y-auto bg-black/40");
+    expect(chat).toContain('role="log" aria-label="Conversation messages"');
+    expect(chat).toContain('role="status" aria-live="polite"');
+    expect(chat).toContain('aria-label="Message to Clara"');
+  });
+
 });
