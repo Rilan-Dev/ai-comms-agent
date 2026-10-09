@@ -1,12 +1,13 @@
-import { ensureDevSeed, getDevOrgId } from "@/lib/identity/repository";
+import { getAuthenticatedAppContext } from "@/lib/identity/repository";
+import { headers } from "next/headers";
 import { ComposeClient } from "./compose-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function ComposePage() {
   if (!process.env.DATABASE_URL) return <State title="Compose unavailable" body="PostgreSQL is required for persisted drafts." />;
-  await ensureDevSeed();
-  const organizationId = getDevOrgId();
+  const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: await headers() }));
+  const organizationId = context?.organizationId;
   if (!organizationId) return <State title="Compose unavailable" body="The current organization could not be resolved." />;
   return <ComposeClient organizationId={organizationId} />;
 }
