@@ -28,14 +28,15 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "d6be733ab85d5fa48df67b6b4ae7705c58bf1084"
-current_commit_short: "d6be733a"
-current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/d6be733ab85d5fa48df67b6b4ae7705c58bf1084"
+current_commit: "e1f1e98e922245f5ad4f08060afc4030a01cff7d"
+current_commit_short: "e1f1e98e"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/e1f1e98e922245f5ad4f08060afc4030a01cff7d"
 last_verified_commit: "pending_runtime_acceptance"
 
 open_blockers:
   - "Runtime verification still pending for the PostgreSQL migration set; development continuation is explicitly authorized"
   - "ISS-011: AI provider/Clara configuration completeness implementation is in progress; migration 0028 and live chat/voice/provider validation are pending"
+  - "ISS-012: Gmail OAuth mailbox sync worker and initial import are implemented on main; web/worker deployment and live mailbox sync verification are pending"
 open_risks:
   - "Clara manifest has 2 SHA typos (Clara library issue, not file mutations — see CLARA-INTEGRATION.md §8a)"
   - "No managed database dependency; operator must provide PostgreSQL 15+ for deployment"
@@ -45,8 +46,8 @@ required_decision:
 
 next_action:
   actor: "ChatGPT"
-  action: "Continue screen-by-screen AI/Clara configuration completion and apply migration 0028 along with pending migrations 0024–0027"
-  then: "Deploy, configure organization KB/provider credentials through Settings, verify model catalog and chat/voice paths, then continue the remaining provider and knowledge configuration audit without waiting for CI/Vercel"
+  action: "Continue connected-mailbox completion for Gmail/Zoho/IMAP and wire persisted mail/drafts into inbox and authorized agent tools"
+  then: "Deploy both web and worker, apply migrations through 0028, verify Gmail status and initial mail/draft import, then continue the remaining AI/knowledge/voice/WhatsApp configuration audit without waiting for CI/Vercel"
 
 phase2_summary:
   status: "implementation_complete_awaiting_review"
