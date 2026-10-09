@@ -1518,3 +1518,10 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Added accessible labels to automation name/agent/trigger/action controls and schedule name/agent controls; normalized inconsistent rounded-xl geometry in schedule controls (b46ac6ab, ba4ebdcd).
 - Agent detail cross-route review found and fixed the Activity icon alias mismatch and added aria-pressed to horizontal section controls (fbc9a8db); static contract source added (6640a8a2).
 - Tests/typecheck/build/browser and live multi-tenant acceptance were not run. Continue reviewing the remaining route surfaces and keep the project-control inventory current.
+
+
+## 2026-10-09 — Cross-route geometry normalization
+
+- Normalized remaining large-radius classes across migrated workspace routes to the compact Lovable geometry; status pills remain full-round. Added cross-route source-contract assertions (`b328373c`).
+- Recorded the manual responsive/accessibility pass as still pending and advanced the exact next action to review remaining secondary controls (`80af055c`).
+- Tests/typecheck/build/browser/accessibility were not run. No PASS claimed.
