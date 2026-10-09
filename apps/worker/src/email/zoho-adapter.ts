@@ -169,9 +169,29 @@ export class ZohoAdapter implements EmailProvider {
 
   async sync(state: SyncState): Promise<SyncResult> {
     const folders = await this.listFolders();
-    // Zoho's message list API uses folder-local offsets. Keep the folder and
-    // offset in the durable cursor so initial imports progress over many worker
-    // ticks rather than silently stopping at the first page.
+    const added: SyncResult["added"] = [];
+    const updated: SyncResult["updated"] = [];
+    const pageSize = 100;
+
+    if (state.sync_mode === "incremental" && state.history_token === "zoho-full-v1") {
+      // Zoho's REST API does not expose a stable mailbox-wide history cursor.
+      // Refresh the newest page in each folder on the scheduled poll; the
+      // PostgreSQL upsert key makes this bounded refresh idempotent.
+      for (const folder of folders) {
+        const page = await this.listMessages(folder.provider_folder_id, { limit: pageSize, cursor: "1" });
+        for (const message of page) {
+          const id = message.provider_message_id || message.id;
+          if (id) updated.push({ message_id: id, provider_message_id: id });
+        }
+      }
+      return {
+        added, updated, deleted: [],
+        new_state: { ...state, cursor: undefined, history_token: "zoho-full-v1", sync_mode: "incremental", last_sync_at: new Date().toISOString() },
+      };
+    }
+
+    // Keep the folder-local offset in the durable cursor, so large initial
+    // mailboxes drain over multiple worker ticks rather than stopping at page 1.
     const [folderIndexRaw, startRaw] = (state.cursor ?? "0:1").split(":");
     let folderIndex = Number(folderIndexRaw);
     let start = Number(startRaw);
@@ -179,20 +199,13 @@ export class ZohoAdapter implements EmailProvider {
       folderIndex = 0;
       start = 1;
     }
-    const added: SyncResult["added"] = [];
-    const updated: SyncResult["updated"] = [];
-    const pageSize = 100;
     let pagesRead = 0;
     while (folderIndex < folders.length && pagesRead < 2) {
       const folder = folders[folderIndex]!;
       const page = await this.listMessages(folder.provider_folder_id, { limit: pageSize, cursor: String(start) });
       for (const message of page) {
         const id = message.provider_message_id || message.id;
-        if (!id) continue;
-        // Upserts in the PostgreSQL worker make repeat scans idempotent. During
-        // initial import all returned IDs are considered added; later scans
-        // report them as updated so changed flags/content are refreshed.
-        (state.sync_mode === "initial" ? added : updated).push({ message_id: id, provider_message_id: id });
+        if (id) added.push({ message_id: id, provider_message_id: id });
       }
       pagesRead += 1;
       if (page.length >= pageSize) {
@@ -204,13 +217,11 @@ export class ZohoAdapter implements EmailProvider {
     }
     const hasMore = folderIndex < folders.length;
     return {
-      added,
-      updated,
-      deleted: [],
+      added, updated, deleted: [],
       new_state: {
         ...state,
         cursor: hasMore ? `${folderIndex}:${start}` : undefined,
-        history_token: hasMore ? state.history_token : (state.history_token ?? "zoho-full-v1"),
+        history_token: hasMore ? state.history_token : "zoho-full-v1",
         sync_mode: hasMore ? "initial" : "incremental",
         last_sync_at: new Date().toISOString(),
       },
