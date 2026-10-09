@@ -96,3 +96,14 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Evidence:** GitHub accepted source commit `f7df46f3d0d90bf1c0aae3407b448bd83aeca855`. No focused test, typecheck, fake-server run, live IMAP session, database sync, or chat verification was executed.
 - **Limitations:** This improves octet-boundary handling but does not establish complete IMAP grammar compliance. Literal continuation parsing, unsolicited responses, BODYSTRUCTURE/MIME, charsets, and server-specific variants still need tests. Existing line reader remains used for greeting/login/SMTP.
 - **Next action:** Add fake IMAP server tests covering a literal containing CRLF, a UTF-8 body, fragmented literal delivery, multiple literals in one response, and oversized-literal rejection; then run adapter tests and worker/web typechecks when dependencies are available.
+
+
+### DEV01-IMAP-LITERAL-TESTS-20261009 / 2026-10-09
+- **Task:** Add regression coverage for the literal-aware IMAP response reader.
+- **Authorization:** Connected-mailbox development-first action.
+- **Started from:** Literal reader source commit `f7df46f3d0d90bf1c0aae3407b448bd83aeca855`.
+- **Actions:** Exported the reader for module-level testing and added tests for CRLF inside a body literal, multiple literals in one FETCH response, retaining the subsequent tagged completion response, and rejection of a literal larger than 50 MiB.
+- **Files/code:** `apps/worker/src/email/imap-smtp-adapter.ts`, `apps/worker/tests/imap-smtp-adapter.test.ts`.
+- **Commits:** `d4a5c6589f2e28a00277a725cf6c628ea8b56eb5`, `4fda99f00b283c9ef68cd294837c8ba3c30a678e`.
+- **Evidence:** GitHub accepted both source and test commits. Test source has not been executed; no typecheck or server session was run.
+- **Next action:** Execute worker IMAP/Zoho tests and worker/web typechecks where pnpm dependencies are available; fix any failures. Add fragmented network delivery coverage and validate against a real IMAP server when credentials/runtime are available.
