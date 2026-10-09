@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isCurrentVoiceSequence } from "@ai-comms-agent/shared";
+import { AudioLines, Mic, PhoneOff, Send, ShieldCheck } from "lucide-react";
 
 type Agent = { id: string; name: string; status: string };
 type VoiceSession = { id: string; status: string; provider?: string | null; model?: string | null };
@@ -166,7 +167,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
               interruption and reconnect remain Clara-owned.
             </p>
           </div>
-          <label className="rounded-xl border bg-background px-3 py-2 text-sm">
+          <label className="rounded-md border bg-background px-3 py-2 text-sm">
             <span className="mr-2 text-xs text-muted-foreground">Agent</span>
             <select value={agentId} onChange={(e) => setAgentId(e.target.value)} className="bg-transparent font-semibold outline-none">
               {agents.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
@@ -175,10 +176,10 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
         </header>
 
         <section className="mt-8 grid gap-5 md:grid-cols-[1.25fr_.75fr]">
-          <div className="rounded-[2rem] border bg-background p-7 shadow-sm">
+          <div className="rounded-md border bg-background p-7 shadow-sm">
             <div className="grid min-h-[360px] place-items-center text-center">
               <div className="w-full max-w-xl">
-                <div className="mx-auto grid h-24 w-24 place-items-center rounded-full border-8 border-primary/10 bg-primary/5 text-3xl">◉</div>
+                <div className="mx-auto grid h-24 w-24 place-items-center rounded-full border-8 border-primary/10 bg-primary/5 text-primary"><AudioLines size={38} aria-hidden="true" /></div>
                 <h2 className="mt-6 text-xl font-semibold">
                   {session?.status === "active" ? "Voice session active" : session?.status === "ended" ? "Session ended" : "Ready to connect"}
                 </h2>
@@ -248,8 +249,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                 <Row label="Transport" value={transport?.sessionEndpoint ? "Resolved" : "Not resolved"} />
               </dl>
             </div>
-            <div className="rounded-2xl border bg-background p-5">
-              <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Safety boundary</p>
+            <div className="rounded-md border bg-background p-5">
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground"><ShieldCheck size={14} /> Safety boundary</p>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
                 Voice-originated business actions continue through the same authorization and approval boundary as chat.
                 The browser never receives provider API keys.
