@@ -8,6 +8,8 @@ import type { EmailCredentials, EmailMessage, SyncState } from "@ai-comms-agent/
 import { GmailAdapter } from "./gmail-adapter";
 import { ZohoAdapter } from "./zoho-adapter";
 import { ImapSmtpAdapter } from "./imap-smtp-adapter";
+import { randomUUID } from "node:crypto";
+import { acquireRedisLease, releaseRedisLease } from "./redis-lease";
 import type { EmailProvider } from "@ai-comms-agent/shared";
 
 type Candidate = {
@@ -276,6 +278,28 @@ export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ att
     return { attempted: 0, succeeded: 0 };
   }
   processing = true;
+  const redisUrl = process.env.REDIS_URL?.trim();
+  const leaseToken = randomUUID();
+  let redisLeaseAcquired = false;
+  if (redisUrl) {
+    try {
+      redisLeaseAcquired = await acquireRedisLease(redisUrl, "ai-comms-agent:mailbox-sync:batch", leaseToken, 45_000);
+    } catch (error) {
+      processing = false;
+      console.error(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: "error",
+        service: "worker.email-sync",
+        message: "Redis mailbox-sync lease unavailable; batch skipped to avoid uncoordinated multi-worker polling",
+        reason: error instanceof Error ? error.message : "Redis connection failed",
+      }));
+      return { attempted: 0, succeeded: 0 };
+    }
+    if (!redisLeaseAcquired) {
+      processing = false;
+      return { attempted: 0, succeeded: 0 };
+    }
+  }
   let attempted = 0;
   let succeeded = 0;
   try {
@@ -305,6 +329,17 @@ export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ att
     }
     return { attempted, succeeded };
   } finally {
+    if (redisLeaseAcquired && redisUrl) {
+      await releaseRedisLease(redisUrl, "ai-comms-agent:mailbox-sync:batch", leaseToken).catch((error) => {
+        console.error(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level: "error",
+          service: "worker.email-sync",
+          message: "Redis mailbox-sync lease release failed; TTL will recover it",
+          reason: error instanceof Error ? error.message : "Redis release failed",
+        }));
+      });
+    }
     processing = false;
   }
 }
