@@ -109,7 +109,7 @@ imap_literal_reader:
   status: source_changed_not_tested
   commit: "f7df46f3d0d90bf1c0aae3407b448bd83aeca855"
   result: "IMAP socket reader now buffers raw bytes and consumes literal payloads by declared octet length with a 50 MiB per-literal cap; LIST and command loops use literal-aware response reads"
-  pending: "Regression test source added in commits d4a5c6589f2e28a00277a725cf6c628ea8b56eb5 and 4fda99f00b283c9ef68cd294837c8ba3c30a678e; tests remain unexecuted; worker/web typechecks and real-server validation pending"
+  pending: "Regression test source added in commits d4a5c6589f2e28a00277a725cf6c628ea8b56eb5 and b20c6423c6ded123a49ff6301a40de6385832a26; tests remain unexecuted; worker/web typechecks and real-server validation pending"
 
 # ============================================================
 # ARCHITECT ACCEPTANCE (performed by ChatGPT)
