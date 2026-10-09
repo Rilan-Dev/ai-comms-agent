@@ -50,10 +50,7 @@ A screen is not "migrated" merely because global CSS tokens exist. Mark it ADAPT
 
 ## Exact remaining screen queue
 
-1. Finish Settings and provider-settings subsections (visual consistency, accessible error/success states, responsive layout and focused tests).
-2. Login/setup visual consistency.
-3. Agent detail, version/history and secondary controls.
-4. Cross-route responsive/icon/accessibility review and focused test coverage.
+1. Cross-route responsive/icon/accessibility review and focused test coverage.
 
 Backend follow-up: `apps/worker/src/knowledge/email-knowledge-indexer.ts` is a host adapter for the existing PostgreSQL knowledge-document/chunk contract and is called after persisted email-message writes. It avoids direct Qdrant writes and assigns email knowledge to the organization-shared scope. `packages/clara-core/src/runtime.ts` now limits unassigned-agent queries to shared documents and agent-specific queries to shared plus matching-agent documents. This is source-level only; semantic embeddings/vector index integration, provider/database runtime acceptance, and tests remain pending.
 
@@ -112,3 +109,9 @@ This is an explicit inventory, not a claim that every listed page is already mig
 - Preserved organization-scoped server reads, JSON object validation, deploy/pause confirmation, policy/channel APIs, and agent-specific audit loading. Added static source-contract assertions.
 - Found a pre-existing functional gap in `apps/web/src/app/agents/new/page.tsx`: the Create agent button only enables based on name and has no submit/API handler. The actual working create flow is in `agents-client.tsx`; do not treat the standalone page as functionally complete. Dedicated fix/redirect remains next backlog item.
 - Tests/typecheck/build/browser/accessibility/runtime checks were not run.
+
+
+## 2026-10-09 — Canonical agent creation route
+
+- Removed the standalone non-persisting `/agents/new` form and redirected it to `/agents#new-agent`, the existing organization-scoped creation flow with slug validation, persistence, notifications and transactional initial version/policy setup. This avoids maintaining two divergent creation flows.
+- Added a static contract assertion for the redirect and canonical form anchor. Tests/typecheck/build/browser checks were not run.
