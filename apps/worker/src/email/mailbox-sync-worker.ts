@@ -176,6 +176,18 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       sync_mode: claimed.rows[0].cursor || !claimed.rows[0].history_id ? "initial" : "incremental",
     };
     const result = await adapter.sync(state);
+    const refreshedCredentials = adapter.getCredentialSnapshot();
+    if (
+      refreshedCredentials.access_token !== credentials.access_token ||
+      refreshedCredentials.expires_at !== credentials.expires_at
+    ) {
+      await accounts.saveCredentials(
+        candidate.id,
+        "oauth_token",
+        refreshedCredentials,
+        parseCredentialsMasterKey(masterKey),
+      );
+    }
     const messageIds = new Set([
       ...result.added.map((item) => item.provider_message_id),
       ...result.updated.map((item) => item.provider_message_id),
