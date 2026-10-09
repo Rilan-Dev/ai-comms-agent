@@ -364,3 +364,13 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** No dependency-equipped execution environment used during this session.
 - **Handoff:** None required; OPS-01 owns only any independent Docker daemon/base-image/network/build-host issue.
 - **Next action:** `pnpm install --frozen-lockfile` then `pnpm run typecheck`.
+
+### FIX01-PNPM-TARBALL-INTEGRITY-20261009 — 2026-10-09
+- **Agent:** FIX-01 / Sentinel
+- **Status:** HANDOFF — source corrected, local verification pending
+- **Invocation:** Continue lockfile root-cause analysis after user supplied `ERR_PNPM_MISSING_TARBALL_INTEGRITY` for `amqplib@2.2.0`.
+- **Scope:** One lockfile resolution field, focused static regression assertion, and incident records only.
+- **Completed:** Added published SHA-512 integrity metadata to the amqplib lock entry; updated the existing lockfile regression test to require the field on that exact entry.
+- **Commits:** `644d5781`, `21837f32`, `d115e1b0`.
+- **Pending:** Frozen install, typecheck, and focused Vitest execution.
+- **Next action:** Pull latest main; run `pnpm install --frozen-lockfile`; if successful, run `pnpm run typecheck` and `pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts`. Do not wait for CI/Vercel.
