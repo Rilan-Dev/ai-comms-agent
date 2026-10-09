@@ -237,3 +237,15 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - Commits: 8f09785a, 7b1136e6, 3e35c1f5, a9dcb8e5, 52a4e348.
 - Verification: source changes only. Install, tests and typechecks pending; no PASS claimed.
 - Next action: frozen install, focused tests, then sequential web/worker typechecks. Do not wait for CI/Vercel.
+
+
+### EVT-FIX01-MIGRATION-WORKER-TEST-DRIFT-20261009 — 2026-10-09
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** CORRECTION
+- **Summary:** Corrected migration and worker contract-test drift. Added forward-only audit-event access hardening because the base migration artifact lacked the expected organization-scoped audit read/insert policies; corrected delimiter assertions to accept valid PostgreSQL dollar-quoting; changed worker assertions to test preserved envelope fields via spread and detect actual vector-client use rather than a comment.
+- **Impact:** cross-agent
+- **Owner:** FIX-01
+- **Commits:** 7557a6cd, ee85b554, cecae73e, c4d4abd0, 96996d82.
+- **Verification:** Source re-fetched after commits; focused tests/typechecks/migration execution NOT RUN. No PASS claimed.
+- **Next action:** Pull latest main, reconcile local lockfile against origin/main, run focused web migration and worker RabbitMQ tests, then web/worker typechecks sequentially.
+- **Related records:** ISS-019; FIX01-MIGRATION-WORKER-TEST-DRIFT-20261009; migration 0032.
