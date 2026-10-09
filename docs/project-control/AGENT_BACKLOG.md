@@ -71,12 +71,13 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Related records:** ISS-015; FIX-01 worklog entry dated 2026-10-09.
 
 ### BKL-012 — 2026-10-09
-- **Work:** Review and correct Mail Approvals organization context if confirmed; `apps/web/src/app/mail/approvals/page.tsx` currently calls `ensureDevSeed()` and `getDevOrgId()` rather than resolving the authenticated user's active organization.
-- **Owner:** FIX-01 / Sentinel
-- **State:** ROUTED
-- **Dependency:** None for source diagnosis; runtime verification is separate.
+- **Work:** Correct Mail Approvals organization context. The server page previously called `ensureDevSeed()` and `getDevOrgId()`; it now resolves `getAuthenticatedAppContext()` from request headers and redirects unauthenticated users to login.
+- **Owner:** FIX-01 / Sentinel (source correction applied during cross-route review)
+- **State:** SOURCE FIX COMMITTED; regression source added; runtime verification pending
+- **Source commit:** `19b8c0fd`; regression assertion update `da2502bd`.
+- **Dependency:** Runtime verification is separate; no API-side permission checks were weakened.
 - **Authorization:** Existing product security/tenant-isolation requirements and DEV-01 source discovery while executing the authorized UI migration.
-- **Suggested next action:** Trace the approvals client/API contract and replace seeded development-organization selection with the authenticated request context; preserve API-side permission checks and add a regression assertion. Do not weaken authorization.
+- **Next action:** Run focused web tests/typecheck when convenient and verify with a user belonging to a non-development organization. Do not weaken authorization.
 - **Related session/event/handoff:** DEV01-LOVABLE-UI-MIGRATION-20261009; `apps/web/src/app/mail/approvals/page.tsx`.
 
 ### BKL-013 — Live inbox schema and Redis authentication (2026-10-09)
