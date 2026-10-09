@@ -967,3 +967,9 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - **Failures:** raw-IP HTTP assertion expected HTTPS error although DNS-only/raw-IP rejection happens first; helper-source assertion rejected the explanatory comment's `NEXT_PUBLIC_APP_URL` mention.
 - **Correction:** Test-only change in commit `c58d6d442767f471c694ef978fdb06eca6d29850` aligns both expectations; OAuth runtime implementation unchanged.
 - **Current status:** `typecheck_passed_user_reported`; corrected focused test `pending_rerun`. No focused-test PASS is claimed.
+
+
+## 2026-10-09 — Fragmented IMAP literal test source
+
+- Added a deterministic PassThrough-socket regression that delivers the literal marker, literal body, and trailing tagged response in separate chunks.
+- Status: source change committed; test not executed. Worker/web typechecks, full focused adapter tests, and real IMAP server validation remain pending. This entry is not a PASS claim.
