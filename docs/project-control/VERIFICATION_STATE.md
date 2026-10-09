@@ -1089,3 +1089,12 @@ source_review:
 - Added a source-contract assertion and labeled the deploy/pause confirmation dialog for assistive technology.
 - Commits: `1f0566b4`, `a67c1dee`, `3d8e2669`, `952d704e`.
 - Tests/typecheck/build/browser/live API verification remain NOT RUN. No PASS claimed.
+
+
+## 2026-10-09 — Cross-route compact geometry and accessibility assertions (not executed)
+
+- Normalized card/control radii across migrated routes to compact geometry while retaining full-pill status labels.
+- Agent detail channel loading now uses the separate WhatsApp accounts endpoint, selected tabs expose `aria-pressed`, and deploy/pause confirmation has an accessible title association.
+- Added cross-route static assertions in `apps/web/tests/lovable-ui-migration.test.ts` (commit `b328373c`) and inventory note `e31327c8`.
+- **Verification:** test suite, typecheck, build, browser/responsive and accessibility checks were not executed. No PASS claimed.
+- **Next:** continue source-level review of remaining secondary controls, then complete manual responsive/accessibility verification when a browser/runtime is available. Do not wait for CI/Vercel.
