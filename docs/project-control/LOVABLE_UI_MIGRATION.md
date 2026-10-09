@@ -34,7 +34,7 @@ Target: `apps/web/src/app/**` (production Next.js application). Keep Next.js rou
 | Automations | `app/automations/**` | ADAPTED (source only) | Adapt list/editor/status cards; preserve persistence, authorization, validation and execution safeguards. |
 | Schedules | `app/schedules/**` | ADAPTED (source only) | Adapt schedule list/form/run states; preserve timezone, recurrence validation and durable job semantics. |
 | Chat | `app/chat/**` | ADAPTED (source only) | Apply workspace composer/message layout and loading/error states; preserve Clara backend, auth and safe email-context behavior. |
-| AI & Voice | `app/ai-voice/**` | NOT YET ADAPTED | Adapt voice workspace, provider/status controls and responsive layout; preserve runtime configuration and session/error handling. |
+| AI & Voice | `app/ai-voice/**` | ADAPTED (source only) | Adapt voice workspace, provider/status controls and responsive layout; preserve runtime configuration and session/error handling. |
 | Knowledge | `app/knowledge/**` | NOT YET ADAPTED | Adapt knowledge/RAG surfaces, indexing status and empty/error states without fake indexed data. |
 | Activity | `app/activity/**` | NOT YET ADAPTED | Adapt activity timeline, event labels/status icons and filters while retaining tenant-scoped records. |
 | Audit | `app/audit/**` | NOT YET ADAPTED | Adapt audit list/export presentation; never remove audit events, authorization or export safeguards. |
@@ -61,6 +61,6 @@ A screen is not "migrated" merely because global CSS tokens exist. Mark it ADAPT
 9. Agent detail, version/history and secondary controls.
 10. Cross-route responsive/icon/accessibility review and focused test coverage.
 
-WhatsApp, Automations and Schedules were adapted in source commits `3cf94c7f`, `c2dd6e6e`, and `740b70d2`; focused static contract assertions were added in `2f1eecd5`. Chat was subsequently adapted in `dee40027`; static contract coverage was extended in `10b87d65`. These changes have not been run through tests, typecheck, build, browser or runtime verification.
+WhatsApp, Automations and Schedules were adapted in source commits `3cf94c7f`, `c2dd6e6e`, and `740b70d2`; focused static contract assertions were added in `2f1eecd5`. Chat was adapted in `dee40027`; AI & Voice in `84652b74`; static contract coverage was extended in `10b87d65`, `ddb35096`, with endpoint assertion correction `f7ed2b42`. These changes have not been run through tests, typecheck, build, browser or runtime verification.
 
 This is an explicit inventory, not a claim that every listed page is already migrated or verified.
