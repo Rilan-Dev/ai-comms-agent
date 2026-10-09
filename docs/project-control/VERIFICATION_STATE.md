@@ -105,6 +105,12 @@ developer_verification:
       file-existence checks that don't work in Vercel's serverless runtime).
       Developer verification is NOT architect acceptance.
 
+imap_literal_reader:
+  status: source_changed_not_tested
+  commit: "f7df46f3d0d90bf1c0aae3407b448bd83aeca855"
+  result: "IMAP socket reader now buffers raw bytes and consumes literal payloads by declared octet length with a 50 MiB per-literal cap; LIST and command loops use literal-aware response reads"
+  pending: "Fake-server regression tests, worker/web typechecks, and real-server validation"
+
 # ============================================================
 # ARCHITECT ACCEPTANCE (performed by ChatGPT)
 # ============================================================
