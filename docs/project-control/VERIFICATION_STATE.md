@@ -915,3 +915,10 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - **Still pending:** Real IMAP server compatibility, live provider sync to PostgreSQL, organization-scoped Clara Chat retrieval, Clara Core RAG email indexing, Redis application client use, and RabbitMQ durable queue/consumer/retry integration.
 
 - Additional source correction: IMAP thread IDs now prefer the root References ID and fall back to Message-ID/folder-UID, with parser assertion added (`e21fd2fad824a41180deb6cf89b4f7aafb051f7c`, `d5dbd54cb7cb7b224d39b9b4e836b62501c575d3`). This is test source only, not an executed test result.
+
+
+### 2026-10-09 — Zoho/IMAP focused-test review (source-only)
+- Fixed Zoho adapter test mocks to follow `/api/accounts` discovery before account detail and folder/message requests (`f04eb93d27ee01934970e64679be381d6dec6500`).
+- Corrected IMAP LIST command quoting/escaped CRLF after source review found the command had been split by a raw newline; corrected Zoho incremental capability metadata (`fe3e2d39157f74c66741772966125cfee81055a1`, `5a59ec5745f8d3a3f735220f9496e14c79dece22`).
+- **Not executed:** Zoho/IMAP tests, worker/web typechecks, real IMAP server, deployed PostgreSQL ingestion, Clara Chat turn. No PASS claimed.
+- **Still pending:** Clara Core RAG email indexing, real Redis client use, RabbitMQ durable sync queue/consumer/retry/DLQ, and provider-to-chat runtime acceptance. FIX-01 owns BKL-008; OPS-01 owns production infrastructure/deployment.
