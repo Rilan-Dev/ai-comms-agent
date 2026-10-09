@@ -35,7 +35,7 @@ Target: `apps/web/src/app/**` (production Next.js application). Keep Next.js rou
 | Schedules | `app/schedules/**` | ADAPTED (source only) | Adapt schedule list/form/run states; preserve timezone, recurrence validation and durable job semantics. |
 | Chat | `app/chat/**` | ADAPTED (source only) | Apply workspace composer/message layout and loading/error states; preserve Clara backend, auth and safe email-context behavior. |
 | AI & Voice | `app/ai-voice/**` | ADAPTED (source only) | Adapt voice workspace, provider/status controls and responsive layout; preserve runtime configuration and session/error handling. |
-| Knowledge | `app/knowledge/**` | NOT YET ADAPTED | Adapt knowledge/RAG surfaces, indexing status and empty/error states without fake indexed data. |
+| Knowledge | `app/knowledge/**` | NOT YET ADAPTED | Backend source now has a host email-indexing adapter writing idempotently to `knowledge_documents` / `knowledge_chunks`; this is not semantic/vector indexing and is not runtime verified. Adapt the UI with real org-scoped counts/status and honest loading/empty/error states; do not leave hard-coded `0 indexed` or inert controls. |
 | Activity | `app/activity/**` | NOT YET ADAPTED | Adapt activity timeline, event labels/status icons and filters while retaining tenant-scoped records. |
 | Audit | `app/audit/**` | NOT YET ADAPTED | Adapt audit list/export presentation; never remove audit events, authorization or export safeguards. |
 | Operations | `app/operations/**` | NOT YET ADAPTED | Adapt health/worker/queue status hierarchy and degraded states; don't imply healthy without evidence. |
@@ -50,16 +50,16 @@ A screen is not "migrated" merely because global CSS tokens exist. Mark it ADAPT
 
 ## Exact remaining screen queue
 
-1. Chat.
-2. AI & Voice.
-3. Knowledge.
-4. Activity.
-5. Audit.
-6. Operations.
-7. Settings and provider-settings subpages.
-8. Login/setup visual consistency.
-9. Agent detail, version/history and secondary controls.
-10. Cross-route responsive/icon/accessibility review and focused test coverage.
+1. Knowledge UI and organization-scoped real index status/actions.
+2. Activity.
+3. Audit.
+4. Operations.
+5. Settings and provider-settings subpages.
+6. Login/setup visual consistency.
+7. Agent detail, version/history and secondary controls.
+8. Cross-route responsive/icon/accessibility review and focused test coverage.
+
+Backend follow-up: `apps/worker/src/knowledge/email-knowledge-indexer.ts` is a host adapter for the existing PostgreSQL knowledge-document/chunk contract and is called after persisted email-message writes. It avoids direct Qdrant writes and assigns email knowledge to the organization-shared scope. `packages/clara-core/src/runtime.ts` now limits unassigned-agent queries to shared documents and agent-specific queries to shared plus matching-agent documents. This is source-level only; semantic embeddings/vector index integration, provider/database runtime acceptance, and tests remain pending.
 
 WhatsApp, Automations and Schedules were adapted in source commits `3cf94c7f`, `c2dd6e6e`, and `740b70d2`; focused static contract assertions were added in `2f1eecd5`. Chat was adapted in `dee40027`; AI & Voice in `84652b74`; static contract coverage was extended in `10b87d65`, `ddb35096`, with endpoint assertion correction `f7ed2b42`. These changes have not been run through tests, typecheck, build, browser or runtime verification.
 
