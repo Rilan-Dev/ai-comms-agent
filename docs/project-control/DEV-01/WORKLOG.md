@@ -151,3 +151,5 @@
 - Commits: `d73099d6`, `3d8ac3a3`, `837b4b19`; source-contract assertions: `0a603b76`, `f8c3aefd`.
 - **Verification NOT RUN:** static tests, typecheck, build, browser, screen-reader and narrow-device checks have not been executed. No PASS claimed.
 - **Next:** continue route-by-route responsive/accessibility and remaining secondary-control review; preserve real API behavior. Do not wait for CI/Vercel. OPS-01 continues to own the independent database-migration/Redis incident.
+
+- **Narrow-screen follow-up:** the Chat agent selector was hidden under the small breakpoint, making agent switching unavailable on phones. It is now visible at every viewport width, with a capped mobile width and accessible name. Commits: source `bc8e698f`, assertion `ad7dc7f8`; migration inventory `fb0d251f`, NEXT_ACTION `6e4cc8c2`. Responsive browser checks NOT RUN.
