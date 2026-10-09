@@ -122,3 +122,11 @@ This is an explicit inventory, not a claim that every listed page is already mig
 - Fixed the Activity tab heading to use the imported ActivityIcon symbol (the JSX referenced an unimported Activity name). Added aria-label to the section navigation, aria-pressed to the active section buttons, and shrink-0 to keep tabs usable on narrow screens.
 - Added apps/web/tests/agent-detail-page-contract.test.ts source assertions for authenticated organization-scoped loading, not-found handling, navigation accessibility, existing API endpoints, version JSON validation, and explicit deploy/pause confirmations.
 - Commits: fbc9a8db; test source 6640a8a2. Tests/typecheck/build/browser checks not run.
+
+
+## 2026-10-09 — Cross-route responsive/accessibility review (in progress)
+
+- Fixed Settings section navigation to stick below the 64px global top bar instead of overlapping it, and reduced its stacking level to avoid obscuring the top bar.
+- Added Escape-key dismissal to the mobile sidebar and explicit `aria-expanded` / `aria-controls` state on the navigation trigger.
+- Added focused static contract assertions for the sticky offset and mobile navigation accessibility affordances. Assertions are source checks only; no test runner, typecheck, build, browser, screen-reader, or device verification was executed.
+- Remaining review is not considered complete: continue checking route-level narrow viewport overflow, keyboard navigation, form/status announcements, dialogs, and all visible secondary controls.
