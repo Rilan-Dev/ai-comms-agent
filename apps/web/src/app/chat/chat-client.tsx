@@ -102,12 +102,12 @@ export function ChatClient({
   }
 
   return (
-    <main className="flex min-h-[calc(100vh-72px)] min-w-0 flex-col bg-[radial-gradient(circle_at_top_right,oklch(0.88_0.105_152/.14),transparent_30%)]">
+    <main className="flex min-h-[calc(100vh-72px)] min-w-0 flex-col bg-background">
       <header className="border-b bg-background/85 px-5 py-4 backdrop-blur sm:px-7">
         <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Clara workspace</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight">Chat with your agent</h1>
+            <h1 className="mt-1 font-display text-2xl font-medium tracking-tight">Chat with your agent<span className="text-tertiary">.</span></h1>
             <p className="mt-1 text-sm text-muted-foreground">Grounded through Clara. Actions remain behind the host authorization boundary.</p>
           </div>
           <label className="hidden items-center gap-2 rounded-xl border bg-background px-3 py-2 sm:flex">
@@ -124,7 +124,7 @@ export function ChatClient({
           {messages.length === 0 ? (
             <div className="grid min-h-[45vh] place-items-center text-center">
               <div className="max-w-md">
-                <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-foreground text-xl text-background">✦</div>
+                <div className="mx-auto grid size-14 place-items-center rounded-md bg-accent text-accent-foreground"><svg aria-hidden="true" viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="m12 3 1.9 5.8L20 11l-6.1 2.2L12 19l-2-5.8L4 11l6-2.2L12 3z"/><path d="m19 14 1.2 2.8L23 18l-2.8 1.2L19 22l-1.2-2.8L15 18l2.8-1.2L19 14z"/></svg></div>
                 <h2 className="mt-5 text-xl font-semibold">What should Clara help with?</h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">Ask for an inbox summary, important messages, action items, or anything your connected communication agent is allowed to handle.</p>
                 <div className="mt-5 flex flex-wrap justify-center gap-2">
@@ -143,7 +143,7 @@ export function ChatClient({
           {busy ? <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />Clara is thinking…</div> : null}
         </div>
 
-        <div className="sticky bottom-0 rounded-2xl border bg-background/95 p-2 shadow-[0_12px_40px_rgba(15,23,42,.10)] backdrop-blur">
+        <div className="sticky bottom-0 rounded-md border border-border bg-card/95 p-2 backdrop-blur">
           <div className="flex items-end gap-2">
             <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Ask Clara about your communications…" rows={2} className="min-h-12 flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground" />
             <button disabled={busy || !draft.trim()} onClick={() => void sendMessage()} className="rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40">Send</button>
