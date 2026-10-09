@@ -1195,3 +1195,11 @@ source_review:
 - Vercel rejected the API request with HTTP 402: `api-deployments-free-per-day` (daily deployment API quota exceeded; retry after 24 hours).
 - No new deployment was created. Recent branch deployments visible in Vercel were canceled and were for earlier commits.
 - **Deployment status: NOT DEPLOYED / NOT VERIFIED.** Do not label this change production-ready or claim a successful deployment. Resolve the Vercel quota with the account owner or retry after the provider's stated cooldown, after local tests/typechecks are run.
+
+
+## User-run verification update — 2026-10-10
+
+- tests/email-action-contract.test.ts: PASS, 8/8.
+- tests/migration-verification.test.ts: 85/86; remaining failure says two lockfileVersion: declarations in the runtime file under /docker/ai-comms-agent. The current GitHub branch pnpm-lock.yaml was fetched and contains exactly one lockfileVersion: and one importers: declaration, so this is presently a local/container file discrepancy, not a reason to overwrite the canonical lockfile.
+- Worker suite: 79/81; failures were the IMAP multiple-literal test assertion and scheduling migration regex assertion. Both assertions have been corrected in commits a666d98b8b9f1e437355c392d01c42a9dc54bfe9 and bb987c60129ebd1d4f3d5bd8f132068859ffb6c2.
+- Web and worker typechecks produced no errors in the user's pasted output. Re-run focused tests to verify the new commits. Full build, live integration, and deployment remain unverified; Vercel previously returned HTTP 402 daily deployment quota exceeded.
