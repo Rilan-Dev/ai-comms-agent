@@ -1296,3 +1296,7 @@ Updated agent list/empty-state marks to inline SVG iconography consistent with t
 - **Correction:** require a successful response with an access token, handle token-exchange errors with safe actionable guidance, and select the Mail API origin from the server-validated data-center value instead of trusting or requiring token-supplied `api_domain`. Added static regression assertions.
 - **Commits:** `2cb976bf6cc6d835ff75692998e04958d63e001d`, `53d96a0f3125830a9dc07ae3011a96d7b54c878b`.
 - **Verification:** tests/typecheck/build and live Zoho OAuth have not been run. The correction is source-only; successful mailbox persistence is not yet confirmed.
+
+
+### 2026-10-09 — Mail navigation active-state correction
+The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts and nested routes. Added a static contract assertion. GitHub rejected one stale-blob update with a 409; refetched the current file SHA and applied the change safely. Commits: `a6c0abb0b5521aa0b6d636c48f83dc7f301a2c44`, `11ff84aac3a8379b09de78a191d704bd845512d6`. No tests or build checks run.
