@@ -211,3 +211,14 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Summary:** Source review found over-escaped regex tokens in the newly added pnpm lockfile regression assertions. Corrected them to match actual TypeScript regex semantics and scope integrity validation to the amqplib entry.
 - **Commit:** `162183e8d7c67b8346c15989ef850327e487cfc4`.
 - **Verification:** Source reviewed only; focused Vitest remains NOT RUN pending successful dependency installation.
+
+### EVT-FIX01-WORKER-MIGRATION-PATHS-20261009 — 2026-10-09
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** CORRECTION
+- **Summary:** User's latest run confirms frozen install succeeds. Fixed the captured optional RabbitMQ URL type and aligned migration test paths with canonical renumbered SQL files (0013_database_security_hardening.sql, 0005_agent_policy_configuration.sql).
+- **Impact:** local
+- **Owner:** FIX-01
+- **Remedy commits:** 09e4df46 (worker source), a24edec3 (worker contract test), ffc98b30 (migration test paths).
+- **Verification:** User's pre-fix install PASS; pre-fix typecheck/test failures captured. Post-fix tests/typecheck NOT RUN; no PASS claimed.
+- **Suggested next action:** Run focused migration Vitest and worker RabbitMQ test; run web and worker typechecks sequentially, then full workspace typecheck if resources permit.
+- **Related records:** ISS-018; BKL-015; FIX01-WORKER-TYPECHECK-MIGRATION-PATHS-20261009.
