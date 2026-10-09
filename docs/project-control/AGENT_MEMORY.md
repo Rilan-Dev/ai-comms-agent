@@ -184,3 +184,9 @@ If shared memory conflicts with current repository state or current requirements
 - Never render dependency configuration as live health. If the API reports “healthy” only because a URL exists and says runtime connectivity is worker-owned, show a neutral “Configured” status. Only display “Healthy” for an actual verified check.
 - Preserve API authorization and the distinction between configuration checks and runtime evidence; UI labels must not overstate health.
 - Related commits: Operations `fc22cc3f`; static contract assertions `ddb7a233` / `ca229779`.
+
+
+### DEV-01 / Forge — Settings UI adaptation
+- When restyling settings, preserve API contracts and all security cues: API keys/client secrets stay password inputs, saved secrets remain hidden, and OAuth callback-origin warnings/data-center choices must remain visible. Do not claim successful provider connectivity from a saved configuration alone.
+- Prefer the shared compact geometry and semantic border/background tokens across provider subcomponents; keep existing edit/delete confirmations and role/membership safeguards.
+- Related commits: `25d17e19`, `ecd6f403`, `68cb6fba`, `e324defd`, contract assertions `399b60a6`.
