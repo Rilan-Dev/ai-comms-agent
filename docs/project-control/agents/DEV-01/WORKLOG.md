@@ -179,3 +179,10 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - Added test assertions for the SVG mark and preserved create flow in `apps/web/tests/lovable-ui-migration.test.ts`.
 - Commits: `0a79f7f3a9321d30dbc4d01fa5c611c1356d5021`, `2c949dc92d524f484d5e689603afd26106f9d801`.
 - Tests/typecheck/build/browser/runtime checks remain unexecuted. Continue with Mail subpages and remaining routes.
+
+
+### DEV01-LOVABLE-UI-MIGRATION-20261009 — Nested Mail navigation
+- Fixed the sidebar active-state logic to keep Mail expanded on Inbox, Threads, Drafts, Accounts and nested detail routes rather than only under Accounts. Added a static UI contract assertion.
+- Commits: `a6c0abb0b5521aa0b6d636c48f83dc7f301a2c44`, `11ff84aac3a8379b09de78a191d704bd845512d6`.
+- A stale-blob GitHub update returned 409; refetched the current file SHA and applied the focused change safely. No force update or history rewrite.
+- No tests/typecheck/build/browser/runtime checks executed. Continue the remaining UI migration.
