@@ -25,8 +25,16 @@ ALTER TABLE email_messages
 
 -- Migrate legacy names only when those columns exist. Avoid overwriting canonical
 -- values already written by newer application versions.
-DO $$
+DO $
 BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = current_schema() AND table_name = 'email_messages'
+      AND column_name = 'from_address'
+  ) THEN
+    -- The legacy schema made from_address mandatory; current writes use from_email.
+    EXECUTE 'ALTER TABLE email_messages ALTER COLUMN from_address DROP NOT NULL';
+  END IF;
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = current_schema() AND table_name = 'email_messages'
