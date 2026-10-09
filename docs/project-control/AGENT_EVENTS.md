@@ -195,3 +195,12 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Commits:** `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e` (lockfile repair); `b9ba0c6738e32cf4ef8b670a4b65857a56eb50f2` (regression source).
 - **Verification:** Static source inspected; frozen install, test, typecheck and Docker build not run after fix. No PASS claimed.
 - **Next action:** Pull latest main and run `pnpm install --frozen-lockfile`, then `pnpm run typecheck`; route host/build-environment failures to OPS-01.
+
+### EVT-FIX01-PNPM-TARBALL-INTEGRITY-20261009 — 2026-10-09
+- **Agent/session:** FIX-01 / Sentinel — FIX01-PNPM-TARBALL-INTEGRITY-20261009
+- **Type:** CORRECTION
+- **Summary:** Follow-up to ISS-017. User's frozen install exposed a second lockfile defect: amqplib's package record lacked tarball integrity metadata.
+- **Root cause:** Prior fix restored package/snapshot records but used a tarball URL without the published SHA-512 SRI, so pnpm's supply-chain policy correctly refused installation.
+- **Remedy:** Added the published integrity value to `pnpm-lock.yaml` (commit `644d5781`); added a focused integrity assertion in the existing lockfile regression test (commits `21837f32`, `d115e1b0`).
+- **Verification:** GitHub source changes committed; no post-fix install/test/typecheck/build run. No PASS claimed.
+- **Next action:** User pulls latest main and runs frozen install, then typecheck and focused Vitest. OPS-01 owns only independent infrastructure defects.
