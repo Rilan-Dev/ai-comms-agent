@@ -867,3 +867,8 @@ Activity and Audit have been adapted in source to the Lovable visual system. Act
 ### DEV-01 screen migration update — Operations (2026-10-09)
 
 Operations UI adapted at source level with infrastructure cards, runtime metrics, refresh, and honest loading/error/empty states. Crucially, Redis/RabbitMQ/Qdrant statuses whose API details only confirm URL configuration are displayed as “Configured” rather than “Healthy”; this does not establish live connectivity. Added static contract assertions. No tests/typecheck/build/browser/accessibility/live dependency verification run. Next: general Settings and provider-setting subsections, then Login/Setup, agent detail/version/history, and cross-route responsive/accessibility review. Do not wait for CI/Vercel.
+
+
+### FIX-01 business-workflow code review — 2026-10-09
+Source review found and corrected three additional defects: invalid dollar quoting in migration 0030; missing PostgreSQL parameter markers in inbox search predicates; and legacy `email_sync_states.cursor jsonb` incompatible with provider text pagination tokens. Migration 0031 adds `cursor_token text`; the worker now uses it. Regression assertions are committed. Source/test code is not yet executed.
+**OPS-01 next:** pull latest `main`; apply migrations through `0031` to the exact shared PostgreSQL database; rebuild/restart web and worker; correct Redis `WRONGPASS` by comparing the configured URL credentials with Redis ACL/user settings (never paste secrets); trigger sync; confirm worker completion, nonzero persisted message rows where the provider returns mail, and inbox results. Never bypass the distributed lease. HTTP 202 is queued, not synced.
