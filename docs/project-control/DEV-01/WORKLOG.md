@@ -47,6 +47,7 @@
 - Recovery: Read canonical continuity/current phase/next action/project state, active sessions/events/backlog, Lovable migration inventory, and DEV-01 memory/worklog from GitHub main.
 - Finding: whatsapp/page.tsx was static and its CTA had no handler; whatsapp-client.tsx already held real account/API interactions but was not mounted. This was a route integration defect, not a missing send API.
 - Changes: Authenticated server route now passes context.organizationId to WhatsAppClient; CTA reveals an accessible connection form; encrypted credential saving and existing message/account operations retained; copy distinguishes saved credentials from verified Meta/webhook status.
+- Follow-up preserved Daily briefing with a working /schedules link and exposed provider error/webhook-unverified status. Commits 3891e937 and 2d955276.
 - Commits: 58ba5541, 94878571, 49c94de3, 2cbe4ab9, 9eb3a168.
 - Verification: NOT RUN — tests/typecheck/build/browser/live Meta flow/webhook checks not executed. No PASS.
 - Lesson: A styled CTA is not a connection flow unless it opens a real workflow; never use the seeded dev organization in tenant-scoped production pages. Keep the verification boundary honest.
