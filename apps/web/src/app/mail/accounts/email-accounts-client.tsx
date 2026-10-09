@@ -208,14 +208,14 @@ export function EmailAccountsClient({
             Connect the mailboxes your agents can work with. Credentials remain server-side and are never rendered into this UI.
           </p>
         </div>
-        <div className="rounded-2xl border bg-muted/40 px-4 py-3 text-sm">
+        <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm">
           <span className="font-semibold">{accounts.length}</span>
           <span className="ml-1 text-muted-foreground">mailboxes</span>
         </div>
       </header>
 
       {notice && (
-        <div role="status" className="flex items-center justify-between rounded-2xl border bg-muted/50 px-4 py-3 text-sm">
+        <div role="status" className="flex items-center justify-between rounded-md border bg-muted/50 px-4 py-3 text-sm">
           <span>{notice}</span>
           <button className="font-semibold underline underline-offset-4" onClick={() => setNotice(null)}>Dismiss</button>
         </div>
@@ -226,15 +226,15 @@ export function EmailAccountsClient({
           <div className="flex items-start justify-between gap-4"><div><h2 className="font-semibold">Configure IMAP / SMTP</h2><p className="mt-1 text-sm text-muted-foreground">TLS is mandatory. Credentials are encrypted server-side and never returned to the browser after submission.</p></div><button type="button" onClick={()=>setShowImapForm(false)} className="text-sm font-semibold text-muted-foreground hover:text-foreground">Close</button></div>
           <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={async(e)=>{e.preventDefault();setSavingImap(true);setNotice(null);setImapError(null);try{const response=await fetch("/api/email-accounts",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,action:"connect_imap_smtp",emailAddress:imap.email,displayName:imap.displayName,host:imap.host,port:Number(imap.port),username:imap.username,password:imap.password,smtpHost:imap.smtpHost||imap.host,smtpPort:Number(imap.smtpPort),tls:imap.tls})});const data=await response.json();if(!response.ok)throw new Error(data.message??Object.values(data.fieldErrors??{}).join(" "));setAccounts((current)=>[data.account,...current]);setNotice("Mailbox configuration saved securely. It is pending worker verification and mailbox structure discovery.");setShowImapForm(false);}catch(error){const message=error instanceof Error?error.message:"Could not save mailbox configuration.";setImapError(message);setNotice("Mailbox configuration could not be saved.");}finally{setSavingImap(false);}}}>
             <label className="text-sm font-medium">Email address<input required type="email" value={imap.email} onChange={e=>setImap({...imap,email:e.target.value})} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-ring/20" /></label>
-            <label className="text-sm font-medium">Display name<input value={imap.displayName} onChange={e=>setImap({...imap,displayName:e.target.value})} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
-            <label className="text-sm font-medium">IMAP host<input required value={imap.host} onChange={e=>setImap({...imap,host:e.target.value})} placeholder="imap.example.com" className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
-            <label className="text-sm font-medium">IMAP port<input required type="number" min="1" max="65535" value={imap.port} onChange={e=>setImap({...imap,port:e.target.value})} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
-            <label className="text-sm font-medium">SMTP host<input required value={imap.smtpHost} onChange={e=>setImap({...imap,smtpHost:e.target.value})} placeholder="smtp.example.com" className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
-            <label className="text-sm font-medium">SMTP port<input required type="number" min="1" max="65535" value={imap.smtpPort} onChange={e=>setImap({...imap,smtpPort:e.target.value})} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
-            <label className="text-sm font-medium">Username<input required value={imap.username} onChange={e=>setImap({...imap,username:e.target.value})} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
-            <label className="text-sm font-medium">Password / app password<input required type="password" value={imap.password} onChange={e=>setImap({...imap,password:e.target.value})} autoComplete="new-password" className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
+            <label className="text-sm font-medium">Display name<input value={imap.displayName} onChange={e=>setImap({...imap,displayName:e.target.value})} className="mt-1 h-11 w-full rounded-md border px-3 text-sm" /></label>
+            <label className="text-sm font-medium">IMAP host<input required value={imap.host} onChange={e=>setImap({...imap,host:e.target.value})} placeholder="imap.example.com" className="mt-1 h-11 w-full rounded-md border px-3 text-sm" /></label>
+            <label className="text-sm font-medium">IMAP port<input required type="number" min="1" max="65535" value={imap.port} onChange={e=>setImap({...imap,port:e.target.value})} className="mt-1 h-11 w-full rounded-md border px-3 text-sm" /></label>
+            <label className="text-sm font-medium">SMTP host<input required value={imap.smtpHost} onChange={e=>setImap({...imap,smtpHost:e.target.value})} placeholder="smtp.example.com" className="mt-1 h-11 w-full rounded-md border px-3 text-sm" /></label>
+            <label className="text-sm font-medium">SMTP port<input required type="number" min="1" max="65535" value={imap.smtpPort} onChange={e=>setImap({...imap,smtpPort:e.target.value})} className="mt-1 h-11 w-full rounded-md border px-3 text-sm" /></label>
+            <label className="text-sm font-medium">Username<input required value={imap.username} onChange={e=>setImap({...imap,username:e.target.value})} className="mt-1 h-11 w-full rounded-md border px-3 text-sm" /></label>
+            <label className="text-sm font-medium">Password / app password<input required type="password" value={imap.password} onChange={e=>setImap({...imap,password:e.target.value})} autoComplete="new-password" className="mt-1 h-11 w-full rounded-md border px-3 text-sm" /></label>
             <label className="flex items-center gap-3 text-sm md:col-span-2"><input type="checkbox" checked={imap.tls} onChange={e=>setImap({...imap,tls:e.target.checked})} /> Require TLS for both IMAP and SMTP</label>
-            {imapError && <p role="alert" className="md:col-span-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{imapError}</p>}
+            {imapError && <p role="alert" className="md:col-span-2 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{imapError}</p>}
             <div className="md:col-span-2 flex flex-wrap justify-end gap-3">
               <button type="button" disabled={savingImap || testingImap} onClick={async () => {
                 setTestingImap(true); setImapError(null);
@@ -259,7 +259,7 @@ export function EmailAccountsClient({
         {providers.map((provider) => (
           <article key={provider.id} className="group rounded-md border border-border bg-card p-5 transition-colors hover:bg-secondary/30">
             <div className="flex items-start justify-between">
-              <div className="grid size-11 place-items-center rounded-2xl bg-muted font-semibold">{provider.tone}</div>
+              <div className="grid size-11 place-items-center rounded-md bg-muted font-semibold">{provider.tone}</div>
               <span className="rounded-full border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">Secure connection</span>
             </div>
             <h2 className="mt-5 text-base font-semibold">{provider.name}</h2>
@@ -267,13 +267,13 @@ export function EmailAccountsClient({
             <p className="mt-4 text-xs font-medium text-muted-foreground">{provider.method}</p>
             {provider.id === "gmail" ? (
               <label className="mt-4 grid gap-1.5 text-xs font-medium text-muted-foreground">OAuth client
-                <select value={selectedGmailConfig} onChange={(event) => setSelectedGmailConfig(event.target.value)} className="h-10 rounded-xl border bg-background px-3 text-sm text-foreground">
+                <select value={selectedGmailConfig} onChange={(event) => setSelectedGmailConfig(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm text-foreground">
                   {gmailConfigs.length === 0 ? <option value="">No enabled clients — configure in Settings</option> : gmailConfigs.map((config) => <option key={config.id} value={config.id}>{config.label}</option>)}
                 </select>
               </label>
             ) : provider.id === "zoho" ? (
               <label className="mt-4 grid gap-1.5 text-xs font-medium text-muted-foreground">OAuth client
-                <select value={selectedZohoConfig} onChange={(event) => setSelectedZohoConfig(event.target.value)} className="h-10 rounded-xl border bg-background px-3 text-sm text-foreground">
+                <select value={selectedZohoConfig} onChange={(event) => setSelectedZohoConfig(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm text-foreground">
                   {zohoConfigs.length === 0 ? <option value="">No enabled clients — configure in Settings</option> : zohoConfigs.map((config) => <option key={config.id} value={config.id}>{config.label}</option>)}
                 </select>
               </label>
@@ -286,7 +286,7 @@ export function EmailAccountsClient({
                 if (provider.id === "imap_smtp") setShowImapForm(true);
               }}
               disabled={(provider.id === "gmail" && !selectedGmailConfig) || (provider.id === "zoho" && !selectedZohoConfig)}
-              className="mt-5 h-10 w-full rounded-xl border bg-muted/40 text-sm font-semibold transition hover:bg-muted disabled:opacity-50"
+              className="mt-5 h-10 w-full rounded-md border bg-muted/40 text-sm font-semibold transition hover:bg-muted disabled:opacity-50"
             >
               {provider.id === "gmail" ? "Connect with Google" : provider.id === "zoho" ? "Connect with Zoho" : "Configure mailbox"}
             </button>
@@ -299,9 +299,9 @@ export function EmailAccountsClient({
           <div><h2 className="font-semibold">Connected mailboxes</h2>
           <p className="mt-1 text-sm text-muted-foreground">Live persisted state only. Credentials never leave the server.</p></div>
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <label className="sr-only" htmlFor="mailbox-search">Search mailboxes</label><input id="mailbox-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search mailboxes..." className="h-10 w-full rounded-xl border bg-background px-3 text-sm sm:w-56" />
-            <label className="sr-only" htmlFor="mailbox-status">Filter status</label><select id="mailbox-status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} className="h-10 rounded-xl border bg-background px-3 text-sm"><option value="all">All statuses</option><option value="connected">Connected</option><option value="pending">Pending</option><option value="error">Needs attention</option><option value="disconnected">Disconnected</option><option value="revoked">Revoked</option></select>
-            <button type="button" onClick={refreshAccounts} disabled={refreshing} className="h-10 rounded-xl border px-4 text-sm font-semibold disabled:opacity-50">{refreshing ? "Refreshing..." : "Refresh"}</button>
+            <label className="sr-only" htmlFor="mailbox-search">Search mailboxes</label><input id="mailbox-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search mailboxes..." className="h-10 w-full rounded-md border bg-background px-3 text-sm sm:w-56" />
+            <label className="sr-only" htmlFor="mailbox-status">Filter status</label><select id="mailbox-status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="all">All statuses</option><option value="connected">Connected</option><option value="pending">Pending</option><option value="error">Needs attention</option><option value="disconnected">Disconnected</option><option value="revoked">Revoked</option></select>
+            <button type="button" onClick={refreshAccounts} disabled={refreshing} className="h-10 rounded-md border px-4 text-sm font-semibold disabled:opacity-50">{refreshing ? "Refreshing..." : "Refresh"}</button>
           </div>
         </div>
         {accounts.length === 0 ? (
@@ -334,7 +334,7 @@ export function EmailAccountsClient({
                   </p>
                   {account.last_error && <p role="alert" className="mt-2 max-w-2xl text-xs text-destructive">{account.last_error}</p>}
                   {structure && (
-                    <div className="mt-3 rounded-2xl border bg-muted/30 p-3">
+                    <div className="mt-3 rounded-md border bg-muted/30 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Mailbox structure</p>
                         <span className="text-[11px] text-muted-foreground">
@@ -366,30 +366,30 @@ export function EmailAccountsClient({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {account.provider === "gmail" && account.status !== "revoked" && account.status !== "disconnected" && (
-                    <button type="button" disabled={busy === account.id} onClick={() => syncNow(account)} className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
+                    <button type="button" disabled={busy === account.id} onClick={() => syncNow(account)} className="h-10 rounded-md border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
                       {busy === account.id ? "Queueing…" : "Sync now"}
                     </button>
                   )}
                   {account.status !== "connected" && (
-                    <button type="button" disabled={busy === account.id} onClick={() => reconnect(account)} className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
+                    <button type="button" disabled={busy === account.id} onClick={() => reconnect(account)} className="h-10 rounded-md border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
                       {busy === account.id ? "Reconnecting…" : "Reconnect"}
                     </button>
                   )}
                   {account.status === "connected" && (
-                    <button type="button" disabled={structureLoading === account.id} onClick={() => loadStructure(account.id)} className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
+                    <button type="button" disabled={structureLoading === account.id} onClick={() => loadStructure(account.id)} className="h-10 rounded-md border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
                       {structureLoading === account.id ? "Loading…" : structure ? "Refresh folders" : "View folders"}
                     </button>
                   )}
                   {account.status === "connected" && account.provider === "imap_smtp" && (
-                    <button type="button" disabled={busy === account.id} onClick={() => reconnect(account)} className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
+                    <button type="button" disabled={busy === account.id} onClick={() => reconnect(account)} className="h-10 rounded-md border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
                       {busy === account.id ? "Checking…" : "Test connection"}
                     </button>
                   )}
-                  <button type="button" disabled={busy === account.id} onClick={() => deleteAccount(account)} className="h-10 rounded-xl border border-destructive/30 px-4 text-sm font-semibold text-destructive transition hover:bg-destructive/5 disabled:opacity-50">
+                  <button type="button" disabled={busy === account.id} onClick={() => deleteAccount(account)} className="h-10 rounded-md border border-destructive/30 px-4 text-sm font-semibold text-destructive transition hover:bg-destructive/5 disabled:opacity-50">
                     Remove
                   </button>
                   {account.status !== "disconnected" && (
-                    <button type="button" disabled={busy === account.id} onClick={() => disconnect(account.id)} className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
+                    <button type="button" disabled={busy === account.id} onClick={() => disconnect(account.id)} className="h-10 rounded-md border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
                       {busy === account.id ? "Disconnecting…" : "Disconnect"}
                     </button>
                   )}
