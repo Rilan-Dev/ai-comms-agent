@@ -60,6 +60,8 @@ export class ZohoAdapter implements EmailProvider {
   private refreshPromise?: Promise<void>;
   private oauthClientId?: string;
   private oauthClientSecret?: string;
+  private readonly draftMessageIds = new Set<string>();
+  private readonly messageFolderById = new Map<string, string>();
 
   async connect(credentials: EmailCredentials): Promise<void> {
     if (!credentials.access_token) throw new Error("Zoho requires an OAuth access token");
@@ -87,6 +89,8 @@ export class ZohoAdapter implements EmailProvider {
     this.refreshPromise = undefined;
     this.oauthClientId = undefined;
     this.oauthClientSecret = undefined;
+    this.draftMessageIds.clear();
+    this.messageFolderById.clear();
   }
 
   capabilities(): CapabilitySet { return { ...CAPABILITIES }; }
@@ -197,7 +201,11 @@ export class ZohoAdapter implements EmailProvider {
         const page = await this.listMessages(folder.provider_folder_id, { limit: pageSize, cursor: "1" });
         for (const message of page) {
           const id = message.provider_message_id || message.id;
-          if (id) updated.push({ message_id: id, provider_message_id: id });
+          if (id) {
+            updated.push({ message_id: id, provider_message_id: id });
+            this.messageFolderById.set(id, folder.provider_folder_id);
+            if (folder.role === "drafts") this.draftMessageIds.add(id);
+          }
         }
       }
       return {
@@ -221,7 +229,11 @@ export class ZohoAdapter implements EmailProvider {
       const page = await this.listMessages(folder.provider_folder_id, { limit: pageSize, cursor: String(start) });
       for (const message of page) {
         const id = message.provider_message_id || message.id;
-        if (id) added.push({ message_id: id, provider_message_id: id });
+        if (id) {
+          added.push({ message_id: id, provider_message_id: id });
+          this.messageFolderById.set(id, folder.provider_folder_id);
+          if (folder.role === "drafts") this.draftMessageIds.add(id);
+        }
       }
       pagesRead += 1;
       if (page.length >= pageSize) {
@@ -287,7 +299,12 @@ export class ZohoAdapter implements EmailProvider {
   async getMessage(messageId: string): Promise<EmailMessage | null> {
     const data = await this.request(`/api/accounts/${this.accountId}/messages/${encodeURIComponent(messageId)}/originalmessage`);
     if (!data) return null;
-    return this.normalizeMessage({ ...(data.data ?? data), messageId });
+    const normalized = this.normalizeMessage(
+      { ...(data.data ?? data), messageId },
+      this.messageFolderById.get(messageId) ?? String((data.data ?? data).folderId ?? ""),
+    );
+    if (this.draftMessageIds.has(messageId)) normalized.is_draft = true;
+    return normalized;
   }
 
   async getThread(threadId: string): Promise<EmailMessage[]> {
