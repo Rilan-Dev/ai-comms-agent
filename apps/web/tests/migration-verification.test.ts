@@ -674,8 +674,9 @@ describe("pnpm workspace lockfile integrity", () => {
   const lockfilePath = resolve(__dirname, "../../../pnpm-lock.yaml");
   const lockfile = readFileSync(lockfilePath, "utf8");
 
-  it("contains exactly one YAML document", () => {
-    expect(lockfile.match(/^---\\s*$/gm) ?? []).toHaveLength(0);
+  it("contains exactly one workspace lockfile document", () => {
+    expect(lockfile.match(/^lockfileVersion:/gm) ?? []).toHaveLength(1);
+    expect(lockfile.match(/^importers:/gm) ?? []).toHaveLength(1);
   });
 
   it("resolves the worker's amqplib dependency in both package and snapshot sections", () => {
