@@ -47,3 +47,15 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Blockers/dependencies:** Dependency-equipped environment required for execution. Docker/dependency/CI issues after source correction belong to OPS-01.
 - **Lesson:** Keep provider snapshots typed to shared domain contracts; convert to generic persistence payload at the DB boundary.
 - **Next action:** Run the focused Gmail adapter test and worker build/typecheck; route environment-only failures to OPS-01.
+
+
+### FIX01-ZOHO-TEST-NEWLINES-20261009 / 2026-10-09
+- **Task:** Fix the newly reported web typecheck failure.
+- **Authorization:** User supplied the latest typecheck output in the active FIX-01 workflow; smallest correction and regression protection/control logging only.
+- **Evidence received:** `pnpm run typecheck`: packages/shared, packages/db, packages/clara-core, and apps/worker passed; apps/web failed at `tests/zoho-oauth-settings.test.ts(84,54)` and adjacent positions with TS1127/TS1434.
+- **Root cause:** Three assertions contained literal `\n` characters rather than actual newlines.
+- **Change:** Replaced the exact malformed source sequence with real line breaks; no OAuth runtime code changed.
+- **Commit:** `39857c40820940b500dcf452331dfe82ae35b861`.
+- **Failed approaches to avoid:** Do not broaden into OAuth implementation changes; do not route this source parser defect to OPS-01.
+- **Verification status:** User's output is pre-fix. Post-fix typecheck and focused test have not been executed; no PASS claimed.
+- **Next action:** Run `pnpm run typecheck` and the focused Zoho OAuth settings test. If an unrelated environment/CI/deployment problem remains, route it to OPS-01.
