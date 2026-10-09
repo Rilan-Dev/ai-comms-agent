@@ -39,7 +39,7 @@ Target: `apps/web/src/app/**` (production Next.js application). Keep Next.js rou
 | Activity | `app/activity/**` | ADAPTED (source only) | Added Lucide-led event timeline, search/event-type/decision filters, refresh, responsive rows, truthful empty/loading/error states. Uses existing `/api/audit` authorization boundary; tests/typecheck/build/browser verification not run. |
 | Audit | `app/audit/**` | ADAPTED (source only) | Reworked audit filters, loading/error/empty states, responsive table, semantic decision labels, refresh and CSV/JSON exports; fixed filters to reload the authorized API and cancel stale requests. API authorization/export safeguards preserved. Browser/runtime verification pending. |
 | Operations | `app/operations/**` | ADAPTED (source only) | Adapted infrastructure/status cards, runtime metrics, refresh and explicit loading/error/empty states. Configured Redis/RabbitMQ/Qdrant URLs display as Configured—not Healthy—because the API reports URL presence rather than live connectivity. No runtime health is fabricated. Verification pending. |
-| Settings (general, AI providers/runtime, Gmail OAuth, Zoho OAuth) | `app/settings/**` | NOT YET ADAPTED | Apply same cards, tabs/sections, field spacing, provider iconography and validation/error display. Keep secrets server-only and preserve validation. |
+| Settings (general, AI providers/runtime, Gmail OAuth, Zoho OAuth) | `app/settings/**` | PARTIAL (source only) | Added compact anchor navigation and grouped Organization, Mail OAuth, AI provider, Clara runtime, Members and workspace-link sections; existing API contracts, password change, membership actions and secret handling preserved. Provider subcomponent visual/accessibility review and test/typecheck/build/browser verification remain pending. |
 | Login and setup | `app/login/**`, `app/setup/**` | PARTIAL / REVIEW | Keep existing authentication and provisioning validation intact; align visual language without weakening security or redirect/session boundaries. |
 | Agent detail/version/history and all remaining controls | `app/agents/[id]/**` | PARTIAL / REVIEW | Agents list/create is adapted; audit/policy/channels/deploy/simulate/versions and detail subviews need explicit screen-by-screen audit against the Lovable style and working behavior. |
 | Shared UI primitives/icons | existing `apps/web/src/components/**` | PARTIAL / REVIEW | Reuse installed Lucide icons and existing controls; don't add a parallel sidebar or copy incompatible Vite dependencies wholesale. |
@@ -50,14 +50,10 @@ A screen is not "migrated" merely because global CSS tokens exist. Mark it ADAPT
 
 ## Exact remaining screen queue
 
-1. Knowledge UI and organization-scoped real index status/actions.
-2. Activity.
-3. Audit.
-4. Operations.
-5. Settings and provider-settings subpages.
-6. Login/setup visual consistency.
-7. Agent detail, version/history and secondary controls.
-8. Cross-route responsive/icon/accessibility review and focused test coverage.
+1. Finish Settings and provider-settings subsections (visual consistency, accessible error/success states, responsive layout and focused tests).
+2. Login/setup visual consistency.
+3. Agent detail, version/history and secondary controls.
+4. Cross-route responsive/icon/accessibility review and focused test coverage.
 
 Backend follow-up: `apps/worker/src/knowledge/email-knowledge-indexer.ts` is a host adapter for the existing PostgreSQL knowledge-document/chunk contract and is called after persisted email-message writes. It avoids direct Qdrant writes and assigns email knowledge to the organization-shared scope. `packages/clara-core/src/runtime.ts` now limits unassigned-agent queries to shared documents and agent-specific queries to shared plus matching-agent documents. This is source-level only; semantic embeddings/vector index integration, provider/database runtime acceptance, and tests remain pending.
 
@@ -86,3 +82,10 @@ This is an explicit inventory, not a claim that every listed page is already mig
 - Adapted the Operations page with compact Lovable-style infrastructure cards, status icons, runtime metric cards, refresh, and honest loading/error/empty states.
 - Corrected presentation semantics: when the existing API only confirms that Redis/RabbitMQ/Qdrant URLs are configured and explicitly says runtime connectivity is worker-owned, the UI displays “Configured” in a neutral style rather than a false green “Healthy” status. The API and authorization behavior were not changed.
 - Added focused static contract assertions for API usage, authorization and truthful configured-versus-healthy presentation. Tests/typecheck/build/browser and live dependency connectivity were not run.
+
+
+## 2026-10-09 — Settings navigation adaptation (source only)
+
+- Added a horizontally scrollable, keyboard-reachable section nav linking to organization, mail OAuth, AI provider, Clara runtime, members/roles and workspace links. Wrapped the existing settings subsections with stable anchors and descriptive headers.
+- Existing OAuth client management, AI provider/runtime endpoints, organization membership edits, password change flow, and server-side secret handling remain in place. This is a partial adaptation; provider subcomponents still need a detailed visual/accessibility review.
+- Added `apps/web/tests/settings-page-contract.test.ts` source assertions for anchors, endpoint continuity and secret handling. Test/typecheck/build/browser checks were not run.
