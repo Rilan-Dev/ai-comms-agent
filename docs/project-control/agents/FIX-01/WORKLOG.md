@@ -174,3 +174,11 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Correction:** Rewrote the assertions to test the current least-privilege contract and grants rather than the superseded migration implementation.
 - **Commit:** 618c4cd57f0e7e433c4da5f50840cd6c8f612b9b.
 - **Verification:** Source only; focused migration Vitest NOT RUN.
+
+
+### FIX01-WEB-TYPECHECK-UI-DEPENDENCY-FOCUS-TEST-20261009
+- User-reported web typecheck found missing lucide-react imports, strict focus-trap indexed-access errors in Agent Detail/sidebar, and an undefined newAgentPage test variable.
+- Corrections: added lucide-react ^0.575.0 to the web workspace and pnpm lockfile using the published SHA-512 integrity; narrowed focus element types after the existing non-empty guard; loaded the new-agent route source in the migration test.
+- Commits: 8f09785a, 7b1136e6, 3e35c1f5, a9dcb8e5, 52a4e348.
+- Verification: source only. Frozen install, tests and typechecks have NOT been rerun; no PASS claimed.
+- Next: pull latest main, run frozen install, focused web migration and worker RabbitMQ tests, then web/worker typechecks sequentially. Do not wait for CI/Vercel.
