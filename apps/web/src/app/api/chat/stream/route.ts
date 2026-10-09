@@ -26,7 +26,7 @@ function asksAboutEmail(content: string): boolean {
 
 async function loadEmailContext(organizationId: string, content: string): Promise<string | null> {
   if (!asksAboutEmail(content)) return null;
-  const searchTerm = content.replace(/\s+/g, " ").trim().slice(0, 240);
+  const ignored = new Set(["what", "when", "where", "which", "show", "tell", "about", "email", "emails", "mail", "mails", "inbox", "messages", "message", "draft", "drafts", "today", "yesterday", "recent", "latest", "summarize", "summary", "please", "from", "with", "have", "has", "that", "this", "are", "the", "for", "and"]);\n  const searchTerms = [...new Set(content.toLocaleLowerCase().match(/[a-z0-9@._+-]{3,}/g) ?? [])].filter((term) => !ignored.has(term)).slice(0, 8);
   const result = await query<EmailContextRow>(
     `SELECT a.email_address, a.provider, m.from_email, m.to_recipients,
        m.subject, m.text_body, m.snippet, m.received_at, m.is_draft, m.is_read
@@ -42,7 +42,7 @@ async function loadEmailContext(organizationId: string, content: string): Promis
          OR COALESCE(m.from_email, '') ILIKE '%' || $2 || '%')
      ORDER BY m.is_draft DESC, m.received_at DESC
      LIMIT 20`,
-    [organizationId, searchTerm],
+    [organizationId, searchTerms],
   );
   if (result.rows.length === 0) {
     return "No locally synchronized emails or drafts were found for this organization. Do not claim to have read mailbox contents that were not provided.";
