@@ -184,15 +184,15 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                   {session?.status === "active" ? "Voice session active" : session?.status === "ended" ? "Session ended" : "Ready to connect"}
                 </h2>
                 <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">{notice}</p>
-                {error ? <p className="mx-auto mt-3 max-w-md rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{error}</p> : null}
+                {error ? <p className="mx-auto mt-3 max-w-md rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{error}</p> : null}
 
                 <div className="mt-6 flex justify-center gap-3">
                   {session?.status === "active" ? (
-                    <button onClick={() => void stop()} disabled={busy} className="rounded-xl border px-5 py-3 text-sm font-semibold hover:bg-muted disabled:opacity-50">
+                    <button onClick={() => void stop()} disabled={busy} className="rounded-md border px-5 py-3 text-sm font-semibold hover:bg-muted disabled:opacity-50">
                       End session
                     </button>
                   ) : (
-                    <button onClick={() => void start()} disabled={busy || !agent} className="rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-background hover:-translate-y-0.5 disabled:opacity-50">
+                    <button onClick={() => void start()} disabled={busy || !agent} className="rounded-md bg-foreground px-5 py-3 text-sm font-semibold text-background hover:-translate-y-0.5 disabled:opacity-50">
                       {busy ? "Connecting…" : "Start voice session"}
                     </button>
                   )}
@@ -217,16 +217,16 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                         }
                       }}
                       placeholder="Type or paste a transcript while the Clara browser transport is being negotiated…"
-                      className="mt-3 min-h-24 w-full resize-y rounded-xl border bg-background p-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                      className="mt-3 min-h-24 w-full resize-y rounded-md border bg-background p-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                     />
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <span className="text-xs text-muted-foreground">Enter sends · Shift+Enter adds a line</span>
-                      <button onClick={() => void sendTurn()} disabled={turnBusy || !transcript.trim()} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+                      <button onClick={() => void sendTurn()} disabled={turnBusy || !transcript.trim()} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
                         {turnBusy ? "Thinking…" : "Send turn"}
                       </button>
                     </div>
                     {responseText ? (
-                      <div className="mt-4 rounded-xl border bg-background p-4">
+                      <div className="mt-4 rounded-md border bg-background p-4">
                         <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Assistant</p>
                         <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{responseText}</p>
                       </div>
