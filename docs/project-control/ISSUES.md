@@ -374,3 +374,14 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Verification:** GitHub source writes and re-fetch succeeded. Focused tests, typechecks, and migration execution NOT RUN. No PASS claimed.
 - **Lockfile discrepancy:** User's local output reports two lockfile documents, but current main has exactly one `lockfileVersion:` and one `importers:` header. Local checkout/diff is needed to determine whether the duplicate is uncommitted or stale.
 - **Next action:** Pull latest main; compare local lockfile with `origin/main`; run focused migration Vitest and worker RabbitMQ test, then web and worker typechecks sequentially. Route Docker/CI/deployment/environment defects to OPS-01.
+
+
+## ISS-020 — Phase 4 migration test targeted wrong migration (2026-10-10)
+- **Severity:** medium (focused test failure; source schema artifacts exist in later migrations)
+- **Owner:** FIX-01
+- **Status:** test_source_corrected_verification_pending
+- **Finding:** The test asserted `summary_sources` and its tenant policy against `0002_application_domain.sql`, but the table is created in `0003_phase4_schema_alignment.sql` and its RLS policy is created in `0004_phase4_schema_cleanup.sql`.
+- **Correction:** Static test now verifies those artifacts in the migrations that actually own them.
+- **Commit:** `c51d5a79dfd999dd4382cc60005798531e5517be` on `fix/migration-verification-phase4-contract`.
+- **Verification pending:** Focused Vitest, worker tests, typechecks, migration execution, and runtime checks. No PASS claimed.
+- **Separate local issue:** User's local `pnpm-lock.yaml` showed two YAML documents, while fetched current main contains one. Compare local checkout to current remote before editing lockfile.
