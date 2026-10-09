@@ -216,6 +216,9 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
   }
   const terms = [...new Set(queryText.toLowerCase().match(/[\\p{L}\\p{N}_]{2,}/gu) ?? [])].slice(0, 12);
   const textQuery = terms.join(" | ");
+  if (!queryText.trim() || terms.length === 0) {
+    return { ok: true, result: { sources: [] } };
+  }
   try {
     const result = await query<{ id: string; content: string; metadata: Record<string, unknown> | null }>(
       `SELECT kc.id, kc.content, kc.metadata
