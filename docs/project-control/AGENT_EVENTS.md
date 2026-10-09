@@ -113,3 +113,15 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Evidence:** User's pnpm typecheck output: packages/shared, packages/db, packages/clara-core, and apps/worker passed; apps/web failed with TS1127/TS1434 at line 84. Fix commit 39857c40820940b500dcf452331dfe82ae35b861.
 - **Status:** Source correction committed; post-fix typecheck/test not yet run.
 - **Next action:** Re-run `pnpm run typecheck` and focused Zoho OAuth settings test. Route unrelated environment/CI/deploy issues to OPS-01.
+
+
+### EVT-FIX01-ZOHO-ASSERTIONS-20261009 — 2026-10-09
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** CORRECTION
+- **Summary:** User reran `pnpm run typecheck` successfully across all workspaces. The focused Zoho OAuth test reported 8 passed and 2 failed because one assertion expected an HTTPS error for an HTTP raw-IP host although the implementation rejects raw IP hosts first, and another assertion rejected the helper's explanatory comment mentioning `NEXT_PUBLIC_APP_URL`.
+- **Impact:** Local regression test only; no runtime OAuth behavior changed.
+- **Owner:** FIX-01
+- **Remedy:** Updated assertions to expect the documented DNS-only/raw-IP rejection and to forbid only `process.env.NEXT_PUBLIC_APP_URL` usage. Commit `c58d6d442767f471c694ef978fdb06eca6d29850`.
+- **Verification:** Corrected focused test has not yet been rerun; no test PASS claimed.
+- **Next action:** Rerun focused Zoho OAuth settings Vitest and continue independent implementation without waiting for CI/Vercel.
+- **Related records:** ISS-014; BKL-010; FIX01-ZOHO-TEST-NEWLINES-20261009.
