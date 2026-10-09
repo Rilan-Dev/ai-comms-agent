@@ -25,7 +25,6 @@ const voice = readFileSync(resolve(__dirname, "../src/app/ai-voice/voice-workspa
 const knowledge = readFileSync(resolve(__dirname, "../src/app/knowledge/page.tsx"), "utf8");
 const knowledgeApi = readFileSync(resolve(__dirname, "../src/app/api/knowledge/route.ts"), "utf8");
 const activity = readFileSync(resolve(__dirname, "../src/app/activity/page.tsx"), "utf8");
-const activity = readFileSync(resolve(__dirname, "../src/app/activity/page.tsx"), "utf8");
 const audit = readFileSync(resolve(__dirname, "../src/app/audit/page.tsx"), "utf8");
 const auditApi = readFileSync(resolve(__dirname, "../src/app/api/audit/route.ts"), "utf8");
 const operations = readFileSync(resolve(__dirname, "../src/app/operations/page.tsx"), "utf8");
