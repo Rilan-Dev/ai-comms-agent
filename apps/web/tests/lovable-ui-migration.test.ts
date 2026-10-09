@@ -15,6 +15,7 @@ const draftsPage = readFileSync(resolve(__dirname, "../src/app/mail/drafts/page.
 const compose = readFileSync(resolve(__dirname, "../src/app/mail/compose/compose-client.tsx"), "utf8");
 const threads = readFileSync(resolve(__dirname, "../src/app/mail/threads/page.tsx"), "utf8");
 const accounts = readFileSync(resolve(__dirname, "../src/app/mail/accounts/email-accounts-client.tsx"), "utf8");
+const approvals = readFileSync(resolve(__dirname, "../src/app/mail/approvals/approvals-client.tsx"), "utf8");
 
 describe("Lovable Agentic AI Studio UI adaptation", () => {
   it("uses the Lovable semantic palette and typography without replacing Tailwind tokens", () => {
@@ -93,6 +94,15 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(accounts).toContain("Disconnect");
     expect(accounts).toContain("Remove");
     expect(accounts).toContain("Search mailboxes");
+  });
+
+  it("keeps explicit approval decisions and the truthful empty queue in the Lovable style", () => {
+    expect(approvals).toContain("font-display");
+    expect(approvals).toContain('decision: "approved" | "rejected"');
+    expect(approvals).toContain('decide(a.id,"approved")');
+    expect(approvals).toContain('decide(a.id,"rejected")');
+    expect(approvals).toContain("Nothing waiting for approval");
+    expect(approvals).toContain("No provider action was executed.");
   });
 
   it("keeps Compose approval safeguards and gives Threads a consistent designed empty state", () => {
