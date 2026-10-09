@@ -68,3 +68,11 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - Added IMAP parser contract coverage and corrected adapter capability assertions: `26c90fe94093a953973492c5276b50a13c4d078f`, `b2d82ddfe6f656740bd2077dc1300cad895645f7`; updated worker selection test after enabling IMAP polling: `d72d444a1d71c9675fa52b4a9bcb3b957150cc56`.
 - Enabled the opt-in local Compose profile for PostgreSQL/Redis/RabbitMQ/Qdrant: `c3b61ba1b688137cf917bdb224b51fef433430d5`. Added `docs/architecture/INFRASTRUCTURE-INTEGRATION-STATUS.md` documenting actual data flow and integration gaps: `63312b53db66a42d10cceb67b3b1f6a283511642`.
 - **Not verified:** No test suite, typecheck, build, live mailbox, deployed database, Clara turn, or infrastructure container was executed. GitHub accepted the commits only. Redis and RabbitMQ still lack real application client paths; Qdrant email indexing is not implemented. Do not claim those app integrations are enabled just because endpoints or local containers exist.
+
+
+### DEV01-ADAPTER-CORRECTIONS-20261009 — 2026-10-09
+- **Task:** Continue the focused provider test/typecheck pass and correct defects identified by source review.
+- **Source fixes:** Zoho `updateDraft()` now performs a provider PUT with only supplied draft fields; IMAP checkpoints are decoded on both initial and incremental runs and persisted on bounded UID continuation; SMTP AUTH PLAIN now uses NUL separators in its credential payload.
+- **Commits:** Zoho `72f05f5f642beea07cc5543fbc744051a083f922`; IMAP `5d2c3f3bcbab6698a56449afda407921c05b7760`.
+- **Verification attempt:** Tried to check out the repository locally. Node is available, but pnpm is not installed and outbound DNS cannot resolve github.com, so the test/typecheck commands could not be executed here. GitHub source reads/writes succeeded; this is not test evidence.
+- **Still pending:** Focused Zoho/IMAP tests, worker and web typechecks, real IMAP/SMTP server validation, live PostgreSQL ingestion, tenant-scoped Clara Chat acceptance, Clara Core RAG indexing, and real Redis/RabbitMQ application integrations. FIX-01 retains BKL-008; OPS-01 retains production infrastructure/deployment.
