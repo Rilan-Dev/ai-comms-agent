@@ -302,7 +302,7 @@ export class ImapSmtpAdapter implements EmailProvider {
       const selected = await this.command(`SELECT ${quote(folder.provider_folder_id)}`);
       const validity = selected.join("\n").match(/UIDVALIDITY\s+(\d+)/i)?.[1] ?? "unknown";
       const savedCheckpoint = checkpoints[folder.provider_folder_id];
-      if (!encoded && state.sync_mode === "incremental") lastUid = savedCheckpoint?.validity === validity ? savedCheckpoint.uid : 0;
+      if ((!encoded || (!previousValidity && lastUid === 0)) && (state.sync_mode === "incremental" || savedCheckpoint)) lastUid = savedCheckpoint?.validity === validity ? savedCheckpoint.uid : 0;
       if (previousValidity && previousValidity !== validity) lastUid = 0;
       const lines = await this.command("UID SEARCH ALL");
       const uidLine = lines.find((line) => /^\* SEARCH(?:\s|$)/i.test(line)) ?? "";
