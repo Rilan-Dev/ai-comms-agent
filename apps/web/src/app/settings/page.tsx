@@ -76,23 +76,23 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-[1100px] space-y-8 p-5 sm:p-7 lg:p-9">
+    <main className="mx-auto max-w-[1100px] space-y-8 bg-background p-5 sm:p-7 lg:p-10">
       <header>
         <p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Workspace</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="font-display text-3xl font-medium tracking-tight">Settings<span className="text-tertiary">.</span></h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           Organization access and runtime posture. Sensitive configuration remains server-side.
         </p>
       </header>
 
       {error ? (
-        <section className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">
+        <section className="rounded-md border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">
           {error}
         </section>
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-[1.1fr_.9fr]">
-        <div className="rounded-2xl border bg-background p-5">
+        <div className="rounded-md border border-border bg-card p-5">
           <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Organization</p>
           {loading ? (
             <div className="mt-5 h-24 animate-pulse rounded-xl bg-muted" />
@@ -124,7 +124,7 @@ export default function SettingsPage() {
       <AIProviderSettings organizationId={organization?.id ?? ""} />
       <AIRuntimeSettings organizationId={organization?.id ?? ""} />
 
-      <section className="rounded-2xl border bg-background p-5">
+      <section className="rounded-md border border-border bg-card p-5">
         {notice ? <div className="mb-4 rounded-xl border bg-muted/30 px-4 py-3 text-sm">{notice}</div> : null}
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -174,7 +174,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border bg-muted/30 p-5">
+      <section className="rounded-md border border-border bg-secondary/50 p-5">
         <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Configuration</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <LinkCard href="/ai-voice" title="AI & Voice" text="Provider readiness and Clara voice configuration." />
