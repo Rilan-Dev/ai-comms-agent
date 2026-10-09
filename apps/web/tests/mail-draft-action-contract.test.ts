@@ -7,6 +7,7 @@ const route = readFileSync(resolve(__dirname, "../src/app/api/mail/drafts/route.
 const compose = readFileSync(resolve(__dirname, "../src/app/mail/compose/compose-client.tsx"), "utf8");
 const thread = readFileSync(resolve(__dirname, "../src/app/mail/thread/[threadId]/thread-client.tsx"), "utf8");
 const draftsClient = readFileSync(resolve(__dirname, "../src/app/mail/drafts/drafts-client.tsx"), "utf8");
+const chatRoute = readFileSync(resolve(__dirname, "../src/app/api/chat/stream/route.ts"), "utf8");
 
 describe("Mail draft and sensitive action contracts", () => {
   it("keeps draft list/update/delete organization scoped", () => {
@@ -25,6 +26,15 @@ describe("Mail draft and sensitive action contracts", () => {
     expect(compose).toContain("requestedDraftId");
     expect(compose).toContain("/api/mail/drafts?organizationId=");
     expect(compose).toContain("setDraftId(String(d.id))");
+  });
+  it("injects only organization-scoped synchronized mail into email-related chat turns", () => {
+    expect(chatRoute).toContain("loadEmailContext(organizationId, content)");
+    expect(chatRoute).toContain("m.organization_id = $1");
+    expect(chatRoute).toContain("a.organization_id = $1");
+    expect(chatRoute).toContain("a.status = 'connected'");
+    expect(chatRoute).toContain("emailContext ? [{ role: \"system\" as const, content: emailContext }] : []");
+    expect(chatRoute).toContain("<untrusted_email_content>");
+    expect(chatRoute).toContain("No locally synchronized emails or drafts were found");
   });
   it("makes persisted drafts searchable by subject, body, recipient, and mailbox", () => {
     expect(draftsClient).toContain('placeholder="Search subject, message, recipient, or mailbox…"');
