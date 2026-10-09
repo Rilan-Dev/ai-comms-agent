@@ -130,3 +130,10 @@ This is an explicit inventory, not a claim that every listed page is already mig
 - Added Escape-key dismissal to the mobile sidebar and explicit `aria-expanded` / `aria-controls` state on the navigation trigger.
 - Added focused static contract assertions for the sticky offset and mobile navigation accessibility affordances. Assertions are source checks only; no test runner, typecheck, build, browser, screen-reader, or device verification was executed.
 - Remaining review is not considered complete: continue checking route-level narrow viewport overflow, keyboard navigation, form/status announcements, dialogs, and all visible secondary controls.
+
+
+## 2026-10-09 — Cross-route tenant context and accessibility follow-up
+
+- Automations and Schedules server pages now use the authenticated app context and redirect unauthenticated users to login; development-seed organization fallback was removed from these authenticated surfaces. Organization-scoped list queries remain unchanged after deriving the organization ID from authenticated context.
+- Added accessible labels to automation and schedule form controls and normalized schedule control geometry. Agent detail Activity icon and section navigation fixes are recorded above.
+- Source commits: 5a5275b3, 088c36d8, b46ac6ab, ba4ebdcd, fbc9a8db. Tests/typecheck/build/browser and multi-tenant runtime checks remain not run.
