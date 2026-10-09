@@ -1396,3 +1396,14 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Blockers remain separate: OPS-01 owns live PostgreSQL migration 0029/0030 + Redis WRONGPASS/runtime inbox verification; FIX-01 owns confirmed substantial mail/tenant defects. Do not poll CI/Vercel.
 - Exact next action: adapt Knowledge UI with real organization-scoped indexed counts/status and working controls; then Activity → Audit → Operations → Settings/provider settings → Login/Setup → agent detail/version/history → responsive/accessibility review. Semantic/vector indexing and live WhatsApp webhook acceptance remain pending.
 
+
+
+## 2026-10-09 — Knowledge UI adaptation (source only)
+
+- Replaced the Knowledge route's hard-coded `0 indexed` / `0 sources` and inert buttons with an API-backed screen: persisted email-document and chunk counts, ready/pending/failed totals, last-indexed timestamp, recent email knowledge documents, refresh, and honest loading/error/empty states.
+- Added `GET /api/knowledge` using the existing identity adapter and `organization.read` authorization; all document/chunk queries are constrained to the authorized organization. It returns metadata/counts only, not email bodies or credentials.
+- UI links mailbox setup to `/mail/accounts`; external knowledge-source onboarding remains unavailable and semantic embeddings/Qdrant are explicitly not claimed.
+- Added static checks in `apps/web/tests/lovable-ui-migration.test.ts` and updated `docs/project-control/LOVABLE_UI_MIGRATION.md` and `docs/project-control/NEXT_ACTION.md`.
+- Commits: `9c6bc94e` API, `95970d59` page, `c4cb353b` assertions, `ccbb50ed` migration inventory, `2018eca4` / `10551cbb` next action, `a00a0235` verification record.
+- Verification: no tests/typecheck/build/browser/API/database/live retrieval run. Source only; no PASS claimed.
+- Next: adapt Activity to the Lovable design, preserving real organization-scoped event data and empty/error/loading states, then Audit. Do not wait for CI/Vercel.
