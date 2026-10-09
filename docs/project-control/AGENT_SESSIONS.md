@@ -252,3 +252,16 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** Tests/typecheck/build/browser/runtime checks remain unexecuted. BKL-012 routes a suspected Mail Approvals tenant-context defect to FIX-01.
 - **Handoff:** None for UI work; BKL-012 is a separate FIX-01 route.
 - **Next action:** Follow `docs/project-control/NEXT_ACTION.md`; do not wait for CI/Vercel.
+
+
+### DEV01-LOVABLE-UI-CONTINUATION-20261009 — 2026-10-09
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Continue the authorized Lovable UI migration and inventory every remaining unmigrated screen.
+- **Started from:** GitHub `main`; previous mail-screen migration tranche.
+- **Scope:** Screen-by-screen UI adaptation only; preserve Next.js architecture, APIs, auth/RBAC, tenant boundaries, real data, validation, approval safeguards and honest states.
+- **Status:** ACTIVE
+- **Completed:** Added route-level inventory; adapted WhatsApp, Automations and Schedules; added focused static UI contract assertions. Commits: `70738aa2`, `056272db`, `3cf94c7f`, `c2dd6e6e`, `740b70d2`, `2f1eecd5`, `87cc0976`, `7fc54b32`.
+- **Pending:** Chat, AI & Voice, Knowledge, Activity, Audit, Operations, Settings/provider settings, Login/Setup, Agent detail/version/history, responsive/accessibility sweep.
+- **Blockers:** No source-work blocker. Tests/typecheck/build/browser/runtime checks were not run. FIX-01 owns BKL-012 tenant-context correction; OPS-01 owns BKL-011 database/Redis runtime work.
+- **Handoff:** None.
+- **Next action:** Follow `docs/project-control/NEXT_ACTION.md`; adapt Chat, then AI & Voice, then Knowledge. Do not wait for CI/Vercel.
