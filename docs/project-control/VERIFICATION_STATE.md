@@ -1149,3 +1149,11 @@ source_review:
 - **Correction:** Rewrote the assertions to test the current least-privilege contract and grants rather than the superseded migration implementation.
 - **Commit:** 618c4cd57f0e7e433c4da5f50840cd6c8f612b9b.
 - **Verification:** Source only; focused migration Vitest NOT RUN.
+
+
+## 2026-10-09 — Web typecheck follow-up (FIX-01)
+
+- User-reported diagnostics: missing lucide-react module across UI source files; TS18048 in Agent Detail and sidebar focus traps; TS2304 for missing newAgentPage in lovable-ui-migration.test.ts.
+- Source corrections committed: dependency/lockfile (8f09785a, 7b1136e6), focus typing (3e35c1f5, a9dcb8e5), static test binding (52a4e348).
+- Status: source_corrected_execution_pending.
+- NOT VERIFIED: frozen install after adding Lucide, focused tests, web typecheck, worker typecheck, full workspace typecheck and build. Do not infer PASS from source edits.
