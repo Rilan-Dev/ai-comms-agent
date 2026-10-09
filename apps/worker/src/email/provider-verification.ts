@@ -17,7 +17,7 @@ export async function verifyEmailProviderConnection<T = void>(
 ): Promise<ProviderVerificationResult & { value?: T }> {
   await provider.connect(credentials);
   try {
-    const capabilities = normalizeCapabilitySet(await provider.discoverCapabilities());
+    const capabilities = normalizeCapabilitySet(await withProviderRetry(() => provider.discoverCapabilities()));
     if (onConnected) {
       const value = await onConnected({ provider, capabilities });
       return { capabilities, value };
