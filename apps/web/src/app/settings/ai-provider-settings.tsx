@@ -1,5 +1,6 @@
 "use client";
 
+import { KeyRound } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type Provider = "openai" | "gemini" | "sarvam";
@@ -64,7 +65,7 @@ export function AIProviderSettings({ organizationId }: { organizationId: string 
   const label = "block text-sm font-medium";
   const current = configs.find((item) => item.provider === provider);
   return <section className="space-y-4 rounded-md border border-border bg-card p-5 sm:p-6">
-    <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">AI providers</p><h2 className="mt-1 text-xl font-semibold">API credentials and model catalog</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Configure provider credentials per organization. Keys are encrypted before database storage and are never sent back to the browser. Save the key first, then fetch available models.</p></div>
+    <div><p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground"><KeyRound className="h-3.5 w-3.5 text-primary" />AI providers</p><h2 className="mt-1 text-xl font-semibold">API credentials and model catalog</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Configure provider credentials per organization. Keys are encrypted before database storage and are never sent back to the browser. Save the key first, then fetch available models.</p></div>
     {notice ? <p role="status" className="rounded-md border bg-muted/40 p-3 text-sm">{notice}</p> : null}
     {error ? <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}
     {!configs.some((item) => item.enabled && item.hasApiKey) ? <p role="alert" className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm">No enabled chat provider has a saved API key yet. Configure and save a provider before starting chat.</p> : null}
