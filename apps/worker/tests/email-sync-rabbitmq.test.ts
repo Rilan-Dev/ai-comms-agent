@@ -41,6 +41,8 @@ test("worker publishes due mailboxes and consumes account-scoped sync jobs", () 
   assert.match(worker, /publishEmailSync\(/);
   assert.match(worker, /processMailboxSyncMessage/);
   assert.match(entry, /startEmailSyncRabbitMq\(processMailboxSyncMessage\)/);
+  assert.doesNotMatch(worker, /s\.cursor IS NOT NULL OR s\.last_success_at/);
+  assert.match(worker, /s\.last_success_at < now\(\)-interval '15 minutes'/);
 });
 
 
