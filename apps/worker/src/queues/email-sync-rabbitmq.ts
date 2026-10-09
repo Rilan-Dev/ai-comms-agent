@@ -90,29 +90,29 @@ export function startEmailSyncRabbitMq(
   if (!url) return () => undefined;
 
   let stopped = false;
+  let booting = false;
+  let reconnectDelayMs = 1_000;
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   let connection: Awaited<ReturnType<typeof amqp.connect>> | undefined;
   let channel: Channel | undefined;
   let confirmChannel: ConfirmChannel | undefined;
   let consumerTag: string | undefined;
 
-  const boot = async () => {
-    connection = await amqp.connect(url);
-    connection.on("error", (error) => {
-      console.error(JSON.stringify({ level: "error", service: "worker.email-sync-queue", message: "RabbitMQ connection error", reason: error.message }));
-    });
-    connection.on("close", () => {
-      if (!stopped) console.error(JSON.stringify({ level: "error", service: "worker.email-sync-queue", message: "RabbitMQ connection closed; restart worker to reconnect" }));
-    });
-    channel = await connection.createChannel();
-    confirmChannel = await connection.createConfirmChannel();
-    await declareTopology(channel);
-    await declareTopology(confirmChannel);
-    await channel.prefetch(PREFETCH);
-    const result = await channel.consume(MAIN_QUEUE, (message) => {
-      if (message) void processMessage(message);
-    }, { noAck: false });
-    consumerTag = result.consumerTag;
-    console.log(JSON.stringify({ level: "info", service: "worker.email-sync-queue", message: "Durable email.sync consumer ready", queue: MAIN_QUEUE, prefetch: PREFETCH }));
+  const scheduleReconnect = () => {
+    if (stopped || reconnectTimer) return;
+    const delay = reconnectDelayMs;
+    reconnectDelayMs = Math.min(30_000, reconnectDelayMs * 2);
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = undefined;
+      void boot();
+    }, delay);
+    reconnectTimer.unref?.();
+    console.error(JSON.stringify({
+      level: "warn",
+      service: "worker.email-sync-queue",
+      message: "RabbitMQ reconnect scheduled",
+      delay_ms: delay,
+    }));
   };
 
   const processMessage = async (message: ConsumeMessage) => {
@@ -140,7 +140,7 @@ export function startEmailSyncRabbitMq(
           };
           await publishConfirmed(publisher, target, retryEnvelope);
         } else {
-          await publisher.sendToQueue(DEAD_QUEUE, message.content, {
+          publisher.sendToQueue(DEAD_QUEUE, message.content, {
             persistent: true,
             contentType: message.properties.contentType ?? "application/octet-stream",
             headers: { "x-dead-letter-reason": reason },
@@ -157,17 +157,76 @@ export function startEmailSyncRabbitMq(
     }
   };
 
-  void boot().catch((error) => {
-    console.error(JSON.stringify({ level: "error", service: "worker.email-sync-queue", message: "RabbitMQ consumer failed to start", reason: error instanceof Error ? error.message : "connection failed" }));
-  });
+  async function boot(): Promise<void> {
+    if (stopped || booting) return;
+    booting = true;
+    let newConnection: Awaited<ReturnType<typeof amqp.connect>> | undefined;
+    try {
+      newConnection = await amqp.connect(url);
+      if (stopped) {
+        await newConnection.close().catch(() => undefined);
+        return;
+      }
+      connection = newConnection;
+      newConnection.on("error", (error) => {
+        console.error(JSON.stringify({ level: "error", service: "worker.email-sync-queue", message: "RabbitMQ connection error", reason: error.message }));
+      });
+      newConnection.on("close", () => {
+        if (stopped) return;
+        channel = undefined;
+        confirmChannel = undefined;
+        consumerTag = undefined;
+        connection = undefined;
+        scheduleReconnect();
+      });
 
+      const nextChannel = await newConnection.createChannel();
+      const nextConfirmChannel = await newConnection.createConfirmChannel();
+      await declareTopology(nextChannel);
+      await declareTopology(nextConfirmChannel);
+      await nextChannel.prefetch(PREFETCH);
+      const result = await nextChannel.consume(MAIN_QUEUE, (message) => {
+        if (message) void processMessage(message);
+      }, { noAck: false });
+      if (stopped) {
+        await nextChannel.cancel(result.consumerTag).catch(() => undefined);
+        await nextChannel.close().catch(() => undefined);
+        await nextConfirmChannel.close().catch(() => undefined);
+        await newConnection.close().catch(() => undefined);
+        return;
+      }
+      channel = nextChannel;
+      confirmChannel = nextConfirmChannel;
+      consumerTag = result.consumerTag;
+      reconnectDelayMs = 1_000;
+      console.log(JSON.stringify({ level: "info", service: "worker.email-sync-queue", message: "Durable email.sync consumer ready", queue: MAIN_QUEUE, prefetch: PREFETCH }));
+    } catch (error) {
+      if (connection === newConnection) connection = undefined;
+      channel = undefined;
+      confirmChannel = undefined;
+      consumerTag = undefined;
+      await newConnection?.close().catch(() => undefined);
+      console.error(JSON.stringify({ level: "error", service: "worker.email-sync-queue", message: "RabbitMQ consumer startup failed", reason: error instanceof Error ? error.message : "connection failed" }));
+      scheduleReconnect();
+    } finally {
+      booting = false;
+    }
+  }
+
+  void boot();
   return () => {
     stopped = true;
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer = undefined;
     void (async () => {
       if (consumerTag && channel) await channel.cancel(consumerTag).catch(() => undefined);
       await channel?.close().catch(() => undefined);
       await confirmChannel?.close().catch(() => undefined);
       await connection?.close().catch(() => undefined);
+      channel = undefined;
+      confirmChannel = undefined;
+      connection = undefined;
+      consumerTag = undefined;
     })();
   };
 }
