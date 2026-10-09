@@ -78,3 +78,12 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Authorization:** Existing product security/tenant-isolation requirements and DEV-01 source discovery while executing the authorized UI migration.
 - **Suggested next action:** Trace the approvals client/API contract and replace seeded development-organization selection with the authenticated request context; preserve API-side permission checks and add a regression assertion. Do not weaken authorization.
 - **Related session/event/handoff:** DEV01-LOVABLE-UI-MIGRATION-20261009; `apps/web/src/app/mail/approvals/page.tsx`.
+
+### BKL-013 — Live inbox schema and Redis authentication (2026-10-09)
+- **Work:** Apply schema reconciliation migrations through `0030`, correct Redis WRONGPASS, deploy matching web/worker source, and verify imported email rows appear in the inbox.
+- **Owner:** OPS-01 / Shipwright for runtime, DB, container and secret configuration; FIX-01 / Sentinel for source fixes.
+- **State:** ROUTED
+- **Dependency:** Access to the self-hosted database, Docker environment, and Redis ACL/user configuration.
+- **Authorization:** User supplied live error logs and reported missing inbox results.
+- **Suggested next action:** Check which DB the web/worker containers use; apply migrations `0029` and `0030`; compare the configured `REDIS_URL` username/password with the Redis ACL/user configuration without printing secrets; rebuild/restart web and worker; trigger sync and confirm message row counts and inbox query.
+- **Safety:** Do not disable Redis lease acquisition or claim sync completion from HTTP queue acceptance.
