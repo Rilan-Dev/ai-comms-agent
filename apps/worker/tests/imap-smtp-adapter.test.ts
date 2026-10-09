@@ -107,8 +107,8 @@ test("IMAP response reader handles multiple literals in one FETCH response", asy
   const response = await readImapResponse(reader);
   // The literal payload terminates with CRLF; the next response item may be
   // separated by whitespace that includes both CRLF and a leading space.
-  assert.match(response, /BODY\[\] {5}/);
-  assert.match(response, /From\r\n BODY\[\] {5}/);
+  assert.match(response, /BODY\[\] \{5\}/);
+  assert.match(response, /From\r\n BODY\[\] \{5\}/);
   assert.match(response, /Hello/);
   assert.equal(reader.buffer.toString("utf8"), "A0001 OK fetch complete\r\n");
 });
