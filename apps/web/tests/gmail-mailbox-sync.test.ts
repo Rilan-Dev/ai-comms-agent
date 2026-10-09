@@ -5,10 +5,10 @@ import { resolve } from "node:path";
 const read = (path: string) => readFileSync(resolve(__dirname, path), "utf8");
 
 describe("Gmail automatic mailbox synchronization", () => {
-  it("starts the Gmail sync loop with the long-lived worker and stops it on shutdown", () => {
+  it("starts the multi-provider sync loop with the long-lived worker and stops it on shutdown", () => {
     const entry = read("../../../apps/worker/src/index.ts");
-    expect(entry).toContain("startGmailMailboxSyncLoop");
-    expect(entry).toContain("stopGmailMailboxSync()");
+    expect(entry).toContain("startMailboxSyncLoop");
+    expect(entry).toContain("stopMailboxSync()");
   });
 
   it("claims due Gmail accounts durably and records cursor, retry and success state", () => {
@@ -31,6 +31,16 @@ describe("Gmail automatic mailbox synchronization", () => {
     expect(adapter).toContain("listDraftIdsByMessage");
     expect(adapter).toContain("/history?startHistoryId=");
     expect(adapter).not.toContain('"/messages?maxResults=100&labelIds=INBOX"');
+  });
+
+  it("dispatches persisted mailbox accounts to Gmail or Zoho adapters and includes Zoho in due-account selection", () => {
+    const worker = read("../../../apps/worker/src/email/mailbox-sync-worker.ts");
+    const zoho = read("../../../apps/worker/src/email/zoho-adapter.ts");
+    expect(worker).toContain('candidate.provider === "zoho" ? new ZohoAdapter()');
+    expect(worker).toContain("a.provider IN ('gmail','zoho','imap_smtp')");
+    expect(zoho).toContain("const pageSize = 100");
+    expect(zoho).toContain("this.listMessages(folder.provider_folder_id");
+    expect(zoho).toContain('history_token: hasMore ? state.history_token : (state.history_token ?? "zoho-full-v1")');
   });
 
   it("preserves an existing Google refresh token when reconnect omits one", () => {
