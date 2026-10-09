@@ -276,6 +276,19 @@ export class GmailAdapter implements EmailProvider {
     return Promise.all((data.messages ?? []).map((m: any) => this.request(`/messages/${m.id}?format=full`).then(toMessage)));
   }
 
+  async findDraftIdForMessage(messageId: string): Promise<string | null> {
+    let pageToken: string | undefined;
+    do {
+      const params = new URLSearchParams({ maxResults: "100" });
+      if (pageToken) params.set("pageToken", pageToken);
+      const page = await this.request(`/drafts?${params.toString()}`);
+      const match = (page.drafts ?? []).find((draft: any) => draft.message?.id === messageId && typeof draft.id === "string");
+      if (match) return match.id;
+      pageToken = typeof page.nextPageToken === "string" ? page.nextPageToken : undefined;
+    } while (pageToken);
+    return null;
+  }
+
   async getMessage(messageId: string): Promise<EmailMessage | null> {
     try {
       return toMessage(await this.request(`/messages/${encodeURIComponent(messageId)}?format=full`));
