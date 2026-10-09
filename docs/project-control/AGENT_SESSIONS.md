@@ -265,3 +265,15 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** No source-work blocker. Tests/typecheck/build/browser/runtime checks were not run. FIX-01 owns BKL-012 tenant-context correction; OPS-01 owns BKL-011 database/Redis runtime work.
 - **Handoff:** None.
 - **Next action:** Follow `docs/project-control/NEXT_ACTION.md`; adapt Chat, then AI & Voice, then Knowledge. Do not wait for CI/Vercel.
+
+### DEV01-LOVABLE-UI-MIGRATION-20261009 — 2026-10-09 (operational screen continuation)
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Continue authorized Lovable UI migration, repository-first.
+- **Started from:** Current GitHub main after Mail screen group adaptation.
+- **Scope:** Visual adaptation of supporting product routes; preserve Next.js/API/auth/tenant/data behavior.
+- **Status:** ACTIVE
+- **Completed:** Adapted the WhatsApp overview's presentation, Knowledge, Activity and AI Voice workspace/fallback visual styling. Commits: `09c9047c`, `b919fbe4`, `9ce8ff42`, `e73552a8`, `889c4682`.
+- **Pending:** The authoritative NEXT_ACTION now prioritizes full WhatsApp route-group integration. A `whatsapp-client.tsx` exists with persisted account/message API calls and idempotent outbound queueing, but the visible page was static when inspected; ensure the existing client is actually wired to authenticated organization context before declaring WhatsApp migrated. Continue remaining route groups after that.
+- **Blockers:** Concurrent main-branch changes caused stale-SHA 409 conflicts on WhatsApp route/test paths. No repeated retries. Tests/typecheck/build/browser/runtime checks remain unexecuted.
+- **Handoff:** No handoff for visual work. BKL-012 remains routed to FIX-01; OPS-01 owns live migration/Redis/container operations.
+- **Next action:** Follow current `docs/project-control/NEXT_ACTION.md`; reconcile WhatsApp page/client against the latest main state, then continue independently without waiting for CI/Vercel.
