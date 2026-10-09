@@ -70,7 +70,7 @@ export function Sidebar() {
         <p className="px-3 pb-3 text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">Workspace</p>
         <ul className="space-y-0.5">
           {NAV_ITEMS.map((item) => {
-            const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+            const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href)) || ("children" in item && item.children?.some((child) => pathname === child.href || pathname.startsWith(child.href + "/")));
             return <li key={item.href}>
               <a href={item.href} aria-current={active ? "page" : undefined} onClick={() => setMobileOpen(false)} className={`flex h-10 items-center gap-3 rounded-md px-3 text-[13px] font-medium transition-colors ${active ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
                 <NavIcon name={item.icon} /><span>{item.label}</span>
