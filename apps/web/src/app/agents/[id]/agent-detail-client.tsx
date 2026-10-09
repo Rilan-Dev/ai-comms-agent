@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity as ActivityIcon, ArrowLeft, Bot, FlaskConical, GitBranch, Plug, Rocket, ShieldCheck } from "lucide-react";
-import { Activity, ArrowLeft, Bot, FlaskConical, PauseCircle, Rocket, Save, ShieldCheck } from "lucide-react";
+import { Activity as ActivityIcon, ArrowLeft, Bot, FlaskConical, GitBranch, PauseCircle, Plug, Rocket, Save, ShieldCheck } from "lucide-react";
 import type { Agent, AgentEmailBinding, AgentPolicy, AgentVersion, AgentWhatsAppBinding, EmailAccount } from "@ai-comms-agent/shared";
 import { useNotifications } from "@/components/notifications";
 
