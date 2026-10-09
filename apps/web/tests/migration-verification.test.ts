@@ -35,9 +35,9 @@ const auditHardeningSql = readFileSync(auditHardeningPath, "utf8");
 describe("Disposable PostgreSQL bootstrap static verification", () => {
   it("uses valid dollar-quoted DO blocks", () => {
     expect(initSql).toContain("DO $$");
-    expect(initSql).toContain("END\n$;");
+    expect(initSql).toMatch(/END\s*\$\$;/);
     expect(initSql).not.toMatch(/^DO \$(?!\$)/m);
-    expect(initSql).not.toMatch(/^\$/m);
+    expect(initSql).not.toMatch(/^\$(?!\$)/m);
   });
 });
 
@@ -65,8 +65,8 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
     });
 
     it("does not contain invalid single-dollar PostgreSQL delimiters", () => {
-      expect(migrationSql).not.toMatch(/^AS \$/m);
-      expect(migrationSql).not.toMatch(/^\$/m);
+      expect(migrationSql).not.toMatch(/^AS \$(?!\$)/m);
+      expect(migrationSql).not.toMatch(/^\$(?!\$)/m);
     });
   });
 
