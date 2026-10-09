@@ -8,9 +8,9 @@ The single exact next authorized action. Update this file on every commit.
 
 ### Immediate FIX-01 source follow-up — 2026-10-09
 
-The latest user run confirms pnpm install --frozen-lockfile passes (534 lockfile entries). It then exposes a worker TS2345 caused by an optional RabbitMQ URL captured by the reconnect closure, a worker typecheck SIGKILL, and a focused migration Vitest collection failure due to stale 0003/0004 paths. FIX-01 normalized the consumer URL to a definite string while preserving the no-config early return (09e4df46), added regression coverage (a24edec3), and updated migration test references to canonical 0013 and 0005 filenames (ffc98b30). Source only; no post-fix tests/typechecks have run.
+The latest user run confirms pnpm install --frozen-lockfile passes (534 lockfile entries). It then exposes a worker TS2345 caused by an optional RabbitMQ URL captured by the reconnect closure, a worker typecheck SIGKILL, and a focused migration Vitest collection failure due to stale 0003/0004 paths. FIX-01 normalized the consumer URL to a definite string while preserving the no-config early return (09e4df46), added regression coverage (a24edec3), updated migration test references to canonical 0013 and 0005 filenames (ffc98b30), and aligned security assertions with the current least-privilege 0013 implementation (618c4cd5). Source only; no post-fix tests/typechecks have run.
 
-**Exact next action:** pull latest main; run pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts and pnpm --filter @ai-comms-agent/worker exec node --test tests/email-sync-rabbitmq.test.ts. Then run pnpm --filter @ai-comms-agent/web typecheck and pnpm --filter @ai-comms-agent/worker typecheck sequentially. If those pass, run pnpm run typecheck again if resources allow. Record actual output; no PASS claim before execution. Do not restore obsolete migrations or wait for CI/Vercel.
+**Exact next action:** pull latest main; run pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts and pnpm --filter @ai-comms-agent/worker exec node --import tsx --test tests/email-sync-rabbitmq.test.ts. Then run pnpm --filter @ai-comms-agent/web typecheck and pnpm --filter @ai-comms-agent/worker typecheck sequentially. If those pass, run pnpm run typecheck again if resources allow. Record actual output; no PASS claim before execution. Do not restore obsolete migrations or wait for CI/Vercel.
 
 ### Immediate FIX-01 lockfile follow-up — 2026-10-09
 
@@ -921,3 +921,9 @@ Source inspection found `apps/web/src/app/api/audit/export/route.ts` falls back 
  
 ### FIX-01 lockfile follow-up — 2026-10-09
 User's `pnpm run typecheck` was blocked before TypeScript by `ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY` for `amqplib@2.2.0`. Commit `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e` removes a stray concatenated YAML document and restores the worker package/snapshot entries. **Next:** pull latest `main`, run `pnpm install --frozen-lockfile`, then `pnpm run typecheck`; record real output. Source correction is not a verification PASS. Do not wait for CI/Vercel.
+
+### FIX01-SECURITY-ASSERTION-ALIGNMENT-20261009
+- **Finding:** After correcting the stale migration paths, source comparison showed the security tests still expected the historical public is_active_organization_* wrappers. The current canonical 0013 migration intentionally drops those caller-selected-user-ID wrappers and exposes SECURITY INVOKER can_access_organization/can_manage_organization helpers backed by private membership checks and app.user_id.
+- **Correction:** Rewrote the assertions to test the current least-privilege contract and grants rather than the superseded migration implementation.
+- **Commit:** 618c4cd57f0e7e433c4da5f50840cd6c8f612b9b.
+- **Verification:** Source only; focused migration Vitest NOT RUN.
