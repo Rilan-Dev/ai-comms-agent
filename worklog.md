@@ -1447,3 +1447,13 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Commits: `fc22cc3f8a8fce85cb101c7f12963ee130b42fe1` (Operations), `ddb7a23337ff7204a20cc3cdf296a3fabecd302e` and `ca229779a51ebd0b78f756d1933ffcab0c8eee54` (tests), `4f010fb3a44c2b96094dde019a449ae4f381cd0f` (inventory), `d75222c721667d1eded6300b8a6760117b892de7` (NEXT_ACTION).
 - **Verification NOT RUN:** no tests, typecheck, build, browser/accessibility, or live dependency check. No CI/Vercel polling and no PASS claimed.
 - **Next:** Settings and provider-setting subsections → Login/Setup → agent detail/version/history → cross-route responsive/accessibility review.
+
+
+## 2026-10-09 — DEV-01 Settings and provider settings UI continuation
+
+- Applied compact Lovable visual styling and Lucide section icons across general organization Settings, AI provider settings, AI runtime settings, Gmail OAuth client management, and Zoho OAuth client management.
+- Preserved existing organization/membership APIs, role/status edits, password-change endpoint, provider model-catalog/save flows, encrypted and never-echoed secret handling, callback URI warnings, Zoho data-center selection, and edit/delete confirmation behavior.
+- Added static source-contract assertions and updated migration inventory/NEXT_ACTION.
+- Commits: `25d17e19a460b2b50f13f4b67b2d92966d549bc7`, `ecd6f40300c7b01c8cf5cb9fb8d085675b912786`, `68cb6fba405487e9abf2f983e977cbe7c93bc671`, `e324defdaa932fd8dc7b30663d67be0f152ecbff`, tests `399b60a6dd277a3b9ad16d5e04197c2cf29f217a`, inventory `0ac7a4c9ed34afe40eebe42f2ac4c670062c7fcf`, NEXT_ACTION `d47811e59c52a983fa7f5462e267742272e37f68`.
+- **Verification NOT RUN:** tests, typecheck, build, browser/accessibility, OAuth and provider runtime. No CI/Vercel polling and no PASS claimed.
+- **Next:** Login/Setup → agent detail/version/history → cross-route responsive/accessibility review.
