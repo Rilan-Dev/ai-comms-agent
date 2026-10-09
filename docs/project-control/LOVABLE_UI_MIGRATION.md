@@ -161,3 +161,5 @@ The Audit page's CSV/JSON export links omit `organizationId`, and `apps/web/src/
 - Clara Chat now exposes its transcript as a labelled live log, announces the thinking state with a status role, and labels the message composer. Static assertions were added for these contracts.
 - Source commits: agent dialog/channel controls `d73099d6`; Chat status/input `3d8ac3a3`; mobile drawer focus `837b4b19`; regression assertions `0a603b76`, `f8c3aefd`.
 - **Verification NOT RUN:** the new static assertions have not been executed; no typecheck, build, browser, screen-reader, or narrow-device checks were run. Keyboard behavior and layout still need actual browser verification. Cross-route review remains in progress.
+
+- Additional narrow-screen finding: Chat's agent selector was hidden below the `sm` breakpoint, removing agent switching on phones. It is now available at all viewport widths with a constrained mobile width and an accessible name. Source commit `bc8e698f`; static assertion `ad7dc7f8`. Browser/device validation remains NOT RUN.
