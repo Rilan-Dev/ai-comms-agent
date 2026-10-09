@@ -64,30 +64,56 @@ async function connectTls(host: string, port: number, timeoutMs = 10_000): Promi
 
 type SocketReader = {
   socket: tls.TLSSocket;
-  buffer: string;
+  buffer: Buffer;
   error?: Error;
 };
 
 function createReader(socket: tls.TLSSocket): SocketReader {
-  return { socket, buffer: "" };
+  return { socket, buffer: Buffer.alloc(0) };
+}
+
+async function readBytes(reader: SocketReader, length: number, timeoutMs = 10_000): Promise<Buffer> {
+  if (!Number.isSafeInteger(length) || length < 0) throw new Error("Invalid IMAP literal length");
+  while (reader.buffer.length < length) {
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => cleanup(new Error("TLS response timeout")), timeoutMs);
+      const onData = (chunk: Buffer | string) => {
+        reader.buffer = Buffer.concat([reader.buffer, Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)]);
+        cleanup();
+        resolve();
+      };
+      const onError = (error: Error) => cleanup(error);
+      const cleanup = (error?: Error) => {
+        clearTimeout(timer);
+        reader.socket.off("data", onData);
+        reader.socket.off("error", onError);
+        if (error) reject(error);
+      };
+      reader.socket.on("data", onData);
+      reader.socket.once("error", onError);
+    });
+  }
+  const result = reader.buffer.subarray(0, length);
+  reader.buffer = reader.buffer.subarray(length);
+  return result;
 }
 
 async function readLine(reader: SocketReader, timeoutMs = 10_000): Promise<string> {
-  const existing = reader.buffer.indexOf("\r\n");
+  const delimiter = Buffer.from("\r\n");
+  const existing = reader.buffer.indexOf(delimiter);
   if (existing >= 0) {
-    const line = reader.buffer.slice(0, existing);
-    reader.buffer = reader.buffer.slice(existing + 2);
+    const line = reader.buffer.subarray(0, existing).toString("utf8");
+    reader.buffer = reader.buffer.subarray(existing + delimiter.length);
     return line;
   }
-
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => cleanup(new Error("TLS response timeout")), timeoutMs);
     const onData = (chunk: Buffer | string) => {
-      reader.buffer += chunk.toString();
-      const index = reader.buffer.indexOf("\r\n");
+      reader.buffer = Buffer.concat([reader.buffer, Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)]);
+      const index = reader.buffer.indexOf(delimiter);
       if (index < 0) return;
-      const line = reader.buffer.slice(0, index);
-      reader.buffer = reader.buffer.slice(index + 2);
+      const line = reader.buffer.subarray(0, index).toString("utf8");
+      reader.buffer = reader.buffer.subarray(index + delimiter.length);
       cleanup();
       resolve(line);
     };
@@ -101,6 +127,21 @@ async function readLine(reader: SocketReader, timeoutMs = 10_000): Promise<strin
     reader.socket.on("data", onData);
     reader.socket.once("error", onError);
   });
+}
+
+/** Read an IMAP response while consuming literal payloads by octet length. */
+async function readImapResponse(reader: SocketReader, timeoutMs = 20_000): Promise<string> {
+  let response = await readLine(reader, timeoutMs);
+  const literalMarker = /\{(\d+)\+?\}$/;
+  while (true) {
+    const match = response.match(literalMarker);
+    if (!match) return response;
+    const length = Number(match[1]);
+    if (!Number.isSafeInteger(length) || length > 50 * 1024 * 1024) throw new Error("IMAP literal exceeds the 50 MiB safety limit");
+    const literal = await readBytes(reader, length, timeoutMs);
+    response += "\r\n" + literal.toString("utf8");
+    response += "\r\n" + await readLine(reader, timeoutMs);
+  }
 }
 
 async function smtpCommand(reader: SocketReader, command: string): Promise<string> {
@@ -197,7 +238,7 @@ export class ImapSmtpAdapter implements EmailProvider {
     imap.socket.write(`${tag} LIST "" "*"\r\n`);
     const folders: EmailFolder[] = [];
     while (true) {
-      const line = await readLine(imap.reader);
+      const line = await readImapResponse(imap.reader);
       if (line.startsWith(`${tag} OK`)) return folders;
       if (line.startsWith(`${tag} NO`) || line.startsWith(`${tag} BAD`)) throw new Error(`IMAP LIST failed: ${line}`);
       const match = line.match(/^\* LIST \([^)]*\) "[^"]*" (.+)$/);
@@ -217,7 +258,7 @@ export class ImapSmtpAdapter implements EmailProvider {
     imap.socket.write(`${tag} ${command}\r\n`);
     const lines: string[] = [];
     while (true) {
-      const line = await readLine(imap.reader, 20_000);
+      const line = await readImapResponse(imap.reader, 20_000);
       if (line.startsWith(`${tag} OK`)) return lines;
       if (line.startsWith(`${tag} NO`) || line.startsWith(`${tag} BAD`)) {
         throw new Error(`IMAP command failed (${command.split(" ")[0]}): ${line}`);
