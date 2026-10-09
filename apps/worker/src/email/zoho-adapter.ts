@@ -168,9 +168,51 @@ export class ZohoAdapter implements EmailProvider {
   }
 
   async sync(state: SyncState): Promise<SyncResult> {
+    const folders = await this.listFolders();
+    // Zoho's message list API uses folder-local offsets. Keep the folder and
+    // offset in the durable cursor so initial imports progress over many worker
+    // ticks rather than silently stopping at the first page.
+    const [folderIndexRaw, startRaw] = (state.cursor ?? "0:1").split(":");
+    let folderIndex = Number(folderIndexRaw);
+    let start = Number(startRaw);
+    if (!Number.isInteger(folderIndex) || folderIndex < 0 || !Number.isInteger(start) || start < 1) {
+      folderIndex = 0;
+      start = 1;
+    }
+    const added: SyncResult["added"] = [];
+    const updated: SyncResult["updated"] = [];
+    const pageSize = 100;
+    let pagesRead = 0;
+    while (folderIndex < folders.length && pagesRead < 2) {
+      const folder = folders[folderIndex]!;
+      const page = await this.listMessages(folder.provider_folder_id, { limit: pageSize, cursor: String(start) });
+      for (const message of page) {
+        const id = message.provider_message_id || message.id;
+        if (!id) continue;
+        // Upserts in the PostgreSQL worker make repeat scans idempotent. During
+        // initial import all returned IDs are considered added; later scans
+        // report them as updated so changed flags/content are refreshed.
+        (state.sync_mode === "initial" ? added : updated).push({ message_id: id, provider_message_id: id });
+      }
+      pagesRead += 1;
+      if (page.length >= pageSize) {
+        start += page.length;
+      } else {
+        folderIndex += 1;
+        start = 1;
+      }
+    }
+    const hasMore = folderIndex < folders.length;
     return {
-      added: [], updated: [], deleted: [],
-      new_state: { ...state, sync_mode: "incremental", last_sync_at: new Date().toISOString() },
+      added,
+      updated,
+      deleted: [],
+      new_state: {
+        ...state,
+        cursor: hasMore ? `${folderIndex}:${start}` : undefined,
+        sync_mode: hasMore ? "initial" : "incremental",
+        last_sync_at: new Date().toISOString(),
+      },
     };
   }
 
