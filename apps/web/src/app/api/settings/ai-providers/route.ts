@@ -91,6 +91,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ models });
   } catch (error) {
     if (error instanceof Error && error.message === "An organization context is required.") return NextResponse.json({ error: "configuration_required", message: error.message }, { status: 422 });
+    if (error instanceof TypeError || (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError"))) return NextResponse.json({ error: "model_catalog_unavailable", message: "The provider model catalog could not be reached. Check network access and provider settings." }, { status: 502 });
     return authorizationErrorToResponse(error);
   }
 }
