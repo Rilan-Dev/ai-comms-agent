@@ -155,7 +155,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   }
 
   return (
-    <main className="min-h-[calc(100vh-72px)] bg-[radial-gradient(circle_at_top_right,rgba(79,70,229,.10),transparent_32%)] p-5 sm:p-8">
+    <main className="min-h-[calc(100vh-72px)] bg-[radial-gradient(circle_at_top_right,oklch(0.88_0.105_152/.16),transparent_32%)] p-5 sm:p-8">
       <div className="mx-auto max-w-5xl">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
