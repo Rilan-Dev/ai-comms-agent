@@ -16,7 +16,12 @@ function verify(encoded: string, signature: string) {
   return expected === signature;
 }
 
-function safeOAuthOrigin(request: Request): string {\n  try { return getOAuthPublicOrigin(request); }\n  catch { return new URL(request.url).origin; }\n}\n\nfunction oauthError(message: string, request: Request, status = 400) {
+function safeOAuthOrigin(request: Request): string {
+  try { return getOAuthPublicOrigin(request); }
+  catch { return new URL(request.url).origin; }
+}
+
+function oauthError(message: string, request: Request, status = 400) {
   const safeMessage = message.slice(0, 240);
   const response = NextResponse.redirect(
     new URL(`/mail/accounts?providerError=${encodeURIComponent(safeMessage)}`, safeOAuthOrigin(request)),
