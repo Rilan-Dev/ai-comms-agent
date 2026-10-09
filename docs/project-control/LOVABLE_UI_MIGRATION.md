@@ -115,3 +115,10 @@ This is an explicit inventory, not a claim that every listed page is already mig
 
 - Removed the standalone non-persisting `/agents/new` form and redirected it to `/agents#new-agent`, the existing organization-scoped creation flow with slug validation, persistence, notifications and transactional initial version/policy setup. This avoids maintaining two divergent creation flows.
 - Added a static contract assertion for the redirect and canonical form anchor. Tests/typecheck/build/browser checks were not run.
+
+
+## 2026-10-09 — Agent detail route source hardening (follow-up)
+
+- Fixed the Activity tab heading to use the imported ActivityIcon symbol (the JSX referenced an unimported Activity name). Added aria-label to the section navigation, aria-pressed to the active section buttons, and shrink-0 to keep tabs usable on narrow screens.
+- Added apps/web/tests/agent-detail-page-contract.test.ts source assertions for authenticated organization-scoped loading, not-found handling, navigation accessibility, existing API endpoints, version JSON validation, and explicit deploy/pause confirmations.
+- Commits: fbc9a8db; test source 6640a8a2. Tests/typecheck/build/browser checks not run.
