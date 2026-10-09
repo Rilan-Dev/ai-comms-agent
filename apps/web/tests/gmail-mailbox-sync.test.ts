@@ -6,15 +6,15 @@ const read = (path: string) => readFileSync(resolve(__dirname, path), "utf8");
 
 describe("Gmail automatic mailbox synchronization", () => {
   it("starts the Gmail sync loop with the long-lived worker and stops it on shutdown", () => {
-    const entry = read("../../apps/worker/src/index.ts");
+    const entry = read("../../../apps/worker/src/index.ts");
     expect(entry).toContain("startGmailMailboxSyncLoop");
     expect(entry).toContain("stopGmailMailboxSync()");
   });
 
   it("claims due Gmail accounts durably and records cursor, retry and success state", () => {
-    const worker = read("../../apps/worker/src/email/mailbox-sync-worker.ts");
+    const worker = read("../../../apps/worker/src/email/mailbox-sync-worker.ts");
     expect(worker).toContain("email_sync_states");
-    expect(worker).toContain("FOR UPDATE SKIP LOCKED");
+    expect(worker).toContain("ON CONFLICT (email_account_id) DO UPDATE");
     expect(worker).toContain("last_success_at");
     expect(worker).toContain("next_attempt_at");
     expect(worker).toContain("email_messages");
@@ -23,7 +23,7 @@ describe("Gmail automatic mailbox synchronization", () => {
   });
 
   it("uses paginated initial sync before history-based incremental sync", () => {
-    const adapter = read("../../apps/worker/src/email/gmail-adapter.ts");
+    const adapter = read("../../../apps/worker/src/email/gmail-adapter.ts");
     expect(adapter).toContain("page.nextPageToken");
     expect(adapter).toContain("baselineHistoryId");
     expect(adapter).toContain("/history?startHistoryId=");
