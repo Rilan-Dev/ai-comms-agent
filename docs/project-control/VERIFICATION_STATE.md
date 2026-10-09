@@ -936,3 +936,12 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - **Commits:** caad1d753b0199a895d63056704c4db9c423f382, 04a2345b6b901ebbc55d084dc5860f39ae9416d8, a98c0e7fa1ee8e22ff60726475e6fb91624626c8.
 - **Verification status:** source_changed_not_tested. No pnpm, TypeScript, Docker, or test command ran in this session. The original failure is evidenced by the supplied log; passing build is not established.
 - **Next:** Run focused Gmail adapter regression and worker build/typecheck. Route infrastructure/dependency/Docker-specific failures to OPS-01.
+
+
+## 2026-10-09 — Redis mailbox lease (source only)
+
+- Status: source_changed_not_tested
+- Commits: `d7228495f5bd03483154ac194cba865fbf3b00e5`, `0e10e647b029ea065b467e120180248e1eb1b27d`, `bd6368d7f56f39660cf28b913026fcb8fd0a0004`.
+- Implemented: RESP2 lease client for redis:// and rediss://, optional AUTH/database selection, token-owned SET NX PX acquisition, and compare-and-delete release. Mailbox batch coordination is guarded by this lease only when REDIS_URL is configured.
+- Not verified: worker/web typechecks, tests, Redis connectivity/auth/TLS, contention, TTL expiry, or live sync.
+- Remaining: add tests, Clara Core-supported email indexing, RabbitMQ durable queue/retry/DLQ, and provider → PostgreSQL → tenant-scoped chat acceptance.
