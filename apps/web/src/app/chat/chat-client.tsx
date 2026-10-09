@@ -111,7 +111,7 @@ export function ChatClient({
             <h1 className="mt-1 font-display text-2xl font-medium tracking-tight">Chat with your agent<span className="text-tertiary">.</span></h1>
             <p className="mt-1 text-sm text-muted-foreground">Grounded through Clara. Actions remain behind the host authorization boundary.</p>
           </div>
-          <label className="hidden items-center gap-2 rounded-xl border bg-background px-3 py-2 sm:flex">
+          <label className="hidden items-center gap-2 rounded-md border bg-background px-3 py-2 sm:flex">
             <span className="text-xs text-muted-foreground">Agent</span>
             <select value={activeAgent?.id ?? ""} onChange={(event) => void switchAgent(event.target.value)} className="bg-transparent text-sm font-semibold outline-none">
               {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
