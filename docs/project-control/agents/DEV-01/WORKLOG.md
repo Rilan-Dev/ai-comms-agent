@@ -143,3 +143,16 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - Envelope includes UUID validation, account/history idempotency key, correlation/message IDs, timestamps, bounded attempt count, producer/consumer and documented routing key.
 - Audited the local Clara boundary: retrieval exists, but no indexing method; local embed methods fail closed. Reference Clara Qdrant helpers are not a drop-in host API due to Clara-specific dependencies. Avoid direct Qdrant writes until a supported adapter boundary is defined.
 - RabbitMQ remains unimplemented. No test/typecheck/live broker run performed. Continue independent source implementation; do not wait for CI/Vercel.
+
+
+### DEV01-LOVABLE-UI-MIGRATION-20261009 / 2026-10-09
+- **Task:** Adopt the Lovable-generated Agentic AI Studio UI/UX in the current application while preserving all application functionality and validations.
+- **Authorization:** Explicit user instruction in this session; existing development-first product implementation authority.
+- **Started from:** GitHub `main`; source files under `source/lovable-ui` were inspected before changes.
+- **Actions:** Analyzed the Lovable README/package/design tokens/workspace shell/overview. Adapted semantic tokens and typography into the existing Tailwind v4 app, replaced text-glyph navigation with inline SVG iconography, made the sidebar responsive/mobile-openable, redesigned header/search behavior, aligned the app content offset with the fixed sidebar, and rebuilt the overview around real persisted API data and honest loading/error/empty states.
+- **Files/code:** `apps/web/src/app/globals.css`; `apps/web/src/app/layout.tsx`; `apps/web/src/components/sidebar.tsx`; `apps/web/src/components/top-bar.tsx`; `apps/web/src/app/page.tsx`.
+- **Commits:** `a9083acaf0af1a4a97dba938e5543d86fe144426`, `47ef723959076dfac0175bd181bd633d692d1b9c`, `13c35cb4dc92f9b01cf1330d466fb4a574307256`, `8bfacdff848ce8ebde9bfc6b2f677b4b6e3cb37a`, `fe547ceece224619e158dec2d32518309400dde2`, `1a06340836edec45a1e300ab6b710822d3c59c0c`.
+- **Evidence:** GitHub accepted each source update. No local typecheck, tests, build, browser check, or runtime validation was performed. No PASS is claimed.
+- **Blockers/dependencies:** Full UI migration remains in progress; no dependency blocker to source work. Verification environment unavailable in this session.
+- **Lesson:** Reuse the Lovable design tokens and component patterns, not its TanStack Start runtime wholesale. Keep existing Next.js server routes, auth/RBAC, real API data, validations, and truthful error states. Treat visual reference/demo-only behaviors as reference, never as production functionality.
+- **Next action:** Continue screen-by-screen migration of the remaining app routes, beginning with Mail and Agents, preserving every existing action and validation; update migration/control records as slices land.
