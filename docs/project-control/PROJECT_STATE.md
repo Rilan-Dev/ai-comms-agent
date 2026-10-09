@@ -4,7 +4,7 @@ One-screen project status. This file is the canonical answer to "where are we?".
 
 ---
 
-> **Active continuation (2026-10-09):** Owner priority is now RabbitMQ email.sync transport and then Clara-supported email indexing. RabbitMQ producer/consumer, durable main/retry/DLQ queues, publisher confirms, manual acknowledgements, bounded retry and reconnect source are committed; tests/builds and live broker acceptance remain unexecuted. Exact next action: `docs/project-control/NEXT_ACTION.md`.
+> **Active continuation (2026-10-09):** RabbitMQ email.sync transport and the PostgreSQL-backed lexical Clara indexing adapter have source implementations, with runtime acceptance still pending. The current independent DEV-01 task is the cross-route Lovable UI responsive/accessibility review; OPS-01 retains the database-migration/Redis runtime incident. Exact next action: `docs/project-control/NEXT_ACTION.md`.
 
 ```yaml
 project: ai-comms-agent
@@ -19,7 +19,7 @@ phase_status: "implementation in progress — verification deferred until develo
 
 last_completed_phase: 2
 last_completed_phase_status: "APPROVED (2026-10-03)"
-current_objective: "Complete durable RabbitMQ email sync delivery and proceed to a supported Clara email indexing adapter; continue remaining UI migration afterward"
+current_objective: "Continue the DEV-01 cross-route Lovable UI responsive/accessibility review independently of OPS-01; preserve RabbitMQ email sync and Clara indexing source work while runtime verification remains deferred"
 
 architect: "ChatGPT (Chief Architect / Project Controller)"
 developer: "ChatGPT (primary implementer and verifier; Z.AI no longer required)"
@@ -30,9 +30,9 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "b7a8964f26522c1b33eb8d9b63a9fa7f8c7236b1"
-current_commit_short: "b7a8964f"
-current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/b7a8964f26522c1b33eb8d9b63a9fa7f8c7236b1"
+current_commit: "5a41599941b39ad299a052e257d929e7528fe691"
+current_commit_short: "5a415999"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/5a41599941b39ad299a052e257d929e7528fe691"
 last_verified_commit: "pending_runtime_acceptance"
 
 open_blockers:
@@ -51,8 +51,8 @@ required_decision:
 
 next_action:
   actor: "DEV-01 / Forge"
-  action: "Add focused RabbitMQ delivery/retry/idempotency coverage, then implement the host adapter for Clara-supported email indexing without direct Qdrant writes or modifications to Clara source"
-  then: "Continue the remaining Lovable UI migration and connected-mailbox-to-Clara chat acceptance. Do not wait for CI/Vercel; record unexecuted checks honestly; route bugs to FIX-01 and infrastructure to OPS-01."
+  action: "Continue cross-route responsive/accessibility review: check narrow viewport overflow, keyboard focus paths, live status announcements, dialogs, and remaining secondary controls; add focused static contract assertions and update docs/project-control/LOVABLE_UI_MIGRATION.md."
+  then: "Preserve existing routes, API contracts, tenant authorization, validation, send/approval safeguards, and truthful loading/empty/error states. Do not wait for CI/Vercel. Tests/typecheck/build/browser/screen-reader/device checks remain NOT RUN. Route substantial bugs to FIX-01 and deployment/runtime issues to OPS-01; OPS-01 owns the separate PostgreSQL migration/Redis incident."
 
 phase2_summary:
   status: "implementation_complete_awaiting_review"
