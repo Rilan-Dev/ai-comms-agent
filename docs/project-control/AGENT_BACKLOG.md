@@ -88,3 +88,12 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Authorization:** User supplied live error logs and reported missing inbox results.
 - **Suggested next action:** Check which DB the web/worker containers use; apply migrations `0029` and `0030`; compare the configured `REDIS_URL` username/password with the Redis ACL/user configuration without printing secrets; rebuild/restart web and worker; trigger sync and confirm message row counts and inbox query.
 - **Safety:** Do not disable Redis lease acquisition or claim sync completion from HTTP queue acceptance.
+
+### BKL-014 — Repair malformed pnpm lockfile
+- **Work:** Verify the corrected single-document `pnpm-lock.yaml` installs frozen and allows workspace typecheck.
+- **Owner:** FIX-01 / Sentinel
+- **State:** SOURCE_CORRECTED; LOCAL_RERUN_PENDING
+- **Symptom:** User's typecheck command failed during pnpm dependency resolution with missing lockfile entry for `amqplib@2.2.0`.
+- **Fix commit:** `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e`; removed the stray first YAML document and restored the worker dependency package/snapshot records.
+- **Next action:** Pull latest `main`; run `pnpm install --frozen-lockfile`, then `pnpm run typecheck`. Record actual output. No typecheck PASS claimed until rerun.
+- **Related:** ISS-017; FIX01-PNPM-LOCKFILE-20261009.
