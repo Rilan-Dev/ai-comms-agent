@@ -163,6 +163,7 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(agentDetail).toContain("/api/agents/");
     expect(agentDetail).toContain('action:"unbind_email"');
     expect(agentDetail).toContain('action:"unbind_whatsapp"');
+    expect(agentDetail).toContain("/api/whatsapp/accounts?organizationId=");
     expect(agentDetail).toContain("Version configuration");
     expect(agentDetail).toContain("JSON.parse(versionConfig)");
     expect(agentDetail).toContain("Save policy");
