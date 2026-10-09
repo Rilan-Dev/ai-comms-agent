@@ -1472,3 +1472,13 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Gmail/Zoho OAuth configuration errors now render as accessible alerts with destructive styling, while success notices remain status messages (0f51e38e, 1bce974d). Settings contract assertions updated (7f7d75a2, 6dc64267).
 - Removed duplicate Lucide imports from login/setup pages that could cause compile errors (7a2d8fef, 2029c978). Added auth-page contract tests for API continuity, safe redirect checks, bootstrap token/password/slug constraints, and import uniqueness (2714dc08).
 - Updated Lovable migration inventory (c8b2c285) and next action (753eedd0). Tests/typecheck/build/browser/accessibility checks were not run; Settings and Login/Setup remain partial pending visual and responsive review.
+
+
+## 2026-10-09 — Settings, Login/Setup, and Agent detail UI adaptation (source only)
+
+- Normalized general Settings and AI provider/runtime, Gmail OAuth and Zoho OAuth controls to compact Lovable geometry; preserved API behavior, encrypted-secret handling, membership/password controls and provider/runtime configuration.
+- Aligned Login and Setup with compact cards and Lucide iconography while retaining authentication/session redirect validation, bootstrap secret, password minimum, and slug validation.
+- Adapted Agent detail tabs and confirmation controls with compact geometry and Lucide iconography; kept organization-scoped loading, version snapshots, policy JSON validation, channel bindings, simulation, and explicit deploy/pause confirmation.
+- Added static contract coverage and updated the route migration inventory / next action. See `docs/project-control/DEV-01/WORKLOG.md` for commit details.
+- Verification: tests/typecheck/build/browser/accessibility/live API were not run. No PASS claimed.
+- Next: cross-route responsive/accessibility review and remaining secondary controls; do not wait for CI/Vercel.
