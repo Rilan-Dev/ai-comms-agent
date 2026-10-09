@@ -1230,3 +1230,5 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - **Source commits:** `3531828f`, `f00ef734`, `1a32d05d`, `cc7ee95a`, `c052c981`, `90c0ba8a`, `30aa9747`, `8a2c1cd5`, `0e891944`, `280ca4ab`, `bf07f8e4`, `48def7ee`, `25fab134`, `ae1ddb6b`.
 - **Verification:** tests, typecheck, build, migration execution, deployment, and live Gmail sync were not run from this environment. No PASS is claimed.
 - **Operational dependency:** deploy both web and worker; the worker needs the same PostgreSQL database and `CREDENTIALS_MASTER_KEY` as the web service. Migration chain through `0028` must be applied. See ISS-012.
+
+- Follow-up: narrowed the sync candidate query so active claims are not repeatedly selected before their stale-claim timeout; documented that current Gmail sync uses durable PostgreSQL polling while RabbitMQ queue-consumer integration remains future work. Commit `504c2e4d`; architecture note `bf28b1e4`.
