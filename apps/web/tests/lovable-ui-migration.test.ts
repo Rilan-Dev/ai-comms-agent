@@ -414,6 +414,8 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(agentDetail).toContain("overflow-y-auto bg-black/40");
     expect(chat).toContain('role="log" aria-label="Conversation messages"');
     expect(chat).toContain('role="status" aria-live="polite"');
+    expect(chat).toContain("Clara’s response is ready.");
+    expect(chat).toContain("Clara could not complete the response.");
     expect(chat).toContain('aria-label="Message to Clara"');
     expect(chat).toContain('aria-label="Choose agent for chat"');
   });
