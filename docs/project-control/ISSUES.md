@@ -320,3 +320,10 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Root cause / failed remedy reaffirmed:** malformed concatenated lockfile documents plus missing `amqplib@2.2.0` package/snapshot records; `pnpm install --fix-lockfile` reproduced the same error.
 - **Status:** source_corrected_verification_pending. Frozen install, test, typecheck, and Docker build have not been run after the correction.
 - **Next action:** Pull latest main, run `pnpm install --frozen-lockfile`, then `pnpm run typecheck`. Route unrelated Docker host/build infrastructure defects to OPS-01.
+
+## ISS-017 follow-up — missing tarball integrity (2026-10-09)
+- **New user evidence:** After pulling through `a164425`, `pnpm install --frozen-lockfile` and subsequent typecheck/Vitest commands all stopped with `ERR_PNPM_MISSING_TARBALL_INTEGRITY`: `amqplib@2.2.0` had no `integrity` field.
+- **Root cause:** Previous correction restored the package/snapshot entries but set only a tarball URL. pnpm's supply-chain policy refused to install a package whose tarball could not be verified.
+- **Source remedy:** Added the published SHA-512 SRI to `pnpm-lock.yaml` in `644d578170801785c1252a569fa976b0b33476eb`; tightened the static lockfile test in `21837f32157ff43a7a1243b3f3095bb1eb2f1df6` and `d115e1b0293b48571cd0902849cb5f0030963bc7`.
+- **Status:** Source correction committed; verification pending. No install, typecheck, Vitest, or Docker PASS claimed.
+- **Next action:** Pull latest main and rerun frozen install. Only after success run typecheck and focused Vitest. Do not disable integrity policy or fabricate hashes.
