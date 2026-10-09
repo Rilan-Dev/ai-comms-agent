@@ -1209,3 +1209,10 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Follow-up UI correction: the provider Settings panel now hydrates the selected provider's saved model, base URL, and enabled state after loading its organization-scoped configuration.
 - Commit: `5883c37c`.
 - No tests or build were executed after this correction.
+
+### 2026-10-09 — Configuration readiness and provider catalog hardening
+- Added visible missing-KB and missing-chat-provider warnings in Settings, and direct links to Knowledge and WhatsApp configuration screens.
+- Restricted provider model-catalog requests to the provider's official HTTPS origin to avoid turning the model-fetch endpoint into an arbitrary server-side request proxy.
+- Model-catalog network/timeout failures now return a clear non-secret 502 diagnostic. Voice route database imports were consolidated; saved provider selection state is hydrated in the UI.
+- Static assertions were extended for the official-origin guard. No test/typecheck/build/runtime execution was performed.
+- Latest source/test commit at this checkpoint: `d6be733ab85d5fa48df67b6b4ae7705c58bf1084`.
