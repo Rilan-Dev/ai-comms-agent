@@ -30,7 +30,7 @@ Target: `apps/web/src/app/**` (production Next.js application). Keep Next.js rou
 | Threads and thread detail | `app/mail/threads/**`, `app/mail/thread/**` | ADAPTED | Designed list/empty states and existing thread actions retained; verification pending. |
 | Compose | `app/mail/compose/**` | ADAPTED | Draft saving and explicit send-approval request retained; no implicit send. |
 | Approvals | `app/mail/approvals/**` | ADAPTED | Explicit approve/reject and truthful empty state retained; suspected server tenant-context defect routed to FIX-01 (BKL-012). |
-| WhatsApp | `app/whatsapp/**` | ADAPTED (source only) | Apply theme, page hierarchy, connection/message states and Lucide icons while retaining real API behavior and clear unavailable/error states. |
+| WhatsApp | `app/whatsapp/**` | CONNECTION FLOW WIRED (source only) | Server page now resolves the authenticated user’s active organization and mounts `WhatsAppClient`; Connect WhatsApp Business opens the existing encrypted Meta Cloud API credential workflow. Keep pending status until actual Meta/webhook verification; end-to-end connection and UI checks remain unverified. |
 | Automations | `app/automations/**` | ADAPTED (source only) | Adapt list/editor/status cards; preserve persistence, authorization, validation and execution safeguards. |
 | Schedules | `app/schedules/**` | ADAPTED (source only) | Adapt schedule list/form/run states; preserve timezone, recurrence validation and durable job semantics. |
 | Chat | `app/chat/**` | ADAPTED (source only) | Apply workspace composer/message layout and loading/error states; preserve Clara backend, auth and safe email-context behavior. |
@@ -64,3 +64,11 @@ Backend follow-up: `apps/worker/src/knowledge/email-knowledge-indexer.ts` is a h
 WhatsApp, Automations and Schedules were adapted in source commits `3cf94c7f`, `c2dd6e6e`, and `740b70d2`; focused static contract assertions were added in `2f1eecd5`. Chat was adapted in `dee40027`; AI & Voice in `84652b74`; static contract coverage was extended in `10b87d65`, `ddb35096`, with endpoint assertion correction `f7ed2b42`. These changes have not been run through tests, typecheck, build, browser or runtime verification.
 
 This is an explicit inventory, not a claim that every listed page is already migrated or verified.
+
+
+## 2026-10-09 — WhatsApp connection-flow correction
+
+- Replaced the static WhatsApp preview route with the existing API-backed client, scoped to the authenticated user's active organization (no development-organization fallback).
+- The visible Connect WhatsApp Business CTA now toggles an accessible connection form; the form clearly explains Meta Cloud API credentials and saves via the existing encrypted credential endpoint.
+- The UI explicitly distinguishes saved/pending credentials from a verified connection; this source change does not implement Meta Embedded Signup or claim webhook verification.
+- Added static contract assertions for authenticated route context, CTA/form continuity and honest verification status. Execution of tests/typecheck/build/browser/Meta webhook verification is pending.
