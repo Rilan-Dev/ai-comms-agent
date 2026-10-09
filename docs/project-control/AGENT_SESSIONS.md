@@ -82,3 +82,13 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** Live host and Google mailbox are not directly accessible in this source-edit session.
 - **Handoff:** ISS-012.
 - **Next action:** Follow docs/project-control/NEXT_ACTION.md; after runtime confirmation, continue Zoho/IMAP sync and connect persisted email data to authorized agent tools.
+
+
+### DEV01-CHAT-EMAIL-CONTEXT-20261009 — 2026-10-09
+- **Agent:** DEV-01 / Forge
+- **Task:** Continue connected-mailbox vertical slice and determine whether Clara chat can access synced email.
+- **Finding:** The chat route called Clara's chat runtime but did not load local email records or expose the host email-read tool. Provider sync worker is Gmail-only; Zoho `sync()` and IMAP/SMTP `sync()` currently return empty result sets, and IMAP message methods are placeholders.
+- **Implemented:** Chat now loads up to 20 recent/saved draft records from PostgreSQL for email-related prompts, only where both message and account organization IDs match the authorized organization and account is connected. Email content is marked untrusted. Commits `b9db5774a5b8c2177e606298804d4e1704b75d53`, `f12fee359d0de340209ae6733e02825c136364a3`, `7a7d4e659b7b312753f2a23896d14929b608b525`, `9c8d53d3bd8df37328a04623a72d9a5d162b1f74`, `38d0d94b477c2918e733d86d0474dd8090c824f6`, `d5c7cc145fee4fdce477294c93025e8d7edd41ad`, `a2b4c28b167aba222ace0995b294b99f267e2407`, `5c84fd4bd105586ed26272168fdee68b999ae94c`.
+- **Test contract:** Added static chat context assertions in `apps/web/tests/mail-draft-action-contract.test.ts`, commit `93d353864256a49368ecaf4354aec0bfffb05889`.
+- **Not verified:** Test execution, typecheck/build, live chat turn, live mailbox connection/sync. Runtime acceptance remains pending.
+- **Next:** Complete real Zoho full/incremental sync, IMAP UID-based sync/parser and SMTP draft/send implementation; generalize worker safely across providers; then wire an authorized email.read/draft tool into Clara chat rather than relying solely on preloaded context. FIX-01 retains BKL-008.
