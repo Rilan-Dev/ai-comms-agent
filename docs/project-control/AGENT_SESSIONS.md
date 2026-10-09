@@ -154,3 +154,16 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Commits:** `d4a5c6589f2e28a00277a725cf6c628ea8b56eb5`, `b20c6423c6ded123a49ff6301a40de6385832a26`.
 - **Evidence:** Source and test files were accepted by GitHub; no tests/typechecks were run in this environment.
 - **Next:** Execute focused tests and typechecks without waiting for CI/Vercel, then continue provider-to-PostgreSQL-to-Clara Chat acceptance and infrastructure integrations.
+
+
+### FIX01-WORKER-CREDENTIALS-20261009 — 2026-10-09
+- **Agent:** FIX-01 / Sentinel
+- **Invocation:** Correct Docker worker build TypeScript errors in mailbox-sync-worker.ts.
+- **Started from:** GitHub main; user-provided Docker build log.
+- **Scope:** Root-cause diagnosis, smallest corrective source change, regression protection, durable control records.
+- **Status:** HANDOFF
+- **Completed:** Aligned Gmail credential snapshot with EmailCredentials; converted it to a plain persistence record at the repository boundary; added a focused Gmail snapshot test and control records.
+- **Pending:** Execute the focused test and worker typecheck/build. No successful build is claimed.
+- **Blockers:** No pnpm/TypeScript/Docker execution was available in this session.
+- **Handoff:** ISS-013 / EVT-FIX01-WORKER-CREDENTIALS-20261009.
+- **Next action:** Run the focused Gmail adapter test and worker build. Route any remaining Docker, dependency, or deployment-environment defect to OPS-01; do not wait for DEV-01.
