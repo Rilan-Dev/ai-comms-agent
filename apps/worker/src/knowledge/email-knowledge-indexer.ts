@@ -107,22 +107,20 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
   if (!documentId) throw new Error("Clara email knowledge document could not be persisted.");
 
   const chunks = chunkEmailKnowledgeBody(body);
+  // Rebuild this document's chunk set before inserting to avoid transient
+  // conflicts between the unique (document_id, chunk_index) and
+  // (document_id, content_hash) constraints when chunk boundaries shift.
+  await query("DELETE FROM knowledge_chunks WHERE document_id=$1", [documentId]);
   for (const [chunkIndex, content] of chunks.entries()) {
     const contentHash = sha256(content);
     await query(
       `INSERT INTO knowledge_chunks
          (document_id, organization_id, chunk_index, content, content_hash, metadata, created_at)
        VALUES ($1, $2, $3, $4, $5, $6::jsonb, now())
-       ON CONFLICT (document_id, content_hash) DO UPDATE SET
-         chunk_index=EXCLUDED.chunk_index, organization_id=EXCLUDED.organization_id,
-         content=EXCLUDED.content, metadata=EXCLUDED.metadata`,
+       ON CONFLICT (document_id, chunk_index) DO UPDATE SET
+         organization_id=EXCLUDED.organization_id, content=EXCLUDED.content,
+         content_hash=EXCLUDED.content_hash, metadata=EXCLUDED.metadata`,
       [documentId, organizationId, chunkIndex, content, contentHash, JSON.stringify(metadata)],
     );
   }
-
-  await query(
-    `DELETE FROM knowledge_chunks
-     WHERE document_id=$1 AND chunk_index >= $2`,
-    [documentId, chunks.length],
-  );
 }
