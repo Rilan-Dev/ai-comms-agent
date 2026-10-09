@@ -92,7 +92,9 @@ export async function indexEmailForClara(scope: EmailIndexScope, message: EmailM
   const documentId = document.rows[0]?.id;
   if (!documentId) throw new Error("Clara email index did not return a document ID.");
 
-  const chunks = splitIntoChunks(text);
+  // The schema also enforces unique content hashes per document; remove repeated
+  // identical chunks while preserving their first occurrence and stable ordering.
+  const chunks = [...new Map(splitIntoChunks(text).map((chunk) => [sha256(chunk), chunk])).values()];
   await query("DELETE FROM knowledge_chunks WHERE document_id=$1 AND organization_id=$2", [documentId, scope.organizationId]);
   for (let index = 0; index < chunks.length; index += 1) {
     const content = chunks[index]!;
