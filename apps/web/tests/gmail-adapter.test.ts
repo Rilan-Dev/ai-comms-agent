@@ -4,6 +4,26 @@ import { GmailAdapter } from "../../../apps/worker/src/email/gmail-adapter";
 describe("GmailAdapter", () => {
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 
+  it("paginates initial sync and retains the history baseline until import completes", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ historyId: "connect-history" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ historyId: "baseline-history" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ messages: [{ id: "message-1" }], nextPageToken: "page-2" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ messages: [{ id: "message-2" }] }), { status: 200 }));
+    const adapter = new GmailAdapter();
+    await adapter.connect({ credential_type: "oauth_token", access_token: "test-token" });
+
+    const first = await adapter.sync({ sync_mode: "initial", last_sync_at: new Date(0).toISOString() });
+    expect(first.added.map((item) => item.provider_message_id)).toEqual(["message-1"]);
+    expect(first.new_state).toMatchObject({ cursor: "page-2", history_token: "baseline-history", sync_mode: "initial" });
+
+    const second = await adapter.sync(first.new_state);
+    expect(second.added.map((item) => item.provider_message_id)).toEqual(["message-2"]);
+    expect(second.new_state).toMatchObject({ history_token: "baseline-history", sync_mode: "incremental" });
+    expect(second.new_state.cursor).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
   it("advertises the provider capability matrix", () => {
     const adapter = new GmailAdapter();
     const capabilities = adapter.capabilities();
