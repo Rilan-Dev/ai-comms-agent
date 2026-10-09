@@ -36,13 +36,13 @@ describe("GmailAdapter", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "fresh-token", expires_in: 3600 }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ historyId: "123" }), { status: 200 }));
-    vi.stubEnv("GMAIL_OAUTH_CLIENT_ID", "client-id");
-    vi.stubEnv("GMAIL_OAUTH_CLIENT_SECRET", "client-secret");
     const adapter = new GmailAdapter();
     await adapter.connect({
       credential_type: "oauth_token",
       access_token: "expired-token",
       refresh_token: "refresh-token",
+      oauth_client_id: "client-id",
+      oauth_client_secret: "client-secret",
       expires_at: new Date(Date.now() - 60_000).toISOString(),
     });
     expect(fetchMock).toHaveBeenNthCalledWith(
@@ -69,6 +69,8 @@ describe("GmailAdapter", () => {
       credential_type: "oauth_token",
       access_token: "expired-token",
       refresh_token: "refresh-token",
+      oauth_client_id: "client-id",
+      oauth_client_secret: "client-secret",
     });
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock).toHaveBeenNthCalledWith(
