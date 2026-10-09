@@ -164,7 +164,7 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(voice).toContain('from "lucide-react"');
     expect(voice).toContain("AudioLines");
     expect(voice).toContain("isCurrentVoiceSequence");
-    expect(voice).toContain('fetch("/api/voice/sessions"');
+    expect(voice).toContain('fetch("/api/voice/session"');
     expect(voice).toContain("Server-side only");
     expect(voice).toContain("Voice-originated business actions continue through the same authorization and approval boundary");
     expect(voice).toContain("Microphone access was denied");
