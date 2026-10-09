@@ -1262,3 +1262,12 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - **Next:** Run the Zoho/IMAP tests and worker/web typechecks in a dependency-equipped environment; continue independent implementation of Clara Core RAG indexing, Redis client use, and RabbitMQ durable queue lifecycle without waiting for CI/Vercel. FIX-01 owns BKL-008; OPS-01 owns production infrastructure/deployment.
 
 - **IMAP thread identity follow-up:** use the oldest/root References value, then Message-ID, then folder/UID; add parser assertion. Commits `e21fd2fad824a41180deb6cf89b4f7aafb051f7c`, `d5dbd54cb7cb7b224d39b9b4e836b62501c575d3`. Not executed.
+
+
+### 2026-10-09 — Lovable UI migration tranche 1
+- Recovered current GitHub project state and DEV-01 memory/worklog, central session/event/backlog/handoff registers, and the explicit development-first continuation rules. Existing NEXT_ACTION was connected-mailbox work; user supplied a new explicit UI migration task, now recorded as the active next action.
+- Inspected `source/lovable-ui/README.md`, package dependencies, `src/styles.css`, `src/components/workspace-shell.tsx`, `src/routes/index.tsx`, and the migration note. Lovable reference is a TanStack Start/Vite preview and some interactions are explicitly demo-only; adapted its visual language rather than replacing the production Next.js architecture.
+- Updated app tokens, typography, navigation iconography, responsive sidebar/mobile navigation, header search, shell layout offset, and overview presentation. Overview continues fetching `/api/overview` and retains loading/error/empty states and real metric values; no fake provider success was introduced.
+- Commits: `a9083acaf0af1a4a97dba938e5543d86fe144426`; `47ef723959076dfac0175bd181bd633d692d1b9c`; `13c35cb4dc92f9b01cf1330d466fb4a574307256`; `8bfacdff848ce8ebde9bfc6b2f677b4b6e3cb37a`; `fe547ceece224619e158dec2d32518309400dde2`; `1a06340836edec45a1e300ab6b710822d3c59c0c`.
+- Verification: GitHub accepted source writes. No test/typecheck/build/browser/runtime validation was run; no PASS claimed.
+- Next: continue remaining screens, starting with Mail and Agents, preserving all current actions and validations; keep pending connected-mailbox integration queued, and route bugs/infrastructure to FIX-01/OPS-01.
