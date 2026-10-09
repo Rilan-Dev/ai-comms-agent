@@ -11,3 +11,12 @@
 - **Not verified:** Tests, typecheck, build, browser, accessibility, and live runtime were not executed. Do not claim PASS.
 - **Pending:** Chat, AI & Voice, Knowledge, Activity, Audit, Operations, Settings/provider subsections, Login/Setup, agent detail/version/history, then cross-route responsive/icon/accessibility review. Exact next action is in `docs/project-control/NEXT_ACTION.md`.
 - **Blockers/routing:** No blocker to independent UI work. Keep BKL-012 approvals tenant-context fix with FIX-01 and BKL-011 live schema/Redis work with OPS-01.
+
+
+## 2026-10-09 — DEV01-LOVABLE-UI-CONTINUATION-20261009 follow-up
+
+- Continued after the WhatsApp/Automations/Schedules tranche and adapted the Clara Chat composer, message bubbles, empty-state sparkle and voice-workspace link to compact Lovable styling/Lucide icons.
+- Preserved agent switching, conversation loading, streamed `/api/chat/stream` responses, optimistic messages, system error messages, Enter/Shift+Enter behavior, and link to AI & Voice.
+- Added Chat contract assertions. Commits: `dee40027` (Chat), `10b87d65` (test), `ad3bac37` (inventory), `a494342a` (NEXT_ACTION).
+- Tests/typecheck/build/browser/runtime verification remain NOT RUN.
+- Exact next action: adapt AI & Voice, then Knowledge, then Activity.
