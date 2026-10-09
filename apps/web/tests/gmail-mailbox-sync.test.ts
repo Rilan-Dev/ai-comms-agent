@@ -45,6 +45,30 @@ describe("Gmail automatic mailbox synchronization", () => {
     expect(zoho).toContain('state.history_token === "zoho-full-v1"');
   });
 
+
+  it("implements IMAP UID-based folder sync and parses RFC822 headers and bodies", () => {
+    const adapter = read("../../../apps/worker/src/email/imap-smtp-adapter.ts");
+    const worker = read("../../../apps/worker/src/email/mailbox-sync-worker.ts");
+    expect(adapter).toContain('this.command("UID SEARCH ALL")');
+    expect(adapter).toContain("UID FETCH");
+    expect(adapter).toContain("UIDVALIDITY");
+    expect(adapter).toContain("parseRawMessage");
+    expect(adapter).toContain('headers.get("message-id")');
+    expect(adapter).toContain('headers.get("subject")');
+    expect(adapter).toContain("is_draft: /drafts/i.test(folderId)");
+    expect(worker).toContain('candidate.provider === "gmail" ? new GmailAdapter() : candidate.provider === "zoho" ? new ZohoAdapter() : new ImapSmtpAdapter()');
+    expect(worker).toContain("a.provider IN ('gmail','zoho','imap_smtp')");
+  });
+
+  it("keeps synchronized email context tenant-scoped and passes it to Clara chat", () => {
+    const route = read("../src/app/api/chat/stream/route.ts");
+    expect(route).toContain("m.organization_id = $1");
+    expect(route).toContain("a.organization_id = $1");
+    expect(route).toContain("a.status = 'connected'");
+    expect(route).toContain("<untrusted_email_content>");
+    expect(route).toContain("...(emailContext ? [{ role: \"system\" as const, content: emailContext }] : [])");
+  });
+
   it("preserves an existing Google refresh token when reconnect omits one", () => {
     const callback = read("../src/app/api/oauth/gmail/callback/route.ts");
     expect(callback).toContain("previousCredentials?.refresh_token");
