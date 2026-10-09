@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const NAV_ITEMS = [
   { label: "Overview", href: "/", icon: "grid" },
@@ -45,6 +45,15 @@ export function Sidebar() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMobileOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileOpen]);
+
   async function signOut() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.replace("/login");
@@ -53,7 +62,7 @@ export function Sidebar() {
 
   return <>
     {mobileOpen && <button aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-foreground/30 md:hidden" />}
-    <aside className={`fixed inset-y-0 left-0 z-50 flex w-[248px] shrink-0 flex-col border-r border-border bg-sidebar transition-transform duration-200 md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
+    <aside id="workspace-sidebar" className={`fixed inset-y-0 left-0 z-50 flex w-[248px] shrink-0 flex-col border-r border-border bg-sidebar transition-transform duration-200 md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
       <div className="flex h-[76px] items-center justify-between px-6">
         <a href="/" className="flex items-center gap-2.5" aria-label="Comms Agent home" onClick={() => setMobileOpen(false)}>
           <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground"><NavIcon name="audio" /></span>
@@ -88,6 +97,6 @@ export function Sidebar() {
         <button type="button" onClick={() => void signOut()} className="w-full rounded-md px-3 py-2 text-left text-xs font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground">Sign out</button>
       </div>
     </aside>
-    <button type="button" onClick={() => setMobileOpen(true)} className="fixed bottom-4 left-4 z-30 grid size-11 place-items-center rounded-full border border-border bg-card text-foreground shadow-lg md:hidden" aria-label="Open navigation"><NavIcon name="grid" /></button>
+    <button type="button" onClick={() => setMobileOpen(true)} className="fixed bottom-4 left-4 z-30 grid size-11 place-items-center rounded-full border border-border bg-card text-foreground shadow-lg md:hidden" aria-label="Open navigation" aria-expanded={mobileOpen} aria-controls="workspace-sidebar"><NavIcon name="grid" /></button>
   </>;
 }
