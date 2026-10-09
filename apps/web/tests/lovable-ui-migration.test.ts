@@ -231,7 +231,7 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(operations).toContain('fetch("/api/operations"');
     expect(operations).toContain("runtime connectivity is worker-owned");
     expect(operations).toContain('label: "Configured"');
-    expect(operations).toContain("No synthetic health states");
+    expect(operations).toContain("configured dependency is not automatically a live connectivity pass.");
     expect(operations).toContain("Runtime signals");
     expect(operations).toContain("role=\"alert\"");
     expect(operationsApi).toContain('permission: "audit.read"');
