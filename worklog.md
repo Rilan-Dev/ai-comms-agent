@@ -1567,3 +1567,14 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - **Commit:** `c51d5a79dfd999dd4382cc60005798531e5517be` on `fix/migration-verification-phase4-contract`.
 - **Verification:** GitHub source write succeeded. Vitest, typechecks, SQL migration execution, and runtime database checks have NOT been run after this change. No PASS claimed.
 - **Lockfile:** The current fetched `main` lockfile has one YAML document. The user's local file output showed two; reconcile the local checkout against current `origin/main` rather than adding a needless lockfile change to this branch.
+
+
+## FIX-01 — PostgreSQL dollar-quote assertions and local lockfile discrepancy (2026-10-10)
+
+- **User-reported focused run:** 83 passed, 3 failed in `tests/migration-verification.test.ts`.
+- **Root cause 1:** Bootstrap assertion expected the invalid-looking literal `END\n$;` instead of valid `END\n$$;`.
+- **Root cause 2:** Regexes `/^AS \$/m` and `/^\$/m` matched the first dollar of valid `$$` delimiters, producing false positives.
+- **Correction:** Assert valid `$$` closure and use negative lookahead to detect a single dollar not followed by a second dollar.
+- **Commit:** `58730eb8b0fa46bfdd5fca581295209921582dbe` on `fix/migration-verification-phase4-contract`.
+- **Lockfile:** GitHub branch lockfile has exactly one `lockfileVersion` and one `importers` header. User's local working tree has a modified lockfile with two documents. Preserve local backups and reconcile the local file against the fetched PR branch before rerunning the focused test.
+- **Verification:** Fix committed; rerun focused Vitest is pending. No PASS claimed.
