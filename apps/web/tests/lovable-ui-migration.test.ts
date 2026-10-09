@@ -20,6 +20,7 @@ const whatsapp = readFileSync(resolve(__dirname, "../src/app/whatsapp/whatsapp-c
 const automations = readFileSync(resolve(__dirname, "../src/app/automations/automations-client.tsx"), "utf8");
 const schedules = readFileSync(resolve(__dirname, "../src/app/schedules/schedules-client.tsx"), "utf8");
 const chat = readFileSync(resolve(__dirname, "../src/app/chat/chat-client.tsx"), "utf8");
+const voice = readFileSync(resolve(__dirname, "../src/app/ai-voice/voice-workspace.tsx"), "utf8");
 
 describe("Lovable Agentic AI Studio UI adaptation", () => {
   it("uses the Lovable semantic palette and typography without replacing Tailwind tokens", () => {
@@ -158,5 +159,15 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(chat).toContain("Enter to send · Shift+Enter for a new line");
     expect(chat).toContain("Clara is thinking…");
     expect(chat).toContain('href="/ai-voice"');
+  });
+  it("adapts realtime voice visuals without changing Clara-owned session and safety boundaries", () => {
+    expect(voice).toContain('from "lucide-react"');
+    expect(voice).toContain("AudioLines");
+    expect(voice).toContain("isCurrentVoiceSequence");
+    expect(voice).toContain('fetch("/api/voice/sessions"');
+    expect(voice).toContain("Server-side only");
+    expect(voice).toContain("Voice-originated business actions continue through the same authorization and approval boundary");
+    expect(voice).toContain("Microphone access was denied");
+    expect(voice).toContain("End session");
   });
 });
