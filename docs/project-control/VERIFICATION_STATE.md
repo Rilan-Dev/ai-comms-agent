@@ -1165,3 +1165,11 @@ source_review:
 - **NOT VERIFIED:** No focused Vitest, worker node:test, web/worker typecheck, SQL migration execution, database runtime check, or deployment verification has run after these changes.
 - **Lockfile:** Current main has one lockfile document and one importer section. The two-document symptom in the user's local output is not present in the fetched main file; reconcile local working tree with origin/main before editing.
 - **Next action:** Pull latest main; inspect `git status --short` and compare `pnpm-lock.yaml` with `origin/main`; run focused migration and worker tests, then sequential web and worker typechecks. No PASS claim until actual outputs are recorded.
+
+
+## 2026-10-10 — Phase 4 migration test alignment
+
+- Updated `apps/web/tests/migration-verification.test.ts` to check `summary_sources` creation in migration 0003 and its tenant RLS policy in migration 0004, rather than incorrectly requiring both in migration 0002.
+- Commit: `c51d5a79dfd999dd4382cc60005798531e5517be` on `fix/migration-verification-phase4-contract`.
+- **NOT VERIFIED:** Focused Vitest, worker contract tests, web/worker typechecks, migration execution, and database runtime checks have not run after the change.
+- **Lockfile discrepancy:** Current fetched main lockfile has one document; local shell output showed two. Reconcile against current remote; do not claim a GitHub lockfile defect from local output alone.
