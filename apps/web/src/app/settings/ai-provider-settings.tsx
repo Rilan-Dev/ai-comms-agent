@@ -67,6 +67,7 @@ export function AIProviderSettings({ organizationId }: { organizationId: string 
     <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">AI providers</p><h2 className="mt-1 text-xl font-semibold">API credentials and model catalog</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Configure provider credentials per organization. Keys are encrypted before database storage and are never sent back to the browser. Save the key first, then fetch available models.</p></div>
     {notice ? <p role="status" className="rounded-xl border bg-muted/40 p-3 text-sm">{notice}</p> : null}
     {error ? <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}
+    {!configs.some((item) => item.enabled && item.hasApiKey) ? <p role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm">No enabled chat provider has a saved API key yet. Configure and save a provider before starting chat.</p> : null}
     <div className="grid gap-4 md:grid-cols-2">
       <div className="space-y-4">
         <label className={label}>Provider<select className={input} value={provider} onChange={(e) => choose(e.target.value as Provider)}><option value="openai">OpenAI</option><option value="gemini">Google Gemini</option><option value="sarvam">Sarvam AI</option></select></label>
