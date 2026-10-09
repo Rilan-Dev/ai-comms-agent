@@ -1418,3 +1418,12 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Commits: `a0830b1342e811c2fa51a2deece63c05e2f3ad3a` (Activity), `7c118bbdcc8ee44ca51db8879de06797185367b2` (Audit), `23d9c3fc1592f97ba284e51f47e1195a2e522834` (contracts), `7419f5720a882b7cdad664f9bfef198d8c9508ef` (assertion correction), `ed8c5262c96237454e23bdaf53c07f69a2ef126e` (inventory), `2dcee8463a347f239df57071953799751f2368af` (NEXT_ACTION).
 - **Verification NOT RUN:** no tests, typecheck, build, browser/accessibility, or live API/database check. No CI/Vercel polling and no PASS claimed.
 - **Next:** continue route migration with Operations, then Settings/provider subsections, Login/Setup, agent detail/version/history, and responsive/accessibility review.
+
+
+## 2026-10-09 — Activity UI adaptation (source only)
+
+- Adapted `apps/web/src/app/activity/page.tsx` with the Lovable neutral theme, Lucide event/status icons, responsive event timeline, functional search/event-type/decision filters, refresh, and clear loading/error/empty states. It continues to read persisted events through the existing `/api/audit` endpoint; no synthetic data was added.
+- Added Activity contract assertions to `apps/web/tests/lovable-ui-migration.test.ts`, updated `docs/project-control/LOVABLE_UI_MIGRATION.md`, and advanced `docs/project-control/NEXT_ACTION.md` to Audit.
+- Commits: UI `b344b0ad`, tests `dfaf7d11`, inventory `1fe0050c`, NEXT_ACTION `03d9c499`, verification `1fb21730`.
+- Verification: tests/typecheck/build/browser/API runtime not run. Source only; no PASS claimed.
+- Next: adapt Audit, retaining organization authorization and safe CSV/JSON export.
