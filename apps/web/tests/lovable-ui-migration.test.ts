@@ -14,6 +14,7 @@ const drafts = readFileSync(resolve(__dirname, "../src/app/mail/drafts/drafts-cl
 const draftsPage = readFileSync(resolve(__dirname, "../src/app/mail/drafts/page.tsx"), "utf8");
 const compose = readFileSync(resolve(__dirname, "../src/app/mail/compose/compose-client.tsx"), "utf8");
 const threads = readFileSync(resolve(__dirname, "../src/app/mail/threads/page.tsx"), "utf8");
+const accounts = readFileSync(resolve(__dirname, "../src/app/mail/accounts/email-accounts-client.tsx"), "utf8");
 
 describe("Lovable Agentic AI Studio UI adaptation", () => {
   it("uses the Lovable semantic palette and typography without replacing Tailwind tokens", () => {
@@ -81,6 +82,17 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(drafts).toContain("provider_draft_sync_status");
     expect(drafts).toContain('href={"/mail/compose?draftId="');
     expect(drafts).toContain("Delete");
+  });
+
+  it("keeps mailbox connection forms and account operations while using the Lovable visual system", () => {
+    expect(accounts).toContain("font-display");
+    expect(accounts).toContain('type="email"');
+    expect(accounts).toContain('type="password"');
+    expect(accounts).toContain("Test connection");
+    expect(accounts).toContain("Save mailbox");
+    expect(accounts).toContain("Disconnect");
+    expect(accounts).toContain("Remove");
+    expect(accounts).toContain("Search mailboxes");
   });
 
   it("keeps Compose approval safeguards and gives Threads a consistent designed empty state", () => {
