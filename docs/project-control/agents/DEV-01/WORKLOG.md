@@ -104,6 +104,8 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Started from:** Literal reader source commit `f7df46f3d0d90bf1c0aae3407b448bd83aeca855`.
 - **Actions:** Exported the reader for module-level testing and added tests for CRLF inside a body literal, multiple literals in one FETCH response, retaining the subsequent tagged completion response, and rejection of a literal larger than 50 MiB.
 - **Files/code:** `apps/worker/src/email/imap-smtp-adapter.ts`, `apps/worker/tests/imap-smtp-adapter.test.ts`.
-- **Commits:** `d4a5c6589f2e28a00277a725cf6c628ea8b56eb5`, `4fda99f00b283c9ef68cd294837c8ba3c30a678e`.
+- **Commits:** `d4a5c6589f2e28a00277a725cf6c628ea8b56eb5`, `b20c6423c6ded123a49ff6301a40de6385832a26`.
 - **Evidence:** GitHub accepted both source and test commits. Test source has not been executed; no typecheck or server session was run.
 - **Next action:** Execute worker IMAP/Zoho tests and worker/web typechecks where pnpm dependencies are available; fix any failures. Add fragmented network delivery coverage and validate against a real IMAP server when credentials/runtime are available.
+
+- Follow-up correction: fixed double-escaped CRLF sequences in the newly added literal tests so the fixture contains actual IMAP wire CRLF bytes. Current test-source commit: `b20c6423c6ded123a49ff6301a40de6385832a26`. Tests still have not been executed.
