@@ -24,6 +24,10 @@ constraints:
 
 ---
 
+
+### Immediate runtime incident follow-up — 2026-10-09 (OPS-01)
+The user supplied live logs showing missing `ai_provider_configs.model` and `email_sync_states.last_attempt_at`, and Redis lease command rejection. FIX-01 committed migration `0029_runtime_schema_reconciliation.sql` plus specific Redis error diagnostics. OPS-01 must pull latest `main`, apply migrations through `0029` to the exact PostgreSQL database used by the web and worker containers, roll out matching images, and inspect the Redis error reply. Correct Redis URL/AUTH/ACL/TLS from evidence; do not bypass the lease or allow uncoordinated worker polling. Runtime migration, Redis, and mailbox sync are not verified. This runtime follow-up is independent of the DEV-01 UI implementation queue; neither workstream should wait for CI/Vercel.
+
 ## History
 
 | Date | Action |
