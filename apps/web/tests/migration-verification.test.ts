@@ -683,6 +683,7 @@ describe("pnpm workspace lockfile integrity", () => {
     expect(lockfile).toContain("  apps/worker:");
     expect(lockfile).toMatch(/apps\\/worker:[\\s\\S]*?amqplib:[\\s\\S]*?specifier: \\^2\\.2\\.0[\\s\\S]*?version: 2\\.2\\.0/);
     expect(lockfile).toMatch(/^  amqplib@2\\.2\\.0:$/m);
+    expect(lockfile).toMatch(/^    resolution: \\{integrity: sha512-[A-Za-z0-9+/]+={0,2}\\}$/m);
     expect(lockfile).toMatch(/^  amqplib@2\\.2\\.0: \\{\\}$/m);
   });
 });
