@@ -1136,3 +1136,10 @@ source_review:
 - **Finding:** Source inspection found over-escaped regex literals in the focused lockfile regression test.
 - **Correction:** Fixed regex escaping and scoped the integrity assertion to the exact `amqplib@2.2.0` entry in commit `162183e8d7c67b8346c15989ef850327e487cfc4`.
 - **Status:** Source only. Vitest remains NOT RUN; frozen install, typecheck, and build remain pending.
+
+## FIX01-WORKER-TYPECHECK-MIGRATION-PATHS-20261009 — 2026-10-09
+- **User-observed:** pnpm install --frozen-lockfile PASS; supply-chain policy accepted 534 entries and one package was installed.
+- **Pre-fix failures:** Workspace typecheck reported TS2345 for the optional RabbitMQ URL at email-sync-rabbitmq.ts:165; worker typecheck was also SIGKILLed. Focused migration Vitest failed collection with ENOENT for the old 0003_database_security_hardening.sql path.
+- **Source corrections:** Consumer URL now has a definite string type while missing configuration still returns without connecting (09e4df46); worker source-contract assertion added (a24edec3); migration static test now references canonical 0013 and 0005 files (ffc98b30).
+- **Post-fix status:** NOT RUN — focused migration Vitest, worker contract test, web typecheck, worker typecheck, full workspace typecheck, build. No post-fix PASS claimed.
+- **Next action:** Execute focused tests, then package typechecks sequentially to avoid resource contention; record actual output.
