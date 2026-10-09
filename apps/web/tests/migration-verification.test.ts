@@ -593,3 +593,25 @@ describe("Live runtime schema reconciliation migration (0029)", () => {
     expect(sql).toContain("last_success_at = COALESCE(last_success_at, last_sync_at)");
   });
 });
+
+describe("Legacy email message runtime reconciliation migration (0030)", () => {
+  const sql = readFileSync(
+    resolve(__dirname, "../../../supabase/migrations/0030_email_messages_runtime_reconciliation.sql"),
+    "utf8",
+  );
+
+  it("adds canonical sender and recipient columns used by the inbox repository", () => {
+    expect(sql).toContain("ADD COLUMN IF NOT EXISTS from_email text");
+    expect(sql).toContain("ADD COLUMN IF NOT EXISTS from_name text");
+    expect(sql).toContain("ADD COLUMN IF NOT EXISTS to_recipients jsonb");
+    expect(sql).toContain("ADD COLUMN IF NOT EXISTS is_sent boolean");
+  });
+
+  it("backfills legacy sender, recipient, direction, and body columns without overwriting canonical values", () => {
+    expect(sql).toContain("column_name = 'from_address'");
+    expect(sql).toContain("from_email = COALESCE(from_email, from_address)");
+    expect(sql).toContain("column_name = 'to_addresses'");
+    expect(sql).toContain("column_name = 'is_outbound'");
+    expect(sql).toContain("html_body_sanitized = COALESCE(html_body_sanitized, html_body)");
+  });
+});
