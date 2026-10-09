@@ -616,3 +616,29 @@ describe("Legacy email message runtime reconciliation migration (0030)", () => {
     expect(sql).toContain("html_body_sanitized = COALESCE(html_body_sanitized, html_body)");
   });
 });
+
+describe("Mailbox inbox SQL and legacy migration safety", () => {
+  const repositorySource = readFileSync(
+    resolve(__dirname, "../../../packages/db/src/email/repository.ts"),
+    "utf8",
+  );
+  const messageMigration = readFileSync(
+    resolve(__dirname, "../../../supabase/migrations/0030_email_messages_runtime_reconciliation.sql"),
+    "utf8",
+  );
+
+  it("uses PostgreSQL parameter placeholders for every inbox search field", () => {
+    expect(repositorySource).toContain("m.from_email ILIKE $${values.length}");
+    expect(repositorySource).toContain("m.from_name ILIKE $${values.length}");
+    expect(repositorySource).toContain("m.text_body ILIKE $${values.length}");
+    expect(repositorySource).not.toContain("m.from_email ILIKE ${values.length}");
+    expect(repositorySource).not.toContain("m.from_name ILIKE ${values.length}");
+    expect(repositorySource).not.toContain("m.text_body ILIKE ${values.length}");
+  });
+
+  it("uses a complete PostgreSQL dollar-quoted block for legacy backfills", () => {
+    expect(messageMigration).toContain("DO $$");
+    expect(messageMigration).toContain("END $$;");
+    expect(messageMigration).not.toContain("DO $\nBEGIN");
+  });
+});
