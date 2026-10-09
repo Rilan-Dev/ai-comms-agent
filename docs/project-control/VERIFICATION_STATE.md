@@ -951,3 +951,11 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Added `apps/worker/tests/redis-lease.test.ts` in commit `fbd07ca9dee64a3fbe114bb16cf08fadcfa695f1`.
 - Coverage authored: SET NX PX acquisition and contention, token-checked EVAL release, and AUTH/database selection.
 - Status: unexecuted; worker/web typechecks and live Redis verification remain pending.
+
+
+### FIX-01 Zoho OAuth test parser correction — 2026-10-09
+- **Pre-fix evidence supplied by user:** `pnpm run typecheck` passed for packages/shared, packages/db, packages/clara-core, and apps/worker. apps/web failed in `tests/zoho-oauth-settings.test.ts:84` with TS1127 and TS1434.
+- **Root cause:** Literal backslash-n sequences between assertions caused TypeScript parser errors.
+- **Source fix:** Replaced the exact malformed sequence with real newlines; commit `39857c40820940b500dcf452331dfe82ae35b861`.
+- **Status:** source_fix_committed_post_fix_not_tested. Do not infer web typecheck success from the source edit alone.
+- **Next:** Re-run `pnpm run typecheck` and focused Zoho OAuth settings test. Route separate environment/CI/deployment issues to OPS-01.
