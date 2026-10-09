@@ -42,13 +42,13 @@ export function AIRuntimeSettings({ organizationId }: { organizationId: string }
     } catch (reason) { setError(reason instanceof Error ? reason.message : "AI configuration could not save."); }
     finally { setSaving(false); }
   }
-  const input = "mt-1 w-full rounded-xl border bg-background px-3 py-2.5 text-sm";
+  const input = "mt-1 w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm";
   const label = "block text-sm font-medium";
-  return <section className="space-y-5 rounded-2xl border bg-background p-5 sm:p-6">
+  return <section className="space-y-5 rounded-md border border-border bg-card p-5 sm:p-6">
     <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">AI & Clara runtime</p><h2 className="mt-1 text-xl font-semibold">Knowledge, model defaults and voice</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">These settings are saved per organization. The knowledge-base ID is required by chat and voice; it must identify a knowledge base actually configured for Clara. This setting does not create a Qdrant collection or ingest documents.</p></div>
-    {message ? <p role="status" className="rounded-xl border bg-muted/40 p-3 text-sm">{message}</p> : null}
-    {error ? <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}
-    {!loading && !settings.knowledge_base_id.trim() ? <p role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm">Required configuration missing: enter the actual Clara knowledge-base ID and save. Chat, voice, and worker agent execution will return configuration_required until it is set.</p> : null}
+    {message ? <p role="status" className="rounded-md border bg-muted/40 p-3 text-sm">{message}</p> : null}
+    {error ? <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}
+    {!loading && !settings.knowledge_base_id.trim() ? <p role="alert" className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm">Required configuration missing: enter the actual Clara knowledge-base ID and save. Chat, voice, and worker agent execution will return configuration_required until it is set.</p> : null}
     {loading ? <p className="text-sm text-muted-foreground">Loading configuration…</p> : <>
       <div className="grid gap-4 md:grid-cols-2">
         <label className={label}>Clara knowledge-base ID<input className={input} value={settings.knowledge_base_id} onChange={(e) => setSettings({ ...settings, knowledge_base_id: e.target.value })} placeholder="Your actual Clara KB ID" /></label>
@@ -60,7 +60,7 @@ export function AIRuntimeSettings({ organizationId }: { organizationId: string }
         <label className={label}>Maximum output tokens<input className={input} type="number" min="1" max="32768" value={settings.max_tokens} onChange={(e) => setSettings({ ...settings, max_tokens: e.target.value })} /></label>
       </div>
       <label className={label}>System prompt<textarea className={input} rows={4} value={settings.system_prompt} onChange={(e) => setSettings({ ...settings, system_prompt: e.target.value })} /></label>
-      <button type="button" onClick={() => void save()} disabled={saving} className="rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-50">{saving ? "Saving…" : "Save AI runtime settings"}</button>
+      <button type="button" onClick={() => void save()} disabled={saving} className="rounded-md bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-50">{saving ? "Saving…" : "Save AI runtime settings"}</button>
     </>}
   </section>;
 }
