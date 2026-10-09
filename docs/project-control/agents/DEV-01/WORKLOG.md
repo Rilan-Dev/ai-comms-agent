@@ -156,3 +156,11 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Blockers/dependencies:** Full UI migration remains in progress; no dependency blocker to source work. Verification environment unavailable in this session.
 - **Lesson:** Reuse the Lovable design tokens and component patterns, not its TanStack Start runtime wholesale. Keep existing Next.js server routes, auth/RBAC, real API data, validations, and truthful error states. Treat visual reference/demo-only behaviors as reference, never as production functionality.
 - **Next action:** Continue screen-by-screen migration of the remaining app routes, beginning with Mail and Agents, preserving every existing action and validation; update migration/control records as slices land.
+
+
+### DEV01-LOVABLE-UI-MIGRATION-20261009 — Follow-up slice
+- **Actions:** Harmonized legacy card/button radius and shadows with the Lovable compact geometry; refined shared heading/form-control typography; replaced the login/setup and inbox indigo/blue ambient gradients with the warm green/ivory palette; connected the global header search form's `q` query parameter to the Inbox client's controlled search state.
+- **Files:** `apps/web/src/app/globals.css`, `apps/web/src/app/login/page.tsx`, `apps/web/src/app/setup/page.tsx`, `apps/web/src/app/mail/inbox/inbox-client.tsx`.
+- **Commits:** `b894e43f9b0ae46390b468353b804a386b51e399`, `c9b07207a297874b831b850bacc09c58bc6fcf69`, `ebd95586b310658c8e13587db8c2150ab6c862c5`, `9b4c7fb64270a5d34c04486044c83f5be0bc5bbc`, `a85f0261ac18d19bcabe4b59e2ed327248bfd6df`, `3ed3c28fe7aba734789880de407582cdc525b2cc`.
+- **Evidence:** GitHub accepted source writes only. No tests/typecheck/build/browser/runtime checks executed.
+- **Next action:** Continue visual adaptation of Agents and remaining Mail screens, preserving current validation and API behavior.
