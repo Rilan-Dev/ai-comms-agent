@@ -178,3 +178,9 @@ If shared memory conflicts with current repository state or current requirements
 - Audit filters must actually affect server queries, not just export URLs or local labels. Use abort/cancellation so older in-flight responses cannot overwrite newer filter results. Preserve the existing `audit.read` authorization boundary and API export routes.
 - Record source adaptation separately from verification; static contract assertions are not evidence that tests/typecheck/build/browser/API checks passed.
 - Related commits: Activity `a0830b13`, Audit `7c118bbd`, static contracts `23d9c3fc` / `7419f572`.
+
+
+### DEV-01 / Forge — Operations status semantics (2026-10-09)
+- Never render dependency configuration as live health. If the API reports “healthy” only because a URL exists and says runtime connectivity is worker-owned, show a neutral “Configured” status. Only display “Healthy” for an actual verified check.
+- Preserve API authorization and the distinction between configuration checks and runtime evidence; UI labels must not overstate health.
+- Related commits: Operations `fc22cc3f`; static contract assertions `ddb7a233` / `ca229779`.
