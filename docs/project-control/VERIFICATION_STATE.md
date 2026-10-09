@@ -1098,3 +1098,10 @@ source_review:
 - Added cross-route static assertions in `apps/web/tests/lovable-ui-migration.test.ts` (commit `b328373c`) and inventory note `e31327c8`.
 - **Verification:** test suite, typecheck, build, browser/responsive and accessibility checks were not executed. No PASS claimed.
 - **Next:** continue source-level review of remaining secondary controls, then complete manual responsive/accessibility verification when a browser/runtime is available. Do not wait for CI/Vercel.
+
+ 
+## 2026-10-09 — pnpm lockfile parse/resolution failure
+- **User evidence:** `pnpm run typecheck` stopped before typechecking with `ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY` for `amqplib@2.2.0`.
+- **Source analysis:** `pnpm-lock.yaml` had two concatenated YAML documents. The workspace document had the `apps/worker` importer but lacked the matching package and snapshot records.
+- **Correction:** Commit `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e` leaves one workspace lockfile document and restores those records.
+- **Verification status:** Source structure inspected; frozen install and typecheck NOT RUN after correction. Do not infer PASS.
