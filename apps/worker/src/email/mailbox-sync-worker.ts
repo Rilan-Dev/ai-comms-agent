@@ -12,6 +12,7 @@ import { randomUUID } from "node:crypto";
 import { acquireRedisLease, releaseRedisLease } from "./redis-lease";
 import type { EmailProvider } from "@ai-comms-agent/shared";
 import { publishEmailSync } from "../queues/email-sync-rabbitmq";
+import { indexEmailKnowledge } from "../knowledge/email-knowledge-indexer";
 import type { EmailSyncPayload } from "../queues/email-sync-message";
 
 type Candidate = {
@@ -136,6 +137,13 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
       [providerDraftId, account.id, message.provider_message_id || message.id],
     );
   }
+
+  await indexEmailKnowledge({
+    organizationId: account.organization_id,
+    accountId: account.id,
+    provider: account.provider,
+    message,
+  });
 }
 
 async function processAccount(candidate: Candidate): Promise<boolean> {
