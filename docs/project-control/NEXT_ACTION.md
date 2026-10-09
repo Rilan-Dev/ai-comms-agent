@@ -6,6 +6,13 @@ The single exact next authorized action. Update this file on every commit.
 
 ## Current next action
 
+### FIX-01 migration test alignment — 2026-10-10
+
+A test-only correction is committed on `fix/migration-verification-phase4-contract` (`c51d5a79dfd999dd4382cc60005798531e5517be`). The `summary_sources` table belongs to migration 0003 and its RLS policy to migration 0004, not migration 0002. The static test now follows that migration ownership.
+
+**Next action:** fetch the branch and run `pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts`. Then run the worker RabbitMQ contract test and web/worker typechecks sequentially. Do not wait for CI/Vercel. The user's local lockfile displayed two YAML documents, but fetched current main has one; compare local `pnpm-lock.yaml` with the newly fetched `origin/main` before changing it. Record actual output; do not claim PASS before execution.
+
+
 ## Immediate FIX-01 migration/worker test follow-up — 2026-10-09
 
 The user reported migration-verification failures around audit-event policy assertions and DO-block delimiters, plus worker test failures around retry metadata and the Qdrant exclusion assertion. Source corrections are committed: forward-only migration 0032 (`7557a6cd`), migration test updates (`ee85b554`, `c4d4abd0`), and worker contract-test updates (`cecae73e`, `96996d82`). Source changes only; focused tests, typechecks, and migration execution have NOT run.
@@ -933,3 +940,7 @@ User's `pnpm run typecheck` was blocked before TypeScript by `ERR_PNPM_LOCKFILE_
 - **Correction:** Rewrote the assertions to test the current least-privilege contract and grants rather than the superseded migration implementation.
 - **Commit:** 618c4cd57f0e7e433c4da5f50840cd6c8f612b9b.
 - **Verification:** Source only; focused migration Vitest NOT RUN.
+
+
+### FIX-01 — Retest migration assertions and reconcile local lockfile (2026-10-10)
+The user-reported focused run had 83 passed / 3 failed. The two SQL failures were test false positives against valid PostgreSQL `$$` delimiters; assertions were corrected in commit `58730eb8b0fa46bfdd5fca581295209921582dbe`. The third failure is local lockfile drift: local `pnpm-lock.yaml` has two YAML document headers, while the PR branch lockfile has one. Preserve backups and inspect `git status --short`; then reconcile only the lockfile from `origin/fix/migration-verification-phase4-contract` if no intended local lockfile edits need to be kept. Re-run `pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts`. Then continue with worker RabbitMQ contract tests and web/worker typechecks sequentially. Do not wait for CI/Vercel; do not claim PASS without the output.
