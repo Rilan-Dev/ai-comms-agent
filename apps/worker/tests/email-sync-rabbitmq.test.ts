@@ -6,6 +6,8 @@ import { resolve } from "node:path";
 const source = readFileSync(resolve(process.cwd(), "src/queues/email-sync-rabbitmq.ts"), "utf8");
 const worker = readFileSync(resolve(process.cwd(), "src/email/mailbox-sync-worker.ts"), "utf8");
 const entry = readFileSync(resolve(process.cwd(), "src/index.ts"), "utf8");
+const knowledgeIndexer = readFileSync(resolve(process.cwd(), "src/knowledge/email-knowledge-indexer.ts"), "utf8");
+const claraRuntime = readFileSync(resolve(process.cwd(), "../../packages/clara-core/src/runtime.ts"), "utf8");
 
 test("RabbitMQ declares durable main, retry, and dead-letter queues", () => {
   assert.match(source, /assertQueue\(MAIN_QUEUE, queueOptions\(\)\)/);
@@ -57,4 +59,20 @@ test("invalid deliveries are dead-lettered and original messages are retained if
   assert.match(source, /await publisher\.waitForConfirms\(\)/);
   assert.match(source, /activeChannel\.nack\(message, false, true\)/);
   assert.match(source, /Do not lose a message if retry\/DLQ publication is not confirmed/);
+});
+
+test("synced email is indexed idempotently through the Clara PostgreSQL knowledge contract", () => {
+  assert.match(worker, /import \{ indexEmailKnowledge \} from "\.\.\/knowledge\/email-knowledge-indexer"/);
+  assert.match(worker, /await indexEmailKnowledge\(/);
+  assert.match(knowledgeIndexer, /INSERT INTO knowledge_documents/);
+  assert.match(knowledgeIndexer, /ON CONFLICT \(organization_id, storage_bucket, storage_path\)/);
+  assert.match(knowledgeIndexer, /INSERT INTO knowledge_chunks/);
+  assert.match(knowledgeIndexer, /ON CONFLICT \(document_id, chunk_index\) DO UPDATE/);
+  assert.doesNotMatch(knowledgeIndexer, /qdrant|vector-store/i);
+});
+
+test("Clara retrieval isolates shared knowledge from other agents", () => {
+  assert.match(claraRuntime, /\(\$2::text IS NULL AND kd\.agent_id IS NULL\)/);
+  assert.match(claraRuntime, /kd\.agent_id IS NULL OR kd\.agent_id::text = \$2/);
+  assert.match(claraRuntime, /\[ctx\.orgId, ctx\.agentId, queryText/);
 });
