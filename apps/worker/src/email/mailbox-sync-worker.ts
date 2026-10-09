@@ -307,7 +307,20 @@ export async function processMailboxSyncMessage(payload: EmailSyncPayload): Prom
   // Deleted or disconnected accounts are terminal outcomes, not retryable failures.
   if (!candidate) return;
   const succeeded = await processAccount(candidate);
-  if (!succeeded) throw new Error("Mailbox sync did not complete; retry delivery is required.");
+  if (succeeded) return;
+
+  // Duplicate deliveries are expected with at-least-once queues. If another worker
+  // owns a fresh PostgreSQL claim, acknowledge this delivery instead of exhausting retries.
+  const state = await query<{ status: string; last_attempt_at: string | null }>(
+    "SELECT status, last_attempt_at FROM email_sync_states WHERE email_account_id=$1",
+    [candidate.id],
+  );
+  const current = state.rows[0];
+  const activeClaim = current?.status === "running"
+    && current.last_attempt_at !== null
+    && Date.now() - new Date(current.last_attempt_at).getTime() < 10 * 60_000;
+  if (activeClaim) return;
+  throw new Error("Mailbox sync did not complete; retry delivery is required.");
 }
 
 async function enqueueDueMailboxSyncs(limit = BATCH_SIZE): Promise<number> {
