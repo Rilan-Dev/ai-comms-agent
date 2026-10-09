@@ -331,7 +331,7 @@ async function enqueueDueMailboxSyncs(limit = BATCH_SIZE): Promise<number> {
        AND (s.status IS NULL OR s.status <> 'running'
          OR s.last_attempt_at < now()-interval '10 minutes')
        AND (s.last_attempt_at IS NULL OR s.last_attempt_at < now()-interval '10 seconds')
-       AND (s.cursor IS NOT NULL OR s.last_success_at IS NULL
+       AND (s.last_success_at IS NULL
          OR s.last_success_at < now()-interval '15 minutes'
          OR a.status IN ('pending','error'))
      ORDER BY CASE a.status WHEN 'pending' THEN 0 WHEN 'error' THEN 1 ELSE 2 END,
@@ -346,7 +346,7 @@ async function enqueueDueMailboxSyncs(limit = BATCH_SIZE): Promise<number> {
       history_id: candidate.history_id ?? undefined,
       triggered_by: "poll",
     });
-    // Suppress repeat publication after broker confirmation. Consumer success clears this.
+    // Suppress repeat publication after broker confirmation; last_success_at controls the next poll.
     await query(
       `INSERT INTO email_sync_states
          (email_account_id, organization_id, status, next_attempt_at, updated_at)
@@ -403,7 +403,7 @@ export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ att
          AND (s.status IS NULL OR s.status <> 'running'
            OR s.last_attempt_at < now()-interval '10 minutes')
          AND (s.last_attempt_at IS NULL OR s.last_attempt_at < now()-interval '10 seconds')
-         AND (s.cursor IS NOT NULL OR s.last_success_at IS NULL
+         AND (s.last_success_at IS NULL
            OR s.last_success_at < now()-interval '15 minutes'
            OR a.status IN ('pending','error'))
        ORDER BY CASE a.status WHEN 'pending' THEN 0 WHEN 'error' THEN 1 ELSE 2 END,
