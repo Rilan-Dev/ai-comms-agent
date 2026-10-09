@@ -528,3 +528,9 @@ Added static migration regression coverage for `0029_runtime_schema_reconciliati
 
 ### 2026-10-09 — Live inbox schema drift and Redis authentication
 The latest logs show missing `email_messages.from_name` and Redis WRONGPASS; a queued response does not confirm import. FIX-01 committed migration `0030_email_messages_runtime_reconciliation.sql` and static assertions. OPS-01 must apply migrations 0029/0030 to the live database, roll out matching web/worker images, fix Redis credentials/ACL, and verify message rows and inbox results. Runtime remains unverified.
+
+
+### 2026-10-09 — WhatsApp connection UI continuity (DEV-01)
+The WhatsApp route now mounts the existing API-backed client with authenticated organization context. The Connect WhatsApp Business CTA opens the encrypted Meta Cloud API credential form; account/message actions remain connected to existing APIs. Credentials are not represented as connected until Meta/webhook verification changes the persisted status. Commits: 58ba5541, 94878571, 49c94de3, 2cbe4ab9, 9eb3a168. Verification NOT RUN (tests/typecheck/build/browser/Meta/webhook).
+
+Next product UI action remains Knowledge UI with real organization-scoped persisted counts/status and working controls, then Activity → Audit → Operations → Settings/provider settings → Login/Setup → agent detail/version/history → responsive/accessibility review. OPS-01 still owns live schema/Redis runtime acceptance; FIX-01 owns separate substantial bugs. Do not wait for CI/Vercel.
