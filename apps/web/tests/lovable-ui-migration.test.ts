@@ -11,6 +11,8 @@ const inbox = readFileSync(resolve(__dirname, "../src/app/mail/inbox/inbox-clien
 const login = readFileSync(resolve(__dirname, "../src/app/login/page.tsx"), "utf8");
 const setup = readFileSync(resolve(__dirname, "../src/app/setup/page.tsx"), "utf8");
 const agents = readFileSync(resolve(__dirname, "../src/app/agents/agents-client.tsx"), "utf8");
+const agentDetail = readFileSync(resolve(__dirname, "../src/app/agents/[id]/agent-detail-client.tsx"), "utf8");
+const agentDetailPage = readFileSync(resolve(__dirname, "../src/app/agents/[id]/page.tsx"), "utf8");
 const drafts = readFileSync(resolve(__dirname, "../src/app/mail/drafts/drafts-client.tsx"), "utf8");
 const draftsPage = readFileSync(resolve(__dirname, "../src/app/mail/drafts/page.tsx"), "utf8");
 const compose = readFileSync(resolve(__dirname, "../src/app/mail/compose/compose-client.tsx"), "utf8");
@@ -248,6 +250,22 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(auditApi).toContain("listOrganizationAuditEvents(rawId");
   });
 
+  it("adapts agent detail, version history, policy and channels without changing API safeguards", () => {
+    expect(agentDetail).toContain('from "lucide-react"');
+    expect(agentDetail).toContain('["overview","versions","policy","channels","test","activity"]');
+    expect(agentDetail).toContain("/versions");
+    expect(agentDetail).toContain("/policy");
+    expect(agentDetail).toContain("/channels");
+    expect(agentDetail).toContain("/simulate");
+    expect(agentDetail).toContain('environment:"production"');
+    expect(agentDetail).toContain("role=\"dialog\"");
+    expect(agentDetail).toContain("Version configuration must be valid JSON");
+    expect(agentDetailPage).toContain("getAuthenticatedAppContext");
+    expect(agentDetailPage).toContain("repo.get(organizationId,id)");
+    expect(agentDetail).not.toContain("rounded-3xl");
+    expect(agentDetail).not.toContain("rounded-2xl");
+    expect(agentDetail).not.toContain("rounded-xl");
+  });
   it("aligns Login and first-time Setup while preserving authentication and bootstrap validation", () => {
     expect(login).toContain('fetch("/api/auth/login"');
     expect(login).toContain("window.location.replace");
