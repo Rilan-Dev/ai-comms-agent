@@ -116,3 +116,12 @@ If shared memory conflicts with current repository state or current requirements
 - **Remedy:** Gmail snapshot now returns EmailCredentials; spread the typed snapshot into a plain record at the persistence boundary. Add a focused snapshot contract test.
 - **Prevention:** Keep adapter snapshots on shared domain types and convert to storage-specific generic payloads only at the repository boundary.
 - **Related record:** EVT-FIX01-WORKER-CREDENTIALS-20261009; ISS-013; commits caad1d75, 04a2345b, a98c0e7f. Tests/typecheck not yet executed.
+
+
+### FIX-01 / Sentinel — 2026-10-09 — Malformed Zoho OAuth test newline escapes
+- **Symptom:** User ran `pnpm run typecheck`; shared/db/clara-core typechecks passed and worker typecheck passed, but web TypeScript failed at `apps/web/tests/zoho-oauth-settings.test.ts:84` with TS1127 invalid character and TS1434 unexpected keyword/identifier.
+- **Root cause:** Three assertions in the test contained the two-character literal sequence `\n` after semicolons instead of actual source line breaks. TypeScript therefore parsed backslashes as invalid source characters.
+- **Failed approach:** Treating this as an OAuth implementation/type defect would expand scope incorrectly; the reported parser positions point to malformed test source. No broad rewrite is needed.
+- **Remedy:** Replaced only the malformed literal newline sequences between the three `expect(helper).toContain(...)` assertions with real line breaks. Commit `39857c40820940b500dcf452331dfe82ae35b861`.
+- **Prevention:** When inserting source through JSON/API or generated patches, inspect escaping at the actual file layer; ensure `\n` is decoded to a source newline rather than committed literally.
+- **Verification:** User-provided output proves worker and shared package typechecks passed before this correction; web typecheck failed at the malformed test. The web typecheck has not yet been rerun after the fix.
