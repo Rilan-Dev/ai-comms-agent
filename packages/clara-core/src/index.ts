@@ -4,6 +4,8 @@
  * Local Clara integration boundary. The ai-reusable-libraries repository is
  * reference-only; it is not imported, copied, or compiled by this application.
  */
+export { indexEmailForClara } from "./email-indexing";
+
 export {
   claraRuntime,
   createProvider,
