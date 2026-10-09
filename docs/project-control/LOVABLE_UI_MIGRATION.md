@@ -104,3 +104,11 @@ This is an explicit inventory, not a claim that every listed page is already mig
 - Removed duplicate Lucide icon import declarations from login and setup pages (source cleanup to prevent duplicate-import compile failures). Added auth page contract tests for login API continuity, safe local redirect validation, bootstrap token secrecy, password/slug validation and single icon imports.
 - Commits: OAuth alert semantics 0f51e38e / 1bce974d, assertions 7f7d75a2 / 6dc64267, login/setup import cleanup 7a2d8fef / 2029c978, auth tests 2714dc08.
 - Tests/typecheck/build/browser and keyboard/screen-reader checks were not run. Login/setup remain partial until full visual/accessibility review.
+
+
+## 2026-10-09 — Agent detail/version/history visual adaptation
+
+- Applied compact Lovable geometry and Lucide iconography to agent detail, version history, policy, channel binding, configuration test, activity and deploy/pause confirmation surfaces. Adapted server-rendered loading/not-found/error surfaces and the new-agent entry page.
+- Preserved organization-scoped server reads, JSON object validation, deploy/pause confirmation, policy/channel APIs, and agent-specific audit loading. Added static source-contract assertions.
+- Found a pre-existing functional gap in `apps/web/src/app/agents/new/page.tsx`: the Create agent button only enables based on name and has no submit/API handler. The actual working create flow is in `agents-client.tsx`; do not treat the standalone page as functionally complete. Dedicated fix/redirect remains next backlog item.
+- Tests/typecheck/build/browser/accessibility/runtime checks were not run.
