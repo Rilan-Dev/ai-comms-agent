@@ -886,3 +886,13 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Added migration `0028_organization_ai_runtime_settings.sql` and static regression assertions in `apps/web/tests/ai-runtime-settings.test.ts`.
 - Chat, voice, and worker knowledge-base selection now prefers the organization-scoped KB ID and retains `CLARA_KB_ID` as a compatibility fallback.
 - Tests, typecheck, builds, migration execution, live provider requests, chat streaming, voice transport, browser verification, and deployment were not executed. Runtime acceptance remains pending; no PASS is claimed.
+
+## 2026-10-09 — Gmail mailbox synchronization source evidence (runtime acceptance pending)
+
+- Added and wired `apps/worker/src/email/mailbox-sync-worker.ts` into the worker lifecycle. It polls organization-scoped Gmail accounts, claims work through `email_sync_states`, persists provider messages/threads, updates cursor/last-sync state, and records retries/errors.
+- Updated Gmail initial sync to paginate and retain a pre-import history baseline; expired history IDs fall back to an idempotent full import.
+- Refreshed access tokens are persisted through the existing encrypted credential repository. Reconnect preserves an existing refresh token when Google omits a new one.
+- Added a protected manual sync endpoint and mailbox UI action; mailbox status refreshes automatically.
+- Added static/source regression tests and Gmail adapter pagination/token snapshot tests.
+- **Not executed:** unit tests, typecheck, build, migration application, deployment, Google API calls, worker runtime, live mailbox sync, inbox/draft persistence verification. No PASS is claimed.
+- **Runtime prerequisites:** migration chain through `0028`; deployed web and long-lived worker; shared PostgreSQL and `CREDENTIALS_MASTER_KEY`; working Google OAuth refresh token and Gmail API access.
