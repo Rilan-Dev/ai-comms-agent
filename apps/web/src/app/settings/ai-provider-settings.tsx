@@ -23,6 +23,12 @@ export function AIProviderSettings({ organizationId }: { organizationId: string 
     const body = await response.json();
     if (!response.ok) throw new Error(body.message ?? "Provider settings could not load.");
     setConfigs(body.providers ?? []);
+    const selectedConfig = (body.providers ?? []).find((item: Config) => item.provider === provider);
+    if (selectedConfig) {
+      setModel(selectedConfig.model || (provider === "openai" ? "gpt-4o-mini" : provider === "gemini" ? "gemini-2.0-flash" : "sarvam-105b-conversations"));
+      setBaseUrl(selectedConfig.baseUrl ?? "");
+      setEnabled(selectedConfig.enabled);
+    }
   }
   useEffect(() => { void load().catch((e) => setError(e instanceof Error ? e.message : "Provider settings could not load.")); }, [organizationId]);
   function choose(next: Provider) {
