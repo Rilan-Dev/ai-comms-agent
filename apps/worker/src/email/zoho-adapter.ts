@@ -92,6 +92,22 @@ export class ZohoAdapter implements EmailProvider {
   capabilities(): CapabilitySet { return { ...CAPABILITIES }; }
   async discoverCapabilities(): Promise<CapabilitySet> { return { ...CAPABILITIES }; }
 
+  getCredentialSnapshot(): EmailCredentials {
+    if (!this.accessToken || !this.apiDomain || !this.accountId) {
+      throw new Error("Zoho adapter is not connected");
+    }
+    return {
+      credential_type: "oauth_token",
+      access_token: this.accessToken,
+      refresh_token: this.refreshToken,
+      expires_at: this.expiresAt ? new Date(this.expiresAt).toISOString() : undefined,
+      api_domain: this.apiDomain,
+      account_id: this.accountId,
+      zoho_client_id: this.oauthClientId,
+      zoho_client_secret: this.oauthClientSecret,
+    };
+  }
+
   private async refreshAccessToken(): Promise<void> {
     if (!this.refreshToken) throw new Error("Zoho access token expired and no refresh token is available");
     if (this.refreshPromise) return this.refreshPromise;
