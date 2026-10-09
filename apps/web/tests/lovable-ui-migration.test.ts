@@ -45,6 +45,7 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(css).toContain("DM Sans");
     expect(css).toContain("Space Grotesk");
     expect(css).toContain("--color-background: var(--background)");
+    expect(css.indexOf("@import url(")).toBeLessThan(css.indexOf('@import "tailwindcss"'));
   });
 
   it("preserves the Next.js authenticated shell while aligning the responsive workspace sidebar", () => {
