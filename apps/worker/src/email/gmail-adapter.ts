@@ -175,31 +175,51 @@ export class GmailAdapter implements EmailProvider {
   }
 
   async sync(state: SyncState): Promise<SyncResult> {
-    if (state.history_token) {
-      const history = await this.request(`/history?startHistoryId=${encodeURIComponent(state.history_token)}&historyTypes=messageAdded&historyTypes=labelAdded&historyTypes=labelRemoved`);
-      const ids = new Set<string>();
-      for (const item of history.history ?? []) {
-        for (const added of item.messagesAdded ?? []) ids.add(added.message?.id);
-        for (const message of item.messages ?? []) ids.add(message.id);
-      }
-      const added = [];
-      for (const id of ids) {
-        const msg = await this.request(`/messages/${id}?format=full`);
-        added.push({ message_id: id, provider_message_id: id });
-        void msg;
-      }
-      return { added, updated: [], deleted: [], new_state: { ...state, history_token: history.historyId ?? state.history_token, last_sync_at: new Date().toISOString(), sync_mode: "incremental" } };
+    // Complete a paginated initial import before switching to history-based
+    // incremental sync. Capture historyId before page one so changes arriving
+    // during the import are picked up by the first incremental pass.
+    if (state.sync_mode === "initial" || state.cursor || !state.history_token) {
+      const profile = state.history_token ? null : await this.request("/profile");
+      const baselineHistoryId = state.history_token ?? profile?.historyId;
+      const params = new URLSearchParams({ maxResults: "100" });
+      if (state.cursor) params.set("pageToken", state.cursor);
+      const page = await this.request(`/messages?${params.toString()}`);
+      const added = (page.messages ?? [])
+        .filter((message: any) => typeof message.id === "string" && message.id.length > 0)
+        .map((message: any) => ({ message_id: message.id, provider_message_id: message.id }));
+      const cursor = typeof page.nextPageToken === "string" ? page.nextPageToken : undefined;
+      return {
+        added,
+        updated: [],
+        deleted: [],
+        new_state: {
+          ...state,
+          cursor,
+          history_token: baselineHistoryId ? String(baselineHistoryId) : undefined,
+          last_sync_at: new Date().toISOString(),
+          sync_mode: cursor ? "initial" : "incremental",
+        },
+      };
     }
-    const data = await this.request("/messages?maxResults=100&labelIds=INBOX");
-    const added = (data.messages ?? []).map((m: any) => ({ message_id: m.id, provider_message_id: m.id }));
-    const profile = await this.request("/profile");
+
+    const history = await this.request(`/history?startHistoryId=${encodeURIComponent(state.history_token)}&historyTypes=messageAdded&historyTypes=labelAdded&historyTypes=labelRemoved`);
+    const ids = new Set<string>();
+    for (const item of history.history ?? []) {
+      for (const added of item.messagesAdded ?? []) {
+        if (typeof added.message?.id === "string") ids.add(added.message.id);
+      }
+      for (const message of item.messages ?? []) {
+        if (typeof message.id === "string") ids.add(message.id);
+      }
+    }
     return {
-      added,
+      added: [...ids].map((id) => ({ message_id: id, provider_message_id: id })),
       updated: [],
       deleted: [],
       new_state: {
         ...state,
-        history_token: profile.historyId,
+        cursor: undefined,
+        history_token: history.historyId ?? state.history_token,
         last_sync_at: new Date().toISOString(),
         sync_mode: "incremental",
       },
