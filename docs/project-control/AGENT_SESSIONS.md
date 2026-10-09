@@ -381,3 +381,12 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Remedy:** Corrected worker importer, package/snapshot and integrity regexes.
 - **Commit:** `162183e8d7c67b8346c15989ef850327e487cfc4`.
 - **Next:** After `pnpm install --frozen-lockfile` succeeds, run focused Vitest and typecheck; do not claim PASS from source inspection.
+
+### FIX01-WORKER-TYPECHECK-MIGRATION-PATHS-20261009 — 2026-10-09
+- **Agent:** FIX-01 / Sentinel
+- **Status:** HANDOFF — source corrected, local verification pending
+- **Invocation:** User supplied the first successful frozen install followed by a worker TS2345 error, worker SIGKILL, and focused migration test ENOENT.
+- **Completed:** Normalized the RabbitMQ consumer URL type while retaining fail-closed no-config behavior; added a source-contract assertion; changed migration test references from old 0003/0004 to canonical 0013/0005.
+- **Commits:** 09e4df46, a24edec3, ffc98b30.
+- **Pending:** Focused worker and migration tests plus sequential web/worker typechecks. Full workspace typecheck was interrupted by SIGKILL in the user's run.
+- **Next action:** Pull latest main and run focused checks; no CI/Vercel waiting and no verification PASS until actual output is recorded.
