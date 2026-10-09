@@ -179,3 +179,15 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Added fake Redis server regression tests for lock acquisition/contention, compare-and-delete Lua arguments, and AUTH/database selection.
 - Commit: fbd07ca9dee64a3fbe114bb16cf08fadcfa695f1.
 - Test source only; no execution or typecheck claim.
+
+
+### FIX01-ZOHO-TEST-NEWLINES-20261009 — 2026-10-09
+- **Agent:** FIX-01 / Sentinel
+- **Problem:** Web typecheck fails parsing zoho-oauth-settings.test.ts at line 84 with TS1127 and TS1434.
+- **Authorization:** User supplied new failure output while invoking FIX-01; narrow corrective source change and durable records authorized.
+- **Root cause:** Three assertions were separated by literal `\n` text rather than actual line breaks.
+- **Action:** Replaced only that exact malformed sequence with real newlines.
+- **Commit:** 39857c40820940b500dcf452331dfe82ae35b861.
+- **Verification:** User's pre-fix run shows shared/db/clara-core and worker typechecks passed; web failed on malformed source. Post-fix web typecheck and focused test remain unexecuted.
+- **Status:** HANDOFF pending verification.
+- **Next:** Re-run `pnpm run typecheck` and the focused Zoho OAuth settings test. Do not wait for DEV-01. Route only infrastructure/CI/deployment issues to OPS-01.
