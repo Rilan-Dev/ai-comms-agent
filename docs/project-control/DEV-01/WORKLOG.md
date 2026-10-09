@@ -141,3 +141,13 @@
 - Updated migration inventory (`e31327c8`) and verification state (`579e25fa`).
 - **Verification NOT RUN:** no tests, typecheck, build, browser, responsive, accessibility or live API checks. No PASS claimed.
 - **Next:** inspect remaining secondary controls and source-level accessibility issues; manual browser/responsive pass remains pending. Continue without CI/Vercel polling.
+
+## 2026-10-09 — DEV-01 keyboard and status accessibility follow-up
+
+- Added keyboard focus management to Agent Detail deploy/pause confirmation: initial focus, Tab/Shift+Tab containment, Escape dismissal, focus restoration, and a vertically scrollable narrow-viewport overlay.
+- Added accessible names to the Agent Detail email account, email role, and WhatsApp account selectors.
+- Made mobile workspace navigation a keyboard-contained modal drawer while open, including focus movement to Close, Escape dismissal, focus trapping, and focus restoration.
+- Added a labelled live conversation log, polite busy-status announcement, and accessible name for the Chat composer.
+- Commits: `d73099d6`, `3d8ac3a3`, `837b4b19`; source-contract assertions: `0a603b76`, `f8c3aefd`.
+- **Verification NOT RUN:** static tests, typecheck, build, browser, screen-reader and narrow-device checks have not been executed. No PASS claimed.
+- **Next:** continue route-by-route responsive/accessibility and remaining secondary-control review; preserve real API behavior. Do not wait for CI/Vercel. OPS-01 continues to own the independent database-migration/Redis incident.
