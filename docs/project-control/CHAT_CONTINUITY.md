@@ -161,3 +161,10 @@ WORK-01 may execute SAFE-LOCAL or already AUTHORIZED daily work, but it cannot b
 The user does not need to carry project context between chats. For a fresh session, the preferred copy/paste instructions are in `docs/project-control/HOW_TO_USE_AGENTS.md`. The invoked agent must recover the project from GitHub and durable project-control records rather than requiring the previous conversation.
 
 The user may invoke DEV-01, FIX-01, OPS-01, or WORK-01 while another agent is active. The new session must work independently, avoid conflicting edits, route dependencies, and continue any independent valid work without repeated waiting/polling.
+
+## Latest continuation snapshot — 2026-10-10
+
+Current working branch for the latest FIX-01 corrections is `fix/migration-verification-phase4-contract`. GitHub commits corrected worker test-runner/ESM incompatibilities, provider discovery retry, IMAP encoded-word parsing, provider-event informational metadata, and test contracts/mocks for Clara indexing, IMAP literals, Zoho refresh/account discovery, and email-action approval/recovery.
+
+Do not infer test or deployment success from the commits. Tests, typechecks, build, live integration, and deployment remain unverified in this continuation. The exact next action is in `docs/project-control/NEXT_ACTION.md`; verification truth is in `docs/project-control/VERIFICATION_STATE.md`. Keep the local lockfile and backup files intact, and continue without waiting for GitHub Actions or Vercel.
+
