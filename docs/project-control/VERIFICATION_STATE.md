@@ -973,3 +973,10 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 
 - Added a deterministic PassThrough-socket regression that delivers the literal marker, literal body, and trailing tagged response in separate chunks.
 - Status: source change committed; test not executed. Worker/web typechecks, full focused adapter tests, and real IMAP server validation remain pending. This entry is not a PASS claim.
+
+
+## 2026-10-09 — Email sync queue contract source
+
+- Added `apps/worker/src/queues/email-sync-message.ts` and `apps/worker/tests/email-sync-message.test.ts`.
+- Intended coverage: documented envelope fields, account/history idempotency key, full-sync key, invalid UUID and blank history cursor rejection.
+- Status: source committed; tests/typechecks not executed. This is not evidence of runtime RabbitMQ integration.
