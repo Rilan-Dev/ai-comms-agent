@@ -1535,3 +1535,5 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Tests/typecheck/build/browser/screen-reader/narrow-device checks NOT RUN. No PASS claimed. Continue the cross-route review without CI/Vercel waiting; OPS-01 owns the independent database-migration/Redis incident.
 
 - **Mobile Chat selector correction:** source review found the agent selector was hidden below the `sm` breakpoint, preventing agent switching on narrow screens. Made it visible at all widths with a constrained mobile width and accessible name. Source commit `bc8e698f`, assertion `ad7dc7f8`; browser/device checks NOT RUN.
+
+- **Chat status completion/failure announcements:** added a persistent polite live region to announce generation start, completed response, and response failure; hid the visible thinking indicator from assistive technology to avoid duplicate announcements. Source `d9662da6`, static assertion `529ed8b2`. Browser/screen-reader validation NOT RUN.
