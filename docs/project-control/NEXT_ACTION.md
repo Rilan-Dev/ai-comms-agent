@@ -884,3 +884,8 @@ General Settings, AI provider/runtime settings, Gmail OAuth clients, and Zoho OA
 ### DEV-01 canonical agent creation route correction — 2026-10-09
 
 The standalone `/agents/new` form had no persistence handler and did not save its purpose field. It now redirects to `/agents#new-agent`, reusing the existing organization-scoped create flow rather than duplicating API/validation logic. A static source-contract assertion was added. Tests/typecheck/build/browser remain NOT RUN. **Next:** cross-route responsive/accessibility review and remaining secondary controls; continue without CI/Vercel.
+
+
+### DEV-01 cross-route review update — 2026-10-09
+
+The review is in progress, not complete. The Settings anchor navigation now uses `top-[64px]` with a lower stacking level so it does not cover the global sticky top bar. The mobile sidebar now closes on Escape and its trigger reports `aria-expanded` and `aria-controls`. Static source assertions were added. **Tests/typecheck/build/browser/screen-reader/device checks NOT RUN.** Next inspect remaining route controls and responsive overflow, then continue the focused UI contract coverage. Independent OPS-01 inbox runtime follow-up (migrations 0029/0030 and Redis WRONGPASS) remains separate and must not block DEV-01.
