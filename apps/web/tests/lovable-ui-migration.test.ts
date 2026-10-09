@@ -231,6 +231,24 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(auditApi).toContain("listOrganizationAuditEvents(rawId");
   });
 
+  it("aligns general and provider Settings with compact Lovable controls while retaining real API contracts", () => {
+    expect(settings).toContain('from "lucide-react"');
+    expect(settings).toContain('fetch("/api/settings/organization")');
+    expect(settings).toContain('fetch("/api/settings/members")');
+    expect(settings).toContain('fetch("/api/auth/change-password"');
+    expect(aiProviders).toContain("/api/settings/ai-providers");
+    expect(aiProviders).toContain("keepExistingKey");
+    expect(aiRuntime).toContain("/api/settings/ai-runtime");
+    expect(aiRuntime).toContain("knowledge_base_id");
+    expect(gmailOAuth).toContain("/api/settings/gmail-oauth");
+    expect(gmailOAuth).toContain("clientSecret");
+    expect(zohoOAuth).toContain("/api/settings/zoho-oauth");
+    expect(zohoOAuth).toContain("dataCenter");
+    for (const source of [settings, aiProviders, aiRuntime, gmailOAuth, zohoOAuth]) {
+      expect(source).not.toContain("rounded-2xl");
+      expect(source).not.toContain("rounded-xl");
+    }
+  });
   it("adapts Operations without presenting configured worker URLs as verified healthy dependencies", () => {
     expect(operations).toContain('fetch("/api/operations"');
     expect(operations).toContain("runtime connectivity is worker-owned");
