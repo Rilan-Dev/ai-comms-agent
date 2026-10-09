@@ -94,3 +94,12 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Owner:** FIX-01 / Sentinel
 - **Suggested next action:** Verify both findings against current `main`, correct the minimal source defect(s), and add regression coverage without weakening API authorization.
 - **Related records:** `apps/web/src/app/mail/drafts/page.tsx`; `packages/db/src/email/repository.ts`; BKL-008; DEV01-DRAFT-SEARCH-20261009.
+
+### EVT-FIX01-WORKER-CREDENTIALS-20261009 — 2026-10-09
+- **Agent/session:** FIX-01 / Sentinel — FIX01-WORKER-CREDENTIALS-20261009
+- **Type:** CORRECTION
+- **Summary:** Corrected worker TypeScript build errors by aligning Gmail credential snapshot return type with shared EmailCredentials and converting it to a plain persistence record at the DB boundary. Added focused snapshot contract regression coverage.
+- **Impact:** Worker build blocker
+- **Owner:** FIX-01
+- **Suggested next action:** Execute the focused Gmail adapter test and worker build/typecheck; source commits alone are not a PASS.
+- **Related records:** ISS-013; apps/worker/src/email/gmail-adapter.ts; apps/worker/src/email/mailbox-sync-worker.ts; apps/web/tests/gmail-adapter.test.ts; commits caad1d75, 04a2345b, a98c0e7f.
