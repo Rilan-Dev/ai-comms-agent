@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { GmailOAuthSettings } from "./gmail-oauth-settings";
 import { ZohoOAuthSettings } from "./zoho-oauth-settings";
 import { AIRuntimeSettings } from "./ai-runtime-settings";
+import { AIProviderSettings } from "./ai-provider-settings";
 
 type Organization = { id: string; name: string; slug: string; status: string };
 type Member = { id: string; role: string; status: string; user: { id: string; email: string; name: string | null; status: string } | null };
@@ -120,6 +121,7 @@ export default function SettingsPage() {
 
       <GmailOAuthSettings organizationId={organization?.id ?? ""} />
       <ZohoOAuthSettings organizationId={organization?.id ?? ""} />
+      <AIProviderSettings organizationId={organization?.id ?? ""} />
       <AIRuntimeSettings organizationId={organization?.id ?? ""} />
 
       <section className="rounded-2xl border bg-background p-5">
