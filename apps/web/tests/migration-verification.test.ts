@@ -628,8 +628,8 @@ describe("Mailbox inbox SQL and legacy migration safety", () => {
   );
 
   it("uses PostgreSQL parameter placeholders for every inbox search field", () => {
-    expect(repositorySource).toContain("m.subject ILIKE ${values.length}");
-    expect(repositorySource).toContain("m.snippet ILIKE ${values.length}");
+    expect(repositorySource).toContain("m.subject ILIKE $${values.length}");
+    expect(repositorySource).toContain("m.snippet ILIKE $${values.length}");
     expect(repositorySource).toContain("m.from_email ILIKE ${values.length}");
     expect(repositorySource).toContain("m.from_name ILIKE $${values.length}");
     expect(repositorySource).toContain("m.text_body ILIKE $${values.length}");
