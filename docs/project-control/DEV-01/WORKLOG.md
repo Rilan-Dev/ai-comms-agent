@@ -63,3 +63,13 @@
 - Commits: Activity `a0830b13`, Audit `7c118bbd`, tests `23d9c3fc` and assertion correction `7419f572`, inventory `ed8c5262`, NEXT_ACTION `2dcee846`.
 - **Verification NOT RUN:** no tests, typecheck, build, browser, accessibility or live API/DB verification. No PASS claimed.
 - **Next:** Operations → Settings and provider-setting subsections → Login/Setup → agent detail/version/history → cross-route responsive/accessibility review. Continue without CI/Vercel polling; route infrastructure to OPS-01 and substantial unrelated defects to FIX-01.
+
+
+## 2026-10-09 — DEV-01 Operations UI continuation
+
+- Adapted `apps/web/src/app/operations/page.tsx` to the Lovable workspace design with infrastructure cards, status icons, runtime metrics, refresh, and explicit loading/error/empty states.
+- Important accuracy correction: the existing API's Redis/RabbitMQ/Qdrant “healthy” value means only that the URL is configured; its own detail says runtime connectivity is worker-owned. UI now renders those as neutral “Configured,” not green “Healthy.” API and authorization behavior were not changed.
+- Added static contract assertions for operations API usage, organization authorization, and configured-versus-healthy presentation. Updated migration inventory and NEXT_ACTION.
+- Commits: Operations `fc22cc3f`, contract assertions `ddb7a233` and `ca229779`, inventory `4f010fb3`, NEXT_ACTION `d75222c7`.
+- **Verification NOT RUN:** no tests/typecheck/build/browser/accessibility/live connectivity checks. No PASS claimed.
+- **Next:** Settings and provider-setting subsections → Login/Setup → agent detail/version/history → cross-route responsive/accessibility review. Continue without CI/Vercel polling.
