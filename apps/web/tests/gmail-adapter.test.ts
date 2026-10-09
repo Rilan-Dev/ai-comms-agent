@@ -75,6 +75,12 @@ describe("GmailAdapter", () => {
       "https://gmail.googleapis.com/gmail/v1/users/me/profile",
       expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer fresh-token" }) }),
     );
+    expect(adapter.getCredentialSnapshot()).toMatchObject({
+      access_token: "fresh-token",
+      refresh_token: "refresh-token",
+      oauth_client_id: "client-id",
+    });
+    expect(adapter.getCredentialSnapshot().expires_at).toEqual(expect.any(String));
   });
 
   it("refreshes once after an unauthorized API response", async () => {
