@@ -63,3 +63,11 @@ Added a PassThrough-socket regression that splits the literal marker, literal pa
 - Worker polling publishes eligible account sync jobs when `RABBITMQ_URL` is configured; the consumer dispatches to the existing account-scoped PostgreSQL claim/provider sync implementation. Without RabbitMQ configuration, the existing PostgreSQL polling path remains active.
 - Added source-level contract tests in `apps/worker/tests/email-sync-rabbitmq.test.ts`. Tests/typechecks, dependency lockfile acceptance, broker connectivity, reconnect behavior, and live delivery have not been verified. This is source integration, not runtime acceptance.
 - Clara Core still has no supported indexing API identified in the host runtime; next implement an explicit supported adapter contract, not a parallel/direct Qdrant implementation.
+
+
+## 2026-10-09 — Queue polling and Clara email knowledge hardening
+
+- Fixed consumer initialization order so RabbitMQ channels are assigned before registering the callback; this prevents a queued delivery from reaching a handler with uninitialized channel references.
+- Fixed mailbox producer eligibility: an existing sync cursor no longer bypasses the 15-minute freshness window. Pending/error accounts remain eligible subject to retry scheduling.
+- Email knowledge adapter now chunks bodies into bounded overlapping segments and safely rebuilds a document's chunk set when content boundaries change. Host Clara lexical retrieval searches sanitized terms and preserves organization plus shared/agent document scope.
+- Static regression tests added. Tests/typecheck/build and live RabbitMQ/PostgreSQL/Clara acceptance remain not run. The adapter is lexical PostgreSQL retrieval only; no embedding generation or direct Qdrant write is claimed.
