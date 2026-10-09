@@ -1537,3 +1537,10 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - **Mobile Chat selector correction:** source review found the agent selector was hidden below the `sm` breakpoint, preventing agent switching on narrow screens. Made it visible at all widths with a constrained mobile width and accessible name. Source commit `bc8e698f`, assertion `ad7dc7f8`; browser/device checks NOT RUN.
 
 - **Chat status completion/failure announcements:** added a persistent polite live region to announce generation start, completed response, and response failure; hid the visible thinking indicator from assistive technology to avoid duplicate announcements. Source `d9662da6`, static assertion `529ed8b2`. Browser/screen-reader validation NOT RUN.
+
+## 2026-10-09 — FIX-01 worker typecheck and migration test correction
+- User's pnpm install --frozen-lockfile passed: pnpm supply-chain policy accepted all 534 entries and installed one package.
+- Workspace typecheck reported TS2345 at apps/worker/src/queues/email-sync-rabbitmq.ts:165 because the reconnecting closure captured an optional URL. The worker typecheck also received SIGKILL; this is not by itself a source diagnostic.
+- Focused migration Vitest failed at collection because its security migration test still referenced 0003_database_security_hardening.sql. Repository history confirms canonical renumbering to 0013_database_security_hardening.sql and 0005_agent_policy_configuration.sql.
+- Corrected consumer URL type normalization and added a static regression assertion; corrected both migration paths without restoring obsolete duplicate files. Commits: 09e4df46, a24edec3, ffc98b30.
+- Post-fix tests/typechecks have NOT run. Next: focused migration Vitest and worker RabbitMQ test, then web/worker typechecks sequentially; full workspace typecheck afterward if resources permit. No PASS claimed beyond the user's frozen install output.
