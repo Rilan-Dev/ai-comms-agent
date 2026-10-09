@@ -48,6 +48,7 @@ export function AIRuntimeSettings({ organizationId }: { organizationId: string }
     <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">AI & Clara runtime</p><h2 className="mt-1 text-xl font-semibold">Knowledge, model defaults and voice</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">These settings are saved per organization. The knowledge-base ID is required by chat and voice; it must identify a knowledge base actually configured for Clara. This setting does not create a Qdrant collection or ingest documents.</p></div>
     {message ? <p role="status" className="rounded-xl border bg-muted/40 p-3 text-sm">{message}</p> : null}
     {error ? <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}
+    {!loading && !settings.knowledge_base_id.trim() ? <p role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm">Required configuration missing: enter the actual Clara knowledge-base ID and save. Chat, voice, and worker agent execution will return configuration_required until it is set.</p> : null}
     {loading ? <p className="text-sm text-muted-foreground">Loading configuration…</p> : <>
       <div className="grid gap-4 md:grid-cols-2">
         <label className={label}>Clara knowledge-base ID<input className={input} value={settings.knowledge_base_id} onChange={(e) => setSettings({ ...settings, knowledge_base_id: e.target.value })} placeholder="Your actual Clara KB ID" /></label>
