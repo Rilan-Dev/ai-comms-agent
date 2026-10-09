@@ -406,3 +406,16 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Commits: 8f09785a, 7b1136e6, 3e35c1f5, a9dcb8e5, 52a4e348.
 - Pending: Frozen install, focused migration Vitest, worker RabbitMQ contract test, and web/worker typechecks.
 - Next action: Pull latest main; install frozen; run focused tests and sequential typechecks. No PASS until actual execution output is available.
+
+
+### FIX01-MIGRATION-WORKER-TEST-DRIFT-20261009 — 2026-10-09
+- **Agent:** FIX-01 / Sentinel
+- **Invocation:** Trace user-reported migration SQL and RabbitMQ email-sync test failures, make the smallest authorized correction, add regression protection, record evidence.
+- **Started from:** User-provided test output; GitHub main source recovered during this invocation.
+- **Scope:** Migration access/immutability and focused static worker/migration tests only.
+- **Status:** HANDOFF — source corrected; execution pending.
+- **Completed:** Added forward migration 0032; aligned migration and worker tests with current SQL/runtime contracts.
+- **Commits:** 7557a6cd, ee85b554, cecae73e, c4d4abd0, 96996d82.
+- **Pending:** Focused Vitest and worker node:test; sequential web/worker typechecks; inspect the local lockfile discrepancy.
+- **Blockers:** No local checkout/shell was available through this session to execute the user's test commands. The local lockfile duplicate is not present in current main.
+- **Next action:** Pull latest main, compare lockfile to origin/main, run focused tests then package typechecks sequentially; route infrastructure/deployment issues to OPS-01.
