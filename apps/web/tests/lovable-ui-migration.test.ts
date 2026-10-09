@@ -56,6 +56,7 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(sidebar).toContain("item.children?.some");
     expect(sidebar).toContain('href: "/ai-voice"');
     expect(sidebar).toContain("setMobileOpen(true)");
+    expect(sidebar).toContain("workspace-sidebar");
     expect(sidebar).toContain("/api/auth/logout");
   });
 
