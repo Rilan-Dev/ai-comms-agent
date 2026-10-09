@@ -249,3 +249,15 @@ Gmail and Zoho OAuth callback URLs are derived from the public origin used for t
 
 Public OAuth callbacks require HTTPS. Google does not accept a non-local raw IP address as a production redirect host, and HTTP is permitted only for localhost development. For a self-hosted server, use a domain with TLS (for example a Cloudflare/Tailscale HTTPS endpoint) rather than an HTTP private IP callback.
 The reverse proxy must validate accepted Host headers and preserve the public host in the request URL. Do not trust arbitrary forwarded-host values from untrusted clients; domain routing and host validation belong at the proxy boundary.
+
+
+## 6B. Public origin behind a reverse proxy (Gmail / Zoho OAuth)
+
+OAuth callback URLs must use the public HTTPS origin seen by the browser, not the internal Next.js origin (for example, `https://localhost:3000`). The OAuth redirect helper resolves the origin in this order:
+
+1. A single `X-Forwarded-Host` and `X-Forwarded-Proto` pair supplied by the reverse proxy.
+2. The request URL only when those proxy headers are absent.
+
+If either forwarding header is supplied without the other, or a comma-separated forwarding chain is received, the helper fails closed. The proxy must validate the incoming Host and overwrite these headers with the canonical public host/protocol; do not blindly pass client-supplied forwarding headers through. Keep the internal upstream address private and do not configure OAuth against it.
+
+After proxy configuration is corrected, open Settings through the intended HTTPS domain and reload the page. The Gmail and Zoho callback display should match that public domain. Register the exact URI in the corresponding provider console, then restart the OAuth flow so its signed state and token exchange use the same URI. Successful and error callbacks return users to the public origin too.
