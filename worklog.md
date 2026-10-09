@@ -1427,3 +1427,13 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Commits: UI `b344b0ad`, tests `dfaf7d11`, inventory `1fe0050c`, NEXT_ACTION `03d9c499`, verification `1fb21730`.
 - Verification: tests/typecheck/build/browser/API runtime not run. Source only; no PASS claimed.
 - Next: adapt Audit, retaining organization authorization and safe CSV/JSON export.
+
+
+## 2026-10-09 — RabbitMQ and Clara email indexing hardening
+
+- Fixed RabbitMQ consumer startup ordering by assigning channel references before registering the consume callback (d2e6fe39). Added a static regression assertion (151c58c1, later strengthened with polling coverage 4bad6d3e).
+- Found and fixed a producer scheduling bug: the condition `s.cursor IS NOT NULL OR ...` made every incremental mailbox eligible regardless of freshness, potentially enqueuing the same mailbox every 10 seconds. Both queue and fallback polling predicates now require last success to be absent/stale or account status pending/error (e760bb92).
+- Expanded Clara email indexing into bounded overlapping chunks with normalized line endings and deduplication; chunk refresh deletes the old set before inserting to avoid unique-key conflicts when boundaries shift (766c487d, 2b95ca81). Added chunker regression source (28080eb7).
+- Updated local Clara host retrieval to search sanitized lexical query terms (OR semantics) instead of requiring the full user question as one exact substring, retaining organization and agent/shared-document scope filters; empty queries return no sources (93a9804d, 0eedd60f). Added contract assertions (854285f5).
+- Project control updated in NEXT_ACTION.md (541615f8). Architecture status and verification records updated in this continuation.
+- Verification status: no tests, typechecks, build, lockfile install, live RabbitMQ, PostgreSQL, Redis, IMAP/Zoho, or end-to-end Clara retrieval were run. The indexing adapter stores chunks in existing PostgreSQL knowledge tables and uses lexical retrieval; embedding generation and Qdrant writes remain unimplemented.
