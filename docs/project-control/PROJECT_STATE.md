@@ -525,3 +525,6 @@ The sidebar now treats child routes as active for the Mail group, so Accounts, I
 
 ### 2026-10-09 — Schema reconciliation regression source
 Added static migration regression coverage for `0029_runtime_schema_reconciliation.sql` in `apps/web/tests/migration-verification.test.ts` (commit `282c4fea59b848e876bc65d79b250752b8339bda`). This is source coverage only; no test run, migration application, Redis validation, or live mailbox PASS is claimed.
+
+### 2026-10-09 — Live inbox schema drift and Redis authentication
+The latest logs show missing `email_messages.from_name` and Redis WRONGPASS; a queued response does not confirm import. FIX-01 committed migration `0030_email_messages_runtime_reconciliation.sql` and static assertions. OPS-01 must apply migrations 0029/0030 to the live database, roll out matching web/worker images, fix Redis credentials/ACL, and verify message rows and inbox results. Runtime remains unverified.
