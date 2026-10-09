@@ -7,11 +7,11 @@ The single exact next authorized action. Update this file on every commit.
 ## Current next action
 
 ```yaml
-actor: ChatGPT
-role: Chief Architect / Project Controller / Primary Implementer
+actor: DEV-01 / Forge
+role: Product development under the existing project-owner development-first authorization
 
 action: |
-  Continue the connected-mailbox vertical slice. The Gmail source now has a PostgreSQL-backed automatic sync worker wired into apps/worker startup, paginated initial mailbox import, history-based incremental sync with expired-cursor recovery, idempotent email_threads/email_messages persistence, encrypted persistence of refreshed OAuth access tokens, refresh-token preservation on reconnect, a protected manual sync endpoint, and auto-refreshing mailbox status UI. The immediate next implementation is to audit and complete end-to-end ingestion for Zoho and IMAP/SMTP, make sure synced email messages and drafts are visible and searchable in the inbox/drafts screens, then connect those persisted records to the authorized agent/Clara email-read and draft tools. Keep provider operations capability-gated and tenant-scoped.
+  Continue the connected-mailbox vertical slice. The Gmail source now has a PostgreSQL-backed automatic sync worker wired into apps/worker startup, paginated initial mailbox import, history-based incremental sync with expired-cursor recovery, idempotent email_threads/email_messages persistence, encrypted persistence of refreshed OAuth access tokens, refresh-token preservation on reconnect, a protected manual sync endpoint, and auto-refreshing mailbox status UI. The immediate next implementation is to audit and complete end-to-end ingestion for Zoho and IMAP/SMTP, make sure synced email messages and drafts are visible and searchable in the inbox/drafts screens (Drafts UI search was added in commit 8ccf1cb24039cb3bc745a51576a73ee68007e946), then connect those persisted records to the authorized agent/Clara email-read and draft tools. Keep provider operations capability-gated and tenant-scoped. FIX-01 owns BKL-008: verify the Drafts page tenant context and Inbox search SQL placeholders.
   Also continue the screen-by-screen configuration audit: Knowledge ingestion and selected-KB behavior, AI provider/voice credentials and transport readiness, Gmail/Zoho OAuth status, IMAP/SMTP connection tests, WhatsApp connection readiness, and agent-level AI/voice settings. Add focused tests as each slice lands.
   Deploy/runtime verification remains pending: apply migrations through 0028, deploy both web and worker images with the same DATABASE_URL and CREDENTIALS_MASTER_KEY, then verify the Gmail account leaves Pending, last_synced_at populates, email_messages includes imported mail/drafts, and sync errors/revocation are surfaced. Do not claim success before observing live evidence. Do not wait for CI/Vercel or repeatedly poll; continue independent implementation now.
 
@@ -752,3 +752,8 @@ The latest concrete implementation checkpoint is cross-surface hardening: determ
 
 ### 2026-10-08 — Immediate browser access path
 Deploy/rebuild the latest main commit and verify the browser flow: unauthenticated `/` redirects to `/login`; `/login` renders; first-run `/setup` can initialize the first owner when `AUTH_BOOTSTRAP_TOKEN` is configured; successful login returns to the requested path; protected API calls return JSON 401 without a session and authenticated calls resolve the organization context. Keep Phase 4 authorization separate from this verification.
+
+### 2026-10-09 — DEV-01 Drafts discoverability
+- Added search over persisted draft subject, body, recipients, and mailbox address, with a distinct no-match state (`8ccf1cb24039cb3bc745a51576a73ee68007e946`).
+- Routed suspected Drafts tenant-context and Inbox search-placeholder defects to FIX-01 (`BKL-008`).
+- **Next:** continue Zoho and IMAP/SMTP ingestion into PostgreSQL and connect persisted messages/drafts to authorized Clara email-read/draft tools. Tests and live provider/runtime verification remain pending; do not wait for CI/Vercel.
