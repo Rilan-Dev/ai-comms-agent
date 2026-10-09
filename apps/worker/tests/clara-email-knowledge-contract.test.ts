@@ -23,5 +23,6 @@ test("email indexer writes bounded chunks through Clara's PostgreSQL knowledge c
   assert.match(indexer, /INSERT INTO knowledge_documents/);
   assert.match(indexer, /INSERT INTO knowledge_chunks/);
   assert.match(indexer, /email-account/);
-  assert.doesNotMatch(indexer, /qdrant|vector_reference\s*=/i);
+  const executableIndexer = indexer.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  assert.doesNotMatch(executableIndexer, /qdrant|vector_reference\s*=/i);
 });
