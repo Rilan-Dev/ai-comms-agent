@@ -82,3 +82,15 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Blockers/dependencies:** OPS-01 needs access to live PostgreSQL and Docker/runtime configuration to apply migration and roll out matching images; Redis response must be inspected after diagnostic patch.
 - **Lesson:** Do not infer Redis is usable from environment-variable presence or health checks; preserve bounded server error responses and never bypass the distributed lease on command failure.
 - **Next action:** OPS-01 apply migrations through `0029`, roll out web/worker images, and correct Redis AUTH/ACL/TLS/URL only from the exact Redis error. No runtime PASS claimed.
+
+
+### FIX01-SCHEMA-REDIS-20261009 / 2026-10-09
+- **Task:** Remediate live mailbox-sync HTTP 500s and improve Redis lease diagnostics.
+- **Authorization:** User supplied live runtime logs for active FIX-01 remediation.
+- **Started from:** Current GitHub `main`; reported errors were missing `ai_provider_configs.model`, missing `email_sync_states.last_attempt_at`, and generic Redis command rejection.
+- **Actions:** Added forward-only idempotent migration `0029_runtime_schema_reconciliation.sql`; it adds provider/mailbox columns and backfills legacy sync checkpoint columns when available. Redis RESP errors now include a bounded server response. Added a WRONGPASS regression test.
+- **Files/code:** `supabase/migrations/0029_runtime_schema_reconciliation.sql`; `apps/worker/src/email/redis-lease.ts`; `apps/worker/tests/redis-lease.test.ts`.
+- **Evidence:** GitHub commits `a4fab9df07deafa5fd47879217616e3cb6d1c03f`, `71616ac887f3efb79f90039245d6064c4662a77c`, `0fa3e751cae2e5105b212083e93a7cc87bf00468`. Source accepted; no tests/typecheck/build/migration/runtime checks executed.
+- **Blockers/dependencies:** OPS-01 needs access to live PostgreSQL and Docker/runtime configuration to apply migration and roll out matching images; Redis response must be inspected after diagnostic patch.
+- **Lesson:** Do not infer Redis is usable from environment-variable presence or health checks; preserve bounded server error responses and never bypass the distributed lease on command failure.
+- **Next action:** OPS-01 apply migrations through `0029`, roll out web/worker images, and correct Redis AUTH/ACL/TLS/URL only from the exact Redis error. No runtime PASS claimed.
