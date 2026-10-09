@@ -321,3 +321,12 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Commits:** `25d17e19`, `ecd6f403`, `68cb6fba`, `e324defd`, tests `399b60a6`, inventory `0ac7a4c9`, NEXT_ACTION `d47811e5`.
 - **Verification NOT RUN:** tests, typecheck, build, browser/accessibility, live OAuth/provider checks. No PASS claimed.
 - **Next action:** Login/Setup, agent detail/version/history, then cross-route responsive/accessibility review. Do not wait for CI/Vercel.
+
+
+### DEV01-LOVABLE-UI-CONTINUATION-20261009 — canonical agent create route correction
+- **Agent:** DEV-01 / Forge. **Status:** ACTIVE.
+- **Finding:** the standalone `/agents/new` form had no create handler and did not persist the purpose field, while the main Agents workspace already had the real org-scoped create form and validation.
+- **Change:** `/agents/new` now redirects to `/agents#new-agent`; a static assertion protects the canonical route handoff.
+- **Commits:** `1cec6ca9`, `cb914148`, inventory `a5a67d2e`, NEXT_ACTION `43a2b1d8`.
+- **Verification NOT RUN:** tests/typecheck/build/browser/accessibility. No PASS claimed.
+- **Next:** cross-route responsive/accessibility review and remaining secondary controls; no CI/Vercel polling.
