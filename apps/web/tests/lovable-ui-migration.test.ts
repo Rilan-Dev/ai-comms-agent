@@ -168,6 +168,7 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(agentDetail).toContain("Save policy");
     expect(agentDetail).toContain('setShowConfirm("deploy")');
     expect(agentDetail).toContain('role="dialog"');
+    expect(agentDetail).toContain('aria-labelledby="agent-action-confirm-title"');
     expect(agentDetail).toContain("GitBranch");
     expect(agentDetail).toContain("rounded-md");
     expect(agentDetailPage).toContain("getAuthenticatedAppContext");
