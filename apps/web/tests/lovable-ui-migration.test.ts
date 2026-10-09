@@ -206,8 +206,8 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(audit).toContain("format=json");
     expect(audit).toContain("AbortController");
     expect(audit).toContain("No audit events recorded yet");
-    expect(auditApi).toContain('permission: "organization.read"');
-    expect(auditApi).toContain("organization_id");
+    expect(auditApi).toContain('permission: "audit.read"');
+    expect(auditApi).toContain("listOrganizationAuditEvents(rawId");
   });
 
   it("adapts realtime voice visuals without changing Clara-owned session and safety boundaries", () => {
