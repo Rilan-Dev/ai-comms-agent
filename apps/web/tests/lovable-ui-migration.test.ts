@@ -21,6 +21,8 @@ const automations = readFileSync(resolve(__dirname, "../src/app/automations/auto
 const schedules = readFileSync(resolve(__dirname, "../src/app/schedules/schedules-client.tsx"), "utf8");
 const chat = readFileSync(resolve(__dirname, "../src/app/chat/chat-client.tsx"), "utf8");
 const voice = readFileSync(resolve(__dirname, "../src/app/ai-voice/voice-workspace.tsx"), "utf8");
+const knowledge = readFileSync(resolve(__dirname, "../src/app/knowledge/page.tsx"), "utf8");
+const knowledgeApi = readFileSync(resolve(__dirname, "../src/app/api/knowledge/route.ts"), "utf8");
 
 describe("Lovable Agentic AI Studio UI adaptation", () => {
   it("uses the Lovable semantic palette and typography without replacing Tailwind tokens", () => {
@@ -159,6 +161,18 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(chat).toContain("Enter to send · Shift+Enter for a new line");
     expect(chat).toContain("Clara is thinking…");
     expect(chat).toContain('href="/ai-voice"');
+  });
+  it("shows real organization-scoped Clara knowledge status instead of hard-coded counts", () => {
+    expect(knowledge).toContain('fetch("/api/knowledge"');
+    expect(knowledge).toContain("Recent email knowledge");
+    expect(knowledge).toContain("No email knowledge yet");
+    expect(knowledge).toContain('href="/mail/accounts"');
+    expect(knowledge).toContain("semantic embeddings or Qdrant indexing");
+    expect(knowledge).not.toContain("0 indexed");
+    expect(knowledgeApi).toContain('permission: "organization.read"');
+    expect(knowledgeApi).toContain("WHERE organization_id=$1");
+    expect(knowledgeApi).toContain("knowledge_chunks");
+    expect(knowledgeApi).toContain("recentDocuments");
   });
   it("adapts realtime voice visuals without changing Clara-owned session and safety boundaries", () => {
     expect(voice).toContain('from "lucide-react"');
