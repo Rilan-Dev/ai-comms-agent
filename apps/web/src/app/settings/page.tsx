@@ -86,7 +86,7 @@ export default function SettingsPage() {
         </p>
       </header>
 
-      <nav aria-label="Settings sections" className="sticky top-0 z-20 -mx-1 flex gap-2 overflow-x-auto border-y border-border bg-background/95 px-1 py-3 backdrop-blur">
+      <nav aria-label="Settings sections" className="sticky top-[64px] z-10 -mx-1 flex gap-2 overflow-x-auto border-y border-border bg-background/95 px-1 py-3 backdrop-blur">
         <a href="#organization-settings" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">Organization</a>
         <a href="#mail-provider-settings" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">Mail OAuth</a>
         <a href="#ai-provider-settings" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">AI providers</a>
