@@ -103,3 +103,13 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Owner:** FIX-01
 - **Suggested next action:** Execute the focused Gmail adapter test and worker build/typecheck; source commits alone are not a PASS.
 - **Related records:** ISS-013; apps/worker/src/email/gmail-adapter.ts; apps/worker/src/email/mailbox-sync-worker.ts; apps/web/tests/gmail-adapter.test.ts; commits caad1d75, 04a2345b, a98c0e7f.
+
+
+### EVT-FIX01-ZOHO-TEST-NEWLINES-20261009 — 2026-10-09
+- **Agent/session:** FIX-01 / Sentinel — FIX01-ZOHO-TEST-NEWLINES-20261009
+- **Type:** CORRECTION
+- **Summary:** Fixed a web TypeScript parser failure by replacing literal backslash-n sequences between three assertions in apps/web/tests/zoho-oauth-settings.test.ts with actual source newlines.
+- **Root cause:** Malformed test source, not an OAuth runtime defect.
+- **Evidence:** User's pnpm typecheck output: packages/shared, packages/db, packages/clara-core, and apps/worker passed; apps/web failed with TS1127/TS1434 at line 84. Fix commit 39857c40820940b500dcf452331dfe82ae35b861.
+- **Status:** Source correction committed; post-fix typecheck/test not yet run.
+- **Next action:** Re-run `pnpm run typecheck` and focused Zoho OAuth settings test. Route unrelated environment/CI/deploy issues to OPS-01.
