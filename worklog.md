@@ -1437,3 +1437,13 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Updated local Clara host retrieval to search sanitized lexical query terms (OR semantics) instead of requiring the full user question as one exact substring, retaining organization and agent/shared-document scope filters; empty queries return no sources (93a9804d, 0eedd60f). Added contract assertions (854285f5).
 - Project control updated in NEXT_ACTION.md (541615f8). Architecture status and verification records updated in this continuation.
 - Verification status: no tests, typechecks, build, lockfile install, live RabbitMQ, PostgreSQL, Redis, IMAP/Zoho, or end-to-end Clara retrieval were run. The indexing adapter stores chunks in existing PostgreSQL knowledge tables and uses lexical retrieval; embedding generation and Qdrant writes remain unimplemented.
+
+
+## 2026-10-09 — DEV-01 Operations UI continuation
+
+- Adapted Operations infrastructure and runtime metrics to the Lovable visual system with Lucide icons, compact cards, refresh, responsive layout, and explicit loading/error/empty states.
+- Preserved the existing `/api/operations` contract and its `audit.read` authorization. Fixed a potentially misleading presentation: the API reports Redis/RabbitMQ/Qdrant as “healthy” when their URL is merely configured and explicitly says live connectivity is worker-owned. The UI now presents those as neutral “Configured” rather than claiming live health.
+- Added source-contract assertions and updated the migration inventory/NEXT_ACTION.
+- Commits: `fc22cc3f8a8fce85cb101c7f12963ee130b42fe1` (Operations), `ddb7a23337ff7204a20cc3cdf296a3fabecd302e` and `ca229779a51ebd0b78f756d1933ffcab0c8eee54` (tests), `4f010fb3a44c2b96094dde019a449ae4f381cd0f` (inventory), `d75222c721667d1eded6300b8a6760117b892de7` (NEXT_ACTION).
+- **Verification NOT RUN:** no tests, typecheck, build, browser/accessibility, or live dependency check. No CI/Vercel polling and no PASS claimed.
+- **Next:** Settings and provider-setting subsections → Login/Setup → agent detail/version/history → cross-route responsive/accessibility review.
