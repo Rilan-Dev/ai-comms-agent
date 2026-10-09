@@ -1275,3 +1275,11 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 
 ### 2026-10-09 — UI contract coverage and palette follow-up
 Added static regression coverage for the Lovable UI adaptation and the existing auth/navigation/search/persisted-data contracts. Updated Chat, AI Voice and mail thread visual ambience to the same warm green accent; synchronized Inbox's controlled search when URL query changes. Test file: `apps/web/tests/lovable-ui-migration.test.ts`. Latest commits: `239a38c936629486e3bfd1be2908f2d74e06193c`, `130c810e44f284f4e9b5390a27b3e2b1fa8a2a1a`, `c7bc510e3aedfa266713c48340cc2d0c3bcf9a3b`, `eeb717c5c4e0dbe79f493631e8b2c1024592776f`, `3ccad8c19694500961668fdfb60a8e41652a4af4`. Tests/build/browser/runtime validation remain unexecuted; no PASS claimed.
+
+### 2026-10-09 — FIX-01 live database schema and Redis lease incident
+- **Evidence:** User shared a production manual-sync request returning `internal_server_error`; web logs identified missing `ai_provider_configs.model` and `email_sync_states.last_attempt_at`. Worker logs showed Redis lease commands rejected and batches skipped.
+- **Source corrections:** Added idempotent forward migration `0029_runtime_schema_reconciliation.sql` with legacy checkpoint backfills; changed Redis RESP error handling to include a bounded server error string; added WRONGPASS regression test.
+- **Commits:** `a4fab9df07deafa5fd47879217616e3cb6d1c03f`, `71616ac887f3efb79f90039245d6064c4662a77c`, `0fa3e751cae2e5105b212083e93a7cc87bf00468`.
+- **Security:** Pasted request included session/access and Zoho OAuth state/verifier values. User advised to revoke/rotate applicable credentials and restart OAuth; secrets were not copied into repository records.
+- **Verification:** GitHub accepted source commits; migration, typecheck, tests, build, Redis, and live sync are not executed or verified.
+- **Routing:** OPS-01 applies the migration to the actual runtime DB, rolls out matching containers, then uses the specific Redis error to fix configuration without bypassing distributed locking.
