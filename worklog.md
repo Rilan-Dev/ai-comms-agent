@@ -1597,3 +1597,11 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Vercel rejected the deployment request with HTTP 402 `api-deployments-free-per-day`: more than 100 deployment API calls in the daily allowance, retry after 24 hours.
 - No deployment was created; earlier branch deployments shown by Vercel were canceled and targeted earlier commits.
 - **No deployment success is claimed.** The preview request should be retried after the cooldown/account quota resolution and after focused tests/typechecks are run. No quota or billing settings were changed.
+
+
+### 2026-10-10 — Follow-up to user-run test results
+
+- User-run email action contract: 8/8 passed. Migration verification: 85/86 passed; the only failure is duplicate lockfileVersion: in /docker/ai-comms-agent/pnpm-lock.yaml.
+- Checked the current branch's canonical lockfile via GitHub: exactly one lockfileVersion: and one importers: header. Treat the local runtime result as a working-tree/mount discrepancy until git status --short, realpath pnpm-lock.yaml, and a header grep establish the cause. Do not overwrite lockfile or remove backup files.
+- Worker suite: 79/81 passed. Corrected the IMAP multiple-literal test to assert the CRLF boundary explicitly and corrected over-escaped SQL regexes in the scheduling-idempotency test.
+- Commits: a666d98b8b9f1e437355c392d01c42a9dc54bfe9, bb987c60129ebd1d4f3d5bd8f132068859ffb6c2. Web and worker typechecks produced no errors in the pasted output; re-run the focused tests before recording these test fixes as verified. Build, runtime integration, and deployment remain unverified.
