@@ -248,6 +248,23 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(auditApi).toContain("listOrganizationAuditEvents(rawId");
   });
 
+  it("aligns Login and first-time Setup while preserving authentication and bootstrap validation", () => {
+    expect(login).toContain('fetch("/api/auth/login"');
+    expect(login).toContain("window.location.replace");
+    expect(login).toContain('next.startsWith("/") && !next.startsWith("//")');
+    expect(login).toContain('from "lucide-react"');
+    expect(setup).toContain('fetch("/api/auth/bootstrap"');
+    expect(setup).toContain("bootstrap secret");
+    expect(setup).toContain('minLength={12}');
+    expect(setup).toContain("pattern=");
+    expect(setup).toContain("Workspace initialized");
+    expect(setup).toContain('from "lucide-react"');
+    for (const source of [login, setup]) {
+      expect(source).not.toContain("rounded-3xl");
+      expect(source).not.toContain("rounded-2xl");
+      expect(source).not.toContain("rounded-xl");
+    }
+  });
   it("aligns general and provider Settings with compact Lovable controls while retaining real API contracts", () => {
     expect(settings).toContain('from "lucide-react"');
     expect(settings).toContain('fetch("/api/settings/organization")');
