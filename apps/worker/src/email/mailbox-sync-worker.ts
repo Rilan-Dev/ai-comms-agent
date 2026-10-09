@@ -283,7 +283,7 @@ export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ att
          s.cursor AS sync_cursor, s.history_id, s.last_success_at
        FROM email_accounts a
        LEFT JOIN email_sync_states s ON s.email_account_id=a.id
-       WHERE a.provider IN ('gmail','zoho','imap_smtp') AND a.deleted_at IS NULL
+       WHERE a.provider IN ('gmail','zoho') AND a.deleted_at IS NULL
          AND a.status IN ('pending','connected','error')
          AND COALESCE(s.status::text,'idle') <> 'paused'
          AND (s.next_attempt_at IS NULL OR s.next_attempt_at <= now())
