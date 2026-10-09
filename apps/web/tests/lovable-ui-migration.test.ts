@@ -401,6 +401,11 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
   it("provides keyboard-managed confirmation dialogs and accessible chat status", () => {
     expect(agentDetail).toContain("useRef<HTMLDivElement>(null)");
     expect(agentDetail).toContain('event.key === "Escape"');
+    expect(sidebar).toContain('role={mobileOpen ? "dialog" : undefined}');
+    expect(sidebar).toContain('aria-modal={mobileOpen ? true : undefined}');
+    expect(sidebar).toContain("closeMobileButtonRef.current?.focus()");
+    expect(sidebar).toContain("mobileTriggerRef.current ?? previousFocus");
+    expect(sidebar).toContain('event.key !== "Tab"');
     expect(agentDetail).toContain('event.key !== "Tab"');
     expect(agentDetail).toContain("previousFocusRef.current?.focus()");
     expect(agentDetail).toContain('aria-label="Email account to connect"');
