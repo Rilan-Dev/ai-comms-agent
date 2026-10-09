@@ -138,20 +138,19 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
   );
   if (!claimed.rows[0]) return false;
 
-  const masterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
-  if (!masterKey) throw new Error("CREDENTIALS_MASTER_KEY is required for mailbox synchronization.");
-
   const accounts = new PostgresEmailAccountRepository();
-  const stored = await accounts.loadCredentials(candidate.id, parseCredentialsMasterKey(masterKey));
-  if (!stored) throw new Error("Encrypted Gmail credentials are missing. Reconnect this mailbox.");
-
-  const credentials: EmailCredentials = {
-    ...(stored as unknown as EmailCredentials),
-    credential_type: "oauth_token",
-  };
   const adapter = new GmailAdapter();
 
   try {
+    const masterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
+    if (!masterKey) throw new Error("CREDENTIALS_MASTER_KEY is required for mailbox synchronization.");
+    const stored = await accounts.loadCredentials(candidate.id, parseCredentialsMasterKey(masterKey));
+    if (!stored) throw new Error("Encrypted Gmail credentials are missing. Reconnect this mailbox.");
+
+    const credentials: EmailCredentials = {
+      ...(stored as unknown as EmailCredentials),
+      credential_type: "oauth_token",
+    };
     await adapter.connect(credentials);
     const structure = await query<{ count: string }>(
       "SELECT count(*)::text AS count FROM email_folders WHERE email_account_id=$1",
