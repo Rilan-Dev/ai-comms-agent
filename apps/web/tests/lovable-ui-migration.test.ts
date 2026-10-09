@@ -11,6 +11,7 @@ const inbox = readFileSync(resolve(__dirname, "../src/app/mail/inbox/inbox-clien
 const login = readFileSync(resolve(__dirname, "../src/app/login/page.tsx"), "utf8");
 const agents = readFileSync(resolve(__dirname, "../src/app/agents/agents-client.tsx"), "utf8");
 const drafts = readFileSync(resolve(__dirname, "../src/app/mail/drafts/drafts-client.tsx"), "utf8");
+const draftsPage = readFileSync(resolve(__dirname, "../src/app/mail/drafts/page.tsx"), "utf8");
 const compose = readFileSync(resolve(__dirname, "../src/app/mail/compose/compose-client.tsx"), "utf8");
 const threads = readFileSync(resolve(__dirname, "../src/app/mail/threads/page.tsx"), "utf8");
 
@@ -75,7 +76,7 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
   });
 
   it("keeps Drafts discoverability and provider-sync actions while applying the shared design", () => {
-    expect(drafts).toContain("font-display");
+    expect(draftsPage).toContain("font-display");
     expect(drafts).toContain("filteredDrafts");
     expect(drafts).toContain("provider_draft_sync_status");
     expect(drafts).toContain('href={"/mail/compose?draftId="');
