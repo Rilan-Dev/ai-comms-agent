@@ -1283,3 +1283,7 @@ Added static regression coverage for the Lovable UI adaptation and the existing 
 - **Security:** Pasted request included session/access and Zoho OAuth state/verifier values. User advised to revoke/rotate applicable credentials and restart OAuth; secrets were not copied into repository records.
 - **Verification:** GitHub accepted source commits; migration, typecheck, tests, build, Redis, and live sync are not executed or verified.
 - **Routing:** OPS-01 applies the migration to the actual runtime DB, rolls out matching containers, then uses the specific Redis error to fix configuration without bypassing distributed locking.
+
+
+### 2026-10-09 — Agents list visual adaptation
+Updated agent list/empty-state marks to inline SVG iconography consistent with the Lovable workspace and extended the static UI contract test to protect the persisted agent creation flow. Commits `0a79f7f3a9321d30dbc4d01fa5c611c1356d5021` and `2c949dc92d524f484d5e689603afd26106f9d801`. No tests/build/browser checks run. Next: continue Mail subpages and remaining application routes.
