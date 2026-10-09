@@ -53,6 +53,9 @@ describe("Zoho OAuth settings and dynamic callback", () => {
     expect(start).not.toContain("NEXT_PUBLIC_APP_URL");
     expect(callback).toContain("loadZohoOAuthConfiguration(payload.organizationId, payload.configId)");
     expect(callback).toContain("redirect_uri: redirectUri");
+    expect(callback).toContain("MAIL_API_DOMAINS[payload.dataCenter]");
+    expect(callback).toContain("Zoho token exchange failed");
+    expect(callback).not.toContain("!tokens.access_token || !tokens.api_domain");
     expect(callback).toContain("zoho_client_id: clientId");
     expect(callback).toContain("zoho_client_secret: clientSecret");
     expect(callback).not.toContain("ZOHO_OAUTH_CLIENT_SECRET");
