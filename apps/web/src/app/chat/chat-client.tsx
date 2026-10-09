@@ -121,7 +121,7 @@ export function ChatClient({
       </header>
 
       <section className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col px-4 py-5 sm:px-7">
-        <div className="flex-1 space-y-4 overflow-y-auto pb-6">
+        <div role="log" aria-label="Conversation messages" aria-live="polite" aria-relevant="additions" className="min-w-0 flex-1 space-y-4 overflow-y-auto pb-6">
           {messages.length === 0 ? (
             <div className="grid min-h-[45vh] place-items-center text-center">
               <div className="max-w-md">
@@ -141,13 +141,13 @@ export function ChatClient({
               </div>
             </div>
           ))}
-          {busy ? <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />Clara is thinking…</div> : null}
+          {busy ? <div role="status" aria-live="polite" className="flex items-center gap-2 px-2 text-xs text-muted-foreground"><span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />Clara is thinking…</div> : null}
         </div>
 
         <div className="sticky bottom-0 rounded-md border border-border bg-card/95 p-2 backdrop-blur">
           <div className="flex items-end gap-2">
-            <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Ask Clara about your communications…" rows={2} className="min-h-12 flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground" />
-            <button disabled={busy || !draft.trim()} onClick={() => void sendMessage()} className="rounded-md bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-40"><Send size={14} className="mr-2 inline" />Send</button>
+            <textarea aria-label="Message to Clara" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Ask Clara about your communications…" rows={2} className="min-h-12 flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground" />
+            <button type="button" disabled={busy || !draft.trim()} onClick={() => void sendMessage()} className="rounded-md bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-40"><Send size={14} className="mr-2 inline" />Send</button>
           </div>
           <div className="flex items-center justify-between px-3 pb-1 pt-2 text-[11px] text-muted-foreground">
             <span>Enter to send · Shift+Enter for a new line</span>
