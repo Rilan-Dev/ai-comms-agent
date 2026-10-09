@@ -137,11 +137,19 @@ export async function GET(request: Request) {
         });
     if (!account) return oauthError("Gmail account could not be persisted.", request, 500);
 
+    // Google may omit refresh_token on a later authorization. Preserve the
+    // existing encrypted refresh token instead of silently breaking automatic sync.
+    const previousCredentials = existing
+      ? await repository.loadCredentials(existing.id, masterKey).catch(() => null)
+      : null;
+    const refreshToken = tokens.refresh_token
+      ?? (typeof previousCredentials?.refresh_token === "string" ? previousCredentials.refresh_token : undefined);
     await repository.saveCredentials(account.id, "oauth_token", {
+      ...(previousCredentials ?? {}),
       access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
+      ...(refreshToken ? { refresh_token: refreshToken } : {}),
       expires_at: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000).toISOString() : undefined,
-      scope: tokens.scope,
+      scope: tokens.scope ?? previousCredentials?.scope,
       oauth_client_id: clientId,
       oauth_client_secret: clientSecret,
       oauth_config_id: oauthConfig.id,
