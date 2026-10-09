@@ -343,3 +343,9 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Source remedy:** Normalize the consumer URL with process.env.RABBITMQ_URL?.trim() ?? "", retain early return when empty, and add a static regression assertion. Update migration-verification.test.ts to use canonical migration filenames. Commits 09e4df46, a24edec3, ffc98b30.
 - **Verification:** Frozen install PASS is user-observed. Post-fix focused tests and typechecks NOT RUN. The pre-fix worker SIGKILL is not proof of another code error. No overall PASS claimed.
 - **Next action:** Pull latest main; run focused migration Vitest and worker RabbitMQ contract test; run web and worker typechecks sequentially, then full workspace typecheck if resources permit. Do not recreate obsolete migrations or wait for CI/Vercel.
+
+### FIX01-SECURITY-ASSERTION-ALIGNMENT-20261009
+- **Finding:** After correcting the stale migration paths, source comparison showed the security tests still expected the historical public is_active_organization_* wrappers. The current canonical 0013 migration intentionally drops those caller-selected-user-ID wrappers and exposes SECURITY INVOKER can_access_organization/can_manage_organization helpers backed by private membership checks and app.user_id.
+- **Correction:** Rewrote the assertions to test the current least-privilege contract and grants rather than the superseded migration implementation.
+- **Commit:** 618c4cd57f0e7e433c4da5f50840cd6c8f612b9b.
+- **Verification:** Source only; focused migration Vitest NOT RUN.
