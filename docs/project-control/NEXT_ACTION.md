@@ -46,6 +46,9 @@ action: |
 
 
   Cross-route review follow-up: Automations and Schedules had server pages using ensureDevSeed/getDevOrgId rather than the authenticated organization context. Both now resolve getAuthenticatedAppContext from request headers and redirect unauthenticated users to login; accessible labels were added to automation/schedule controls and unused React hook imports were removed. Added regression assertions in apps/web/tests/agent-detail-page-contract.test.ts. Commits: 5a5275b3, 088c36d8, b46ac6ab, ba4ebdcd, b3a81781, 69d241c4. Source only; no test/typecheck/build or multi-tenant runtime validation.
+
+
+  Additional cross-route security finding: Mail Approvals also used ensureDevSeed/getDevOrgId. The server page now resolves the authenticated organization and redirects unauthenticated requests to login (19b8c0fd); regression coverage was added to the existing mail organization-context test (da2502bd). BKL-012 and AGENT_EVENTS now record the source fix. Tests/typecheck/build/live multi-tenant validation remain NOT RUN.
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
   secrets: "Never commit .env/.env.docker; use committed example templates only"
