@@ -20,12 +20,15 @@ describe("Gmail automatic mailbox synchronization", () => {
     expect(worker).toContain("email_messages");
     expect(worker).toContain("email_threads");
     expect(worker).toContain("PostgresEmailFolderLabelRepository");
+    expect(worker).toContain("findDraftIdForMessage");
+    expect(worker).toContain("provider_draft_sync_status");
   });
 
   it("uses paginated initial sync before history-based incremental sync", () => {
     const adapter = read("../../../apps/worker/src/email/gmail-adapter.ts");
     expect(adapter).toContain("page.nextPageToken");
     expect(adapter).toContain("baselineHistoryId");
+    expect(adapter).toContain("findDraftIdForMessage");
     expect(adapter).toContain("/history?startHistoryId=");
     expect(adapter).not.toContain('"/messages?maxResults=100&labelIds=INBOX"');
   });
