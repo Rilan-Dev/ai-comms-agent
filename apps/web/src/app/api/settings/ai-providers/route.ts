@@ -40,7 +40,8 @@ export async function PUT(request: Request) {
     let baseUrl = typeof body.baseUrl === "string" ? body.baseUrl.trim() : "";
     if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
     if (!allowed.includes(provider) || !model) return NextResponse.json({ error: "validation_error", message: "A supported provider and model are required." }, { status: 422 });
-    if (baseUrl && !baseUrl.startsWith("https://")) return NextResponse.json({ error: "validation_error", message: "Provider base URL must use HTTPS." }, { status: 422 });
+    const officialBaseUrl = provider === "gemini" ? "https://generativelanguage.googleapis.com" : provider === "sarvam" ? "https://api.sarvam.ai" : "https://api.openai.com";
+    if (baseUrl && baseUrl !== officialBaseUrl) return NextResponse.json({ error: "validation_error", message: "Only the official HTTPS API origin for this provider is allowed in this configuration screen." }, { status: 422 });
     let encrypted: Buffer | null = null;
     if (suppliedKey) {
       const rawKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
