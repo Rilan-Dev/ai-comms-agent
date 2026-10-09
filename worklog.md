@@ -1250,3 +1250,13 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Tests/build/runtime were not run; live Gmail draft import remains unverified.
 
 - **Performance follow-up:** Gmail message detail retrieval now uses bounded batches of eight requests, polling cadence is 10 seconds, and the Gmail draft resource index is cached for the lifetime of each adapter session so importing several drafts does not re-list the entire Drafts collection per message. Added/updated source assertions for the batch-cached draft lookup. Source commits: `e96f3c8b`, `a66802d0`, `07f55f9e`, `5b6d215d`, `ada31ca9`, `2aa21240`. No tests/build/runtime checks were executed.
+
+
+### 2026-10-09 — Zoho/IMAP adapter source corrections
+
+- Implemented Zoho provider draft updates rather than returning an unconditional error.
+- Fixed IMAP sync checkpoint restoration/persistence across bounded initial-import continuations to avoid discarding already-processed folder high-water marks.
+- Corrected SMTP AUTH PLAIN credential framing to use NUL separators.
+- Commits: `72f05f5f642beea07cc5543fbc744051a083f922`, `5d2c3f3bcbab6698a56449afda407921c05b7760`.
+- **Verification status:** Local test execution was attempted but could not start: pnpm is missing and the environment cannot resolve github.com. Focused tests/typechecks, real IMAP/SMTP, live PostgreSQL sync, and Clara Chat retrieval remain unverified. No PASS claimed.
+- **Next:** Run the Zoho/IMAP tests and worker/web typechecks in a dependency-equipped environment; continue independent implementation of Clara Core RAG indexing, Redis client use, and RabbitMQ durable queue lifecycle without waiting for CI/Vercel. FIX-01 owns BKL-008; OPS-01 owns production infrastructure/deployment.
