@@ -84,3 +84,13 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - Next: pull main; run manual deploy for migrations 0024–0027; use HTTPS DNS domain and register exact provider callback URIs; verify both providers end-to-end.
 
 - Follow-up hardening: reject all raw IP callback hosts (including HTTPS) and simplify IPv6 hostname normalization. This is source-reviewed only; tests have not been executed.
+
+
+### EVT-DEV01-MAIL-ROUTING-20261009 — MAIL DEFECTS ROUTED
+- **Agent/session:** DEV-01 / Forge — DEV01-DRAFT-SEARCH-20261009
+- **Type:** ROUTE
+- **Summary:** While adding draft discoverability, source inspection found the Drafts server page still chooses the seeded development organization rather than authenticated request context. The Inbox repository search predicate also appears to interpolate bare parameter indexes for several `ILIKE` terms instead of `$n` placeholders.
+- **Impact:** Cross-tenant correctness and inbox search reliability.
+- **Owner:** FIX-01 / Sentinel
+- **Suggested next action:** Verify both findings against current `main`, correct the minimal source defect(s), and add regression coverage without weakening API authorization.
+- **Related records:** `apps/web/src/app/mail/drafts/page.tsx`; `packages/db/src/email/repository.ts`; BKL-008; DEV01-DRAFT-SEARCH-20261009.
