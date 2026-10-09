@@ -215,3 +215,16 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** No local checkout/dependency-equipped browser session was available through this GitHub-editing session; visual/browser and typecheck/test verification are not performed. No CI/Vercel polling.
 - **Handoff:** None; this remains DEV-01 product implementation. Route substantial defects discovered to FIX-01 and deployment/runtime issues to OPS-01.
 - **Next action:** Continue remaining route-level UI adaptation, beginning with Agents and Mail subpages; add focused UI contract tests as appropriate, update migration/control records, and later resume the queued connected-mailbox/Clara work.
+
+
+### FIX01-SCHEMA-REDIS-20261009 — 2026-10-09
+- **Agent:** FIX-01 / Sentinel
+- **Invocation:** Diagnose live mailbox sync HTTP 500s and Redis lease rejection from user-supplied container logs.
+- **Started from:** GitHub `main`; current source was inspected through repository APIs.
+- **Scope:** Forward schema compatibility migration, Redis error diagnostics, regression source, project-control updates.
+- **Status:** HANDOFF
+- **Completed:** Committed migration `0029`, bounded Redis error reporting, WRONGPASS regression test, ISS-015 and verification/backlog/worklog records.
+- **Pending:** Live DB migration, matching web/worker rollout, Redis configuration correction based on actual error, runtime mailbox sync.
+- **Blockers:** OPS-01 access to live self-hosted runtime/database.
+- **Handoff:** BKL-011 / ISS-015 routes deployment/runtime work to OPS-01.
+- **Next action:** OPS-01 apply migrations through `0029`, roll out both containers, inspect Redis error, and verify one manual sync after database and lease are healthy.
