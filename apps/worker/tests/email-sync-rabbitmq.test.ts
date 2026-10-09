@@ -31,6 +31,11 @@ test("consumer uses prefetch and manual ack; failures are confirmed before ack",
   assert.ok(source.indexOf("channel = nextChannel;") < source.indexOf("await nextChannel.consume(MAIN_QUEUE"));
 });
 
+test("consumer validates RabbitMQ URL as a definite string before reconnectable boot", () => {
+  assert.match(source, /const url = process\.env\.RABBITMQ_URL\?\.trim\(\) \?\? ""/);
+  assert.match(source, /if \(!url\) return \(\) => undefined/);
+});
+
 test("consumer reconnects with a bounded exponential delay after connection loss", () => {
   assert.match(source, /scheduleReconnect/);
   assert.match(source, /Math\.min\(30_000, reconnectDelayMs \* 2\)/);
