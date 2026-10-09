@@ -19,6 +19,7 @@ const approvals = readFileSync(resolve(__dirname, "../src/app/mail/approvals/app
 const whatsapp = readFileSync(resolve(__dirname, "../src/app/whatsapp/whatsapp-client.tsx"), "utf8");
 const automations = readFileSync(resolve(__dirname, "../src/app/automations/automations-client.tsx"), "utf8");
 const schedules = readFileSync(resolve(__dirname, "../src/app/schedules/schedules-client.tsx"), "utf8");
+const chat = readFileSync(resolve(__dirname, "../src/app/chat/chat-client.tsx"), "utf8");
 
 describe("Lovable Agentic AI Studio UI adaptation", () => {
   it("uses the Lovable semantic palette and typography without replacing Tailwind tokens", () => {
@@ -147,5 +148,15 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(schedules).toContain("timezone");
     expect(schedules).toContain("lastError");
     expect(schedules).toContain("No schedules yet.");
+  });
+  it("keeps Clara chat connected to the authenticated streaming API with Lovable iconography", () => {
+    expect(chat).toContain('from "lucide-react"');
+    expect(chat).toContain("Sparkles");
+    expect(chat).toContain("AudioLines");
+    expect(chat).toContain('fetch("/api/chat/stream"');
+    expect(chat).toContain("organizationId, agentId: activeAgent.id, conversationId, message: content");
+    expect(chat).toContain("Enter to send · Shift+Enter for a new line");
+    expect(chat).toContain("Clara is thinking…");
+    expect(chat).toContain('href="/ai-voice"');
   });
 });
