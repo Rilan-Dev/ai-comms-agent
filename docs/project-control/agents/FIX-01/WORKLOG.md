@@ -103,3 +103,14 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Commits:** `69c51678c8c12e0a0c070214dc09db77e0758dae`, `e7a1e7ee396d542ffdf3edada895938a087b6a27`.
 - **Evidence:** Source commits only. Tests/build and runtime migration not run. Redis AUTH is still failing in user logs; no imported-message count or successful inbox query is established.
 - **Next action:** OPS-01 applies migrations 0029/0030, rolls out matching images, fixes Redis URL credentials/ACL, and verifies actual persisted email rows and inbox loading. Never bypass distributed locking.
+
+### FIX01-INBOX-WORKFLOW-CODE-ANALYSIS-20261009 / 2026-10-09
+- **Task:** Analyze why manual Gmail sync was accepted but inbox remained empty; review code against the actual email import workflow.
+- **Authorization:** User explicitly requested code analysis and correction to make the business workflow work.
+- **Actions:** Inspected sync API, polling/queue worker, persisted message insert, inbox repository query, and historical email/sync migrations. Fixed invalid dollar quoting in migration 0030; corrected all inbox search ILIKE placeholders; added migration 0031 to normalize legacy JSONB cursor to a separate text cursor token and updated worker reads/writes. Added static regression assertions.
+- **Files/code:** `supabase/migrations/0030_email_messages_runtime_reconciliation.sql`; `supabase/migrations/0031_email_sync_cursor_compatibility.sql`; `packages/db/src/email/repository.ts`; `apps/worker/src/email/mailbox-sync-worker.ts`; `apps/web/tests/migration-verification.test.ts`.
+- **Evidence:** Commits `baccc392374fd473b9bcec72c2a7ebc639b40c7a`, `1bbcfdb7d65cc8d2b2a653c2128043aa0ac3e1e7`, `b26239046138c18e689498f1857b154c000de452`, `bf6ffa846f9690722309803173dd5fafb920106e`, `0c1857f0ee56a30dd0d5560d5a8e34e32bf3540c`, `34945eb5dc152ff76fee3a6bd2f4bd7a9abaf649`.
+- **Verification:** Static source inspection only. Tests, typecheck, database migration, worker deployment, Redis AUTH, and actual mailbox import remain unverified.
+- **Blockers/dependencies:** OPS-01 must apply migrations through 0031 and fix Redis WRONGPASS in the live container configuration.
+- **Lesson:** HTTP 202 proves only queue acceptance; verify each link in the chain: queue/poller → Redis lease → provider fetch → DB persistence → tenant-scoped inbox query. Legacy JSONB cursor shape is not interchangeable with provider string pagination tokens.
+- **Next action:** OPS-01 apply migrations 0029–0031, rebuild/restart web and worker from current main, correct Redis ACL credentials, then confirm persisted message rows and inbox rendering. Do not disable distributed locking.
