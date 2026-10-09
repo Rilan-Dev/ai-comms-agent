@@ -1525,3 +1525,11 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Normalized remaining large-radius classes across migrated workspace routes to the compact Lovable geometry; status pills remain full-round. Added cross-route source-contract assertions (`b328373c`).
 - Recorded the manual responsive/accessibility pass as still pending and advanced the exact next action to review remaining secondary controls (`80af055c`).
 - Tests/typecheck/build/browser/accessibility were not run. No PASS claimed.
+
+## 2026-10-09 — Cross-route keyboard and status accessibility follow-up
+
+- Agent deploy/pause confirmation now focuses Cancel on open, traps keyboard Tab navigation, closes on Escape, restores focus to the initiating control, and supports vertical scrolling on short/narrow viewports.
+- Mobile workspace navigation now contains keyboard focus while open, focuses its Close control, dismisses on Escape, and restores focus to the navigation trigger.
+- Chat now exposes a labelled conversation log and announces the thinking state; its composer has an accessible name. Agent channel account/role selectors also have explicit accessible names.
+- Source commits: `d73099d6`, `3d8ac3a3`, `837b4b19`; static assertions: `0a603b76`, `f8c3aefd`; inventory `fb4edaa9`; NEXT_ACTION `31289d12`.
+- Tests/typecheck/build/browser/screen-reader/narrow-device checks NOT RUN. No PASS claimed. Continue the cross-route review without CI/Vercel waiting; OPS-01 owns the independent database-migration/Redis incident.
