@@ -44,3 +44,13 @@ The authentication loop was traced to session issuance preceding active organiza
 - **Prevention:** Keep provider snapshots on shared domain types and convert only at the storage boundary.
 - **Evidence/status:** Commits caad1d75, 04a2345b, a98c0e7f; source committed, tests/typecheck/build unexecuted.
 - **Next:** Run focused test and worker build; route Docker/environment failures to OPS-01.
+
+
+### FIX-01 / Sentinel — 2026-10-09 — Zoho OAuth test parser failure
+- **Symptom:** Web TypeScript reports TS1127/TS1434 at `apps/web/tests/zoho-oauth-settings.test.ts:84`; shared/db/clara-core and worker typechecks passed in user's output.
+- **Root cause:** Literal `\n` text was committed between assertions instead of actual source newlines.
+- **Failed approach:** Avoid modifying OAuth runtime implementation; parser failure is in the test file.
+- **Remedy:** Replaced the exact malformed sequence with real line breaks. Commit `39857c40820940b500dcf452331dfe82ae35b861`.
+- **Prevention:** Check escaping after generated/API writes so newline escapes do not become literal source characters.
+- **Status:** Source correction committed; post-fix typecheck and test still pending.
+- **Next action:** Re-run `pnpm run typecheck` and the focused Zoho OAuth test; route unrelated infrastructure/deployment failures to OPS-01.
