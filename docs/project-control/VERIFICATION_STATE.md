@@ -928,3 +928,11 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Corrected IMAP LIST command quoting/escaped CRLF after source review found the command had been split by a raw newline; corrected Zoho incremental capability metadata (`fe3e2d39157f74c66741772966125cfee81055a1`, `5a59ec5745f8d3a3f735220f9496e14c79dece22`).
 - **Not executed:** Zoho/IMAP tests, worker/web typechecks, real IMAP server, deployed PostgreSQL ingestion, Clara Chat turn. No PASS claimed.
 - **Still pending:** Clara Core RAG email indexing, real Redis client use, RabbitMQ durable sync queue/consumer/retry/DLQ, and provider-to-chat runtime acceptance. FIX-01 owns BKL-008; OPS-01 owns production infrastructure/deployment.
+
+
+### FIX-01 worker credential snapshot correction — 2026-10-09
+- **Reported evidence:** User-provided Docker build failed with TS2322 at mailbox-sync-worker.ts:156 and TS2345 at line 201.
+- **Source changes:** GmailAdapter.getCredentialSnapshot() now returns shared EmailCredentials; worker spreads the typed snapshot into the persistence record; focused contract test added.
+- **Commits:** caad1d753b0199a895d63056704c4db9c423f382, 04a2345b6b901ebbc55d084dc5860f39ae9416d8, a98c0e7fa1ee8e22ff60726475e6fb91624626c8.
+- **Verification status:** source_changed_not_tested. No pnpm, TypeScript, Docker, or test command ran in this session. The original failure is evidenced by the supplied log; passing build is not established.
+- **Next:** Run focused Gmail adapter regression and worker build/typecheck. Route infrastructure/dependency/Docker-specific failures to OPS-01.
