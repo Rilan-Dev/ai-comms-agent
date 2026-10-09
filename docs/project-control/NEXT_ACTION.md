@@ -18,6 +18,8 @@ Source corrections committed on `fix/migration-verification-phase4-contract` aft
 
 **Verification status:** GitHub accepted source commits. Focused tests, the full worker suite, typechecks, build, browser/runtime checks, and deployment have NOT been executed or verified in this continuation. Do not describe the branch as deployment-successful yet. The lockfile and local backup files remain out of scope and must be preserved.
 
+**Deployment blocker:** A preview deployment request for commit `a4877ee23152b4895bf5eae48243ddb0202c8155` was rejected by Vercel with HTTP 402 (`api-deployments-free-per-day`, over 100 deployment API calls in the daily allowance; retry after 24 hours). No deployment was created. Do not claim deployment success or repeatedly retry/bypass the quota. Existing recent branch deployments were `CANCELED` and do not validate the latest source.
+
 **Exact next action:** fetch/pull this branch into the local checkout without discarding local changes or the four lockfile backups. Run the focused web email-action contract and migration-verification tests, then `pnpm --filter @ai-comms-agent/worker test`; follow with web and worker typechecks. Fix any remaining concrete failures and update this file/worklog with actual output. Continue without waiting for GitHub Actions or Vercel; only report deployment success after a deployment result is observed.
 
 ## Immediate FIX-01 migration/worker test follow-up — 2026-10-09
