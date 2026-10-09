@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { query } from "@ai-comms-agent/db";
-import { PostgresAgentRepository, activateVoiceSessionForOrganization, configureStartingVoiceSessionForOrganization, createVoiceSession, endVoiceSessionForOrganization, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, recordVoiceTelemetry } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, activateVoiceSessionForOrganization, configureStartingVoiceSessionForOrganization, createVoiceSession, endVoiceSessionForOrganization, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, query, recordVoiceTelemetry } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
