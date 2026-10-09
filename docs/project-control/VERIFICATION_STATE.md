@@ -1123,3 +1123,11 @@ source_review:
 - **Static evidence:** Current `pnpm-lock.yaml` has the workspace lockfile header, `apps/worker` importer, `amqplib@2.2.0` package entry, and snapshot entry.
 - **Execution status:** NOT RUN after correction: `pnpm install --frozen-lockfile`, lockfile regression test, `pnpm run typecheck`, Docker build. No PASS claimed.
 - **Next action:** Pull latest main, run frozen install then typecheck. Route separate Docker host/build environment failures to OPS-01.
+
+## FIX01-PNPM-TARBALL-INTEGRITY-20261009 — 2026-10-09
+- **User evidence:** Frozen install, typecheck, and focused Vitest command each failed before compilation/test execution with `ERR_PNPM_MISSING_TARBALL_INTEGRITY` for `amqplib@2.2.0`.
+- **Root cause:** The package entry had a tarball URL but no SRI integrity hash; pnpm's supply-chain policy correctly rejected it.
+- **Source correction:** Added published SHA-512 SRI to `pnpm-lock.yaml` (commit `644d578170801785c1252a569fa976b0b33476eb`).
+- **Regression source:** Assertion now requires an integrity-form resolution specifically on the amqplib package entry (commits `21837f32157ff43a7a1243b3f3095bb1eb2f1df6`, `d115e1b0293b48571cd0902849cb5f0030963bc7`).
+- **Execution status:** NOT RUN after correction: frozen install, focused Vitest, typecheck, Docker build. No PASS claimed.
+- **Next action:** Pull latest main; frozen install first, then typecheck and focused Vitest if install succeeds.
