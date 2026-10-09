@@ -514,3 +514,7 @@ The Agents list now uses inline SVG sparkle iconography matching the Lovable vis
 
 ### 2026-10-09 — Live schema and Redis incident
 User-provided runtime logs identified missing `ai_provider_configs.model` and `email_sync_states.last_attempt_at`, plus Redis lease command rejection. FIX-01 committed forward migration `0029_runtime_schema_reconciliation.sql`, bounded Redis server error reporting, and a WRONGPASS regression test. Source-only status: migration application, tests, builds, Redis connectivity, and mailbox runtime remain unverified. OPS-01 owns the live database/container rollout and Redis configuration diagnosis. See ISS-015 and BKL-011.
+
+
+### 2026-10-09 — Mail navigation active state correction
+The sidebar now treats child routes as active for the Mail group, so Accounts, Inbox, Threads, Drafts and nested detail routes keep the Mail navigation expanded. Added a static contract assertion. Commits: `a6c0abb0b5521aa0b6d636c48f83dc7f301a2c44`, `11ff84aac3a8379b09de78a191d704bd845512d6`. Test not executed.
