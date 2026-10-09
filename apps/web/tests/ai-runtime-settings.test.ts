@@ -43,6 +43,7 @@ describe("Organization AI configuration", () => {
     expect(runtime).toContain("organization_ai_runtime_settings");
     expect(runtime).toContain("decryptCredential");
     expect(runtime).toContain("providerSettings");
+    expect(runtime).toContain("system_prompt");
   });
 
   it("uses organization knowledge-base configuration for chat, voice and worker execution", () => {
@@ -62,5 +63,7 @@ describe("Organization AI configuration", () => {
     expect(route).toContain("/v1/models");
     expect(route).toContain("/v1beta/models");
     expect(route).toContain("model_catalog_unavailable");
+    expect(route).toContain("officialBaseUrl");
+    expect(route).toContain("Only the official HTTPS API origin");
   });
 });
