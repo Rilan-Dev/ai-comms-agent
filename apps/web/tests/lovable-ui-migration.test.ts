@@ -339,6 +339,7 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(settings).toContain('method: "PATCH"');
     expect(settings).toContain('fetch("/api/auth/change-password"');
     expect(settings).toContain("Members & roles");
+    expect(settings).toContain("sticky top-[64px] z-10");
     expect(settings).toContain("font-display");
   });
 
