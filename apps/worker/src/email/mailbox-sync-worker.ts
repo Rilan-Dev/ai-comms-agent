@@ -20,7 +20,7 @@ let processing = false;
 const INTERVAL_MS = 30_000;
 const BATCH_SIZE = 3;
 
-async function persistMessage(account: Candidate, message: EmailMessage): Promise<void> {
+async function persistMessage(account: Candidate, message: EmailMessage, providerDraftId?: string | null): Promise<void> {
   const participants = [...new Set([
     message.from_address,
     ...message.to_addresses,
@@ -118,6 +118,16 @@ async function persistMessage(account: Candidate, message: EmailMessage): Promis
      WHERE id=$1`,
     [threadId],
   );
+
+  if (message.is_draft && providerDraftId) {
+    await query(
+      `UPDATE email_messages SET provider_draft_id=$1,
+         provider_draft_sync_status='synced', provider_draft_synced_at=now(),
+         provider_draft_last_error=NULL, updated_at=now()
+       WHERE email_account_id=$2 AND provider_message_id=$3 AND is_draft=true`,
+      [providerDraftId, account.id, message.provider_message_id || message.id],
+    );
+  }
 }
 
 async function processAccount(candidate: Candidate): Promise<boolean> {
@@ -196,7 +206,10 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     for (const id of messageIds) {
       const message = await adapter.getMessage(id);
       if (!message) continue;
-      await persistMessage(candidate, message);
+      const providerDraftId = message.is_draft
+        ? await adapter.findDraftIdForMessage(message.provider_message_id || message.id)
+        : null;
+      await persistMessage(candidate, message, providerDraftId);
       saved += 1;
     }
 
