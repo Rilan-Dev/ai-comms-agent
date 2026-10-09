@@ -1329,3 +1329,11 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Source commits: `3cf94c7f`, `c2dd6e6e`, `740b70d2`, test `2f1eecd5`, inventory `70738aa2` / `87cc0976`, next-action updates `056272db` / `7fc54b32`.
 - Tests/typecheck/build/browser/runtime verification NOT RUN. No PASS claimed.
 - Next: Chat → AI & Voice → Knowledge → Activity → Audit → Operations → Settings/provider settings → Login/Setup → agent detail/version/history → cross-route responsive/accessibility review. FIX-01 retains BKL-012; OPS-01 retains BKL-011.
+
+### 2026-10-09 — DEV-01 / Forge — Supporting Lovable UI routes
+- Continued visual adaptation of WhatsApp overview, Knowledge, Activity and AI Voice workspace/fallback using the Lovable semantic theme, compact geometry, typography and inline iconography.
+- Commits: `09c9047c726329e0b4a956e706e979420e722f06`, `b919fbe4ca328840d3a30e72fe97cd83d9a7a3c1`, `9ce8ff420179a1cdebbf6f56997764bc80bd07ff`, `e73552a8949c63a6afac511a88bb15a4818cbdcb`, `889c468240fd681db6d21a7d00b23054e7e71198`.
+- Concurrency note: GitHub returned 409 stale-SHA conflicts on WhatsApp route and shared UI test edits. Stopped retrying overlapping files; another main-branch session is updating the migration/test surface.
+- The existing `apps/web/src/app/whatsapp/whatsapp-client.tsx` contains account management, credential submission, message polling and idempotent outbound queue actions, while `whatsapp/page.tsx` was still static at inspection. This is the immediate integration follow-up in current NEXT_ACTION; wire the existing client to authenticated organization context and do not imply the static button works.
+- Verification: no tests/typecheck/build/browser/runtime checks run; no PASS claimed.
+- Next: follow the latest `docs/project-control/NEXT_ACTION.md`, complete the WhatsApp route/client wiring, then continue remaining route groups. Route tenant-context bugs to FIX-01 and infrastructure to OPS-01.
