@@ -152,3 +152,9 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Evidence:** Current lockfile entry now contains `resolution: {integrity: sha512-VifzN9aHs/Q3zTruVHXh2yCisQyXexBN91CQ2E5iSyUKyNjH6ilYhJGte5AXZH/Bj1PaH7SwPhyuSf6Msd2udw==}`; same SRI appears in independent published pnpm lockfiles. GitHub source writes succeeded. No local install/test/typecheck/build was executed after this change.
 - **Prevention lesson:** A dependency entry is not complete merely because package/snapshot records exist; registry resolutions must retain the exact published integrity hash. Never invent a hash or disable integrity policy to make installation pass.
 - **Next action:** Pull latest main and rerun `pnpm install --frozen-lockfile`; only after success run `pnpm run typecheck` and the focused Vitest test. Record real outputs. Route separate host/Docker infrastructure failures to OPS-01.
+
+### FIX01-LOCKFILE-TEST-REGEX-CORRECTION-20261009
+- **Finding:** Source review of the newly added lockfile regression test found over-escaped regex tokens; the assertions would not reliably match the lockfile's actual worker importer and amqplib entries.
+- **Correction:** Rewrote the regex literals with correct JavaScript regex escaping, scoped the SHA-512 assertion to the amqplib package entry, and retained checks for the worker importer, package entry and snapshot.
+- **Commit:** `162183e8d7c67b8346c15989ef850327e487cfc4`.
+- **Verification:** Source inspection only; Vitest has not run because pnpm install previously failed.
