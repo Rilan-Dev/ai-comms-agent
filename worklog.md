@@ -1177,3 +1177,5 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - **Next:** Ensure the reverse proxy validates Host and overwrites `X-Forwarded-Host` / `X-Forwarded-Proto`; deploy current main; confirm the displayed callbacks use the public HTTPS domain; restart OAuth.
 
 - **Follow-up hardening:** The helper’s forwarded-host character validation was tightened, and both Gmail/Zoho Settings now show a visible warning when the server callback origin differs from the browser origin. Focused source assertions were extended. Latest relevant commits: `76b6fb59`, `fe97c4c7`, `19c64e23`, `c0786628`, `c7a2664c`. These checks are committed but have not been executed.
+
+- **Project-control synchronization:** Updated `NEXT_ACTION.md`, `ISSUES.md`, `VERIFICATION_STATE.md`, `PROJECT_STATE.md`, and `docs/architecture/DEPLOYMENT.md` to record the reverse-proxy requirement and explicitly mark tests/deployment/OAuth as unverified. Control-doc commits include `31bf1a26`, `e94347ed`, `640d06ba`, `18c56166`, and `6468e135`.
