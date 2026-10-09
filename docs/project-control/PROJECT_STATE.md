@@ -28,9 +28,9 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "bffd2f6267a242f63df76c9e3fdaf9b508d3ae59"
-current_commit_short: "bffd2f62"
-current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/bffd2f6267a242f63df76c9e3fdaf9b508d3ae59"
+current_commit: "d6be733ab85d5fa48df67b6b4ae7705c58bf1084"
+current_commit_short: "d6be733a"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/d6be733ab85d5fa48df67b6b4ae7705c58bf1084"
 last_verified_commit: "pending_runtime_acceptance"
 
 open_blockers:
