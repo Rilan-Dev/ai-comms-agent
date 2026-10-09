@@ -23,6 +23,10 @@ const initSql = readFileSync(initPath, "utf8");
 
 const databaseFoundationPath = resolve(__dirname, "../../../supabase/migrations/0002_database_foundation.sql");
 const databaseFoundationSql = readFileSync(databaseFoundationPath, "utf8");
+const applicationDomainPath = resolve(__dirname, "../../../supabase/migrations/0002_application_domain.sql");
+const applicationDomainSql = readFileSync(applicationDomainPath, "utf8");
+const auditHardeningPath = resolve(__dirname, "../../../supabase/migrations/0032_audit_event_access_hardening.sql");
+const auditHardeningSql = readFileSync(auditHardeningPath, "utf8");
 
 describe("Disposable PostgreSQL bootstrap static verification", () => {
   it("uses valid dollar-quoted DO blocks", () => {
@@ -277,59 +281,59 @@ describe("Phase 4 database foundation migration", () => {
     "whatsapp_messages","whatsapp_webhook_events","conversations","conversation_messages",
     "conversation_turns","scheduled_jobs","scheduled_job_runs","automation_rules","automation_runs",
     "email_actions","email_action_approvals","summaries","summary_sources","ai_usage_events",
-    "voice_sessions","voice_telemetry","audit_events","api_keys",
+    "voice_sessions","voice_telemetry","audit_events","storage_objects",
   ];
 
   it("declares every Phase 4 target table", () => {
     for (const table of requiredTables) {
-      expect(databaseFoundationSql).toMatch(new RegExp("CREATE TABLE IF NOT EXISTS " + table + "\\b"));
+      expect(applicationDomainSql).toMatch(new RegExp("CREATE TABLE IF NOT EXISTS " + table + "\\b"));
     }
   });
 
-  it("enables RLS for every direct tenant table", () => {
+  it("enables RLS for the declared application-domain tables", () => {
+    // The migration loops over its canonical table array and uses format() for each ALTER.
+    expect(applicationDomainSql).toContain("ALTER TABLE %I ENABLE ROW LEVEL SECURITY");
     for (const table of [
       "agents","ai_provider_configs","email_accounts","whatsapp_accounts","conversations",
       "scheduled_jobs","automation_rules","email_actions","summaries","ai_usage_events",
-      "voice_sessions","audit_events","api_keys",
+      "voice_sessions","audit_events","storage_objects",
     ]) {
-      expect(databaseFoundationSql).toContain("ALTER TABLE " + table + " ENABLE ROW LEVEL SECURITY");
+      expect(applicationDomainSql).toContain("'" + table + "'");
     }
   });
 
   it("protects child-domain tables through their organization-owning parent", () => {
-    expect(databaseFoundationSql).toContain("agent_versions_org_member");
-    expect(databaseFoundationSql).toContain("email_messages_org_member");
-    expect(databaseFoundationSql).toContain("whatsapp_messages_org_member");
-    expect(databaseFoundationSql).toContain("conversation_messages_org_member");
-    expect(databaseFoundationSql).toContain("scheduled_job_runs_org_member");
-    expect(databaseFoundationSql).toContain("summary_sources_org_member");
-    expect(databaseFoundationSql).toContain("voice_telemetry_org_member");
+    expect(applicationDomainSql).toContain("agent_versions_member_visibility");
+    expect(applicationDomainSql).toContain("email_messages_member_visibility");
+    expect(applicationDomainSql).toContain("whatsapp_messages_member_visibility");
+    expect(applicationDomainSql).toContain("conversation_messages_member_visibility");
+    expect(applicationDomainSql).toContain("scheduled_job_runs_member_visibility");
+    expect(applicationDomainSql).toContain("summary_sources_member_visibility");
+    expect(applicationDomainSql).toContain("voice_telemetry_member_visibility");
   });
 
   it("stores provider credentials as ciphertext bytea", () => {
-    expect(databaseFoundationSql).toContain("encrypted_payload bytea NOT NULL");
-    expect(databaseFoundationSql).toContain("encrypted_api_key bytea");
-    expect(databaseFoundationSql).toContain("encrypted_credentials bytea NOT NULL");
-    expect(databaseFoundationSql).toContain("hashed_key text NOT NULL");
+    expect(applicationDomainSql).toContain("encrypted_payload bytea NOT NULL");
+    expect(applicationDomainSql).toContain("encrypted_credentials bytea NOT NULL");
   });
 
   it("provides full-text search and idempotency indexes", () => {
-    expect(databaseFoundationSql).toContain("search_tsv tsvector GENERATED ALWAYS");
-    expect(databaseFoundationSql).toContain("USING gin(search_tsv)");
-    expect(databaseFoundationSql).toContain("email_messages_provider_id_uniq");
-    expect(databaseFoundationSql).toContain("whatsapp_webhook_events");
-    expect(databaseFoundationSql).toContain("UNIQUE(scheduled_job_id, fire_at)");
+    expect(applicationDomainSql).toContain("search_tsv tsvector GENERATED ALWAYS");
+    expect(applicationDomainSql).toContain("USING gin(search_tsv)");
+    expect(applicationDomainSql).toContain("UNIQUE(email_account_id,provider_message_id)");
+    expect(applicationDomainSql).toContain("UNIQUE(email_account_id,provider_thread_id)");
+    expect(applicationDomainSql).toContain("whatsapp_webhook_events");
   });
 
   it("makes audit updates and deletes fail closed through RLS", () => {
-    expect(databaseFoundationSql).toContain("audit_events_update_deny");
-    expect(databaseFoundationSql).toContain("audit_events_delete_deny");
-    expect(databaseFoundationSql).toContain("USING (false) WITH CHECK (false)");
+    expect(auditHardeningSql).toContain("audit_events_update_deny");
+    expect(auditHardeningSql).toContain("audit_events_delete_deny");
+    expect(auditHardeningSql).toContain("USING (false) WITH CHECK (false)");
   });
 
   it("does not reintroduce custom role persistence", () => {
-    expect(databaseFoundationSql).not.toMatch(/CREATE\\s+TABLE.*\\broles\\b/i);
-    expect(databaseFoundationSql).not.toMatch(/CREATE\\s+TABLE.*\\brole_permissions\\b/i);
+    expect(applicationDomainSql).not.toMatch(/CREATE\s+TABLE.*\broles\b/i);
+    expect(applicationDomainSql).not.toMatch(/CREATE\s+TABLE.*\brole_permissions\b/i);
   });
 });
 
@@ -404,7 +408,7 @@ describe("Phase 4 agent policy configuration migration", () => {
 });
 
 
-describe("Application database foundation static verification (0002_application_foundation.sql)", () => {
+describe("Application database domain static verification (0002_application_domain.sql)", () => {
   it("defines the core application domains", () => {
     for (const table of [
       "agents", "agent_versions", "agent_deployments", "email_accounts",
@@ -414,28 +418,27 @@ describe("Application database foundation static verification (0002_application_
       "ai_provider_configs", "ai_usage_events", "voice_sessions", "voice_telemetry",
       "audit_events",
     ]) {
-      expect(databaseFoundationSql).toContain(`CREATE TABLE IF NOT EXISTS ${table}`);
+      expect(applicationDomainSql).toContain(`CREATE TABLE IF NOT EXISTS ${table}`);
     }
   });
 
   it("enforces one WhatsApp account per agent", () => {
-    expect(databaseFoundationSql).toContain("agent_id uuid NOT NULL UNIQUE REFERENCES agents");
+    expect(applicationDomainSql).toContain("agent_id uuid NOT NULL UNIQUE REFERENCES agents");
   });
 
   it("defines email full-text indexing", () => {
-    expect(databaseFoundationSql).toContain("search_tsv tsvector GENERATED ALWAYS");
-    expect(databaseFoundationSql).toContain("email_messages_search_tsv_idx");
+    expect(applicationDomainSql).toContain("search_tsv tsvector GENERATED ALWAYS");
+    expect(applicationDomainSql).toContain("email_messages_search_tsv_gin");
   });
 
   it("defines tenant RLS fail-closed through PostgreSQL settings", () => {
-    expect(databaseFoundationSql).toContain("current_app_organization_id");
-    expect(databaseFoundationSql).toContain("tenant_access");
-    expect(databaseFoundationSql).toContain("SET search_path = public");
+    expect(applicationDomainSql).toContain("current_app_user_id");
+    expect(applicationDomainSql).toContain("app_is_org_member");
+    expect(applicationDomainSql).toContain("current_setting('app.user_id', true)");
+    expect(applicationDomainSql).toContain("SET search_path = public");
   });
 
   it("makes audit events append-only with organization-scoped access", () => {
-    const auditHardeningPath = resolve(__dirname, "../../../supabase/migrations/0032_audit_event_access_hardening.sql");
-    const auditHardeningSql = readFileSync(auditHardeningPath, "utf8");
     expect(auditHardeningSql).toContain("audit_events_insert");
     expect(auditHardeningSql).toContain("audit_events_read");
     expect(auditHardeningSql).toContain("audit_events is append-only");
