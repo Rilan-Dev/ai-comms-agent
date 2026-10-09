@@ -168,3 +168,9 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Verification:** Source committed; no post-fix typecheck, worker test, or migration Vitest run by FIX-01. No PASS claimed beyond the user's observed frozen install.
 - **Prevention:** Keep static path contracts synchronized with canonical migration filenames; normalize optional config to a definite type before using it in asynchronous closures.
 - **Next action:** Pull latest main. Run focused migration Vitest and worker RabbitMQ contract test; then run web and worker typechecks sequentially to avoid resource contention. Run full workspace typecheck afterward if resources allow. Do not wait for CI/Vercel.
+
+### FIX01-SECURITY-ASSERTION-ALIGNMENT-20261009
+- **Finding:** After correcting the stale migration paths, source comparison showed the security tests still expected the historical public is_active_organization_* wrappers. The current canonical 0013 migration intentionally drops those caller-selected-user-ID wrappers and exposes SECURITY INVOKER can_access_organization/can_manage_organization helpers backed by private membership checks and app.user_id.
+- **Correction:** Rewrote the assertions to test the current least-privilege contract and grants rather than the superseded migration implementation.
+- **Commit:** 618c4cd57f0e7e433c4da5f50840cd6c8f612b9b.
+- **Verification:** Source only; focused migration Vitest NOT RUN.
