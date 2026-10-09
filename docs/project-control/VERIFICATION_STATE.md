@@ -1012,3 +1012,8 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Source commits: `f53f1124` dependency, `0741b7cf` lockfile, `7a350e49` transport, `7f9f0699` producer/consumer dispatch, `7f3fc212` worker startup, `02780cc8` tests.
 - Status: source_changed_not_tested. No test/typecheck/build, lockfile install, live broker, delivery/retry/DLQ, reconnect, or deployment validation has run. No PASS claimed.
 - Next: robust connection recovery and Clara-supported indexing adapter. Clara indexing remains not implemented; do not write directly to Qdrant or modify Clara source.
+
+## 2026-10-09 — Live inbox schema drift and Redis authentication
+- User-supplied logs show `email_messages.from_name` missing and Redis AUTH rejected with WRONGPASS. A queued API response is not sync completion.
+- Added `0030_email_messages_runtime_reconciliation.sql` (commit `69c51678c8c12e0a0c070214dc09db77e0758dae`) and static regression coverage (commit `e7a1e7ee396d542ffdf3edada895938a087b6a27`).
+- **NOT VERIFIED:** migrations 0029/0030 application, tests, typecheck/build, Redis credential correction, message persistence, inbox loading, and live sync.
