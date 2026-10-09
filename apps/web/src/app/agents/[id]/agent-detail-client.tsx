@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Activity as ActivityIcon, ArrowLeft, Bot, FlaskConical, GitBranch, PauseCircle, Plug, Rocket, Save, ShieldCheck } from "lucide-react";
 import type { Agent, AgentEmailBinding, AgentPolicy, AgentVersion, AgentWhatsAppBinding, EmailAccount } from "@ai-comms-agent/shared";
@@ -20,6 +20,9 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   const [tab, setTab] = useState<"overview"|"versions"|"policy"|"channels"|"test"|"activity">("overview");
   const [busy, setBusy] = useState(false);
   const [showConfirm, setShowConfirm] = useState<"deploy"|"retire"|null>(null);
+  const confirmDialogRef = useRef<HTMLDivElement>(null);
+  const cancelConfirmRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
   const [emailAccountId, setEmailAccountId] = useState("");
   const [whatsappAccountId, setWhatsappAccountId] = useState("");
   const [testResult, setTestResult] = useState<{ok:boolean;checks:Check[]}|null>(null);
@@ -34,6 +37,44 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   const [editDescription, setEditDescription] = useState(initialAgent.description ?? "");
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
+
+  useEffect(() => {
+    if (!showConfirm) return;
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    cancelConfirmRef.current?.focus();
+
+    function onDialogKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setShowConfirm(null);
+        return;
+      }
+      if (event.key !== "Tab" || !confirmDialogRef.current) return;
+      const focusable = Array.from(confirmDialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        confirmDialogRef.current.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onDialogKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onDialogKeyDown);
+      previousFocusRef.current?.focus();
+    };
+  }, [showConfirm]);
 
   async function call(path:string, init:RequestInit) {
     const response=await fetch(path,init); const payload=await response.json();
@@ -172,21 +213,21 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
     {tab==="versions" && <section className="space-y-4"><div className="rounded-md border bg-background p-6 shadow-sm"><div><h2 className="font-semibold">Version configuration</h2><p className="mt-1 text-xs text-muted-foreground">Edit the draft JSON and create an immutable snapshot. Deployed versions are never mutated.</p><p className="mt-2 text-xs text-muted-foreground">Selected version: {versions.find((v)=>v.id===selectedVersionId)?.versionNumber ?? "none"} · Deploy uses the selected version.</p></div><textarea value={versionConfig} onChange={(e)=>setVersionConfig(e.target.value)} spellCheck={false} className="mt-5 min-h-56 w-full rounded-md border bg-muted/20 p-4 font-mono text-xs outline-none focus:ring-2 focus:ring-primary/20" aria-label="Version configuration JSON" /><div className="mt-3 flex justify-end"><button type="button" disabled={busy} onClick={createVersion} className="h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Creating…":"Create version"}</button></div></div><div className="rounded-md border bg-background shadow-sm"><div className="border-b p-5"><h3 className="font-semibold">History</h3></div><div className="divide-y">{versions.length===0?<p className="p-6 text-sm text-muted-foreground">No versions yet.</p>:versions.map((v)=><button type="button" key={v.id} onClick={()=>{setSelectedVersionId(v.id); setVersionConfig(JSON.stringify(v.config ?? {},null,2));}} className="flex w-full items-center justify-between p-5 text-left hover:bg-muted/30"><div><p className="text-sm font-semibold">Version {v.versionNumber}</p><p className="text-xs text-muted-foreground">{new Date(v.createdAt).toLocaleString()}</p></div><span className="flex items-center gap-2"><span className="rounded-full bg-muted px-2.5 py-1 text-[11px]">{v.id===agent.currentVersionId?"Current":"Draft"}</span>{selectedVersionId===v.id && <span className="text-[11px] font-semibold text-primary">Selected</span>}</span></button>)}</div></div></section>}
     {tab==="policy" && <section className="rounded-md border bg-background p-6 shadow-sm"><h2 className="flex items-center gap-2 font-semibold"><ShieldCheck size={16} className="text-primary" /> Agent safety policy</h2><p className="mt-1 text-sm text-muted-foreground">Control tool and sender boundaries before deployment.</p><form onSubmit={savePolicy} className="mt-6 space-y-5"><label className="block text-sm font-medium">Allowed tools<input name="allowedTools" defaultValue={policy?.allowedTools.join(", ")??""} className="mt-1 h-11 w-full rounded-md border px-3 text-sm font-normal" placeholder="rag_search, summarize_emails" /></label><label className="block text-sm font-medium">Allowed senders<input name="allowedSenders" defaultValue={policy?.allowedSenders.join(", ")??""} className="mt-1 h-11 w-full rounded-md border px-3 text-sm font-normal" placeholder="finance@example.com" /></label><label className="block text-sm font-medium">Blocked senders<input name="blockedSenders" defaultValue={policy?.blockedSenders.join(", ")??""} className="mt-1 h-11 w-full rounded-md border px-3 text-sm font-normal" placeholder="spam@example.com" /></label><div className="grid gap-4 lg:grid-cols-2"><label className="block text-sm font-medium">Security policy<textarea name="securityPolicy" defaultValue={JSON.stringify(policy?.securityPolicy??{},null,2)} spellCheck={false} rows={7} className="mt-1 w-full rounded-md border bg-muted/20 p-3 font-mono text-xs font-normal" aria-label="Security policy JSON" /></label><label className="block text-sm font-medium">Rate limits<textarea name="rateLimits" defaultValue={JSON.stringify(policy?.rateLimits??{},null,2)} spellCheck={false} rows={7} className="mt-1 w-full rounded-md border bg-muted/20 p-3 font-mono text-xs font-normal" aria-label="Rate limits JSON" /></label></div><button disabled={busy} className="h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">Save policy</button></form></section>}
     {tab==="channels" && <section className="grid gap-4 lg:grid-cols-2"><div className="rounded-md border bg-background p-6 shadow-sm"><h2 className="font-semibold">Email accounts</h2><p className="mt-1 text-sm text-muted-foreground">An agent can use multiple email accounts. Enter an existing persisted email account ID while the Email Accounts menu is being completed.</p><div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
-  <select value={emailAccountId} onChange={(e)=>setEmailAccountId(e.target.value)} className="h-11 rounded-md border bg-background px-3 text-sm">
+  <select aria-label="Email account to connect" value={emailAccountId} onChange={(e)=>setEmailAccountId(e.target.value)} className="h-11 rounded-md border bg-background px-3 text-sm">
     <option value="">Select a persisted email account</option>
     {emailAccounts.map((account)=><option key={account.id} value={account.id}>{account.email_address} · {account.provider} · {account.status}</option>)}
   </select>
-  <select value={emailRole} onChange={(e)=>setEmailRole(e.target.value as typeof emailRole)} className="h-11 rounded-md border bg-background px-3 text-sm">
+  <select aria-label="Role for selected email account" value={emailRole} onChange={(e)=>setEmailRole(e.target.value as typeof emailRole)} className="h-11 rounded-md border bg-background px-3 text-sm">
     <option value="primary">Primary</option>
     <option value="read_only">Read only</option>
     <option value="send_only">Send only</option>
   </select>
-</div><div className="mt-4 space-y-2">{emailBindings.map((b)=><div key={b.id} className="flex items-center justify-between rounded-md border p-3 text-xs"><span className="min-w-0 truncate font-medium">{emailAccounts.find((a)=>a.id===b.emailAccountId)?.email_address ?? b.emailAccountId}</span><span className="ml-3 flex items-center gap-2"><span className="rounded-full bg-muted px-2 py-1">{b.role}</span><button type="button" disabled={busy} onClick={()=>unbindEmail(b.emailAccountId)} className="text-destructive hover:underline">Remove</button></span></div>)}</div></div><div className="rounded-md border bg-background p-6 shadow-sm"><h2 className="font-semibold">WhatsApp</h2><p className="mt-1 text-sm text-muted-foreground">Exactly one WhatsApp Business account can be bound to an agent.</p><select value={whatsappAccountId} onChange={(e)=>setWhatsappAccountId(e.target.value)} className="mt-5 h-11 w-full rounded-md border bg-background px-3 text-sm"><option value="">Select a WhatsApp account</option>{whatsappAccounts.map(account=><option key={account.id} value={account.id}>{account.displayName || account.phoneNumberId} · {account.status}</option>)}</select><div className="mt-4 rounded-md border p-3 text-xs">{whatsappBinding ? <><span className="font-medium">{whatsappBinding.whatsappAccountId}</span><span className="flex items-center gap-3"><span className="text-emerald-600">Connected</span><button type="button" disabled={busy} onClick={unbindWhatsApp} className="text-destructive hover:underline">Remove</button></span></> : <span className="text-muted-foreground">No WhatsApp account connected.</span>}</div><button type="button" disabled={busy || (!emailAccountId && !whatsappAccountId)} onClick={saveChannels} className="mt-5 h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Saving…":"Save channels"}</button></div></section>}
+</div><div className="mt-4 space-y-2">{emailBindings.map((b)=><div key={b.id} className="flex items-center justify-between rounded-md border p-3 text-xs"><span className="min-w-0 truncate font-medium">{emailAccounts.find((a)=>a.id===b.emailAccountId)?.email_address ?? b.emailAccountId}</span><span className="ml-3 flex items-center gap-2"><span className="rounded-full bg-muted px-2 py-1">{b.role}</span><button type="button" disabled={busy} onClick={()=>unbindEmail(b.emailAccountId)} className="text-destructive hover:underline">Remove</button></span></div>)}</div></div><div className="rounded-md border bg-background p-6 shadow-sm"><h2 className="font-semibold">WhatsApp</h2><p className="mt-1 text-sm text-muted-foreground">Exactly one WhatsApp Business account can be bound to an agent.</p><select aria-label="WhatsApp account to connect" value={whatsappAccountId} onChange={(e)=>setWhatsappAccountId(e.target.value)} className="mt-5 h-11 w-full rounded-md border bg-background px-3 text-sm"><option value="">Select a WhatsApp account</option>{whatsappAccounts.map(account=><option key={account.id} value={account.id}>{account.displayName || account.phoneNumberId} · {account.status}</option>)}</select><div className="mt-4 rounded-md border p-3 text-xs">{whatsappBinding ? <><span className="font-medium">{whatsappBinding.whatsappAccountId}</span><span className="flex items-center gap-3"><span className="text-emerald-600">Connected</span><button type="button" disabled={busy} onClick={unbindWhatsApp} className="text-destructive hover:underline">Remove</button></span></> : <span className="text-muted-foreground">No WhatsApp account connected.</span>}</div><button type="button" disabled={busy || (!emailAccountId && !whatsappAccountId)} onClick={saveChannels} className="mt-5 h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Saving…":"Save channels"}</button></div></section>}
     {tab==="test" && <section className="rounded-md border bg-background p-6 shadow-sm"><h2 className="flex items-center gap-2 font-semibold"><FlaskConical size={16} className="text-primary" /> Configuration test</h2><p className="mt-1 text-sm text-muted-foreground">This verifies persisted agent configuration and security prerequisites without pretending to execute a live AI/provider call.</p><button type="button" disabled={busy} onClick={runTest} className="mt-5 h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Testing…":"Run configuration test"}</button>{testResult && <div className="mt-5 space-y-2">{testResult.checks.map((c)=><div key={c.key} className="flex items-center justify-between rounded-md border p-3 text-sm"><span>{c.label}</span><span className={c.ok?"text-emerald-600":"text-destructive"}>{c.ok?"Pass":"Needs attention"}</span></div>)}</div>}</section>}
     {tab==="activity" && <section className="rounded-md border bg-background shadow-sm">
       <div className="border-b p-6"><h2 className="flex items-center gap-2 font-semibold"><ActivityIcon size={16} className="text-primary" /> Activity</h2><p className="mt-1 text-sm text-muted-foreground">Security-sensitive configuration, deployment, policy, and channel changes for this agent.</p></div>
       {auditLoading?<div className="space-y-3 p-6">{[1,2,3].map(i=><div key={i} className="h-14 animate-pulse rounded-md bg-muted" />)}</div>:auditEvents.length===0?<div className="p-10 text-center text-sm text-muted-foreground">No recorded activity yet.</div>:<div className="divide-y">{auditEvents.map(event=><div key={event.id} className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold">{event.eventType.replaceAll("_"," ")}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(event.createdAt).toLocaleString()}{event.action ? " · "+event.action : ""}</p></div><span className={"w-fit rounded-full px-2.5 py-1 text-[11px] font-semibold "+(event.decision==="allowed"?"bg-emerald-50 text-emerald-700":"bg-muted text-muted-foreground")}>{event.decision??"recorded"}</span></div>)}</div>}
     </section>}
-    {showConfirm && <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"><div role="dialog" aria-modal="true" aria-labelledby="agent-action-confirm-title" className="w-full max-w-md rounded-md border border-border bg-card p-6 shadow-lg"><h2 id="agent-action-confirm-title" className="text-lg font-semibold">{showConfirm==="deploy"?"Deploy this agent?":"Pause this agent?"}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{showConfirm==="deploy" ? <>Version {versions.find((v)=>v.id===selectedVersionId)?.versionNumber ?? versions[0]?.versionNumber ?? "selected"} will become active in production.</> : "The agent will stop being active. Existing configuration and versions remain preserved."}</p><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={()=>setShowConfirm(null)} className="h-10 rounded-md border px-4 text-sm">Cancel</button><button type="button" disabled={busy} onClick={showConfirm==="deploy"?deploy:retire} className="h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Working…":"Confirm"}</button></div></div></div>}
+    {showConfirm && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/40 p-4"><div ref={confirmDialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="agent-action-confirm-title" className="my-auto w-full max-w-md rounded-md border border-border bg-card p-6 shadow-lg outline-none"><h2 id="agent-action-confirm-title" className="text-lg font-semibold">{showConfirm==="deploy"?"Deploy this agent?":"Pause this agent?"}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{showConfirm==="deploy" ? <>Version {versions.find((v)=>v.id===selectedVersionId)?.versionNumber ?? versions[0]?.versionNumber ?? "selected"} will become active in production.</> : "The agent will stop being active. Existing configuration and versions remain preserved."}</p><div className="mt-6 flex justify-end gap-2"><button ref={cancelConfirmRef} type="button" onClick={()=>setShowConfirm(null)} className="h-10 rounded-md border px-4 text-sm">Cancel</button><button type="button" disabled={busy} onClick={showConfirm==="deploy"?deploy:retire} className="h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Working…":"Confirm"}</button></div></div></div>}
   </main>;
 }
