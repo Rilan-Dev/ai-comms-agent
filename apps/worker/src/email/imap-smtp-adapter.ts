@@ -283,10 +283,12 @@ export class ImapSmtpAdapter implements EmailProvider {
     const encoded = state.cursor?.startsWith("imap:") ? state.cursor.slice(5) : "";
     let folderIndex = 0;
     let lastUid = 0;
+    let previousValidity = "";
     if (encoded) {
       const parts = encoded.split(":");
       folderIndex = Number(parts[0]) || 0;
       lastUid = Number(parts[1]) || 0;
+      previousValidity = parts[2] ?? "";
     }
     const added: SyncResult["added"] = [];
     const updated: SyncResult["updated"] = [];
@@ -295,9 +297,7 @@ export class ImapSmtpAdapter implements EmailProvider {
       const folder = folders[folderIndex]!;
       const selected = await this.command(`SELECT ${quote(folder.provider_folder_id)}`);
       const validity = selected.join("\n").match(/UIDVALIDITY\s+(\d+)/i)?.[1] ?? "unknown";
-      const stateKey = `imap:${folderIndex}:${validity}:${lastUid}`;
-      const existing = state.cursor?.startsWith("imap:") ? state.cursor.split(":") : [];
-      if (existing.length >= 4 && (Number(existing[1]) !== folderIndex || existing[2] !== validity)) lastUid = 0;
+      if (previousValidity && previousValidity !== validity) lastUid = 0;
       const lines = await this.command("UID SEARCH ALL");
       const uidLine = lines.find((line) => /^\* SEARCH(?:\s|$)/i.test(line)) ?? "";
       const uids = (uidLine.replace(/^\* SEARCH\s*/i, "").match(/\d+/g) ?? []).map(Number).filter((uid) => uid > 0).sort((a,b)=>a-b);
@@ -313,7 +313,7 @@ export class ImapSmtpAdapter implements EmailProvider {
       pages++;
       if (fresh.length === 50 && (uids.find((uid) => uid > fresh[fresh.length - 1]!) !== undefined)) {
         lastUid = fresh[fresh.length - 1]!;
-        return { added, updated, deleted: [], new_state: { ...state, cursor: `imap:${folderIndex}:${validity}:${lastUid}`, history_token: validity, sync_mode: "initial", last_sync_at: new Date().toISOString() } };
+        return { added, updated, deleted: [], new_state: { ...state, cursor: `imap:${folderIndex}:${lastUid}:${validity}`, history_token: validity, sync_mode: "initial", last_sync_at: new Date().toISOString() } };
       }
       folderIndex++;
       lastUid = 0;
@@ -321,7 +321,7 @@ export class ImapSmtpAdapter implements EmailProvider {
     const hasMore = folderIndex < folders.length;
     return {
       added, updated, deleted: [],
-      new_state: { ...state, cursor: hasMore ? `imap:${folderIndex}:unknown:0` : undefined, history_token: hasMore ? state.history_token : "imap-full-v1", sync_mode: hasMore ? "initial" : "incremental", last_sync_at: new Date().toISOString() },
+      new_state: { ...state, cursor: hasMore ? `imap:${folderIndex}:0:` : undefined, history_token: hasMore ? state.history_token : "imap-full-v1", sync_mode: hasMore ? "initial" : "incremental", last_sync_at: new Date().toISOString() },
     };
   }
 
