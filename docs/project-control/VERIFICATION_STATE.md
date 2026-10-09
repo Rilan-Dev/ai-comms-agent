@@ -1017,3 +1017,13 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - User-supplied logs show `email_messages.from_name` missing and Redis AUTH rejected with WRONGPASS. A queued API response is not sync completion.
 - Added `0030_email_messages_runtime_reconciliation.sql` (commit `69c51678c8c12e0a0c070214dc09db77e0758dae`) and static regression coverage (commit `e7a1e7ee396d542ffdf3edada895938a087b6a27`); a follow-up also drops the legacy `from_address NOT NULL` constraint when present so worker inserts using `from_email` are not blocked (commit `87665353a615efa315f1610d104800153e114107`, assertion commit `9657810328903b397c7084852e0f31d05771ef12`).
 - **NOT VERIFIED:** migrations 0029/0030 application, tests, typecheck/build, Redis credential correction, message persistence, inbox loading, and live sync.
+
+
+## 2026-10-09 — Knowledge UI source adaptation (not executed)
+
+- Added `apps/web/src/app/api/knowledge/route.ts`: authenticated organization context, `organization.read` authorization, organization-filtered counts for email documents/chunks and recent persisted email knowledge records. No credentials or email bodies are returned by this status endpoint.
+- Updated `apps/web/src/app/knowledge/page.tsx` to replace hard-coded zero counts and inert controls with live API-backed metrics, recent document status, refresh, and loading/error/empty states. Mailbox actions link to the existing accounts page. UI explicitly says semantic embeddings/Qdrant and external-source onboarding are not enabled.
+- Added static contract assertions in `apps/web/tests/lovable-ui-migration.test.ts` and updated `docs/project-control/LOVABLE_UI_MIGRATION.md` / `NEXT_ACTION.md`.
+- Commits: API `9c6bc94e`, UI `95970d59`, test `c4cb353b`, migration matrix `ccbb50ed`, NEXT_ACTION `2018eca4` and `10551cbb`.
+- **Not verified:** no tests, typecheck, build, browser run, API request, database query, or live organization retrieval was executed. This is source adaptation only; no PASS claimed.
+- **Next:** Activity screen adaptation, then Audit, per project-control.
