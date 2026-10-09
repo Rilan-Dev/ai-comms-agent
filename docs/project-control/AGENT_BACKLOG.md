@@ -97,3 +97,12 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Fix commit:** `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e`; removed the stray first YAML document and restored the worker dependency package/snapshot records.
 - **Next action:** Pull latest `main`; run `pnpm install --frozen-lockfile`, then `pnpm run typecheck`. Record actual output. No typecheck PASS claimed until rerun.
 - **Related:** ISS-017; FIX01-PNPM-LOCKFILE-20261009.
+
+### BKL-014 follow-up — 2026-10-09
+- **Work:** Guard against recurrence of the malformed pnpm lockfile / missing `amqplib@2.2.0` dependency graph.
+- **Owner:** FIX-01 / Sentinel
+- **State:** SOURCE_CORRECTED; LOCAL_RERUN_PENDING
+- **Dependency:** A local environment with the repository-pinned pnpm package manager for frozen install and test execution.
+- **Authorization:** User-explicit FIX-01 request for minimal correction and regression protection.
+- **Suggested next action:** Pull latest main; run `pnpm install --frozen-lockfile`, then `pnpm run typecheck`. If the install succeeds but Docker fails for host/network/base-image reasons, route that separate failure to OPS-01.
+- **Related:** ISS-017; FIX01-PNPM-LOCKFILE-REGRESSION-20261009; commits `27f04065`, `b9ba0c67`.
