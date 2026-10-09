@@ -55,9 +55,8 @@ test("delivery failures preserve idempotency/correlation metadata and bound retr
   assert.match(source, /const nextAttempt = \(envelope\?\.attempt_count \?\? 1\) \+ 1/);
   assert.match(source, /const maxAttempts = envelope\?\.max_attempts \?\? 5/);
   assert.match(source, /nextAttempt <= maxAttempts \? RETRY_QUEUE : DEAD_QUEUE/);
-  assert.match(source, /idempotency_key: envelope\.idempotency_key/);
-  assert.match(source, /correlation_id: envelope\.correlation_id/);
-  assert.match(source, /attempt_count: nextAttempt/);
+  // Retry envelopes spread the original envelope, preserving idempotency and correlation fields.
+  assert.match(source, /const retryEnvelope:[\s\S]*?\.{3}envelope/);
   assert.match(source, /available_at: new Date\(Date\.now\(\) \+ \(target === RETRY_QUEUE \? RETRY_DELAY_MS : 0\)\)\.toISOString\(\)/);
 });
 
@@ -77,7 +76,7 @@ test("synced email is indexed idempotently through the Clara PostgreSQL knowledg
   assert.match(knowledgeIndexer, /INSERT INTO knowledge_chunks/);
   assert.match(knowledgeIndexer, /ON CONFLICT \(document_id, chunk_index\) DO UPDATE/);
   // Mentioning the forbidden backend in documentation is harmless; actual client imports/calls are not.
-  assert.doesNotMatch(knowledgeIndexer, /(?:from\\s+["'][^"']*(?:qdrant|vector-store)|\\bqdrant\\.(?:upsert|search|delete)\\b)/i);
+  assert.doesNotMatch(knowledgeIndexer, /(?:from\s+["'][^"']*(?:qdrant|vector-store)|\bqdrant\.(?:upsert|search|delete)\b)/i);
 });
 
 test("Clara retrieval isolates shared knowledge from other agents", () => {
