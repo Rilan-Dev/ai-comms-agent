@@ -155,12 +155,12 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   }
 
   return (
-    <main className="min-h-[calc(100vh-72px)] bg-[radial-gradient(circle_at_top_right,oklch(0.88_0.105_152/.16),transparent_32%)] p-5 sm:p-8">
+    <main className="min-h-[calc(100vh-72px)] bg-background p-5 sm:p-8">
       <div className="mx-auto max-w-5xl">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Clara realtime voice</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight">Talk to your communication agent</h1>
+            <h1 className="mt-1 font-display text-3xl font-medium tracking-tight">Talk to your communication agent<span className="text-tertiary">.</span></h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               Host-authorized session lifecycle around Clara. Provider routing, realtime transport, streaming,
               interruption and reconnect remain Clara-owned.
@@ -198,7 +198,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                 </div>
 
                 {session?.status === "active" ? (
-                  <div className="mt-8 rounded-2xl border bg-muted/30 p-4 text-left">
+                  <div className="mt-8 rounded-md border border-border bg-secondary/50 p-4 text-left">
                     <div className="flex items-center justify-between gap-3">
                       <label htmlFor="voice-transcript" className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">
                         Transcript bridge
@@ -237,7 +237,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
           </div>
 
           <aside className="space-y-4">
-            <div className="rounded-2xl border bg-background p-5">
+            <div className="rounded-md border border-border bg-card p-5">
               <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Session</p>
               <dl className="mt-4 space-y-3 text-sm">
                 <Row label="Provider" value={session?.provider ?? "Not resolved"} />
