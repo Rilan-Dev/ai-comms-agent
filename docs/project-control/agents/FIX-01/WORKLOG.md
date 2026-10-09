@@ -135,3 +135,8 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Evidence:** Current main lockfile has one visible lockfile header, an `apps/worker` importer, `amqplib@2.2.0` under `packages`, and its snapshot. Regression source committed. No install, test, typecheck, Docker build, or runtime check executed by this session.
 - **Prevention lesson:** Lockfile repair is not verified by the repair command finishing or by source inspection alone. Reproduce with the pinned package manager and run `pnpm install --frozen-lockfile`; never continue to typecheck if dependency resolution fails.
 - **Next action:** User pulls latest main (including `27f04065` and `b9ba0c67`), runs `pnpm install --frozen-lockfile`, then `pnpm run typecheck`. If the source-level lockfile regression test itself fails, correct that test narrowly. Docker daemon/base image/build environment errors belong to OPS-01.
+
+### FIX01-PNPM-LOCKFILE-REGRESSION-FOLLOWUP-20261009
+- **Update:** Strengthened the regression test to count exactly one `lockfileVersion:` and one top-level `importers:` key, so concatenated documents without an explicit YAML separator are also detected.
+- **Commit:** `93ae720cd8d77c4c40583bdeb61fffd6593f7898`.
+- **Verification:** Test source only; no test or frozen install executed.
