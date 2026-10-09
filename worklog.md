@@ -1232,3 +1232,11 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - **Operational dependency:** deploy both web and worker; the worker needs the same PostgreSQL database and `CREDENTIALS_MASTER_KEY` as the web service. Migration chain through `0028` must be applied. See ISS-012.
 
 - Follow-up: narrowed the sync candidate query so active claims are not repeatedly selected before their stale-claim timeout; documented that current Gmail sync uses durable PostgreSQL polling while RabbitMQ queue-consumer integration remains future work. Commit `504c2e4d`; architecture note `bf28b1e4`.
+
+
+### 2026-10-09 — DEV-01 / Forge — Draft discoverability
+- Added search to the persisted Drafts screen across subject, body, recipient addresses, and mailbox address, including a distinct no-match state.
+- Product commit: `8ccf1cb24039cb3bc745a51576a73ee68007e946`.
+- Recorded role-local and central session/lesson details; routed suspected Drafts tenant-context and Inbox SQL search-placeholder defects to FIX-01 as BKL-008.
+- No tests/build/browser/runtime/provider/deployment verification was run; no PASS is claimed.
+- Next: continue Zoho and IMAP/SMTP sync ingestion and connect persisted messages/drafts to authorized Clara tools.
