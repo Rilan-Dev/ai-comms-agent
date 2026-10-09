@@ -1071,3 +1071,13 @@ source_review:
 - Settings route now has section navigation and stable anchor targets for organization, mail OAuth, AI provider, Clara runtime, members/roles and workspace links. Existing provider configuration and password/membership endpoints remain unchanged. Added static contract source at apps/web/tests/settings-page-contract.test.ts.
 - Commits: b0c6d04d (Settings UI), 88fd8eea (contract test), 175cb9ea (migration inventory).
 - Status: source_changed_not_tested. No tests, typecheck, build, browser, accessibility, or live API validation were executed.
+
+
+## 2026-10-09 — Settings, Login/Setup, and Agent detail UI source adaptation (not executed)
+
+- Compact Lovable geometry applied across general Settings and AI provider/runtime, Gmail OAuth and Zoho OAuth subcomponents. Existing secret-handling and provider API contracts preserved.
+- Login/Setup now use consistent compact cards and Lucide iconography; authentication redirect guard, bootstrap secret, password minimum, and slug pattern remain in source.
+- Agent detail tabs (overview, versions, policy, channels, test, activity) use compact card geometry and Lucide iconography; organization-scoped server load, versioning, policy validation, and explicit deploy/pause confirmation paths retained.
+- Static assertions added in `apps/web/tests/lovable-ui-migration.test.ts`; migration matrix updated. Relevant source commits and hashes are listed in `docs/project-control/DEV-01/WORKLOG.md`.
+- **Not verified:** tests/typecheck/build/browser/accessibility/live API not run. No PASS claimed.
+- Next: cross-route responsive/accessibility review and remaining secondary controls.
