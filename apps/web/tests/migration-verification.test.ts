@@ -669,3 +669,19 @@ describe("Legacy mailbox sync cursor compatibility (0031)", () => {
     expect(workerSource).not.toContain("s.cursor AS sync_cursor");
   });
 });
+
+describe("pnpm workspace lockfile integrity", () => {
+  const lockfilePath = resolve(__dirname, "../../../pnpm-lock.yaml");
+  const lockfile = readFileSync(lockfilePath, "utf8");
+
+  it("contains exactly one YAML document", () => {
+    expect(lockfile.match(/^---\\s*$/gm) ?? []).toHaveLength(0);
+  });
+
+  it("resolves the worker's amqplib dependency in both package and snapshot sections", () => {
+    expect(lockfile).toContain("  apps/worker:");
+    expect(lockfile).toMatch(/apps\\/worker:[\\s\\S]*?amqplib:[\\s\\S]*?specifier: \\^2\\.2\\.0[\\s\\S]*?version: 2\\.2\\.0/);
+    expect(lockfile).toMatch(/^  amqplib@2\\.2\\.0:$/m);
+    expect(lockfile).toMatch(/^  amqplib@2\\.2\\.0: \\{\\}$/m);
+  });
+});
