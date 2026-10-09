@@ -55,8 +55,8 @@ If a task belongs to another agent, create or update a backlog entry and continu
 ### BKL-010 — Zoho OAuth settings test parser failure
 - **Work:** Execute post-fix web typecheck and focused Zoho OAuth settings test.
 - **Owner:** FIX-01 / Sentinel for source defect; OPS-01 only for any separate infrastructure/CI/deployment failure.
-- **State:** SOURCE_FIXED_VERIFICATION_PENDING
-- **Symptom:** TS1127/TS1434 in `apps/web/tests/zoho-oauth-settings.test.ts:84`; shared/db/clara-core/worker typechecks passed in user's pre-fix output.
-- **Fix commit:** `39857c40820940b500dcf452331dfe82ae35b861`.
-- **Next action:** Run `pnpm run typecheck` then focused test; update verification state from actual output.
+- **State:** ASSERTIONS_CORRECTED_FOCUSED_RERUN_PENDING
+- **Symptom/history:** Original TS1127/TS1434 parser error is corrected in `39857c40820940b500dcf452331dfe82ae35b861`. User's latest `pnpm run typecheck` passes all workspaces; focused test reported 8 passed / 2 failed because of stale expectations.
+- **Latest test-only correction:** `c58d6d442767f471c694ef978fdb06eca6d29850`.
+- **Next action:** Rerun `pnpm --filter @ai-comms-agent/web exec vitest run tests/zoho-oauth-settings.test.ts`; then update verification from actual output.
 - **Related:** ISS-014; EVT-FIX01-ZOHO-TEST-NEWLINES-20261009.
