@@ -34,7 +34,7 @@ export function providerEventToAutomationEvent(event: ProviderEvent) {
       // organizations, actions, messages, accounts, or correlations.
       organizationId: event.organizationId,
       actionId: "actionId" in event ? event.actionId : undefined,
-      messageId: "messageId" in event ? event.messageId : undefined,
+      messageId: "messageId" in event ? event.messageId : event.metadata?.messageId,
       accountId: "accountId" in event ? event.accountId : undefined,
       emailAccountId: "emailAccountId" in event ? event.emailAccountId : undefined,
       correlationId: event.correlationId ?? undefined,
