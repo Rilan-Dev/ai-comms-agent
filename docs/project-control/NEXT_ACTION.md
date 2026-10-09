@@ -6,6 +6,12 @@ The single exact next authorized action. Update this file on every commit.
 
 ## Current next action
 
+## Immediate FIX-01 migration/worker test follow-up — 2026-10-09
+
+The user reported migration-verification failures around audit-event policy assertions and DO-block delimiters, plus worker test failures around retry metadata and the Qdrant exclusion assertion. Source corrections are committed: forward-only migration 0032 (`7557a6cd`), migration test updates (`ee85b554`, `c4d4abd0`), and worker contract-test updates (`cecae73e`, `96996d82`). Source changes only; focused tests, typechecks, and migration execution have NOT run.
+
+**Exact next action:** pull latest `main`; inspect `git status --short`; compare `pnpm-lock.yaml` to `origin/main` because current main contains one lockfile document while the reported local file contains two. Run `pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts` and `pnpm --filter @ai-comms-agent/worker exec node --import tsx --test tests/email-sync-rabbitmq.test.ts`. Then run web and worker typechecks sequentially. Do not wait for CI/Vercel. Route Docker, CI/CD, deployment, or environment defects to OPS-01. Record actual outputs; do not claim PASS before execution.
+
 ### Immediate FIX-01 web typecheck follow-up — 2026-10-09
 
 User-reported web typecheck errors showed the Lovable UI imports lucide-react without a declared web dependency, two focus traps had strict indexed-access errors, and lovable-ui-migration.test.ts referenced an undefined newAgentPage. Source fixes are committed: web dependency 8f09785a, pnpm lockfile records with published SHA-512 integrity 7b1136e6, Agent Detail focus typing 3e35c1f5, sidebar focus typing a9dcb8e5, and static test source binding 52a4e348. These are source changes only; post-fix installation/tests/typechecks have NOT run.
