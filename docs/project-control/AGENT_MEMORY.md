@@ -229,3 +229,5 @@ If shared memory conflicts with current repository state or current requirements
 - **Failed approach:** Frozen install, typecheck, and Vitest all stopped at dependency install; no compiler or tests ran.
 - **Prevention:** Every external tarball lock resolution must retain its published integrity metadata. Never synthesize hashes or bypass pnpm supply-chain verification.
 - **Verification:** Source committed; frozen install/typecheck/Vitest/Docker build remain NOT RUN after this fix.
+
+- **Regression-test lesson (2026-10-09):** When writing regex assertions in TypeScript source through APIs that also require string escaping, inspect the resulting committed source. A test that is committed is not automatically a valid test; check the actual regex literals and execute the focused test after frozen install succeeds. The lockfile test regexes were corrected in commit `162183e8`; execution remains pending.
