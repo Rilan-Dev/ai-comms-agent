@@ -91,10 +91,12 @@ export class GmailAdapter implements EmailProvider {
   private refreshPromise?: Promise<void>;
   private oauthClientId?: string;
   private oauthClientSecret?: string;
+  private credentialMetadata: Record<string, unknown> = {};
 
   async connect(credentials: EmailCredentials): Promise<void> {
     if (!credentials.access_token) throw new Error("Gmail requires an OAuth access token");
     const stored = credentials as unknown as Record<string, unknown>;
+    this.credentialMetadata = { ...stored };
     this.oauthClientId = typeof stored.oauth_client_id === "string" ? stored.oauth_client_id : undefined;
     this.oauthClientSecret = typeof stored.oauth_client_secret === "string" ? stored.oauth_client_secret : undefined;
     this.accessToken = credentials.access_token;
@@ -110,7 +112,21 @@ export class GmailAdapter implements EmailProvider {
     this.refreshPromise = undefined;
     this.oauthClientId = undefined;
     this.oauthClientSecret = undefined;
+    this.credentialMetadata = {};
   }
+
+  getCredentialSnapshot(): Record<string, unknown> {
+    return {
+      ...this.credentialMetadata,
+      credential_type: "oauth_token",
+      ...(this.accessToken ? { access_token: this.accessToken } : {}),
+      ...(this.refreshToken ? { refresh_token: this.refreshToken } : {}),
+      ...(this.expiresAt ? { expires_at: new Date(this.expiresAt).toISOString() } : {}),
+      ...(this.oauthClientId ? { oauth_client_id: this.oauthClientId } : {}),
+      ...(this.oauthClientSecret ? { oauth_client_secret: this.oauthClientSecret } : {}),
+    };
+  }
+
   async discoverCapabilities(): Promise<CapabilitySet> { return { ...CAPABILITIES }; }
   capabilities(): CapabilitySet { return { ...CAPABILITIES }; }
 
