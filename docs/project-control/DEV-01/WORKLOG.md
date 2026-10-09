@@ -123,3 +123,12 @@
 - Added focused source assertions for the sticky offset, sidebar control linkage, and Escape affordance. Commits: Settings nav `1761c404`; sidebar `8235d93c`; contract assertions `7dd88044`, `ab03be9f`, `46fff87b`; inventory `ff18009c`; NEXT_ACTION `0a56626f`.
 - **Verification NOT RUN:** static assertions have not been executed; no tests, typecheck, build, browser, screen reader, or device checks were run. No PASS claimed.
 - **Next:** continue route-by-route narrow viewport and keyboard/accessibility inspection; check visible secondary controls and loading/error/status announcements. Do not wait for CI/Vercel. OPS-01's migration/Redis runtime incident remains separate.
+
+
+## 2026-10-09 — DEV-01 cross-route UI review (in progress)
+
+- Reviewed the shared top bar, mobile sidebar, global focus styles, Settings navigation, login/setup, and agent-detail surfaces.
+- Fixed Settings section navigation to use `top-[64px] z-10` beneath the 64px global top bar. Mobile sidebar now closes on Escape and its trigger exposes `aria-expanded` and `aria-controls`.
+- Added source assertions for the new behavior. Commits: `1761c404`, `8235d93c`, `7dd88044`, `ab03be9f`, `46fff87b`; docs: `ff18009c`, `0a56626f`.
+- Tests/typecheck/build/browser/screen-reader/device checks NOT RUN. No PASS claimed.
+- Next: continue narrow-viewport and keyboard review, status announcements, and remaining secondary controls. Do not wait for CI/Vercel; OPS-01 runtime incident remains separate.
