@@ -1591,3 +1591,9 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - **Verification:** tests, typechecks, build, runtime integration, and deployment were not executed by the GitHub connector. No deployment success is claimed. Preserve `pnpm-lock.yaml` and the four local lockfile backup artifacts.
 - **Next:** pull/fetch the branch without overwriting local work; run the focused web email-action and migration tests, then the worker suite and web/worker typechecks. Correct any remaining concrete failures without weakening behavior or waiting for CI/Vercel.
 
+### 2026-10-10 — Preview deployment blocked by Vercel API quota
+
+- Requested a preview deployment of `fix/migration-verification-phase4-contract` at `a4877ee23152b4895bf5eae48243ddb0202c8155`.
+- Vercel rejected the deployment request with HTTP 402 `api-deployments-free-per-day`: more than 100 deployment API calls in the daily allowance, retry after 24 hours.
+- No deployment was created; earlier branch deployments shown by Vercel were canceled and targeted earlier commits.
+- **No deployment success is claimed.** The preview request should be retried after the cooldown/account quota resolution and after focused tests/typechecks are run. No quota or billing settings were changed.
