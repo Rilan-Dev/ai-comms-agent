@@ -334,7 +334,7 @@ describe("Phase 4 database foundation migration", () => {
 
 
 describe("Phase 4 database security hardening migration", () => {
-  const securityPath = resolve(__dirname, "../../../supabase/migrations/0003_database_security_hardening.sql");
+  const securityPath = resolve(__dirname, "../../../supabase/migrations/0013_database_security_hardening.sql");
   const securitySql = readFileSync(securityPath, "utf8");
 
   it("uses the repository app.user_id context instead of a second auth identity contract", () => {
@@ -378,7 +378,7 @@ describe("Phase 4 database security hardening migration", () => {
 
 
 describe("Phase 4 agent policy configuration migration", () => {
-  const policyPath = resolve(__dirname, "../../../supabase/migrations/0004_agent_policy_configuration.sql");
+  const policyPath = resolve(__dirname, "../../../supabase/migrations/0005_agent_policy_configuration.sql");
   const policySql = readFileSync(policyPath, "utf8");
 
   it("persists per-agent security policy and allowed tool configuration", () => {
