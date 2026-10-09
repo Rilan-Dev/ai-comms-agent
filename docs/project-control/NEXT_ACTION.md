@@ -818,3 +818,7 @@ The opt-in local infrastructure services are now active in `infra/docker-compose
 - Latest user-provided typecheck: shared, DB, Clara Core, and worker passed; web failed because `apps/web/tests/zoho-oauth-settings.test.ts` contained literal `\n` sequences at line 84.
 - Narrow fix committed: `39857c40820940b500dcf452331dfe82ae35b861`.
 - **Next:** Run `pnpm run typecheck` and focused Zoho OAuth settings test. Record actual post-fix output. Do not wait for DEV-01; route unrelated infrastructure/CI/deploy failures to OPS-01.
+
+### FIX-01 runtime-schema source follow-up — 2026-10-09
+- Added static migration regression coverage for migration `0029_runtime_schema_reconciliation.sql` in `apps/web/tests/migration-verification.test.ts` (commit `282c4fea59b848e876bc65d79b250752b8339bda`).
+- Source/test edits are committed, but tests and migration have not been executed. OPS-01 remains responsible for applying migrations through `0029`, rolling out matching web/worker images, and diagnosing the Redis response. Do not wait for CI/Vercel; do not claim runtime success.
