@@ -1,0 +1,296 @@
+import {
+  parseCredentialsMasterKey,
+  PostgresEmailAccountRepository,
+  PostgresEmailFolderLabelRepository,
+  query,
+} from "@ai-comms-agent/db";
+import type { EmailCredentials, EmailMessage, SyncState } from "@ai-comms-agent/shared";
+import { GmailAdapter } from "./gmail-adapter";
+
+type Candidate = {
+  id: string;
+  organization_id: string;
+  email_address: string;
+  sync_cursor: string | null;
+  history_id: string | null;
+  last_success_at: string | null;
+};
+
+let processing = false;
+const INTERVAL_MS = 30_000;
+const BATCH_SIZE = 3;
+
+async function persistMessage(account: Candidate, message: EmailMessage): Promise<void> {
+  const participants = [...new Set([
+    message.from_address,
+    ...message.to_addresses,
+    ...message.cc_addresses,
+    ...message.bcc_addresses,
+  ].map((address) => address.trim()).filter(Boolean))];
+
+  const thread = await query<{ id: string }>(
+    `INSERT INTO email_threads
+      (email_account_id, organization_id, provider_thread_id, subject, normalized_subject,
+       participant_emails, first_message_at, last_message_at, message_count, snippet, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6::citext[],$7,$7,0,$8,now())
+     ON CONFLICT (email_account_id, provider_thread_id) WHERE provider_thread_id IS NOT NULL
+     DO UPDATE SET subject=EXCLUDED.subject,
+       participant_emails=EXCLUDED.participant_emails,
+       first_message_at=LEAST(COALESCE(email_threads.first_message_at, EXCLUDED.first_message_at), EXCLUDED.first_message_at),
+       last_message_at=GREATEST(COALESCE(email_threads.last_message_at, EXCLUDED.last_message_at), EXCLUDED.last_message_at),
+       snippet=EXCLUDED.snippet, updated_at=now()
+     RETURNING id`,
+    [
+      account.id,
+      account.organization_id,
+      message.thread_id || message.provider_message_id || message.id,
+      message.subject || "",
+      (message.subject || "").trim().toLowerCase(),
+      participants,
+      message.received_at,
+      message.snippet || "",
+    ],
+  );
+  const threadId = thread.rows[0]?.id;
+  if (!threadId) throw new Error("Could not persist the Gmail message thread.");
+
+  const labels = message.folder_id ? [message.folder_id] : [];
+  const folder = await query<{ id: string }>(
+    `SELECT id FROM email_folders
+     WHERE email_account_id=$1 AND provider_folder_id = ANY($2::text[])
+     ORDER BY CASE WHEN provider_folder_id='INBOX' THEN 0 ELSE 1 END
+     LIMIT 1`,
+    [account.id, labels],
+  );
+  const folderId = folder.rows[0]?.id ?? null;
+
+  await query(
+    `INSERT INTO email_messages
+      (email_account_id, organization_id, thread_id, folder_id, provider_message_id,
+       internet_message_id, in_reply_to, references_header, from_email, to_recipients,
+       cc_recipients, bcc_recipients, subject, text_body, html_body_sanitized, snippet,
+       headers, labels, is_read, is_starred, is_draft, is_sent, importance_score,
+       action_required, received_at, sent_at, provider_updated_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12::jsonb,$13,$14,NULL,$15,
+       '{}'::jsonb,$16::jsonb,$17,$18,$19,$20,$21,$22,$23,$24,$23,now())
+     ON CONFLICT (email_account_id, provider_message_id)
+     DO UPDATE SET thread_id=EXCLUDED.thread_id, folder_id=EXCLUDED.folder_id,
+       internet_message_id=EXCLUDED.internet_message_id, in_reply_to=EXCLUDED.in_reply_to,
+       references_header=EXCLUDED.references_header, from_email=EXCLUDED.from_email,
+       to_recipients=EXCLUDED.to_recipients, cc_recipients=EXCLUDED.cc_recipients,
+       bcc_recipients=EXCLUDED.bcc_recipients, subject=EXCLUDED.subject,
+       text_body=EXCLUDED.text_body, snippet=EXCLUDED.snippet, labels=EXCLUDED.labels,
+       is_read=EXCLUDED.is_read, is_starred=EXCLUDED.is_starred, is_draft=EXCLUDED.is_draft,
+       is_sent=EXCLUDED.is_sent, importance_score=EXCLUDED.importance_score,
+       provider_updated_at=EXCLUDED.provider_updated_at, updated_at=now()`,
+    [
+      account.id,
+      account.organization_id,
+      threadId,
+      folderId,
+      message.provider_message_id || message.id,
+      message.message_id_header || null,
+      message.in_reply_to || null,
+      (message.references ?? []).join(" ") || null,
+      message.from_address || null,
+      JSON.stringify(message.to_addresses ?? []),
+      JSON.stringify(message.cc_addresses ?? []),
+      JSON.stringify(message.bcc_addresses ?? []),
+      message.subject || "",
+      message.text_body || "",
+      message.snippet || "",
+      JSON.stringify(labels),
+      message.is_read,
+      message.is_starred,
+      message.is_draft,
+      message.is_outbound,
+      message.importance_score,
+      message.action_required,
+      message.received_at,
+      message.is_outbound ? message.received_at : null,
+    ],
+  );
+
+  await query(
+    `UPDATE email_threads SET
+       message_count=(SELECT count(*) FROM email_messages WHERE thread_id=$1),
+       updated_at=now()
+     WHERE id=$1`,
+    [threadId],
+  );
+}
+
+async function processAccount(candidate: Candidate): Promise<boolean> {
+  const claimed = await query<{
+    cursor: string | null;
+    history_id: string | null;
+    last_success_at: string | null;
+  }>(
+    `INSERT INTO email_sync_states
+      (email_account_id, organization_id, status, last_attempt_at, updated_at)
+     VALUES ($1,$2,'running',now(),now())
+     ON CONFLICT (email_account_id) DO UPDATE
+       SET status='running', last_attempt_at=now(), updated_at=now()
+       WHERE email_sync_states.status <> 'running'
+          OR email_sync_states.last_attempt_at < now()-interval '10 minutes'
+     RETURNING cursor, history_id, last_success_at`,
+    [candidate.id, candidate.organization_id],
+  );
+  if (!claimed.rows[0]) return false;
+
+  const masterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
+  if (!masterKey) throw new Error("CREDENTIALS_MASTER_KEY is required for mailbox synchronization.");
+
+  const accounts = new PostgresEmailAccountRepository();
+  const stored = await accounts.loadCredentials(candidate.id, parseCredentialsMasterKey(masterKey));
+  if (!stored) throw new Error("Encrypted Gmail credentials are missing. Reconnect this mailbox.");
+
+  const credentials: EmailCredentials = {
+    ...(stored as unknown as EmailCredentials),
+    credential_type: "oauth_token",
+  };
+  const adapter = new GmailAdapter();
+
+  try {
+    await adapter.connect(credentials);
+    const structure = await query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM email_folders WHERE email_account_id=$1",
+      [candidate.id],
+    );
+    if (Number(structure.rows[0]?.count ?? 0) === 0) {
+      const [folders, labels] = await Promise.all([
+        adapter.listFolders(),
+        adapter.listLabels ? adapter.listLabels() : Promise.resolve([]),
+      ]);
+      await new PostgresEmailFolderLabelRepository().replaceStructure(
+        candidate.id,
+        candidate.organization_id,
+        folders,
+        labels,
+      );
+    }
+
+    const state: SyncState = {
+      cursor: claimed.rows[0].cursor ?? undefined,
+      history_token: claimed.rows[0].history_id ?? undefined,
+      last_sync_at: claimed.rows[0].last_success_at ?? new Date(0).toISOString(),
+      sync_mode: claimed.rows[0].cursor || !claimed.rows[0].history_id ? "initial" : "incremental",
+    };
+    const result = await adapter.sync(state);
+    const messageIds = new Set([
+      ...result.added.map((item) => item.provider_message_id),
+      ...result.updated.map((item) => item.provider_message_id),
+    ]);
+    let saved = 0;
+    for (const id of messageIds) {
+      const message = await adapter.getMessage(id);
+      if (!message) continue;
+      await persistMessage(candidate, message);
+      saved += 1;
+    }
+
+    await query(
+      `UPDATE email_sync_states SET cursor=$1, history_id=$2, status='idle',
+         last_success_at=now(), last_attempt_at=now(), next_attempt_at=NULL,
+         error_count=0, last_error=NULL, updated_at=now()
+       WHERE email_account_id=$3`,
+      [result.new_state.cursor ?? null, result.new_state.history_token ?? null, candidate.id],
+    );
+    await accounts.updateSyncState(candidate.id, new Date().toISOString());
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: "info",
+      service: "worker.email-sync",
+      message: "Gmail mailbox synchronization completed",
+      organization_id: candidate.organization_id,
+      account_id: candidate.id,
+      imported_or_updated: saved,
+      sync_mode: result.new_state.sync_mode,
+      initial_import_remaining: result.new_state.sync_mode === "initial",
+    }));
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message.slice(0, 500) : "Gmail synchronization failed.";
+    const revoked = /invalid_grant|no refresh token is available|refresh token.*revoked/i.test(message);
+    await query(
+      `UPDATE email_sync_states SET status='error', last_attempt_at=now(),
+         next_attempt_at=now()+make_interval(secs => LEAST(3600, 60 * power(2, LEAST(error_count,5))::int)),
+         error_count=error_count+1, last_error=$1, updated_at=now()
+       WHERE email_account_id=$2`,
+      [message, candidate.id],
+    );
+    await accounts.updateStatus(candidate.id, revoked ? "revoked" : "error", message);
+    console.error(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: "error",
+      service: "worker.email-sync",
+      message: "Gmail mailbox synchronization failed",
+      organization_id: candidate.organization_id,
+      account_id: candidate.id,
+      reason: message,
+      status: revoked ? "revoked" : "error",
+    }));
+    return false;
+  } finally {
+    await adapter.disconnect().catch(() => undefined);
+  }
+}
+
+export async function processGmailMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ attempted: number; succeeded: number }> {
+  if (processing || !process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY) {
+    return { attempted: 0, succeeded: 0 };
+  }
+  processing = true;
+  let attempted = 0;
+  let succeeded = 0;
+  try {
+    const candidates = await query<Candidate>(
+      `SELECT a.id, a.organization_id, a.email_address,
+         s.cursor AS sync_cursor, s.history_id, s.last_success_at
+       FROM email_accounts a
+       LEFT JOIN email_sync_states s ON s.email_account_id=a.id
+       WHERE a.provider='gmail' AND a.deleted_at IS NULL
+         AND a.status IN ('pending','connected','error')
+         AND COALESCE(s.status::text,'idle') <> 'paused'
+         AND (s.next_attempt_at IS NULL OR s.next_attempt_at <= now())
+         AND (s.last_attempt_at IS NULL
+           OR s.last_attempt_at < now()-interval '30 seconds'
+           OR (s.status='running' AND s.last_attempt_at < now()-interval '10 minutes'))
+       ORDER BY CASE a.status WHEN 'pending' THEN 0 WHEN 'error' THEN 1 ELSE 2 END,
+         COALESCE(s.last_success_at, a.created_at) ASC
+       LIMIT $1`,
+      [Math.max(1, Math.min(limit, 10))],
+    );
+    for (const candidate of candidates.rows) {
+      attempted += 1;
+      if (await processAccount(candidate)) succeeded += 1;
+    }
+    return { attempted, succeeded };
+  } finally {
+    processing = false;
+  }
+}
+
+export function startGmailMailboxSyncLoop() {
+  if (!process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY || process.env.GMAIL_MAILBOX_SYNC_DISABLED === "true") {
+    return () => undefined;
+  }
+  let stopped = false;
+  const tick = async () => {
+    if (stopped) return;
+    try {
+      await processGmailMailboxSyncBatch();
+    } catch (error) {
+      console.error(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: "error",
+        service: "worker.email-sync",
+        message: "Gmail synchronization poll failed",
+        reason: error instanceof Error ? error.message : "Unknown worker error",
+      }));
+    }
+  };
+  void tick();
+  const timer = setInterval(() => { void tick(); }, INTERVAL_MS);
+  return () => { stopped = true; clearInterval(timer); };
+}
