@@ -53,3 +53,13 @@ Added a PassThrough-socket regression that splits the literal marker, literal pa
 - Added `apps/worker/tests/email-sync-message.test.ts` for normal sync, full-sync idempotency and invalid payloads. Tests have not been executed.
 - RabbitMQ is still **not integrated**: no AMQP client/transport, durable topology, publisher confirms, manual ack consumer, retry policy, or DLQ exists. This change is contract groundwork only.
 - Clara boundary audit: local `packages/clara-core/src/runtime.ts` exposes `retrieve()` but no supported indexing API; `createProvider().embedText/embedBatch` deliberately reject because embeddings are not configured. The reference library contains Qdrant/indexing modules, but those rely on Clara-specific DB/provider/vector-store imports and are not a drop-in host API. No direct Qdrant indexing was added. A supported host adapter boundary must be defined before email indexing can be called complete.
+
+
+## 2026-10-09 — RabbitMQ email.sync source integration
+
+- Added `amqplib` to the worker dependencies and lockfile, plus `apps/worker/src/queues/email-sync-rabbitmq.ts`.
+- Source declares durable `email.sync`, `email.sync.retry`, and `email.sync.dlq` queues; retry queue uses a 30-second TTL and dead-letter routing back to the main queue. Messages are persistent, include correlation/message/idempotency metadata, and are published on confirm channels with `waitForConfirms()`.
+- Consumer uses prefetch=1 and manual ack. It publishes the next bounded retry or DLQ copy and waits for confirmation before acknowledging the original. If republish cannot be confirmed, the original is nacked/requeued.
+- Worker polling publishes eligible account sync jobs when `RABBITMQ_URL` is configured; the consumer dispatches to the existing account-scoped PostgreSQL claim/provider sync implementation. Without RabbitMQ configuration, the existing PostgreSQL polling path remains active.
+- Added source-level contract tests in `apps/worker/tests/email-sync-rabbitmq.test.ts`. Tests/typechecks, dependency lockfile acceptance, broker connectivity, reconnect behavior, and live delivery have not been verified. This is source integration, not runtime acceptance.
+- Clara Core still has no supported indexing API identified in the host runtime; next implement an explicit supported adapter contract, not a parallel/direct Qdrant implementation.
