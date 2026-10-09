@@ -4,6 +4,8 @@ One-screen project status. This file is the canonical answer to "where are we?".
 
 ---
 
+> **Active continuation (2026-10-09):** User-directed Lovable UI migration supersedes the older connected-mailbox item as the immediate DEV-01 priority. Inbox and Agents visual tranches are committed; tests and builds remain unexecuted. Exact next action: `docs/project-control/NEXT_ACTION.md`.
+
 ```yaml
 project: ai-comms-agent
 repository: Rilan-Dev/ai-comms-agent
@@ -17,7 +19,7 @@ phase_status: "implementation in progress — verification deferred until develo
 
 last_completed_phase: 2
 last_completed_phase_status: "APPROVED (2026-10-03)"
-current_objective: "Complete the full communications agent product under ChatGPT ownership; automated validation is a later gate"
+current_objective: "Owner-directed Lovable Agentic AI Studio UI migration across the existing Next.js product; preserve real functionality and validation, then resume connected-mailbox/Clara work"
 
 architect: "ChatGPT (Chief Architect / Project Controller)"
 developer: "ChatGPT (primary implementer and verifier; Z.AI no longer required)"
@@ -28,9 +30,9 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "ed187d1e9dea76559f76eeddce6bd45b1a3c966d"
-current_commit_short: "ed187d1e"
-current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/ed187d1e9dea76559f76eeddce6bd45b1a3c966d"
+current_commit: "c89fa3fc9d0af74d8b3cf0edfa4edad305fd5826"
+current_commit_short: "c89fa3fc"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/c89fa3fc9d0af74d8b3cf0edfa4edad305fd5826"
 last_verified_commit: "pending_runtime_acceptance"
 
 open_blockers:
@@ -38,6 +40,8 @@ open_blockers:
   - "ISS-011: AI provider/Clara configuration completeness implementation is in progress; migration 0028 and live chat/voice/provider validation are pending"
   - "ISS-012: Gmail OAuth mailbox sync worker and initial import are implemented on main; web/worker deployment and live mailbox sync verification are pending"
   - "BKL-008: FIX-01 to review Drafts organization context and Inbox search SQL placeholders"
+  - "ISS-015 / BKL-011: OPS-01 must apply migration 0029, roll out matching web/worker containers, and diagnose Redis lease rejection"
+  - "Lovable UI migration: screen-level source changes are committed, but test/typecheck/build/browser/runtime verification is unexecuted"
 open_risks:
   - "Clara manifest has 2 SHA typos (Clara library issue, not file mutations — see CLARA-INTEGRATION.md §8a)"
   - "No managed database dependency; operator must provide PostgreSQL 15+ for deployment"
@@ -46,9 +50,9 @@ required_decision:
   - "Complete Phase 4 implementation, then run CI/runtime verification and perform ChatGPT acceptance"
 
 next_action:
-  actor: "ChatGPT"
-  action: "Continue connected-mailbox completion for Gmail/Zoho/IMAP and wire persisted mail/drafts into inbox and authorized agent tools"
-  then: "Deploy both web and worker, apply migrations through 0028, verify Gmail status and initial mail/draft import, then continue the remaining AI/knowledge/voice/WhatsApp configuration audit without waiting for CI/Vercel"
+  actor: "DEV-01 / Forge"
+  action: "Continue the owner-authorized Lovable UI migration, next adapting Mail Accounts, Drafts, Threads, Compose, and Approvals while preserving current API/auth/tenant/validation behavior"
+  then: "Continue WhatsApp, Automations, Schedules, Chat, AI & Voice, Knowledge, Activity, Audit, Operations and Settings; resume queued connected-mailbox/Clara work after the UI tranche. Do not wait for CI/Vercel; route bugs to FIX-01 and infrastructure to OPS-01."
 
 phase2_summary:
   status: "implementation_complete_awaiting_review"
