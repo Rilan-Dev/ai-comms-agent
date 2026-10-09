@@ -1,0 +1,76 @@
+{
+  "source_repository": "Rilan-Dev/ai-comms-agent",
+  "target_repository": "Rilan-Dev/ai-comms-agent",
+  "capabilities": [
+    {
+      "capability": "application code",
+      "source": "GitHub main branch",
+      "outcome": "preserve Next.js monorepo and merge redesigned frontend",
+      "status": "in_progress",
+      "next_action": "apply UI commit"
+    },
+    {
+      "capability": "database schema and records",
+      "source": "self-hosted PostgreSQL packages and migrations",
+      "outcome": "preserve unchanged",
+      "status": "preserved",
+      "next_action": "verify existing CI"
+    },
+    {
+      "capability": "identity and authorization",
+      "source": "existing organization and RBAC implementation",
+      "outcome": "preserve unchanged",
+      "status": "preserved",
+      "next_action": "verify existing CI"
+    },
+    {
+      "capability": "email accounts and OAuth",
+      "source": "existing Gmail, Zoho, IMAP/SMTP routes",
+      "outcome": "preserve unchanged",
+      "status": "preserved",
+      "next_action": "verify existing CI"
+    },
+    {
+      "capability": "mail inbox and actions",
+      "source": "existing persisted inbox APIs and client",
+      "outcome": "restyle while retaining search, filters, read state, archive, and move actions",
+      "status": "in_progress",
+      "next_action": "apply and verify UI commit"
+    },
+    {
+      "capability": "WhatsApp, agents, automations, schedules, voice, knowledge, activity, and audit",
+      "source": "existing routes and APIs",
+      "outcome": "preserve and expose in redesigned navigation",
+      "status": "in_progress",
+      "next_action": "apply redesigned shell"
+    },
+    {
+      "capability": "public endpoints and callbacks",
+      "source": "existing API routes",
+      "outcome": "preserve unchanged",
+      "status": "preserved",
+      "next_action": "verify existing CI"
+    },
+    {
+      "capability": "secrets and external providers",
+      "source": "existing deployment configuration",
+      "outcome": "preserve unchanged; no secret values accessed",
+      "status": "preserved",
+      "next_action": "none"
+    },
+    {
+      "capability": "cutover",
+      "source": "GitHub main and existing Vercel project",
+      "outcome": "commit UI directly to original repository main branch",
+      "status": "pending",
+      "next_action": "create reviewed commit"
+    },
+    {
+      "capability": "verification",
+      "source": "repository CI",
+      "outcome": "run CI on merged commit and inspect result",
+      "status": "pending",
+      "next_action": "wait for workflow"
+    }
+  ]
+}
