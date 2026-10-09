@@ -1300,3 +1300,12 @@ Updated agent list/empty-state marks to inline SVG iconography consistent with t
 
 ### 2026-10-09 — Mail navigation active-state correction
 The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts and nested routes. Added a static contract assertion. GitHub rejected one stale-blob update with a 409; refetched the current file SHA and applied the change safely. Commits: `a6c0abb0b5521aa0b6d636c48f83dc7f301a2c44`, `11ff84aac3a8379b09de78a191d704bd845512d6`. No tests or build checks run.
+
+### 2026-10-09 — DEV-01 / Forge — Lovable Inbox + Agents UI tranche
+- Reviewed the source Lovable Inbox route and WorkspaceShell alongside the production Next.js persisted Inbox and Agents UI.
+- Adapted Inbox to the Lovable warm-neutral/ink/green visual language, compact borders, editorial heading, inline SVG icons, compact metrics and filter controls. Preserved API-backed search/refresh, mailbox/unread/action filters, read/unread mutation, archive/move actions, compose/approvals/mailbox navigation, empty state and error feedback.
+- Adapted Agents list/create layout, metric treatment, status colors, typography and form geometry while preserving create API, slug pattern, purpose length limit, notifications, filtering and configuration navigation.
+- Extended static UI migration contract assertions.
+- Commits: `9de78b0f3c889114c976b60242b1de80a3305549`, `c9641d9d99d95b7556d88267336790b3cc3f5195`, `0aef87b0db4e249173d7ed62d7e3d664bd7cb9bf`; NEXT_ACTION pointer `39423d765416b506b75d437aa6ee8031d1ea8d49`.
+- Verification: source writes only; no test/typecheck/build/browser/runtime checks executed. No PASS claimed.
+- Exact next action: continue Lovable visual adaptation on Mail Accounts, Drafts, Threads, Compose and Approvals, then the remaining route groups. Keep connected-mailbox/Clara integration queued until the UI tranche is complete; route substantial bugs to FIX-01 and infrastructure to OPS-01.
