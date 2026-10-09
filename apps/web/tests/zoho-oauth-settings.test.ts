@@ -81,7 +81,9 @@ describe("Zoho OAuth settings and dynamic callback", () => {
   });
   it("derives callback origins from requests and requires HTTPS for public OAuth hosts", () => {
     const helper = read("../src/lib/oauth/redirect-uri.ts");
-    expect(helper).toContain("new URL(request.url)");\n    expect(helper).toContain("x-forwarded-host");\n    expect(helper).toContain("x-forwarded-proto");
+    expect(helper).toContain("new URL(request.url)");
+    expect(helper).toContain("x-forwarded-host");
+    expect(helper).toContain("x-forwarded-proto");
     expect(helper).toContain("assertOAuthRedirectUriSecure");
     expect(helper).toContain("url.protocol !== \"https:\"");
     expect(helper).not.toContain("NEXT_PUBLIC_APP_URL");
