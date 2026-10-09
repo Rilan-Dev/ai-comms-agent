@@ -143,6 +143,10 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(whatsapp).toContain("setShowConnectForm(v => !v)");
     expect(whatsapp).toContain("Save and connect");
     expect(whatsapp).toContain("does not claim a successful Meta verification");
+    expect(whatsapp).toContain("Daily briefing");
+    expect(whatsapp).toContain('href="/schedules"');
+    expect(whatsapp).toContain("webhook verification are not yet confirmed");
+    expect(whatsapp).toContain("a.last_error");
   });
 
   it("adapts WhatsApp to the Lovable design while preserving secure account and idempotent send flows", () => {
