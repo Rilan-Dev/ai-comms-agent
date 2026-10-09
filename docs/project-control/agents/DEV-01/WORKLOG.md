@@ -186,3 +186,12 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - Commits: `a6c0abb0b5521aa0b6d636c48f83dc7f301a2c44`, `11ff84aac3a8379b09de78a191d704bd845512d6`.
 - A stale-blob GitHub update returned 409; refetched the current file SHA and applied the focused change safely. No force update or history rewrite.
 - No tests/typecheck/build/browser/runtime checks executed. Continue the remaining UI migration.
+
+### DEV01-LOVABLE-UI-MIGRATION-20261009 — Inbox + Agents tranche
+- Continued from GitHub main after reading the active NEXT_ACTION and role memory/worklog. Reviewed the Lovable reference inbox route, workspace shell, semantic styles and the production Next.js Inbox/Agents implementations.
+- Updated `apps/web/src/app/mail/inbox/inbox-client.tsx` to match the Lovable compact editorial layout, semantic icon-led headers, warm-neutral palette, compact borders and typography. Preserved persisted Inbox API refresh/search, mailbox/unread/action filters, read/unread mutation, archive/move operations, Compose/Approvals/Mailboxes navigation, empty state, and alert/error reporting.
+- Updated `apps/web/src/app/agents/agents-client.tsx` to align typography, metrics, compact list rows, semantic status colors, form fields and buttons with the Lovable design. Preserved API-backed creation, slug pattern validation, 500-character purpose limit, notifications, filtering, refresh, and configuration navigation.
+- Extended `apps/web/tests/lovable-ui-migration.test.ts` to assert the preserved Inbox actions, empty/error states, Agent validation, and design markers.
+- Commits: `9de78b0f3c889114c976b60242b1de80a3305549`, `c9641d9d99d95b7556d88267336790b3cc3f5195`, `0aef87b0db4e249173d7ed62d7e3d664bd7cb9bf`, control pointer `39423d765416b506b75d437aa6ee8031d1ea8d49`.
+- Verification: GitHub source writes accepted. No test/typecheck/build/browser/runtime checks executed; no PASS claimed.
+- Next: continue remaining Mail subpages (Accounts, Drafts, Threads, Compose, Approvals), then WhatsApp, Automations, Schedules, Chat, AI & Voice, Knowledge, Activity, Audit, Operations and Settings. Keep the queued connected-mailbox/Clara integration work after the UI tranche.
