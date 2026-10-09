@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CheckCircle2, KeyRound } from "lucide-react";
-import { ArrowRight, CheckCircle2, KeyRound, ShieldCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, KeyRound } from "lucide-react";
 
 export default function SetupPage() {
   const router = useRouter();
