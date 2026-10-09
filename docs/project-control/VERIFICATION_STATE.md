@@ -1081,3 +1081,11 @@ source_review:
 - Static assertions added in `apps/web/tests/lovable-ui-migration.test.ts`; migration matrix updated. Relevant source commits and hashes are listed in `docs/project-control/DEV-01/WORKLOG.md`.
 - **Not verified:** tests/typecheck/build/browser/accessibility/live API not run. No PASS claimed.
 - Next: cross-route responsive/accessibility review and remaining secondary controls.
+
+
+## 2026-10-09 — Agent channels accessibility/data-source correction (not executed)
+
+- Corrected Agent Detail channel loading to request WhatsApp accounts from `/api/whatsapp/accounts` separately from email accounts. Previously the component read `payload.whatsappAccounts` from the email-only endpoint response, leaving the WhatsApp selector empty. Both requests remain organization-scoped and use cancellable effect cleanup.
+- Added a source-contract assertion and labeled the deploy/pause confirmation dialog for assistive technology.
+- Commits: `1f0566b4`, `a67c1dee`, `3d8e2669`, `952d704e`.
+- Tests/typecheck/build/browser/live API verification remain NOT RUN. No PASS claimed.
