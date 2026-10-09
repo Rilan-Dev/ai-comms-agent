@@ -168,3 +168,8 @@ Current working branch for the latest FIX-01 corrections is `fix/migration-verif
 
 Do not infer test or deployment success from the commits. Tests, typechecks, build, live integration, and deployment remain unverified in this continuation. The exact next action is in `docs/project-control/NEXT_ACTION.md`; verification truth is in `docs/project-control/VERIFICATION_STATE.md`. Keep the local lockfile and backup files intact, and continue without waiting for GitHub Actions or Vercel.
 
+
+
+## Latest continuation snapshot — 2026-10-10, user test feedback
+
+User-run output: email action contract 8/8 passed; migration verification 85/86 passed (lockfile header count differs in /docker/ai-comms-agent from GitHub's current branch lockfile, which has one of each top-level header); worker suite 79/81 passed (IMAP multiple-literal and scheduling-idempotency assertion failures). Targeted test fixes are now committed in a666d98b8b9f1e437355c392d01c42a9dc54bfe9 and bb987c60129ebd1d4f3d5bd8f132068859ffb6c2. Web/worker typechecks showed no errors. Next: pull latest branch, re-run focused tests, and diagnose realpath pnpm-lock.yaml plus git status --short/header grep in the user's runtime; preserve local backups. Do not claim full suite, build, integration, or deployment success until observed.
