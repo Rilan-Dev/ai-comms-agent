@@ -870,3 +870,12 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Tests, typecheck, build, migrations, Google/Zoho provider-console registration, and live OAuth have not been executed here. Status remains unverified; no PASS claimed.
 
 - Follow-up: updated Gmail and Zoho worker refresh tests to use the selected account's encrypted OAuth client fields, and typed these fields in `EmailCredentials`. Tests were not executed after the update.
+
+
+## 2026-10-09 — OAuth callback public-origin correction
+
+- Source status: shared Gmail/Zoho callback origin helper now uses a validated single `X-Forwarded-Host` + `X-Forwarded-Proto` pair when supplied by the trusted reverse proxy; malformed/partial forwarding chains fail closed.
+- Gmail and Zoho success redirects use the resolved public origin. Settings pages display an explicit warning when the callback origin differs from the browser's current origin.
+- Regression tests cover internal `https://localhost:3000` plus public proxy headers, malformed forwarding headers, and Settings mismatch guidance.
+- **Not verified:** unit tests have not been executed; no typecheck/build, live reverse-proxy header check, migration deployment, or Google/Zoho OAuth flow has been run in this session. No PASS is claimed.
+- Required runtime action: configure proxy header overwrite/validation, deploy current main, access Settings through the intended public HTTPS domain, confirm exact displayed callback, then restart OAuth.
