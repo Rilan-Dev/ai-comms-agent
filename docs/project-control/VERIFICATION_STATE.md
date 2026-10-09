@@ -1180,3 +1180,12 @@ source_review:
 - Corrected test expectations for valid PostgreSQL `$$` delimiters and narrowed single-dollar regexes in commit `58730eb8b0fa46bfdd5fca581295209921582dbe`.
 - **Pending:** Re-run the focused Vitest test after reconciling the local duplicate-document lockfile against the PR branch. No PASS claimed.
 - GitHub branch lockfile is single-document; local working copy remains modified and must be reconciled carefully.
+
+## Continuation record — 2026-10-10 (FIX-01)
+
+- Branch: `fix/migration-verification-phase4-contract`.
+- Source changes committed: Node test-runner compatibility for three worker contract tests; ESM-safe fixture paths in six worker tests; provider capability-discovery retry; RFC 2047 IMAP encoded-header matching; provider-event informational message metadata; and corrections to Clara, IMAP, Zoho, and email-action static contracts/mocks.
+- GitHub accepted source and control commits. This confirms commit creation only.
+- **NOT RUN / NOT VERIFIED:** focused web tests, full worker test suite, web/worker typechecks, build, provider/database runtime integration, and deployment.
+- No deployment PASS is claimed. Preserve the lockfile and local backup artifacts. Next verification is specified in `docs/project-control/NEXT_ACTION.md`.
+
