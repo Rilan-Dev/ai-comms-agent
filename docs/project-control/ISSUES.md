@@ -332,3 +332,14 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Finding:** The first integrity assertion source had over-escaped regex literals. FIX-01 corrected the regexes to actual JavaScript regex syntax and scoped the integrity check to the `amqplib@2.2.0` entry.
 - **Commit:** `162183e8d7c67b8346c15989ef850327e487cfc4`.
 - **State:** Test source corrected; execution still pending successful frozen install.
+
+## ISS-018 — Worker RabbitMQ URL type and stale migration verification paths
+- **Opened:** 2026-10-09
+- **Severity:** high (workspace typecheck blocker and focused test collection blocker)
+- **Owner:** FIX-01 / Sentinel
+- **Status:** source_corrected_verification_pending
+- **User evidence:** pnpm install --frozen-lockfile passed (lockfile supply-chain policies passed for 534 entries). pnpm run typecheck reported TS2345 at apps/worker/src/queues/email-sync-rabbitmq.ts:165 (string | undefined not assignable to string | Connect); the worker typecheck was SIGKILLed. Focused migration Vitest failed collection with ENOENT for supabase/migrations/0003_database_security_hardening.sql.
+- **Root causes:** RabbitMQ consumer URL remained optional in the nested reconnect boot closure; migration static test referenced old filenames after renumbering. Canonical files are 0013_database_security_hardening.sql (historical renumber commit 1506bdda) and 0005_agent_policy_configuration.sql (historical renumber commit 42627f2b).
+- **Source remedy:** Normalize the consumer URL with process.env.RABBITMQ_URL?.trim() ?? "", retain early return when empty, and add a static regression assertion. Update migration-verification.test.ts to use canonical migration filenames. Commits 09e4df46, a24edec3, ffc98b30.
+- **Verification:** Frozen install PASS is user-observed. Post-fix focused tests and typechecks NOT RUN. The pre-fix worker SIGKILL is not proof of another code error. No overall PASS claimed.
+- **Next action:** Pull latest main; run focused migration Vitest and worker RabbitMQ contract test; run web and worker typechecks sequentially, then full workspace typecheck if resources permit. Do not recreate obsolete migrations or wait for CI/Vercel.
