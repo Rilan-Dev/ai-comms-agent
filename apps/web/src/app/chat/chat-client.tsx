@@ -24,6 +24,7 @@ export function ChatClient({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
 
   const activeAgent = useMemo(() => agents.find((agent) => agent.id === agentId) ?? agents[0], [agents, agentId]);
 
@@ -46,6 +47,8 @@ export function ChatClient({
     if (!content || busy || !activeAgent) return;
     setDraft("");
     setBusy(true);
+    setAnnouncement("Clara is thinking.");
+    let responseFailed = false;
 
     const optimisticId = "local-" + Date.now();
     setMessages((current) => [...current, { id: optimisticId, conversationId, role: "user", content, createdAt: new Date().toISOString() }]);
@@ -96,14 +99,18 @@ export function ChatClient({
         }
       }
     } catch (error) {
+      responseFailed = true;
+      setAnnouncement("Clara could not complete the response.");
       setMessages((current) => [...current, { id: "error-" + Date.now(), conversationId, role: "system", content: error instanceof Error ? error.message : "Chat failed", createdAt: new Date().toISOString() }]);
     } finally {
       setBusy(false);
+      if (!responseFailed) setAnnouncement("Clara’s response is ready.");
     }
   }
 
   return (
     <main className="flex min-h-[calc(100vh-72px)] min-w-0 flex-col bg-background">
+      <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">{announcement}</p>
       <header className="border-b bg-background/85 px-5 py-4 backdrop-blur sm:px-7">
         <div className="mx-auto flex max-w-[1180px] items-start justify-between gap-3 sm:items-center sm:gap-4">
           <div className="min-w-0 flex-1">
@@ -141,7 +148,7 @@ export function ChatClient({
               </div>
             </div>
           ))}
-          {busy ? <div role="status" aria-live="polite" className="flex items-center gap-2 px-2 text-xs text-muted-foreground"><span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />Clara is thinking…</div> : null}
+          {busy ? <div aria-hidden="true" className="flex items-center gap-2 px-2 text-xs text-muted-foreground"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />Clara is thinking…</div> : null}
         </div>
 
         <div className="sticky bottom-0 rounded-md border border-border bg-card/95 p-2 backdrop-blur">
