@@ -510,3 +510,7 @@ The UI adaptation now also harmonizes legacy card/button geometry and form typog
 
 ### 2026-10-09 — Agents screen icon alignment
 The Agents list now uses inline SVG sparkle iconography matching the Lovable visual language instead of decorative text glyphs. The existing API-backed create flow, slug validation, notification feedback, status filter, and navigation to agent configuration are preserved. Added assertions to the UI migration contract test source. Commits: `0a79f7f3a9321d30dbc4d01fa5c611c1356d5021`, `2c949dc92d524f484d5e689603afd26106f9d801`. Tests not executed.
+
+
+### 2026-10-09 — Live schema and Redis incident
+User-provided runtime logs identified missing `ai_provider_configs.model` and `email_sync_states.last_attempt_at`, plus Redis lease command rejection. FIX-01 committed forward migration `0029_runtime_schema_reconciliation.sql`, bounded Redis server error reporting, and a WRONGPASS regression test. Source-only status: migration application, tests, builds, Redis connectivity, and mailbox runtime remain unverified. OPS-01 owns the live database/container rollout and Redis configuration diagnosis. See ISS-015 and BKL-011.
