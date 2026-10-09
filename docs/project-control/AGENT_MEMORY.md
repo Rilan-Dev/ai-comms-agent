@@ -165,3 +165,6 @@ If shared memory conflicts with current repository state or current requirements
 - **Remedy:** Maintain `docs/project-control/LOVABLE_UI_MIGRATION.md` as the explicit route checklist and distinguish adapted source from verified behavior.
 - **Prevention:** Update the matrix and NEXT_ACTION after every tranche; preserve live functionality and validation, add contract assertions, and honestly record tests/browser verification as not run.
 - **Related record:** Commits `70738aa2`, `3cf94c7f`, `c2dd6e6e`, `740b70d2`, `2f1eecd5`; `docs/project-control/NEXT_ACTION.md`.
+
+
+- **Follow-up:** Chat UI adaptation should preserve streamed responses, conversation/agent switching, optimistic user messages, visible system errors, keyboard send behavior, and the voice workspace link. Visual edits must not replace the existing server API with the Lovable preview's mock content. Related commits: `dee40027`, `10b87d65`.
