@@ -155,3 +155,12 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Owner:** OPS-01 for production migration/container rollout and Redis configuration; FIX-01 for source defects exposed by runtime evidence.
 - **Suggested next action:** Apply migrations through `0029` to the exact database used by both containers, roll out matching images, and inspect the specific Redis response. Preserve fail-closed locking.
 - **Related records:** ISS-015; BKL-011; commits `a4fab9df07deafa5fd47879217616e3cb6d1c03f`, `71616ac887f3efb79f90039245d6064c4662a77c`, `0fa3e751cae2e5105b212083e93a7cc87bf00468`.
+
+### EVT-DEV01-APPROVALS-TENANT-20261009 — 2026-10-09
+- **Agent/session:** DEV-01 / Forge — DEV01-LOVABLE-UI-MIGRATION-20261009
+- **Type:** ROUTE
+- **Summary:** During UI route inventory, DEV-01 found that `apps/web/src/app/mail/approvals/page.tsx` selects `getDevOrgId()` after `ensureDevSeed()`, unlike the authenticated organization context used by the Inbox, Drafts and Compose pages. This may show the wrong approval scope and violates the established rule that tenant-scoped pages derive organization identity from the authenticated request.
+- **Impact:** Cross-tenant correctness/security; not modified in this UI session.
+- **Owner:** FIX-01 / Sentinel
+- **Suggested next action:** Verify the defect, change only the server-side organization resolution, preserve authorization checks, and add focused regression coverage.
+- **Related records:** BKL-012; `apps/web/src/app/mail/approvals/page.tsx`.
