@@ -175,3 +175,12 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - Verification: NOT RUN — tests/typecheck/build/browser/Meta/webhook/live messaging not executed.
 - Next: Knowledge UI with real org-scoped persisted state, then remaining route migration. OPS-01 retains live database/Redis remediation; FIX-01 retains unrelated substantial bugs.
 - Session record: docs/project-control/sessions/DEV01-WHATSAPP-CONNECT-20261009.md.
+
+
+### EVT-CHATGPT-APPROVALS-TENANT-FIX-20261009 — 2026-10-09
+- Agent/session: ChatGPT cross-route review continuation.
+- Type: SECURITY / ROUTE CORRECTION
+- Summary: Mail Approvals server page no longer selects the seeded development organization; it resolves the authenticated active organization from request headers and redirects unauthenticated requests to login. Existing API authorization is unchanged.
+- Source commit: 19b8c0fd. Regression assertion update: da2502bd.
+- Verification: NOT RUN — no tests, typecheck, build, browser or live multi-tenant acceptance executed.
+- Next: continue cross-route responsive/accessibility review and retain runtime tenant verification as pending.
