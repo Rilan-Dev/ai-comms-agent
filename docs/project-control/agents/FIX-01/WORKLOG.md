@@ -140,3 +140,15 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Update:** Strengthened the regression test to count exactly one `lockfileVersion:` and one top-level `importers:` key, so concatenated documents without an explicit YAML separator are also detected.
 - **Commit:** `93ae720cd8d77c4c40583bdeb61fffd6593f7898`.
 - **Verification:** Test source only; no test or frozen install executed.
+
+### FIX01-PNPM-TARBALL-INTEGRITY-20261009 / 2026-10-09
+- **Task:** Continue the authorized lockfile incident after the user's frozen install revealed `ERR_PNPM_MISSING_TARBALL_INTEGRITY` for `amqplib@2.2.0`.
+- **Authorization:** User's explicit FIX-01 instruction to trace root cause, make the smallest corrective change, add regression protection, and record the incident.
+- **Started from:** User reports local pull to `a164425`; current main was inspected directly.
+- **Root cause:** The prior lockfile repair added the amqplib package and snapshot records but used a tarball-only `resolution` with no SRI integrity. pnpm 12.8.1's supply-chain policy correctly rejected an unverifiable tarball.
+- **Failed approach:** `pnpm install --frozen-lockfile`, `pnpm run typecheck`, and the focused Vitest command all stop at dependency installation with `ERR_PNPM_MISSING_TARBALL_INTEGRITY`; none reaches typecheck or test execution. The previous repair fixed missing package/snapshot records but missed the integrity field.
+- **Remedy:** Added the published tarball's SHA-512 SRI to the existing `amqplib@2.2.0` package entry without changing the version or dependency range. Commit `644d578170801785c1252a569fa976b0b33476eb`.
+- **Regression protection:** Strengthened `apps/web/tests/migration-verification.test.ts` to require an integrity-form resolution specifically adjacent to the `amqplib@2.2.0` entry. Commits `21837f32157ff43a7a1243b3f3095bb1eb2f1df6` and `d115e1b0293b48571cd0902849cb5f0030963bc7`.
+- **Evidence:** Current lockfile entry now contains `resolution: {integrity: sha512-VifzN9aHs/Q3zTruVHXh2yCisQyXexBN91CQ2E5iSyUKyNjH6ilYhJGte5AXZH/Bj1PaH7SwPhyuSf6Msd2udw==}`; same SRI appears in independent published pnpm lockfiles. GitHub source writes succeeded. No local install/test/typecheck/build was executed after this change.
+- **Prevention lesson:** A dependency entry is not complete merely because package/snapshot records exist; registry resolutions must retain the exact published integrity hash. Never invent a hash or disable integrity policy to make installation pass.
+- **Next action:** Pull latest main and rerun `pnpm install --frozen-lockfile`; only after success run `pnpm run typecheck` and the focused Vitest test. Record real outputs. Route separate host/Docker infrastructure failures to OPS-01.
