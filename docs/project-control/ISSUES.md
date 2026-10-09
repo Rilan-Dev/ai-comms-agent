@@ -269,11 +269,11 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Opened:** 2026-10-09
 - **Severity:** medium (web typecheck blocker)
 - **Owner:** FIX-01 / Sentinel
-- **Status:** source_fix_applied_verification_pending
-- **Symptom:** `pnpm run typecheck` failed in `apps/web/tests/zoho-oauth-settings.test.ts:84` with TS1127 invalid character and TS1434 unexpected keyword/identifier. Shared, DB, Clara Core, and worker package typechecks passed in the user-provided output.
+- **Status:** test_expectations_corrected_verification_pending
+- **Symptom/history:** Initial `pnpm run typecheck` failed in `apps/web/tests/zoho-oauth-settings.test.ts:84` with TS1127/TS1434; after the newline fix, user reran `pnpm run typecheck` successfully across all workspaces, then the focused Vitest run exposed two incorrect assertions.
 - **Root cause:** Three `expect(helper).toContain(...)` assertions were joined by literal backslash-n characters (`\n`) instead of real newlines.
 - **Failed approach to avoid:** Do not alter OAuth helper behavior, callback validation, or implementation types; the defect is confined to malformed test source.
-- **Remedy:** Replaced only the malformed sequence with actual line breaks. Commit `39857c40820940b500dcf452331dfe82ae35b861`.
-- **Evidence:** User's typecheck log is pre-fix evidence; the fix is committed. Post-fix typecheck and test execution are not yet evidenced.
-- **Next action:** Run `pnpm run typecheck` and focused Zoho OAuth settings test. Route any independent CI/CD, deployment, or environment failure to OPS-01.
+- **Remedy:** Fixed the malformed newlines in `39857c40820940b500dcf452331dfe82ae35b861`; then aligned the raw-IP assertion with the DNS-only policy and narrowed the static env assertion to `process.env.NEXT_PUBLIC_APP_URL`. Test-only commit `c58d6d442767f471c694ef978fdb06eca6d29850`; OAuth runtime code remains unchanged.
+- **Evidence:** User-provided latest output: `pnpm run typecheck` passed for all workspaces. Focused Vitest output: 8 passed, 2 failed before test-only commit `c58d6d442767f471c694ef978fdb06eca6d29850`. The corrected focused test has not yet been rerun.
+- **Next action:** Re-run `pnpm --filter @ai-comms-agent/web exec vitest run tests/zoho-oauth-settings.test.ts`; then continue implementation without waiting on CI/Vercel. Typecheck already passed in the user's latest run. Route any independent infrastructure/deployment issue to OPS-01.
 - **Related record:** EVT-FIX01-ZOHO-TEST-NEWLINES-20261009.
