@@ -152,3 +152,12 @@ The Audit page's CSV/JSON export links omit `organizationId`, and `apps/web/src/
 - Agent detail tabs expose selected state via `aria-pressed`; the deploy/pause confirmation dialog now has `aria-labelledby`. Channel loading queries the organization-scoped WhatsApp API separately instead of expecting WhatsApp accounts in the email response.
 - Added a cross-route static contract assertion for compact geometry and key accessible states in `apps/web/tests/lovable-ui-migration.test.ts`.
 - **Not verified:** no test execution, typecheck, browser/responsive run, accessibility audit, or live API checks. A manual browser pass remains outstanding.
+
+## 2026-10-09 — Keyboard, live-status, and secondary-control follow-up (source only)
+
+- Agent deploy/pause confirmation now moves focus to Cancel on open, traps Tab/Shift+Tab within the modal, closes on Escape, restores focus to the invoking control, and uses a vertically scrollable overlay for short/narrow viewports.
+- Agent channel selectors now expose accessible names for the email account, email role, and WhatsApp account controls.
+- Mobile workspace navigation now behaves as a keyboard-contained modal drawer while open: focus moves to Close, Escape dismisses, Tab/Shift+Tab stay inside the drawer, and focus returns to the trigger when dismissed.
+- Clara Chat now exposes its transcript as a labelled live log, announces the thinking state with a status role, and labels the message composer. Static assertions were added for these contracts.
+- Source commits: agent dialog/channel controls `d73099d6`; Chat status/input `3d8ac3a3`; mobile drawer focus `837b4b19`; regression assertions `0a603b76`, `f8c3aefd`.
+- **Verification NOT RUN:** the new static assertions have not been executed; no typecheck, build, browser, screen-reader, or narrow-device checks were run. Keyboard behavior and layout still need actual browser verification. Cross-route review remains in progress.
