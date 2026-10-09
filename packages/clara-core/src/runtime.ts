@@ -219,15 +219,19 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
       `SELECT kc.id, kc.content, kc.metadata
        FROM knowledge_chunks kc
        WHERE kc.organization_id = $1
-         AND ($2::text IS NULL OR EXISTS (
+         AND EXISTS (
            SELECT 1 FROM knowledge_documents kd
            WHERE kd.id = kc.document_id
-             AND ($2::text = '' OR kd.agent_id::text = $2)
-         ))
+             AND kd.organization_id = kc.organization_id
+             AND (
+               ($2::text IS NULL AND kd.agent_id IS NULL)
+               OR ($2::text IS NOT NULL AND (kd.agent_id IS NULL OR kd.agent_id::text = $2))
+             )
+         )
          AND kc.content ILIKE '%' || $3 || '%'
        ORDER BY kc.created_at DESC
        LIMIT $4`,
-      [ctx.orgId, ctx.agentId ?? "", queryText, Math.max(1, Math.min(topK, 12))],
+      [ctx.orgId, ctx.agentId, queryText, Math.max(1, Math.min(topK, 12))],
     );
     return {
       ok: true,
