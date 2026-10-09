@@ -112,3 +112,6 @@
 - Commits: channel loader `1f0566b4`, regression assertion `a67c1dee`, dialog label `3d8e2669`, related test assertion `952d704e`.
 - **Verification NOT RUN:** tests/typecheck/build/browser and live API behavior not executed. No PASS claimed.
 - **Next:** continue cross-route responsive/accessibility review and remaining secondary controls; no CI/Vercel waiting.
+
+
+- **Cross-route source review follow-up:** the Activity page was advanced concurrently to use submitted server-side search/event/decision filters on the existing /api/audit endpoint. Updated the duplicate static contract assertion to match the actual server-backed filter implementation rather than the earlier client-filter draft. Commit: c4615ab5. This is source inspection only; Vitest was not run.
