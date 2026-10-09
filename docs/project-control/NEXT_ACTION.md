@@ -6,6 +6,13 @@ The single exact next authorized action. Update this file on every commit.
 
 ## Current next action
 
+### FIX-01 migration test alignment — 2026-10-10
+
+A test-only correction is committed on `fix/migration-verification-phase4-contract` (`c51d5a79dfd999dd4382cc60005798531e5517be`). The `summary_sources` table belongs to migration 0003 and its RLS policy to migration 0004, not migration 0002. The static test now follows that migration ownership.
+
+**Next action:** fetch the branch and run `pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts`. Then run the worker RabbitMQ contract test and web/worker typechecks sequentially. Do not wait for CI/Vercel. The user's local lockfile displayed two YAML documents, but fetched current main has one; compare local `pnpm-lock.yaml` with the newly fetched `origin/main` before changing it. Record actual output; do not claim PASS before execution.
+
+
 ## Immediate FIX-01 migration/worker test follow-up — 2026-10-09
 
 The user reported migration-verification failures around audit-event policy assertions and DO-block delimiters, plus worker test failures around retry metadata and the Qdrant exclusion assertion. Source corrections are committed: forward-only migration 0032 (`7557a6cd`), migration test updates (`ee85b554`, `c4d4abd0`), and worker contract-test updates (`cecae73e`, `96996d82`). Source changes only; focused tests, typechecks, and migration execution have NOT run.
