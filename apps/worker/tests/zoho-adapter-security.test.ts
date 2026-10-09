@@ -181,3 +181,49 @@ test("Zoho adapter creates drafts using the documented Mail API", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test("Zoho sync paginates initial folder import and refreshes newest folder pages idempotently", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.endsWith("/api/accounts/123")) {
+      return new Response(JSON.stringify({ data: [{ accountId: "123", emailAddress: "user@example.com" }] }), { status: 200 });
+    }
+    if (url.endsWith("/api/accounts/123/folders")) {
+      return new Response(JSON.stringify({ data: [
+        { folderId: "9", folderName: "Inbox" },
+        { folderId: "10", folderName: "Drafts" },
+      ] }), { status: 200 });
+    }
+    if (url.includes("/api/accounts/123/messages/view?")) {
+      const parsed = new URL(url);
+      const folderId = parsed.searchParams.get("folderId");
+      return new Response(JSON.stringify({ data: [{
+        messageId: folderId === "10" ? "draft-1" : "msg-1",
+        folderId,
+        folderName: folderId === "10" ? "Drafts" : "Inbox",
+        fromAddress: "sender@example.com",
+        subject: "Sync contract",
+        content: "test body",
+        receivedTime: Date.now(),
+      }] }), { status: 200 });
+    }
+    throw new Error("Unexpected network call: " + url);
+  };
+  try {
+    const adapter = new ZohoAdapter();
+    await adapter.connect({ credential_type: "oauth_token", access_token: "test-token", api_domain: "https://mail.zoho.in", account_id: "123" });
+    const initial = await adapter.sync({ last_sync_at: new Date(0).toISOString(), sync_mode: "initial" });
+    assert.deepEqual(initial.added.map((message) => message.provider_message_id), ["msg-1", "draft-1"]);
+    assert.equal(initial.new_state.sync_mode, "incremental");
+    assert.equal(initial.new_state.history_token, "zoho-full-v1");
+    const incremental = await adapter.sync({ ...initial.new_state, sync_mode: "incremental" });
+    assert.deepEqual(incremental.updated.map((message) => message.provider_message_id), ["msg-1", "draft-1"]);
+    assert.equal(calls.filter((url) => url.includes("/messages/view?")).length, 4);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
