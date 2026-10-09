@@ -518,3 +518,6 @@ User-provided runtime logs identified missing `ai_provider_configs.model` and `e
 
 ### 2026-10-09 — Mail navigation active state correction
 The sidebar now treats child routes as active for the Mail group, so Accounts, Inbox, Threads, Drafts and nested detail routes keep the Mail navigation expanded. Added a static contract assertion. Commits: `a6c0abb0b5521aa0b6d636c48f83dc7f301a2c44`, `11ff84aac3a8379b09de78a191d704bd845512d6`. Test not executed.
+
+### 2026-10-09 — Schema reconciliation regression source
+Added static migration regression coverage for `0029_runtime_schema_reconciliation.sql` in `apps/web/tests/migration-verification.test.ts` (commit `282c4fea59b848e876bc65d79b250752b8339bda`). This is source coverage only; no test run, migration application, Redis validation, or live mailbox PASS is claimed.
