@@ -610,6 +610,7 @@ describe("Legacy email message runtime reconciliation migration (0030)", () => {
   it("backfills legacy sender, recipient, direction, and body columns without overwriting canonical values", () => {
     expect(sql).toContain("column_name = 'from_address'");
     expect(sql).toContain("from_email = COALESCE(from_email, from_address)");
+    expect(sql).toContain("ALTER TABLE email_messages ALTER COLUMN from_address DROP NOT NULL");
     expect(sql).toContain("column_name = 'to_addresses'");
     expect(sql).toContain("column_name = 'is_outbound'");
     expect(sql).toContain("html_body_sanitized = COALESCE(html_body_sanitized, html_body)");
