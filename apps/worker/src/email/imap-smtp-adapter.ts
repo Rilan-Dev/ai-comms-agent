@@ -130,7 +130,7 @@ async function readLine(reader: SocketReader, timeoutMs = 10_000): Promise<strin
 }
 
 /** Read an IMAP response while consuming literal payloads by octet length. */
-async function readImapResponse(reader: SocketReader, timeoutMs = 20_000): Promise<string> {
+export async function readImapResponse(reader: SocketReader, timeoutMs = 20_000): Promise<string> {
   let response = await readLine(reader, timeoutMs);
   const literalMarker = /\{(\d+)\+?\}$/;
   while (true) {
