@@ -209,3 +209,5 @@ If shared memory conflicts with current repository state or current requirements
 - For streamed Chat, use a labelled log with `aria-relevant="additions"` to avoid repeatedly announcing every streamed token, and a polite status for the busy state. Give every secondary select an explicit accessible name if no visible label is associated.
 - Source-contract tests document intended behavior but are not executed accessibility evidence. Keep browser, screen-reader and narrow-device checks marked NOT RUN until performed.
 - Related commits: agent dialog/channel selectors `d73099d6`; Chat status/composer `3d8ac3a3`; mobile drawer `837b4b19`; assertions `0a603b76`, `f8c3aefd`.
+
+- **Mobile secondary-control lesson (2026-10-09):** Do not hide a core selector or workflow action at the mobile breakpoint without providing an equivalent control. Chat's agent selector is now always available with a constrained mobile width and an explicit accessible name. Source `bc8e698f`, static assertion `ad7dc7f8`; device validation remains NOT RUN.
