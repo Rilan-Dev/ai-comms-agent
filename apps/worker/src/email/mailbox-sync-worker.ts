@@ -7,6 +7,7 @@ import {
 import type { EmailCredentials, EmailMessage, SyncState } from "@ai-comms-agent/shared";
 import { GmailAdapter } from "./gmail-adapter";
 import { ZohoAdapter } from "./zoho-adapter";
+import { ImapSmtpAdapter } from "./imap-smtp-adapter";
 import type { EmailProvider } from "@ai-comms-agent/shared";
 
 type Candidate = {
@@ -152,7 +153,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
   if (!claimed.rows[0]) return false;
 
   const accounts = new PostgresEmailAccountRepository();
-  const adapter: EmailProvider & { getCredentialSnapshot?: () => EmailCredentials; listDraftIdsByMessage?: () => Promise<Map<string, string>> } = candidate.provider === "gmail" ? new GmailAdapter() : candidate.provider === "zoho" ? new ZohoAdapter() : (() => { throw new Error("IMAP/SMTP sync is not enabled until its UID/message parser is available."); })();
+  const adapter: EmailProvider & { getCredentialSnapshot?: () => EmailCredentials; listDraftIdsByMessage?: () => Promise<Map<string, string>> } = candidate.provider === "gmail" ? new GmailAdapter() : candidate.provider === "zoho" ? new ZohoAdapter() : new ImapSmtpAdapter();
 
   try {
     const masterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
@@ -283,7 +284,7 @@ export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ att
          s.cursor AS sync_cursor, s.history_id, s.last_success_at
        FROM email_accounts a
        LEFT JOIN email_sync_states s ON s.email_account_id=a.id
-       WHERE a.provider IN ('gmail','zoho') AND a.deleted_at IS NULL
+       WHERE a.provider IN ('gmail','zoho','imap_smtp') AND a.deleted_at IS NULL
          AND a.status IN ('pending','connected','error')
          AND COALESCE(s.status::text,'idle') <> 'paused'
          AND (s.next_attempt_at IS NULL OR s.next_attempt_at <= now())
