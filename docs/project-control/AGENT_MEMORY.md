@@ -133,3 +133,10 @@ If shared memory conflicts with current repository state or current requirements
 - **Remedy:** Adjusted the two test expectations only; no OAuth runtime implementation changed. Commit `c58d6d442767f471c694ef978fdb06eca6d29850`.
 - **Prevention:** Tests should assert observable security behavior and actual forbidden runtime references, not incidental error ordering or harmless comments.
 - **Status:** Test source corrected; focused rerun pending.
+
+
+### FIX-01 / Sentinel — 2026-10-09 — Live schema drift and Redis lease diagnostics
+- **Evidence:** Live app queries failed because the database lacked `ai_provider_configs.model` and `email_sync_states.last_attempt_at`; worker lease logs collapsed Redis server errors to a generic string.
+- **Remedy:** Use a forward-only idempotent migration for schema drift; retain a bounded Redis RESP error reply for diagnosis and cover WRONGPASS behavior.
+- **Prevention:** A running container/healthy worker is not proof that its database schema or Redis authentication is correct. Never disable distributed locking to make a worker proceed after lease acquisition errors.
+- **Status:** Source committed; live migration and Redis diagnosis pending OPS-01. No tests/runtime PASS claimed.
