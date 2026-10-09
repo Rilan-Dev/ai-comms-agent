@@ -180,6 +180,8 @@ export default function SettingsPage() {
           <LinkCard href="/ai-voice" title="AI & Voice" text="Provider readiness and Clara voice configuration." />
           <LinkCard href="/agents" title="Agents" text="Manage agent configuration, versions and policies." />
           <LinkCard href="/mail/accounts" title="Email accounts" text="Manage provider connections and mailbox structure." />
+          <LinkCard href="/knowledge" title="Knowledge base" text="Manage knowledge documents and retrieval readiness." />
+          <LinkCard href="/whatsapp" title="WhatsApp" text="Configure Meta connection and messaging status." />
         </div>
       </section>
     </main>
