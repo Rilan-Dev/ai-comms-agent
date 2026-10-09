@@ -109,3 +109,13 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Next action:** Execute worker IMAP/Zoho tests and worker/web typechecks where pnpm dependencies are available; fix any failures. Add fragmented network delivery coverage and validate against a real IMAP server when credentials/runtime are available.
 
 - Follow-up correction: fixed double-escaped CRLF sequences in the newly added literal tests so the fixture contains actual IMAP wire CRLF bytes. Current test-source commit: `b20c6423c6ded123a49ff6301a40de6385832a26`. Tests still have not been executed.
+
+
+### DEV01-REDIS-MAILBOX-LEASE-20261009 / 2026-10-09
+- **Task:** Give REDIS_URL a concrete application use case without adding a runtime package dependency.
+- **Authorization:** Development-first connected-mailbox action in NEXT_ACTION.md; independent of FIX-01 BKL-008 and OPS-01 deployment ownership.
+- **Actions:** Added a small RESP2 client supporting redis:// and rediss://, optional username/password authentication and database selection; added token-owned SET NX PX lease acquisition and Lua compare-and-delete release; wired the lease around mailbox-sync batches with a 10-minute TTL. If configured Redis is unavailable, the batch is skipped rather than proceeding without cross-replica coordination. PostgreSQL per-account claims remain authoritative.
+- **Files/code:** apps/worker/src/email/redis-lease.ts; apps/worker/src/email/mailbox-sync-worker.ts; docs/architecture/INFRASTRUCTURE-INTEGRATION-STATUS.md.
+- **Commits:** d7228495f5bd03483154ac194cba865fbf3b00e5; 0e10e647b029ea065b467e120180248e1eb1b27d; bd6368d7f56f39660cf28b913026fcb8fd0a0004.
+- **Evidence:** GitHub accepted source changes. No test/typecheck or live Redis/worker test was executed. Connection-failure, contention, expiry, TLS and AUTH behavior remain unverified.
+- **Next action:** Add focused tests for Redis RESP commands/lease semantics and run worker/web typechecks when dependencies are available; continue Clara Core-supported email indexing and RabbitMQ durable queue integration.
