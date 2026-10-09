@@ -211,3 +211,12 @@ If shared memory conflicts with current repository state or current requirements
 - Related commits: agent dialog/channel selectors `d73099d6`; Chat status/composer `3d8ac3a3`; mobile drawer `837b4b19`; assertions `0a603b76`, `f8c3aefd`.
 
 - **Mobile secondary-control lesson (2026-10-09):** Do not hide a core selector or workflow action at the mobile breakpoint without providing an equivalent control. Chat's agent selector is now always available with a constrained mobile width and an explicit accessible name. Source `bc8e698f`, static assertion `ad7dc7f8`; device validation remains NOT RUN.
+
+### FIX-01 / Sentinel — 2026-10-09 — pnpm lockfile dependency graph
+- **Issue/symptom:** Workspace install/typecheck and Docker image build stop with `ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY` for `amqplib@2.2.0`; `pnpm install --fix-lockfile` repeats the same failure.
+- **Root cause:** The affected lockfile had concatenated YAML documents and the active workspace document lacked the package and snapshot records referenced by the worker importer.
+- **Failed approach:** Retrying install/typecheck or asking pnpm to repair the already malformed file did not rebuild the missing dependency graph.
+- **Remedy:** Current main has normalized lockfile commit `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e`; static regression assertions added in `b9ba0c6738e32cf4ef8b670a4b65857a56eb50f2`.
+- **Prevention:** Check the worker importer, package resolution, snapshot, and single-document structure together. A source assertion is not proof the package manager accepts the lockfile; run frozen install before typecheck and record actual output.
+- **Verification:** Frozen install/test/typecheck/Docker build still NOT RUN after correction.
+- **Related:** ISS-017; FIX01-PNPM-LOCKFILE-20261009; `apps/web/tests/migration-verification.test.ts`.
