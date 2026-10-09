@@ -1605,3 +1605,8 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Checked the current branch's canonical lockfile via GitHub: exactly one lockfileVersion: and one importers: header. Treat the local runtime result as a working-tree/mount discrepancy until git status --short, realpath pnpm-lock.yaml, and a header grep establish the cause. Do not overwrite lockfile or remove backup files.
 - Worker suite: 79/81 passed. Corrected the IMAP multiple-literal test to assert the CRLF boundary explicitly and corrected over-escaped SQL regexes in the scheduling-idempotency test.
 - Commits: a666d98b8b9f1e437355c392d01c42a9dc54bfe9, bb987c60129ebd1d4f3d5bd8f132068859ffb6c2. Web and worker typechecks produced no errors in the pasted output; re-run the focused tests before recording these test fixes as verified. Build, runtime integration, and deployment remain unverified.
+
+
+### 2026-10-10 — IMAP assertion follow-up and lockfile diagnosis
+
+User rerun confirmed the scheduling idempotency test passes. The remaining IMAP assertion used unescaped `{5}`, which regex syntax interprets as a quantifier, not the literal IMAP `{5}` length marker. Both assertions were corrected in b87d5bc804331470a280bf54ee020b463a186d5f. User's migration test still reports duplicate lockfileVersion; their `git status` confirms pnpm-lock.yaml is modified, and grep shows duplicate header sets at lines 2/159. GitHub's canonical branch copy has one lockfileVersion and one importers header. Preserve the four untracked backup files; inspect the tracked lockfile diff and restore only pnpm-lock.yaml from HEAD if the change is the known duplicate-document corruption. Rerun focused tests afterward. Deployment remains unverified.
