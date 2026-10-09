@@ -19,13 +19,13 @@ export function getOAuthPublicOrigin(request: Request): string {
     if (forwardedProto !== "http" && forwardedProto !== "https") {
       throw new Error("The reverse proxy supplied an unsupported public protocol.");
     }
-    if (/[\\s/@?#]/.test(forwardedHost) || forwardedHost.includes("\\\\")) {
+    if (/[\s/@?#]/.test(forwardedHost) || forwardedHost.includes("\\")) {
       throw new Error("The reverse proxy supplied an invalid public host.");
     }
 
     let forwarded: URL;
     try {
-      forwarded = new URL(`${forwardedProto}://${forwardedHost}`);
+      forwarded = new URL(forwardedProto + "://" + forwardedHost);
     } catch {
       throw new Error("The reverse proxy supplied an invalid public origin.");
     }
@@ -47,7 +47,7 @@ export function getOAuthPublicOrigin(request: Request): string {
  * accepted only for loopback development.
  */
 export function getOAuthRedirectUri(request: Request, provider: "gmail" | "zoho"): string {
-  return new URL(`/api/oauth/${provider}/callback`, getOAuthPublicOrigin(request)).toString();
+  return new URL("/api/oauth/" + provider + "/callback", getOAuthPublicOrigin(request)).toString();
 }
 
 export function assertOAuthRedirectUriSecure(redirectUri: string): void {
