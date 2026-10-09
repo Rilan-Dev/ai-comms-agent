@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const NAV_ITEMS = [
   { label: "Overview", href: "/", icon: "grid" },
@@ -44,14 +44,46 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const mobileTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeMobileButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!mobileOpen) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeMobileButtonRef.current?.focus();
+
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setMobileOpen(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMobileOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !sidebarRef.current) return;
+      const focusable = Array.from(sidebarRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        sidebarRef.current.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     }
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      (mobileTriggerRef.current ?? previousFocus)?.focus();
+    };
   }, [mobileOpen]);
 
   async function signOut() {
@@ -62,13 +94,13 @@ export function Sidebar() {
 
   return <>
     {mobileOpen && <button aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-foreground/30 md:hidden" />}
-    <aside id="workspace-sidebar" className={`fixed inset-y-0 left-0 z-50 flex w-[248px] shrink-0 flex-col border-r border-border bg-sidebar transition-transform duration-200 md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
+    <aside ref={sidebarRef} id="workspace-sidebar" role={mobileOpen ? "dialog" : undefined} aria-modal={mobileOpen ? true : undefined} aria-label={mobileOpen ? "Workspace navigation" : undefined} tabIndex={mobileOpen ? -1 : undefined} className={`fixed inset-y-0 left-0 z-50 flex w-[248px] shrink-0 flex-col border-r border-border bg-sidebar transition-transform duration-200 md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
       <div className="flex h-[76px] items-center justify-between px-6">
         <a href="/" className="flex items-center gap-2.5" aria-label="Comms Agent home" onClick={() => setMobileOpen(false)}>
           <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground"><NavIcon name="audio" /></span>
           <span className="text-[18px] font-semibold tracking-tight">comms<span className="text-muted-foreground">/</span>agent</span>
         </a>
-        <button type="button" className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-secondary md:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation">×</button>
+        <button ref={closeMobileButtonRef} type="button" className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-secondary md:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation">×</button>
       </div>
       <div className="mx-4 mt-3 flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2.5">
         <span className="flex size-8 shrink-0 items-center justify-center rounded bg-foreground text-[11px] font-semibold text-background">R</span>
@@ -97,6 +129,6 @@ export function Sidebar() {
         <button type="button" onClick={() => void signOut()} className="w-full rounded-md px-3 py-2 text-left text-xs font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground">Sign out</button>
       </div>
     </aside>
-    <button type="button" onClick={() => setMobileOpen(true)} className="fixed bottom-4 left-4 z-30 grid size-11 place-items-center rounded-full border border-border bg-card text-foreground shadow-lg md:hidden" aria-label="Open navigation" aria-expanded={mobileOpen} aria-controls="workspace-sidebar"><NavIcon name="grid" /></button>
+    <button ref={mobileTriggerRef} type="button" onClick={() => setMobileOpen(true)} className="fixed bottom-4 left-4 z-30 grid size-11 place-items-center rounded-full border border-border bg-card text-foreground shadow-lg md:hidden" aria-label="Open navigation" aria-expanded={mobileOpen} aria-controls="workspace-sidebar"><NavIcon name="grid" /></button>
   </>;
 }
