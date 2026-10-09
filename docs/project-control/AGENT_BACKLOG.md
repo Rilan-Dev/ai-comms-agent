@@ -60,3 +60,12 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Latest test-only correction:** `c58d6d442767f471c694ef978fdb06eca6d29850`.
 - **Next action:** Rerun `pnpm --filter @ai-comms-agent/web exec vitest run tests/zoho-oauth-settings.test.ts`; then update verification from actual output.
 - **Related:** ISS-014; EVT-FIX01-ZOHO-TEST-NEWLINES-20261009.
+
+### BKL-011 — Live database schema reconciliation and Redis lease rejection
+- **Work:** Apply migration `0029_runtime_schema_reconciliation.sql` to the exact production database, roll out matching web/worker images, and diagnose the specific Redis error reply.
+- **Owner:** OPS-01 / Shipwright for live database/container/configuration actions; FIX-01 / Sentinel for source defects uncovered.
+- **State:** ROUTED
+- **Dependency:** Authorized access to the live self-hosted containers and runtime environment.
+- **Authorization:** User-supplied live runtime logs and active FIX-01 incident.
+- **Suggested next action:** Pull latest `main`; apply migrations through `0029` using the repository migration procedure; verify web and worker share the intended PostgreSQL endpoint; rebuild/restart both images; inspect the Redis error after the diagnostic patch. Fix AUTH/ACL/TLS/URL as evidenced. Do not disable lease locking or force unsafe concurrent polling.
+- **Related records:** ISS-015; FIX-01 worklog entry dated 2026-10-09.
