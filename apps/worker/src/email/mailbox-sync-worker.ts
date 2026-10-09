@@ -17,7 +17,7 @@ type Candidate = {
 };
 
 let processing = false;
-const INTERVAL_MS = 30_000;
+const INTERVAL_MS = 10_000;
 const BATCH_SIZE = 3;
 
 async function persistMessage(account: Candidate, message: EmailMessage, providerDraftId?: string | null): Promise<void> {
@@ -203,11 +203,18 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       ...result.updated.map((item) => item.provider_message_id),
     ]);
     let saved = 0;
-    for (const id of messageIds) {
-      const message = await adapter.getMessage(id);
-      if (!message) continue;
+    const ids = [...messageIds];
+    for (let offset = 0; offset < ids.length; offset += 8) {
+      const page = await Promise.all(ids.slice(offset, offset + 8).map((id) => adapter.getMessage(id)));
+      for (const message of page) if (message) fetchedMessages.push(message);
+    }
+    const draftIdsByMessage = fetchedMessages.some((message) => message.is_draft)
+      ? await adapter.listDraftIdsByMessage()
+      : new Map<string, string>();
+    let saved = 0;
+    for (const message of fetchedMessages) {
       const providerDraftId = message.is_draft
-        ? await adapter.findDraftIdForMessage(message.provider_message_id || message.id)
+        ? draftIdsByMessage.get(message.provider_message_id || message.id) ?? null
         : null;
       await persistMessage(candidate, message, providerDraftId);
       saved += 1;
@@ -279,7 +286,7 @@ export async function processGmailMailboxSyncBatch(limit = BATCH_SIZE): Promise<
          AND (s.next_attempt_at IS NULL OR s.next_attempt_at <= now())
          AND (s.status IS NULL OR s.status <> 'running'
            OR s.last_attempt_at < now()-interval '10 minutes')
-         AND (s.last_attempt_at IS NULL OR s.last_attempt_at < now()-interval '30 seconds')
+         AND (s.last_attempt_at IS NULL OR s.last_attempt_at < now()-interval '10 seconds')
        ORDER BY CASE a.status WHEN 'pending' THEN 0 WHEN 'error' THEN 1 ELSE 2 END,
          COALESCE(s.last_success_at, a.created_at) ASC
        LIMIT $1`,
