@@ -805,3 +805,9 @@ The opt-in local infrastructure services are now active in `infra/docker-compose
 - Fixed malformed IMAP LIST command line termination found during source review (`fe3e2d39157f74c66741772966125cfee81055a1`; intermediate correction commits `2146facf04762ffd07fbd1458ad5a9f4256cf56` and `2f5b63e1a65b6aded5b602c0f439c689cd49c45f`). Source now uses an escaped CRLF and closes the mailbox pattern correctly.
 - Zoho's capability descriptor now advertises the bounded newest-page incremental refresh actually implemented (`5a59ec5745f8d3a3f735220f9496e14c79dece22`).
 - **Verification status:** Source was inspected only. Focused tests and worker/web typechecks still have not executed; do not claim PASS. Real IMAP, PostgreSQL-to-Clara Chat, RAG email indexing, Redis client usage, and RabbitMQ durable queue lifecycle remain pending. FIX-01 owns BKL-008; OPS-01 owns production infrastructure/deployment.
+
+
+### FIX-01 next action — Zoho OAuth test parser correction (2026-10-09)
+- Latest user-provided typecheck: shared, DB, Clara Core, and worker passed; web failed because `apps/web/tests/zoho-oauth-settings.test.ts` contained literal `\n` sequences at line 84.
+- Narrow fix committed: `39857c40820940b500dcf452331dfe82ae35b861`.
+- **Next:** Run `pnpm run typecheck` and focused Zoho OAuth settings test. Record actual post-fix output. Do not wait for DEV-01; route unrelated infrastructure/CI/deploy failures to OPS-01.
