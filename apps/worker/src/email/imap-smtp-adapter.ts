@@ -212,15 +212,163 @@ export class ImapSmtpAdapter implements EmailProvider {
     }
   }
 
-  async sync(state: SyncState): Promise<SyncResult> {
-    this.ensureConnected();
-    return { added: [], updated: [], deleted: [], new_state: { ...state, sync_mode: "incremental", last_sync_at: new Date().toISOString() } };
+  private async command(command: string): Promise<string[]> {
+    const { imap } = this.ensureConnected();
+    const tag = this.nextTag(imap);
+    imap.socket.write(`${tag} ${command}\r\n`);
+    const lines: string[] = [];
+    while (true) {
+      const line = await readLine(imap.reader, 20_000);
+      if (line.startsWith(`${tag} OK`)) return lines;
+      if (line.startsWith(`${tag} NO`) || line.startsWith(`${tag} BAD`)) {
+        throw new Error(`IMAP command failed (${command.split(" ")[0]}): ${line}`);
+      }
+      lines.push(line);
+    }
   }
 
-  async listMessages(_folderId: string, _opts: ListOptions): Promise<EmailMessage[]> { throw new Error("IMAP message sync is implemented by the email-sync worker"); }
-  async getMessage(_messageId: string): Promise<EmailMessage | null> { throw new Error("IMAP message retrieval is implemented by the email-sync worker"); }
-  async getThread(_threadId: string): Promise<EmailMessage[]> { throw new Error("IMAP thread retrieval is implemented by the email-sync worker"); }
-  async search(_query: SearchQuery): Promise<EmailMessage[]> { throw new Error("IMAP search is implemented by the email-sync worker"); }
+  private parseRawMessage(raw: string, folderId: string, uid: string, flagsLine = ""): EmailMessage {
+    const split = raw.search(/\r?\n\r?\n/);
+    const headerText = split >= 0 ? raw.slice(0, split) : raw;
+    const body = split >= 0 ? raw.slice(split).replace(/^\r?\n\r?\n/, "") : "";
+    const unfolded = headerText.replace(/\r?\n[ \t]+/g, " ");
+    const headers = new Map<string, string>();
+    for (const line of unfolded.split(/\r?\n/)) {
+      const colon = line.indexOf(":");
+      if (colon > 0) headers.set(line.slice(0, colon).trim().toLowerCase(), line.slice(colon + 1).trim());
+    }
+    const decodeHeader = (value: string) => value.replace(/=?UTF-8?\?B\?([^?]+)\?=/gi, (_m, encoded: string) => {
+      try { return Buffer.from(encoded, "base64").toString("utf8"); } catch { return encoded; }
+    }).replace(/=?UTF-8?\?Q\?([^?]+)\?=/gi, (_m, encoded: string) => encoded.replace(/_/g, " ").replace(/=([0-9A-F]{2})/gi, (_h, hex: string) => String.fromCharCode(parseInt(hex, 16))));
+    const addressList = (value: string | undefined) => (value ?? "").split(",").map((item) => item.match(/<([^>]+)>/)?.[1] ?? item.trim()).filter((item) => /^[^\s@]+@[^\s@]+$/.test(item));
+    const from = headers.get("from") ?? "";
+    const contentType = headers.get("content-type") ?? "text/plain";
+    let textBody = body;
+    const transfer = (headers.get("content-transfer-encoding") ?? "").toLowerCase();
+    if (transfer === "base64") {
+      try { textBody = Buffer.from(body.replace(/\s/g, ""), "base64").toString("utf8"); } catch { /* retain raw body */ }
+    } else if (transfer === "quoted-printable") {
+      textBody = body.replace(/=\r?\n/g, "").replace(/=([0-9A-F]{2})/gi, (_m, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+    }
+    if (/multipart\//i.test(contentType)) {
+      const boundary = contentType.match(/boundary="?([^";]+)"?/i)?.[1];
+      if (boundary) {
+        const plainPart = body.split(`--${boundary}`).find((part) => /content-type:\s*text\/plain/i.test(part));
+        if (plainPart) textBody = plainPart.replace(/^.*?\r?\n\r?\n/s, "").replace(/\r?\n--?\s*$/s, "");
+      }
+    }
+    const fromAddress = addressList(from)[0] ?? from.replace(/^.*<([^>]+)>.*$/, "$1").trim();
+    const date = headers.get("date");
+    const received = date ? new Date(date) : new Date();
+    const safeDate = Number.isNaN(received.getTime()) ? new Date() : received;
+    const subject = decodeHeader(headers.get("subject") ?? "");
+    const messageId = headers.get("message-id") ?? "";
+    const uidMatch = flagsLine.match(/UID\s+(\d+)/i);
+    const flags = flagsLine.match(/FLAGS\s+\(([^)]*)\)/i)?.[1] ?? "";
+    return {
+      id: `${folderId}:${uid}`, email_account_id: "imap_smtp", thread_id: headers.get("references")?.split(/\s+/).filter(Boolean).at(-1) ?? messageId ?? `${folderId}:${uid}`,
+      folder_id: folderId, provider_message_id: `${folderId}:${uidMatch?.[1] ?? uid}`, message_id_header: messageId,
+      in_reply_to: headers.get("in-reply-to"), references: (headers.get("references") ?? "").split(/\s+/).filter(Boolean),
+      from_address: fromAddress, to_addresses: addressList(headers.get("to")), cc_addresses: addressList(headers.get("cc")), bcc_addresses: addressList(headers.get("bcc")),
+      subject, text_body: textBody.slice(0, 100_000), html_body: undefined, snippet: textBody.replace(/\s+/g, " ").slice(0, 240),
+      received_at: safeDate.toISOString(), is_read: /\\Seen/i.test(flags), is_starred: /\\Flagged/i.test(flags),
+      is_draft: /drafts/i.test(folderId), is_outbound: /sent/i.test(folderId), importance_score: 0.3, action_required: false,
+      has_attachments: /content-disposition:\s*attachment/i.test(body), embedding_status: "pending",
+    };
+  }
+
+  async sync(state: SyncState): Promise<SyncResult> {
+    const { imap } = this.ensureConnected();
+    const folders = await this.listFolders();
+    const encoded = state.cursor?.startsWith("imap:") ? state.cursor.slice(5) : "";
+    let folderIndex = 0;
+    let lastUid = 0;
+    if (encoded) {
+      const parts = encoded.split(":");
+      folderIndex = Number(parts[0]) || 0;
+      lastUid = Number(parts[1]) || 0;
+    }
+    const added: SyncResult["added"] = [];
+    const updated: SyncResult["updated"] = [];
+    let pages = 0;
+    while (folderIndex < folders.length && pages < 2) {
+      const folder = folders[folderIndex]!;
+      const selected = await this.command(`SELECT ${quote(folder.provider_folder_id)}`);
+      const validity = selected.join("\n").match(/UIDVALIDITY\s+(\d+)/i)?.[1] ?? "unknown";
+      const stateKey = `imap:${folderIndex}:${validity}:${lastUid}`;
+      const existing = state.cursor?.startsWith("imap:") ? state.cursor.split(":") : [];
+      if (existing.length >= 4 && (Number(existing[1]) !== folderIndex || existing[2] !== validity)) lastUid = 0;
+      const lines = await this.command("UID SEARCH ALL");
+      const uidLine = lines.find((line) => /^\* SEARCH(?:\s|$)/i.test(line)) ?? "";
+      const uids = (uidLine.replace(/^\* SEARCH\s*/i, "").match(/\d+/g) ?? []).map(Number).filter((uid) => uid > 0).sort((a,b)=>a-b);
+      const fresh = uids.filter((uid) => uid > lastUid).slice(0, 50);
+      for (const uid of fresh) {
+        const fetched = await this.command(`UID FETCH ${uid} (UID FLAGS INTERNALDATE BODY.PEEK[])`);
+        const start = fetched.findIndex((line) => /FETCH \(/i.test(line) && /BODY\[\]/i.test(line));
+        if (start < 0) continue;
+        const raw = fetched.slice(start).join("\r\n");
+        const message = this.parseRawMessage(raw, folder.provider_folder_id, String(uid), fetched[start] ?? "");
+        (state.sync_mode === "initial" ? added : updated).push({ message_id: message.id, provider_message_id: message.provider_message_id ?? message.id });
+      }
+      pages++;
+      if (fresh.length === 50 && (uids.find((uid) => uid > fresh[fresh.length - 1]!) !== undefined)) {
+        lastUid = fresh[fresh.length - 1]!;
+        return { added, updated, deleted: [], new_state: { ...state, cursor: `imap:${folderIndex}:${validity}:${lastUid}`, history_token: validity, sync_mode: "initial", last_sync_at: new Date().toISOString() } };
+      }
+      folderIndex++;
+      lastUid = 0;
+    }
+    const hasMore = folderIndex < folders.length;
+    return {
+      added, updated, deleted: [],
+      new_state: { ...state, cursor: hasMore ? `imap:${folderIndex}:unknown:0` : undefined, history_token: hasMore ? state.history_token : "imap-full-v1", sync_mode: hasMore ? "initial" : "incremental", last_sync_at: new Date().toISOString() },
+    };
+  }
+
+  async listMessages(folderId: string, opts: ListOptions): Promise<EmailMessage[]> {
+    await this.command(`SELECT ${quote(folderId)}`);
+    const result = await this.command("UID SEARCH ALL");
+    const line = result.find((entry) => /^\* SEARCH/i.test(entry)) ?? "";
+    const uids = (line.replace(/^\* SEARCH\s*/i, "").match(/\d+/g) ?? []).slice(-(Math.min(opts.limit ?? 50, 100)));
+    const messages: EmailMessage[] = [];
+    for (const uid of uids) {
+      const fetched = await this.command(`UID FETCH ${uid} (UID FLAGS INTERNALDATE BODY.PEEK[])`);
+      const start = fetched.findIndex((entry) => /FETCH \(/i.test(entry) && /BODY\[\]/i.test(entry));
+      if (start >= 0) messages.push(this.parseRawMessage(fetched.slice(start).join("\r\n"), folderId, uid, fetched[start] ?? ""));
+    }
+    return messages;
+  }
+
+  async getMessage(messageId: string): Promise<EmailMessage | null> {
+    const split = messageId.lastIndexOf(":");
+    if (split < 1) return null;
+    const folder = messageId.slice(0, split);
+    const uid = messageId.slice(split + 1);
+    await this.command(`SELECT ${quote(folder)}`);
+    const fetched = await this.command(`UID FETCH ${uid} (UID FLAGS INTERNALDATE BODY.PEEK[])`);
+    const start = fetched.findIndex((entry) => /FETCH \(/i.test(entry) && /BODY\[\]/i.test(entry));
+    return start < 0 ? null : this.parseRawMessage(fetched.slice(start).join("\r\n"), folder, uid, fetched[start] ?? "");
+  }
+
+  async getThread(threadId: string): Promise<EmailMessage[]> {
+    return (await this.search({ text: threadId })).filter((message) => message.thread_id === threadId || message.message_id_header === threadId);
+  }
+
+  async search(query: SearchQuery): Promise<EmailMessage[]> {
+    const folders = query.folder ? [{ provider_folder_id: query.folder }] : await this.listFolders();
+    const messages: EmailMessage[] = [];
+    for (const folder of folders) {
+      const rows = await this.listMessages(folder.provider_folder_id, { limit: 100 });
+      messages.push(...rows.filter((message) =>
+        (!query.from || message.from_address.toLowerCase().includes(query.from.toLowerCase())) &&
+        (!query.subject || message.subject.toLowerCase().includes(query.subject.toLowerCase())) &&
+        (!query.text || `${message.subject}\n${message.text_body}\n${message.from_address}`.toLowerCase().includes(query.text.toLowerCase())) &&
+        (!query.date_from || message.received_at >= query.date_from) &&
+        (!query.date_to || message.received_at <= query.date_to)
+      ));
+    }
+    return messages;
+  }
 
   async createDraft(_params: DraftParams): Promise<DraftRef> { throw new Error("IMAP draft persistence is implemented by the email-sync worker"); }
   async updateDraft(_draftId: string, _params: Partial<DraftParams>): Promise<DraftRef> { throw new Error("IMAP draft persistence is implemented by the email-sync worker"); }
