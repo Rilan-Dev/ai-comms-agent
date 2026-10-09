@@ -1375,3 +1375,10 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Corrected host Clara retrieval scope so shared knowledge is visible to all agents in the organization, agent-specific knowledge only to the matching agent, and no-agent queries only return shared knowledge (`06970e93`). Updated inventory/NEXT_ACTION and DEV-01 log (`8eba7594`, `7f31a225`, `9719d26d`).
 - **NOT VERIFIED:** tests, typecheck, build, database migration/runtime, RabbitMQ broker, mailbox sync, and live retrieval were not run. The current indexer creates PostgreSQL text chunks for the existing lexical retrieval path; semantic embeddings/Qdrant indexing remains unimplemented and must not be described as complete.
 - **Next:** continue Lovable Knowledge UI using real organization-scoped persisted state and working controls, then Activity → Audit → Operations → Settings/provider settings → Login/Setup → agent detail/version/history → responsive/accessibility review. Do not wait for CI/Vercel. FIX-01 owns substantial bugs; OPS-01 owns live DB/Redis/RabbitMQ/deployment acceptance.
+
+## 2026-10-09 — Live inbox schema drift and Redis authentication
+- User logs showed the inbox query failing on missing `email_messages.from_name`; worker Redis lease fails with WRONGPASS. Sync API returns `queued`, which is not import completion.
+- Added `supabase/migrations/0030_email_messages_runtime_reconciliation.sql` to reconcile canonical inbox columns and backfill legacy names where present; added static regression assertions.
+- Commits: `69c51678c8c12e0a0c070214dc09db77e0758dae`, `e7a1e7ee396d542ffdf3edada895938a087b6a27`.
+- NOT VERIFIED: tests, typecheck/build, migration application, Redis fix, imported rows, and inbox runtime.
+- Next: OPS-01 applies migrations 0029/0030 to the correct DB, rebuilds/restarts both containers, fixes Redis AUTH/ACL, then confirms email persistence and inbox display. Never bypass lease locking.
