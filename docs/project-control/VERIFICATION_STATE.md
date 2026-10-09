@@ -1115,3 +1115,11 @@ source_review:
 - Follow-up narrow-screen source change: Chat agent switching is now available below the `sm` breakpoint (`bc8e698f`), with a source-contract assertion (`ad7dc7f8`). Responsive viewport/device validation NOT RUN.
 
 - Chat announcement refinement: source commit `d9662da6`, contract assertion `529ed8b2`. A persistent polite status region covers thinking, completed responses, and response failures; visual thinking is hidden from assistive technology to avoid duplicate announcements. Screen-reader/browser tests NOT RUN.
+
+## FIX01-PNPM-LOCKFILE-REGRESSION-20261009 — 2026-10-09
+- **Reported failure:** Docker install and `pnpm run typecheck` stopped with `ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY` for `amqplib@2.2.0`. `pnpm install --fix-lockfile` reproduced the same failure.
+- **Root cause:** The reported revision's lockfile contained concatenated YAML documents; the workspace worker importer referenced `amqplib@2.2.0` without matching package and snapshot entries.
+- **Source state:** Lockfile repair already exists on main at `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e`. Added regression assertions to `apps/web/tests/migration-verification.test.ts` at `b9ba0c6738e32cf4ef8b670a4b65857a56eb50f2`.
+- **Static evidence:** Current `pnpm-lock.yaml` has the workspace lockfile header, `apps/worker` importer, `amqplib@2.2.0` package entry, and snapshot entry.
+- **Execution status:** NOT RUN after correction: `pnpm install --frozen-lockfile`, lockfile regression test, `pnpm run typecheck`, Docker build. No PASS claimed.
+- **Next action:** Pull latest main, run frozen install then typecheck. Route separate Docker host/build environment failures to OPS-01.
