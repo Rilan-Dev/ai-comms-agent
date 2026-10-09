@@ -41,7 +41,8 @@ describe("Gmail automatic mailbox synchronization", () => {
     expect(worker).not.toContain("a.provider IN ('gmail','zoho','imap_smtp')");
     expect(zoho).toContain("const pageSize = 100");
     expect(zoho).toContain("this.listMessages(folder.provider_folder_id");
-    expect(zoho).toContain('history_token: hasMore ? state.history_token : (state.history_token ?? "zoho-full-v1")');
+    expect(zoho).toContain('history_token: hasMore ? state.history_token : "zoho-full-v1"');
+    expect(zoho).toContain('state.history_token === "zoho-full-v1"');
   });
 
   it("preserves an existing Google refresh token when reconnect omits one", () => {
