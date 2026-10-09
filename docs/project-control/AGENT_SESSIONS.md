@@ -305,3 +305,11 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Verification:** NOT RUN — tests, typecheck, build, browser, accessibility, and live API/DB acceptance were not executed. No PASS claimed.
 - **Blockers:** No blocker to source-level UI implementation. OPS-01 still owns live schema/Redis/runtime follow-up; FIX-01 owns substantial unrelated defects.
 - **Next action:** Adapt Operations, then Settings/provider-setting subsections, Login/Setup, agent detail/version/history, and cross-route responsive/accessibility review. Do not wait for CI/Vercel.
+
+
+### DEV01-LOVABLE-UI-CONTINUATION-20261009 — Operations follow-up
+- **Agent:** DEV-01 / Forge. **Status:** ACTIVE.
+- **Completed:** Adapted Operations UI with infrastructure cards, metric summaries, refresh and honest loading/error/empty states. The page now differentiates URL configuration from live health: Redis/RabbitMQ/Qdrant are displayed as “Configured” when the API itself states connectivity is worker-owned, rather than claiming a successful health check.
+- **Commits:** `fc22cc3f`, tests `ddb7a233` / `ca229779`, inventory `4f010fb3`, NEXT_ACTION `d75222c7`.
+- **Verification NOT RUN:** tests, typecheck, build, browser/accessibility and live dependency connectivity. No PASS claimed.
+- **Next:** Settings/provider settings, Login/Setup, agent detail/version/history, then cross-route responsive/accessibility review. Do not wait for CI/Vercel.
