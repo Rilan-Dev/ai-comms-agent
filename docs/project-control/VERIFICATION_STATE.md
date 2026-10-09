@@ -868,3 +868,5 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Source changes committed: request-derived Gmail/Zoho callback URLs; signed state carries the exact redirect URI used at token exchange; organization-scoped Zoho OAuth configuration API/UI; per-account Zoho client credentials for refresh; migration 0027.
 - Regression coverage added/updated in `apps/web/tests/gmail-oauth-settings.test.ts`, `apps/web/tests/zoho-oauth-settings.test.ts`, and `apps/worker/tests/zoho-adapter-security.test.ts`.
 - Tests, typecheck, build, migrations, Google/Zoho provider-console registration, and live OAuth have not been executed here. Status remains unverified; no PASS claimed.
+
+- Follow-up: updated Gmail and Zoho worker refresh tests to use the selected account's encrypted OAuth client fields, and typed these fields in `EmailCredentials`. Tests were not executed after the update.
