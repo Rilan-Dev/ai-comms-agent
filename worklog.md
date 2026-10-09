@@ -1550,3 +1550,11 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - **Correction:** Rewrote the assertions to test the current least-privilege contract and grants rather than the superseded migration implementation.
 - **Commit:** 618c4cd57f0e7e433c4da5f50840cd6c8f612b9b.
 - **Verification:** Source only; focused migration Vitest NOT RUN.
+
+
+## 2026-10-09 — FIX-01 web typecheck correction
+- User-reported web typecheck errors identified missing lucide-react dependency declarations, TS18048 in Agent Detail/sidebar focus traps, and a missing newAgentPage source binding in the static UI migration test.
+- Added lucide-react ^0.575.0 to apps/web/package.json and the pnpm lockfile using the published SHA-512 integrity; narrowed focus element types after the non-empty guard; loaded the canonical new-agent route in the migration test.
+- Commits: 8f09785a, 7b1136e6, 3e35c1f5, a9dcb8e5, 52a4e348.
+- Frozen install, focused tests and typechecks are NOT RUN after these corrections. No PASS claimed.
+- Next: follow docs/project-control/NEXT_ACTION.md; do not wait for CI/Vercel.
