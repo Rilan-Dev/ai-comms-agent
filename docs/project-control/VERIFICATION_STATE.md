@@ -903,3 +903,13 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Provider draft resource IDs are mapped and imported drafts are marked as synced. Draft-resource lookup is cached per adapter session; message-detail calls use bounded batches and the worker polls every 10 seconds.
 - `/mail/drafts` and `/mail/compose` now use the authenticated active organization rather than the development organization.
 - Source assertions cover these changes. Unit tests, typecheck, builds, deployment, and live mailbox/draft verification remain unexecuted.
+
+
+### 2026-10-09 — Zoho/IMAP source-review corrections (not test verification)
+
+- Zoho draft update now issues a provider PUT and maps supplied draft fields into the request payload.
+- IMAP checkpoint state is restored during initial import as well as incremental sync and retained when a folder exceeds the bounded UID batch.
+- SMTP AUTH PLAIN now encodes the required NUL-delimited username/password payload.
+- Commits: `72f05f5f642beea07cc5543fbc744051a083f922`, `5d2c3f3bcbab6698a56449afda407921c05b7760`.
+- **Not executed:** Focused Zoho/IMAP tests and worker/web typechecks. Local execution was attempted but blocked because pnpm is not installed and github.com could not be resolved from this environment. No PASS claimed.
+- **Still pending:** Real IMAP server compatibility, live provider sync to PostgreSQL, organization-scoped Clara Chat retrieval, Clara Core RAG email indexing, Redis application client use, and RabbitMQ durable queue/consumer/retry integration.
