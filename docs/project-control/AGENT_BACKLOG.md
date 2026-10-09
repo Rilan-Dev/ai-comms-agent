@@ -127,3 +127,11 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Correction:** Rewrote the assertions to test the current least-privilege contract and grants rather than the superseded migration implementation.
 - **Commit:** 618c4cd57f0e7e433c4da5f50840cd6c8f612b9b.
 - **Verification:** Source only; focused migration Vitest NOT RUN.
+
+
+### BKL-016 — Web typecheck: missing Lucide dependency and strict focus/test errors
+- Owner: FIX-01 / Sentinel.
+- State: SOURCE_CORRECTED; LOCAL_RERUN_PENDING.
+- Evidence: User-reported web typecheck has TS2307 for lucide-react, TS18048 in Agent Detail and sidebar focus traps, and TS2304 for the missing newAgentPage test source.
+- Correction commits: 8f09785a (web dependency), 7b1136e6 (lockfile), 3e35c1f5 and a9dcb8e5 (focus typing), 52a4e348 (test binding).
+- Next action: Pull latest main; frozen install; run focused web migration and worker RabbitMQ tests; run web and worker typechecks sequentially. Record actual results; no source-only PASS claim.
