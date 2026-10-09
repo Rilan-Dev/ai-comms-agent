@@ -61,3 +61,13 @@ The authentication loop was traced to session issuance preceding active organiza
 - Raw IP validation intentionally precedes HTTPS validation; assert the raw-IP/DNS error for any raw IP, including HTTP. Do not encode incidental validation ordering as a protocol requirement.
 - A source test forbidding environment-variable use should assert absence of `process.env.NEXT_PUBLIC_APP_URL`, not absence of every textual mention, since comments may explain the policy.
 - Test-only correction commit: `c58d6d442767f471c694ef978fdb06eca6d29850`. Rerun remains pending.
+
+
+### FIX-01 / Sentinel — 2026-10-09 — Migration and worker contract test drift
+- **Symptom:** Migration static tests failed on audit policies/DO delimiters; worker tests failed on retry metadata and Qdrant exclusion.
+- **Root cause:** Test expectations were coupled to named dollar tags/over-escaped regexes; the Phase 4 base migration did not carry the expected audit policy names/read policy; retry metadata was preserved through object spread, and a comment mentioning Qdrant tripped a blanket negative assertion.
+- **Failed approaches:** Avoid rewriting valid SQL delimiter style, adding redundant fields to runtime objects, or deleting useful comments to satisfy brittle regexes.
+- **Remedy:** Forward-only migration 0032 adds tenant-scoped audit insert/read policies and restrictive update/delete denial. Static assertions now allow valid DO delimiters, inspect the new migration, verify envelope spread, and forbid actual vector-client imports/calls.
+- **Evidence:** Commits 7557a6cd, ee85b554, ceca e73e, c4d4abd0, 96996d82 (worker source/test and migration test source commits); tests NOT RUN.
+- **Prevention:** Assert runtime contracts rather than exact implementation spelling. Inspect source after API writes; no source-only PASS claims.
+- **Next:** Pull latest main, compare lockfile to origin/main, run focused tests and sequential web/worker typechecks.
