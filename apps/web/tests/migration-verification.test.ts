@@ -571,3 +571,25 @@ describe("Legacy audit schema compatibility migration (0024)", () => {
     expect(legacyAuditSql).toContain("is_nullable = 'NO'");
   });
 });
+
+describe("Live runtime schema reconciliation migration (0029)", () => {
+  const sql = readFileSync(
+    resolve(__dirname, "../../../supabase/migrations/0029_runtime_schema_reconciliation.sql"),
+    "utf8",
+  );
+
+  it("adds the missing provider model and mailbox retry/checkpoint columns idempotently", () => {
+    expect(sql).toContain("ADD COLUMN IF NOT EXISTS model text");
+    expect(sql).toContain("ADD COLUMN IF NOT EXISTS last_attempt_at timestamptz");
+    expect(sql).toContain("ADD COLUMN IF NOT EXISTS next_attempt_at timestamptz");
+    expect(sql).toContain("ADD COLUMN IF NOT EXISTS history_id text");
+    expect(sql).toContain("ADD COLUMN IF NOT EXISTS error_count integer NOT NULL DEFAULT 0");
+  });
+
+  it("preserves legacy mailbox checkpoints when old column names exist", () => {
+    expect(sql).toContain("column_name = 'history_token'");
+    expect(sql).toContain("history_id = COALESCE(history_id, history_token)");
+    expect(sql).toContain("column_name = 'last_sync_at'");
+    expect(sql).toContain("last_success_at = COALESCE(last_success_at, last_sync_at)");
+  });
+});
