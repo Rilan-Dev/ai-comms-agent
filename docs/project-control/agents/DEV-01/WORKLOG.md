@@ -127,3 +127,11 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Files:** apps/worker/tests/redis-lease.test.ts.
 - **Commit:** fbd07ca9dee64a3fbe114bb16cf08fadcfa695f1.
 - **Evidence:** Test source accepted by GitHub; not executed in this environment. Live Redis and typecheck remain pending.
+
+
+## 2026-10-09 — Fragmented IMAP literal regression
+
+- Added a PassThrough-socket regression for an IMAP FETCH literal whose marker, CRLF-containing payload, and following tagged response arrive in separate chunks.
+- Updated `docs/project-control/NEXT_ACTION.md` and `docs/architecture/INFRASTRUCTURE-INTEGRATION-STATUS.md` to reflect the additional source coverage.
+- Commits: test `d90d7756216609cd3ec772f1fc77b14089561ca6`; next action `6af2d9a0278f144981f72231ee6e9f87dda3500b`; architecture status `5adc59f407583356aba2a8cc6fc94429c3bc0a75`.
+- No tests, typechecks, or live IMAP checks were run. Continue implementation without waiting for CI/Vercel; next independent work remains the Clara Core indexing boundary and RabbitMQ queue integration.
