@@ -4,6 +4,16 @@ import { GmailAdapter } from "../../../apps/worker/src/email/gmail-adapter";
 describe("GmailAdapter", () => {
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 
+  it("returns refreshed credentials using the shared EmailCredentials contract", async () => {
+    const adapter = new GmailAdapter();
+    await adapter.connect({ credential_type: "oauth_token", access_token: "test-token", refresh_token: "refresh-token" });
+    expect(adapter.getCredentialSnapshot()).toMatchObject({
+      credential_type: "oauth_token",
+      access_token: "test-token",
+      refresh_token: "refresh-token",
+    });
+  });
+
   it("paginates initial sync and retains the history baseline until import completes", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response(JSON.stringify({ historyId: "connect-history" }), { status: 200 }))
