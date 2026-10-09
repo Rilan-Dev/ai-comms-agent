@@ -945,3 +945,9 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Implemented: RESP2 lease client for redis:// and rediss://, optional AUTH/database selection, token-owned SET NX PX acquisition, and compare-and-delete release. Mailbox batch coordination is guarded by this lease only when REDIS_URL is configured.
 - Not verified: worker/web typechecks, tests, Redis connectivity/auth/TLS, contention, TTL expiry, or live sync.
 - Remaining: add tests, Clara Core-supported email indexing, RabbitMQ durable queue/retry/DLQ, and provider → PostgreSQL → tenant-scoped chat acceptance.
+
+
+### Redis lease tests — source only (2026-10-09)
+- Added `apps/worker/tests/redis-lease.test.ts` in commit `fbd07ca9dee64a3fbe114bb16cf08fadcfa695f1`.
+- Coverage authored: SET NX PX acquisition and contention, token-checked EVAL release, and AUTH/database selection.
+- Status: unexecuted; worker/web typechecks and live Redis verification remain pending.
