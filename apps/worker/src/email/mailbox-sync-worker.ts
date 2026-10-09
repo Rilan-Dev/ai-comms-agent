@@ -159,7 +159,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
        SET status='running', last_attempt_at=now(), updated_at=now()
        WHERE email_sync_states.status <> 'running'
           OR email_sync_states.last_attempt_at < now()-interval '10 minutes'
-     RETURNING cursor, history_id, last_success_at`,
+     RETURNING cursor_token AS cursor, history_id, last_success_at`,
     [candidate.id, candidate.organization_id],
   );
   if (!claimed.rows[0]) return false;
@@ -237,7 +237,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     }
 
     await query(
-      `UPDATE email_sync_states SET cursor=$1, history_id=$2, status='idle',
+      `UPDATE email_sync_states SET cursor_token=$1, history_id=$2, status='idle',
          last_success_at=now(), last_attempt_at=now(), next_attempt_at=NULL,
          error_count=0, last_error=NULL, updated_at=now()
        WHERE email_account_id=$3`,
@@ -289,7 +289,7 @@ export async function processMailboxSyncMessage(payload: EmailSyncPayload): Prom
   }
   const result = await query<Candidate>(
     `SELECT a.id, a.organization_id, a.email_address, a.provider,
-       s.cursor AS sync_cursor, s.history_id, s.last_success_at
+       s.cursor_token AS sync_cursor, s.history_id, s.last_success_at
      FROM email_accounts a
      LEFT JOIN email_sync_states s ON s.email_account_id=a.id
      WHERE a.id=$1 AND a.deleted_at IS NULL
@@ -321,7 +321,7 @@ async function enqueueDueMailboxSyncs(limit = BATCH_SIZE): Promise<number> {
   if (!process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY || !process.env.RABBITMQ_URL) return 0;
   const result = await query<Candidate>(
     `SELECT a.id, a.organization_id, a.email_address, a.provider,
-       s.cursor AS sync_cursor, s.history_id, s.last_success_at
+       s.cursor_token AS sync_cursor, s.history_id, s.last_success_at
      FROM email_accounts a
      LEFT JOIN email_sync_states s ON s.email_account_id=a.id
      WHERE a.provider IN ('gmail','zoho','imap_smtp') AND a.deleted_at IS NULL
@@ -393,7 +393,7 @@ export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ att
   try {
     const candidates = await query<Candidate>(
       `SELECT a.id, a.organization_id, a.email_address, a.provider,
-         s.cursor AS sync_cursor, s.history_id, s.last_success_at
+         s.cursor_token AS sync_cursor, s.history_id, s.last_success_at
        FROM email_accounts a
        LEFT JOIN email_sync_states s ON s.email_account_id=a.id
        WHERE a.provider IN ('gmail','zoho','imap_smtp') AND a.deleted_at IS NULL
