@@ -1,5 +1,6 @@
 "use client";
 
+import { Mail } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 type Config = { id: string; label: string; clientId: string; dataCenter: string; redirectUri: string; enabled: boolean; secretConfigured: boolean };
@@ -70,7 +71,7 @@ export function ZohoOAuthSettings({ organizationId }: { organizationId: string }
   return (
     <section className="rounded-md border border-border bg-card p-5">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Zoho OAuth clients</p>
+        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground"><Mail className="h-3.5 w-3.5 text-primary" />Zoho OAuth clients</p>
         <h2 className="mt-1 text-lg font-semibold">Provider configurations</h2>
         <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
           Configure multiple Zoho OAuth clients by organization and data center. Client secrets are encrypted before database storage and never returned to the browser. Callback URLs follow the domain used to access this application; register the displayed callback URL in the matching Zoho API Console client.
