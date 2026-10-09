@@ -340,3 +340,11 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Source commits: `1761c404`, `8235d93c`; static assertions `7dd88044`, `ab03be9f`, `46fff87b`; project-control updates `ff18009c`, `0a56626f`.
 - Verification NOT RUN: no test/typecheck/build/browser/screen-reader/device evidence.
 - Next: continue responsive overflow, keyboard and secondary-control review without waiting for CI/Vercel.
+
+### DEV01-LOVABLE-UI-KEYBOARD-ACCESSIBILITY-20261009
+- **Agent:** DEV-01 / Forge. **Status:** ACTIVE.
+- **Completed (source only):** Agent Detail confirmation dialog keyboard focus containment, Escape dismissal, focus restoration, and narrow-screen scrolling; accessible names for Agent Detail channel selectors; mobile sidebar modal-drawer focus containment and restoration; labelled Chat transcript live log, busy status announcement, and composer name.
+- **Commits:** `d73099d6`, `3d8ac3a3`, `837b4b19`; static contract source `0a603b76`, `f8c3aefd`; inventory `fb4edaa9`; NEXT_ACTION `31289d12`.
+- **Verification:** NOT RUN — no tests, typecheck, build, browser, screen-reader, or device validation. No PASS claimed.
+- **Blockers:** None for independent DEV-01 source work. OPS-01 remains responsible for the separate PostgreSQL migration/Redis runtime incident; do not wait for it or for CI/Vercel.
+- **Next:** continue cross-route responsive overflow, keyboard navigation, status announcements, dialogs and remaining secondary controls.
