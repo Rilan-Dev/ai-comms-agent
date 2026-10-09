@@ -182,3 +182,16 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - Commits: 8f09785a, 7b1136e6, 3e35c1f5, a9dcb8e5, 52a4e348.
 - Verification: source only. Frozen install, tests and typechecks have NOT been rerun; no PASS claimed.
 - Next: pull latest main, run frozen install, focused web migration and worker RabbitMQ tests, then web/worker typechecks sequentially. Do not wait for CI/Vercel.
+
+
+### FIX01-MIGRATION-WORKER-TEST-DRIFT-20261009 / 2026-10-09
+- **Task:** Trace the reported migration-verification and RabbitMQ email-sync test failures; apply minimal authorized fixes and add regression protection.
+- **Authorization:** User explicitly invoked FIX-01 / Sentinel and requested root-cause-first diagnosis, smallest corrective change, regression protection, and durable recording.
+- **Started from:** User-provided local test output; repository source recovered from current GitHub main.
+- **Actions:** Compared reported expectations with canonical migration/test/worker sources. Found that base migration 0002 uses valid standard `DO $$` blocks while the static test expected a named tag; the current test contained over-escaped delimiter regexes. The audit test expected insert/read policy names and append-only wording not present in migration 0002. Worker retry object spreads the existing envelope (preserving idempotency/correlation), but the test required explicit properties; a blanket qdrant/vector-store word ban matched explanatory documentation.
+- **Remedy/files:** Added forward-only `supabase/migrations/0032_audit_event_access_hardening.sql` (organization-scoped insert/read; restrictive update/delete denial; append-only comment). Updated `apps/web/tests/migration-verification.test.ts` and `apps/worker/tests/email-sync-rabbitmq.test.ts` to assert valid SQL delimiter forms, new forward migration protections, retry envelope spread, and absence of actual vector client imports/calls.
+- **Commits:** `7557a6cd820e8a199f434d9e5e6effa77f2a3178`; `ee85b55401b9154c42a795400589589fbb930b1d`; `cecae73edf181771396d6c8c30e1bad3c622c3fd`; `c4d4abd06f6001f4198c23c42f0b2312ea7601eb`; `96996d82ea034688485b1b9e92ed78fb0d024aee`.
+- **Evidence:** GitHub source commits were accepted and re-fetched. No pnpm install, Vitest, typecheck, migration execution, or runtime test was executed in this session. No PASS claimed.
+- **Discrepancy:** User's local output says pnpm-lock.yaml contains two lockfile documents; current main's file has exactly one `lockfileVersion:` and one `importers:` header. Treat the local duplicate as stale/uncommitted/local merge state until `git status` and diff against origin/main identify its origin; do not make a needless lockfile edit on current main.
+- **Failed approaches to avoid:** Don't rewrite valid DO blocks to appease a named-tag-only test; don't add redundant retry metadata; don't remove the Qdrant explanatory comment; don't edit historical migration 0002/0013 for a live schema correction.
+- **Next action:** Pull latest main; inspect local `git status --short` and compare `pnpm-lock.yaml` to `origin/main`; run focused migration-verification and worker RabbitMQ tests; then run web and worker typechecks sequentially. Route Docker/CI/deployment/environment failures to OPS-01.
