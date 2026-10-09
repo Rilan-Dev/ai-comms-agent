@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { loadGmailOAuthConfiguration } from "@/lib/oauth/gmail-config";
-import { assertOAuthRedirectUriSecure, getOAuthRedirectUri } from "@/lib/oauth/redirect-uri";
+import { assertOAuthRedirectUriSecure, getOAuthPublicOrigin, getOAuthRedirectUri } from "@/lib/oauth/redirect-uri";
 import { NextResponse } from "next/server";
 import { PostgresEmailAccountRepository, parseCredentialsMasterKey, recordAuditEvent } from "@ai-comms-agent/db";
 import { getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -16,10 +16,10 @@ function verify(encoded: string, signature: string) {
   return expected === signature;
 }
 
-function oauthError(message: string, request: Request, status = 400) {
+function safeOAuthOrigin(request: Request): string {\n  try { return getOAuthPublicOrigin(request); }\n  catch { return new URL(request.url).origin; }\n}\n\nfunction oauthError(message: string, request: Request, status = 400) {
   const safeMessage = message.slice(0, 240);
   const response = NextResponse.redirect(
-    new URL(`/mail/accounts?providerError=${encodeURIComponent(safeMessage)}`, request.url),
+    new URL(`/mail/accounts?providerError=${encodeURIComponent(safeMessage)}`, safeOAuthOrigin(request)),
     303,
   );
   response.headers.set("x-oauth-error-status", String(status));
@@ -153,7 +153,7 @@ export async function GET(request: Request) {
       decision: "allowed",
     });
 
-    const response = NextResponse.redirect(new URL("/mail/accounts?connected=gmail", request.url));
+    const response = NextResponse.redirect(new URL("/mail/accounts?connected=gmail", getOAuthPublicOrigin(request)));
     response.cookies.delete("gmail_oauth_verifier");
     response.cookies.delete("gmail_oauth_state");
     return response;
