@@ -219,3 +219,9 @@ The runtime does not change. The tool registry does not change. The agent pipeli
 - Capability matrix validation against real APIs.
 
 Phase 5 produces the abstraction + a mock adapter. Phase 6 produces Gmail. Phase 7 produces IMAP/SMTP. Phase 8 produces Zoho. Each phase has its own exit criteria in `docs/plans/ROADMAP.md`.
+
+## Current implementation note — Gmail sync lifecycle (2026-10-09)
+
+The Gmail OAuth callback persists encrypted account credentials and creates/updates the account as `pending`. The long-lived worker currently polls PostgreSQL-backed `email_sync_states` for due Gmail accounts; it does not yet consume a RabbitMQ `email.sync` queue. It performs paginated initial import, persists provider messages/threads idempotently, and uses Gmail `historyId` for incremental sync. An expired history cursor starts a full import again. OAuth refresh results are written back through the encrypted credential repository. The account becomes `connected` only after a successful sync batch.
+
+This direct PostgreSQL polling path is the implemented recovery-capable baseline, not a claim that the full documented RabbitMQ queue topology is complete. Future queue integration must preserve the same durable cursor, idempotency, tenant scoping, retry, and token-encryption invariants. The worker and web app must share the same PostgreSQL database and `CREDENTIALS_MASTER_KEY`.
