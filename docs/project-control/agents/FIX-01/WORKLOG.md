@@ -158,3 +158,13 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Correction:** Rewrote the regex literals with correct JavaScript regex escaping, scoped the SHA-512 assertion to the amqplib package entry, and retained checks for the worker importer, package entry and snapshot.
 - **Commit:** `162183e8d7c67b8346c15989ef850327e487cfc4`.
 - **Verification:** Source inspection only; Vitest has not run because pnpm install previously failed.
+
+### FIX01-WORKER-TYPECHECK-MIGRATION-PATHS-20261009 — 2026-10-09
+- **Invocation/evidence:** User's frozen install passed (534 entries; one package installed). Workspace typecheck reported TS2345 at apps/worker/src/queues/email-sync-rabbitmq.ts:165; worker typecheck was SIGKILLed. Focused migration Vitest failed collection with ENOENT for the old 0003_database_security_hardening.sql path.
+- **Root causes:** (1) the optional RabbitMQ URL was captured in the reconnecting boot closure as string | undefined; (2) static migration tests retained pre-renumbering filenames. Canonical files are 0013_database_security_hardening.sql (renumbered by 1506bdda) and 0005_agent_policy_configuration.sql (renumbered by 42627f2b).
+- **Remedy:** Normalize the consumer URL with process.env.RABBITMQ_URL?.trim() ?? "" while retaining the no-URL early return; add a source-contract regression assertion. Update test references to canonical 0013 and 0005 rather than recreating obsolete migration files.
+- **Commits:** worker source 09e4df46558f7f4f2f384d65a0ac8089194e7e0f; worker assertion a24edec36fd59fc293f6242e25ae01d0ee3f0b3b; migration paths ffc98b3063203d2781da495c417d04b1f976abc7.
+- **Failed approaches:** Recreating old-numbered migration files would duplicate canonical migrations. The pre-fix worker SIGKILL is not itself a TypeScript diagnosis.
+- **Verification:** Source committed; no post-fix typecheck, worker test, or migration Vitest run by FIX-01. No PASS claimed beyond the user's observed frozen install.
+- **Prevention:** Keep static path contracts synchronized with canonical migration filenames; normalize optional config to a definite type before using it in asynchronous closures.
+- **Next action:** Pull latest main. Run focused migration Vitest and worker RabbitMQ contract test; then run web and worker typechecks sequentially to avoid resource contention. Run full workspace typecheck afterward if resources allow. Do not wait for CI/Vercel.
