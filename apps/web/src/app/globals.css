@@ -78,6 +78,9 @@
 }
 
 * { border-color: var(--border); }
+/* Keep legacy screens visually consistent with the Lovable workspace's compact geometry. */
+.rounded-xl, .rounded-2xl, .rounded-3xl { border-radius: var(--radius) !important; }
+.shadow-2xl { --tw-shadow: 0 10px 32px rgb(30 28 24 / 0.08); --tw-shadow-colored: 0 10px 32px var(--tw-shadow-color); box-shadow: var(--tw-shadow) !important; }
 html { background: var(--background); }
 body {
   margin: 0;
