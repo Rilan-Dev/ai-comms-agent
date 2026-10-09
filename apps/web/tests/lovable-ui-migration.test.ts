@@ -159,6 +159,23 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(setup).toContain("rounded-md");
   });
 
+  it("adapts agent detail, version history, policy, channels and activity without dropping guarded actions", () => {
+    expect(agentDetail).toContain("/api/agents/");
+    expect(agentDetail).toContain('action:"unbind_email"');
+    expect(agentDetail).toContain('action:"unbind_whatsapp"');
+    expect(agentDetail).toContain("Version configuration");
+    expect(agentDetail).toContain("JSON.parse(versionConfig)");
+    expect(agentDetail).toContain("Save policy");
+    expect(agentDetail).toContain('setShowConfirm("deploy")');
+    expect(agentDetail).toContain('role="dialog"');
+    expect(agentDetail).toContain("GitBranch");
+    expect(agentDetail).toContain("rounded-md");
+    expect(agentDetailPage).toContain("getAuthenticatedAppContext");
+    expect(agentDetailPage).toContain("repo.get(organizationId,id)");
+    expect(newAgentPage).toContain("Safety default");
+    expect(newAgentPage).toContain('href="/agents"');
+  });
+
   it("routes WhatsApp through the authenticated organization and makes Connect open the real setup form", () => {
     expect(whatsappPage).toContain("getAuthenticatedAppContext");
     expect(whatsappPage).toContain("context.organizationId");
