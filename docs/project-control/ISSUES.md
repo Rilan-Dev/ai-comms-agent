@@ -208,3 +208,13 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Status:** in_progress (source changes committed; deployment/provider registration pending)
 - **Description:** Gmail callback resolution used stale `NEXT_PUBLIC_APP_URL` and Zoho OAuth required environment client credentials and lacked settings UI. Both providers now derive callback URLs from the active request origin; Zoho has organization-scoped OAuth client settings and the account selector. Provider callback URIs must still be registered in provider consoles, and public callbacks must use HTTPS. Google does not allow raw IP hosts for web redirect URIs.
 - **Next:** pull main, run manual deployment for migrations 0024–0027, access the app through its HTTPS domain, register the exact displayed callbacks, and test Gmail and Zoho consent/token/worker refresh flows. Do not claim runtime acceptance until evidence is available.
+
+
+### 2026-10-09 — ISS-011 follow-up: internal localhost origin behind proxy
+
+- **User-observed symptom:** Gmail Settings displayed `https://localhost:3000/api/oauth/gmail/callback` even though the intended provider callback is on the public HTTPS domain.
+- **Source root cause:** `getOAuthRedirectUri()` used only `new URL(request.url).origin`. Behind the current proxy path, that request URL can represent the internal Next.js origin rather than the browser-facing host.
+- **Correction committed:** callback resolution now prefers a single validated `X-Forwarded-Host` + `X-Forwarded-Proto` pair and rejects partial or comma-separated values. Gmail and Zoho callback success/error redirects use the same public origin helper. Added regression coverage for internal localhost URL + public proxy headers and invalid forwarding chains.
+- **Security requirement:** the reverse proxy must validate incoming Host values and overwrite both forwarding headers. Never trust arbitrary client-supplied forwarding headers; never weaken OAuth state/redirect URI equality checks.
+- **Verification:** source changes committed; focused tests, typecheck, deployment, proxy behavior, and live Google OAuth have not been executed in this session. No PASS claimed.
+- **Next:** configure/confirm the trusted proxy forwarding headers, deploy current main, reload Settings through the HTTPS domain, confirm both displayed callbacks, register exact URIs with providers, and restart the OAuth flow.
