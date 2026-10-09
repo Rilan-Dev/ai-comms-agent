@@ -36,8 +36,8 @@ Target: `apps/web/src/app/**` (production Next.js application). Keep Next.js rou
 | Chat | `app/chat/**` | ADAPTED (source only) | Apply workspace composer/message layout and loading/error states; preserve Clara backend, auth and safe email-context behavior. |
 | AI & Voice | `app/ai-voice/**` | ADAPTED (source only) | Adapt voice workspace, provider/status controls and responsive layout; preserve runtime configuration and session/error handling. |
 | Knowledge | `app/knowledge/**` | ADAPTED (source only) | Added tenant-authorized `/api/knowledge` counts and recent email documents; replaced hard-coded zero counts/inert controls with real loading/error/empty states, refresh, and links to mailbox management. Existing worker host adapter writes email knowledge to `knowledge_documents` / `knowledge_chunks`. Semantic embeddings/Qdrant and external-source onboarding remain unimplemented. Tests/typecheck/build/browser and live DB retrieval are not verified. |
-| Activity | `app/activity/**` | NOT YET ADAPTED | Adapt activity timeline, event labels/status icons and filters while retaining tenant-scoped records. |
-| Audit | `app/audit/**` | NOT YET ADAPTED | Adapt audit list/export presentation; never remove audit events, authorization or export safeguards. |
+| Activity | `app/activity/**` | ADAPTED (source only) | Reworked persisted event timeline, event/decision filters, refresh, semantic decision states, responsive event rows and honest loading/empty/error states. Uses the existing organization-authorized audit API. Browser/runtime verification pending. |
+| Audit | `app/audit/**` | ADAPTED (source only) | Reworked audit filters, loading/error/empty states, responsive table, semantic decision labels, refresh and CSV/JSON exports; fixed filters to reload the authorized API and cancel stale requests. API authorization/export safeguards preserved. Browser/runtime verification pending. |
 | Operations | `app/operations/**` | NOT YET ADAPTED | Adapt health/worker/queue status hierarchy and degraded states; don't imply healthy without evidence. |
 | Settings (general, AI providers/runtime, Gmail OAuth, Zoho OAuth) | `app/settings/**` | NOT YET ADAPTED | Apply same cards, tabs/sections, field spacing, provider iconography and validation/error display. Keep secrets server-only and preserve validation. |
 | Login and setup | `app/login/**`, `app/setup/**` | PARTIAL / REVIEW | Keep existing authentication and provisioning validation intact; align visual language without weakening security or redirect/session boundaries. |
@@ -72,3 +72,10 @@ This is an explicit inventory, not a claim that every listed page is already mig
 - The visible Connect WhatsApp Business CTA now toggles an accessible connection form; the form clearly explains Meta Cloud API credentials and saves via the existing encrypted credential endpoint.
 - The UI explicitly distinguishes saved/pending credentials from a verified connection; this source change does not implement Meta Embedded Signup or claim webhook verification.
 - Added static contract assertions for authenticated route context, CTA/form continuity and honest verification status. Execution of tests/typecheck/build/browser/Meta webhook verification is pending.
+
+
+## 2026-10-09 — Activity and Audit screen adaptation
+
+- Activity now uses the existing organization-authorized audit API with refresh, event/decision filters, semantic decision states, responsive timeline rows, and explicit loading/empty/error states.
+- Audit now reloads when filters change, aborts stale requests, presents a compact responsive table and semantic decision states, and retains CSV/JSON export links with current filters. Existing audit API authorization remains authoritative.
+- Added source-contract assertions for API usage, tenant authorization, filters, exports, and honest empty states. Tests/typecheck/build/browser and live data were not run.
