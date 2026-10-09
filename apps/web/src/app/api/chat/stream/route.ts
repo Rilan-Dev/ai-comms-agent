@@ -26,7 +26,8 @@ function asksAboutEmail(content: string): boolean {
 
 async function loadEmailContext(organizationId: string, content: string): Promise<string | null> {
   if (!asksAboutEmail(content)) return null;
-  const ignored = new Set(["what", "when", "where", "which", "show", "tell", "about", "email", "emails", "mail", "mails", "inbox", "messages", "message", "draft", "drafts", "today", "yesterday", "recent", "latest", "summarize", "summary", "please", "from", "with", "have", "has", "that", "this", "are", "the", "for", "and"]);\n  const searchTerms = [...new Set(content.toLocaleLowerCase().match(/[a-z0-9@._+-]{3,}/g) ?? [])].filter((term) => !ignored.has(term)).slice(0, 8);
+  const ignored = new Set(["what", "when", "where", "which", "show", "tell", "about", "email", "emails", "mail", "mails", "inbox", "messages", "message", "draft", "drafts", "today", "yesterday", "recent", "latest", "summarize", "summary", "please", "from", "with", "have", "has", "that", "this", "are", "the", "for", "and"]);
+  const searchTerms = [...new Set(content.toLocaleLowerCase().match(/[a-z0-9@._+-]{3,}/g) ?? [])].filter((term) => !ignored.has(term)).slice(0, 8);
   const result = await query<EmailContextRow>(
     `SELECT a.email_address, a.provider, m.from_email, m.to_recipients,
        m.subject, m.text_body, m.snippet, m.received_at, m.is_draft, m.is_read
@@ -37,9 +38,7 @@ async function loadEmailContext(organizationId: string, content: string): Promis
        AND a.deleted_at IS NULL
        AND a.status = 'connected'
        AND (m.is_draft = true OR m.received_at >= now() - interval '7 days'
-         OR m.subject ILIKE '%' || $2 || '%'
-         OR COALESCE(m.text_body, '') ILIKE '%' || $2 || '%'
-         OR COALESCE(m.from_email, '') ILIKE '%' || $2 || '%')
+         OR EXISTS (SELECT 1 FROM unnest($2::text[]) AS term WHERE m.subject ILIKE '%' || term || '%' OR COALESCE(m.text_body, '') ILIKE '%' || term || '%' OR COALESCE(m.from_email, '') ILIKE '%' || term || '%'))
      ORDER BY m.is_draft DESC, m.received_at DESC
      LIMIT 20`,
     [organizationId, searchTerms],
