@@ -38,6 +38,9 @@ action: |
 
   Exact next implementation: adapt Audit to the Lovable design while preserving persisted organization-scoped events and safe CSV/JSON export authorization; then Operations, general Settings/provider subsections, Login/Setup, Agent detail/version/history and responsive/accessibility review. Continue without waiting for CI/Vercel. Keep RabbitMQ delivery/retry/DLQ, Redis lease, IMAP/Zoho tests/typechecks, fragmented literal regression, real IMAP compatibility, provider→PostgreSQL→tenant-scoped Clara Chat, and live Clara indexing acceptance explicitly unverified until executed.
 
+
+
+  Additional source hardening in this continuation: fixed an early-delivery race by assigning RabbitMQ consumer channels before registering the consumer; corrected producer eligibility so a non-null incremental cursor does not enqueue the same mailbox every 10 seconds; added a static regression assertion for that polling condition. Clara email indexing now splits email bodies into bounded overlapping chunks, refreshes chunk rows safely when boundaries shift, and the host runtime can retrieve by sanitized lexical OR terms with organization and agent-scope filters. Added chunking and Clara contract regression source. Commits: RabbitMQ channel race d2e6fe39, queue polling eligibility e760bb92, queue regression 4bad6d3e, Clara chunking 766c487d and test 28080eb7, lexical retrieval 93a9804d and empty-query guard 0eedd60f, chunk refresh 2b95ca81, Clara contract test 854285f5. None of these tests or typechecks have been executed; source-only status remains.
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
   secrets: "Never commit .env/.env.docker; use committed example templates only"
