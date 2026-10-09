@@ -380,4 +380,21 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(voice).toContain("Microphone access was denied");
     expect(voice).toContain("End session");
   });
+  it("keeps the migrated workspace on compact responsive geometry and accessible interaction states", () => {
+    const screens = [overview, inbox, agents, agentDetail, accounts, drafts, compose, approvals, whatsapp, automations, schedules, chat, voice, knowledge, activity, audit, operations, settings, login, setup];
+    for (const source of screens) {
+      expect(source).not.toContain("rounded-3xl");
+      expect(source).not.toContain("rounded-2xl");
+      expect(source).not.toContain("rounded-xl");
+    }
+    expect(sidebar).toContain("aria-label");
+    expect(agentDetail).toContain('aria-pressed={tab===item}');
+    expect(agentDetail).toContain('aria-labelledby="agent-action-confirm-title"');
+    expect(knowledge).toContain('role="alert"');
+    expect(activity).toContain('role="alert"');
+    expect(audit).toContain("AbortController");
+    expect(login).toContain('role="alert"');
+    expect(setup).toContain('role="alert"');
+  });
+
 });
