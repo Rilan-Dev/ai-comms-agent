@@ -284,3 +284,12 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Follow-up 2026-10-09: Adapted AI & Voice (84652b74) and added/corrected focused static assertions (ddb35096, f7ed2b42). Inventory and NEXT_ACTION now mark AI & Voice adapted and identify Knowledge as the exact next route. Session remains ACTIVE; no test/build/browser/runtime PASS claimed.
 
 - **Follow-up 2026-10-09 — RabbitMQ retry/idempotency + Clara email indexing:** Added source assertions for bounded retries, preserved correlation/idempotency keys, dead-letter routing, malformed envelopes and retry-publish confirmation safety (`59caaa69`, `4fb56753`). Audited Clara's embedding-index/ingest worker reference and found it coupled to Clara's app DB/provider/Qdrant modules, not an importable host package API. Added an idempotent PostgreSQL knowledge-document/chunk host adapter for synced non-draft email and wired it after email persistence (`a4d77299`, `216161ff`); corrected shared-versus-agent retrieval scope in local Clara runtime (`06970e93`). No direct Qdrant writes or changes to immutable Clara source. Session remains ACTIVE. Tests/typecheck/build/DB/RabbitMQ/live mailbox/RAG runtime checks are NOT RUN. Semantic/vector indexing remains pending. Exact next action: Knowledge UI with real org-scoped persisted state and working controls, then Activity → Audit → Operations → Settings/provider settings → Login/Setup → agent detail/version/history → responsive/accessibility review. OPS-01 handles runtime infrastructure; FIX-01 owns unrelated substantial bugs.
+
+### DEV01-WHATSAPP-CONNECT-20261009 — DEV-01 / Forge
+- State: COMPLETED_SOURCE_ONLY; verification not run.
+- Authorization: Owner task to restore the WhatsApp Business connection UI flow; Lovable UI migration remains active.
+- Finding/change: Wired apps/web/src/app/whatsapp/page.tsx to WhatsAppClient using authenticated active organization context; made Connect WhatsApp Business reveal the existing encrypted Meta credential form; preserved message/account API contracts and honest pending verification state.
+- Commits: 58ba5541, 94878571, 49c94de3, 2cbe4ab9, 9eb3a168.
+- Verification: Tests/typecheck/build/browser/Meta/webhook checks NOT RUN. No PASS.
+- Next: Knowledge UI with real organization-scoped index state and working controls; then Activity → Audit → Operations → Settings/provider settings → Login/Setup → agent detail/version/history → responsive/accessibility review. OPS-01 continues live DB/Redis remediation; FIX-01 owns unrelated substantial defects.
+
