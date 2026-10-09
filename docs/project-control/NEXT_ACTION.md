@@ -757,3 +757,7 @@ Deploy/rebuild the latest main commit and verify the browser flow: unauthenticat
 - Added search over persisted draft subject, body, recipients, and mailbox address, with a distinct no-match state (`8ccf1cb24039cb3bc745a51576a73ee68007e946`).
 - Routed suspected Drafts tenant-context and Inbox search-placeholder defects to FIX-01 (`BKL-008`).
 - **Next:** continue Zoho and IMAP/SMTP ingestion into PostgreSQL and connect persisted messages/drafts to authorized Clara email-read/draft tools. Tests and live provider/runtime verification remain pending; do not wait for CI/Vercel.
+
+
+### 2026-10-09 — Draft search regression contract
+Added static regression assertions for draft search fields and no-match UI in `apps/web/tests/mail-draft-action-contract.test.ts` (commit `b0fd74f45a06a1cb8e2f3c4c152d242314711d39`). Test execution remains pending; continue connected-mailbox ingestion and agent-tool wiring without waiting for CI/Vercel.
