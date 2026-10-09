@@ -940,3 +940,7 @@ User's `pnpm run typecheck` was blocked before TypeScript by `ERR_PNPM_LOCKFILE_
 - **Correction:** Rewrote the assertions to test the current least-privilege contract and grants rather than the superseded migration implementation.
 - **Commit:** 618c4cd57f0e7e433c4da5f50840cd6c8f612b9b.
 - **Verification:** Source only; focused migration Vitest NOT RUN.
+
+
+### FIX-01 — Retest migration assertions and reconcile local lockfile (2026-10-10)
+The user-reported focused run had 83 passed / 3 failed. The two SQL failures were test false positives against valid PostgreSQL `$$` delimiters; assertions were corrected in commit `58730eb8b0fa46bfdd5fca581295209921582dbe`. The third failure is local lockfile drift: local `pnpm-lock.yaml` has two YAML document headers, while the PR branch lockfile has one. Preserve backups and inspect `git status --short`; then reconcile only the lockfile from `origin/fix/migration-verification-phase4-contract` if no intended local lockfile edits need to be kept. Re-run `pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts`. Then continue with worker RabbitMQ contract tests and web/worker typechecks sequentially. Do not wait for CI/Vercel; do not claim PASS without the output.
