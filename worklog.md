@@ -1271,3 +1271,7 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Commits: `a9083acaf0af1a4a97dba938e5543d86fe144426`; `47ef723959076dfac0175bd181bd633d692d1b9c`; `13c35cb4dc92f9b01cf1330d466fb4a574307256`; `8bfacdff848ce8ebde9bfc6b2f677b4b6e3cb37a`; `fe547ceece224619e158dec2d32518309400dde2`; `1a06340836edec45a1e300ab6b710822d3c59c0c`.
 - Verification: GitHub accepted source writes. No test/typecheck/build/browser/runtime validation was run; no PASS claimed.
 - Next: continue remaining screens, starting with Mail and Agents, preserving all current actions and validations; keep pending connected-mailbox integration queued, and route bugs/infrastructure to FIX-01/OPS-01.
+
+
+### 2026-10-09 — UI contract coverage and palette follow-up
+Added static regression coverage for the Lovable UI adaptation and the existing auth/navigation/search/persisted-data contracts. Updated Chat, AI Voice and mail thread visual ambience to the same warm green accent; synchronized Inbox's controlled search when URL query changes. Test file: `apps/web/tests/lovable-ui-migration.test.ts`. Latest commits: `239a38c936629486e3bfd1be2908f2d74e06193c`, `130c810e44f284f4e9b5390a27b3e2b1fa8a2a1a`, `c7bc510e3aedfa266713c48340cc2d0c3bcf9a3b`, `eeb717c5c4e0dbe79f493631e8b2c1024592776f`, `3ccad8c19694500961668fdfb60a8e41652a4af4`. Tests/build/browser/runtime validation remain unexecuted; no PASS claimed.
