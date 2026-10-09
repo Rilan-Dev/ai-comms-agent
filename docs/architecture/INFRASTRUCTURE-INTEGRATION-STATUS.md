@@ -45,3 +45,11 @@ Redis lease regression test source added at `apps/worker/tests/redis-lease.test.
 ## 2026-10-09 — Fragmented IMAP literal regression source
 
 Added a PassThrough-socket regression that splits the literal marker, literal payload, and following tagged response across socket chunks. This extends source coverage only; no test or live-server execution has occurred.
+
+
+## 2026-10-09 — Queue contract groundwork and Clara indexing boundary audit
+
+- Added `apps/worker/src/queues/email-sync-message.ts` with the documented `email.sync` envelope, UUID validation, stable account/history idempotency key, correlation/message IDs, timestamps, producer/consumer labels and bounded attempt count.
+- Added `apps/worker/tests/email-sync-message.test.ts` for normal sync, full-sync idempotency and invalid payloads. Tests have not been executed.
+- RabbitMQ is still **not integrated**: no AMQP client/transport, durable topology, publisher confirms, manual ack consumer, retry policy, or DLQ exists. This change is contract groundwork only.
+- Clara boundary audit: local `packages/clara-core/src/runtime.ts` exposes `retrieve()` but no supported indexing API; `createProvider().embedText/embedBatch` deliberately reject because embeddings are not configured. The reference library contains Qdrant/indexing modules, but those rely on Clara-specific DB/provider/vector-store imports and are not a drop-in host API. No direct Qdrant indexing was added. A supported host adapter boundary must be defined before email indexing can be called complete.
