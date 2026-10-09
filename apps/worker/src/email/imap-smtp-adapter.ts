@@ -277,7 +277,7 @@ export class ImapSmtpAdapter implements EmailProvider {
       const colon = line.indexOf(":");
       if (colon > 0) headers.set(line.slice(0, colon).trim().toLowerCase(), line.slice(colon + 1).trim());
     }
-    const decodeHeader = (value: string) => value.replace(/=\\?([^?]+)\\?([bq])\\?([^?]*)\\?=/gi, (match, charset: string, encoding: string, encoded: string) => {
+    const decodeHeader = (value: string) => value.replace(/=\?([^?]+)\?([bq])\?([^?]*)\?=/gi, (match, charset: string, encoding: string, encoded: string) => {
       try {
         const normalizedCharset = charset.toLowerCase().replace("-", "");
         if (encoding.toLowerCase() === "b") {
