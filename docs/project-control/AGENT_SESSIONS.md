@@ -280,3 +280,5 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 
 
 - **Follow-up 2026-10-09:** Chat visual adaptation committed as `dee40027`; static contract test `10b87d65`; inventory/NEXT_ACTION advanced. The session remains ACTIVE. Next: AI & Voice → Knowledge → Activity. No verification pass claimed.
+
+- Follow-up 2026-10-09: Adapted AI & Voice (84652b74) and added/corrected focused static assertions (ddb35096, f7ed2b42). Inventory and NEXT_ACTION now mark AI & Voice adapted and identify Knowledge as the exact next route. Session remains ACTIVE; no test/build/browser/runtime PASS claimed.
