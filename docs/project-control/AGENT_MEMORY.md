@@ -196,3 +196,9 @@ If shared memory conflicts with current repository state or current requirements
 - Before adapting secondary routes, verify every visible CTA has a real action. If an orphan create route duplicates an existing canonical flow but does not persist data, redirect to the canonical form rather than maintaining two divergent implementations.
 - Keep organization context, slug validation, persistence and initial version/policy creation in the existing Agents workspace.
 - Related commits: `1cec6ca9` redirect, `cb914148` static contract.
+
+
+### DEV-01 / Forge — shell accessibility review (2026-10-09)
+- Sticky section navigation beneath a 64px global top bar should use `top-[64px]` and a lower stacking level to avoid overlap.
+- Mobile navigation triggers should expose expanded/control relationships; an open drawer should close on Escape as well as backdrop/close-button activation.
+- Static source assertions are not executed test results. Report verification as NOT RUN unless actual runner/browser output is available.
