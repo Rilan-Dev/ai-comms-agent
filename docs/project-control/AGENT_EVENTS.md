@@ -204,3 +204,10 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Remedy:** Added the published integrity value to `pnpm-lock.yaml` (commit `644d5781`); added a focused integrity assertion in the existing lockfile regression test (commits `21837f32`, `d115e1b0`).
 - **Verification:** GitHub source changes committed; no post-fix install/test/typecheck/build run. No PASS claimed.
 - **Next action:** User pulls latest main and runs frozen install, then typecheck and focused Vitest. OPS-01 owns only independent infrastructure defects.
+
+### EVT-FIX01-LOCKFILE-TEST-REGEX-20261009 — 2026-10-09
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** TEST CORRECTION
+- **Summary:** Source review found over-escaped regex tokens in the newly added pnpm lockfile regression assertions. Corrected them to match actual TypeScript regex semantics and scope integrity validation to the amqplib entry.
+- **Commit:** `162183e8d7c67b8346c15989ef850327e487cfc4`.
+- **Verification:** Source reviewed only; focused Vitest remains NOT RUN pending successful dependency installation.
