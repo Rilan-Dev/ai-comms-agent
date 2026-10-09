@@ -644,3 +644,28 @@ describe("Mailbox inbox SQL and legacy migration safety", () => {
     expect(messageMigration).not.toContain("DO $\nBEGIN");
   });
 });
+
+describe("Legacy mailbox sync cursor compatibility (0031)", () => {
+  const sql = readFileSync(
+    resolve(__dirname, "../../../supabase/migrations/0031_email_sync_cursor_compatibility.sql"),
+    "utf8",
+  );
+  const workerSource = readFileSync(
+    resolve(__dirname, "../../../apps/worker/src/email/mailbox-sync-worker.ts"),
+    "utf8",
+  );
+
+  it("adds a canonical text checkpoint and preserves scalar legacy tokens", () => {
+    expect(sql).toContain("ADD COLUMN IF NOT EXISTS cursor_token text");
+    expect(sql).toContain("jsonb_typeof(cursor) = 'string'");
+    expect(sql).toContain("cursor #>> '{}'");
+    expect(sql).toContain("cursor ->> 'pageToken'");
+  });
+
+  it("uses cursor_token consistently for worker reads and writes", () => {
+    expect(workerSource).toContain("s.cursor_token AS sync_cursor");
+    expect(workerSource).toContain("RETURNING cursor_token AS cursor");
+    expect(workerSource).toContain("SET cursor_token=$1, history_id=$2");
+    expect(workerSource).not.toContain("s.cursor AS sync_cursor");
+  });
+});
