@@ -33,10 +33,10 @@ export default function AuditPage() {
   const filtered = events;
 
   return (
-    <main className="mx-auto max-w-[1200px] space-y-7 p-5 sm:p-7 lg:p-9">
+    <main className="mx-auto max-w-[1200px] space-y-8 bg-background p-5 sm:p-7 lg:p-10">
       <header>
         <p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Operations</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Audit</h1>
+        <h1 className="font-display text-3xl font-medium tracking-tight">Audit<span className="text-tertiary">.</span></h1>
         <p className="mt-2 text-sm text-muted-foreground">Organization-scoped security and configuration events from PostgreSQL. No synthetic activity is shown.</p>
       </header>
 
@@ -53,7 +53,7 @@ export default function AuditPage() {
 
       {error ? <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">{error}</div> : null}
 
-      <section className="overflow-hidden rounded-2xl border bg-background">
+      <section className="overflow-hidden rounded-md border border-border bg-card">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px] text-left text-sm">
             <thead className="border-b bg-muted/30 text-xs uppercase tracking-[.12em] text-muted-foreground">
