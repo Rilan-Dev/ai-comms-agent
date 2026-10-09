@@ -52,3 +52,13 @@
 - Lesson: A styled CTA is not a connection flow unless it opens a real workflow; never use the seeded dev organization in tenant-scoped production pages. Keep the verification boundary honest.
 - Exact next action: Knowledge UI with real org-scoped persisted counts/status and functional controls; then Activity → Audit → Operations → Settings/provider settings → Login/Setup → agent detail/version/history → responsive/accessibility review. Continue without CI/Vercel polling. OPS-01 remains responsible for runtime DB/Redis work; FIX-01 for unrelated substantial bugs.
 
+ 
+
+## 2026-10-09 — DEV-01 Activity and Audit UI continuation
+
+- Adapted `apps/web/src/app/activity/page.tsx` to the Lovable visual language: persisted activity timeline, event-type/decision filters, refresh, status styling, responsive layout, and explicit loading/empty/error states. Data remains sourced from the existing organization-authorized `/api/audit` endpoint.
+- Adapted `apps/web/src/app/audit/page.tsx`: live filters trigger organization-authorized API requests, stale requests are aborted, and the responsive audit table preserves decision/actor/target/time data. CSV and JSON export routes remain available with active filters.
+- Added focused static contract assertions in `apps/web/tests/lovable-ui-migration.test.ts`; updated the migration matrix and NEXT_ACTION.
+- Commits: Activity `a0830b13`, Audit `7c118bbd`, tests `23d9c3fc` and assertion correction `7419f572`, inventory `ed8c5262`, NEXT_ACTION `2dcee846`.
+- **Verification NOT RUN:** no tests, typecheck, build, browser, accessibility or live API/DB verification. No PASS claimed.
+- **Next:** Operations → Settings and provider-setting subsections → Login/Setup → agent detail/version/history → cross-route responsive/accessibility review. Continue without CI/Vercel polling; route infrastructure to OPS-01 and substantial unrelated defects to FIX-01.
