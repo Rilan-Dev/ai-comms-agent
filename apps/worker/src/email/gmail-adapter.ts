@@ -134,7 +134,7 @@ export class GmailAdapter implements EmailProvider {
     this.draftIndexPromise = undefined;
   }
 
-  getCredentialSnapshot(): Record<string, unknown> {
+  getCredentialSnapshot(): EmailCredentials {
     return {
       ...this.credentialMetadata,
       credential_type: "oauth_token",
