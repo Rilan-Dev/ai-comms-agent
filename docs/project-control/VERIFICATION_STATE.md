@@ -1045,3 +1045,22 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Clara email indexing now splits email content into bounded overlapping chunks, rebuilds stale chunk rows safely when chunk boundaries change, and preserves organization/agent scope metadata. Local Clara host retrieval now matches sanitized query terms using PostgreSQL lexical search and returns no sources for empty queries. Static contract tests added.
 - Commits: d2e6fe39, e760bb92, 4bad6d3e, 766c487d, 28080eb7, 93a9804d, 0eedd60f, 2b95ca81, 854285f5.
 - NOT RUN: worker tests, Clara tests, typechecks, builds, frozen-lockfile install, RabbitMQ/Redis connection tests, PostgreSQL integration, live IMAP/Zoho, and end-to-end email-to-Clara retrieval. These are source changes only; no runtime PASS is claimed. Semantic embeddings/vector indexing are not implemented by this host adapter; it uses existing PostgreSQL knowledge records and lexical retrieval, not direct Qdrant writes.
+
+
+# FIX-01 live mailbox workflow follow-up — 2026-10-09
+source_review:
+  status: committed_not_executed
+  findings_fixed:
+    - "0030 migration dollar-quoted DO block corrected"
+    - "Inbox search ILIKE predicates use bound PostgreSQL parameter placeholders"
+    - "0031 introduces cursor_token text to reconcile legacy JSONB cursor and current provider tokens"
+    - "Worker sync cursor reads/writes use cursor_token"
+  regression_source:
+    - "apps/web/tests/migration-verification.test.ts"
+  runtime:
+    migration_0029_0031_applied: unknown
+    redis_auth: "FAIL — user supplied WRONGPASS logs"
+    web_worker_rollout: unknown
+    mailbox_import: "NOT VERIFIED"
+    inbox_rows_visible: "NOT VERIFIED"
+  policy: "Do not claim success from HTTP 202; do not bypass Redis lease locking."
