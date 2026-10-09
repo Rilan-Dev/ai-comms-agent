@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AudioLines, Send, Sparkles } from "lucide-react";
 
 type Agent = { id: string; name: string; status: string };
 type Message = { id: string; conversationId: string; role: string; content: string; createdAt: string };
@@ -124,17 +125,17 @@ export function ChatClient({
           {messages.length === 0 ? (
             <div className="grid min-h-[45vh] place-items-center text-center">
               <div className="max-w-md">
-                <div className="mx-auto grid size-14 place-items-center rounded-md bg-accent text-accent-foreground"><svg aria-hidden="true" viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="m12 3 1.9 5.8L20 11l-6.1 2.2L12 19l-2-5.8L4 11l6-2.2L12 3z"/><path d="m19 14 1.2 2.8L23 18l-2.8 1.2L19 22l-1.2-2.8L15 18l2.8-1.2L19 14z"/></svg></div>
+                <div className="mx-auto grid size-14 place-items-center rounded-md bg-accent text-accent-foreground"><Sparkles aria-hidden="true" size={28} /></div>
                 <h2 className="mt-5 text-xl font-semibold">What should Clara help with?</h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">Ask for an inbox summary, important messages, action items, or anything your connected communication agent is allowed to handle.</p>
                 <div className="mt-5 flex flex-wrap justify-center gap-2">
-                  {["What needs my attention today?", "Summarize the last 24 hours", "Show important emails"].map((prompt) => <button key={prompt} onClick={() => setDraft(prompt)} className="rounded-full border bg-background px-3 py-2 text-xs font-medium transition hover:-translate-y-0.5 hover:bg-muted">{prompt}</button>)}
+                  {["What needs my attention today?", "Summarize the last 24 hours", "Show important emails"].map((prompt) => <button key={prompt} onClick={() => setDraft(prompt)} className="rounded-md border bg-background px-3 py-2 text-xs font-medium transition hover:-translate-y-0.5 hover:bg-muted">{prompt}</button>)}
                 </div>
               </div>
             </div>
           ) : messages.map((message) => (
             <div key={message.id} className={"flex " + (message.role === "user" ? "justify-end" : "justify-start")}>
-              <div className={"max-w-[min(760px,90%)] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm " + (message.role === "user" ? "rounded-br-md bg-foreground text-background" : message.role === "system" ? "border border-destructive/20 bg-destructive/5 text-destructive" : "rounded-bl-md border bg-background")}>
+              <div className={"max-w-[min(760px,90%)] rounded-md px-4 py-3 text-sm leading-6 " + (message.role === "user" ? "rounded-br-md bg-foreground text-background" : message.role === "system" ? "border border-destructive/20 bg-destructive/5 text-destructive" : "rounded-bl-md border bg-background")}>
                 {message.role === "assistant" ? <p className="mb-1 text-[10px] font-semibold uppercase tracking-[.14em] text-primary">Clara</p> : null}
                 <p className="whitespace-pre-wrap">{message.content}</p>
               </div>
@@ -146,11 +147,11 @@ export function ChatClient({
         <div className="sticky bottom-0 rounded-md border border-border bg-card/95 p-2 backdrop-blur">
           <div className="flex items-end gap-2">
             <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Ask Clara about your communications…" rows={2} className="min-h-12 flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground" />
-            <button disabled={busy || !draft.trim()} onClick={() => void sendMessage()} className="rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40">Send</button>
+            <button disabled={busy || !draft.trim()} onClick={() => void sendMessage()} className="rounded-md bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-40"><Send size={14} className="mr-2 inline" />Send</button>
           </div>
           <div className="flex items-center justify-between px-3 pb-1 pt-2 text-[11px] text-muted-foreground">
             <span>Enter to send · Shift+Enter for a new line</span>
-            <a href="/ai-voice" className="font-semibold text-primary hover:underline">Open voice workspace →</a>
+            <a href="/ai-voice" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"><AudioLines size={13} /> Open voice workspace →</a>
           </div>
         </div>
       </section>
