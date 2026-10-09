@@ -8,6 +8,7 @@ describe("mail drafts organization context", () => {
   for (const [name, path] of [
     ["drafts", "../src/app/mail/drafts/page.tsx"],
     ["compose", "../src/app/mail/compose/page.tsx"],
+    ["approvals", "../src/app/mail/approvals/page.tsx"],
   ] as const) {
     it(`${name} uses the authenticated active organization`, () => {
       const source = read(path);
