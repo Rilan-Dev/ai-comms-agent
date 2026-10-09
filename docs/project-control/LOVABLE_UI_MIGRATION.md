@@ -89,3 +89,10 @@ This is an explicit inventory, not a claim that every listed page is already mig
 - Added a horizontally scrollable, keyboard-reachable section nav linking to organization, mail OAuth, AI provider, Clara runtime, members/roles and workspace links. Wrapped the existing settings subsections with stable anchors and descriptive headers.
 - Existing OAuth client management, AI provider/runtime endpoints, organization membership edits, password change flow, and server-side secret handling remain in place. This is a partial adaptation; provider subcomponents still need a detailed visual/accessibility review.
 - Added `apps/web/tests/settings-page-contract.test.ts` source assertions for anchors, endpoint continuity and secret handling. Test/typecheck/build/browser checks were not run.
+
+
+## 2026-10-09 — Settings and provider-settings adaptation
+
+- Applied the Lovable compact neutral visual system across general organization Settings and AI provider/runtime, Gmail OAuth and Zoho OAuth subsections, including Lucide section iconography and compact card/input geometry.
+- Preserved existing organization/member API calls, role/status update behavior, password-change flow, provider/model fetch/save behavior, hidden/encrypted secrets, OAuth callback-origin guidance, Zoho data-center selection and edit/delete safeguards.
+- Added focused static contract assertions for settings API paths and credential protections. Tests/typecheck/build/browser and live OAuth/provider verification were not run.
