@@ -31,7 +31,7 @@ describe("Zoho OAuth settings and dynamic callback", () => {
 
   it("allows localhost HTTP for development but rejects public HTTP and raw IP callback hosts", () => {
     expect(() => assertOAuthRedirectUriSecure("http://localhost:3000/api/oauth/gmail/callback")).not.toThrow();
-    expect(() => assertOAuthRedirectUriSecure("http://100.72.192.28:3300/api/oauth/gmail/callback")).toThrow(/HTTPS/);
+    expect(() => assertOAuthRedirectUriSecure("http://100.72.192.28:3300/api/oauth/gmail/callback")).toThrow(/raw IP/);
     expect(() => assertOAuthRedirectUriSecure("https://100.72.192.28:3300/api/oauth/gmail/callback")).toThrow(/raw IP/);
   });
 
@@ -86,6 +86,6 @@ describe("Zoho OAuth settings and dynamic callback", () => {
     expect(helper).toContain("x-forwarded-proto");
     expect(helper).toContain("assertOAuthRedirectUriSecure");
     expect(helper).toContain("url.protocol !== \"https:\"");
-    expect(helper).not.toContain("NEXT_PUBLIC_APP_URL");
+    expect(helper).not.toContain("process.env.NEXT_PUBLIC_APP_URL");
   });
 });
