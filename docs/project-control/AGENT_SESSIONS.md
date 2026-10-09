@@ -70,3 +70,15 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** Tests and live provider verification were not run. Drafts page organization context and Inbox SQL search placeholders are routed to FIX-01.
 - **Handoff:** BKL-008 / EVT-DEV01-MAIL-ROUTING-20261009.
 - **Next action:** Trace provider sync persistence for Zoho and IMAP/SMTP and connect persisted mail/drafts to authorized agent tools; do not wait for CI/Vercel.
+
+### FIX01-GMAIL-SYNC-20261009 — 2026-10-09
+- **Agent:** FIX-01 / Sentinel
+- **Invocation:** Fix OAuth-connected Gmail accounts stuck at Pending with no initial synchronization; ensure Gmail messages and drafts become available to the platform.
+- **Started from:** main after user-reported persisted account status Pending and last sync Not synchronized.
+- **Scope:** Trace callback → account persistence → worker lifecycle → Gmail adapter → persisted messages/drafts → mailbox UI; implement the missing sync lifecycle and regression coverage.
+- **Status:** HANDOFF
+- **Completed:** Added a PostgreSQL-backed Gmail sync worker loop and worker lifecycle wiring; paginated initial import; incremental history cursor and expired-cursor recovery; encrypted access-token refresh persistence; OAuth refresh-token preservation; idempotent email/thread persistence; HTML-only text extraction; imported Gmail draft resource mapping; protected manual sync endpoint and UI action; automatic status polling; authenticated organization context for drafts/compose; source regression tests and project-control updates.
+- **Pending:** Deploy/rebuild web and worker from latest main, apply migrations through 0028, verify Gmail account transitions to Connected and last_synced_at is populated, confirm inbox and drafts data, inspect worker errors if it does not sync. No tests/build/migration/live provider verification was run here.
+- **Blockers:** Live host and Google mailbox are not directly accessible in this source-edit session.
+- **Handoff:** ISS-012.
+- **Next action:** Follow docs/project-control/NEXT_ACTION.md; after runtime confirmation, continue Zoho/IMAP sync and connect persisted email data to authorized agent tools.
