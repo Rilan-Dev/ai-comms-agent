@@ -74,3 +74,12 @@ test("Redis lease supports authenticated URLs and selects the configured databas
     assert.deepEqual(commands[1], ["SELECT", "2"]);
   });
 });
+
+test("Redis lease preserves a bounded server error for authentication and ACL diagnosis", async () => {
+  await withFakeRedis(() => "-WRONGPASS invalid username-password pair or user is disabled\r\n", async (url) => {
+    await assert.rejects(
+      acquireRedisLease(url, "mailbox:batch", "owner-token", 600000),
+      /Redis command rejected: WRONGPASS/,
+    );
+  });
+});
