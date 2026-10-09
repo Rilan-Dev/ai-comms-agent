@@ -222,3 +222,9 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Verification:** User's pre-fix install PASS; pre-fix typecheck/test failures captured. Post-fix tests/typecheck NOT RUN; no PASS claimed.
 - **Suggested next action:** Run focused migration Vitest and worker RabbitMQ test; run web and worker typechecks sequentially, then full workspace typecheck if resources permit.
 - **Related records:** ISS-018; BKL-015; FIX01-WORKER-TYPECHECK-MIGRATION-PATHS-20261009.
+
+### FIX01-SECURITY-ASSERTION-ALIGNMENT-20261009
+- **Finding:** After correcting the stale migration paths, source comparison showed the security tests still expected the historical public is_active_organization_* wrappers. The current canonical 0013 migration intentionally drops those caller-selected-user-ID wrappers and exposes SECURITY INVOKER can_access_organization/can_manage_organization helpers backed by private membership checks and app.user_id.
+- **Correction:** Rewrote the assertions to test the current least-privilege contract and grants rather than the superseded migration implementation.
+- **Commit:** 618c4cd57f0e7e433c4da5f50840cd6c8f612b9b.
+- **Verification:** Source only; focused migration Vitest NOT RUN.
