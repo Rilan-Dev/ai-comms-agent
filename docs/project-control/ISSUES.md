@@ -242,3 +242,10 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Worker behavior:** polls pending/connected/error Gmail accounts, claims each account through `email_sync_states`, imports message details into `email_messages` and `email_threads`, discovers folders/labels, updates sync cursor/last-success state, marks successful mailboxes connected, and records retry/error state without exposing credentials.
 - **Remaining:** review/apply the complete migration chain through `0028`, deploy the web and worker images, verify a real mailbox transitions from pending to connected with a populated `last_synced_at`, confirm inbox/drafts are persisted, and validate refresh/revocation recovery. Tests/build/migration/live Google API execution have not been run from this environment; no runtime PASS is claimed.
 - **Operational dependency:** the worker must be running with the same PostgreSQL database and `CREDENTIALS_MASTER_KEY` as the web application. A web-only deployment cannot perform background synchronization.
+
+### ISS-012 follow-up — draft visibility and HTML-only messages
+
+- Gmail message ingestion now extracts readable text from HTML-only messages without storing unsanitized HTML as trusted content.
+- Imported Gmail drafts resolve their Gmail draft-resource ID and are marked provider-synced, avoiding the UI treating an already-existing Gmail draft as a local-only draft.
+- Found and corrected another tenant-context defect: `/mail/drafts` and `/mail/compose` selected `getDevOrgId()`, so signed-in users could see an empty or wrong-organization draft list even after messages were imported. Both now use `getAuthenticatedAppContext()`; static tests guard the active-organization invariant.
+- These are source-only corrections; test execution and live draft visibility are still pending.
