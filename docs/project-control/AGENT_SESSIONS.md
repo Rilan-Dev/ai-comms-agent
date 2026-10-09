@@ -374,3 +374,10 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Commits:** `644d5781`, `21837f32`, `d115e1b0`.
 - **Pending:** Frozen install, typecheck, and focused Vitest execution.
 - **Next action:** Pull latest main; run `pnpm install --frozen-lockfile`; if successful, run `pnpm run typecheck` and `pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts`. Do not wait for CI/Vercel.
+
+### FIX01-LOCKFILE-TEST-REGEX-CORRECTION-20261009
+- **Status:** SOURCE CORRECTED; EXECUTION PENDING
+- **Finding:** Lockfile regression assertions used over-escaped regex literals.
+- **Remedy:** Corrected worker importer, package/snapshot and integrity regexes.
+- **Commit:** `162183e8d7c67b8346c15989ef850327e487cfc4`.
+- **Next:** After `pnpm install --frozen-lockfile` succeeds, run focused Vitest and typecheck; do not claim PASS from source inspection.
