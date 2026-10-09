@@ -28,6 +28,8 @@ const activity = readFileSync(resolve(__dirname, "../src/app/activity/page.tsx")
 const activity = readFileSync(resolve(__dirname, "../src/app/activity/page.tsx"), "utf8");
 const audit = readFileSync(resolve(__dirname, "../src/app/audit/page.tsx"), "utf8");
 const auditApi = readFileSync(resolve(__dirname, "../src/app/api/audit/route.ts"), "utf8");
+const operations = readFileSync(resolve(__dirname, "../src/app/operations/page.tsx"), "utf8");
+const operationsApi = readFileSync(resolve(__dirname, "../src/app/api/operations/route.ts"), "utf8");
 
 describe("Lovable Agentic AI Studio UI adaptation", () => {
   it("uses the Lovable semantic palette and typography without replacing Tailwind tokens", () => {
@@ -223,6 +225,17 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(audit).toContain("No audit events recorded yet");
     expect(auditApi).toContain('permission: "audit.read"');
     expect(auditApi).toContain("listOrganizationAuditEvents(rawId");
+  });
+
+  it("adapts Operations without presenting configured worker URLs as verified healthy dependencies", () => {
+    expect(operations).toContain('fetch("/api/operations"');
+    expect(operations).toContain("runtime connectivity is worker-owned");
+    expect(operations).toContain('label: "Configured"');
+    expect(operations).toContain("No synthetic health states");
+    expect(operations).toContain("Runtime signals");
+    expect(operations).toContain("role=\"alert\"");
+    expect(operationsApi).toContain('permission: "audit.read"');
+    expect(operationsApi).toContain("Connection URL configured; runtime connectivity is worker-owned.");
   });
 
   it("adapts realtime voice visuals without changing Clara-owned session and safety boundaries", () => {
