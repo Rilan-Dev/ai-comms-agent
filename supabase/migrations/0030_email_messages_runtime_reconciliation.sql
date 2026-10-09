@@ -25,7 +25,7 @@ ALTER TABLE email_messages
 
 -- Migrate legacy names only when those columns exist. Avoid overwriting canonical
 -- values already written by newer application versions.
-DO $
+DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
