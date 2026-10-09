@@ -137,3 +137,5 @@ This is an explicit inventory, not a claim that every listed page is already mig
 - Automations and Schedules server pages now use the authenticated app context and redirect unauthenticated users to login; development-seed organization fallback was removed from these authenticated surfaces. Organization-scoped list queries remain unchanged after deriving the organization ID from authenticated context.
 - Added accessible labels to automation and schedule form controls and normalized schedule control geometry. Agent detail Activity icon and section navigation fixes are recorded above.
 - Source commits: 5a5275b3, 088c36d8, b46ac6ab, ba4ebdcd, fbc9a8db. Tests/typecheck/build/browser and multi-tenant runtime checks remain not run.
+
+- Follow-up shell review found the Google Fonts `@import` was placed after the Tailwind theme block, where CSS import ordering can cause it to be ignored. Moved it before Tailwind and added a source assertion for ordering (`82eaa527`, test `d70d0064`). Not browser-verified.
