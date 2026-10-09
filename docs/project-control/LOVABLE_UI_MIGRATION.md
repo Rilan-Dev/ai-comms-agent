@@ -38,7 +38,7 @@ Target: `apps/web/src/app/**` (production Next.js application). Keep Next.js rou
 | Knowledge | `app/knowledge/**` | ADAPTED (source only) | Added tenant-authorized `/api/knowledge` counts and recent email documents; replaced hard-coded zero counts/inert controls with real loading/error/empty states, refresh, and links to mailbox management. Existing worker host adapter writes email knowledge to `knowledge_documents` / `knowledge_chunks`. Semantic embeddings/Qdrant and external-source onboarding remain unimplemented. Tests/typecheck/build/browser and live DB retrieval are not verified. |
 | Activity | `app/activity/**` | ADAPTED (source only) | Added Lucide-led event timeline, search/event-type/decision filters, refresh, responsive rows, truthful empty/loading/error states. Uses existing `/api/audit` authorization boundary; tests/typecheck/build/browser verification not run. |
 | Audit | `app/audit/**` | ADAPTED (source only) | Reworked audit filters, loading/error/empty states, responsive table, semantic decision labels, refresh and CSV/JSON exports; fixed filters to reload the authorized API and cancel stale requests. API authorization/export safeguards preserved. Browser/runtime verification pending. |
-| Operations | `app/operations/**` | NOT YET ADAPTED | Adapt health/worker/queue status hierarchy and degraded states; don't imply healthy without evidence. |
+| Operations | `app/operations/**` | ADAPTED (source only) | Adapted infrastructure/status cards, runtime metrics, refresh and explicit loading/error/empty states. Configured Redis/RabbitMQ/Qdrant URLs display as Configured—not Healthy—because the API reports URL presence rather than live connectivity. No runtime health is fabricated. Verification pending. |
 | Settings (general, AI providers/runtime, Gmail OAuth, Zoho OAuth) | `app/settings/**` | NOT YET ADAPTED | Apply same cards, tabs/sections, field spacing, provider iconography and validation/error display. Keep secrets server-only and preserve validation. |
 | Login and setup | `app/login/**`, `app/setup/**` | PARTIAL / REVIEW | Keep existing authentication and provisioning validation intact; align visual language without weakening security or redirect/session boundaries. |
 | Agent detail/version/history and all remaining controls | `app/agents/[id]/**` | PARTIAL / REVIEW | Agents list/create is adapted; audit/policy/channels/deploy/simulate/versions and detail subviews need explicit screen-by-screen audit against the Lovable style and working behavior. |
@@ -79,3 +79,10 @@ This is an explicit inventory, not a claim that every listed page is already mig
 - Activity now uses the existing organization-authorized audit API with refresh, event/decision filters, semantic decision states, responsive timeline rows, and explicit loading/empty/error states.
 - Audit now reloads when filters change, aborts stale requests, presents a compact responsive table and semantic decision states, and retains CSV/JSON export links with current filters. Existing audit API authorization remains authoritative.
 - Added source-contract assertions for API usage, tenant authorization, filters, exports, and honest empty states. Tests/typecheck/build/browser and live data were not run.
+
+
+## 2026-10-09 — Operations screen adaptation
+
+- Adapted the Operations page with compact Lovable-style infrastructure cards, status icons, runtime metric cards, refresh, and honest loading/error/empty states.
+- Corrected presentation semantics: when the existing API only confirms that Redis/RabbitMQ/Qdrant URLs are configured and explicitly says runtime connectivity is worker-owned, the UI displays “Configured” in a neutral style rather than a false green “Healthy” status. The API and authorization behavior were not changed.
+- Added focused static contract assertions for API usage, authorization and truthful configured-versus-healthy presentation. Tests/typecheck/build/browser and live dependency connectivity were not run.
