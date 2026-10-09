@@ -21,10 +21,11 @@ async function redisCommand(url: RedisUrl, args: string[]): Promise<string> {
   try {
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => finish(new Error("Redis connection timeout")), 3000);
-      const finish = (error?: Error) => { clearTimeout(timer); socket.off("connect", onConnect); socket.off("secureConnect", onConnect); socket.off("error", onError); if (error) reject(error); else resolve(); };
+      const finish = (error?: Error) => { clearTimeout(timer); socket.off("error", onError); if (error) reject(error); else resolve(); };
       const onConnect = () => finish();
       const onError = (error: Error) => finish(error);
-      socket.once(url.secure ? "secureConnect" : "connect", onConnect);
+      if (url.secure) (socket as tls.TLSSocket).once("secureConnect", onConnect);
+      else (socket as net.Socket).once("connect", onConnect);
       socket.once("error", onError);
     });
     const command = async (parts: string[]) => {
