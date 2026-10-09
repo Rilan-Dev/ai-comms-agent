@@ -1027,3 +1027,12 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Commits: API `9c6bc94e`, UI `95970d59`, test `c4cb353b`, migration matrix `ccbb50ed`, NEXT_ACTION `2018eca4` and `10551cbb`.
 - **Not verified:** no tests, typecheck, build, browser run, API request, database query, or live organization retrieval was executed. This is source adaptation only; no PASS claimed.
 - **Next:** Activity screen adaptation, then Audit, per project-control.
+
+
+## 2026-10-09 — Activity UI source adaptation (not executed)
+
+- Updated `apps/web/src/app/activity/page.tsx` to use the existing persisted `/api/audit` endpoint with functional search, event-type and decision filters, refresh, responsive event rows, Lucide status icons, and explicit loading/error/empty states.
+- Added static route-contract assertions to `apps/web/tests/lovable-ui-migration.test.ts` and marked Activity adapted in `docs/project-control/LOVABLE_UI_MIGRATION.md`.
+- Commits: Activity UI `b344b0ad`, static test `dfaf7d11`, migration inventory `1fe0050c`, NEXT_ACTION `03d9c499`.
+- **Not verified:** no tests, typecheck, build, browser, or live API run. No PASS claimed.
+- Next: adapt Audit, preserving its authenticated organization scope and export safeguards.
