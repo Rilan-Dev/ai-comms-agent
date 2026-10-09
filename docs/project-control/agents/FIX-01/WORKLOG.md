@@ -124,3 +124,14 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Commit:** `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e`.
 - **Verification:** Post-commit source structure checked; pnpm frozen install and typecheck not run. No PASS claimed.
 - **Next:** User pulls latest `main`, runs `pnpm install --frozen-lockfile` and `pnpm run typecheck`; continue directly to any remaining independent issues without waiting for CI/Vercel.
+
+### FIX01-PNPM-LOCKFILE-REGRESSION-20261009 / 2026-10-09
+- **Task:** Re-triage the user's repeated Docker install and workspace typecheck failure for `ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY` / `amqplib@2.2.0`.
+- **Authorization:** User-explicit FIX-01 root-cause, minimal corrective change, regression protection and durable-record request. Scope excludes unrelated product work and Docker/environment ownership.
+- **Started from:** User reports pulls through `1bbcfdb`; current GitHub `main` already includes lockfile correction `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e`.
+- **Root cause:** At the reported revision, `pnpm-lock.yaml` was malformed: two concatenated YAML documents and the actual workspace lockfile's worker importer referenced `amqplib@2.2.0` without package/snapshot entries. The failed `pnpm install --fix-lockfile` did not recover it; the same error persisted.
+- **Failed approaches:** Retrying Docker build, rerunning typecheck, and `pnpm install --fix-lockfile` against the broken lockfile; all fail before code typechecking and do not establish a valid dependency graph.
+- **Remedy already on current main:** commit `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e` normalizes the lockfile to one workspace document and adds package/snapshot entries. Added static regression assertions to `apps/web/tests/migration-verification.test.ts` in commit `b9ba0c6738e32cf4ef8b670a4b65857a56eb50f2` to guard the worker importer and both resolution sections.
+- **Evidence:** Current main lockfile has one visible lockfile header, an `apps/worker` importer, `amqplib@2.2.0` under `packages`, and its snapshot. Regression source committed. No install, test, typecheck, Docker build, or runtime check executed by this session.
+- **Prevention lesson:** Lockfile repair is not verified by the repair command finishing or by source inspection alone. Reproduce with the pinned package manager and run `pnpm install --frozen-lockfile`; never continue to typecheck if dependency resolution fails.
+- **Next action:** User pulls latest main (including `27f04065` and `b9ba0c67`), runs `pnpm install --frozen-lockfile`, then `pnpm run typecheck`. If the source-level lockfile regression test itself fails, correct that test narrowly. Docker daemon/base image/build environment errors belong to OPS-01.
