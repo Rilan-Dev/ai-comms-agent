@@ -220,3 +220,12 @@ If shared memory conflicts with current repository state or current requirements
 - **Prevention:** Check the worker importer, package resolution, snapshot, and single-document structure together. A source assertion is not proof the package manager accepts the lockfile; run frozen install before typecheck and record actual output.
 - **Verification:** Frozen install/test/typecheck/Docker build still NOT RUN after correction.
 - **Related:** ISS-017; FIX01-PNPM-LOCKFILE-20261009; `apps/web/tests/migration-verification.test.ts`.
+
+### FIX-01 / Sentinel — 2026-10-09 — pnpm tarball integrity follow-up
+- **New symptom:** After the missing package/snapshot entries were repaired, pnpm 12.8.1 rejected `amqplib@2.2.0` with `ERR_PNPM_MISSING_TARBALL_INTEGRITY`.
+- **Root cause:** The lockfile entry had a tarball URL but no SRI hash; pnpm's supply-chain check could not verify the downloaded package.
+- **Remedy:** Added the published SHA-512 integrity value to the existing amqplib lock entry (commit `644d5781`); did not change dependency range/version or disable security policy.
+- **Regression:** Added an assertion that the `amqplib@2.2.0` package entry itself has a SHA-512 integrity resolution (commits `21837f32`, `d115e1b0`).
+- **Failed approach:** Frozen install, typecheck, and Vitest all stopped at dependency install; no compiler or tests ran.
+- **Prevention:** Every external tarball lock resolution must retain its published integrity metadata. Never synthesize hashes or bypass pnpm supply-chain verification.
+- **Verification:** Source committed; frozen install/typecheck/Vitest/Docker build remain NOT RUN after this fix.
