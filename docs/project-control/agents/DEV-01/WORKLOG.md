@@ -76,3 +76,5 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Commits:** Zoho `72f05f5f642beea07cc5543fbc744051a083f922`; IMAP `5d2c3f3bcbab6698a56449afda407921c05b7760`.
 - **Verification attempt:** Tried to check out the repository locally. Node is available, but pnpm is not installed and outbound DNS cannot resolve github.com, so the test/typecheck commands could not be executed here. GitHub source reads/writes succeeded; this is not test evidence.
 - **Still pending:** Focused Zoho/IMAP tests, worker and web typechecks, real IMAP/SMTP server validation, live PostgreSQL ingestion, tenant-scoped Clara Chat acceptance, Clara Core RAG indexing, and real Redis/RabbitMQ application integrations. FIX-01 retains BKL-008; OPS-01 retains production infrastructure/deployment.
+
+- **Threading follow-up:** IMAP parser now uses the first/root References identifier and falls back to Message-ID then folder/UID, rather than using the last reference or an empty string. Added a parser assertion. Commits: `e21fd2fad824a41180deb6cf89b4f7aafb051f7c`, `d5dbd54cb7cb7b224d39b9b4e836b62501c575d3`. Test remains unexecuted.
