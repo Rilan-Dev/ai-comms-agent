@@ -113,3 +113,11 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **State:** SOURCE_CORRECTED; LOCAL_RERUN_PENDING
 - **Commits:** lockfile `644d5781`; focused regression assertion `d115e1b0`.
 - **Next action:** Pull latest main, run `pnpm install --frozen-lockfile`, then workspace typecheck and focused lockfile Vitest. Preserve supply-chain integrity checks.
+
+### BKL-015 — Worker RabbitMQ URL type and stale migration test paths
+- **Owner:** FIX-01 / Sentinel
+- **State:** SOURCE_CORRECTED; LOCAL_RERUN_PENDING
+- **Evidence:** User's frozen install passed; workspace typecheck reported TS2345 at email-sync-rabbitmq.ts:165 and worker SIGKILL; focused migration Vitest failed before test collection because it referenced removed migration filenames.
+- **Fix commits:** 09e4df46, a24edec3, ffc98b30.
+- **Next action:** Run focused migration Vitest and worker RabbitMQ contract test; then web and worker typechecks sequentially. Full workspace typecheck afterward if resources allow.
+- **Related:** ISS-018; FIX01-WORKER-TYPECHECK-MIGRATION-PATHS-20261009.
