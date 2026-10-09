@@ -164,3 +164,11 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Commits:** `b894e43f9b0ae46390b468353b804a386b51e399`, `c9b07207a297874b831b850bacc09c58bc6fcf69`, `ebd95586b310658c8e13587db8c2150ab6c862c5`, `9b4c7fb64270a5d34c04486044c83f5be0bc5bbc`, `a85f0261ac18d19bcabe4b59e2ed327248bfd6df`, `3ed3c28fe7aba734789880de407582cdc525b2cc`.
 - **Evidence:** GitHub accepted source writes only. No tests/typecheck/build/browser/runtime checks executed.
 - **Next action:** Continue visual adaptation of Agents and remaining Mail screens, preserving current validation and API behavior.
+
+
+### DEV01-LOVABLE-UI-MIGRATION-20261009 — Contract coverage
+- Added `apps/web/tests/lovable-ui-migration.test.ts` covering Lovable palette/font tokens, preserved Next.js auth shell and route navigation, header-to-Inbox query search, persisted overview loading/error/empty behavior, and login form validation/API flow.
+- Also updated Chat, AI Voice and mail thread ambient gradients to the Lovable green accent, and synchronized Inbox search state when the query string changes.
+- Commits: `239a38c936629486e3bfd1be2908f2d74e06193c`, `130c810e44f284f4e9b5390a27b3e2b1fa8a2a1a`, `c7bc510e3aedfa266713c48340cc2d0c3bcf9a3b`, `eeb717c5c4e0dbe79f493631e8b2c1024592776f`, `3ccad8c19694500961668fdfb60a8e41652a4af4`.
+- No tests/typecheck/build/browser/runtime checks were run; the contract test is source-only evidence at this point.
+- **Next:** Continue adapting Agents and Mail subpages, then remaining routes; preserve functionality and validation. Do not wait for CI/Vercel.
