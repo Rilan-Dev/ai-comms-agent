@@ -78,3 +78,10 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Still pending:** Focused Zoho/IMAP tests, worker and web typechecks, real IMAP/SMTP server validation, live PostgreSQL ingestion, tenant-scoped Clara Chat acceptance, Clara Core RAG indexing, and real Redis/RabbitMQ application integrations. FIX-01 retains BKL-008; OPS-01 retains production infrastructure/deployment.
 
 - **Threading follow-up:** IMAP parser now uses the first/root References identifier and falls back to Message-ID then folder/UID, rather than using the last reference or an empty string. Added a parser assertion. Commits: `e21fd2fad824a41180deb6cf89b4f7aafb051f7c`, `d5dbd54cb7cb7b224d39b9b4e836b62501c575d3`. Test remains unexecuted.
+
+
+### 2026-10-09 — Zoho/IMAP focused-test source corrections
+- Fixed Zoho mocked-fetch setup to answer the adapter's initial `/api/accounts` request, which previously would have thrown before the sync/draft assertions.
+- Fixed IMAP LIST command to emit a correctly quoted mailbox pattern followed by escaped CRLF; aligned Zoho incremental capability metadata with the bounded newest-page refresh implementation.
+- Commits: `f04eb93d27ee01934970e64679be381d6dec6500`, `fe3e2d39157f74c66741772966125cfee81055a1`, `5a59ec5745f8d3a3f735220f9496e14c79dece22`.
+- No test/typecheck/live-server commands were executed. Do not interpret source fixes as verification. Continue with focused test/typecheck execution, real mailbox ingestion and Clara Chat checks; then RAG email indexing and Redis/RabbitMQ app integration. FIX-01 retains BKL-008; OPS-01 retains production infrastructure/deployment.
