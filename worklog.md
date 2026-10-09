@@ -1491,3 +1491,10 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Added a static source-contract assertion and updated the migration inventory/NEXT_ACTION. Commits: `1cec6ca9` (redirect), `cb914148` (test), `a5a67d2e` (inventory), `43a2b1d8` (NEXT_ACTION).
 - Tests/typecheck/build/browser checks were not run. No PASS claimed.
 - Next: cross-route responsive/accessibility review and remaining secondary controls; do not wait for CI/Vercel.
+
+
+## 2026-10-09 — Agent channel loading fix during accessibility review
+
+- Fixed the Agent Detail Channels tab to load WhatsApp accounts from `/api/whatsapp/accounts` instead of incorrectly expecting them in the email-account response. Both endpoints are queried with the active organization ID; the effect ignores stale results on tab/organization changes.
+- Added contract coverage and accessible labeling for the deployment/pause confirmation dialog. Source commits and unverified status are recorded in `docs/project-control/DEV-01/WORKLOG.md` and `docs/project-control/VERIFICATION_STATE.md`.
+- Tests/typecheck/build/browser/live API checks were not run. No PASS claimed.
