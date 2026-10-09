@@ -327,3 +327,8 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Source remedy:** Added the published SHA-512 SRI to `pnpm-lock.yaml` in `644d578170801785c1252a569fa976b0b33476eb`; tightened the static lockfile test in `21837f32157ff43a7a1243b3f3095bb1eb2f1df6` and `d115e1b0293b48571cd0902849cb5f0030963bc7`.
 - **Status:** Source correction committed; verification pending. No install, typecheck, Vitest, or Docker PASS claimed.
 - **Next action:** Pull latest main and rerun frozen install. Only after success run typecheck and focused Vitest. Do not disable integrity policy or fabricate hashes.
+
+### ISS-017 regression-test source review — 2026-10-09
+- **Finding:** The first integrity assertion source had over-escaped regex literals. FIX-01 corrected the regexes to actual JavaScript regex syntax and scoped the integrity check to the `amqplib@2.2.0` entry.
+- **Commit:** `162183e8d7c67b8346c15989ef850327e487cfc4`.
+- **State:** Test source corrected; execution still pending successful frozen install.
