@@ -1173,3 +1173,10 @@ source_review:
 - Commit: `c51d5a79dfd999dd4382cc60005798531e5517be` on `fix/migration-verification-phase4-contract`.
 - **NOT VERIFIED:** Focused Vitest, worker contract tests, web/worker typechecks, migration execution, and database runtime checks have not run after the change.
 - **Lockfile discrepancy:** Current fetched main lockfile has one document; local shell output showed two. Reconcile against current remote; do not claim a GitHub lockfile defect from local output alone.
+
+
+## 2026-10-10 — Dollar-quote assertion correction
+- User-run focused test result before this correction: 83 passed, 3 failed.
+- Corrected test expectations for valid PostgreSQL `$$` delimiters and narrowed single-dollar regexes in commit `58730eb8b0fa46bfdd5fca581295209921582dbe`.
+- **Pending:** Re-run the focused Vitest test after reconciling the local duplicate-document lockfile against the PR branch. No PASS claimed.
+- GitHub branch lockfile is single-document; local working copy remains modified and must be reconciled carefully.
