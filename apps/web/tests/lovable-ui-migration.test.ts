@@ -9,6 +9,7 @@ const topBar = readFileSync(resolve(__dirname, "../src/components/top-bar.tsx"),
 const overview = readFileSync(resolve(__dirname, "../src/app/page.tsx"), "utf8");
 const inbox = readFileSync(resolve(__dirname, "../src/app/mail/inbox/inbox-client.tsx"), "utf8");
 const login = readFileSync(resolve(__dirname, "../src/app/login/page.tsx"), "utf8");
+const setup = readFileSync(resolve(__dirname, "../src/app/setup/page.tsx"), "utf8");
 const agents = readFileSync(resolve(__dirname, "../src/app/agents/agents-client.tsx"), "utf8");
 const drafts = readFileSync(resolve(__dirname, "../src/app/mail/drafts/drafts-client.tsx"), "utf8");
 const draftsPage = readFileSync(resolve(__dirname, "../src/app/mail/drafts/page.tsx"), "utf8");
@@ -140,6 +141,22 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(login).toContain("setError");
     expect(login).toContain("window.location.replace");
   });
+  it("adapts login and first-run setup without weakening authentication or bootstrap validation", () => {
+    expect(login).toContain('fetch("/api/auth/login"');
+    expect(login).toContain('window.location.replace');
+    expect(login).toContain('next.startsWith("/") && !next.startsWith("//")');
+    expect(login).toContain('type="password"');
+    expect(login).toContain('from "lucide-react"');
+    expect(setup).toContain('fetch("/api/auth/bootstrap"');
+    expect(setup).toContain('type="password"');
+    expect(setup).toContain("minLength={12}");
+    expect(setup).toContain('pattern="[a-z0-9][a-z0-9\\-]{2,62}"');
+    expect(setup).toContain("setDone(true)");
+    expect(setup).toContain('router.replace("/login")');
+    expect(setup).toContain('from "lucide-react"');
+    expect(setup).toContain("rounded-md");
+  });
+
   it("routes WhatsApp through the authenticated organization and makes Connect open the real setup form", () => {
     expect(whatsappPage).toContain("getAuthenticatedAppContext");
     expect(whatsappPage).toContain("context.organizationId");
