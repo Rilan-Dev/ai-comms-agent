@@ -191,3 +191,14 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Verification:** User's pre-fix run shows shared/db/clara-core and worker typechecks passed; web failed on malformed source. Post-fix web typecheck and focused test remain unexecuted.
 - **Status:** HANDOFF pending verification.
 - **Next:** Re-run `pnpm run typecheck` and the focused Zoho OAuth settings test. Do not wait for DEV-01. Route only infrastructure/CI/deployment issues to OPS-01.
+
+
+### FIX01-ZOHO-ASSERTIONS-20261009 — 2026-10-09
+- **Agent:** FIX-01 / Sentinel
+- **Invocation:** Continue from user's post-newline-fix typecheck and focused Vitest output.
+- **Evidence:** `pnpm run typecheck` passed for all workspaces. Focused test output had 8 passing and 2 failing tests.
+- **Root cause:** Two stale static expectations: raw-IP rejection precedes HTTPS enforcement, and a comment containing `NEXT_PUBLIC_APP_URL` is not actual environment-variable use.
+- **Action:** Corrected only the assertions in `apps/web/tests/zoho-oauth-settings.test.ts`.
+- **Commit:** `c58d6d442767f471c694ef978fdb06eca6d29850`.
+- **Status:** HANDOFF pending focused test rerun; typecheck PASS is based on the user's supplied output.
+- **Next:** Rerun focused Vitest. Do not wait for CI/Vercel; route unrelated runtime/infrastructure failures to OPS-01.
