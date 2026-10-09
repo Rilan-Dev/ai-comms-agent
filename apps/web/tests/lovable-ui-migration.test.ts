@@ -29,6 +29,11 @@ const audit = readFileSync(resolve(__dirname, "../src/app/audit/page.tsx"), "utf
 const auditApi = readFileSync(resolve(__dirname, "../src/app/api/audit/route.ts"), "utf8");
 const operations = readFileSync(resolve(__dirname, "../src/app/operations/page.tsx"), "utf8");
 const operationsApi = readFileSync(resolve(__dirname, "../src/app/api/operations/route.ts"), "utf8");
+const settings = readFileSync(resolve(__dirname, "../src/app/settings/page.tsx"), "utf8");
+const aiProviders = readFileSync(resolve(__dirname, "../src/app/settings/ai-provider-settings.tsx"), "utf8");
+const aiRuntime = readFileSync(resolve(__dirname, "../src/app/settings/ai-runtime-settings.tsx"), "utf8");
+const gmailOAuth = readFileSync(resolve(__dirname, "../src/app/settings/gmail-oauth-settings.tsx"), "utf8");
+const zohoOAuth = readFileSync(resolve(__dirname, "../src/app/settings/zoho-oauth-settings.tsx"), "utf8");
 
 describe("Lovable Agentic AI Studio UI adaptation", () => {
   it("uses the Lovable semantic palette and typography without replacing Tailwind tokens", () => {
@@ -235,6 +240,40 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(operations).toContain("role=\"alert\"");
     expect(operationsApi).toContain('permission: "audit.read"');
     expect(operationsApi).toContain("Connection URL configured; runtime connectivity is worker-owned.");
+  });
+
+  it("adapts organization settings while preserving membership and password security flows", () => {
+    expect(settings).toContain('fetch("/api/settings/organization")');
+    expect(settings).toContain('fetch("/api/settings/members")');
+    expect(settings).toContain('method: "PATCH"');
+    expect(settings).toContain('fetch("/api/auth/change-password"');
+    expect(settings).toContain("Members & roles");
+    expect(settings).toContain("font-display");
+  });
+
+  it("keeps AI provider and runtime settings secure and connected to their APIs", () => {
+    expect(aiProviders).toContain('from "lucide-react"');
+    expect(aiProviders).toContain('"/api/settings/ai-providers"');
+    expect(aiProviders).toContain('type="password"');
+    expect(aiProviders).toContain("keepExistingKey");
+    expect(aiProviders).toContain("Keys are encrypted before database storage");
+    expect(aiRuntime).toContain('"/api/settings/ai-runtime"');
+    expect(aiRuntime).toContain('method: "PUT"');
+    expect(aiRuntime).toContain("rounded-md");
+  });
+
+  it("keeps Gmail and Zoho OAuth client management secure in the Lovable settings style", () => {
+    expect(gmailOAuth).toContain('"/api/settings/gmail-oauth?organizationId="');
+    expect(gmailOAuth).toContain('"/api/settings/gmail-oauth"');
+    expect(gmailOAuth).toContain('type="password"');
+    expect(gmailOAuth).toContain("Secret stored encrypted");
+    expect(gmailOAuth).toContain("rounded-md");
+    expect(zohoOAuth).toContain('"/api/settings/zoho-oauth?organizationId="');
+    expect(zohoOAuth).toContain('"/api/settings/zoho-oauth"');
+    expect(zohoOAuth).toContain('type="password"');
+    expect(zohoOAuth).toContain("dataCenter");
+    expect(zohoOAuth).toContain("Secret stored encrypted");
+    expect(zohoOAuth).toContain("rounded-md");
   });
 
   it("adapts realtime voice visuals without changing Clara-owned session and safety boundaries", () => {
