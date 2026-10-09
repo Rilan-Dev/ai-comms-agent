@@ -25,15 +25,19 @@ const databaseFoundationPath = resolve(__dirname, "../../../supabase/migrations/
 const databaseFoundationSql = readFileSync(databaseFoundationPath, "utf8");
 const applicationDomainPath = resolve(__dirname, "../../../supabase/migrations/0002_application_domain.sql");
 const applicationDomainSql = readFileSync(applicationDomainPath, "utf8");
+const phase4AlignmentPath = resolve(__dirname, "../../../supabase/migrations/0003_phase4_schema_alignment.sql");
+const phase4AlignmentSql = readFileSync(phase4AlignmentPath, "utf8");
+const phase4CleanupPath = resolve(__dirname, "../../../supabase/migrations/0004_phase4_schema_cleanup.sql");
+const phase4CleanupSql = readFileSync(phase4CleanupPath, "utf8");
 const auditHardeningPath = resolve(__dirname, "../../../supabase/migrations/0032_audit_event_access_hardening.sql");
 const auditHardeningSql = readFileSync(auditHardeningPath, "utf8");
 
 describe("Disposable PostgreSQL bootstrap static verification", () => {
   it("uses valid dollar-quoted DO blocks", () => {
     expect(initSql).toContain("DO $$");
-    expect(initSql).toContain("END\n$;");
+    expect(initSql).toMatch(/END\s*\$\$;/);
     expect(initSql).not.toMatch(/^DO \$(?!\$)/m);
-    expect(initSql).not.toMatch(/^\$/m);
+    expect(initSql).not.toMatch(/^\$(?!\$)/m);
   });
 });
 
@@ -61,8 +65,8 @@ describe("Migration static verification (0001_identity_rbac.sql)", () => {
     });
 
     it("does not contain invalid single-dollar PostgreSQL delimiters", () => {
-      expect(migrationSql).not.toMatch(/^AS \$/m);
-      expect(migrationSql).not.toMatch(/^\$/m);
+      expect(migrationSql).not.toMatch(/^AS \$(?!\$)/m);
+      expect(migrationSql).not.toMatch(/^\$(?!\$)/m);
     });
   });
 
@@ -280,7 +284,7 @@ describe("Phase 4 database foundation migration", () => {
     "email_sync_states","email_sync_events","whatsapp_accounts","whatsapp_contacts",
     "whatsapp_messages","whatsapp_webhook_events","conversations","conversation_messages",
     "conversation_turns","scheduled_jobs","scheduled_job_runs","automation_rules","automation_runs",
-    "email_actions","email_action_approvals","summaries","summary_sources","ai_usage_events",
+    "email_actions","email_action_approvals","summaries","ai_usage_events",
     "voice_sessions","voice_telemetry","audit_events","storage_objects",
   ];
 
@@ -308,8 +312,14 @@ describe("Phase 4 database foundation migration", () => {
     expect(applicationDomainSql).toContain("whatsapp_messages_member_visibility");
     expect(applicationDomainSql).toContain("conversation_messages_member_visibility");
     expect(applicationDomainSql).toContain("scheduled_job_runs_member_visibility");
-    expect(applicationDomainSql).toContain("summary_sources_member_visibility");
+    expect(phase4CleanupSql).toContain("summary_sources_member_visibility");
     expect(applicationDomainSql).toContain("voice_telemetry_member_visibility");
+  });
+
+  it("creates summary sources and tenant policy in their canonical follow-up migrations", () => {
+    expect(phase4AlignmentSql).toContain("CREATE TABLE IF NOT EXISTS summary_sources");
+    expect(phase4CleanupSql).toContain("ALTER TABLE summary_sources ENABLE ROW LEVEL SECURITY");
+    expect(phase4CleanupSql).toContain("summary_sources_member_visibility");
   });
 
   it("stores provider credentials as ciphertext bytea", () => {
