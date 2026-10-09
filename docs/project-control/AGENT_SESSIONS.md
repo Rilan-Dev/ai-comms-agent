@@ -277,3 +277,6 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** Concurrent main-branch changes caused stale-SHA 409 conflicts on WhatsApp route/test paths. No repeated retries. Tests/typecheck/build/browser/runtime checks remain unexecuted.
 - **Handoff:** No handoff for visual work. BKL-012 remains routed to FIX-01; OPS-01 owns live migration/Redis/container operations.
 - **Next action:** Follow current `docs/project-control/NEXT_ACTION.md`; reconcile WhatsApp page/client against the latest main state, then continue independently without waiting for CI/Vercel.
+
+
+- **Follow-up 2026-10-09:** Chat visual adaptation committed as `dee40027`; static contract test `10b87d65`; inventory/NEXT_ACTION advanced. The session remains ACTIVE. Next: AI & Voice → Knowledge → Activity. No verification pass claimed.
