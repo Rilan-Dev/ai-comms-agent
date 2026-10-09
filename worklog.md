@@ -1501,3 +1501,12 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 
 
 - **2026-10-09 follow-up:** during source-level responsive/accessibility review, the Activity route was found to use submitted server-side search/event/decision filters. Corrected the duplicate static UI assertion to match the actual /api/audit? request and filter-submit handler (c4615ab5). This was not a test run; tests/typecheck/build/browser remain NOT RUN.
+
+
+## 2026-10-09 — Cross-route UI accessibility review (source only)
+
+- Continued DEV-01's authorized Lovable UI migration and began the cross-route responsive/accessibility review.
+- Fixed Settings section navigation to stick below the global 64px top bar and improved mobile sidebar keyboard dismissal and expanded/control semantics.
+- Added static source-contract assertions and updated the migration inventory and NEXT_ACTION.
+- Commits: `1761c404`, `8235d93c`, `7dd88044`, `ab03be9f`, `46fff87b`, `ff18009c`, `0a56626f`.
+- Tests/typecheck/build/browser/screen-reader/device checks were NOT RUN. No PASS claimed. Next inspect narrow viewport overflow, keyboard behavior, status announcements, and secondary controls. Do not wait for CI/Vercel.
