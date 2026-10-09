@@ -1309,3 +1309,12 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Commits: `9de78b0f3c889114c976b60242b1de80a3305549`, `c9641d9d99d95b7556d88267336790b3cc3f5195`, `0aef87b0db4e249173d7ed62d7e3d664bd7cb9bf`; NEXT_ACTION pointer `39423d765416b506b75d437aa6ee8031d1ea8d49`.
 - Verification: source writes only; no test/typecheck/build/browser/runtime checks executed. No PASS claimed.
 - Exact next action: continue Lovable visual adaptation on Mail Accounts, Drafts, Threads, Compose and Approvals, then the remaining route groups. Keep connected-mailbox/Clara integration queued until the UI tranche is complete; route substantial bugs to FIX-01 and infrastructure to OPS-01.
+
+### 2026-10-09 — DEV-01 / Forge — Mail screen group migration
+- Continued Lovable UI adaptation through Mail Accounts, Drafts, Threads, Compose and Approvals, preserving real provider forms/actions, persisted drafts and search, provider draft sync, explicit approval flow, and empty/error states.
+- Repaired a malformed Drafts server fallback JSX introduced during styling, then added the Drafts page to the static UI contract checks.
+- Added UI assertions for mailbox connection/test/disconnect/remove, draft search/provider sync/edit/delete, Compose save/approval request, and explicit Approvals decisions.
+- Routed the discovered `getDevOrgId()` usage in the Mail Approvals server page to FIX-01 as BKL-012 / EVT-DEV01-APPROVALS-TENANT-20261009; did not modify the security-sensitive tenant selection in DEV-01 scope.
+- UI commits include `9de78b0f`, `c9641d9d`, `9da036ac`, `0e70c42e`, `e84075eb`, `52be6d66`, `706b46eb`, `295b038f`, `224146d0`, `a47edb72`, `737ab08e`, `c25fdf7c`. NEXT_ACTION update: `6325c6e091c38c7cf65d841622402b697fd4c677`.
+- Verification: source writes only; tests/typecheck/build/browser/runtime checks not executed.
+- Next: adapt WhatsApp, Automations, Schedules, Chat, AI & Voice, Knowledge, Activity, Audit, Operations and Settings. Continue independently without CI/Vercel polling; route bugs to FIX-01 and infrastructure to OPS-01.
