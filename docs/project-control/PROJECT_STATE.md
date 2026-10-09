@@ -4,7 +4,7 @@ One-screen project status. This file is the canonical answer to "where are we?".
 
 ---
 
-> **Active continuation (2026-10-09):** User-directed Lovable UI migration supersedes the older connected-mailbox item as the immediate DEV-01 priority. Inbox and Agents visual tranches are committed; tests and builds remain unexecuted. Exact next action: `docs/project-control/NEXT_ACTION.md`.
+> **Active continuation (2026-10-09):** Owner priority is now RabbitMQ email.sync transport and then Clara-supported email indexing. RabbitMQ producer/consumer, durable main/retry/DLQ queues, publisher confirms, manual acknowledgements, bounded retry and reconnect source are committed; tests/builds and live broker acceptance remain unexecuted. Exact next action: `docs/project-control/NEXT_ACTION.md`.
 
 ```yaml
 project: ai-comms-agent
@@ -19,7 +19,7 @@ phase_status: "implementation in progress — verification deferred until develo
 
 last_completed_phase: 2
 last_completed_phase_status: "APPROVED (2026-10-03)"
-current_objective: "Owner-directed Lovable Agentic AI Studio UI migration across the existing Next.js product; preserve real functionality and validation, then resume connected-mailbox/Clara work"
+current_objective: "Complete durable RabbitMQ email sync delivery and proceed to a supported Clara email indexing adapter; continue remaining UI migration afterward"
 
 architect: "ChatGPT (Chief Architect / Project Controller)"
 developer: "ChatGPT (primary implementer and verifier; Z.AI no longer required)"
@@ -51,8 +51,8 @@ required_decision:
 
 next_action:
   actor: "DEV-01 / Forge"
-  action: "Continue the owner-authorized Lovable UI migration, next adapting Mail Accounts, Drafts, Threads, Compose, and Approvals while preserving current API/auth/tenant/validation behavior"
-  then: "Continue WhatsApp, Automations, Schedules, Chat, AI & Voice, Knowledge, Activity, Audit, Operations and Settings; resume queued connected-mailbox/Clara work after the UI tranche. Do not wait for CI/Vercel; route bugs to FIX-01 and infrastructure to OPS-01."
+  action: "Add focused RabbitMQ delivery/retry/idempotency coverage, then implement the host adapter for Clara-supported email indexing without direct Qdrant writes or modifications to Clara source"
+  then: "Continue the remaining Lovable UI migration and connected-mailbox-to-Clara chat acceptance. Do not wait for CI/Vercel; record unexecuted checks honestly; route bugs to FIX-01 and infrastructure to OPS-01."
 
 phase2_summary:
   status: "implementation_complete_awaiting_review"
