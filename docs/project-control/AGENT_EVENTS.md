@@ -228,3 +228,12 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Correction:** Rewrote the assertions to test the current least-privilege contract and grants rather than the superseded migration implementation.
 - **Commit:** 618c4cd57f0e7e433c4da5f50840cd6c8f612b9b.
 - **Verification:** Source only; focused migration Vitest NOT RUN.
+
+
+### EVT-FIX01-WEB-TYPECHECK-UI-DEPENDENCY-FOCUS-TEST-20261009 — 2026-10-09
+- Agent/session: FIX-01 / Sentinel.
+- Type: CORRECTION.
+- Summary: Declared the missing Lucide runtime dependency and lockfile records, corrected strict focus-trap element typing after the empty-array guard, and defined the missing new-agent source binding in the static UI migration test.
+- Commits: 8f09785a, 7b1136e6, 3e35c1f5, a9dcb8e5, 52a4e348.
+- Verification: source changes only. Install, tests and typechecks pending; no PASS claimed.
+- Next action: frozen install, focused tests, then sequential web/worker typechecks. Do not wait for CI/Vercel.
