@@ -91,6 +91,11 @@ body {
   text-rendering: optimizeLegibility;
 }
 h1, h2, h3, h4, .font-display { font-family: "Space Grotesk", "DM Sans", ui-sans-serif, sans-serif; }
+main h1 { font-weight: 500; letter-spacing: -0.035em; }
+main h2 { letter-spacing: -0.02em; }
+input, textarea, select { border-color: var(--input); border-radius: var(--radius); }
+button, [role="button"] { transition-duration: 150ms; }
+::placeholder { color: var(--muted-foreground); opacity: .8; }
 a { text-decoration: none; }
 button, a, select, input, textarea { -webkit-tap-highlight-color: transparent; letter-spacing: 0; }
 button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
