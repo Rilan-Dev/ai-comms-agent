@@ -1465,3 +1465,10 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Added apps/web/tests/settings-page-contract.test.ts with source assertions for navigation anchors, endpoint continuity, and server-side secret handling.
 - Commits: Settings UI b0c6d04d, contract test 88fd8eea, migration inventory 175cb9ea, next action e7d77a50.
 - Tests/typecheck/build/browser/accessibility checks were not run. Settings remains partial until provider subsection review and visual/browser acceptance.
+
+
+## 2026-10-09 — Settings alerts and login/setup continuation
+
+- Gmail/Zoho OAuth configuration errors now render as accessible alerts with destructive styling, while success notices remain status messages (0f51e38e, 1bce974d). Settings contract assertions updated (7f7d75a2, 6dc64267).
+- Removed duplicate Lucide imports from login/setup pages that could cause compile errors (7a2d8fef, 2029c978). Added auth-page contract tests for API continuity, safe redirect checks, bootstrap token/password/slug constraints, and import uniqueness (2714dc08).
+- Updated Lovable migration inventory (c8b2c285) and next action (753eedd0). Tests/typecheck/build/browser/accessibility checks were not run; Settings and Login/Setup remain partial pending visual and responsive review.
