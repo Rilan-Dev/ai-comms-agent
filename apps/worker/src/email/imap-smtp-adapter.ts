@@ -6,10 +6,10 @@ import type {
 } from "@ai-comms-agent/shared";
 
 const CAPABILITIES: CapabilitySet = {
-  folders: true, labels: false, sync_incremental: false, sync_full: true,
-  sync_webhook: false, sync_idle: true, search_server_side: false,
-  search_client_side: false, drafts: false, reply: false, forward: false,
-  mark_read: false, archive: false, move: false, threads: false,
+  folders: true, labels: false, sync_incremental: true, sync_full: true,
+  sync_webhook: false, sync_idle: false, search_server_side: false,
+  search_client_side: true, drafts: false, reply: false, forward: false,
+  mark_read: false, archive: false, move: false, threads: true,
   attachments_download: false, attachments_upload: false, send: false,
 };
 
