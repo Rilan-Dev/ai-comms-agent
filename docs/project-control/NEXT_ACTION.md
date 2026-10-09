@@ -798,3 +798,10 @@ The opt-in local infrastructure services are now active in `infra/docker-compose
 - Added IMAP parser contract coverage and corrected adapter capability assertions: `26c90fe94093a953973492c5276b50a13c4d078f`, `b2d82ddfe6f656740bd2077dc1300cad895645f7`; updated worker selection test after enabling IMAP polling: `d72d444a1d71c9675fa52b4a9bcb3b957150cc56`.
 - Enabled the opt-in local Compose profile for PostgreSQL/Redis/RabbitMQ/Qdrant: `c3b61ba1b688137cf917bdb224b51fef433430d5`. Added `docs/architecture/INFRASTRUCTURE-INTEGRATION-STATUS.md` documenting actual data flow and integration gaps: `63312b53db66a42d10cceb67b3b1f6a283511642`.
 - **Not verified:** No test suite, typecheck, build, live mailbox, deployed database, Clara turn, or infrastructure container was executed. GitHub accepted the commits only. Redis and RabbitMQ still lack real application client paths; Qdrant email indexing is not implemented. Do not claim those app integrations are enabled just because endpoints or local containers exist.
+
+
+### Follow-up — focused-test source review (2026-10-09)
+- Corrected Zoho adapter test mocks to match the actual account-discovery sequence (`GET /api/accounts` before account detail/folder/message calls); the prior mock would fail before exercising sync/draft behavior. Commit `f04eb93d27ee01934970e64679be381d6dec6500`.
+- Fixed malformed IMAP LIST command line termination found during source review (`fe3e2d39157f74c66741772966125cfee81055a1`; intermediate correction commits `2146facf04762ffd07fbd1458ad5a9f4256cf56` and `2f5b63e1a65b6aded5b602c0f439c689cd49c45f`). Source now uses an escaped CRLF and closes the mailbox pattern correctly.
+- Zoho's capability descriptor now advertises the bounded newest-page incremental refresh actually implemented (`5a59ec5745f8d3a3f735220f9496e14c79dece22`).
+- **Verification status:** Source was inspected only. Focused tests and worker/web typechecks still have not executed; do not claim PASS. Real IMAP, PostgreSQL-to-Clara Chat, RAG email indexing, Redis client usage, and RabbitMQ durable queue lifecycle remain pending. FIX-01 owns BKL-008; OPS-01 owns production infrastructure/deployment.
