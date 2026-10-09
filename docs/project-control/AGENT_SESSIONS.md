@@ -330,3 +330,6 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Commits:** `1cec6ca9`, `cb914148`, inventory `a5a67d2e`, NEXT_ACTION `43a2b1d8`.
 - **Verification NOT RUN:** tests/typecheck/build/browser/accessibility. No PASS claimed.
 - **Next:** cross-route responsive/accessibility review and remaining secondary controls; no CI/Vercel polling.
+
+
+- **Source-review follow-up:** aligned the duplicate Activity UI contract assertion with the current server-backed filter submit flow (c4615ab5). This was source consistency review only, not Vitest execution. Tests/typecheck/build/browser/accessibility remain NOT RUN. Next: continue cross-route responsive/accessibility review and secondary controls without CI/Vercel waiting.
