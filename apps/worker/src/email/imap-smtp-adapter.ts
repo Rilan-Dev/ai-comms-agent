@@ -290,6 +290,10 @@ export class ImapSmtpAdapter implements EmailProvider {
       lastUid = Number(parts[1]) || 0;
       previousValidity = parts[2] ?? "";
     }
+    const checkpoints: Record<string, { uid: number; validity: string }> = {};
+    if (state.sync_mode === "incremental" && state.history_token?.startsWith("imap-v1:")) {
+      try { Object.assign(checkpoints, JSON.parse(decodeURIComponent(state.history_token.slice(8)))); } catch { /* invalid cursor forces safe rescan */ }
+    }
     const added: SyncResult["added"] = [];
     const updated: SyncResult["updated"] = [];
     let pages = 0;
@@ -297,6 +301,8 @@ export class ImapSmtpAdapter implements EmailProvider {
       const folder = folders[folderIndex]!;
       const selected = await this.command(`SELECT ${quote(folder.provider_folder_id)}`);
       const validity = selected.join("\n").match(/UIDVALIDITY\s+(\d+)/i)?.[1] ?? "unknown";
+      const savedCheckpoint = checkpoints[folder.provider_folder_id];
+      if (!encoded && state.sync_mode === "incremental") lastUid = savedCheckpoint?.validity === validity ? savedCheckpoint.uid : 0;
       if (previousValidity && previousValidity !== validity) lastUid = 0;
       const lines = await this.command("UID SEARCH ALL");
       const uidLine = lines.find((line) => /^\* SEARCH(?:\s|$)/i.test(line)) ?? "";
@@ -313,15 +319,17 @@ export class ImapSmtpAdapter implements EmailProvider {
       pages++;
       if (fresh.length === 50 && (uids.find((uid) => uid > fresh[fresh.length - 1]!) !== undefined)) {
         lastUid = fresh[fresh.length - 1]!;
-        return { added, updated, deleted: [], new_state: { ...state, cursor: `imap:${folderIndex}:${lastUid}:${validity}`, history_token: validity, sync_mode: "initial", last_sync_at: new Date().toISOString() } };
+        return { added, updated, deleted: [], new_state: { ...state, cursor: `imap:${folderIndex}:${lastUid}:${validity}`, history_token: state.history_token, sync_mode: "initial", last_sync_at: new Date().toISOString() } };
       }
+      checkpoints[folder.provider_folder_id] = { uid: uids.length ? Math.max(...uids) : 0, validity };
       folderIndex++;
       lastUid = 0;
+      previousValidity = "";
     }
     const hasMore = folderIndex < folders.length;
     return {
       added, updated, deleted: [],
-      new_state: { ...state, cursor: hasMore ? `imap:${folderIndex}:0:` : undefined, history_token: hasMore ? state.history_token : "imap-full-v1", sync_mode: hasMore ? "initial" : "incremental", last_sync_at: new Date().toISOString() },
+      new_state: { ...state, cursor: hasMore ? `imap:${folderIndex}:0:` : undefined, history_token: `imap-v1:${encodeURIComponent(JSON.stringify(checkpoints))}`, sync_mode: hasMore ? "initial" : "incremental", last_sync_at: new Date().toISOString() },
     };
   }
 
