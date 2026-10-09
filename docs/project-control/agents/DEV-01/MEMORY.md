@@ -23,3 +23,10 @@ This is durable memory for DEV-01. It supplements, but never overrides, shared A
 Secrets, tokens, passwords, private keys, or sensitive personal data.
 
 <!-- Append durable DEV-01 lessons below. -->
+
+
+### 2026-10-09 — Draft discoverability
+- For bounded, organization-scoped persisted draft lists, client-side search across subject, body, recipients, and mailbox address improves discoverability without changing the API trust boundary.
+- Render a separate no-match state; do not tell users there are no drafts when their current query simply matches none.
+- Keep source/runtime verification claims separate: a successful GitHub source write is not a test, build, browser, provider, or deployment pass.
+- Related: `apps/web/src/app/mail/drafts/drafts-client.tsx`, commit `8ccf1cb24039cb3bc745a51576a73ee68007e946`.
