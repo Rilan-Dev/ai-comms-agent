@@ -184,3 +184,14 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - Source commit: 19b8c0fd. Regression assertion update: da2502bd.
 - Verification: NOT RUN — no tests, typecheck, build, browser or live multi-tenant acceptance executed.
 - Next: continue cross-route responsive/accessibility review and retain runtime tenant verification as pending.
+
+### EVT-FIX01-PNPM-LOCKFILE-REGRESSION-20261009 — 2026-10-09
+- **Agent/session:** FIX-01 / Sentinel — FIX01-PNPM-LOCKFILE-REGRESSION-20261009
+- **Type:** CORRECTION
+- **Summary:** Recovered the repeated `amqplib@2.2.0` lockfile failure. The original source correction is already on current main; added static regression coverage for one lockfile document and worker package/snapshot records.
+- **Root cause:** Concatenated YAML lockfile documents and missing worker dependency resolution/snapshot entries at the user's reported revision. `pnpm install --fix-lockfile` repeated the same missing-dependency error.
+- **Impact:** Workspace install/typecheck and Docker builds blocked before compilation.
+- **Owner:** FIX-01 for lockfile source and regression protection; OPS-01 only for separate Docker host/build environment issues after lockfile validation.
+- **Commits:** `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e` (lockfile repair); `b9ba0c6738e32cf4ef8b670a4b65857a56eb50f2` (regression source).
+- **Verification:** Static source inspected; frozen install, test, typecheck and Docker build not run after fix. No PASS claimed.
+- **Next action:** Pull latest main and run `pnpm install --frozen-lockfile`, then `pnpm run typecheck`; route host/build-environment failures to OPS-01.
