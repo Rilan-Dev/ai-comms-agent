@@ -986,3 +986,11 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Forward migration `0029_runtime_schema_reconciliation.sql` committed as `a4fab9df07deafa5fd47879217616e3cb6d1c03f`.
 - Redis lease rejection now retains up to 200 characters of the Redis server error reply; focused WRONGPASS regression source committed as `0fa3e751cae2e5105b212083e93a7cc87bf00468`.
 - **Not verified:** migration application, Redis AUTH/ACL/TLS/connectivity, focused test execution, typecheck/build, and live mailbox sync. GitHub commits are not runtime evidence.
+
+
+## 2026-10-09 — Zoho OAuth callback token metadata correction
+
+- **User-reported symptom:** Zoho consent returned to the app, but no Zoho mailbox appeared; UI displayed `Zoho did not return the required token metadata.`
+- **Source correction:** `apps/web/src/app/api/oauth/zoho/callback/route.ts` no longer treats `api_domain` as mandatory token metadata. It selects the Mail API origin from the server-validated signed data-center setting and gives actionable guidance for token exchange rejection without exposing token response details. Static regression assertions added to `apps/web/tests/zoho-oauth-settings.test.ts`.
+- **Commits:** `2cb976bf6cc6d835ff75692998e04958d63e001d`, `53d96a0f3125830a9dc07ae3011a96d7b54c878b`.
+- **Verification status:** source_changed_not_tested. No typecheck, test, migration, deployment, or live Zoho OAuth retry was run. No runtime PASS claimed.
