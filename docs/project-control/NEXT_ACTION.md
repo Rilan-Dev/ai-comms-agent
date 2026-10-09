@@ -6,6 +6,11 @@ The single exact next authorized action. Update this file on every commit.
 
 ## Current next action
 
+### Immediate inbox runtime follow-up — 2026-10-09 (OPS-01)
+
+Latest live logs show `email_messages.from_name` missing and Redis authentication rejected with WRONGPASS. FIX-01 committed `0030_email_messages_runtime_reconciliation.sql` and static migration coverage. The `queued` response is acknowledgement only, not import success. OPS-01's next runtime action is to apply migrations `0029` and `0030` to the exact web/worker database, roll out matching containers, correct Redis URL credentials against Redis ACL configuration, then verify persisted email rows and inbox results. No runtime success is claimed. Keep the independent DEV-01 UI migration moving without waiting for CI/Vercel.
+
+
 ### DEV-01 Lovable UI migration — authoritative continuation update (2026-10-09)
 
 The owner explicitly requires the production application to adopt the Lovable-generated Agentic AI Studio visual design across all screens, without losing current application functionality or frontend validation. The route-by-route coverage matrix is maintained in `docs/project-control/LOVABLE_UI_MIGRATION.md`; use it as the migration checklist and update statuses as each screen is actually adapted.
