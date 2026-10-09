@@ -139,3 +139,8 @@ This is an explicit inventory, not a claim that every listed page is already mig
 - Source commits: 5a5275b3, 088c36d8, b46ac6ab, ba4ebdcd, fbc9a8db. Tests/typecheck/build/browser and multi-tenant runtime checks remain not run.
 
 - Follow-up shell review found the Google Fonts `@import` was placed after the Tailwind theme block, where CSS import ordering can cause it to be ignored. Moved it before Tailwind and added a source assertion for ordering (`82eaa527`, test `d70d0064`). Not browser-verified.
+
+
+### Cross-route review finding — FIX-01 handoff
+
+The Audit page's CSV/JSON export links omit `organizationId`, and `apps/web/src/app/api/audit/export/route.ts` falls back to `getDevOrgId()` before authorization. FIX-01 should correct this to derive the active organization from authenticated membership context and add regression coverage. Until fixed and verified, do not claim tenant isolation for audit exports.
