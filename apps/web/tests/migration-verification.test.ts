@@ -37,8 +37,9 @@ describe("Migration static verification (0002_database_foundation.sql)", () => {
   it("does not contain invalid single-dollar DO delimiters", () => {
     expect(databaseFoundationSql).not.toMatch(/^DO \$(?!\$)/m);
     expect(databaseFoundationSql).not.toMatch(/END \$;/m);
-    expect(databaseFoundationSql).toContain("DO $aca$ BEGIN");
-    expect(databaseFoundationSql).toContain("END $aca$;");
+    // Standard $ quoting is valid PostgreSQL; named tags are also valid.
+    expect(databaseFoundationSql).toMatch(/^DO (?:\\$\\$|\\$[A-Za-z_][A-Za-z_0-9]*\\$)/m);
+    expect(databaseFoundationSql).toMatch(/END (?:\\$\\$|\\$[A-Za-z_][A-Za-z_0-9]*\\$);/);
   });
 
   it("contains the canonical agent foundation migration artifact", () => {
