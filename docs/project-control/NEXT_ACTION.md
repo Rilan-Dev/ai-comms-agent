@@ -889,3 +889,8 @@ The standalone `/agents/new` form had no persistence handler and did not save it
 ### DEV-01 cross-route review update — 2026-10-09
 
 The review is in progress, not complete. The Settings anchor navigation now uses `top-[64px]` with a lower stacking level so it does not cover the global sticky top bar. The mobile sidebar now closes on Escape and its trigger reports `aria-expanded` and `aria-controls`. Static source assertions were added. **Tests/typecheck/build/browser/screen-reader/device checks NOT RUN.** Next inspect remaining route controls and responsive overflow, then continue the focused UI contract coverage. Independent OPS-01 inbox runtime follow-up (migrations 0029/0030 and Redis WRONGPASS) remains separate and must not block DEV-01.
+
+
+### DEV-01 shell review follow-up — 2026-10-09
+
+A further source review found the Google Fonts CSS import after the Tailwind theme block. Moved it to the beginning of `apps/web/src/app/globals.css` and added a static ordering assertion. Commits: CSS `82eaa527`, test `d70d0064`, inventory `7678c345`. This is source-only; tests/typecheck/build/browser/font network behavior remain NOT RUN. Continue the responsive/accessibility review and secondary controls; do not wait for CI/Vercel.
