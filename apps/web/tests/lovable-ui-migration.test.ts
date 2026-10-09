@@ -16,6 +16,7 @@ const compose = readFileSync(resolve(__dirname, "../src/app/mail/compose/compose
 const threads = readFileSync(resolve(__dirname, "../src/app/mail/threads/page.tsx"), "utf8");
 const accounts = readFileSync(resolve(__dirname, "../src/app/mail/accounts/email-accounts-client.tsx"), "utf8");
 const approvals = readFileSync(resolve(__dirname, "../src/app/mail/approvals/approvals-client.tsx"), "utf8");
+const whatsappPage = readFileSync(resolve(__dirname, "../src/app/whatsapp/page.tsx"), "utf8");
 const whatsapp = readFileSync(resolve(__dirname, "../src/app/whatsapp/whatsapp-client.tsx"), "utf8");
 const automations = readFileSync(resolve(__dirname, "../src/app/automations/automations-client.tsx"), "utf8");
 const schedules = readFileSync(resolve(__dirname, "../src/app/schedules/schedules-client.tsx"), "utf8");
@@ -129,6 +130,17 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(login).toContain("setError");
     expect(login).toContain("window.location.replace");
   });
+  it("routes WhatsApp through the authenticated organization and makes Connect open the real setup form", () => {
+    expect(whatsappPage).toContain("getAuthenticatedAppContext");
+    expect(whatsappPage).toContain("context.organizationId");
+    expect(whatsappPage).not.toContain("getDevOrgId");
+    expect(whatsapp).toContain('aria-controls="whatsapp-connect-form"');
+    expect(whatsapp).toContain('id="whatsapp-connect-form"');
+    expect(whatsapp).toContain("setShowConnectForm(v => !v)");
+    expect(whatsapp).toContain("Save and connect");
+    expect(whatsapp).toContain("does not claim a successful Meta verification");
+  });
+
   it("adapts WhatsApp to the Lovable design while preserving secure account and idempotent send flows", () => {
     expect(whatsapp).toContain('from "lucide-react"');
     expect(whatsapp).toContain('font-display text-3xl');
