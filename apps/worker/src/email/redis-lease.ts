@@ -33,7 +33,7 @@ async function redisCommand(url: RedisUrl, args: string[]): Promise<string> {
       return new Promise<string>((resolve, reject) => {
         let buffer = Buffer.alloc(0);
         const timer = setTimeout(() => finish(new Error("Redis command timeout")), 3000);
-        const onData = (chunk: Buffer) => { buffer = Buffer.concat([buffer, chunk]); const end = buffer.indexOf("\r\n"); if (end < 0) return; const line = buffer.subarray(0, end).toString("utf8"); if (line.startsWith("-")) return finish(new Error("Redis command rejected")); finish(undefined, line); };
+        const onData = (chunk: Buffer) => { buffer = Buffer.concat([buffer, chunk]); const end = buffer.indexOf("\r\n"); if (end < 0) return; const line = buffer.subarray(0, end).toString("utf8"); if (line.startsWith("-")) return finish(new Error("Redis command rejected: " + line.slice(1, 201))); finish(undefined, line); };
         const onError = (error: Error) => finish(error);
         const finish = (error?: Error, value?: string) => { clearTimeout(timer); socket.off("data", onData); socket.off("error", onError); if (error) reject(error); else resolve(value ?? ""); };
         socket.on("data", onData); socket.once("error", onError);
