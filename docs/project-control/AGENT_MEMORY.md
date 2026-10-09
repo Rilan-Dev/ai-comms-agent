@@ -125,3 +125,11 @@ If shared memory conflicts with current repository state or current requirements
 - **Remedy:** Replaced only the malformed literal newline sequences between the three `expect(helper).toContain(...)` assertions with real line breaks. Commit `39857c40820940b500dcf452331dfe82ae35b861`.
 - **Prevention:** When inserting source through JSON/API or generated patches, inspect escaping at the actual file layer; ensure `\n` is decoded to a source newline rather than committed literally.
 - **Verification:** User-provided output proves worker and shared package typechecks passed before this correction; web typecheck failed at the malformed test. The web typecheck has not yet been rerun after the fix.
+
+
+### FIX-01 / Sentinel — 2026-10-09 — OAuth focused-test assertion mismatch
+- **Evidence:** User's latest `pnpm run typecheck` passed across all workspaces. Focused Zoho OAuth test then reported 8 passing and 2 failing assertions.
+- **Root cause:** The implementation intentionally rejects raw IP hosts before protocol validation, so an HTTP raw-IP URL raises the DNS/raw-IP error, not HTTPS. A static source assertion also incorrectly rejected the explanatory comment mentioning `NEXT_PUBLIC_APP_URL` rather than only rejecting runtime `process.env.NEXT_PUBLIC_APP_URL` usage.
+- **Remedy:** Adjusted the two test expectations only; no OAuth runtime implementation changed. Commit `c58d6d442767f471c694ef978fdb06eca6d29850`.
+- **Prevention:** Tests should assert observable security behavior and actual forbidden runtime references, not incidental error ordering or harmless comments.
+- **Status:** Test source corrected; focused rerun pending.
