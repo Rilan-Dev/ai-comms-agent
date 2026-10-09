@@ -28,9 +28,9 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "393d72fa529fdeaa70bce5a7aca083233ec59c6f"
-current_commit_short: "393d72fa"
-current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/393d72fa529fdeaa70bce5a7aca083233ec59c6f"
+current_commit: "31ff9cb19505d2c446db9fd9ad306d3097678b13"
+current_commit_short: "31ff9cb1"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/31ff9cb19505d2c446db9fd9ad306d3097678b13"
 last_verified_commit: "pending_runtime_acceptance"
 
 open_blockers:
@@ -44,8 +44,8 @@ required_decision:
 
 next_action:
   actor: "ChatGPT"
-  action: "Apply migration 0024 to reconcile legacy audit_events resource_type/outcome constraints, then retry authenticated agent creation"
-  then: "Continue remaining Mail/WhatsApp/Chat/Voice edge hardening and deterministic audit/E2E work without waiting for CI/Vercel"
+  action: "Deploy dynamic Gmail/Zoho OAuth callback and multi-client settings changes; apply migrations 0024–0027"
+  then: "Use an HTTPS DNS domain, register exact callbacks in Google/Zoho consoles, and run both OAuth flows plus worker token-refresh checks without waiting for CI/Vercel"
 
 phase2_summary:
   status: "implementation_complete_awaiting_review"
@@ -482,3 +482,6 @@ Gmail OAuth configuration is sequenced as `0026_gmail_oauth_configuration.sql`; 
 
 ### 2026-10-09 — Dynamic OAuth callbacks and Zoho settings
 Gmail and Zoho OAuth callbacks now derive from the active request origin and the exact URI is signed into state for token exchange. Zoho now has organization-scoped encrypted OAuth client settings, selection on Mail Accounts, and per-account client credentials for worker refresh. Migration 0027 adds Zoho OAuth configuration. Public callbacks require HTTPS; Google does not accept raw IP callback hosts. Deployment and end-to-end tests remain pending.
+
+
+Current implementation update (2026-10-09): request-derived OAuth callbacks and multi-client Zoho settings are committed. See NEXT_ACTION.md for deployment. Tests, build, migrations, and live OAuth are unverified.
