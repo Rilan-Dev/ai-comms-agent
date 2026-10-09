@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 type Agent = { id: string; name: string };
 type Rule = { id: string; agentId: string; name: string; trigger: Record<string,unknown>; actions: unknown[]; status: string };
