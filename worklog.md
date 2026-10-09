@@ -1216,3 +1216,17 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Model-catalog network/timeout failures now return a clear non-secret 502 diagnostic. Voice route database imports were consolidated; saved provider selection state is hydrated in the UI.
 - Static assertions were extended for the official-origin guard. No test/typecheck/build/runtime execution was performed.
 - Latest source/test commit at this checkpoint: `d6be733ab85d5fa48df67b6b4ae7705c58bf1084`.
+
+## 2026-10-09 — Gmail pending status and automatic synchronization repair
+
+- **Root cause:** OAuth callback correctly persisted encrypted Gmail credentials but left the account in `pending` awaiting worker verification. The long-lived worker entry point did not start any Gmail sync consumer, so no initial sync could ever move the account to `connected` or populate `last_synced_at`.
+- Added `apps/worker/src/email/mailbox-sync-worker.ts`: a PostgreSQL-backed, claimable, retryable worker loop for pending/connected/error Gmail accounts; discovers folders/labels; reads the Gmail history cursor; fetches full message content; persists threads and messages idempotently; updates `email_sync_states` and account sync status; and records retry/backoff errors without logging secrets.
+- Wired Gmail sync into worker startup and graceful shutdown.
+- Corrected Gmail initial synchronization to page through the entire mailbox, capture the Gmail history baseline before page one, and switch to incremental history sync only after initial pagination finishes. Expired history cursors trigger a safe full re-import (upserts prevent duplicates).
+- Added encrypted persistence for refreshed access tokens so the worker does not refresh the same expired token from stale database state on every poll.
+- Gmail OAuth reconnect now preserves the existing refresh token if Google omits a new refresh token in the authorization response.
+- Added an organization-admin-authorized manual sync endpoint, a **Sync now** mailbox action, and 15-second status refresh in the Connected mailboxes screen.
+- Added regression coverage for initial pagination, cursor transitions, refreshed-token snapshot, worker startup, manual sync authorization, and UI polling.
+- **Source commits:** `3531828f`, `f00ef734`, `1a32d05d`, `cc7ee95a`, `c052c981`, `90c0ba8a`, `30aa9747`, `8a2c1cd5`, `0e891944`, `280ca4ab`, `bf07f8e4`, `48def7ee`, `25fab134`, `ae1ddb6b`.
+- **Verification:** tests, typecheck, build, migration execution, deployment, and live Gmail sync were not run from this environment. No PASS is claimed.
+- **Operational dependency:** deploy both web and worker; the worker needs the same PostgreSQL database and `CREDENTIALS_MASTER_KEY` as the web service. Migration chain through `0028` must be applied. See ISS-012.
