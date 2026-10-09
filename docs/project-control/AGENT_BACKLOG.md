@@ -106,3 +106,10 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Authorization:** User-explicit FIX-01 request for minimal correction and regression protection.
 - **Suggested next action:** Pull latest main; run `pnpm install --frozen-lockfile`, then `pnpm run typecheck`. If the install succeeds but Docker fails for host/network/base-image reasons, route that separate failure to OPS-01.
 - **Related:** ISS-017; FIX01-PNPM-LOCKFILE-REGRESSION-20261009; commits `27f04065`, `b9ba0c67`.
+
+### BKL-014 follow-up — tarball integrity
+- **Update:** User's frozen install found a second lockfile defect after the missing dependency records were repaired: `amqplib@2.2.0` had no SRI integrity field.
+- **Owner:** FIX-01 / Sentinel
+- **State:** SOURCE_CORRECTED; LOCAL_RERUN_PENDING
+- **Commits:** lockfile `644d5781`; focused regression assertion `d115e1b0`.
+- **Next action:** Pull latest main, run `pnpm install --frozen-lockfile`, then workspace typecheck and focused lockfile Vitest. Preserve supply-chain integrity checks.
