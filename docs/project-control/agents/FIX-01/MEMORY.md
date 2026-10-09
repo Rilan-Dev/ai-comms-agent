@@ -54,3 +54,10 @@ The authentication loop was traced to session issuance preceding active organiza
 - **Prevention:** Check escaping after generated/API writes so newline escapes do not become literal source characters.
 - **Status:** Source correction committed; post-fix typecheck and test still pending.
 - **Next action:** Re-run `pnpm run typecheck` and the focused Zoho OAuth test; route unrelated infrastructure/deployment failures to OPS-01.
+
+
+### FIX-01 / Sentinel — 2026-10-09 — OAuth focused assertions
+- User-reported typecheck now passes all workspaces; focused test output initially showed 8 pass / 2 fail.
+- Raw IP validation intentionally precedes HTTPS validation; assert the raw-IP/DNS error for any raw IP, including HTTP. Do not encode incidental validation ordering as a protocol requirement.
+- A source test forbidding environment-variable use should assert absence of `process.env.NEXT_PUBLIC_APP_URL`, not absence of every textual mention, since comments may explain the policy.
+- Test-only correction commit: `c58d6d442767f471c694ef978fdb06eca6d29850`. Rerun remains pending.
