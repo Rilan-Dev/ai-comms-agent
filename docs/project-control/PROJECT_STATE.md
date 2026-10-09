@@ -506,3 +506,7 @@ User explicitly directed that the existing application adopt the visual design o
 
 ### 2026-10-09 — Lovable UI adaptation follow-up
 The UI adaptation now also harmonizes legacy card/button geometry and form typography, moves login/setup and Inbox/Chat/AI Voice/thread ambient surfaces toward the Lovable warm-neutral/green palette, and binds header search's `q` parameter to the actual Inbox filter state. Added `apps/web/tests/lovable-ui-migration.test.ts` to cover design tokens and preservation of authentication, route navigation, search, persisted overview data, and form validation. Test source has not been executed. Latest related commits: `3ed3c28`, `239a38c`, `130c810`, `c7bc510`, `eeb717c`, `3ccad8c`. Continue remaining screen-by-screen UI migration; no test/build/browser/runtime PASS claimed.
+
+
+### 2026-10-09 — Agents screen icon alignment
+The Agents list now uses inline SVG sparkle iconography matching the Lovable visual language instead of decorative text glyphs. The existing API-backed create flow, slug validation, notification feedback, status filter, and navigation to agent configuration are preserved. Added assertions to the UI migration contract test source. Commits: `0a79f7f3a9321d30dbc4d01fa5c611c1356d5021`, `2c949dc92d524f484d5e689603afd26106f9d801`. Tests not executed.
