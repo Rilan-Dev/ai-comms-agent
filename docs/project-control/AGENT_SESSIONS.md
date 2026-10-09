@@ -333,3 +333,10 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 
 
 - **Source-review follow-up:** aligned the duplicate Activity UI contract assertion with the current server-backed filter submit flow (c4615ab5). This was source consistency review only, not Vitest execution. Tests/typecheck/build/browser/accessibility remain NOT RUN. Next: continue cross-route responsive/accessibility review and secondary controls without CI/Vercel waiting.
+
+
+### DEV01 cross-route review follow-up — 2026-10-09
+- Status: ACTIVE. Corrected Settings sticky navigation offset and mobile sidebar keyboard dismissal/control semantics.
+- Source commits: `1761c404`, `8235d93c`; static assertions `7dd88044`, `ab03be9f`, `46fff87b`; project-control updates `ff18009c`, `0a56626f`.
+- Verification NOT RUN: no test/typecheck/build/browser/screen-reader/device evidence.
+- Next: continue responsive overflow, keyboard and secondary-control review without waiting for CI/Vercel.
