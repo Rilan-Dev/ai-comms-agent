@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 type Agent = { id: string; name: string; status: string };
 type Schedule = { id: string; agentId: string; name: string; cron: string | null; oneFireAt: string | null; intent: string; status: string; timezone: string; nextFireAt: string | null; lastError: string | null };
