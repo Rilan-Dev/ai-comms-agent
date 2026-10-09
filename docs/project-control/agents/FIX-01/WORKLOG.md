@@ -114,3 +114,13 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Blockers/dependencies:** OPS-01 must apply migrations through 0031 and fix Redis WRONGPASS in the live container configuration.
 - **Lesson:** HTTP 202 proves only queue acceptance; verify each link in the chain: queue/poller → Redis lease → provider fetch → DB persistence → tenant-scoped inbox query. Legacy JSONB cursor shape is not interchangeable with provider string pagination tokens.
 - **Next action:** OPS-01 apply migrations 0029–0031, rebuild/restart web and worker from current main, correct Redis ACL credentials, then confirm persisted message rows and inbox rendering. Do not disable distributed locking.
+
+ 
+### FIX01-PNPM-LOCKFILE-20261009 / 2026-10-09
+- **Task:** Resolve user-reported `pnpm run typecheck` failure before workspace typechecking.
+- **Evidence:** `ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY` for `amqplib@2.2.0`.
+- **Code analysis:** `pnpm-lock.yaml` contained two YAML documents; the first was stray pnpm self-package metadata. The actual workspace document referenced `amqplib@2.2.0` in the worker importer but had no matching package/snapshot entries.
+- **Fix:** Replaced the multi-document lockfile with the workspace document and restored the package resolution and snapshot.
+- **Commit:** `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e`.
+- **Verification:** Post-commit source structure checked; pnpm frozen install and typecheck not run. No PASS claimed.
+- **Next:** User pulls latest `main`, runs `pnpm install --frozen-lockfile` and `pnpm run typecheck`; continue directly to any remaining independent issues without waiting for CI/Vercel.
