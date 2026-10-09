@@ -37,6 +37,7 @@ open_blockers:
   - "Runtime verification still pending for the PostgreSQL migration set; development continuation is explicitly authorized"
   - "ISS-011: AI provider/Clara configuration completeness implementation is in progress; migration 0028 and live chat/voice/provider validation are pending"
   - "ISS-012: Gmail OAuth mailbox sync worker and initial import are implemented on main; web/worker deployment and live mailbox sync verification are pending"
+  - "BKL-008: FIX-01 to review Drafts organization context and Inbox search SQL placeholders"
 open_risks:
   - "Clara manifest has 2 SHA typos (Clara library issue, not file mutations — see CLARA-INTEGRATION.md §8a)"
   - "No managed database dependency; operator must provide PostgreSQL 15+ for deployment"
@@ -492,3 +493,6 @@ Current implementation update (2026-10-09): request-derived OAuth callbacks and 
 ## 2026-10-09 — Gmail/Zoho OAuth origin regression correction
 
 The callback helper previously used only `request.url`, which can expose an internal Next.js origin such as `https://localhost:3000` behind a reverse proxy. Source now resolves the public origin from validated `X-Forwarded-Host` and `X-Forwarded-Proto`, keeps callback/token-exchange URIs consistent, and returns callback navigation to the public origin. Gmail and Zoho Settings now warn if the server-generated callback origin differs from the browser origin. Reverse-proxy configuration and live OAuth remain unverified; see `NEXT_ACTION.md`, `ISSUES.md`, and `VERIFICATION_STATE.md` for the exact next step.
+
+
+| 2026-10-09 | DEV-01 | Added persisted Drafts search (subject/body/recipients/mailbox) and routed suspected tenant-context/Inbox SQL defects to FIX-01. Product commit `8ccf1cb24039cb3bc745a51576a73ee68007e946`; no tests or runtime verification claimed. |
