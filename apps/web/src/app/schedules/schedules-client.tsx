@@ -33,9 +33,9 @@ export default function SchedulesClient({ organizationId, initialSchedules, agen
   const active = useMemo(() => rows.filter(r => r.status !== "archived"), [rows]);
   return <main className="mx-auto max-w-[1200px] space-y-8 bg-background p-5 sm:p-7 lg:p-10">
     <header><p className="mb-3 text-xs font-semibold uppercase tracking-[.16em] text-muted-foreground">Automation workspace</p><h1 className="font-display text-3xl font-medium tracking-tight">Schedules<span className="text-tertiary">.</span></h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Durable, organization-scoped schedules with explicit timezone and missed-fire grace.</p></header>
-    {notice && <div role="status" className="rounded-2xl border bg-background px-4 py-3 text-sm">{notice}</div>}
+    {notice && <div role="status" className="rounded-md border bg-background px-4 py-3 text-sm">{notice}</div>}
     <section className="rounded-md border border-border bg-card p-5"><div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-      <input className="h-10 rounded-xl border bg-background px-3 text-sm lg:col-span-2" placeholder="Schedule name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
+      <input className="h-10 rounded-md border bg-background px-3 text-sm lg:col-span-2" placeholder="Schedule name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
       <select className="h-10 rounded-xl border bg-background px-3 text-sm" value={form.agentId} onChange={e=>setForm({...form,agentId:e.target.value})}>{agents.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select>
       <input className="h-10 rounded-xl border bg-background px-3 text-sm" value={form.cron} onChange={e=>setForm({...form,cron:e.target.value})} disabled={Boolean(form.oneFireAt)} aria-label="Cron expression"/>
       <input className="h-10 rounded-xl border bg-background px-3 text-sm" type="datetime-local" value={form.oneFireAt} onChange={e=>setForm({...form,oneFireAt:e.target.value})} aria-label="One-time fire time"/>
