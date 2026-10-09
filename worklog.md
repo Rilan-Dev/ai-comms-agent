@@ -1157,3 +1157,5 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Validation: source inspection only; tests/build/typecheck/migrations/live OAuth not run. No PASS claimed. Next: pull main, run `bash scripts/manual-up.sh`, configure HTTPS provider callback URLs and verify both flows.
 
 - Final source review correction: callback validation now rejects raw IP hosts even when HTTPS, because Google web OAuth does not accept raw IP redirect hosts. The hostname normalization was simplified to avoid regex escaping ambiguity. No test runner was executed after this change.
+
+- Regression test cleanup: Gmail worker refresh tests now provide the saved per-account OAuth client fields instead of stubbing deprecated environment variables; Zoho refresh tests likewise verify saved client credentials. Added these fields to the shared server-side credential type. The test suites remain unexecuted.
