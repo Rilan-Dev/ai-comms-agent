@@ -303,3 +303,14 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Verification:** GitHub source inspected; no tests, typecheck, PostgreSQL migration execution, Redis authentication, image rollout, or live mailbox import have been executed/confirmed. No PASS claimed.
 - **Next action:** OPS-01 applies migrations through `0031` to the exact database used by web/worker, deploys matching images, fixes `REDIS_URL` username/password against the actual Redis ACL/user without exposing secrets, and triggers sync. Confirm worker completion logs, persisted `email_messages` row count, and inbox results.
 - **Safety:** Do not bypass Redis lease locking or report success from queue acceptance. Revoke/rotate exposed session/access values from the pasted curl and restart OAuth as needed.
+
+## ISS-017 — Malformed pnpm lockfile blocks workspace typecheck
+- **Opened:** 2026-10-09
+- **Severity:** high (developer verification/install blocker)
+- **Owner:** FIX-01 / Sentinel
+- **Status:** lockfile_source_corrected_rerun_pending
+- **Evidence:** User ran `git pull --ff-only origin main` then `pnpm run typecheck`; pnpm failed before typechecking with `ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY`, reporting no lockfile entry for `amqplib@2.2.0`.
+- **Root cause:** `pnpm-lock.yaml` contained two YAML documents concatenated together. The first was a stray pnpm self-package lock section; the actual workspace lockfile was the second document, whose `apps/worker` importer referenced `amqplib@2.2.0` without corresponding `packages` and `snapshots` entries.
+- **Source remedy:** Replaced the multi-document file with the actual workspace lockfile and added the missing package resolution and empty snapshot for `amqplib@2.2.0`. Commit: `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e`.
+- **Verification:** Source structure inspected after commit (one lockfile document; importer/package/snapshot entries present). pnpm install/typecheck has not yet been rerun; no PASS claimed.
+- **Next action:** Pull latest `main`, run `pnpm install --frozen-lockfile`, then `pnpm run typecheck`. If frozen install reports further lockfile mismatch, regenerate using repository-pinned pnpm 12.8.1 and commit the generated lockfile. Do not wait for CI/Vercel.
