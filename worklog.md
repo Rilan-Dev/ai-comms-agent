@@ -1457,3 +1457,11 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Commits: `25d17e19a460b2b50f13f4b67b2d92966d549bc7`, `ecd6f40300c7b01c8cf5cb9fb8d085675b912786`, `68cb6fba405487e9abf2f983e977cbe7c93bc671`, `e324defdaa932fd8dc7b30663d67be0f152ecbff`, tests `399b60a6dd277a3b9ad16d5e04197c2cf29f217a`, inventory `0ac7a4c9ed34afe40eebe42f2ac4c670062c7fcf`, NEXT_ACTION `d47811e59c52a983fa7f5462e267742272e37f68`.
 - **Verification NOT RUN:** tests, typecheck, build, browser/accessibility, OAuth and provider runtime. No CI/Vercel polling and no PASS claimed.
 - **Next:** Login/Setup → agent detail/version/history → cross-route responsive/accessibility review.
+
+
+## 2026-10-09 — Settings route migration continuation
+
+- Added a compact horizontally scrollable section navigation to the Settings route for Organization, Mail OAuth, AI providers, Clara runtime, Members/Roles, and workspace links. Grouped existing Gmail/Zoho OAuth, AI provider and runtime subsections with clear headings and anchor targets. Existing routes, membership updates, password change, and secret-handling behavior were retained.
+- Added apps/web/tests/settings-page-contract.test.ts with source assertions for navigation anchors, endpoint continuity, and server-side secret handling.
+- Commits: Settings UI b0c6d04d, contract test 88fd8eea, migration inventory 175cb9ea, next action e7d77a50.
+- Tests/typecheck/build/browser/accessibility checks were not run. Settings remains partial until provider subsection review and visual/browser acceptance.
