@@ -1143,3 +1143,9 @@ source_review:
 - **Source corrections:** Consumer URL now has a definite string type while missing configuration still returns without connecting (09e4df46); worker source-contract assertion added (a24edec3); migration static test now references canonical 0013 and 0005 files (ffc98b30).
 - **Post-fix status:** NOT RUN — focused migration Vitest, worker contract test, web typecheck, worker typecheck, full workspace typecheck, build. No post-fix PASS claimed.
 - **Next action:** Execute focused tests, then package typechecks sequentially to avoid resource contention; record actual output.
+
+### FIX01-SECURITY-ASSERTION-ALIGNMENT-20261009
+- **Finding:** After correcting the stale migration paths, source comparison showed the security tests still expected the historical public is_active_organization_* wrappers. The current canonical 0013 migration intentionally drops those caller-selected-user-ID wrappers and exposes SECURITY INVOKER can_access_organization/can_manage_organization helpers backed by private membership checks and app.user_id.
+- **Correction:** Rewrote the assertions to test the current least-privilege contract and grants rather than the superseded migration implementation.
+- **Commit:** 618c4cd57f0e7e433c4da5f50840cd6c8f612b9b.
+- **Verification:** Source only; focused migration Vitest NOT RUN.
