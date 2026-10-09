@@ -498,3 +498,7 @@ The callback helper previously used only `request.url`, which can expose an inte
 | 2026-10-09 | DEV-01 | Added persisted Drafts search (subject/body/recipients/mailbox) and routed suspected tenant-context/Inbox SQL defects to FIX-01. Product commit `8ccf1cb24039cb3bc745a51576a73ee68007e946`; no tests or runtime verification claimed. |
 
 | 2026-10-09 | DEV-01 | Added static regression contract for Drafts search fields/no-match state (`b0fd74f45a06a1cb8e2f3c4c152d242314711d39`); test execution pending. |
+
+
+### 2026-10-09 — DEV-01 Lovable UI migration started
+User explicitly directed that the existing application adopt the visual design of `source/lovable-ui`, preserving application functionality and frontend validation. DEV-01 inspected the reference styles and workspace shell, then committed design-token/font integration, responsive icon-led navigation, header search, shell alignment, and a data-backed overview redesign. Initial source commits: `a9083ac`, `47ef723`, `13c35cb`, `8bfacdf`, `fe547ce`, `1a06340`. This is a partial migration, not complete. Local tests/typecheck/build/browser/runtime checks have not been run; no PASS is claimed. Continue screen-by-screen, preserving Next.js/API/auth/RBAC behavior. After the UI tranche, return to the queued connected-mailbox/Clara integration work in NEXT_ACTION history.
