@@ -9,12 +9,50 @@ export type EmailKnowledgeSource = {
   message: EmailMessage;
 };
 
+const MAX_CHUNK_CHARS = 1_200;
+const CHUNK_OVERLAP_CHARS = 160;
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+/**
+ * Split email content into bounded, overlapping retrieval chunks. Prefer
+ * paragraph boundaries, then sentence/space boundaries, and finally a hard
+ * character boundary for long unbroken content.
+ */
+export function chunkEmailKnowledgeBody(body: string): string[] {
+  const normalized = body.replace(/\r\n?/g, "\n").replace(/[\t ]+\n/g, "\n").trim();
+  if (!normalized) return [];
+
+  const chunks: string[] = [];
+  let remaining = normalized;
+  while (remaining.length > MAX_CHUNK_CHARS) {
+    const window = remaining.slice(0, MAX_CHUNK_CHARS + 1);
+    const minimumBreak = Math.floor(MAX_CHUNK_CHARS * 0.55);
+    const candidates = [
+      window.lastIndexOf("\n\n"),
+      window.lastIndexOf("\n"),
+      window.lastIndexOf(". "),
+      window.lastIndexOf(" "),
+    ];
+    const breakAt = candidates.find((candidate) => candidate >= minimumBreak) ?? MAX_CHUNK_CHARS;
+    const chunk = remaining.slice(0, breakAt).trim();
+    if (chunk) chunks.push(chunk);
+    const nextStart = Math.max(1, breakAt - CHUNK_OVERLAP_CHARS);
+    remaining = remaining.slice(nextStart).trimStart();
+  }
+  if (remaining) chunks.push(remaining);
+
+  // The schema also has a unique(document_id, content_hash) constraint.
+  // Avoid duplicate identical chunks in a single document.
+  return [...new Set(chunks)];
+}
+
 /**
  * Host adapter for Clara's existing knowledge_documents / knowledge_chunks
- * contract. This deliberately writes PostgreSQL knowledge records only; it
- * never writes directly to Qdrant or changes the immutable Clara reference
- * sources. Clara's current host runtime retrieves these chunks by organization
- * and optional agent scope.
+ * contract. Writes tenant-scoped PostgreSQL knowledge records only; it never
+ * writes directly to Qdrant or changes the immutable Clara reference sources.
  */
 export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise<void> {
   const { organizationId, accountId, provider, message } = source;
@@ -34,7 +72,7 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
   if (!body) return;
 
   const storagePath = `${accountId}/${encodeURIComponent(providerMessageId)}`;
-  const digest = createHash("sha256").update(body, "utf8").digest("hex");
+  const digest = sha256(body);
   const metadata = {
     source: "email",
     provider,
@@ -68,13 +106,23 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
   const documentId = document.rows[0]?.id;
   if (!documentId) throw new Error("Clara email knowledge document could not be persisted.");
 
+  const chunks = chunkEmailKnowledgeBody(body);
+  for (const [chunkIndex, content] of chunks.entries()) {
+    const contentHash = sha256(content);
+    await query(
+      `INSERT INTO knowledge_chunks
+         (document_id, organization_id, chunk_index, content, content_hash, metadata, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, now())
+       ON CONFLICT (document_id, content_hash) DO UPDATE SET
+         chunk_index=EXCLUDED.chunk_index, organization_id=EXCLUDED.organization_id,
+         content=EXCLUDED.content, metadata=EXCLUDED.metadata`,
+      [documentId, organizationId, chunkIndex, content, contentHash, JSON.stringify(metadata)],
+    );
+  }
+
   await query(
-    `INSERT INTO knowledge_chunks
-       (document_id, organization_id, chunk_index, content, content_hash, metadata, created_at)
-     VALUES ($1, $2, 0, $3, $4, $5::jsonb, now())
-     ON CONFLICT (document_id, chunk_index) DO UPDATE SET
-       organization_id=EXCLUDED.organization_id, content=EXCLUDED.content,
-       content_hash=EXCLUDED.content_hash, metadata=EXCLUDED.metadata`,
-    [documentId, organizationId, body, digest, JSON.stringify(metadata)],
+    `DELETE FROM knowledge_chunks
+     WHERE document_id=$1 AND chunk_index >= $2`,
+    [documentId, chunks.length],
   );
 }
