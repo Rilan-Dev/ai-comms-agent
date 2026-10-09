@@ -222,6 +222,13 @@ export interface EmailCredentials {
   api_domain?: string;
   account_id?: string;
   data_center?: string;
+  /** OAuth client used for this account; these fields only exist inside decrypted server-side credentials. */
+  oauth_client_id?: string;
+  oauth_client_secret?: string;
+  zoho_client_id?: string;
+  zoho_client_secret?: string;
+  oauth_config_id?: string;
+  zoho_config_id?: string;
 }
 
 export class CapabilityNotSupported extends Error {
