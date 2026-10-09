@@ -218,3 +218,15 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Security requirement:** the reverse proxy must validate incoming Host values and overwrite both forwarding headers. Never trust arbitrary client-supplied forwarding headers; never weaken OAuth state/redirect URI equality checks.
 - **Verification:** source changes committed; focused tests, typecheck, deployment, proxy behavior, and live Google OAuth have not been executed in this session. No PASS claimed.
 - **Next:** configure/confirm the trusted proxy forwarding headers, deploy current main, reload Settings through the HTTPS domain, confirm both displayed callbacks, register exact URIs with providers, and restart the OAuth flow.
+
+## ISS-011 — AI provider and Clara runtime configuration was environment-only
+
+- **Opened:** 2026-10-09
+- **Severity:** high
+- **Owner:** ChatGPT
+- **Status:** in_progress
+- **Description:** The live chat route returned `configuration_required` because it required process-level `CLARA_KB_ID`. AI provider keys/model defaults and voice settings also had no complete organization-facing configuration flow, despite the Settings and provider architecture expecting these controls.
+- **Implemented source slice:** migration `0028_organization_ai_runtime_settings.sql`; organization-scoped runtime settings API and UI; encrypted per-organization chat provider credentials; server-side OpenAI/Gemini model catalog fetching; Clara runtime resolution of stored provider/model/generation/voice preferences; chat, voice and worker knowledge-base lookup from organization settings with environment fallback.
+- **Security boundaries:** provider credentials are encrypted with `CREDENTIALS_MASTER_KEY`; plaintext keys are never returned by GET APIs; writes require `organization.update`; reads require active organization membership and `organization.read`.
+- **Not yet verified:** tests, typecheck, builds, migration application, live model catalog requests, live chat streaming, realtime voice transport, and deployment. No PASS is claimed.
+- **Remaining work:** continue the screen-by-screen configuration audit, cover voice-provider-specific credentials/transport readiness, add visible readiness checks and tests, then deploy and manually verify. Do not wait for CI/Vercel before continuing independent implementation.
