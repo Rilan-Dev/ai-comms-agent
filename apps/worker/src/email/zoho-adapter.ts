@@ -4,7 +4,7 @@ import type {
 } from "@ai-comms-agent/shared";
 
 const CAPABILITIES: CapabilitySet = {
-  folders: true, labels: true, sync_incremental: false, sync_full: true,
+  folders: true, labels: true, sync_incremental: true, sync_full: true,
   sync_webhook: true, sync_idle: false, search_server_side: true,
   search_client_side: true, drafts: true, reply: true, forward: false,
   mark_read: true, archive: true, move: true, threads: true,
