@@ -348,3 +348,5 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Verification:** NOT RUN — no tests, typecheck, build, browser, screen-reader, or device validation. No PASS claimed.
 - **Blockers:** None for independent DEV-01 source work. OPS-01 remains responsible for the separate PostgreSQL migration/Redis runtime incident; do not wait for it or for CI/Vercel.
 - **Next:** continue cross-route responsive overflow, keyboard navigation, status announcements, dialogs and remaining secondary controls.
+
+- **Additional narrow-screen correction (2026-10-09):** Chat's agent selector had been hidden below the `sm` breakpoint. It is now visible on mobile with a capped width and accessible name. Commits: `bc8e698f` and static assertion `ad7dc7f8`. Responsive/browser checks remain NOT RUN.
