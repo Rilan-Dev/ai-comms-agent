@@ -10,6 +10,9 @@ const overview = readFileSync(resolve(__dirname, "../src/app/page.tsx"), "utf8")
 const inbox = readFileSync(resolve(__dirname, "../src/app/mail/inbox/inbox-client.tsx"), "utf8");
 const login = readFileSync(resolve(__dirname, "../src/app/login/page.tsx"), "utf8");
 const agents = readFileSync(resolve(__dirname, "../src/app/agents/agents-client.tsx"), "utf8");
+const drafts = readFileSync(resolve(__dirname, "../src/app/mail/drafts/drafts-client.tsx"), "utf8");
+const compose = readFileSync(resolve(__dirname, "../src/app/mail/compose/compose-client.tsx"), "utf8");
+const threads = readFileSync(resolve(__dirname, "../src/app/mail/threads/page.tsx"), "utf8");
 
 describe("Lovable Agentic AI Studio UI adaptation", () => {
   it("uses the Lovable semantic palette and typography without replacing Tailwind tokens", () => {
@@ -69,6 +72,23 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(overview).toContain("Workspace data unavailable");
     expect(overview).toContain("No activity has been recorded yet.");
     expect(overview).not.toContain("Across connected previews");
+  });
+
+  it("keeps Drafts discoverability and provider-sync actions while applying the shared design", () => {
+    expect(drafts).toContain("font-display");
+    expect(drafts).toContain("filteredDrafts");
+    expect(drafts).toContain("provider_draft_sync_status");
+    expect(drafts).toContain('href={"/mail/compose?draftId="');
+    expect(drafts).toContain("Delete");
+  });
+
+  it("keeps Compose approval safeguards and gives Threads a consistent designed empty state", () => {
+    expect(compose).toContain("Request send approval");
+    expect(compose).toContain("Sending requires explicit approval");
+    expect(compose).toContain("Save draft");
+    expect(threads).toContain("font-display");
+    expect(threads).toContain('href="/mail/accounts"');
+    expect(threads).toContain("No live mailbox connected");
   });
 
   it("retains login validation and authenticated API behavior under the new visual palette", () => {
