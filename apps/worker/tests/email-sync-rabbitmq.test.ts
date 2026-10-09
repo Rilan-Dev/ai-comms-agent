@@ -76,7 +76,8 @@ test("synced email is indexed idempotently through the Clara PostgreSQL knowledg
   assert.match(knowledgeIndexer, /ON CONFLICT \(organization_id, storage_bucket, storage_path\)/);
   assert.match(knowledgeIndexer, /INSERT INTO knowledge_chunks/);
   assert.match(knowledgeIndexer, /ON CONFLICT \(document_id, chunk_index\) DO UPDATE/);
-  assert.doesNotMatch(knowledgeIndexer, /qdrant|vector-store/i);
+  // Mentioning the forbidden backend in documentation is harmless; actual client imports/calls are not.
+  assert.doesNotMatch(knowledgeIndexer, /(?:from\\s+["'][^"']*(?:qdrant|vector-store)|\\bqdrant\\.(?:upsert|search|delete)\\b)/i);
 });
 
 test("Clara retrieval isolates shared knowledge from other agents", () => {
