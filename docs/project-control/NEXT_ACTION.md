@@ -761,3 +761,9 @@ Deploy/rebuild the latest main commit and verify the browser flow: unauthenticat
 
 ### 2026-10-09 — Draft search regression contract
 Added static regression assertions for draft search fields and no-match UI in `apps/web/tests/mail-draft-action-contract.test.ts` (commit `b0fd74f45a06a1cb8e2f3c4c152d242314711d39`). Test execution remains pending; continue connected-mailbox ingestion and agent-tool wiring without waiting for CI/Vercel.
+
+
+### 2026-10-09 — Chat email access audit
+Chat previously did not read local mailbox data. Added a limited organization-scoped PostgreSQL email context for email-related chat prompts, and static contract assertions. This is a read-context bridge, not yet the complete host tool registry integration. Source commits include `5c84fd4bd105586ed26272168fdee68b999ae94c` and test commit `93d353864256a49368ecaf4354aec0bfffb05889`.
+
+**Confirmed remaining gap:** Gmail is the only provider selected by `mailbox-sync-worker.ts`. Zoho and IMAP/SMTP adapters currently return empty sync results; IMAP message retrieval/search and draft operations remain placeholders. The immediate next implementation is real Zoho full/incremental sync and IMAP UID-based retrieval/parsing, then generalize the worker to provider-specific adapters and wire host-owned authorized email.read/draft tools into chat. Do not claim that live chat can access real mailbox data until a live synchronized mailbox and a chat turn are observed. FIX-01 continues to own BKL-008; no test/build/runtime verification has been run in this session.
