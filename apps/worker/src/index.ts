@@ -1,5 +1,6 @@
 import { isPostgresConfigured, parseCredentialsMasterKey } from "@ai-comms-agent/db";
 import { startProviderDraftSyncLoop } from "./email/provider-draft-worker";
+import { startGmailMailboxSyncLoop } from "./email/mailbox-sync-worker";
 import { processApprovedEmailActions } from "./email/action-worker";
 import { processQueuedWhatsAppMessages, verifyPendingWhatsAppAccounts } from "./messaging/whatsapp-worker";
 import { processRoutedWhatsAppInbound } from "./messaging/whatsapp-inbound-worker";
@@ -60,6 +61,7 @@ function main() {
   }
 
   const stopProviderDraftSync = startProviderDraftSyncLoop();
+  const stopGmailMailboxSync = startGmailMailboxSyncLoop();
   const actionTimer = setInterval(() => { void processApprovedEmailActions(); }, 5_000);
   const whatsappTimer = checks.credentials_master_key_configured
     ? setInterval(() => { void processQueuedWhatsAppMessages(); }, 5_000)
@@ -75,6 +77,7 @@ function main() {
     log(`received ${signal} — shutting down`);
     clearInterval(interval);
     stopProviderDraftSync();
+    stopGmailMailboxSync();
     clearInterval(actionTimer); if (whatsappTimer) clearInterval(whatsappTimer); clearInterval(whatsappInboundTimer);
     if (whatsappVerifyTimer) clearInterval(whatsappVerifyTimer); clearInterval(schedulerTimer);
     process.exit(0);
@@ -82,7 +85,7 @@ function main() {
 
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
-  log("worker ready — provider draft, WhatsApp inbound/outbound, and durable scheduler loops enabled when PostgreSQL is configured");
+  log("worker ready — Gmail mailbox sync, provider draft, WhatsApp inbound/outbound, and durable scheduler loops enabled when PostgreSQL and required credentials are configured");
 }
 
 main();
