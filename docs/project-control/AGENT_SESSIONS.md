@@ -289,6 +289,7 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - State: COMPLETED_SOURCE_ONLY; verification not run.
 - Authorization: Owner task to restore the WhatsApp Business connection UI flow; Lovable UI migration remains active.
 - Finding/change: Wired apps/web/src/app/whatsapp/page.tsx to WhatsAppClient using authenticated active organization context; made Connect WhatsApp Business reveal the existing encrypted Meta credential form; preserved message/account API contracts and honest pending verification state.
+- Follow-up retained the Daily briefing card and /schedules navigation, and surfaced account last_error plus an explicit unverified webhook state. Commits 3891e937, 2d955276.
 - Commits: 58ba5541, 94878571, 49c94de3, 2cbe4ab9, 9eb3a168.
 - Verification: Tests/typecheck/build/browser/Meta/webhook checks NOT RUN. No PASS.
 - Next: Knowledge UI with real organization-scoped index state and working controls; then Activity → Audit → Operations → Settings/provider settings → Login/Setup → agent detail/version/history → responsive/accessibility review. OPS-01 continues live DB/Redis remediation; FIX-01 owns unrelated substantial defects.
