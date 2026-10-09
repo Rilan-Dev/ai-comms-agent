@@ -41,3 +41,12 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Authorization:** Existing product security requirements and explicit instruction to route substantial bugs to FIX-01.
 - **Suggested next action:** Trace `/mail/drafts` organization resolution and `listInboxMessages()` SQL; preserve fail-closed organization authorization, correct confirmed defects, and add targeted tests.
 - **Related session/event/handoff:** DEV01-DRAFT-SEARCH-20261009; EVT-DEV01-MAIL-ROUTING-20261009.
+
+### BKL-009 — Worker credential snapshot build failure
+- **Work:** Execute the focused regression test and worker typecheck/build after the snapshot contract fix.
+- **Owner:** FIX-01 / Sentinel for source; OPS-01 for remaining Docker/dependency/environment defects.
+- **State:** ACTIVE
+- **Dependency:** Dependency-equipped environment to run pnpm commands.
+- **Authorization:** User-explicit FIX-01 bug-remediation request.
+- **Suggested next action:** Run Gmail adapter regression and worker build; record actual output in VERIFICATION_STATE.md. Do not claim success from source commits alone.
+- **Related records:** FIX01-WORKER-CREDENTIALS-20261009; EVT-FIX01-WORKER-CREDENTIALS-20261009; ISS-013.
