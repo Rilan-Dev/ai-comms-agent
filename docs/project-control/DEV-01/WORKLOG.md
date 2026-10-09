@@ -38,3 +38,17 @@
 - Updated UI migration inventory and NEXT_ACTION (`8eba7594`, `7f31a225`).
 - **Verification NOT RUN:** no tests, typecheck, build, migration, PostgreSQL/RabbitMQ runtime, live mailbox sync, or retrieval/index acceptance was executed. Current adapter is PostgreSQL text-chunk indexing using the local runtime's lexical retrieval; it does not generate embeddings or populate a vector index. Do not claim semantic RAG or runtime PASS.
 - **Exact next action:** adapt Knowledge UI with real organization-scoped indexed counts/status and working controls, then Activity → Audit → Operations → Settings/provider settings → Login/Setup → agent detail/version/history → cross-route responsive/accessibility review. Continue without CI/Vercel polling. RabbitMQ broker acceptance and semantic/vector indexing remain pending.
+
+
+## 2026-10-09 — DEV01-WHATSAPP-CONNECT-20261009
+
+- Role: DEV-01 / Forge.
+- Authorization: Explicit owner task to analyze and fix the missing Connect WhatsApp Business action; current NEXT_ACTION.md independently authorizes continued Lovable UI migration.
+- Recovery: Read canonical continuity/current phase/next action/project state, active sessions/events/backlog, Lovable migration inventory, and DEV-01 memory/worklog from GitHub main.
+- Finding: whatsapp/page.tsx was static and its CTA had no handler; whatsapp-client.tsx already held real account/API interactions but was not mounted. This was a route integration defect, not a missing send API.
+- Changes: Authenticated server route now passes context.organizationId to WhatsAppClient; CTA reveals an accessible connection form; encrypted credential saving and existing message/account operations retained; copy distinguishes saved credentials from verified Meta/webhook status.
+- Commits: 58ba5541, 94878571, 49c94de3, 2cbe4ab9, 9eb3a168.
+- Verification: NOT RUN — tests/typecheck/build/browser/live Meta flow/webhook checks not executed. No PASS.
+- Lesson: A styled CTA is not a connection flow unless it opens a real workflow; never use the seeded dev organization in tenant-scoped production pages. Keep the verification boundary honest.
+- Exact next action: Knowledge UI with real org-scoped persisted counts/status and functional controls; then Activity → Audit → Operations → Settings/provider settings → Login/Setup → agent detail/version/history → responsive/accessibility review. Continue without CI/Vercel polling. OPS-01 remains responsible for runtime DB/Redis work; FIX-01 for unrelated substantial bugs.
+
