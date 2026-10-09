@@ -37,7 +37,8 @@ describe("Gmail automatic mailbox synchronization", () => {
     const worker = read("../../../apps/worker/src/email/mailbox-sync-worker.ts");
     const zoho = read("../../../apps/worker/src/email/zoho-adapter.ts");
     expect(worker).toContain('candidate.provider === "zoho" ? new ZohoAdapter()');
-    expect(worker).toContain("a.provider IN ('gmail','zoho')");
+    expect(worker).toContain("new ImapSmtpAdapter()");
+    expect(worker).toContain("a.provider IN ('gmail','zoho','imap_smtp')");
     expect(worker).not.toContain("a.provider IN ('gmail','zoho','imap_smtp')");
     expect(zoho).toContain("const pageSize = 100");
     expect(zoho).toContain("this.listMessages(folder.provider_folder_id");
