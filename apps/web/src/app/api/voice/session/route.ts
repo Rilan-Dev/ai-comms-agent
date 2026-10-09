@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { query } from "@ai-comms-agent/db";
 import { PostgresAgentRepository, activateVoiceSessionForOrganization, configureStartingVoiceSessionForOrganization, createVoiceSession, endVoiceSessionForOrganization, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, recordVoiceTelemetry } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { asOrganizationId } from "@ai-comms-agent/shared";
@@ -21,7 +22,8 @@ export async function POST(request: Request) {
     const agent = await new PostgresAgentRepository().get(organizationId, agentId);
     if (!agent) return NextResponse.json({ error: "not_found", message: "Agent was not found in this organization." }, { status: 404 });
 
-    const kbId = process.env.CLARA_KB_ID?.trim();
+    const runtimeSettings = await query<{ knowledge_base_id: string }>("SELECT knowledge_base_id FROM organization_ai_runtime_settings WHERE organization_id = $1", [organizationId]);
+    const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim();
     if (!kbId) return NextResponse.json({ error: "configuration_required", message: "CLARA_KB_ID is not configured." }, { status: 503 });
 
     // Persist the lifecycle record before requesting realtime transport details,
