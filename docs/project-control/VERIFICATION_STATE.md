@@ -1064,3 +1064,10 @@ source_review:
     mailbox_import: "NOT VERIFIED"
     inbox_rows_visible: "NOT VERIFIED"
   policy: "Do not claim success from HTTP 202; do not bypass Redis lease locking."
+
+
+## 2026-10-09 — Settings navigation source adaptation
+
+- Settings route now has section navigation and stable anchor targets for organization, mail OAuth, AI provider, Clara runtime, members/roles and workspace links. Existing provider configuration and password/membership endpoints remain unchanged. Added static contract source at apps/web/tests/settings-page-contract.test.ts.
+- Commits: b0c6d04d (Settings UI), 88fd8eea (contract test), 175cb9ea (migration inventory).
+- Status: source_changed_not_tested. No tests, typecheck, build, browser, accessibility, or live API validation were executed.
