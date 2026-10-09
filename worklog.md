@@ -1159,3 +1159,8 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Final source review correction: callback validation now rejects raw IP hosts even when HTTPS, because Google web OAuth does not accept raw IP redirect hosts. The hostname normalization was simplified to avoid regex escaping ambiguity. No test runner was executed after this change.
 
 - Regression test cleanup: Gmail worker refresh tests now provide the saved per-account OAuth client fields instead of stubbing deprecated environment variables; Zoho refresh tests likewise verify saved client credentials. Added these fields to the shared server-side credential type. The test suites remain unexecuted.
+
+- Fixed the concrete email-account test failure reported from `POST /api/email-accounts`: DNS errors such as `ENOTFOUND` escaped the IMAP/SMTP test branch and surfaced as generic `internal_server_error` responses.
+- The route now maps hostname-resolution failures to an actionable `provider_connection_failed` response (HTTP 502) and provides clearer connection guidance for common network failures. It does not log or return mailbox credentials.
+- Route fix commit: `2b108c245d29abdbe1c660bc007c9a4aed9d1677`.
+- No CI/Vercel wait and no runtime PASS claimed.
