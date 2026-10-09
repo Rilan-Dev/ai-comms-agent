@@ -231,3 +231,11 @@ If shared memory conflicts with current repository state or current requirements
 - **Verification:** Source committed; frozen install/typecheck/Vitest/Docker build remain NOT RUN after this fix.
 
 - **Regression-test lesson (2026-10-09):** When writing regex assertions in TypeScript source through APIs that also require string escaping, inspect the resulting committed source. A test that is committed is not automatically a valid test; check the actual regex literals and execute the focused test after frozen install succeeds. The lockfile test regexes were corrected in commit `162183e8`; execution remains pending.
+
+### FIX-01 / Sentinel — 2026-10-09 — worker URL narrowing and migration filenames
+- **Issue/symptom:** Frozen install passed, but typecheck reported string | undefined passed to amqp.connect inside the RabbitMQ reconnect closure; focused migration tests failed to collect because they referenced removed 0003 and 0004 filenames.
+- **Root cause:** Optional environment config was captured by nested reconnect code without a definite-string type; test paths lagged canonical migration renumbering (0003 → 0013, 0004 → 0005).
+- **Failed approach to avoid:** Do not recreate old migration filenames or duplicate SQL to satisfy stale tests. Do not treat worker SIGKILL as a compiler diagnostic.
+- **Remedy:** Normalize consumer URL with ?.trim() ?? "" and preserve the no-config early return; update tests to current migration paths. Commits 09e4df46, a24edec3, ffc98b30.
+- **Prevention:** Keep tests synchronized with the authoritative migration chain. Execute focused package checks sequentially when workspace concurrency produces SIGKILL.
+- **Verification:** Source only; post-fix tests/typechecks NOT RUN.
