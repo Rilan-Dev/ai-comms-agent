@@ -1382,3 +1382,17 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Commits: `69c51678c8c12e0a0c070214dc09db77e0758dae`, `e7a1e7ee396d542ffdf3edada895938a087b6a27`.
 - NOT VERIFIED: tests, typecheck/build, migration application, Redis fix, imported rows, and inbox runtime.
 - Next: OPS-01 applies migrations 0029/0030 to the correct DB, rebuilds/restarts both containers, fixes Redis AUTH/ACL, then confirms email persistence and inbox display. Never bypass lease locking.
+
+
+## 2026-10-09 — DEV-01 / Forge — WhatsApp connection workflow correction
+
+- Recovered current state from GitHub main, including CHAT_CONTINUITY.md, NEXT_ACTION.md, CURRENT_PHASE.md, PROJECT_STATE.md, Lovable migration inventory, active sessions/events/backlog, and DEV-01 role-local memory/worklog. Current authorized product track is the Lovable UI migration; phase 4 implementation remains open and verification is deferred by owner instruction.
+- Root cause: apps/web/src/app/whatsapp/page.tsx rendered a static preview with an inert Connect button even though whatsapp-client.tsx already implemented account loading, encrypted credential submission, disconnect, persisted message state and idempotent queueing.
+- Changed the page to resolve the authenticated active organization using the same cookie-backed identity boundary as the app shell and render the existing client. No development-organization fallback was added.
+- Added an accessible Connect WhatsApp Business CTA that opens/closes the real Meta Cloud API credential form; preserved the existing encrypted credential API, message APIs, idempotency and account actions. The UI explicitly says credentials remain pending until provider connectivity/webhook verification; no false connected state or Meta Embedded Signup claim.
+- Added static contract assertions for authenticated organization scope and CTA/form continuity. Updated LOVABLE_UI_MIGRATION.md and NEXT_ACTION.md; WhatsApp source tranche is recorded as complete at source level only.
+- Source commits: 58ba5541 route wiring, 94878571 client CTA/form, 49c94de3 contract tests, 2cbe4ab9 migration inventory, 9eb3a168 next action.
+- Verification NOT RUN: no tests, typecheck, build, browser/accessibility pass, Meta credential validation, webhook verification or live messaging test. No PASS claimed.
+- Blockers remain separate: OPS-01 owns live PostgreSQL migration 0029/0030 + Redis WRONGPASS/runtime inbox verification; FIX-01 owns confirmed substantial mail/tenant defects. Do not poll CI/Vercel.
+- Exact next action: adapt Knowledge UI with real organization-scoped indexed counts/status and working controls; then Activity → Audit → Operations → Settings/provider settings → Login/Setup → agent detail/version/history → responsive/accessibility review. Semantic/vector indexing and live WhatsApp webhook acceptance remain pending.
+
