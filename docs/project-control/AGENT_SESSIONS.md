@@ -139,3 +139,11 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Commits:** `f04eb93d27ee01934970e64679be381d6dec6500`, `fe3e2d39157f74c66741772966125cfee81055a1`, `5a59ec5745f8d3a3f735220f9496e14c79dece22` (intermediate IMAP source correction commits `2146facf04762ffd07fbd1458ad5a9f4256cf56`, `2f5b63e1a65b6aded5b602c0f439c689cd49c45f`).
 - **Verification:** No test/typecheck command ran. These are source-review corrections, not passing-test evidence. Real-server and deployed DB/chat acceptance remain unavailable in this source-edit session.
 - **Next:** Run focused Zoho/IMAP tests and worker/web typechecks in a dependency-equipped environment, then continue email-to-PostgreSQL-to-Clara verification and infrastructure integrations. FIX-01 owns BKL-008; OPS-01 owns production infrastructure/deployment.
+
+
+### DEV01-IMAP-LITERAL-20261009 / 2026-10-09
+- **Role:** DEV-01 / Forge
+- **Change:** Added octet-counted IMAP literal consumption in the low-level socket reader; LIST and command loops now read literal-aware logical responses. Per-literal safety cap is 50 MiB.
+- **Commit:** `f7df46f3d0d90bf1c0aae3407b448bd83aeca855`
+- **Verification:** Source accepted by GitHub only. Tests/typechecks and real-server acceptance remain pending; no CI/Vercel waiting was performed.
+- **Remaining:** Build a fake IMAP server regression suite for fragmented/multiple literals and CRLF-containing message content; validate against real IMAP servers. Continue RAG indexing, Redis-backed use case, and RabbitMQ durable sync queue separately.
