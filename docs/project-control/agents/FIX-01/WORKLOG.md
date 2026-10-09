@@ -35,3 +35,15 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - Prevention: never treat credential authentication as equivalent to application provisioning.
 - Commit: `197e6535eab0cafde3e84db8f0605b7a174b3b03`.
 - Next: OPS-01 deploy/restart and perform one runtime browser verification; no CI/Vercel waiting.
+
+
+### FIX01-WORKER-CREDENTIALS-20261009 / 2026-10-09
+- **Task:** Fix Docker worker build TypeScript errors in credential snapshot handling.
+- **Authorization:** Explicit user request for FIX-01 diagnosis, smallest corrective source change, and regression protection; unrelated scope excluded.
+- **Started from:** GitHub main and user-provided Docker build log.
+- **Actions:** Traced TS2322 at adapter union and TS2345 at credential persistence to mismatched snapshot and repository types. Changed Gmail snapshot return type to EmailCredentials; spread typed credentials into a persistence record; added a focused Gmail adapter test.
+- **Files/code:** apps/worker/src/email/gmail-adapter.ts; apps/worker/src/email/mailbox-sync-worker.ts; apps/web/tests/gmail-adapter.test.ts.
+- **Evidence:** GitHub commits caad1d753b0199a895d63056704c4db9c423f382, 04a2345b6b901ebbc55d084dc5860f39ae9416d8, a98c0e7fa1ee8e22ff60726475e6fb91624626c8. pnpm, TypeScript, Docker, and tests were not run in this session; no PASS claimed.
+- **Blockers/dependencies:** Dependency-equipped environment required for execution. Docker/dependency/CI issues after source correction belong to OPS-01.
+- **Lesson:** Keep provider snapshots typed to shared domain contracts; convert to generic persistence payload at the DB boundary.
+- **Next action:** Run the focused Gmail adapter test and worker build/typecheck; route environment-only failures to OPS-01.
