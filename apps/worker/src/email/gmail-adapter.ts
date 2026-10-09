@@ -218,7 +218,17 @@ export class GmailAdapter implements EmailProvider {
       };
     }
 
-    const history = await this.request(`/history?startHistoryId=${encodeURIComponent(state.history_token)}&historyTypes=messageAdded&historyTypes=labelAdded&historyTypes=labelRemoved`);
+    let history: any;
+    try {
+      history = await this.request(`/history?startHistoryId=${encodeURIComponent(state.history_token)}&historyTypes=messageAdded&historyTypes=labelAdded&historyTypes=labelRemoved`);
+    } catch (error) {
+      // Gmail history IDs expire after enough mailbox changes. Re-baseline with
+      // a paginated full import; database upserts make this recovery idempotent.
+      if (error instanceof Error && /Gmail API 404:/.test(error.message)) {
+        return this.sync({ ...state, cursor: undefined, history_token: undefined, sync_mode: "initial" });
+      }
+      throw error;
+    }
     const ids = new Set<string>();
     for (const item of history.history ?? []) {
       for (const added of item.messagesAdded ?? []) {
