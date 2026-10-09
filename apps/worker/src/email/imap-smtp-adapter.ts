@@ -266,7 +266,7 @@ export class ImapSmtpAdapter implements EmailProvider {
     const uidMatch = flagsLine.match(/UID\s+(\d+)/i);
     const flags = flagsLine.match(/FLAGS\s+\(([^)]*)\)/i)?.[1] ?? "";
     return {
-      id: `${folderId}:${uid}`, email_account_id: "imap_smtp", thread_id: headers.get("references")?.split(/\s+/).filter(Boolean).at(-1) ?? messageId ?? `${folderId}:${uid}`,
+      id: `${folderId}:${uid}`, email_account_id: "imap_smtp", thread_id: headers.get("references")?.split(/\s+/).filter(Boolean)[0] || messageId || `${folderId}:${uid}`,
       folder_id: folderId, provider_message_id: `${folderId}:${uidMatch?.[1] ?? uid}`, message_id_header: messageId,
       in_reply_to: headers.get("in-reply-to"), references: (headers.get("references") ?? "").split(/\s+/).filter(Boolean),
       from_address: fromAddress, to_addresses: addressList(headers.get("to")), cc_addresses: addressList(headers.get("cc")), bcc_addresses: addressList(headers.get("bcc")),
