@@ -959,3 +959,11 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - **Source fix:** Replaced the exact malformed sequence with real newlines; commit `39857c40820940b500dcf452331dfe82ae35b861`.
 - **Status:** source_fix_committed_post_fix_not_tested. Do not infer web typecheck success from the source edit alone.
 - **Next:** Re-run `pnpm run typecheck` and focused Zoho OAuth settings test. Route separate environment/CI/deployment issues to OPS-01.
+
+
+### FIX-01 Zoho OAuth focused regression follow-up — 2026-10-09
+- **Typecheck:** User-provided latest `pnpm run typecheck` passed all workspaces, including apps/web.
+- **Focused test before latest assertion correction:** 8 passed, 2 failed in `tests/zoho-oauth-settings.test.ts`.
+- **Failures:** raw-IP HTTP assertion expected HTTPS error although DNS-only/raw-IP rejection happens first; helper-source assertion rejected the explanatory comment's `NEXT_PUBLIC_APP_URL` mention.
+- **Correction:** Test-only change in commit `c58d6d442767f471c694ef978fdb06eca6d29850` aligns both expectations; OAuth runtime implementation unchanged.
+- **Current status:** `typecheck_passed_user_reported`; corrected focused test `pending_rerun`. No focused-test PASS is claimed.
