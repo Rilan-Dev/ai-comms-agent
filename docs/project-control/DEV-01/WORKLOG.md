@@ -20,3 +20,11 @@
 - Added Chat contract assertions. Commits: `dee40027` (Chat), `10b87d65` (test), `ad3bac37` (inventory), `a494342a` (NEXT_ACTION).
 - Tests/typecheck/build/browser/runtime verification remain NOT RUN.
 - Exact next action: adapt AI & Voice, then Knowledge, then Activity.
+
+## 2026-10-09 — DEV01-LOVABLE-UI-CONTINUATION-20261009 follow-up 2
+
+- Adapted AI & Voice presentation to the Lovable compact radius/neutral surfaces and Lucide AudioLines/Mic/PhoneOff/Send/ShieldCheck iconography.
+- Preserved Clara-owned voice session lifecycle, turn API, microphone denied state, session/provider metadata, server-side-only credential statement, and same authorization/approval boundary for business actions.
+- Added static voice UI contract checks; corrected assertion to the actual singular /api/voice/session endpoint after source inspection.
+- Commits: 84652b74 voice UI, ddb35096 test, f7ed2b42 assertion correction, a1ac8afb inventory, 6a87a7e6 NEXT_ACTION.
+- Verification remains NOT RUN. Next: Knowledge, then Activity, then Audit.
