@@ -68,7 +68,7 @@ export function ZohoOAuthSettings({ organizationId }: { organizationId: string }
 
   const callback = configs[0]?.redirectUri ?? (typeof window !== "undefined" ? window.location.origin : "") + "/api/oauth/zoho/callback";
   return (
-    <section className="rounded-2xl border bg-background p-5">
+    <section className="rounded-md border border-border bg-card p-5">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Zoho OAuth clients</p>
         <h2 className="mt-1 text-lg font-semibold">Provider configurations</h2>
@@ -76,13 +76,13 @@ export function ZohoOAuthSettings({ organizationId }: { organizationId: string }
           Configure multiple Zoho OAuth clients by organization and data center. Client secrets are encrypted before database storage and never returned to the browser. Callback URLs follow the domain used to access this application; register the displayed callback URL in the matching Zoho API Console client.
         </p>
       </div>
-      {notice ? <p role="status" className="mt-4 rounded-xl border bg-muted/30 px-4 py-3 text-sm">{notice}</p> : null}
-      <p className="mt-4 break-all rounded-xl border bg-muted/20 p-3 text-xs"><strong>Current callback URI:</strong> {callback}</p>
-      {typeof window !== "undefined" && callback && new URL(callback).origin !== window.location.origin ? <p role="alert" className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs">The server callback origin differs from the domain open in this browser. Configure the trusted reverse proxy to overwrite X-Forwarded-Host and X-Forwarded-Proto with the public HTTPS origin, then reload Settings. Do not register this internal localhost callback in production.</p> : null}
-      {callback.startsWith("http://") && !callback.includes("localhost") && !callback.includes("127.0.0.1") ? <p role="alert" className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs">This is a non-local HTTP callback. Use an HTTPS domain and register the callback URI in Zoho API Console before connecting.</p> : null}
+      {notice ? <p role="status" className="mt-4 rounded-md border bg-muted/30 px-4 py-3 text-sm">{notice}</p> : null}
+      <p className="mt-4 break-all rounded-md border bg-muted/20 p-3 text-xs"><strong>Current callback URI:</strong> {callback}</p>
+      {typeof window !== "undefined" && callback && new URL(callback).origin !== window.location.origin ? <p role="alert" className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs">The server callback origin differs from the domain open in this browser. Configure the trusted reverse proxy to overwrite X-Forwarded-Host and X-Forwarded-Proto with the public HTTPS origin, then reload Settings. Do not register this internal localhost callback in production.</p> : null}
+      {callback.startsWith("http://") && !callback.includes("localhost") && !callback.includes("127.0.0.1") ? <p role="alert" className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs">This is a non-local HTTP callback. Use an HTTPS domain and register the callback URI in Zoho API Console before connecting.</p> : null}
       <div className="mt-5 space-y-3">
-        {loading ? <p className="text-sm text-muted-foreground">Loading configurations…</p> : configs.length === 0 ? <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No Zoho OAuth clients configured yet.</p> : configs.map((config) => (
-          <div key={config.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4">
+        {loading ? <p className="text-sm text-muted-foreground">Loading configurations…</p> : configs.length === 0 ? <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">No Zoho OAuth clients configured yet.</p> : configs.map((config) => (
+          <div key={config.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-4">
             <div className="min-w-0">
               <p className="font-medium">{config.label} {!config.enabled ? <span className="ml-2 text-xs text-muted-foreground">Disabled</span> : null}</p>
               <p className="mt-1 break-all text-xs text-muted-foreground">Client ID: {config.clientId}</p>
@@ -90,24 +90,24 @@ export function ZohoOAuthSettings({ organizationId }: { organizationId: string }
               <p className="mt-1 text-xs text-muted-foreground">Secret stored encrypted · not displayed</p>
             </div>
             <div className="flex gap-2">
-              <button type="button" onClick={() => edit(config)} className="rounded-lg border px-3 py-2 text-sm">Edit</button>
-              <button type="button" onClick={() => void remove(config)} className="rounded-lg border border-destructive/30 px-3 py-2 text-sm text-destructive">Delete</button>
+              <button type="button" onClick={() => edit(config)} className="rounded-md border px-3 py-2 text-sm">Edit</button>
+              <button type="button" onClick={() => void remove(config)} className="rounded-md border border-destructive/30 px-3 py-2 text-sm text-destructive">Delete</button>
             </div>
           </div>
         ))}
       </div>
-      <div className="mt-6 rounded-xl border p-4">
+      <div className="mt-6 rounded-md border border-border p-4">
         <h3 className="font-medium">{editingId ? "Edit OAuth client" : "Add OAuth client"}</h3>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <label className="grid gap-1.5 text-sm"><span>Display name</span><input value={label} onChange={(e) => setLabel(e.target.value)} maxLength={100} placeholder="Production Zoho client" className="h-10 rounded-lg border bg-background px-3" /></label>
-          <label className="grid gap-1.5 text-sm"><span>Zoho OAuth client ID</span><input value={clientId} onChange={(e) => setClientId(e.target.value)} autoComplete="off" placeholder="Zoho client ID" className="h-10 rounded-lg border bg-background px-3" /></label>
-          <label className="grid gap-1.5 text-sm"><span>Zoho data center</span><select value={dataCenter} onChange={(e) => setDataCenter(e.target.value)} className="h-10 rounded-lg border bg-background px-3">{centers.map((center) => <option key={center.id} value={center.id}>{center.label}</option>)}</select></label>
-          <label className="grid gap-1.5 text-sm"><span>Zoho OAuth client secret {editingId ? "(leave blank to keep current secret)" : ""}</span><input type="password" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} autoComplete="new-password" placeholder={editingId ? "Leave blank to keep the saved secret" : "Paste client secret"} className="h-10 rounded-lg border bg-background px-3" /></label>
+          <label className="grid gap-1.5 text-sm"><span>Display name</span><input value={label} onChange={(e) => setLabel(e.target.value)} maxLength={100} placeholder="Production Zoho client" className="h-10 rounded-md border border-border bg-background px-3" /></label>
+          <label className="grid gap-1.5 text-sm"><span>Zoho OAuth client ID</span><input value={clientId} onChange={(e) => setClientId(e.target.value)} autoComplete="off" placeholder="Zoho client ID" className="h-10 rounded-md border border-border bg-background px-3" /></label>
+          <label className="grid gap-1.5 text-sm"><span>Zoho data center</span><select value={dataCenter} onChange={(e) => setDataCenter(e.target.value)} className="h-10 rounded-md border border-border bg-background px-3">{centers.map((center) => <option key={center.id} value={center.id}>{center.label}</option>)}</select></label>
+          <label className="grid gap-1.5 text-sm"><span>Zoho OAuth client secret {editingId ? "(leave blank to keep current secret)" : ""}</span><input type="password" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} autoComplete="new-password" placeholder={editingId ? "Leave blank to keep the saved secret" : "Paste client secret"} className="h-10 rounded-md border border-border bg-background px-3" /></label>
         </div>
         <label className="mt-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} /> Enable this client for new Zoho connections</label>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" disabled={saving || !organizationId || !label.trim() || !clientId.trim() || (!editingId && !clientSecret.trim())} onClick={() => void save()} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">{saving ? "Saving…" : editingId ? "Save changes" : "Add OAuth client"}</button>
-          {editingId ? <button type="button" onClick={resetForm} className="rounded-lg border px-4 py-2.5 text-sm">Cancel</button> : null}
+          <button type="button" disabled={saving || !organizationId || !label.trim() || !clientId.trim() || (!editingId && !clientSecret.trim())} onClick={() => void save()} className="rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">{saving ? "Saving…" : editingId ? "Save changes" : "Add OAuth client"}</button>
+          {editingId ? <button type="button" onClick={resetForm} className="rounded-md border px-4 py-2.5 text-sm">Cancel</button> : null}
         </div>
       </div>
     </section>
