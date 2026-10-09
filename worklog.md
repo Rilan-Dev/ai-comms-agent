@@ -1354,3 +1354,10 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Added `apps/worker/tests/email-sync-rabbitmq.test.ts` source assertions for topology, confirm publishing, ack/nack behavior, and worker integration.
 - Commits: `f53f1124`, `0741b7cf`, `7a350e49`, `7f9f0699`, `7f3fc212`, `02780cc8`, docs `8ddb87f2`, `15580b02`, `36d405a8`.
 - **Not verified:** tests/typecheck/build and frozen lockfile install were not run. No live RabbitMQ connection, reconnect behavior, queue delivery, retry/DLQ, Redis, IMAP, or PostgreSQL acceptance is claimed. Connection-loss auto-recovery remains a follow-up. Clara email indexing remains unimplemented; next inspect the supported Clara indexing boundary and implement a host adapter without direct Qdrant writes.
+
+## 2026-10-09 — DEV-01 AI & Voice UI continuation
+
+- Adapted the AI & Voice workspace to the Lovable design language with compact surfaces and Lucide voice/session/safety icons while retaining Clara-owned session/turn endpoints and existing microphone/error/safety behavior.
+- Added static UI contract coverage and corrected the voice session endpoint assertion to match source.
+- Commits: 84652b74, ddb35096, f7ed2b42; inventory a1ac8afb; next action 6a87a7e6.
+- Tests/typecheck/build/browser/runtime checks were not run. Next: Knowledge → Activity → Audit.
