@@ -894,3 +894,8 @@ The review is in progress, not complete. The Settings anchor navigation now uses
 ### DEV-01 shell review follow-up — 2026-10-09
 
 A further source review found the Google Fonts CSS import after the Tailwind theme block. Moved it to the beginning of `apps/web/src/app/globals.css` and added a static ordering assertion. Commits: CSS `82eaa527`, test `d70d0064`, inventory `7678c345`. This is source-only; tests/typecheck/build/browser/font network behavior remain NOT RUN. Continue the responsive/accessibility review and secondary controls; do not wait for CI/Vercel.
+
+
+### Cross-route review finding routed to FIX-01 — audit export organization fallback (2026-10-09)
+
+Source inspection found `apps/web/src/app/api/audit/export/route.ts` falls back to `getDevOrgId()` when `organizationId` is omitted, while the Audit UI's export links omit that parameter. The export handler still calls `authorize`, but selecting the organization via a development fallback is inconsistent with the authenticated active-organization boundary used by `/api/audit`. This is a tenant-context/security correctness issue outside DEV-01's UI-only scope; route to FIX-01 for a minimal correction and regression coverage. Do not claim export tenant isolation is verified. DEV-01 continues the independent responsive/accessibility review; do not wait for CI/Vercel.
