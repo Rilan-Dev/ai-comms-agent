@@ -18,21 +18,15 @@ const ACCOUNT_DOMAINS: Record<string, string> = {
   sa: "https://accounts.zoho.sa",
 };
 
-function normalizeZohoApiDomain(value: string): string | null {
-  try {
-    const url = new URL(value);
-    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) return null;
-    const allowed = [
-      /^mail\\.zoho\\.(com|eu|in|au|jp|sa)$/,
-      /^mail\\.zohocloud\\.ca$/,
-    ];
-    if (!allowed.some((pattern) => pattern.test(url.hostname))) return null;
-    if (url.pathname !== "/" && url.pathname !== "") return null;
-    return url.origin;
-  } catch {
-    return null;
-  }
-}
+const MAIL_API_DOMAINS: Record<string, string> = {
+  us: "https://mail.zoho.com",
+  eu: "https://mail.zoho.eu",
+  in: "https://mail.zoho.in",
+  au: "https://mail.zoho.au",
+  ca: "https://mail.zohocloud.ca",
+  jp: "https://mail.zoho.jp",
+  sa: "https://mail.zoho.sa",
+};
 
 function verify(encoded: string, signature: string) {
   const raw = process.env.CREDENTIALS_MASTER_KEY;
@@ -117,13 +111,21 @@ export async function GET(request: Request) {
         code_verifier: verifier,
       }),
     });
-    if (!tokenResponse.ok) return oauthError("Zoho rejected the authorization code.", request, 502);
-    const tokens = await tokenResponse.json() as {
-      access_token?: string; refresh_token?: string; expires_in?: number; api_domain?: string;
+    const tokens = await tokenResponse.json().catch(() => ({})) as {
+      access_token?: string; refresh_token?: string; expires_in?: number;
+      error?: string; error_description?: string;
     };
-    if (!tokens.access_token || !tokens.api_domain) return oauthError("Zoho did not return the required token metadata.", request, 502);
-    const apiDomain = normalizeZohoApiDomain(tokens.api_domain);
-    if (!apiDomain) return oauthError("Zoho returned an untrusted API domain.", request, 502);
+    if (!tokenResponse.ok || !tokens.access_token) {
+      const providerError = typeof tokens.error === "string" ? tokens.error : "";
+      const reason = providerError === "invalid_code" || providerError === "invalid_grant"
+        ? "Zoho rejected the authorization code. Restart the connection and confirm the registered callback URI exactly matches the URI shown in Settings."
+        : "Zoho token exchange failed. Confirm the selected client, data center, client secret, and registered callback URI.";
+      return oauthError(reason, request, 502);
+    }
+    // Do not trust api_domain from the token response. Resolve the Mail API host
+    // from the signed, server-validated data-center selection instead.
+    const apiDomain = MAIL_API_DOMAINS[payload.dataCenter];
+    if (!apiDomain) return oauthError("The selected Zoho Mail data center is not supported.", request, 502);
 
     const accountsResponse = await fetch(`${apiDomain}/api/accounts`, {
       headers: { authorization: `Zoho-oauthtoken ${tokens.access_token}`, accept: "application/json" },
