@@ -199,11 +199,11 @@ export function EmailAccountsClient({
   }
 
   return (
-    <main className="mx-auto max-w-[1200px] space-y-8 p-5 sm:p-7 lg:p-9">
+    <main className="mx-auto max-w-[1200px] space-y-8 bg-background p-5 sm:p-7 lg:p-10">
       <header className="flex flex-col gap-5 border-b pb-7 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Mail / Connections</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Email accounts</h1>
+          <h1 className="font-display text-3xl font-medium tracking-tight">Email accounts<span className="text-tertiary">.</span></h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             Connect the mailboxes your agents can work with. Credentials remain server-side and are never rendered into this UI.
           </p>
@@ -222,10 +222,10 @@ export function EmailAccountsClient({
       )}
 
       {showImapForm && (
-        <section className="rounded-3xl border bg-background p-6 shadow-sm sm:p-7">
+        <section className="rounded-md border border-border bg-card p-5 sm:p-7">
           <div className="flex items-start justify-between gap-4"><div><h2 className="font-semibold">Configure IMAP / SMTP</h2><p className="mt-1 text-sm text-muted-foreground">TLS is mandatory. Credentials are encrypted server-side and never returned to the browser after submission.</p></div><button type="button" onClick={()=>setShowImapForm(false)} className="text-sm font-semibold text-muted-foreground hover:text-foreground">Close</button></div>
           <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={async(e)=>{e.preventDefault();setSavingImap(true);setNotice(null);setImapError(null);try{const response=await fetch("/api/email-accounts",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,action:"connect_imap_smtp",emailAddress:imap.email,displayName:imap.displayName,host:imap.host,port:Number(imap.port),username:imap.username,password:imap.password,smtpHost:imap.smtpHost||imap.host,smtpPort:Number(imap.smtpPort),tls:imap.tls})});const data=await response.json();if(!response.ok)throw new Error(data.message??Object.values(data.fieldErrors??{}).join(" "));setAccounts((current)=>[data.account,...current]);setNotice("Mailbox configuration saved securely. It is pending worker verification and mailbox structure discovery.");setShowImapForm(false);}catch(error){const message=error instanceof Error?error.message:"Could not save mailbox configuration.";setImapError(message);setNotice("Mailbox configuration could not be saved.");}finally{setSavingImap(false);}}}>
-            <label className="text-sm font-medium">Email address<input required type="email" value={imap.email} onChange={e=>setImap({...imap,email:e.target.value})} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
+            <label className="text-sm font-medium">Email address<input required type="email" value={imap.email} onChange={e=>setImap({...imap,email:e.target.value})} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-ring/20" /></label>
             <label className="text-sm font-medium">Display name<input value={imap.displayName} onChange={e=>setImap({...imap,displayName:e.target.value})} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
             <label className="text-sm font-medium">IMAP host<input required value={imap.host} onChange={e=>setImap({...imap,host:e.target.value})} placeholder="imap.example.com" className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
             <label className="text-sm font-medium">IMAP port<input required type="number" min="1" max="65535" value={imap.port} onChange={e=>setImap({...imap,port:e.target.value})} className="mt-1 h-11 w-full rounded-xl border px-3 text-sm" /></label>
@@ -248,16 +248,16 @@ export function EmailAccountsClient({
                   setNotice("IMAP and SMTP authentication succeeded. You can safely save this mailbox.");
                 } catch (error) { setImapError(error instanceof Error ? error.message : "Connection test failed."); }
                 finally { setTestingImap(false); }
-              }} className="h-10 rounded-xl border px-5 text-sm font-semibold disabled:opacity-50">{testingImap ? "Testing…" : "Test connection"}</button>
-              <button disabled={savingImap || testingImap} className="h-10 rounded-xl bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-50">{savingImap ? "Saving…" : "Save mailbox"}</button>
+              }} className="h-10 rounded-md border border-border px-5 text-sm font-medium transition-colors hover:bg-secondary disabled:opacity-50">{testingImap ? "Testing…" : "Test connection"}</button>
+              <button disabled={savingImap || testingImap} className="h-10 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-85 disabled:opacity-50">{savingImap ? "Saving…" : "Save mailbox"}</button>
             </div>
           </form>
         </section>
       )}
 
-      <section className="grid gap-4 lg:grid-cols-3" aria-label="Email providers">
+      <section className="grid gap-5 lg:grid-cols-3" aria-label="Email providers">
         {providers.map((provider) => (
-          <article key={provider.id} className="group rounded-3xl border bg-background p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+          <article key={provider.id} className="group rounded-md border border-border bg-card p-5 transition-colors hover:bg-secondary/30">
             <div className="flex items-start justify-between">
               <div className="grid size-11 place-items-center rounded-2xl bg-muted font-semibold">{provider.tone}</div>
               <span className="rounded-full border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">Secure connection</span>
@@ -294,7 +294,7 @@ export function EmailAccountsClient({
         ))}
       </section>
 
-      <section className="overflow-hidden rounded-3xl border bg-background shadow-sm">
+      <section className="overflow-hidden rounded-md border border-border bg-card">
         <div className="border-b px-5 py-5 sm:px-6">
           <div><h2 className="font-semibold">Connected mailboxes</h2>
           <p className="mt-1 text-sm text-muted-foreground">Live persisted state only. Credentials never leave the server.</p></div>
@@ -306,7 +306,7 @@ export function EmailAccountsClient({
         </div>
         {accounts.length === 0 ? (
           <div className="px-6 py-14 text-center">
-            <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-muted text-lg">✉</div>
+            <div className="mx-auto grid size-12 place-items-center rounded-md bg-accent text-accent-foreground"><svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div>
             <h3 className="mt-4 font-semibold">No mailboxes connected</h3>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
               Provider setup is configuration-driven. OAuth accounts remain pending until the worker verifies credentials and discovers mailbox structure; IMAP/SMTP is tested before credentials are persisted.
