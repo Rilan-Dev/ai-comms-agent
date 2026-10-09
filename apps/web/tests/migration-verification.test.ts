@@ -38,8 +38,8 @@ describe("Migration static verification (0002_database_foundation.sql)", () => {
     expect(databaseFoundationSql).not.toMatch(/^DO \$(?!\$)/m);
     expect(databaseFoundationSql).not.toMatch(/END \$;/m);
     // Standard $ quoting is valid PostgreSQL; named tags are also valid.
-    expect(databaseFoundationSql).toMatch(/^DO (?:\\$\\$|\\$[A-Za-z_][A-Za-z_0-9]*\\$)/m);
-    expect(databaseFoundationSql).toMatch(/END (?:\\$\\$|\\$[A-Za-z_][A-Za-z_0-9]*\\$);/);
+    expect(databaseFoundationSql).toMatch(/^DO (?:\$\$|\$[A-Za-z_][A-Za-z_0-9]*\$)/m);
+    expect(databaseFoundationSql).toMatch(/END (?:\$\$|\$[A-Za-z_][A-Za-z_0-9]*\$);/);
   });
 
   it("contains the canonical agent foundation migration artifact", () => {
@@ -433,18 +433,26 @@ describe("Application database foundation static verification (0002_application_
     expect(databaseFoundationSql).toContain("SET search_path = public");
   });
 
-  it("makes audit events append-only", () => {
-    expect(databaseFoundationSql).toContain("audit_events_insert");
-    expect(databaseFoundationSql).toContain("audit_events_read");
-    expect(databaseFoundationSql).toContain("audit_events is append-only");
+  it("makes audit events append-only with organization-scoped access", () => {
+    const auditHardeningPath = resolve(__dirname, "../../../supabase/migrations/0032_audit_event_access_hardening.sql");
+    const auditHardeningSql = readFileSync(auditHardeningPath, "utf8");
+    expect(auditHardeningSql).toContain("audit_events_insert");
+    expect(auditHardeningSql).toContain("audit_events_read");
+    expect(auditHardeningSql).toContain("audit_events is append-only");
+    expect(auditHardeningSql).toContain("audit_events_update_deny");
+    expect(auditHardeningSql).toContain("audit_events_delete_deny");
+    expect(auditHardeningSql).toContain("AS RESTRICTIVE FOR UPDATE");
+    expect(auditHardeningSql).toContain("AS RESTRICTIVE FOR DELETE");
+    expect(auditHardeningSql).toContain("USING (false) WITH CHECK (false)");
+    expect(auditHardeningSql).toContain("public.can_access_organization(organization_id)");
   });
 });
 
 describe("Phase 4 migration SQL verification", () => {
   it("uses valid PostgreSQL dollar-quoted DO blocks", () => {
-    expect(databaseFoundationSql).not.toMatch(/DO \\$ BEGIN/);
-    expect(databaseFoundationSql).not.toMatch(/END \\$;/);
-    expect(databaseFoundationSql).toMatch(/DO \\$\$phase4\\$/);
+    expect(databaseFoundationSql).not.toMatch(/^DO \$(?!\$)/m);
+    expect(databaseFoundationSql).not.toMatch(/END \$;/m);
+    expect(databaseFoundationSql).toMatch(/DO \$\$/);
   });
 });
 
