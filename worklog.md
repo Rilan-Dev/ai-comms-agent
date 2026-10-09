@@ -1361,3 +1361,9 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Added static UI contract coverage and corrected the voice session endpoint assertion to match source.
 - Commits: 84652b74, ddb35096, f7ed2b42; inventory a1ac8afb; next action 6a87a7e6.
 - Tests/typecheck/build/browser/runtime checks were not run. Next: Knowledge → Activity → Audit.
+
+
+### RabbitMQ recovery follow-up
+- Added bounded exponential reconnect scheduling (1s up to 30s) after AMQP startup failure or connection closure; shutdown clears pending reconnect and closes active channels/connection.
+- Added static source coverage for reconnect policy. Commits: `0616c5b8`, `a78416b3`, control update `3e3811e1`.
+- Tests/typecheck and live broker disconnect/reconnect remain unexecuted. Next: focused delivery/idempotency coverage, then Clara-supported email indexing contract audit.
