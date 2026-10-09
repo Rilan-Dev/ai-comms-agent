@@ -264,9 +264,9 @@ export async function processGmailMailboxSyncBatch(limit = BATCH_SIZE): Promise<
          AND a.status IN ('pending','connected','error')
          AND COALESCE(s.status::text,'idle') <> 'paused'
          AND (s.next_attempt_at IS NULL OR s.next_attempt_at <= now())
-         AND (s.last_attempt_at IS NULL
-           OR s.last_attempt_at < now()-interval '30 seconds'
-           OR (s.status='running' AND s.last_attempt_at < now()-interval '10 minutes'))
+         AND (s.status IS NULL OR s.status <> 'running'
+           OR s.last_attempt_at < now()-interval '10 minutes')
+         AND (s.last_attempt_at IS NULL OR s.last_attempt_at < now()-interval '30 seconds')
        ORDER BY CASE a.status WHEN 'pending' THEN 0 WHEN 'error' THEN 1 ELSE 2 END,
          COALESCE(s.last_success_at, a.created_at) ASC
        LIMIT $1`,
