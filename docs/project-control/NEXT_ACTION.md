@@ -11,12 +11,9 @@ actor: ChatGPT
 role: Chief Architect / Project Controller / Primary Implementer
 
 action: |
-  Deploy the dynamic, request-origin OAuth callbacks and multi-client Gmail + Zoho configuration committed to main.
-  Pull main and run bash scripts/manual-up.sh to apply pending migrations 0024–0027 (0024 audit compatibility, 0025 WhatsApp lifecycle, 0026 Gmail OAuth clients, 0027 Zoho OAuth clients).
-  Settings manages organization-scoped OAuth client IDs/secrets for both providers; secrets are encrypted at rest and never returned to the browser. Worker token refresh uses the saved per-mailbox OAuth client.
-  Callback URLs follow the host used to access the app; no fixed NEXT_PUBLIC_APP_URL is used for OAuth. Use an HTTPS domain for non-local OAuth, access Settings through that domain, and register the exact callback URI in the Google Cloud Console or Zoho API Console. Google rejects raw IP callback hosts. Domain changes do not require an application redeploy, but provider-console redirect URI registration is still required.
-  Keep CREDENTIALS_MASTER_KEY server-only. Do not wait for CI/Vercel; tests, build, migration application, and end-to-end OAuth remain unverified.
-
+  Correct the OAuth callback origin regression. The Settings API was returning https://localhost:3000 when the reverse proxy exposed its internal origin. The shared callback helper now prefers a single X-Forwarded-Host + X-Forwarded-Proto pair, validates it, and uses that public origin consistently for Gmail/Zoho callbacks and post-callback redirects.
+  Configure the trusted reverse proxy to validate incoming Host values and overwrite both forwarding headers with the public HTTPS host/protocol. Then pull main and run bash scripts/manual-up.sh to apply pending migrations 0024–0027. Open Settings through the intended HTTPS domain; confirm Gmail and Zoho callback displays use that domain, register exact callback URIs in Google/Zoho consoles, and restart OAuth from that same domain.
+  Do not use localhost as the production Google redirect URI. Google web OAuth requires an exact registered redirect URI and public HTTPS DNS hostname. Do not wait for CI/Vercel; run focused OAuth tests and builds when execution is available, and record actual results without claiming unrun checks passed.
 
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
