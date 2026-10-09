@@ -1510,3 +1510,11 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Added static source-contract assertions and updated the migration inventory and NEXT_ACTION.
 - Commits: `1761c404`, `8235d93c`, `7dd88044`, `ab03be9f`, `46fff87b`, `ff18009c`, `0a56626f`.
 - Tests/typecheck/build/browser/screen-reader/device checks were NOT RUN. No PASS claimed. Next inspect narrow viewport overflow, keyboard behavior, status announcements, and secondary controls. Do not wait for CI/Vercel.
+
+
+## 2026-10-09 — Cross-route tenant-context and form accessibility review
+
+- Fixed the Automations and Schedules server pages to resolve organization scope from getAuthenticatedAppContext using request headers and redirect unauthenticated users to login. Removed ensureDevSeed/getDevOrgId from these authenticated product surfaces so server-rendered data is not loaded from a seeded development organization. Commits: 5a5275b3, 088c36d8.
+- Added accessible labels to automation name/agent/trigger/action controls and schedule name/agent controls; normalized inconsistent rounded-xl geometry in schedule controls (b46ac6ab, ba4ebdcd).
+- Agent detail cross-route review found and fixed the Activity icon alias mismatch and added aria-pressed to horizontal section controls (fbc9a8db); static contract source added (6640a8a2).
+- Tests/typecheck/build/browser and live multi-tenant acceptance were not run. Continue reviewing the remaining route surfaces and keep the project-control inventory current.
