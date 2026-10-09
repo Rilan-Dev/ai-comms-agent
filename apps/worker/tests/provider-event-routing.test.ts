@@ -13,7 +13,7 @@ const whatsappWorker = readFileSync(resolve(__dirname, "../src/messaging/whatsap
 describe("provider event routing contract", () => {
   it("preserves deterministic identifiers for automation deduplication", () => {
     assert.equal(providerEvents.includes('actionId: "actionId" in event ? event.actionId : undefined'), true);
-    assert.equal(providerEvents.includes('messageId: "messageId" in event ? event.messageId : undefined'), true);
+    assert.equal(providerEvents.includes('messageId: "messageId" in event ? event.messageId : event.metadata?.messageId'), true);
     assert.equal(providerEvents.includes("correlationId: event.correlationId ?? undefined"), true);
   });
 
