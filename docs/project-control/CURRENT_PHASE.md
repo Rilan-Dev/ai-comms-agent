@@ -330,3 +330,7 @@ The configuration gap is now an active development item (ISS-011). Source implem
 ### 2026-10-09 — Gmail mailbox sync implementation slice
 
 OAuth-created Gmail accounts previously stayed pending because the worker did not run a Gmail sync consumer. Source now includes a PostgreSQL-backed polling loop, paginated initial import, incremental Gmail history cursor, idempotent thread/message persistence, encrypted token refresh persistence, refresh-token preservation during reconnect, a protected manual sync API, and automatically refreshed account status UI. This is source implementation only: deployment and live Gmail verification remain pending. See ISS-012 and the newest entry in `worklog.md`.
+
+
+## Active owner-directed UI implementation overlay — 2026-10-09
+The user explicitly authorized migration of the existing application UI to the Lovable-generated design under `source/lovable-ui`, including visual theme, responsive layout and iconography, while preserving current functionality and frontend validations. This is an implementation priority overlay; it does not change the named phase or authorize framework/database/auth architecture changes. DEV-01 has committed the shared design tokens, responsive sidebar/header, overview redesign, global geometry/typography, login/setup palette, and Mail inbox palette/search integration. Remaining UI routes are still pending. No test/typecheck/build/browser/runtime PASS is claimed. After this UI tranche, resume the previous connected-mailbox/Clara work recorded in NEXT_ACTION history.
