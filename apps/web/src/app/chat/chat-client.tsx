@@ -102,7 +102,7 @@ export function ChatClient({
   }
 
   return (
-    <main className="flex min-h-[calc(100vh-72px)] min-w-0 flex-col bg-[radial-gradient(circle_at_top_right,rgba(79,70,229,.08),transparent_30%)]">
+    <main className="flex min-h-[calc(100vh-72px)] min-w-0 flex-col bg-[radial-gradient(circle_at_top_right,oklch(0.88_0.105_152/.14),transparent_30%)]">
       <header className="border-b bg-background/85 px-5 py-4 backdrop-blur sm:px-7">
         <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-4">
           <div>
