@@ -155,3 +155,13 @@ If shared memory conflicts with current repository state or current requirements
 - **Remedy:** Port the visual system (semantic colors, typography, compact geometry, inline SVG iconography and layout composition) into the existing route while leaving API calls, state transitions and validation intact; add source-level contract assertions for important actions.
 - **Prevention:** For every migrated screen, enumerate its current API actions, validation, loading/empty/error states and navigation before restyling; assert those contracts after the visual edit. Record that static test source is not test execution.
 - **Related record:** `DEV01-LOVABLE-UI-MIGRATION-20261009`; commits `9de78b0f`, `c9641d9d`, `0aef87b0`.
+
+
+### DEV-01 / Forge — 2026-10-09
+- **Date/session:** DEV01-LOVABLE-UI-CONTINUATION-20261009
+- **Issue/symptom:** Owner requested a complete accounting of which Lovable UI screens have and have not been migrated.
+- **Root cause:** Earlier migration notes summarized a route tranche but did not provide a single exhaustive route-level matrix; global CSS adoption could be mistaken for complete migration.
+- **Failed approach:** Treating shared theme tokens or general styling as proof that every screen is migrated.
+- **Remedy:** Maintain `docs/project-control/LOVABLE_UI_MIGRATION.md` as the explicit route checklist and distinguish adapted source from verified behavior.
+- **Prevention:** Update the matrix and NEXT_ACTION after every tranche; preserve live functionality and validation, add contract assertions, and honestly record tests/browser verification as not run.
+- **Related record:** Commits `70738aa2`, `3cf94c7f`, `c2dd6e6e`, `740b70d2`, `2f1eecd5`; `docs/project-control/NEXT_ACTION.md`.
