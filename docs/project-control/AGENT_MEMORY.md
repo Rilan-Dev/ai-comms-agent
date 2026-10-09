@@ -245,3 +245,13 @@ If shared memory conflicts with current repository state or current requirements
 - **Correction:** Rewrote the assertions to test the current least-privilege contract and grants rather than the superseded migration implementation.
 - **Commit:** 618c4cd57f0e7e433c4da5f50840cd6c8f612b9b.
 - **Verification:** Source only; focused migration Vitest NOT RUN.
+
+
+### FIX-01 / Sentinel — 2026-10-09 — Migration and worker contract test drift
+- **Issue/symptom:** User reported migration static tests failing on audit-event policy assertions and DO-block delimiters; worker contract tests failed on retry-envelope metadata and a forbidden-vector-backend assertion.
+- **Root cause:** The migration used valid standard PostgreSQL `DO $$ ... $$` delimiters while tests required a specific named tag and included over-escaped regexes. Audit read/insert policy names and explicit append-only documentation were absent from the Phase 4 base migration artifact. Worker retry logic preserves idempotency/correlation by spreading `...envelope`, while the test demanded redundant explicit field assignments; the indexer comment mentioned Qdrant, so a blanket word-ban falsely failed without detecting an actual client call.
+- **Failed approach:** Do not change every valid SQL DO block just to satisfy a brittle delimiter-specific test; do not duplicate envelope fields solely for a source-regex assertion; do not forbid documentation from naming an intentionally unused backend.
+- **Remedy:** Added forward-only migration `0032_audit_event_access_hardening.sql` with organization-scoped audit insert/read policies and restrictive UPDATE/DELETE denial; aligned static tests with valid PostgreSQL delimiters, the new forward migration, retry-envelope spread semantics, and actual vector-client imports/calls.
+- **Prevention:** Test behavior/contracts, not incidental source spelling. For already-deployed schemas, add forward-only migrations rather than editing historical migrations. After source/API writes, inspect the committed literal regex and run focused tests.
+- **Evidence:** Commits `7557a6cd`, `ee85b554`, `cecae73e`, `c4d4abd0`, `96996d82`; no local test execution available in this session.
+- **Next action:** Pull latest main, compare local lockfile to origin/main (current main has exactly one lockfileVersion and one importers header), run focused migration and worker tests, then web/worker typechecks sequentially. No PASS claimed.
