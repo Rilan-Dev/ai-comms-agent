@@ -210,6 +210,7 @@ export class ZohoAdapter implements EmailProvider {
       new_state: {
         ...state,
         cursor: hasMore ? `${folderIndex}:${start}` : undefined,
+        history_token: hasMore ? state.history_token : (state.history_token ?? "zoho-full-v1"),
         sync_mode: hasMore ? "initial" : "incremental",
         last_sync_at: new Date().toISOString(),
       },
