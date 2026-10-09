@@ -168,3 +168,5 @@ If shared memory conflicts with current repository state or current requirements
 
 
 - **Follow-up:** Chat UI adaptation should preserve streamed responses, conversation/agent switching, optimistic user messages, visible system errors, keyboard send behavior, and the voice workspace link. Visual edits must not replace the existing server API with the Lovable preview's mock content. Related commits: `dee40027`, `10b87d65`.
+
+- Follow-up: Voice UI changes must preserve Clara-owned session/turn endpoints, microphone permission/denial behavior, session lifecycle, provider/transport status, server-only credentials, and existing approval/auth boundaries. Verify endpoint paths against source before writing static contract assertions. Related: 84652b74, f7ed2b42.
