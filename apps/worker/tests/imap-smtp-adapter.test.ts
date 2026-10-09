@@ -95,22 +95,22 @@ function bufferedReader(response: string) {
 }
 
 test("IMAP response reader consumes a literal containing CRLF by octet count", async () => {
-  const reader = bufferedReader("* 1 FETCH (BODY[] {12}\\r\\nhello\\r\\nworld)\\r\\nA0001 OK fetch complete\\r\\n");
+  const reader = bufferedReader("* 1 FETCH (BODY[] {12}\r\nhello\r\nworld)\r\nA0001 OK fetch complete\r\n");
   const response = await readImapResponse(reader);
-  assert.match(response, /hello\\r\\nworld/);
+  assert.match(response, /hello\r\nworld/);
   assert.match(response, /FETCH/);
-  assert.equal(reader.buffer.toString("utf8"), "A0001 OK fetch complete\\r\\n");
+  assert.equal(reader.buffer.toString("utf8"), "A0001 OK fetch complete\r\n");
 });
 
 test("IMAP response reader handles multiple literals in one FETCH response", async () => {
-  const reader = bufferedReader("* 1 FETCH (BODY[HEADER] {4}\\r\\nFrom BODY[] {5}\\r\\nHello)\\r\\nA0001 OK fetch complete\\r\\n");
+  const reader = bufferedReader("* 1 FETCH (BODY[HEADER] {4}\r\nFrom BODY[] {5}\r\nHello)\r\nA0001 OK fetch complete\r\n");
   const response = await readImapResponse(reader);
   assert.match(response, /From BODY\[\] {5}/);
   assert.match(response, /Hello/);
-  assert.equal(reader.buffer.toString("utf8"), "A0001 OK fetch complete\\r\\n");
+  assert.equal(reader.buffer.toString("utf8"), "A0001 OK fetch complete\r\n");
 });
 
 test("IMAP response reader rejects oversized literals before consuming payload", async () => {
-  const reader = bufferedReader("* 1 FETCH (BODY[] {52428801}\\r\\n");
+  const reader = bufferedReader("* 1 FETCH (BODY[] {52428801}\r\n");
   await assert.rejects(() => readImapResponse(reader), /50 MiB safety limit/);
 });
