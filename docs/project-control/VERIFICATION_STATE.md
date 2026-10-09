@@ -1003,3 +1003,12 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - **Typecheck/build/browser/runtime status:** not run in this session. No PASS is claimed.
 - **Related commits:** `9de78b0f`, `c9641d9d`, `9da036ac`, `e84075eb`, `52be6d66`, `706b46eb`, `295b038f`, `224146d0`, `a47edb72`, `737ab08e`, `c25fdf7c`.
 - **Next:** continue remaining route groups per `docs/project-control/NEXT_ACTION.md`; runtime/database/Redis work remains assigned to OPS-01 and the Mail Approvals tenant-context issue is routed to FIX-01 (BKL-012).
+
+
+## 2026-10-09 — RabbitMQ email.sync source integration (not runtime verified)
+
+- Source now includes `amqplib` dependency and lockfile entry, durable main/retry/DLQ topology, persistent publish with publisher confirms, consumer prefetch/manual acknowledgements, bounded retry/DLQ flow, confirmed republish-before-ack, worker producer polling and account-scoped consumer dispatch.
+- Added static source assertions in `apps/worker/tests/email-sync-rabbitmq.test.ts`.
+- Source commits: `f53f1124` dependency, `0741b7cf` lockfile, `7a350e49` transport, `7f9f0699` producer/consumer dispatch, `7f3fc212` worker startup, `02780cc8` tests.
+- Status: source_changed_not_tested. No test/typecheck/build, lockfile install, live broker, delivery/retry/DLQ, reconnect, or deployment validation has run. No PASS claimed.
+- Next: robust connection recovery and Clara-supported indexing adapter. Clara indexing remains not implemented; do not write directly to Qdrant or modify Clara source.
