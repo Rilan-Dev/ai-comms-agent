@@ -132,3 +132,12 @@
 - Added source assertions for the new behavior. Commits: `1761c404`, `8235d93c`, `7dd88044`, `ab03be9f`, `46fff87b`; docs: `ff18009c`, `0a56626f`.
 - Tests/typecheck/build/browser/screen-reader/device checks NOT RUN. No PASS claimed.
 - Next: continue narrow-viewport and keyboard review, status announcements, and remaining secondary controls. Do not wait for CI/Vercel; OPS-01 runtime incident remains separate.
+
+
+## 2026-10-09 — Cross-route compact geometry/accessibility pass
+
+- Normalized large-radius classes to compact `rounded-md` across remaining migrated routes; preserved full-pill badges. Added cross-route assertions in `apps/web/tests/lovable-ui-migration.test.ts` (`b328373c`).
+- Corrected Agent Detail Channels data loading to fetch WhatsApp accounts from `/api/whatsapp/accounts` separately from email accounts (`1f0566b4`); added contract assertion (`a67c1dee`). Added accessible `aria-labelledby` to deploy/pause confirmation (`3d8e2669`) and assertion (`952d704e`).
+- Updated migration inventory (`e31327c8`) and verification state (`579e25fa`).
+- **Verification NOT RUN:** no tests, typecheck, build, browser, responsive, accessibility or live API checks. No PASS claimed.
+- **Next:** inspect remaining secondary controls and source-level accessibility issues; manual browser/responsive pass remains pending. Continue without CI/Vercel polling.
