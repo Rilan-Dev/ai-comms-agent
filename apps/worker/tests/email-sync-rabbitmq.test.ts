@@ -28,6 +28,7 @@ test("consumer uses prefetch and manual ack; failures are confirmed before ack",
   assert.match(source, /activeChannel\.ack\(message\)/);
   assert.match(source, /activeChannel\.nack\(message, false, true\)/);
   assert.match(source, /publishConfirmed\(publisher, target, retryEnvelope\)/);
+  assert.ok(source.indexOf("channel = nextChannel;") < source.indexOf("await nextChannel.consume(MAIN_QUEUE"));
 });
 
 test("consumer reconnects with a bounded exponential delay after connection loss", () => {
