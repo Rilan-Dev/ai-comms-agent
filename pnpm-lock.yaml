@@ -12,6 +12,9 @@ importers:
 
 packages:
 
+  amqplib@2.2.0:
+    resolution: {tarball: https://registry.npmjs.org/amqplib/-/amqplib-2.2.0.tgz}
+
   '@pnpm/exe.android-arm64@12.8.1':
     resolution: {integrity: sha512-siDxcidfz5eM6L2tJfik+i2bbUEw8UC7MZ3Yl2HYdRmqbdhHGAOQACtOOu6QVW4Jul4/w5wVKm+wM8ACtgh1Pg==}
     cpu: [arm64]
@@ -95,6 +98,8 @@ packages:
     hasBin: true
 
 snapshots:
+
+  amqplib@2.2.0: {}
 
   '@pnpm/exe.android-arm64@12.8.1':
     optional: true
@@ -236,6 +241,9 @@ importers:
       '@ai-comms-agent/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      amqplib:
+        specifier: ^2.2.0
+        version: 2.2.0
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
