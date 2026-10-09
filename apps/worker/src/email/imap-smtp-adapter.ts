@@ -194,8 +194,7 @@ export class ImapSmtpAdapter implements EmailProvider {
   async listFolders(): Promise<EmailFolder[]> {
     const { imap } = this.ensureConnected();
     const tag = this.nextTag(imap);
-    imap.socket.write(`${tag} LIST "" "*"
-`);
+    imap.socket.write(`${tag} LIST "" "*"\r\n`);
     const folders: EmailFolder[] = [];
     while (true) {
       const line = await readLine(imap.reader);
