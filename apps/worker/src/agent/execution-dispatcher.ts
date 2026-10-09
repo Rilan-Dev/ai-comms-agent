@@ -1,3 +1,4 @@
+import { query } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import type { AgentExecutionDispatchResult, AgentExecutionRequest } from "@ai-comms-agent/shared";
 import { executeProductActions } from "./product-action-executor";
@@ -13,7 +14,8 @@ function buildPrompt(request:AgentExecutionRequest){
 }
 
 export async function dispatchAgentExecution(request:AgentExecutionRequest):Promise<AgentExecutionDispatchResult>{
-  const kbId=process.env.CLARA_KB_ID?.trim();
+  const configured = await query<{ knowledge_base_id: string }>("SELECT knowledge_base_id FROM organization_ai_runtime_settings WHERE organization_id=$1", [request.organizationId]);
+  const kbId=configured.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim();
   if(!kbId) return {status:"configuration_required",executionId:request.executionId,reason:"CLARA_KB_ID is not configured"};
   const turn=await claraRuntime.createChatTurn({
     orgId:request.organizationId,
