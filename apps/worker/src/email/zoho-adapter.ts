@@ -339,8 +339,23 @@ export class ZohoAdapter implements EmailProvider {
     return { draft_id: String(id), account_id: String(this.accountId) };
   }
 
-  async updateDraft(_draftId: string, _params: Partial<DraftParams>): Promise<DraftRef> {
-    throw new Error("Zoho draft update requires the email worker draft repository");
+  async updateDraft(draftId: string, params: Partial<DraftParams>): Promise<DraftRef> {
+    const payload: Record<string, unknown> = {};
+    if (params.to !== undefined) payload.toAddress = params.to.join(",");
+    if (params.cc !== undefined) payload.ccAddress = params.cc.join(",");
+    if (params.bcc !== undefined) payload.bccAddress = params.bcc.join(",");
+    if (params.subject !== undefined) payload.subject = params.subject;
+    if (params.body_html !== undefined || params.body_text !== undefined) {
+      payload.content = params.body_html ?? params.body_text ?? "";
+      payload.mailFormat = params.body_html !== undefined ? "html" : "plaintext";
+    }
+    if (params.reply_to_message_id !== undefined) payload.inReplyTo = params.reply_to_message_id;
+    const data = await this.request(`/api/accounts/${this.accountId}/messages/${encodeURIComponent(draftId)}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+    const id = data?.data?.messageId ?? data?.messageId ?? draftId;
+    return { draft_id: String(id), account_id: String(this.accountId) };
   }
 
   async deleteDraft(draftId: string): Promise<void> {
