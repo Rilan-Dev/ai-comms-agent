@@ -60,6 +60,8 @@ describe("Gmail OAuth platform configuration", () => {
     expect(settings).toContain("Add OAuth client");
     expect(settings).toContain("clientSecret");
     expect(settings).toContain("Gmail OAuth clients");
+    expect(settings).toContain("X-Forwarded-Host");
+    expect(settings).toContain("window.location.origin");
     expect(accounts).toContain("gmailConfigs.map");
     expect(accounts).toContain("configId=");
   });
