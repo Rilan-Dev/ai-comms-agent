@@ -147,3 +147,10 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Commit:** `f7df46f3d0d90bf1c0aae3407b448bd83aeca855`
 - **Verification:** Source accepted by GitHub only. Tests/typechecks and real-server acceptance remain pending; no CI/Vercel waiting was performed.
 - **Remaining:** Build a fake IMAP server regression suite for fragmented/multiple literals and CRLF-containing message content; validate against real IMAP servers. Continue RAG indexing, Redis-backed use case, and RabbitMQ durable sync queue separately.
+
+
+### DEV01-IMAP-LITERAL-TESTS-20261009 / 2026-10-09
+- **Change:** Added literal framing regression tests for CRLF-containing body payloads, multiple literals, preservation of the tagged completion response, and oversized literal rejection.
+- **Commits:** `d4a5c6589f2e28a00277a725cf6c628ea8b56eb5`, `4fda99f00b283c9ef68cd294837c8ba3c30a678e`.
+- **Evidence:** Source and test files were accepted by GitHub; no tests/typechecks were run in this environment.
+- **Next:** Execute focused tests and typechecks without waiting for CI/Vercel, then continue provider-to-PostgreSQL-to-Clara Chat acceptance and infrastructure integrations.
