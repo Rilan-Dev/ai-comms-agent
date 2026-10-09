@@ -96,3 +96,11 @@ This is an explicit inventory, not a claim that every listed page is already mig
 - Applied the Lovable compact neutral visual system across general organization Settings and AI provider/runtime, Gmail OAuth and Zoho OAuth subsections, including Lucide section iconography and compact card/input geometry.
 - Preserved existing organization/member API calls, role/status update behavior, password-change flow, provider/model fetch/save behavior, hidden/encrypted secrets, OAuth callback-origin guidance, Zoho data-center selection and edit/delete safeguards.
 - Added focused static contract assertions for settings API paths and credential protections. Tests/typecheck/build/browser and live OAuth/provider verification were not run.
+
+
+## 2026-10-09 — Settings and authentication route continuation
+
+- Settings now has anchored navigation for its main subsections. Gmail and Zoho OAuth status messages now expose failures through role=alert and destructive styling while successful saves remain role=status; added contract assertions for this behavior.
+- Removed duplicate Lucide icon import declarations from login and setup pages (source cleanup to prevent duplicate-import compile failures). Added auth page contract tests for login API continuity, safe local redirect validation, bootstrap token secrecy, password/slug validation and single icon imports.
+- Commits: OAuth alert semantics 0f51e38e / 1bce974d, assertions 7f7d75a2 / 6dc64267, login/setup import cleanup 7a2d8fef / 2029c978, auth tests 2714dc08.
+- Tests/typecheck/build/browser and keyboard/screen-reader checks were not run. Login/setup remain partial until full visual/accessibility review.
