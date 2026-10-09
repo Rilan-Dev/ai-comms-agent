@@ -50,3 +50,13 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Authorization:** User-explicit FIX-01 bug-remediation request.
 - **Suggested next action:** Run Gmail adapter regression and worker build; record actual output in VERIFICATION_STATE.md. Do not claim success from source commits alone.
 - **Related records:** FIX01-WORKER-CREDENTIALS-20261009; EVT-FIX01-WORKER-CREDENTIALS-20261009; ISS-013.
+
+
+### BKL-010 — Zoho OAuth settings test parser failure
+- **Work:** Execute post-fix web typecheck and focused Zoho OAuth settings test.
+- **Owner:** FIX-01 / Sentinel for source defect; OPS-01 only for any separate infrastructure/CI/deployment failure.
+- **State:** SOURCE_FIXED_VERIFICATION_PENDING
+- **Symptom:** TS1127/TS1434 in `apps/web/tests/zoho-oauth-settings.test.ts:84`; shared/db/clara-core/worker typechecks passed in user's pre-fix output.
+- **Fix commit:** `39857c40820940b500dcf452331dfe82ae35b861`.
+- **Next action:** Run `pnpm run typecheck` then focused test; update verification state from actual output.
+- **Related:** ISS-014; EVT-FIX01-ZOHO-TEST-NEWLINES-20261009.
