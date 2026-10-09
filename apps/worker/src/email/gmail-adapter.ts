@@ -109,6 +109,7 @@ export class GmailAdapter implements EmailProvider {
   private oauthClientId?: string;
   private oauthClientSecret?: string;
   private credentialMetadata: Record<string, unknown> = {};
+  private draftIndexPromise?: Promise<Map<string, string>>;
 
   async connect(credentials: EmailCredentials): Promise<void> {
     if (!credentials.access_token) throw new Error("Gmail requires an OAuth access token");
@@ -277,20 +278,25 @@ export class GmailAdapter implements EmailProvider {
   }
 
   async listDraftIdsByMessage(): Promise<Map<string, string>> {
-    const result = new Map<string, string>();
-    let pageToken: string | undefined;
-    do {
-      const params = new URLSearchParams({ maxResults: "100" });
-      if (pageToken) params.set("pageToken", pageToken);
-      const page = await this.request(`/drafts?${params.toString()}`);
-      for (const draft of page.drafts ?? []) {
-        if (typeof draft.id === "string" && typeof draft.message?.id === "string") {
-          result.set(draft.message.id, draft.id);
-        }
-      }
-      pageToken = typeof page.nextPageToken === "string" ? page.nextPageToken : undefined;
-    } while (pageToken);
-    return result;
+    if (!this.draftIndexPromise) {
+      this.draftIndexPromise = (async () => {
+        const result = new Map<string, string>();
+        let pageToken: string | undefined;
+        do {
+          const params = new URLSearchParams({ maxResults: "100" });
+          if (pageToken) params.set("pageToken", pageToken);
+          const page = await this.request(`/drafts?${params.toString()}`);
+          for (const draft of page.drafts ?? []) {
+            if (typeof draft.id === "string" && typeof draft.message?.id === "string") {
+              result.set(draft.message.id, draft.id);
+            }
+          }
+          pageToken = typeof page.nextPageToken === "string" ? page.nextPageToken : undefined;
+        } while (pageToken);
+        return result;
+      })();
+    }
+    return this.draftIndexPromise;
   }
 
   async findDraftIdForMessage(messageId: string): Promise<string | null> {
