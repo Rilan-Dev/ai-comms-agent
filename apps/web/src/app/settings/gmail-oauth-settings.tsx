@@ -89,6 +89,7 @@ export function GmailOAuthSettings({ organizationId }: { organizationId: string 
               <p className="font-medium">{config.label} {!config.enabled ? <span className="ml-2 text-xs text-muted-foreground">Disabled</span> : null}</p>
               <p className="mt-1 break-all text-xs text-muted-foreground">Client ID: {config.clientId}</p>
               <p className="mt-1 break-all text-xs text-muted-foreground">Callback: {config.redirectUri}</p>
+              {typeof window !== "undefined" && config.redirectUri && new URL(config.redirectUri).origin !== window.location.origin ? <p role="alert" className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs">The server callback origin differs from the domain open in this browser. Configure the trusted reverse proxy to overwrite X-Forwarded-Host and X-Forwarded-Proto with the public HTTPS origin, then reload Settings. Do not register this internal localhost callback in production.</p> : null}
               <p className="mt-1 text-xs text-muted-foreground">Secret stored encrypted · not displayed</p>
             </div>
             <div className="flex gap-2">
