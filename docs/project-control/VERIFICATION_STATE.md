@@ -1036,3 +1036,12 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Commits: Activity UI `b344b0ad`, static test `dfaf7d11`, migration inventory `1fe0050c`, NEXT_ACTION `03d9c499`.
 - **Not verified:** no tests, typecheck, build, browser, or live API run. No PASS claimed.
 - Next: adapt Audit, preserving its authenticated organization scope and export safeguards.
+
+
+## 2026-10-09 — RabbitMQ and Clara email indexing continuation (source-only)
+
+- RabbitMQ consumer now assigns active channels before registering the consume callback to avoid an early-delivery race; source regression assertion added.
+- Corrected both mailbox polling predicates so an existing incremental cursor alone does not make an account continuously eligible. The last-success age and pending/error status now govern the next poll. Source regression assertion added.
+- Clara email indexing now splits email content into bounded overlapping chunks, rebuilds stale chunk rows safely when chunk boundaries change, and preserves organization/agent scope metadata. Local Clara host retrieval now matches sanitized query terms using PostgreSQL lexical search and returns no sources for empty queries. Static contract tests added.
+- Commits: d2e6fe39, e760bb92, 4bad6d3e, 766c487d, 28080eb7, 93a9804d, 0eedd60f, 2b95ca81, 854285f5.
+- NOT RUN: worker tests, Clara tests, typechecks, builds, frozen-lockfile install, RabbitMQ/Redis connection tests, PostgreSQL integration, live IMAP/Zoho, and end-to-end email-to-Clara retrieval. These are source changes only; no runtime PASS is claimed. Semantic embeddings/vector indexing are not implemented by this host adapter; it uses existing PostgreSQL knowledge records and lexical retrieval, not direct Qdrant writes.
