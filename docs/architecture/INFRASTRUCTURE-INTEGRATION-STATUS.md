@@ -40,3 +40,8 @@ This is local-development infrastructure only. The manual app stack in infra/doc
 The worker now uses a Redis lease around each mailbox-sync batch when `REDIS_URL` is configured. The lease uses a random owner token, `SET NX PX` with a 10-minute TTL, and token-checked Lua release so a stale worker cannot delete a newer worker's lease. Contending workers skip the batch. If Redis is configured but unavailable, the batch is skipped and an error is logged; when Redis is not configured, existing PostgreSQL per-account claims continue to provide the existing concurrency guard. This is source implementation only; no Redis server, contention test, worker typecheck, or live mailbox run was executed. The lease does not replace PostgreSQL sync cursors or per-account claims.
 
 Redis lease regression test source added at `apps/worker/tests/redis-lease.test.ts` (commit `fbd07ca9dee64a3fbe114bb16cf08fadcfa695f1`) for acquisition/contention, token-checked release, and AUTH/database selection. The suite has not been executed; live Redis validation remains pending.
+
+
+## 2026-10-09 — Fragmented IMAP literal regression source
+
+Added a PassThrough-socket regression that splits the literal marker, literal payload, and following tagged response across socket chunks. This extends source coverage only; no test or live-server execution has occurred.
