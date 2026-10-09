@@ -2,7 +2,6 @@
 
 import { FormEvent, useState } from "react";
 import { ArrowRight, ShieldCheck } from "lucide-react";
-import { ArrowRight, ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
