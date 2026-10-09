@@ -121,3 +121,11 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Added IMAP parser contract coverage and corrected adapter capability assertions: `26c90fe94093a953973492c5276b50a13c4d078f`, `b2d82ddfe6f656740bd2077dc1300cad895645f7`; updated worker selection test after enabling IMAP polling: `d72d444a1d71c9675fa52b4a9bcb3b957150cc56`.
 - Enabled the opt-in local Compose profile for PostgreSQL/Redis/RabbitMQ/Qdrant: `c3b61ba1b688137cf917bdb224b51fef433430d5`. Added `docs/architecture/INFRASTRUCTURE-INTEGRATION-STATUS.md` documenting actual data flow and integration gaps: `63312b53db66a42d10cceb67b3b1f6a283511642`.
 - **Not verified:** No test suite, typecheck, build, live mailbox, deployed database, Clara turn, or infrastructure container was executed. GitHub accepted the commits only. Redis and RabbitMQ still lack real application client paths; Qdrant email indexing is not implemented. Do not claim those app integrations are enabled just because endpoints or local containers exist.
+
+
+### DEV01-ADAPTER-CORRECTIONS-20261009 — 2026-10-09
+- **Task:** Correct source-level defects found while reviewing the focused Zoho/IMAP test targets.
+- **Implemented:** Zoho provider draft updates now call the API instead of throwing; IMAP per-folder checkpoints survive bounded initial import continuations; SMTP AUTH PLAIN uses NUL-delimited credentials.
+- **Commits:** `72f05f5f642beea07cc5543fbc744051a083f922`, `5d2c3f3bcbab6698a56449afda407921c05b7760`.
+- **Verification:** Attempted local checkout, but pnpm is unavailable and github.com DNS resolution fails in this environment. No focused test or typecheck result is available; no PASS claimed.
+- **Next:** Run the focused tests and worker/web typechecks in a dependency-equipped environment, then continue real-server and provider→PostgreSQL→Clara acceptance. Redis, RabbitMQ, and Qdrant email indexing remain incomplete at application level. FIX-01 owns BKL-008; OPS-01 owns production infrastructure/deployment.
