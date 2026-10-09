@@ -146,7 +146,24 @@ export async function POST(request: Request) {
       if (!emailAddress || !host || !smtpHost || !username || !password || !Number.isInteger(port) || port < 1 || port > 65535 || !Number.isInteger(smtpPort) || smtpPort < 1 || smtpPort > 65535 || !tls) {
         return NextResponse.json({ error: "validation_error", message: "Email, hosts, valid ports, username, password and mandatory TLS are required." }, { status: 422 });
       }
-      const test = await testImapSmtpConnection({ host, port, username, password, smtpHost, smtpPort, tls });
+      let test;
+      try {
+        test = await testImapSmtpConnection({ host, port, username, password, smtpHost, smtpPort, tls });
+      } catch (error) {
+        const code = typeof error === "object" && error !== null && "code" in error
+          ? String((error as { code?: unknown }).code ?? "")
+          : "";
+        const message = error instanceof Error ? error.message : "IMAP/SMTP connection failed.";
+        const safeMessage = code === "ENOTFOUND" || code === "EAI_AGAIN"
+          ? "Could not resolve the mail server hostname. Check the IMAP and SMTP hostnames and the server's DNS connectivity."
+          : code === "ECONNREFUSED" || code === "ETIMEDOUT" || code === "ECONNRESET"
+            ? "Could not connect to the mail server. Check the host, port, TLS settings, and outbound network access."
+            : message;
+        return NextResponse.json(
+          { error: "provider_connection_failed", message: safeMessage },
+          { status: 502 },
+        );
+      }
       if (action === "test_imap_smtp") return NextResponse.json({ ok: true, test });
             const masterKey = process.env.CREDENTIALS_MASTER_KEY ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY) : null;
       if (!masterKey) return NextResponse.json({ error: "provider_configuration_required", message: "Credential encryption is not configured on the server." }, { status: 503 });
