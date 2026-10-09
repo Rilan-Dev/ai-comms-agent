@@ -82,3 +82,14 @@
 - Added focused static contract assertions and updated migration inventory/NEXT_ACTION. Commits: settings components `25d17e19`, `ecd6f403`, `68cb6fba`, `e324defd`; assertions `399b60a6`; inventory `0ac7a4c9`; NEXT_ACTION `d47811e5`.
 - **Verification NOT RUN:** tests/typecheck/build/browser/accessibility/live OAuth/provider checks. No PASS claimed.
 - **Next:** Login/Setup → agent detail/version/history → cross-route responsive/accessibility review.
+
+
+## 2026-10-09 — DEV-01 Settings, Login/Setup, and agent detail UI continuation
+
+- Normalized card/control geometry across general Settings, AI provider/runtime, Gmail OAuth, and Zoho OAuth settings while preserving existing API calls, encrypted-secret handling, membership/password actions, and provider/runtime settings. Settings navigation remains grouped by section.
+- Aligned Login and first-time Setup to compact cards, semantic Lucide icons and controls; preserved `/api/auth/login`, guarded local `next` redirect, `/api/auth/bootstrap`, bootstrap token, password minimum, and organization slug validation.
+- Adapted agent detail/version/history tabs with compact cards and Lucide action/tab iconography; preserved organization-scoped server loading, version snapshot creation, policy JSON validation, channel binding, simulate/configuration test, and explicit deploy/pause confirmation.
+- Added static contract assertions to `apps/web/tests/lovable-ui-migration.test.ts` and updated `docs/project-control/LOVABLE_UI_MIGRATION.md` and `NEXT_ACTION.md`.
+- Commits: Settings `95f6ba1e`, `40b7de7d`, `6923c521`, `71ba14f9`, `8758763c`; Login `c5a8531d`, `aa389dd4`; Setup `50bd0cb1`, `0b165d08`; tests `10e454d0`, `59d61f6c`, `dd9a83c2`; agent detail `4f2d49a1`, server fallback `b170e9ba`; inventory `665e1ba9`, `f3d8fdd7`; NEXT_ACTION `6724286e`, `40ec1a60`.
+- **Verification NOT RUN:** no tests, typecheck, build, browser, accessibility, or live API checks were executed. No PASS claimed.
+- **Next:** cross-route responsive/accessibility review and remaining secondary controls. Continue without CI/Vercel polling; route substantial functional defects to FIX-01 and runtime/deployment work to OPS-01.
