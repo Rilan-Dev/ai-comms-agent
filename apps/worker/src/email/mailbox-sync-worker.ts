@@ -12,6 +12,7 @@ import { randomUUID } from "node:crypto";
 import { acquireRedisLease, releaseRedisLease } from "./redis-lease";
 import type { EmailProvider } from "@ai-comms-agent/shared";
 import { publishEmailSync } from "../queues/email-sync-rabbitmq";
+import { indexEmailForClara } from "@ai-comms-agent/clara-core";
 import { indexEmailKnowledge } from "../knowledge/email-knowledge-indexer";
 import type { EmailSyncPayload } from "../queues/email-sync-message";
 
@@ -233,6 +234,11 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
         ? draftIdsByMessage.get(message.provider_message_id || message.id) ?? (candidate.provider === "zoho" ? (message.provider_message_id || message.id) : null)
         : null;
       await persistMessage(candidate, message, providerDraftId);
+      await indexEmailForClara({
+        organizationId: candidate.organization_id,
+        accountId: candidate.id,
+        provider: candidate.provider,
+      }, message);
       saved += 1;
     }
 
