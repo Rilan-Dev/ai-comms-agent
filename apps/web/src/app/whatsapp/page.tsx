@@ -1,1 +1,17 @@
-export default function WhatsAppPage(){return <main className="mx-auto max-w-[1000px] space-y-8 bg-background p-5 sm:p-7 lg:p-10"><div><p className="mb-3 text-xs font-semibold uppercase tracking-[.16em] text-muted-foreground">Messaging workspace</p><h1 className="font-display text-3xl font-medium">WhatsApp Business<span className="text-tertiary">.</span></h1><p className="mt-2 text-sm text-muted-foreground">One WhatsApp Business phone per agent, with verified webhooks and durable message state.</p></div><div className="rounded-md border border-border bg-card p-6"><div className="flex items-center gap-4"><div className="grid size-12 place-items-center rounded-md bg-accent text-accent-foreground"><svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></svg></div><div><h2 className="font-semibold">Meta Cloud API</h2><p className="text-sm text-muted-foreground">No phone connected</p></div></div><button className="mt-7 h-10 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-85">Connect WhatsApp Business</button></div><div className="rounded-md border border-border bg-card p-6"><p className="font-semibold">Daily briefing</p><p className="mt-1 text-sm text-muted-foreground">Once connected, scheduled summaries can be delivered directly to the configured WhatsApp number.</p></div></main>}
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { getAuthenticatedAppContext } from "@/lib/identity/repository";
+import WhatsAppClient from "./whatsapp-client";
+
+export default async function WhatsAppPage() {
+  // Match the authenticated shell's identity boundary. Never fall back to the
+  // seeded development organization when rendering a real messaging surface.
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("aca-access-token")?.value;
+  const authHeaders = new Headers();
+  if (accessToken) authHeaders.set("cookie", `aca-access-token=${encodeURIComponent(accessToken)}`);
+  const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: authHeaders }));
+  if (!context) redirect("/login?reason=not_provisioned");
+
+  return <WhatsAppClient organizationId={context.organizationId} />;
+}
