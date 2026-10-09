@@ -6,6 +6,12 @@ The single exact next authorized action. Update this file on every commit.
 
 ## Current next action
 
+### Immediate FIX-01 lockfile follow-up — 2026-10-09
+
+The user's latest local run confirmed a second pnpm lockfile defect after the missing package/snapshot records were restored: `amqplib@2.2.0` lacked a tarball integrity hash, so pnpm 12.8.1 correctly rejected installation with `ERR_PNPM_MISSING_TARBALL_INTEGRITY`. FIX-01 added the published SHA-512 SRI to `pnpm-lock.yaml` (commit `644d578170801785c1252a569fa976b0b33476eb`) and tightened the existing regression test (commit `d115e1b0293b48571cd0902849cb5f0030963bc7`). Source only; install/test/typecheck not rerun.
+
+**Exact next action:** pull latest `main`; run `pnpm install --frozen-lockfile`. If successful, run `pnpm run typecheck` and `pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts`. Record actual output. Never disable integrity policy or fabricate hashes. Do not wait for CI/Vercel. Separate Docker/environment defects route to OPS-01.
+
 ### Immediate inbox runtime follow-up — 2026-10-09 (OPS-01)
 
 Latest live logs show `email_messages.from_name` missing and Redis authentication rejected with WRONGPASS. FIX-01 committed `0030_email_messages_runtime_reconciliation.sql` and static migration coverage. The `queued` response is acknowledgement only, not import success. OPS-01's next runtime action is to apply migrations `0029` and `0030` to the exact web/worker database, roll out matching containers, correct Redis URL credentials against Redis ACL configuration, then verify persisted email rows and inbox results. No runtime success is claimed. Keep the independent DEV-01 UI migration moving without waiting for CI/Vercel.
