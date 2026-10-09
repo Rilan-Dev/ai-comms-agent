@@ -86,13 +86,22 @@ export default function SettingsPage() {
         </p>
       </header>
 
+      <nav aria-label="Settings sections" className="sticky top-0 z-20 -mx-1 flex gap-2 overflow-x-auto border-y border-border bg-background/95 px-1 py-3 backdrop-blur">
+        <a href="#organization-settings" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">Organization</a>
+        <a href="#mail-provider-settings" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">Mail OAuth</a>
+        <a href="#ai-provider-settings" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">AI providers</a>
+        <a href="#ai-runtime-settings" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">Clara runtime</a>
+        <a href="#member-settings" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">Members & roles</a>
+        <a href="#workspace-links" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">Workspace links</a>
+      </nav>
+
       {error ? (
         <section className="rounded-md border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">
           {error}
         </section>
       ) : null}
 
-      <section className="grid gap-4 md:grid-cols-[1.1fr_.9fr]">
+      <section id="organization-settings" className="scroll-mt-20 grid gap-4 md:grid-cols-[1.1fr_.9fr]">
         <div className="rounded-md border border-border bg-card p-5">
           <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Organization</p>
           {loading ? (
@@ -120,12 +129,35 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <GmailOAuthSettings organizationId={organization?.id ?? ""} />
-      <ZohoOAuthSettings organizationId={organization?.id ?? ""} />
-      <AIProviderSettings organizationId={organization?.id ?? ""} />
-      <AIRuntimeSettings organizationId={organization?.id ?? ""} />
+      <section id="mail-provider-settings" className="scroll-mt-20 space-y-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Connected services</p>
+          <h2 className="mt-1 font-display text-xl font-medium">Mail OAuth clients</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Manage the organization’s Google and Zoho OAuth clients. Client secrets remain encrypted on the server and are never displayed after saving.</p>
+        </div>
+        <GmailOAuthSettings organizationId={organization?.id ?? ""} />
+        <ZohoOAuthSettings organizationId={organization?.id ?? ""} />
+      </section>
 
-      <section className="rounded-md border border-border bg-card p-5">
+      <section id="ai-provider-settings" className="scroll-mt-20 space-y-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Model configuration</p>
+          <h2 className="mt-1 font-display text-xl font-medium">AI providers</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Configure encrypted provider credentials and choose the models available to Clara.</p>
+        </div>
+        <AIProviderSettings organizationId={organization?.id ?? ""} />
+      </section>
+
+      <section id="ai-runtime-settings" className="scroll-mt-20 space-y-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Runtime behavior</p>
+          <h2 className="mt-1 font-display text-xl font-medium">Clara runtime</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Set the actual knowledge-base ID, chat defaults, and realtime voice settings used by the runtime.</p>
+        </div>
+        <AIRuntimeSettings organizationId={organization?.id ?? ""} />
+      </section>
+
+      <section id="member-settings" className="scroll-mt-20 rounded-md border border-border bg-card p-5">
         {notice ? <div className="mb-4 rounded-md border bg-muted/30 px-4 py-3 text-sm">{notice}</div> : null}
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -175,7 +207,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="rounded-md border border-border bg-secondary/50 p-5">
+      <section id="workspace-links" className="scroll-mt-20 rounded-md border border-border bg-secondary/50 p-5">
         <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Configuration</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <LinkCard href="/ai-voice" title="AI & Voice" text="Provider readiness and Clara voice configuration." />
