@@ -72,6 +72,44 @@ export function EmailAccountsClient({
     }
   }, []);
 
+  useEffect(() => {
+    const timer = window.setInterval(async () => {
+      try {
+        const response = await fetch("/api/email-accounts?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        setAccounts(data.accounts ?? []);
+      } catch {
+        // Keep the last persisted snapshot visible during transient refresh failures.
+      }
+    }, 15_000);
+    return () => window.clearInterval(timer);
+  }, [organizationId]);
+
+  async function syncNow(account: EmailAccount) {
+    setBusy(account.id);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/email-accounts/${encodeURIComponent(account.id)}/sync`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ organizationId }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message ?? "Mailbox synchronization could not be queued.");
+      setNotice(data.message ?? "Mailbox sync queued.");
+      const refresh = await fetch("/api/email-accounts?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" });
+      if (refresh.ok) {
+        const snapshot = await refresh.json();
+        setAccounts(snapshot.accounts ?? []);
+      }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Mailbox synchronization could not be queued.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function reconnect(account: EmailAccount) {
     if (account.provider === "gmail") {
       if (!selectedGmailConfig) { setNotice("Add and enable a Gmail OAuth client in Settings before connecting Gmail."); return; }
@@ -327,6 +365,11 @@ export function EmailAccountsClient({
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  {account.provider === "gmail" && account.status !== "revoked" && account.status !== "disconnected" && (
+                    <button type="button" disabled={busy === account.id} onClick={() => syncNow(account)} className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
+                      {busy === account.id ? "Queueing…" : "Sync now"}
+                    </button>
+                  )}
                   {account.status !== "connected" && (
                     <button type="button" disabled={busy === account.id} onClick={() => reconnect(account)} className="h-10 rounded-xl border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
                       {busy === account.id ? "Reconnecting…" : "Reconnect"}
