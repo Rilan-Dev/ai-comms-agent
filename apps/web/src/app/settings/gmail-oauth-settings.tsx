@@ -82,7 +82,7 @@ export function GmailOAuthSettings({ organizationId }: { organizationId: string 
           Add multiple Google OAuth clients for this organization. Client secrets are encrypted before database storage and are never returned to the browser. In Google Cloud Console, add each displayed callback URL to the OAuth client’s authorized redirect URIs.
         </p>
       </div>
-      {notice ? <p role="status" className="mt-4 rounded-md border bg-muted/30 px-4 py-3 text-sm">{notice}</p> : null}
+      {notice ? <p role={/(failed|could not|error|invalid|unable)/i.test(notice) ? "alert" : "status"} className={`mt-4 rounded-md border px-4 py-3 text-sm ${/(failed|could not|error|invalid|unable)/i.test(notice) ? "border-destructive/30 bg-destructive/5 text-destructive" : "bg-muted/30"}`}>{notice}</p> : null}
       <div className="mt-5 space-y-3">
         {loading ? <p className="text-sm text-muted-foreground">Loading configurations…</p> : configs.length === 0 ? <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">No Gmail OAuth clients configured yet.</p> : configs.map((config) => (
           <div key={config.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-4">
