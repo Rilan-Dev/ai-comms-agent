@@ -1204,3 +1204,8 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - **Verification:** tests/typecheck/build/migration/live provider requests/chat streaming/voice transport/deployment were not run. No PASS is claimed.
 - **Important operational dependency:** deploy the latest `main` and apply migrations through `0028` using the documented self-hosted deployment flow before expecting the new Settings API to be available.
 - **Remaining scope:** continue the screen-wise configuration audit, including voice-specific credentials/transport support and a clear readiness view; do not wait for CI/Vercel while implementing independent work.
+
+### 2026-10-09 — AI provider screen state hydration
+- Follow-up UI correction: the provider Settings panel now hydrates the selected provider's saved model, base URL, and enabled state after loading its organization-scoped configuration.
+- Commit: `5883c37c`.
+- No tests or build were executed after this correction.
