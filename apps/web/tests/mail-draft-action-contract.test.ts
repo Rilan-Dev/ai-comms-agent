@@ -6,6 +6,7 @@ const repo = readFileSync(resolve(__dirname, "../../../packages/db/src/email/rep
 const route = readFileSync(resolve(__dirname, "../src/app/api/mail/drafts/route.ts"), "utf8");
 const compose = readFileSync(resolve(__dirname, "../src/app/mail/compose/compose-client.tsx"), "utf8");
 const thread = readFileSync(resolve(__dirname, "../src/app/mail/thread/[threadId]/thread-client.tsx"), "utf8");
+const draftsClient = readFileSync(resolve(__dirname, "../src/app/mail/drafts/drafts-client.tsx"), "utf8");
 
 describe("Mail draft and sensitive action contracts", () => {
   it("keeps draft list/update/delete organization scoped", () => {
@@ -24,6 +25,14 @@ describe("Mail draft and sensitive action contracts", () => {
     expect(compose).toContain("requestedDraftId");
     expect(compose).toContain("/api/mail/drafts?organizationId=");
     expect(compose).toContain("setDraftId(String(d.id))");
+  });
+  it("makes persisted drafts searchable by subject, body, recipient, and mailbox", () => {
+    expect(draftsClient).toContain('placeholder="Search subject, message, recipient, or mailbox…"');
+    expect(draftsClient).toContain("d.subject");
+    expect(draftsClient).toContain("d.text_body");
+    expect(draftsClient).toContain("d.to_recipients");
+    expect(draftsClient).toContain("d.account_email");
+    expect(draftsClient).toContain("No drafts match your search.");
   });
   it("routes forward through the sensitive approval API", () => {
     expect(thread).toContain('actionType: "forward_email"');
