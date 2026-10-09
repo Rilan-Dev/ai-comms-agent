@@ -119,3 +119,11 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Commits:** d7228495f5bd03483154ac194cba865fbf3b00e5; 0e10e647b029ea065b467e120180248e1eb1b27d; bd6368d7f56f39660cf28b913026fcb8fd0a0004.
 - **Evidence:** GitHub accepted source changes. No test/typecheck or live Redis/worker test was executed. Connection-failure, contention, expiry, TLS and AUTH behavior remain unverified.
 - **Next action:** Add focused tests for Redis RESP commands/lease semantics and run worker/web typechecks when dependencies are available; continue Clara Core-supported email indexing and RabbitMQ durable queue integration.
+
+
+### DEV01-REDIS-LEASE-TESTS-20261009 / 2026-10-09
+- **Task:** Add deterministic protocol-level coverage for the Redis mailbox lease.
+- **Actions:** Added a fake TCP Redis RESP2 server and tests for SET NX PX success/contention, token-checked EVAL release, and URL AUTH/database selection.
+- **Files:** apps/worker/tests/redis-lease.test.ts.
+- **Commit:** fbd07ca9dee64a3fbe114bb16cf08fadcfa695f1.
+- **Evidence:** Test source accepted by GitHub; not executed in this environment. Live Redis and typecheck remain pending.
