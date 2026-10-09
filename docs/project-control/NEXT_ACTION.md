@@ -6,12 +6,19 @@ The single exact next authorized action. Update this file on every commit.
 
 ## Current next action
 
-### FIX-01 migration test alignment — 2026-10-10
+### FIX-01 worker/web contract correction — 2026-10-10
 
-A test-only correction is committed on `fix/migration-verification-phase4-contract` (`c51d5a79dfd999dd4382cc60005798531e5517be`). The `summary_sources` table belongs to migration 0003 and its RLS policy to migration 0004, not migration 0002. The static test now follows that migration ownership.
+Source corrections committed on `fix/migration-verification-phase4-contract` after reviewing the user-reported worker-suite and email-action contract failures:
+- Converted the three worker contract tests that imported Vitest to Node's built-in `node:test` / `node:assert` runner, matching `apps/worker/package.json`.
+- Replaced ESM-incompatible `__dirname` usage in worker test fixtures with `fileURLToPath(import.meta.url)`.
+- Applied the existing bounded transient-error retry helper to provider capability discovery.
+- Corrected RFC 2047 encoded-word matching in IMAP header decoding.
+- Preserved informational `messageId` metadata for email provider events while canonical organization/action/account/correlation fields remain authoritative.
+- Corrected test contracts/mocks for Clara indexing comments, IMAP literal line boundaries, Zoho OAuth form-body parsing/account discovery, and email-action approval/recovery module boundaries.
 
-**Next action:** fetch the branch and run `pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts`. Then run the worker RabbitMQ contract test and web/worker typechecks sequentially. Do not wait for CI/Vercel. The user's local lockfile displayed two YAML documents, but fetched current main has one; compare local `pnpm-lock.yaml` with the newly fetched `origin/main` before changing it. Record actual output; do not claim PASS before execution.
+**Verification status:** GitHub accepted source commits. Focused tests, the full worker suite, typechecks, build, browser/runtime checks, and deployment have NOT been executed or verified in this continuation. Do not describe the branch as deployment-successful yet. The lockfile and local backup files remain out of scope and must be preserved.
 
+**Exact next action:** fetch/pull this branch into the local checkout without discarding local changes or the four lockfile backups. Run the focused web email-action contract and migration-verification tests, then `pnpm --filter @ai-comms-agent/worker test`; follow with web and worker typechecks. Fix any remaining concrete failures and update this file/worklog with actual output. Continue without waiting for GitHub Actions or Vercel; only report deployment success after a deployment result is observed.
 
 ## Immediate FIX-01 migration/worker test follow-up — 2026-10-09
 
