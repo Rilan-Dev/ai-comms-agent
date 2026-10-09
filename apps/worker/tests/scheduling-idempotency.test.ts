@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const migration = readFileSync(resolve(__dirname, "../../../supabase/migrations/0021_scheduled_run_idempotency.sql"), "utf8");
 const repository = readFileSync(resolve(__dirname, "../../../packages/db/src/automation/repository.ts"), "utf8");
