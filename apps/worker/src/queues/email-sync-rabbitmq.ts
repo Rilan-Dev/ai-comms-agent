@@ -185,6 +185,10 @@ export function startEmailSyncRabbitMq(
       await declareTopology(nextChannel);
       await declareTopology(nextConfirmChannel);
       await nextChannel.prefetch(PREFETCH);
+      // Publish the active channels before registering the consumer callback;
+      // RabbitMQ may deliver a queued message immediately after consume resolves.
+      channel = nextChannel;
+      confirmChannel = nextConfirmChannel;
       const result = await nextChannel.consume(MAIN_QUEUE, (message) => {
         if (message) void processMessage(message);
       }, { noAck: false });
@@ -193,10 +197,10 @@ export function startEmailSyncRabbitMq(
         await nextChannel.close().catch(() => undefined);
         await nextConfirmChannel.close().catch(() => undefined);
         await newConnection.close().catch(() => undefined);
+        channel = undefined;
+        confirmChannel = undefined;
         return;
       }
-      channel = nextChannel;
-      confirmChannel = nextConfirmChannel;
       consumerTag = result.consumerTag;
       reconnectDelayMs = 1_000;
       console.log(JSON.stringify({ level: "info", service: "worker.email-sync-queue", message: "Durable email.sync consumer ready", queue: MAIN_QUEUE, prefetch: PREFETCH }));
