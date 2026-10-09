@@ -359,3 +359,18 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Correction:** Rewrote the assertions to test the current least-privilege contract and grants rather than the superseded migration implementation.
 - **Commit:** 618c4cd57f0e7e433c4da5f50840cd6c8f612b9b.
 - **Verification:** Source only; focused migration Vitest NOT RUN.
+
+
+## ISS-019 — Migration audit policy and worker contract-test drift
+- **Opened:** 2026-10-09
+- **Severity:** high (database access-contract gap plus focused test failures)
+- **Owner:** FIX-01 / Sentinel
+- **Status:** source_corrected_verification_pending
+- **Symptom:** User reported 15 migration verification failures and two worker RabbitMQ test failures. Migration assertions expected named DO delimiters and audit policy identifiers/documentation; worker assertions expected explicit retry metadata assignments and rejected any mention of Qdrant/vector-store.
+- **Root cause:** Static SQL assertions were coupled to a specific dollar-tag spelling and were over-escaped in the reported test source; the base migration did not include the expected audit insert/read policy names or append-only comment; worker retry code preserved metadata through `...envelope`, and the broad negative regex matched an explanatory comment rather than a client operation.
+- **Remedy:** Added forward-only migration `0032_audit_event_access_hardening.sql` with organization-scoped insert/read and restrictive update/delete denial. Corrected static tests to accept valid PostgreSQL dollar-quoting, test the new forward migration, verify retry-envelope spread semantics, and detect actual vector client imports/calls.
+- **Commits:** `7557a6cd820e8a199f434d9e5e6effa77f2a3178`, `ee85b55401b9154c42a795400589589fbb930b1d`, `cecae73edf181771396d6c8c30e1bad3c622c3fd`, `c4d4abd06f6001f4198c23c42f0b2312ea7601eb`, `96996d82ea034688485b1b9e92ed78fb0d024aee`.
+- **Failed approaches:** Do not rewrite every valid DO block for a test-only tag expectation; do not add redundant fields to the retry object; do not remove accurate documentation to satisfy a blanket word-ban.
+- **Verification:** GitHub source writes and re-fetch succeeded. Focused tests, typechecks, and migration execution NOT RUN. No PASS claimed.
+- **Lockfile discrepancy:** User's local output reports two lockfile documents, but current main has exactly one `lockfileVersion:` and one `importers:` header. Local checkout/diff is needed to determine whether the duplicate is uncommitted or stale.
+- **Next action:** Pull latest main; compare local lockfile with `origin/main`; run focused migration Vitest and worker RabbitMQ test, then web and worker typechecks sequentially. Route Docker/CI/deployment/environment defects to OPS-01.
