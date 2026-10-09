@@ -73,3 +73,12 @@
 - Commits: Operations `fc22cc3f`, contract assertions `ddb7a233` and `ca229779`, inventory `4f010fb3`, NEXT_ACTION `d75222c7`.
 - **Verification NOT RUN:** no tests/typecheck/build/browser/accessibility/live connectivity checks. No PASS claimed.
 - **Next:** Settings and provider-setting subsections → Login/Setup → agent detail/version/history → cross-route responsive/accessibility review. Continue without CI/Vercel polling.
+
+
+## 2026-10-09 — DEV-01 Settings UI continuation
+
+- Aligned the general Settings page and the AI provider/runtime, Gmail OAuth and Zoho OAuth settings components to compact Lovable card/input geometry and Lucide section icons.
+- Preserved existing organization/member API calls, role/status updates, password change behavior, model catalog fetch/save, server-side encrypted secrets, OAuth callback-origin warnings, Zoho data-center selection, and existing edit/delete safeguards.
+- Added focused static contract assertions and updated migration inventory/NEXT_ACTION. Commits: settings components `25d17e19`, `ecd6f403`, `68cb6fba`, `e324defd`; assertions `399b60a6`; inventory `0ac7a4c9`; NEXT_ACTION `d47811e5`.
+- **Verification NOT RUN:** tests/typecheck/build/browser/accessibility/live OAuth/provider checks. No PASS claimed.
+- **Next:** Login/Setup → agent detail/version/history → cross-route responsive/accessibility review.
