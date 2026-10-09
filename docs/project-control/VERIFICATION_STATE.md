@@ -896,3 +896,10 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Added static/source regression tests and Gmail adapter pagination/token snapshot tests.
 - **Not executed:** unit tests, typecheck, build, migration application, deployment, Google API calls, worker runtime, live mailbox sync, inbox/draft persistence verification. No PASS is claimed.
 - **Runtime prerequisites:** migration chain through `0028`; deployed web and long-lived worker; shared PostgreSQL and `CREDENTIALS_MASTER_KEY`; working Google OAuth refresh token and Gmail API access.
+
+### Gmail draft and mailbox UI follow-up — source-only
+
+- HTML-only Gmail messages now produce a readable text body while unsanitized HTML is not persisted into the trusted HTML column.
+- Provider draft resource IDs are mapped and imported drafts are marked as synced. Draft-resource lookup is cached per adapter session; message-detail calls use bounded batches and the worker polls every 10 seconds.
+- `/mail/drafts` and `/mail/compose` now use the authenticated active organization rather than the development organization.
+- Source assertions cover these changes. Unit tests, typecheck, builds, deployment, and live mailbox/draft verification remain unexecuted.
