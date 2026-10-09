@@ -163,3 +163,5 @@ The Audit page's CSV/JSON export links omit `organizationId`, and `apps/web/src/
 - **Verification NOT RUN:** the new static assertions have not been executed; no typecheck, build, browser, screen-reader, or narrow-device checks were run. Keyboard behavior and layout still need actual browser verification. Cross-route review remains in progress.
 
 - Additional narrow-screen finding: Chat's agent selector was hidden below the `sm` breakpoint, removing agent switching on phones. It is now available at all viewport widths with a constrained mobile width and an accessible name. Source commit `bc8e698f`; static assertion `ad7dc7f8`. Browser/device validation remains NOT RUN.
+
+- Chat status follow-up: added a persistent polite live region that announces when Clara starts thinking, when a response completes, and when a response fails; the visible thinking indicator is hidden from assistive technology to avoid duplicate announcements. Source `d9662da6`; completion/failure assertions `529ed8b2`. Not browser/screen-reader verified.
