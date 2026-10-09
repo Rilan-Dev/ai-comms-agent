@@ -24,6 +24,32 @@ describe("GmailAdapter", () => {
     expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
+  it("extracts readable text from HTML-only Gmail messages", async () => {
+    const html = "<html><head><style>.hidden{display:none}</style></head><body><p>Draft details</p><script>unsafe()</script><div>Second line</div></body></html>";
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ historyId: "123" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        id: "message-1",
+        threadId: "thread-1",
+        internalDate: String(Date.now()),
+        labelIds: ["DRAFT"],
+        snippet: "short snippet",
+        payload: {
+          mimeType: "text/html",
+          headers: [{ name: "Subject", value: "Draft subject" }, { name: "From", value: "sender@example.com" }],
+          body: { data: Buffer.from(html).toString("base64url") },
+        },
+      }), { status: 200 }));
+    const adapter = new GmailAdapter();
+    await adapter.connect({ credential_type: "oauth_token", access_token: "test-token" });
+    const message = await adapter.getMessage("message-1");
+    expect(message?.is_draft).toBe(true);
+    expect(message?.text_body).toContain("Draft details");
+    expect(message?.text_body).toContain("Second line");
+    expect(message?.text_body).not.toContain("unsafe()");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("advertises the provider capability matrix", () => {
     const adapter = new GmailAdapter();
     const capabilities = adapter.capabilities();
