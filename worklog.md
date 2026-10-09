@@ -1248,3 +1248,5 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Corrected `/mail/drafts` and `/mail/compose` to use the authenticated user's active organization instead of the development organization. Added regression coverage for these tenant-context rules and draft-state persistence.
 - Commits: `c15f16f1`, `a23796cc`, `91e99b68`, `0be3c2ef`, `4b9eb8ae`, `f30c1a9c`, `7cd322a2`, `fb107a87`.
 - Tests/build/runtime were not run; live Gmail draft import remains unverified.
+
+- **Performance follow-up:** Gmail message detail retrieval now uses bounded batches of eight requests, polling cadence is 10 seconds, and the Gmail draft resource index is cached for the lifetime of each adapter session so importing several drafts does not re-list the entire Drafts collection per message. Added/updated source assertions for the batch-cached draft lookup. Source commits: `e96f3c8b`, `a66802d0`, `07f55f9e`, `5b6d215d`, `ada31ca9`, `2aa21240`. No tests/build/runtime checks were executed.
