@@ -202,3 +202,10 @@ If shared memory conflicts with current repository state or current requirements
 - Sticky section navigation beneath a 64px global top bar should use `top-[64px]` and a lower stacking level to avoid overlap.
 - Mobile navigation triggers should expose expanded/control relationships; an open drawer should close on Escape as well as backdrop/close-button activation.
 - Static source assertions are not executed test results. Report verification as NOT RUN unless actual runner/browser output is available.
+
+### DEV-01 / Forge — keyboard and live-region follow-up (2026-10-09)
+- Modal semantics alone do not provide dialog accessibility: manage initial focus, Tab/Shift+Tab containment, Escape, and focus restoration. Make modal overlays vertically scrollable so short viewports do not clip the actions.
+- A mobile navigation drawer also needs focus containment and return-to-trigger behavior; `aria-expanded` / `aria-controls` are useful but not a replacement for keyboard management.
+- For streamed Chat, use a labelled log with `aria-relevant="additions"` to avoid repeatedly announcing every streamed token, and a polite status for the busy state. Give every secondary select an explicit accessible name if no visible label is associated.
+- Source-contract tests document intended behavior but are not executed accessibility evidence. Keep browser, screen-reader and narrow-device checks marked NOT RUN until performed.
+- Related commits: agent dialog/channel selectors `d73099d6`; Chat status/composer `3d8ac3a3`; mobile drawer `837b4b19`; assertions `0a603b76`, `f8c3aefd`.
