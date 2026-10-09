@@ -263,3 +263,17 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Evidence:** Commits caad1d753b0199a895d63056704c4db9c423f382, 04a2345b6b901ebbc55d084dc5860f39ae9416d8, a98c0e7fa1ee8e22ff60726475e6fb91624626c8. The supplied Docker log evidences the original failure. Corrective tests/typecheck/build are not executed; no PASS claimed.
 - **Resolution plan:** Run focused Gmail adapter test and worker build/typecheck. Route any remaining Docker, dependency installation, or deployment-environment defect to OPS-01.
 - **Related records:** EVT-FIX01-WORKER-CREDENTIALS-20261009; FIX01-WORKER-CREDENTIALS-20261009.
+
+
+## ISS-014 — Web typecheck parser failure from literal newline escapes in Zoho OAuth test
+- **Opened:** 2026-10-09
+- **Severity:** medium (web typecheck blocker)
+- **Owner:** FIX-01 / Sentinel
+- **Status:** source_fix_applied_verification_pending
+- **Symptom:** `pnpm run typecheck` failed in `apps/web/tests/zoho-oauth-settings.test.ts:84` with TS1127 invalid character and TS1434 unexpected keyword/identifier. Shared, DB, Clara Core, and worker package typechecks passed in the user-provided output.
+- **Root cause:** Three `expect(helper).toContain(...)` assertions were joined by literal backslash-n characters (`\n`) instead of real newlines.
+- **Failed approach to avoid:** Do not alter OAuth helper behavior, callback validation, or implementation types; the defect is confined to malformed test source.
+- **Remedy:** Replaced only the malformed sequence with actual line breaks. Commit `39857c40820940b500dcf452331dfe82ae35b861`.
+- **Evidence:** User's typecheck log is pre-fix evidence; the fix is committed. Post-fix typecheck and test execution are not yet evidenced.
+- **Next action:** Run `pnpm run typecheck` and focused Zoho OAuth settings test. Route any independent CI/CD, deployment, or environment failure to OPS-01.
+- **Related record:** EVT-FIX01-ZOHO-TEST-NEWLINES-20261009.
