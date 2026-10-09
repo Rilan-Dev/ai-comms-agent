@@ -147,3 +147,11 @@ If shared memory conflicts with current repository state or current requirements
 - **Remedy:** Use a forward-only idempotent migration for schema drift; retain a bounded Redis RESP error reply for diagnosis and cover WRONGPASS behavior.
 - **Prevention:** A running container/healthy worker is not proof that its database schema or Redis authentication is correct. Never disable distributed locking to make a worker proceed after lease acquisition errors.
 - **Status:** Source committed; live migration and Redis diagnosis pending OPS-01. No tests/runtime PASS claimed.
+
+### DEV-01 / Forge — 2026-10-09 — Lovable UI screen adaptation
+- **Issue/symptom:** The visual reference contains preview-only demo data/actions and uses TanStack Start/Vite, while the production app is Next.js and backed by real PostgreSQL/API behavior.
+- **Root cause:** UI components cannot be transplanted wholesale without changing framework assumptions or replacing real application behavior with demo interactions.
+- **Failed approach:** Blind route/component copying from `source/lovable-ui` would mismatch router, runtime and dependencies.
+- **Remedy:** Port the visual system (semantic colors, typography, compact geometry, inline SVG iconography and layout composition) into the existing route while leaving API calls, state transitions and validation intact; add source-level contract assertions for important actions.
+- **Prevention:** For every migrated screen, enumerate its current API actions, validation, loading/empty/error states and navigation before restyling; assert those contracts after the visual edit. Record that static test source is not test execution.
+- **Related record:** `DEV01-LOVABLE-UI-MIGRATION-20261009`; commits `9de78b0f`, `c9641d9d`, `0aef87b0`.
