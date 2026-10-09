@@ -52,7 +52,7 @@ test("Zoho regional refresh uses the matching accounts domain and saved per-acco
   const calls: Array<{ url: string; body?: string }> = [];
   globalThis.fetch = async (input, init) => {
     const url = String(input);
-    calls.push({ url, body: typeof init?.body === "string" ? init.body : undefined });
+    calls.push({ url, body: typeof init?.body === "string" ? init.body : init?.body instanceof URLSearchParams ? init.body.toString() : undefined });
     if (url.startsWith("https://mail.zoho.eu/api/accounts")) {
       return new Response(JSON.stringify({ data: [{ accountId: "123", emailAddress: "user@example.eu" }] }), { status: 200 });
     }
@@ -84,7 +84,10 @@ test("Zoho adapter maps folder, label, read-state and move operations to the doc
   const calls: Array<{ url: string; method: string; body?: string }> = [];
   globalThis.fetch = async (input, init) => {
     const url = String(input);
-    calls.push({ url, method: init?.method ?? "GET", body: typeof init?.body === "string" ? init.body : undefined });
+    calls.push({ url, method: init?.method ?? "GET", body: typeof init?.body === "string" ? init.body : init?.body instanceof URLSearchParams ? init.body.toString() : undefined });
+    if (url.endsWith("/api/accounts")) {
+      return new Response(JSON.stringify({ data: [{ accountId: "123", emailAddress: "user@example.com" }] }), { status: 200 });
+    }
     if (url.endsWith("/api/accounts/123")) {
       return new Response(JSON.stringify({ data: { emailAddress: "user@example.com" } }), { status: 200 });
     }
@@ -137,7 +140,7 @@ test("Zoho adapter exposes implemented draft lifecycle operations", async () => 
   const calls: Array<{ url: string; method: string; body?: string }> = [];
   globalThis.fetch = async (input, init) => {
     const url = String(input);
-    calls.push({ url, method: init?.method ?? "GET", body: typeof init?.body === "string" ? init.body : undefined });
+    calls.push({ url, method: init?.method ?? "GET", body: typeof init?.body === "string" ? init.body : init?.body instanceof URLSearchParams ? init.body.toString() : undefined });
     if (url.endsWith("/api/accounts")) return new Response(JSON.stringify({ data: [{ accountId: "123", emailAddress: "user@example.com" }] }), { status: 200 });
     if (url.endsWith("/api/accounts/123")) return new Response(JSON.stringify({ data: { emailAddress: "user@example.com" } }), { status: 200 });
     if (url.endsWith("/api/accounts/123/messages") && (init?.method ?? "GET") === "POST") return new Response(JSON.stringify({ data: { messageId: "draft-1" } }), { status: 200 });
@@ -166,7 +169,7 @@ test("Zoho adapter creates drafts using the documented Mail API", async () => {
   const calls: Array<{ url: string; method: string; body?: string }> = [];
   globalThis.fetch = async (input, init) => {
     const url = String(input);
-    calls.push({ url, method: init?.method ?? "GET", body: typeof init?.body === "string" ? init.body : undefined });
+    calls.push({ url, method: init?.method ?? "GET", body: typeof init?.body === "string" ? init.body : init?.body instanceof URLSearchParams ? init.body.toString() : undefined });
     if (url.endsWith("/api/accounts")) return new Response(JSON.stringify({ data: [{ accountId: "123", emailAddress: "user@example.com" }] }), { status: 200 });
     if (url.endsWith("/api/accounts/123")) return new Response(JSON.stringify({ data: { emailAddress: "user@example.com" } }), { status: 200 });
     if (url.endsWith("/api/accounts/123/messages") && (init?.method ?? "GET") === "POST") return new Response(JSON.stringify({ data: { messageId: "draft-1" } }), { status: 200 });
