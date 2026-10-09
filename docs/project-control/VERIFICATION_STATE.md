@@ -994,3 +994,12 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - **Source correction:** `apps/web/src/app/api/oauth/zoho/callback/route.ts` no longer treats `api_domain` as mandatory token metadata. It selects the Mail API origin from the server-validated signed data-center setting and gives actionable guidance for token exchange rejection without exposing token response details. Static regression assertions added to `apps/web/tests/zoho-oauth-settings.test.ts`.
 - **Commits:** `2cb976bf6cc6d835ff75692998e04958d63e001d`, `53d96a0f3125830a9dc07ae3011a96d7b54c878b`.
 - **Verification status:** source_changed_not_tested. No typecheck, test, migration, deployment, or live Zoho OAuth retry was run. No runtime PASS claimed.
+
+## 2026-10-09 — DEV-01 Lovable UI migration status
+
+- **Source changes committed:** Inbox, Agents, Mail Accounts, Drafts, Threads, Compose, and Approvals visual adaptation to the `source/lovable-ui` Agentic AI Studio design system.
+- **Behavior preservation covered by source assertions:** Inbox search/filter/refresh/read-state/archive/move; agent creation and slug/purpose validation; mailbox connection forms and test/disconnect/remove; Drafts search/provider sync/edit/delete; Compose save and explicit approval request; Approvals approve/reject; truthful empty/error states.
+- **Static contract test file:** `apps/web/tests/lovable-ui-migration.test.ts` updated, but **not executed**.
+- **Typecheck/build/browser/runtime status:** not run in this session. No PASS is claimed.
+- **Related commits:** `9de78b0f`, `c9641d9d`, `9da036ac`, `e84075eb`, `52be6d66`, `706b46eb`, `295b038f`, `224146d0`, `a47edb72`, `737ab08e`, `c25fdf7c`.
+- **Next:** continue remaining route groups per `docs/project-control/NEXT_ACTION.md`; runtime/database/Redis work remains assigned to OPS-01 and the Mail Approvals tenant-context issue is routed to FIX-01 (BKL-012).
