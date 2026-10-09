@@ -73,7 +73,7 @@ test("IMAP RFC822 parser extracts identity, headers, recipients, body and draft 
     };
   };
   const message = provider.parseRawMessage(
-    "From: Alice Example <alice@example.test>\\r\\nTo: Bob <bob@example.test>\\r\\nSubject: =?UTF-8?B?SGVsbG8=?=\\r\\nMessage-ID: <m-1@example.test>\\r\\nDate: Thu, 08 Oct 2026 10:00:00 +0000\\r\\nContent-Type: text/plain; charset=utf-8\\r\\n\\r\\nHello from IMAP",
+    "From: Alice Example <alice@example.test>\r\nTo: Bob <bob@example.test>\r\nSubject: =?UTF-8?B?SGVsbG8=?=\r\nMessage-ID: <m-1@example.test>\r\nDate: Thu, 08 Oct 2026 10:00:00 +0000\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nHello from IMAP",
     "Drafts", "42", "* 1 FETCH (UID 42 FLAGS (\\\\Draft))",
   );
   assert.equal(message.provider_message_id, "Drafts:42");
