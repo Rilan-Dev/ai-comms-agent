@@ -290,6 +290,9 @@ export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ att
          AND (s.status IS NULL OR s.status <> 'running'
            OR s.last_attempt_at < now()-interval '10 minutes')
          AND (s.last_attempt_at IS NULL OR s.last_attempt_at < now()-interval '10 seconds')
+         AND (s.cursor IS NOT NULL OR s.last_success_at IS NULL
+           OR s.last_success_at < now()-interval '15 minutes'
+           OR a.status IN ('pending','error'))
        ORDER BY CASE a.status WHEN 'pending' THEN 0 WHEN 'error' THEN 1 ELSE 2 END,
          COALESCE(s.last_success_at, a.created_at) ASC
        LIMIT $1`,
