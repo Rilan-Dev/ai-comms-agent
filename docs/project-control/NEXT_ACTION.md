@@ -48,6 +48,17 @@ constraints:
 ### Immediate runtime incident follow-up — 2026-10-09 (OPS-01)
 The user supplied live logs showing missing `ai_provider_configs.model` and `email_sync_states.last_attempt_at`, and Redis lease command rejection. FIX-01 committed migration `0029_runtime_schema_reconciliation.sql` plus specific Redis error diagnostics. OPS-01 must pull latest `main`, apply migrations through `0029` to the exact PostgreSQL database used by the web and worker containers, roll out matching images, and inspect the Redis error reply. Correct Redis URL/AUTH/ACL/TLS from evidence; do not bypass the lease or allow uncoordinated worker polling. Runtime migration, Redis, and mailbox sync are not verified. This runtime follow-up is independent of the DEV-01 UI implementation queue; neither workstream should wait for CI/Vercel.
 
+
+
+### DEV-01 RabbitMQ delivery coverage + Clara email-indexing adapter (2026-10-09)
+
+- Added static source-contract assertions for bounded retries, preserved idempotency/correlation metadata, DLQ behavior, and retention of the original message when retry/DLQ publish confirmation fails (`59caaa69`).
+- Audited the Clara Core knowledge reference. Its reusable ingestion worker is coupled to Clara's Next.js DB/provider/Qdrant modules and is not an importable host package API in this repository; immutable `ai-reusable-libraries/clara-core/source/**` remains reference-only. Added a thin host adapter that idempotently persists synced email into the existing `knowledge_documents` / `knowledge_chunks` PostgreSQL contract without direct Qdrant writes (`a4d77299`, `216161ff`).
+- Corrected local host-runtime retrieval scope so org-shared documents are available to the org, agent-specific documents are visible only to that agent, and a no-agent request cannot see another agent's documents (`06970e93`). Added static source-contract assertions (`4fb56753`).
+- Tests, typecheck, build, PostgreSQL, RabbitMQ, and live Clara retrieval/indexing are NOT RUN. The adapter writes searchable PostgreSQL knowledge chunks; semantic embedding/vector indexing is still not implemented because the current local Clara package exposes no reusable host indexing API and its embedding methods explicitly reject requests. Do not describe this as semantic/vector RAG or claim runtime success.
+
+**Exact next action:** continue the Lovable UI migration from the existing route inventory, starting with Knowledge. Replace its hard-coded zero counts with organization-scoped persisted state only when the existing server/data contract is identified; preserve honest empty/loading/error states. Then Activity → Audit → Operations → Settings/provider settings → Login/Setup → agent detail/version/history → responsive/accessibility review. Continue without waiting for CI/Vercel. Keep RabbitMQ broker acceptance and semantic/vector indexing pending; route substantial defects to FIX-01 and infrastructure to OPS-01.
+
 ## History
 
 | Date | Action |
