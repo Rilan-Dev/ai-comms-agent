@@ -1179,3 +1179,14 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - **Follow-up hardening:** The helper’s forwarded-host character validation was tightened, and both Gmail/Zoho Settings now show a visible warning when the server callback origin differs from the browser origin. Focused source assertions were extended. Latest relevant commits: `76b6fb59`, `fe97c4c7`, `19c64e23`, `c0786628`, `c7a2664c`. These checks are committed but have not been executed.
 
 - **Project-control synchronization:** Updated `NEXT_ACTION.md`, `ISSUES.md`, `VERIFICATION_STATE.md`, `PROJECT_STATE.md`, and `docs/architecture/DEPLOYMENT.md` to record the reverse-proxy requirement and explicitly mark tests/deployment/OAuth as unverified. Control-doc commits include `31bf1a26`, `e94347ed`, `640d06ba`, `18c56166`, and `6468e135`.
+
+
+## 2026-10-09 — Gmail OAuth credential schema compatibility
+
+- **Owner:** ChatGPT
+- **Scope:** Concrete error fix only; no feature development and no project-control documentation changes.
+- User-provided web container logs showed the Gmail OAuth callback failing because `email_account_credentials.credential_type` was NULL but the column remained NOT NULL. The current repository stores canonical credentials in `ciphertext` and `key_reference`; the legacy `credential_type` and `encrypted_payload` columns remained mandatory from an older schema draft.
+- Added forward-only migration `0020_email_credential_legacy_compat.sql` to drop NOT NULL on the two legacy columns while preserving their existing data and leaving canonical credential constraints intact.
+- **File changed:** `supabase/migrations/0020_email_credential_legacy_compat.sql`.
+- **Commit:** `536f8aff660bbff13b55c28b09dd673ea86378b2`.
+- No CI/Vercel wait was performed. No migration or OAuth success is claimed until the user applies the migration and retries Gmail OAuth.
