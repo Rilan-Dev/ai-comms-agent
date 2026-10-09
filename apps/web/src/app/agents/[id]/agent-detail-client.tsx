@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Activity as ActivityIcon, ArrowLeft, Bot, FlaskConical, GitBranch, Plug, Rocket, ShieldCheck } from "lucide-react";
 import { Activity, ArrowLeft, Bot, FlaskConical, PauseCircle, Rocket, Save, ShieldCheck } from "lucide-react";
 import type { Agent, AgentEmailBinding, AgentPolicy, AgentVersion, AgentWhatsAppBinding, EmailAccount } from "@ai-comms-agent/shared";
 import { useNotifications } from "@/components/notifications";
@@ -145,7 +146,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
         <div className="flex flex-wrap gap-2">{agent.status==="active" ? <button type="button" onClick={()=>setShowConfirm("retire")} className="inline-flex h-10 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-secondary"><PauseCircle size={15} /> Pause</button> : <button type="button" onClick={()=>setShowConfirm("deploy")} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"><Rocket size={15} /> Deploy latest</button>}</div>
       </div>
     </header>
-    <nav className="flex gap-1 overflow-x-auto rounded-md border bg-background p-1 shadow-sm">{(["overview","versions","policy","channels","test","activity"] as const).map((item)=><button key={item} type="button" onClick={()=>setTab(item)} className={`rounded-md px-4 py-2.5 text-sm font-medium capitalize ${tab===item?"bg-foreground text-background":"text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{item}</button>)}</nav>
+    <nav className="flex gap-1 overflow-x-auto rounded-md border bg-background p-1 shadow-sm">{(["overview","versions","policy","channels","test","activity"] as const).map((item)=><button key={item} type="button" onClick={()=>setTab(item)} className={`inline-flex items-center gap-2 rounded-md px-3.5 py-2.5 text-sm font-medium capitalize transition-colors ${tab===item?"bg-foreground text-background":"text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>{item==="overview"?<Bot className="h-4 w-4" />:item==="versions"?<GitBranch className="h-4 w-4" />:item==="policy"?<ShieldCheck className="h-4 w-4" />:item==="channels"?<Plug className="h-4 w-4" />:item==="test"?<FlaskConical className="h-4 w-4" />:<ActivityIcon className="h-4 w-4" />}{item}</button>)}</nav>
     {tab==="overview" && <section className="space-y-4">
       <form onSubmit={saveAgent} className="rounded-md border bg-background p-6 shadow-sm">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
