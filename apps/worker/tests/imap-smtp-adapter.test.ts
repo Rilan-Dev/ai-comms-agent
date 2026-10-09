@@ -114,3 +114,25 @@ test("IMAP response reader rejects oversized literals before consuming payload",
   const reader = bufferedReader("* 1 FETCH (BODY[] {52428801}\r\n");
   await assert.rejects(() => readImapResponse(reader), /50 MiB safety limit/);
 });
+
+
+test("IMAP response reader handles literal markers and payload split across socket chunks", async () => {
+  const { PassThrough } = await import("node:stream");
+  const socket = new PassThrough();
+  const reader = { socket: socket as never, buffer: Buffer.alloc(0) };
+  const responsePromise = readImapResponse(reader);
+  const chunks = [
+    "* 7 FETCH (BODY[] {",
+    "12}\r\nhel",
+    "lo\r\nworld)\r",
+    "\nA0007 OK fetch complete\r\n",
+  ];
+  for (const chunk of chunks) {
+    socket.write(chunk);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+  const response = await responsePromise;
+  assert.match(response, /hello\r\nworld/);
+  assert.equal(reader.buffer.toString("utf8"), "A0007 OK fetch complete\r\n");
+  socket.destroy();
+});
