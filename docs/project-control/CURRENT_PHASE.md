@@ -326,3 +326,7 @@ The outbound worker now atomically claims queued messages using PostgreSQL row l
 
 ### 2026-10-09 — AI configuration completeness correction
 The configuration gap is now an active development item (ISS-011). Source implementation adds organization-scoped runtime settings, an editable Clara KB ID, encrypted chat-provider credentials, OpenAI/Gemini model catalog fetching, and organization-specific provider/model/voice resolution in the local Clara runtime. Chat, voice, and worker entry points prefer the saved organization KB ID, retaining the server environment value only as compatibility fallback. Static source coverage was added but not executed. Continue screen-by-screen completion; voice transport/provider credential coverage, Knowledge ingestion/selection, agent-level model overrides, and runtime readiness still require follow-through. No tests/build/migration/deployment/runtime PASS is claimed.
+
+### 2026-10-09 — Gmail mailbox sync implementation slice
+
+OAuth-created Gmail accounts previously stayed pending because the worker did not run a Gmail sync consumer. Source now includes a PostgreSQL-backed polling loop, paginated initial import, incremental Gmail history cursor, idempotent thread/message persistence, encrypted token refresh persistence, refresh-token preservation during reconnect, a protected manual sync API, and automatically refreshed account status UI. This is source implementation only: deployment and live Gmail verification remain pending. See ISS-012 and the newest entry in `worklog.md`.
