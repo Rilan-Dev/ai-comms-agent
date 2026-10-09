@@ -277,3 +277,16 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Evidence:** User-provided latest output: `pnpm run typecheck` passed for all workspaces. Focused Vitest output: 8 passed, 2 failed before test-only commit `c58d6d442767f471c694ef978fdb06eca6d29850`. The corrected focused test has not yet been rerun.
 - **Next action:** Re-run `pnpm --filter @ai-comms-agent/web exec vitest run tests/zoho-oauth-settings.test.ts`; then continue implementation without waiting on CI/Vercel. Typecheck already passed in the user's latest run. Route any independent infrastructure/deployment issue to OPS-01.
 - **Related record:** EVT-FIX01-ZOHO-TEST-NEWLINES-20261009.
+
+## ISS-015 — Live database schema drift and Redis mailbox lease rejection
+- **Opened:** 2026-10-09
+- **Severity:** high (AI provider settings API and manual mailbox sync return HTTP 500; worker skips all mailbox batches when Redis lease commands are rejected)
+- **Owner:** FIX-01 / Sentinel for source and migration; OPS-01 / Shipwright for live migration application, container rollout, and runtime configuration diagnosis
+- **Status:** forward_migration_committed_runtime_followup_required
+- **Evidence supplied by user:** PostgreSQL reports missing `ai_provider_configs.model` during provider settings access and missing `email_sync_states.last_attempt_at` during `POST /api/email-accounts/:accountId/sync`. Worker repeatedly logs `Redis command rejected` and skips the batch. Health checks report worker and Redis configured, but this does not prove Redis AUTH/ACL works.
+- **Root cause:** deployed PostgreSQL schema is behind the current query contract; the Redis lease client discards the Redis server's error payload, obscuring AUTH/ACL/configuration failures.
+- **Source remedy:** forward-only idempotent migration `0029_runtime_schema_reconciliation.sql` adds missing provider/mailbox columns and backfills legacy `history_token` / `last_sync_at` where present. Redis lease errors now include a bounded server error response; added a WRONGPASS regression test.
+- **Commits:** migration `a4fab9df07deafa5fd47879217616e3cb6d1c03f`; Redis diagnostics `71616ac887f3efb79f90039245d6064c4662a77c`; regression test `0fa3e751cae2e5105b212083e93a7cc87bf00468`.
+- **Verification:** source accepted by GitHub only. Migration has not been applied to the live database; no typecheck/test/build, live Redis command, mailbox sync, or runtime PASS is claimed.
+- **Next action:** OPS-01 pulls current `main`, applies migrations through `0029` to the exact PostgreSQL database used by both containers, rolls out matching web/worker images, and inspects the now-specific Redis error. Correct Redis credentials/ACL/TLS/URL based on the exact response; never bypass the lease failure or force uncoordinated multi-worker polling.
+- **Security note:** user pasted live-looking session/access and OAuth state/verifier values. Treat as exposed; rotate/revoke applicable session/access credentials and restart the OAuth flow. Do not copy those values into logs or project docs.
