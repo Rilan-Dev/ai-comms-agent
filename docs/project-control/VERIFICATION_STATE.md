@@ -1157,3 +1157,11 @@ source_review:
 - Source corrections committed: dependency/lockfile (8f09785a, 7b1136e6), focus typing (3e35c1f5, a9dcb8e5), static test binding (52a4e348).
 - Status: source_corrected_execution_pending.
 - NOT VERIFIED: frozen install after adding Lucide, focused tests, web typecheck, worker typecheck, full workspace typecheck and build. Do not infer PASS from source edits.
+
+
+## FIX01-MIGRATION-WORKER-TEST-DRIFT-20261009 — 2026-10-09
+- **Source changes:** Added forward-only audit-event access hardening migration 0032 and corrected migration/worker static contract tests. Commits: 7557a6cd, ee85b554, cecae73e, c4d4abd0, 96996d82.
+- **Source evidence:** Current main migration 0002 uses standard valid `DO $$` blocks; migration 0032 uses a named `$phase4$` delimiter. Retry logic retains idempotency/correlation by spreading the envelope. Email indexer source names Qdrant only in documentation and does not import/call a vector client.
+- **NOT VERIFIED:** No focused Vitest, worker node:test, web/worker typecheck, SQL migration execution, database runtime check, or deployment verification has run after these changes.
+- **Lockfile:** Current main has one lockfile document and one importer section. The two-document symptom in the user's local output is not present in the fetched main file; reconcile local working tree with origin/main before editing.
+- **Next action:** Pull latest main; inspect `git status --short` and compare `pnpm-lock.yaml` with `origin/main`; run focused migration and worker tests, then sequential web and worker typechecks. No PASS claim until actual outputs are recorded.
