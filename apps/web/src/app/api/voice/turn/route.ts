@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { query } from "@ai-comms-agent/db";
 import { PostgresAgentRepository, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -49,7 +50,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "session_not_active", message: "Voice turns require an active voice session." }, { status: 409 });
     }
 
-    const kbId = process.env.CLARA_KB_ID?.trim();
+    const runtimeSettings = await query<{ knowledge_base_id: string }>("SELECT knowledge_base_id FROM organization_ai_runtime_settings WHERE organization_id = $1", [organizationId]);
+    const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim();
     if (!kbId) {
       return NextResponse.json(
         { error: "configuration_required", message: "CLARA_KB_ID is not configured." },
