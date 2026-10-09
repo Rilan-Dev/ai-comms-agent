@@ -68,7 +68,7 @@ test("IMAP/SMTP adapter blocks private and local network targets to prevent serv
 test("IMAP RFC822 parser extracts identity, headers, recipients, body and draft folder semantics", () => {
   const provider = new ImapSmtpAdapter() as unknown as {
     parseRawMessage: (raw: string, folderId: string, uid: string, flags?: string) => {
-      provider_message_id?: string; message_id_header: string; from_address: string;
+      provider_message_id?: string; message_id_header: string; thread_id: string; from_address: string;
       to_addresses: string[]; subject: string; text_body: string; is_read: boolean; is_draft: boolean;
     };
   };
@@ -78,6 +78,7 @@ test("IMAP RFC822 parser extracts identity, headers, recipients, body and draft 
   );
   assert.equal(message.provider_message_id, "Drafts:42");
   assert.equal(message.message_id_header, "<m-1@example.test>");
+  assert.equal(message.thread_id, "<m-1@example.test>");
   assert.equal(message.from_address, "alice@example.test");
   assert.deepEqual(message.to_addresses, ["bob@example.test"]);
   assert.equal(message.subject, "Hello");
