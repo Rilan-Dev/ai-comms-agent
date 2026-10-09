@@ -55,7 +55,7 @@ export function ThreadClient({ organizationId, threadId, initialMessages }: { or
     } catch (e) { setNotice(e instanceof Error ? e.message : "Could not create the approval request."); } finally { setBusy(false); }
   }
 
-  return <main className="min-h-full bg-[radial-gradient(circle_at_top_right,rgba(79,70,229,.08),transparent_32%)] p-5 sm:p-7 lg:p-9">
+  return <main className="min-h-full bg-[radial-gradient(circle_at_top_right,oklch(0.88_0.105_152/.14),transparent_32%)] p-5 sm:p-7 lg:p-9">
     <div className="mx-auto max-w-4xl">
       <a href="/mail/inbox" className="text-sm font-semibold underline underline-offset-4">← Inbox</a>
       <header className="mt-5"><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Mail thread</p><h1 className="mt-2 text-2xl font-semibold tracking-tight">{latest?.subject || "(No subject)"}</h1><p className="mt-2 text-xs text-muted-foreground">{messages.length} message{messages.length === 1 ? "" : "s"}</p></header>
