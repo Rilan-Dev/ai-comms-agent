@@ -43,6 +43,9 @@ action: |
 
 
   Additional source hardening in this continuation: fixed an early-delivery race by assigning RabbitMQ consumer channels before registering the consumer; corrected producer eligibility so a non-null incremental cursor does not enqueue the same mailbox every 10 seconds; added a static regression assertion for that polling condition. Clara email indexing now splits email bodies into bounded overlapping chunks, refreshes chunk rows safely when boundaries shift, and the host runtime can retrieve by sanitized lexical OR terms with organization and agent-scope filters. Added chunking and Clara contract regression source. Commits: RabbitMQ channel race d2e6fe39, queue polling eligibility e760bb92, queue regression 4bad6d3e, Clara chunking 766c487d and test 28080eb7, lexical retrieval 93a9804d and empty-query guard 0eedd60f, chunk refresh 2b95ca81, Clara contract test 854285f5. None of these tests or typechecks have been executed; source-only status remains.
+
+
+  Cross-route review follow-up: Automations and Schedules had server pages using ensureDevSeed/getDevOrgId rather than the authenticated organization context. Both now resolve getAuthenticatedAppContext from request headers and redirect unauthenticated users to login; accessible labels were added to automation/schedule controls and unused React hook imports were removed. Added regression assertions in apps/web/tests/agent-detail-page-contract.test.ts. Commits: 5a5275b3, 088c36d8, b46ac6ab, ba4ebdcd, b3a81781, 69d241c4. Source only; no test/typecheck/build or multi-tenant runtime validation.
 constraints:
   database: "PostgreSQL 15+; no Supabase runtime dependency"
   secrets: "Never commit .env/.env.docker; use committed example templates only"
