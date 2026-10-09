@@ -913,3 +913,5 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Commits: `72f05f5f642beea07cc5543fbc744051a083f922`, `5d2c3f3bcbab6698a56449afda407921c05b7760`.
 - **Not executed:** Focused Zoho/IMAP tests and worker/web typechecks. Local execution was attempted but blocked because pnpm is not installed and github.com could not be resolved from this environment. No PASS claimed.
 - **Still pending:** Real IMAP server compatibility, live provider sync to PostgreSQL, organization-scoped Clara Chat retrieval, Clara Core RAG email indexing, Redis application client use, and RabbitMQ durable queue/consumer/retry integration.
+
+- Additional source correction: IMAP thread IDs now prefer the root References ID and fall back to Message-ID/folder-UID, with parser assertion added (`e21fd2fad824a41180deb6cf89b4f7aafb051f7c`, `d5dbd54cb7cb7b224d39b9b4e836b62501c575d3`). This is test source only, not an executed test result.
