@@ -28,3 +28,13 @@
 - Added static voice UI contract checks; corrected assertion to the actual singular /api/voice/session endpoint after source inspection.
 - Commits: 84652b74 voice UI, ddb35096 test, f7ed2b42 assertion correction, a1ac8afb inventory, 6a87a7e6 NEXT_ACTION.
 - Verification remains NOT RUN. Next: Knowledge, then Activity, then Audit.
+
+## 2026-10-09 — DEV-01 RabbitMQ retry coverage + Clara email knowledge adapter
+
+- Added source-contract regression assertions for retry bounds, retry/DLQ routing, idempotency/correlation metadata preservation, malformed message dead-lettering, and requeueing the original if retry/DLQ publication cannot be confirmed. Commit `59caaa69`; expanded indexing/scope assertions `4fb56753`.
+- Audited the Clara reference ingestion worker, embedding index, vector-store coupling and the local `@ai-comms-agent/clara-core` boundary. Clara's source ingestion worker imports host-specific Next.js DB/provider/Qdrant modules, so it is not a reusable worker-package API here; immutable Clara source remains reference-only.
+- Added `apps/worker/src/knowledge/email-knowledge-indexer.ts` as a host adapter that idempotently upserts synced non-draft email into the existing `knowledge_documents` / `knowledge_chunks` PostgreSQL schema, keyed by org + account + provider message ID. Wired it into persisted email ingestion (`a4d77299`, `216161ff`). No direct Qdrant writes.
+- Fixed local Clara retrieval scope: no-agent queries return shared documents only; agent queries return shared plus the matching agent's documents, never other agents' knowledge (`06970e93`).
+- Updated UI migration inventory and NEXT_ACTION (`8eba7594`, `7f31a225`).
+- **Verification NOT RUN:** no tests, typecheck, build, migration, PostgreSQL/RabbitMQ runtime, live mailbox sync, or retrieval/index acceptance was executed. Current adapter is PostgreSQL text-chunk indexing using the local runtime's lexical retrieval; it does not generate embeddings or populate a vector index. Do not claim semantic RAG or runtime PASS.
+- **Exact next action:** adapt Knowledge UI with real organization-scoped indexed counts/status and working controls, then Activity → Audit → Operations → Settings/provider settings → Login/Setup → agent detail/version/history → cross-route responsive/accessibility review. Continue without CI/Vercel polling. RabbitMQ broker acceptance and semantic/vector indexing remain pending.
