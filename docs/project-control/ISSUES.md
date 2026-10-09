@@ -385,3 +385,14 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Commit:** `c51d5a79dfd999dd4382cc60005798531e5517be` on `fix/migration-verification-phase4-contract`.
 - **Verification pending:** Focused Vitest, worker tests, typechecks, migration execution, and runtime checks. No PASS claimed.
 - **Separate local issue:** User's local `pnpm-lock.yaml` showed two YAML documents, while fetched current main contains one. Compare local checkout to current remote before editing lockfile.
+
+
+## ISS-021 — PostgreSQL dollar-quote test false positives and local lockfile drift (2026-10-10)
+- **Severity:** medium (static verification false positives; local test run also blocked by a divergent lockfile)
+- **Owner:** FIX-01
+- **Status:** assertions_corrected_retest_pending
+- **Finding:** Bootstrap verification expected `END\n$;` instead of a valid double-dollar terminator, while `/^AS \$/m` and `/^\$/m` also matched the prefix of valid `$$` delimiters.
+- **Correction:** Test now checks for a valid `$$` closing delimiter and detects a single dollar only when it is not followed by another dollar.
+- **Commit:** `58730eb8b0fa46bfdd5fca581295209921582dbe`.
+- **Separate local state:** Local `pnpm-lock.yaml` has two document headers and is marked modified; the fetched PR branch lockfile has one. Do not overwrite until local backups/status are preserved; restore/reconcile from the PR branch once confirmed.
+- **Verification pending:** Rerun focused Vitest after local lockfile reconciliation. No PASS claimed.
