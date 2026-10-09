@@ -86,7 +86,7 @@ export async function publishEmailSync(
 export function startEmailSyncRabbitMq(
   handle: (payload: EmailSyncPayload) => Promise<void>,
 ): () => void {
-  const url = process.env.RABBITMQ_URL?.trim();
+  const url = process.env.RABBITMQ_URL?.trim() ?? "";
   if (!url) return () => undefined;
 
   let stopped = false;
