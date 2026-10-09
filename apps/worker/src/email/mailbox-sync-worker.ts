@@ -198,7 +198,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       await accounts.saveCredentials(
         candidate.id,
         "oauth_token",
-        refreshedCredentials,
+        { ...refreshedCredentials },
         parseCredentialsMasterKey(masterKey),
       );
     }
