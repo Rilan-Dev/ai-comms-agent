@@ -1,5 +1,6 @@
 "use client";
 
+import { Mail } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 type Config = { id: string; label: string; clientId: string; redirectUri: string; enabled: boolean; secretConfigured: boolean };
@@ -75,7 +76,7 @@ export function GmailOAuthSettings({ organizationId }: { organizationId: string 
   return (
     <section className="rounded-md border border-border bg-card p-5">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Gmail OAuth clients</p>
+        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground"><Mail className="h-3.5 w-3.5 text-primary" />Gmail OAuth clients</p>
         <h2 className="mt-1 text-lg font-semibold">Provider configurations</h2>
         <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
           Add multiple Google OAuth clients for this organization. Client secrets are encrypted before database storage and are never returned to the browser. In Google Cloud Console, add each displayed callback URL to the OAuth client’s authorized redirect URIs.
