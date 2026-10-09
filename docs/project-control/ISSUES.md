@@ -298,7 +298,7 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Status:** in_progress
 - **Evidence:** User-provided production logs show `email_messages.from_name` missing when loading the inbox. Worker reports Redis `WRONGPASS invalid username-password pair or user is disabled`, so the distributed lease fails and batches are skipped. The sync endpoint's `202 queued` / `queued: true` response means accepted for processing, not imported.
 - **Source remedy:** migration `0030_email_messages_runtime_reconciliation.sql` adds canonical inbox sender/recipient/body/direction columns and backfills compatible legacy names. Static migration regression source added.
-- **Commits:** migration `69c51678c8c12e0a0c070214dc09db77e0758dae`; static regression `e7a1e7ee396d542ffdf3edada895938a087b6a27`.
+- **Commits:** migration `69c51678c8c12e0a0c070214dc09db77e0758dae`; static regression `e7a1e7ee396d542ffdf3edada895938a087b6a27`, with follow-up legacy NOT NULL compatibility `87665353a615efa315f1610d104800153e114107` and assertion `9657810328903b397c7084852e0f31d05771ef12`.
 - **Verification:** source committed only. Neither migration `0029` nor `0030` is confirmed applied; tests/build not run; Redis auth remains failing; no mailbox import success confirmed.
 - **Next action:** OPS-01 applies migrations through `0030` to the exact database used by web/worker, rebuilds/restarts both containers, and corrects `REDIS_URL` username/password against the actual Redis ACL/user configuration. Then retry sync and verify persisted message counts plus inbox rows. Do not bypass lease locking.
 - **UI correctness:** preserve the response as queued until worker completion; expose failed sync state and last_error rather than treating request acceptance as success.
