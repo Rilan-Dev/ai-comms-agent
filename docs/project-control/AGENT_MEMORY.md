@@ -108,3 +108,11 @@ If shared memory conflicts with current repository state or current requirements
 - **Remedy:** Add client-side search across subject, body, recipient addresses, and mailbox address while retaining the organization-scoped persisted API as the source of records; display a distinct no-match state.
 - **Prevention:** For bounded list screens, make common search fields discoverable and distinguish an empty dataset from a query with no matches. Keep tenant scoping in the server/API boundary.
 - **Related record:** `apps/web/src/app/mail/drafts/drafts-client.tsx`; commit `8ccf1cb24039cb3bc745a51576a73ee68007e946`.
+
+### FIX-01 / Sentinel — 2026-10-09 — Gmail worker credential snapshot contract
+- **Issue/symptom:** Docker worker build fails at mailbox-sync-worker.ts:156 and :201. Gmail snapshot returns Record<string, unknown> while the worker contract requires EmailCredentials; persistence also rejects EmailCredentials as Record<string, unknown>.
+- **Root cause:** Provider snapshot types differ across layers: Gmail exposes a generic record, Zoho exposes EmailCredentials, and the DB repository accepts a generic payload.
+- **Failed approach:** Typing the adapter union as an intersection cannot reconcile incompatible method return types. EmailCredentials also lacks a string index signature for direct Record assignment.
+- **Remedy:** Gmail snapshot now returns EmailCredentials; spread the typed snapshot into a plain record at the persistence boundary. Add a focused snapshot contract test.
+- **Prevention:** Keep adapter snapshots on shared domain types and convert to storage-specific generic payloads only at the repository boundary.
+- **Related record:** EVT-FIX01-WORKER-CREDENTIALS-20261009; ISS-013; commits caad1d75, 04a2345b, a98c0e7f. Tests/typecheck not yet executed.
