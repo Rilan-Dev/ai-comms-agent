@@ -496,3 +496,5 @@ The callback helper previously used only `request.url`, which can expose an inte
 
 
 | 2026-10-09 | DEV-01 | Added persisted Drafts search (subject/body/recipients/mailbox) and routed suspected tenant-context/Inbox SQL defects to FIX-01. Product commit `8ccf1cb24039cb3bc745a51576a73ee68007e946`; no tests or runtime verification claimed. |
+
+| 2026-10-09 | DEV-01 | Added static regression contract for Drafts search fields/no-match state (`b0fd74f45a06a1cb8e2f3c4c152d242314711d39`); test execution pending. |
