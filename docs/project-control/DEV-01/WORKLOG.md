@@ -102,3 +102,13 @@
 - Added a static contract assertion that the route redirects to the canonical form anchor. Commits: redirect `1cec6ca9`, test `cb914148`, inventory `a5a67d2e`, NEXT_ACTION `43a2b1d8`.
 - **Verification NOT RUN:** tests/typecheck/build/browser checks. No PASS claimed.
 - **Next:** cross-route responsive/accessibility review and remaining secondary controls; do not wait for CI/Vercel.
+
+
+## 2026-10-09 — Cross-route agent-channel follow-up
+
+- Static review found the Agent Detail Channels tab was requesting WhatsApp accounts from `/api/email-accounts`, whose response only contains email accounts. The dropdown therefore remained empty even when WhatsApp accounts existed.
+- Corrected the tab loader to fetch `/api/email-accounts` and `/api/whatsapp/accounts` separately, both with the current organization ID and `cache: no-store`; errors are surfaced as a channel-account load failure and stale effects remain cancellable.
+- Improved deploy/pause confirmation accessibility with `aria-labelledby` and added regression assertion for the WhatsApp endpoint. Agent tabs already use `aria-pressed` and narrow-screen `shrink-0` styling.
+- Commits: channel loader `1f0566b4`, regression assertion `a67c1dee`, dialog label `3d8e2669`, related test assertion `952d704e`.
+- **Verification NOT RUN:** tests/typecheck/build/browser and live API behavior not executed. No PASS claimed.
+- **Next:** continue cross-route responsive/accessibility review and remaining secondary controls; no CI/Vercel waiting.
