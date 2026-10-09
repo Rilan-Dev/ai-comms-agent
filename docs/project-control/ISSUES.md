@@ -249,3 +249,17 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - Imported Gmail drafts resolve their Gmail draft-resource ID and are marked provider-synced, avoiding the UI treating an already-existing Gmail draft as a local-only draft.
 - Found and corrected another tenant-context defect: `/mail/drafts` and `/mail/compose` selected `getDevOrgId()`, so signed-in users could see an empty or wrong-organization draft list even after messages were imported. Both now use `getAuthenticatedAppContext()`; static tests guard the active-organization invariant.
 - These are source-only corrections; test execution and live draft visibility are still pending.
+
+
+## ISS-013 — Worker credential snapshot TypeScript build failure
+- **Opened:** 2026-10-09
+- **Severity:** high (worker image build blocker)
+- **Owner:** FIX-01 / Sentinel
+- **Status:** in_progress
+- **Description:** Docker worker target failed TypeScript compilation at apps/worker/src/email/mailbox-sync-worker.ts:156 and :201. GmailAdapter snapshot returned Record<string, unknown>, conflicting with EmailCredentials; the DB saveCredentials API accepts Record<string, unknown>, which EmailCredentials does not implicitly satisfy.
+- **Root cause:** Inconsistent type contracts between provider snapshot, worker orchestration, and persistence boundary.
+- **Remedy applied:** Gmail snapshot now declares EmailCredentials; worker spreads the snapshot into a plain persistence record. Added a focused Gmail snapshot contract test.
+- **Failed approach:** An intersection over adapters does not reconcile incompatible method return types; direct interface-to-Record assignment fails without an index signature.
+- **Evidence:** Commits caad1d753b0199a895d63056704c4db9c423f382, 04a2345b6b901ebbc55d084dc5860f39ae9416d8, a98c0e7fa1ee8e22ff60726475e6fb91624626c8. The supplied Docker log evidences the original failure. Corrective tests/typecheck/build are not executed; no PASS claimed.
+- **Resolution plan:** Run focused Gmail adapter test and worker build/typecheck. Route any remaining Docker, dependency installation, or deployment-environment defect to OPS-01.
+- **Related records:** EVT-FIX01-WORKER-CREDENTIALS-20261009; FIX01-WORKER-CREDENTIALS-20261009.
