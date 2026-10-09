@@ -6,11 +6,11 @@ The single exact next authorized action. Update this file on every commit.
 
 ## Current next action
 
-### Immediate FIX-01 source follow-up — 2026-10-09
+### Immediate FIX-01 web typecheck follow-up — 2026-10-09
 
-The latest user run confirms pnpm install --frozen-lockfile passes (534 lockfile entries). It then exposes a worker TS2345 caused by an optional RabbitMQ URL captured by the reconnect closure, a worker typecheck SIGKILL, and a focused migration Vitest collection failure due to stale 0003/0004 paths. FIX-01 normalized the consumer URL to a definite string while preserving the no-config early return (09e4df46), added regression coverage (a24edec3), updated migration test references to canonical 0013 and 0005 filenames (ffc98b30), and aligned security assertions with the current least-privilege 0013 implementation (618c4cd5). Source only; no post-fix tests/typechecks have run.
+User-reported web typecheck errors showed the Lovable UI imports lucide-react without a declared web dependency, two focus traps had strict indexed-access errors, and lovable-ui-migration.test.ts referenced an undefined newAgentPage. Source fixes are committed: web dependency 8f09785a, pnpm lockfile records with published SHA-512 integrity 7b1136e6, Agent Detail focus typing 3e35c1f5, sidebar focus typing a9dcb8e5, and static test source binding 52a4e348. These are source changes only; post-fix installation/tests/typechecks have NOT run.
 
-**Exact next action:** pull latest main; run pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts and pnpm --filter @ai-comms-agent/worker exec node --import tsx --test tests/email-sync-rabbitmq.test.ts. Then run pnpm --filter @ai-comms-agent/web typecheck and pnpm --filter @ai-comms-agent/worker typecheck sequentially. If those pass, run pnpm run typecheck again if resources allow. Record actual output; no PASS claim before execution. Do not restore obsolete migrations or wait for CI/Vercel.
+**Exact next action:** pull latest main; run pnpm install --frozen-lockfile; then run pnpm --filter @ai-comms-agent/web exec vitest run tests/lovable-ui-migration.test.ts and pnpm --filter @ai-comms-agent/worker exec node --import tsx --test tests/email-sync-rabbitmq.test.ts. Run pnpm --filter @ai-comms-agent/web typecheck and pnpm --filter @ai-comms-agent/worker typecheck sequentially. If they pass, run pnpm run typecheck if resources allow. Record actual output; no PASS claim before execution. Do not wait for CI/Vercel.
 
 ### Immediate FIX-01 lockfile follow-up — 2026-10-09
 
