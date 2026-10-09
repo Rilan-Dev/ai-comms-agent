@@ -25,6 +25,7 @@ const voice = readFileSync(resolve(__dirname, "../src/app/ai-voice/voice-workspa
 const knowledge = readFileSync(resolve(__dirname, "../src/app/knowledge/page.tsx"), "utf8");
 const knowledgeApi = readFileSync(resolve(__dirname, "../src/app/api/knowledge/route.ts"), "utf8");
 const activity = readFileSync(resolve(__dirname, "../src/app/activity/page.tsx"), "utf8");
+const activity = readFileSync(resolve(__dirname, "../src/app/activity/page.tsx"), "utf8");
 const audit = readFileSync(resolve(__dirname, "../src/app/audit/page.tsx"), "utf8");
 const auditApi = readFileSync(resolve(__dirname, "../src/app/api/audit/route.ts"), "utf8");
 
@@ -176,6 +177,16 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(chat).toContain("Enter to send · Shift+Enter for a new line");
     expect(chat).toContain("Clara is thinking…");
     expect(chat).toContain('href="/ai-voice"');
+  });
+  it("adapts Activity with persisted event data, functional filters, and truthful empty/error states", () => {
+    expect(activity).toContain('fetch("/api/audit?"');
+    expect(activity).toContain("function applyFilters");
+    expect(activity).toContain("Search activity");
+    expect(activity).toContain("No persisted activity yet");
+    expect(activity).toContain("No matching activity");
+    expect(activity).toContain('role="alert"');
+    expect(activity).toContain("from \"lucide-react\"");
+    expect(activity).not.toContain("source mock data");
   });
   it("shows real organization-scoped Clara knowledge status instead of hard-coded counts", () => {
     expect(knowledge).toContain('fetch("/api/knowledge"');
