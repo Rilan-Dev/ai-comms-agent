@@ -172,8 +172,9 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(agentDetail).toContain("rounded-md");
     expect(agentDetailPage).toContain("getAuthenticatedAppContext");
     expect(agentDetailPage).toContain("repo.get(organizationId,id)");
-    expect(newAgentPage).toContain("Safety default");
-    expect(newAgentPage).toContain('href="/agents"');
+    expect(newAgentPage).toContain('redirect("/agents#new-agent")');
+    expect(agents).toContain('id="new-agent"');
+    expect(agents).toContain("async function createAgent");
   });
 
   it("routes WhatsApp through the authenticated organization and makes Connect open the real setup form", () => {
