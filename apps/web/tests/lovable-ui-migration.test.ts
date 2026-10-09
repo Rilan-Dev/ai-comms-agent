@@ -13,6 +13,7 @@ const setup = readFileSync(resolve(__dirname, "../src/app/setup/page.tsx"), "utf
 const agents = readFileSync(resolve(__dirname, "../src/app/agents/agents-client.tsx"), "utf8");
 const agentDetail = readFileSync(resolve(__dirname, "../src/app/agents/[id]/agent-detail-client.tsx"), "utf8");
 const agentDetailPage = readFileSync(resolve(__dirname, "../src/app/agents/[id]/page.tsx"), "utf8");
+const newAgentPage = readFileSync(resolve(__dirname, "../src/app/agents/new/page.tsx"), "utf8");
 const drafts = readFileSync(resolve(__dirname, "../src/app/mail/drafts/drafts-client.tsx"), "utf8");
 const draftsPage = readFileSync(resolve(__dirname, "../src/app/mail/drafts/page.tsx"), "utf8");
 const compose = readFileSync(resolve(__dirname, "../src/app/mail/compose/compose-client.tsx"), "utf8");
