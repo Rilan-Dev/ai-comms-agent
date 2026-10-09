@@ -1131,3 +1131,8 @@ source_review:
 - **Regression source:** Assertion now requires an integrity-form resolution specifically on the amqplib package entry (commits `21837f32157ff43a7a1243b3f3095bb1eb2f1df6`, `d115e1b0293b48571cd0902849cb5f0030963bc7`).
 - **Execution status:** NOT RUN after correction: frozen install, focused Vitest, typecheck, Docker build. No PASS claimed.
 - **Next action:** Pull latest main; frozen install first, then typecheck and focused Vitest if install succeeds.
+
+## FIX01 lockfile regression assertion source review — 2026-10-09
+- **Finding:** Source inspection found over-escaped regex literals in the focused lockfile regression test.
+- **Correction:** Fixed regex escaping and scoped the integrity assertion to the exact `amqplib@2.2.0` entry in commit `162183e8d7c67b8346c15989ef850327e487cfc4`.
+- **Status:** Source only. Vitest remains NOT RUN; frozen install, typecheck, and build remain pending.
