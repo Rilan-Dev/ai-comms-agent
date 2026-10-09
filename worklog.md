@@ -1240,3 +1240,11 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Recorded role-local and central session/lesson details; routed suspected Drafts tenant-context and Inbox SQL search-placeholder defects to FIX-01 as BKL-008.
 - No tests/build/browser/runtime/provider/deployment verification was run; no PASS is claimed.
 - Next: continue Zoho and IMAP/SMTP sync ingestion and connect persisted messages/drafts to authorized Clara tools.
+
+### Gmail draft import and authenticated draft-screen follow-up — 2026-10-09
+
+- Added HTML-only message-to-text extraction while discarding active/script/style content and keeping unsanitized HTML out of the persisted HTML field.
+- Added Gmail draft-resource lookup by message ID; imported drafts are marked provider-synced with the actual Gmail draft resource ID so editing/syncing does not create a duplicate provider draft.
+- Corrected `/mail/drafts` and `/mail/compose` to use the authenticated user's active organization instead of the development organization. Added regression coverage for these tenant-context rules and draft-state persistence.
+- Commits: `c15f16f1`, `a23796cc`, `91e99b68`, `0be3c2ef`, `4b9eb8ae`, `f30c1a9c`, `7cd322a2`, `fb107a87`.
+- Tests/build/runtime were not run; live Gmail draft import remains unverified.
