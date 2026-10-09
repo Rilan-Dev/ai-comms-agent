@@ -173,3 +173,9 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Added Redis-backed distributed mailbox batch coordination when REDIS_URL is configured. The lease uses SET NX PX, a random owner token, 10-minute TTL, and compare-and-delete Lua release; configured Redis outages skip the batch with an error log, while no REDIS_URL preserves PostgreSQL claim behavior.
 - Commits: d7228495f5bd03483154ac194cba865fbf3b00e5, 0e10e647b029ea065b467e120180248e1eb1b27d, bd6368d7f56f39660cf28b913026fcb8fd0a0004.
 - Verification: source only. No tests, typechecks, or live Redis checks run. Continue RAG boundary and RabbitMQ durable queue implementation without waiting for CI/Vercel.
+
+
+### DEV01-REDIS-LEASE-TESTS-20261009 / 2026-10-09
+- Added fake Redis server regression tests for lock acquisition/contention, compare-and-delete Lua arguments, and AUTH/database selection.
+- Commit: fbd07ca9dee64a3fbe114bb16cf08fadcfa695f1.
+- Test source only; no execution or typecheck claim.
