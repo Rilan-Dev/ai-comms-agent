@@ -85,3 +85,14 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - Fixed IMAP LIST command to emit a correctly quoted mailbox pattern followed by escaped CRLF; aligned Zoho incremental capability metadata with the bounded newest-page refresh implementation.
 - Commits: `f04eb93d27ee01934970e64679be381d6dec6500`, `fe3e2d39157f74c66741772966125cfee81055a1`, `5a59ec5745f8d3a3f735220f9496e14c79dece22`.
 - No test/typecheck/live-server commands were executed. Do not interpret source fixes as verification. Continue with focused test/typecheck execution, real mailbox ingestion and Clara Chat checks; then RAG email indexing and Redis/RabbitMQ app integration. FIX-01 retains BKL-008; OPS-01 retains production infrastructure/deployment.
+
+
+### DEV01-IMAP-LITERAL-20261009 / 2026-10-09
+- **Task:** Improve IMAP response handling so FETCH literals are consumed by octet count rather than parsed as line-oriented responses.
+- **Authorization:** Existing development-first owner instruction and connected-mailbox action in `docs/project-control/NEXT_ACTION.md`.
+- **Started from:** Main source blob `fced2bed6967a0db94b99bd8bf45f886140d5f22` for `apps/worker/src/email/imap-smtp-adapter.ts`.
+- **Actions:** Changed the socket reader buffer to retain raw bytes, added an exact-length byte reader and an IMAP response reader that recognizes literal markers and enforces a 50 MiB literal limit, then routed LIST and general IMAP command response reads through it.
+- **Files/code:** `apps/worker/src/email/imap-smtp-adapter.ts`.
+- **Evidence:** GitHub accepted source commit `f7df46f3d0d90bf1c0aae3407b448bd83aeca855`. No focused test, typecheck, fake-server run, live IMAP session, database sync, or chat verification was executed.
+- **Limitations:** This improves octet-boundary handling but does not establish complete IMAP grammar compliance. Literal continuation parsing, unsolicited responses, BODYSTRUCTURE/MIME, charsets, and server-specific variants still need tests. Existing line reader remains used for greeting/login/SMTP.
+- **Next action:** Add fake IMAP server tests covering a literal containing CRLF, a UTF-8 body, fragmented literal delivery, multiple literals in one response, and oversized-literal rejection; then run adapter tests and worker/web typechecks when dependencies are available.
