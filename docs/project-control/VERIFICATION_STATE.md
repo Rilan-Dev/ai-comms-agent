@@ -980,3 +980,9 @@ Latest implementation commit: 64485e8c9478c6881f488f00ae624a3657e17a07. Added de
 - Added `apps/worker/src/queues/email-sync-message.ts` and `apps/worker/tests/email-sync-message.test.ts`.
 - Intended coverage: documented envelope fields, account/history idempotency key, full-sync key, invalid UUID and blank history cursor rejection.
 - Status: source committed; tests/typechecks not executed. This is not evidence of runtime RabbitMQ integration.
+
+### 2026-10-09 — Live schema drift and Redis lease diagnostics
+- User-supplied live logs show missing `ai_provider_configs.model` and `email_sync_states.last_attempt_at`; mailbox sync API returns HTTP 500 as a result.
+- Forward migration `0029_runtime_schema_reconciliation.sql` committed as `a4fab9df07deafa5fd47879217616e3cb6d1c03f`.
+- Redis lease rejection now retains up to 200 characters of the Redis server error reply; focused WRONGPASS regression source committed as `0fa3e751cae2e5105b212083e93a7cc87bf00468`.
+- **Not verified:** migration application, Redis AUTH/ACL/TLS/connectivity, focused test execution, typecheck/build, and live mailbox sync. GitHub commits are not runtime evidence.
