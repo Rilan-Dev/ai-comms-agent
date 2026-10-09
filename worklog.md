@@ -1260,3 +1260,5 @@ FIX-01 traced the reported successful-login → `/login?reason=not_provisioned` 
 - Commits: `72f05f5f642beea07cc5543fbc744051a083f922`, `5d2c3f3bcbab6698a56449afda407921c05b7760`.
 - **Verification status:** Local test execution was attempted but could not start: pnpm is missing and the environment cannot resolve github.com. Focused tests/typechecks, real IMAP/SMTP, live PostgreSQL sync, and Clara Chat retrieval remain unverified. No PASS claimed.
 - **Next:** Run the Zoho/IMAP tests and worker/web typechecks in a dependency-equipped environment; continue independent implementation of Clara Core RAG indexing, Redis client use, and RabbitMQ durable queue lifecycle without waiting for CI/Vercel. FIX-01 owns BKL-008; OPS-01 owns production infrastructure/deployment.
+
+- **IMAP thread identity follow-up:** use the oldest/root References value, then Message-ID, then folder/UID; add parser assertion. Commits `e21fd2fad824a41180deb6cf89b4f7aafb051f7c`, `d5dbd54cb7cb7b224d39b9b4e836b62501c575d3`. Not executed.
