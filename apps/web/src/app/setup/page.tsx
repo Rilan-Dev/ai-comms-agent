@@ -31,7 +31,7 @@ export default function SetupPage() {
   }
 
   if (done) {
-    return <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,.16),transparent_35%)] px-5 py-10">
+    return <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,oklch(0.88_0.105_152/.22),transparent_35%)] px-5 py-10">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-md items-center">
         <div className="w-full rounded-3xl border bg-background/95 p-8 text-center shadow-2xl shadow-black/10">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">✓</div>
@@ -46,7 +46,7 @@ export default function SetupPage() {
   const update = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) =>
     setForm(current => ({ ...current, [key]: event.target.value }));
 
-  return <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,.16),transparent_35%),radial-gradient(circle_at_20%_20%,rgba(14,165,233,.10),transparent_30%)] px-5 py-10">
+  return <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,oklch(0.88_0.105_152/.22),transparent_35%),radial-gradient(circle_at_20%_20%,oklch(0.985_0.004_80/.75),transparent_32%)] px-5 py-10">
     <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-lg items-center">
       <div className="w-full rounded-3xl border bg-background/95 p-8 shadow-2xl shadow-black/10 backdrop-blur">
         <div className="mb-7">
