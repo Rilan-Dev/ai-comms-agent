@@ -14,7 +14,7 @@ describe("mail drafts organization context", () => {
       const source = read(path);
       expect(source).toContain("getAuthenticatedAppContext");
       expect(source).toContain("headers: await headers()");
-      expect(source).toMatch(/context(?:\?\.)?\.organizationId/);
+      expect(source).toMatch(/context(?:\?\.|\.)organizationId/);
       expect(source).not.toContain("getDevOrgId");
       expect(source).not.toContain("ensureDevSeed");
     });
