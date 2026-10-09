@@ -28,6 +28,12 @@ test("consumer uses prefetch and manual ack; failures are confirmed before ack",
   assert.match(source, /publishConfirmed\(publisher, target, retryEnvelope\)/);
 });
 
+test("consumer reconnects with a bounded exponential delay after connection loss", () => {
+  assert.match(source, /scheduleReconnect/);
+  assert.match(source, /Math\.min\(30_000, reconnectDelayMs \* 2\)/);
+  assert.match(source, /newConnection\.on\("close"/);
+});
+
 test("worker publishes due mailboxes and consumes account-scoped sync jobs", () => {
   assert.match(worker, /publishEmailSync\(/);
   assert.match(worker, /processMailboxSyncMessage/);
