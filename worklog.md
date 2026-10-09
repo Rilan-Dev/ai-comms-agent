@@ -1287,3 +1287,12 @@ Added static regression coverage for the Lovable UI adaptation and the existing 
 
 ### 2026-10-09 — Agents list visual adaptation
 Updated agent list/empty-state marks to inline SVG iconography consistent with the Lovable workspace and extended the static UI contract test to protect the persisted agent creation flow. Commits `0a79f7f3a9321d30dbc4d01fa5c611c1356d5021` and `2c949dc92d524f484d5e689603afd26106f9d801`. No tests/build/browser checks run. Next: continue Mail subpages and remaining application routes.
+
+
+## 2026-10-09 — Zoho OAuth callback does not create mailbox (source-only correction)
+
+- **User report:** OAuth consent appeared successful, but the Connected mailboxes list had no Zoho account; the callback surfaced `Zoho did not return the required token metadata.`
+- **Finding:** the callback required both `access_token` and `api_domain` before account discovery/persistence. The token exchange response may omit `api_domain`; this requirement prematurely aborted the flow before `PostgresEmailAccountRepository.create/updateConnection`.
+- **Correction:** require a successful response with an access token, handle token-exchange errors with safe actionable guidance, and select the Mail API origin from the server-validated data-center value instead of trusting or requiring token-supplied `api_domain`. Added static regression assertions.
+- **Commits:** `2cb976bf6cc6d835ff75692998e04958d63e001d`, `53d96a0f3125830a9dc07ae3011a96d7b54c878b`.
+- **Verification:** tests/typecheck/build and live Zoho OAuth have not been run. The correction is source-only; successful mailbox persistence is not yet confirmed.
