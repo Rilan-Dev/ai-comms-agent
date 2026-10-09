@@ -350,3 +350,5 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Next:** continue cross-route responsive overflow, keyboard navigation, status announcements, dialogs and remaining secondary controls.
 
 - **Additional narrow-screen correction (2026-10-09):** Chat's agent selector had been hidden below the `sm` breakpoint. It is now visible on mobile with a capped width and accessible name. Commits: `bc8e698f` and static assertion `ad7dc7f8`. Responsive/browser checks remain NOT RUN.
+
+- **Chat live-region refinement (2026-10-09):** Added polite announcements for thinking, response completion and response failure; visual thinking is hidden from assistive technology to avoid duplicate speech. Commits: `d9662da6`, assertions `529ed8b2`. Browser/screen-reader validation NOT RUN.
