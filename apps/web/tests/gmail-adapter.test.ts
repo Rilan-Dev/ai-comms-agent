@@ -62,8 +62,6 @@ describe("GmailAdapter", () => {
       .mockResolvedValueOnce(new Response("expired", { status: 401 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "fresh-token", expires_in: 3600 }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ historyId: "123" }), { status: 200 }));
-    vi.stubEnv("GMAIL_OAUTH_CLIENT_ID", "client-id");
-    vi.stubEnv("GMAIL_OAUTH_CLIENT_SECRET", "client-secret");
     const adapter = new GmailAdapter();
     await adapter.connect({
       credential_type: "oauth_token",
