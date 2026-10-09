@@ -28,5 +28,5 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   if (pathname.startsWith("/login") || pathname.startsWith("/setup")) return <html lang="en"><body>{children}</body></html>;
-  return <html lang="en"><body><NotificationProvider><div className="flex min-h-screen bg-background"><Sidebar /><div className="flex min-w-0 flex-1 flex-col"><TopBar /><div className="min-h-0 flex-1">{children}</div></div></div></NotificationProvider></body></html>;
+  return <html lang="en"><body><NotificationProvider><div className="min-h-screen bg-background"><Sidebar /><div className="flex min-h-screen min-w-0 flex-col md:ml-[248px]"><TopBar /><div className="min-h-0 flex-1">{children}</div></div></div></NotificationProvider></body></html>;
 }
