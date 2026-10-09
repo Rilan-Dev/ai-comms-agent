@@ -228,3 +228,15 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** OPS-01 access to live self-hosted runtime/database.
 - **Handoff:** BKL-011 / ISS-015 routes deployment/runtime work to OPS-01.
 - **Next action:** OPS-01 apply migrations through `0029`, roll out both containers, inspect Redis error, and verify one manual sync after database and lease are healthy.
+
+### DEV01-LOVABLE-UI-MIGRATION-20261009 — 2026-10-09 (continuation)
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Continue the owner-authorized Lovable UI migration from current GitHub main.
+- **Started from:** Main after prior UI tranche and the user’s explicit task.
+- **Scope:** Screen-level visual adaptation only; preserve Next.js, APIs, database, auth/RBAC, tenant boundaries and validation.
+- **Status:** ACTIVE
+- **Completed:** Restyled persisted Inbox and Agents list/create screens to the Lovable semantic visual system; retained inbox search/filter/refresh/read-state/archive/move actions, mailbox links, agent creation and slug validation. Added UI contract assertions. Commits `9de78b0f`, `c9641d9d`, `0aef87b0`.
+- **Pending:** Accounts, Drafts, Threads, Compose, Approvals, then remaining product routes. Continue after each independent tranche without waiting for CI/Vercel.
+- **Blockers:** No dependency-equipped local/browser session was available through GitHub connector operations. Tests, typecheck, build and browser/runtime verification remain unexecuted.
+- **Handoff:** None. Route substantial source defects to FIX-01 and deployment/infrastructure issues to OPS-01.
+- **Next action:** Continue with the remaining Mail subpages under `docs/project-control/NEXT_ACTION.md`.
