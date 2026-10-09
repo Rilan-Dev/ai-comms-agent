@@ -32,10 +32,28 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(sidebar).toContain("/api/auth/logout");
   });
 
-  it("uses inline agent iconography without changing the persisted create flow", () => {
+  it("uses inline agent iconography and Lovable compact geometry without changing persisted create/validation flows", () => {
     expect(agents).toContain("function AgentMark");
     expect(agents).toContain("slugifyAgentName(name)");
     expect(agents).toContain("router.push(");
+    expect(agents).toContain('pattern="[a-z0-9]+(?:-[a-z0-9]+)*"');
+    expect(agents).toContain("maxLength={500}");
+    expect(agents).toContain("font-display");
+    expect(agents).toContain("border-border");
+  });
+
+  it("adapts the persisted inbox to the Lovable visual language without removing mail actions", () => {
+    expect(inbox).toContain("font-display");
+    expect(inbox).toContain("All conversations");
+    expect(inbox).toContain('fetch("/api/mail/inbox?"');
+    expect(inbox).toContain('fetch("/api/mail/messages/read-state"');
+    expect(inbox).toContain('folderAction(m.id,"archive")');
+    expect(inbox).toContain('folderAction(m.id,"move",value)');
+    expect(inbox).toContain('href="/mail/compose"');
+    expect(inbox).toContain('href="/mail/approvals"');
+    expect(inbox).toContain('href="/mail/accounts"');
+    expect(inbox).toContain('role="alert"');
+    expect(inbox).toContain("Your inbox is empty");
   });
 
   it("keeps workspace search connected to the real Inbox query state", () => {
