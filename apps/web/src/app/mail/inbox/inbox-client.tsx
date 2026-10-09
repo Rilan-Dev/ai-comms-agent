@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type MailRow = {
   id: string; email_account_id: string; thread_id: string; from_address: string;
@@ -18,7 +19,8 @@ function relative(value: string | null) {
 }
 
 export function InboxClient({ organizationId, initialMessages }: { organizationId: string; initialMessages: MailRow[] }) {
-  const [messages, setMessages] = useState(initialMessages); const [q, setQ] = useState("");
+  const searchParams = useSearchParams();
+  const [messages, setMessages] = useState(initialMessages); const [q, setQ] = useState(() => searchParams.get("q") ?? "");
   const [accountId, setAccountId] = useState("all"); const [unread, setUnread] = useState(false);
   const [action, setAction] = useState(false); const [busy, setBusy] = useState(false); const [notice, setNotice] = useState<string | null>(null);
   const [folders, setFolders] = useState<Array<{ id: string; name: string; role: string; email_account_id: string }>>([]);
