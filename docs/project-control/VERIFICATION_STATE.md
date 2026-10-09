@@ -1189,3 +1189,9 @@ source_review:
 - **NOT RUN / NOT VERIFIED:** focused web tests, full worker test suite, web/worker typechecks, build, provider/database runtime integration, and deployment.
 - No deployment PASS is claimed. Preserve the lockfile and local backup artifacts. Next verification is specified in `docs/project-control/NEXT_ACTION.md`.
 
+## Deployment attempt — 2026-10-10
+
+- Requested a preview deployment for branch `fix/migration-verification-phase4-contract`, commit `a4877ee23152b4895bf5eae48243ddb0202c8155`.
+- Vercel rejected the API request with HTTP 402: `api-deployments-free-per-day` (daily deployment API quota exceeded; retry after 24 hours).
+- No new deployment was created. Recent branch deployments visible in Vercel were canceled and were for earlier commits.
+- **Deployment status: NOT DEPLOYED / NOT VERIFIED.** Do not label this change production-ready or claim a successful deployment. Resolve the Vercel quota with the account owner or retry after the provider's stated cooldown, after local tests/typechecks are run.
