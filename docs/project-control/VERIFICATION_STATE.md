@@ -1113,3 +1113,5 @@ source_review:
 - **Verification status: NOT RUN.** The source-contract tests were not executed. Typecheck, build, browser, keyboard-only, screen-reader, responsive viewport and live API checks were not run. No PASS claimed.
 
 - Follow-up narrow-screen source change: Chat agent switching is now available below the `sm` breakpoint (`bc8e698f`), with a source-contract assertion (`ad7dc7f8`). Responsive viewport/device validation NOT RUN.
+
+- Chat announcement refinement: source commit `d9662da6`, contract assertion `529ed8b2`. A persistent polite status region covers thinking, completed responses, and response failures; visual thinking is hidden from assistive technology to avoid duplicate announcements. Screen-reader/browser tests NOT RUN.
