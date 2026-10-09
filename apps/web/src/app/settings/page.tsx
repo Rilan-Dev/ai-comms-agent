@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Settings2 } from "lucide-react";
 import { GmailOAuthSettings } from "./gmail-oauth-settings";
 import { ZohoOAuthSettings } from "./zoho-oauth-settings";
 import { AIRuntimeSettings } from "./ai-runtime-settings";
@@ -78,7 +79,7 @@ export default function SettingsPage() {
   return (
     <main className="mx-auto max-w-[1100px] space-y-8 bg-background p-5 sm:p-7 lg:p-10">
       <header>
-        <p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Workspace</p>
+        <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.16em] text-muted-foreground"><Settings2 className="h-3.5 w-3.5 text-primary" /> Workspace configuration</p>
         <h1 className="font-display text-3xl font-medium tracking-tight">Settings<span className="text-tertiary">.</span></h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           Organization access and runtime posture. Sensitive configuration remains server-side.
@@ -95,7 +96,7 @@ export default function SettingsPage() {
         <div className="rounded-md border border-border bg-card p-5">
           <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Organization</p>
           {loading ? (
-            <div className="mt-5 h-24 animate-pulse rounded-xl bg-muted" />
+            <div className="mt-5 h-24 animate-pulse rounded-md bg-muted" />
           ) : organization ? (
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <Value label="Name" value={organization.name} />
@@ -108,7 +109,7 @@ export default function SettingsPage() {
           )}
         </div>
 
-        <div className="rounded-2xl border bg-background p-5">
+        <div className="rounded-md border border-border bg-card p-5">
           <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Runtime posture</p>
           <div className="mt-5 space-y-3">
             <Status label="Provider credentials" value="Server-side only" />
@@ -125,7 +126,7 @@ export default function SettingsPage() {
       <AIRuntimeSettings organizationId={organization?.id ?? ""} />
 
       <section className="rounded-md border border-border bg-card p-5">
-        {notice ? <div className="mb-4 rounded-xl border bg-muted/30 px-4 py-3 text-sm">{notice}</div> : null}
+        {notice ? <div className="mb-4 rounded-md border bg-muted/30 px-4 py-3 text-sm">{notice}</div> : null}
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Members & roles</p>
@@ -149,7 +150,7 @@ export default function SettingsPage() {
                         value={member.role}
                         disabled={savingMember === member.id}
                         onChange={(e) => void updateMember(member.id, "role", e.target.value)}
-                        className="rounded-lg border bg-background px-2 py-1 text-xs"
+                        className="rounded-md border border-border bg-background px-2 py-1 text-xs"
                       >
                         <option value="admin">admin</option><option value="member">member</option><option value="viewer">viewer</option>
                       </select>
@@ -160,7 +161,7 @@ export default function SettingsPage() {
                       value={member.status}
                       disabled={savingMember === member.id || member.role === "owner"}
                       onChange={(e) => void updateMember(member.id, "status", e.target.value)}
-                      className="rounded-lg border bg-background px-2 py-1 text-xs capitalize"
+                      className="rounded-md border border-border bg-background px-2 py-1 text-xs capitalize"
                     >
                       <option value="active">active</option><option value="suspended">suspended</option><option value="invited">invited</option>
                     </select>
@@ -189,13 +190,13 @@ export default function SettingsPage() {
 }
 
 function Value({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
-  return <div className="rounded-xl border p-4"><p className="text-xs text-muted-foreground">{label}</p><p className={`mt-1 truncate text-sm font-semibold ${mono ? "font-mono text-xs" : ""}`}>{value}</p></div>;
+  return <div className="rounded-md border border-border p-4"><p className="text-xs text-muted-foreground">{label}</p><p className={`mt-1 truncate text-sm font-semibold ${mono ? "font-mono text-xs" : ""}`}>{value}</p></div>;
 }
 
 function Status({ label, value }: { label: string; value: string }) {
-  return <div className="flex items-center justify-between rounded-xl border bg-background px-4 py-3 text-sm"><span className="text-muted-foreground">{label}</span><span className="font-semibold">{value}</span></div>;
+  return <div className="flex items-center justify-between rounded-md border border-border bg-background px-4 py-3 text-sm"><span className="text-muted-foreground">{label}</span><span className="font-semibold">{value}</span></div>;
 }
 
 function LinkCard({ href, title, text }: { href: string; title: string; text: string }) {
-  return <a href={href} className="rounded-xl border bg-background p-4 transition hover:border-primary/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><p className="text-sm font-semibold">{title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{text}</p></a>;
+  return <a href={href} className="rounded-md border border-border bg-background p-4 transition hover:border-primary/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><p className="text-sm font-semibold">{title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{text}</p></a>;
 }
