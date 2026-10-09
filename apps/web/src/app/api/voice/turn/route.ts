@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { query } from "@ai-comms-agent/db";
-import { PostgresAgentRepository, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, query } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
