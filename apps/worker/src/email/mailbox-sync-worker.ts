@@ -283,7 +283,7 @@ export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ att
   let redisLeaseAcquired = false;
   if (redisUrl) {
     try {
-      redisLeaseAcquired = await acquireRedisLease(redisUrl, "ai-comms-agent:mailbox-sync:batch", leaseToken, 45_000);
+      redisLeaseAcquired = await acquireRedisLease(redisUrl, "ai-comms-agent:mailbox-sync:batch", leaseToken, 600_000);
     } catch (error) {
       processing = false;
       console.error(JSON.stringify({
