@@ -28,13 +28,14 @@ phase2_implementation_commit: "13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_implementation_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/13835dd8be5d608ccad3f4839e52c2a486f8bb41"
 phase2_control_state_correction_commit: "000d2a9b67b852301f93a098bc0719ae97801c4c"
 phase2_vercel_deployment_fix_commit: "c2868671c97af727b624b12a218d288fee936020"
-current_commit: "31ff9cb19505d2c446db9fd9ad306d3097678b13"
-current_commit_short: "31ff9cb1"
-current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/31ff9cb19505d2c446db9fd9ad306d3097678b13"
+current_commit: "bffd2f6267a242f63df76c9e3fdaf9b508d3ae59"
+current_commit_short: "bffd2f62"
+current_commit_url: "https://github.com/Rilan-Dev/ai-comms-agent/commit/bffd2f6267a242f63df76c9e3fdaf9b508d3ae59"
 last_verified_commit: "pending_runtime_acceptance"
 
 open_blockers:
   - "Runtime verification still pending for the PostgreSQL migration set; development continuation is explicitly authorized"
+  - "ISS-011: AI provider/Clara configuration completeness implementation is in progress; migration 0028 and live chat/voice/provider validation are pending"
 open_risks:
   - "Clara manifest has 2 SHA typos (Clara library issue, not file mutations — see CLARA-INTEGRATION.md §8a)"
   - "No managed database dependency; operator must provide PostgreSQL 15+ for deployment"
@@ -44,8 +45,8 @@ required_decision:
 
 next_action:
   actor: "ChatGPT"
-  action: "Deploy dynamic Gmail/Zoho OAuth callback and multi-client settings changes; apply migrations 0024–0027"
-  then: "Use an HTTPS DNS domain, register exact callbacks in Google/Zoho consoles, and run both OAuth flows plus worker token-refresh checks without waiting for CI/Vercel"
+  action: "Continue screen-by-screen AI/Clara configuration completion and apply migration 0028 along with pending migrations 0024–0027"
+  then: "Deploy, configure organization KB/provider credentials through Settings, verify model catalog and chat/voice paths, then continue the remaining provider and knowledge configuration audit without waiting for CI/Vercel"
 
 phase2_summary:
   status: "implementation_complete_awaiting_review"
