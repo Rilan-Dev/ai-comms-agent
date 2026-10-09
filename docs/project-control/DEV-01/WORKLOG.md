@@ -153,3 +153,5 @@
 - **Next:** continue route-by-route responsive/accessibility and remaining secondary-control review; preserve real API behavior. Do not wait for CI/Vercel. OPS-01 continues to own the independent database-migration/Redis incident.
 
 - **Narrow-screen follow-up:** the Chat agent selector was hidden under the small breakpoint, making agent switching unavailable on phones. It is now visible at every viewport width, with a capped mobile width and accessible name. Commits: source `bc8e698f`, assertion `ad7dc7f8`; migration inventory `fb0d251f`, NEXT_ACTION `6e4cc8c2`. Responsive browser checks NOT RUN.
+
+- **Chat announcement refinement:** added a persistent polite live region for the start of generation, response completion, and response failure; the visual thinking indicator is aria-hidden to prevent duplicate announcements. Source `d9662da6`, contract assertions `529ed8b2`. Screen-reader/browser validation NOT RUN.
