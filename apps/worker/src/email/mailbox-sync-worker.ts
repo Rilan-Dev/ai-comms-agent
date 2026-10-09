@@ -6,11 +6,14 @@ import {
 } from "@ai-comms-agent/db";
 import type { EmailCredentials, EmailMessage, SyncState } from "@ai-comms-agent/shared";
 import { GmailAdapter } from "./gmail-adapter";
+import { ZohoAdapter } from "./zoho-adapter";
+import type { EmailProvider } from "@ai-comms-agent/shared";
 
 type Candidate = {
   id: string;
   organization_id: string;
   email_address: string;
+  provider: "gmail" | "zoho" | "imap_smtp";
   sync_cursor: string | null;
   history_id: string | null;
   last_success_at: string | null;
@@ -52,7 +55,7 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
     ],
   );
   const threadId = thread.rows[0]?.id;
-  if (!threadId) throw new Error("Could not persist the Gmail message thread.");
+  if (!threadId) throw new Error("Could not persist the email message thread.");
 
   const labels = message.folder_id ? [message.folder_id] : [];
   const folder = await query<{ id: string }>(
@@ -149,17 +152,17 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
   if (!claimed.rows[0]) return false;
 
   const accounts = new PostgresEmailAccountRepository();
-  const adapter = new GmailAdapter();
+  const adapter: EmailProvider & { getCredentialSnapshot?: () => EmailCredentials; listDraftIdsByMessage?: () => Promise<Map<string, string>> } = candidate.provider === "gmail" ? new GmailAdapter() : candidate.provider === "zoho" ? new ZohoAdapter() : (() => { throw new Error("IMAP/SMTP sync is not enabled until its UID/message parser is available."); })();
 
   try {
     const masterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
     if (!masterKey) throw new Error("CREDENTIALS_MASTER_KEY is required for mailbox synchronization.");
     const stored = await accounts.loadCredentials(candidate.id, parseCredentialsMasterKey(masterKey));
-    if (!stored) throw new Error("Encrypted Gmail credentials are missing. Reconnect this mailbox.");
+    if (!stored) throw new Error("Encrypted mailbox credentials are missing. Reconnect this mailbox.");
 
     const credentials: EmailCredentials = {
       ...(stored as unknown as EmailCredentials),
-      credential_type: "oauth_token",
+      credential_type: candidate.provider === "imap_smtp" ? ((stored as unknown as EmailCredentials).credential_type ?? "app_password") : "oauth_token",
     };
     await adapter.connect(credentials);
     const structure = await query<{ count: string }>(
@@ -186,11 +189,11 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       sync_mode: claimed.rows[0].cursor || !claimed.rows[0].history_id ? "initial" : "incremental",
     };
     const result = await adapter.sync(state);
-    const refreshedCredentials = adapter.getCredentialSnapshot();
-    if (
+    const refreshedCredentials = adapter.getCredentialSnapshot?.();
+    if (refreshedCredentials && (
       refreshedCredentials.access_token !== credentials.access_token ||
       refreshedCredentials.expires_at !== credentials.expires_at
-    ) {
+    )) {
       await accounts.saveCredentials(
         candidate.id,
         "oauth_token",
@@ -208,13 +211,13 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       const page = await Promise.all(ids.slice(offset, offset + 8).map((id) => adapter.getMessage(id)));
       for (const message of page) if (message) fetchedMessages.push(message);
     }
-    const draftIdsByMessage = fetchedMessages.some((message) => message.is_draft)
+    const draftIdsByMessage = fetchedMessages.some((message) => message.is_draft) && adapter.listDraftIdsByMessage
       ? await adapter.listDraftIdsByMessage()
       : new Map<string, string>();
     let saved = 0;
     for (const message of fetchedMessages) {
       const providerDraftId = message.is_draft
-        ? draftIdsByMessage.get(message.provider_message_id || message.id) ?? null
+        ? draftIdsByMessage.get(message.provider_message_id || message.id) ?? (candidate.provider === "zoho" ? (message.provider_message_id || message.id) : null)
         : null;
       await persistMessage(candidate, message, providerDraftId);
       saved += 1;
@@ -232,7 +235,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       timestamp: new Date().toISOString(),
       level: "info",
       service: "worker.email-sync",
-      message: "Gmail mailbox synchronization completed",
+      message: `${candidate.provider} mailbox synchronization completed`,
       organization_id: candidate.organization_id,
       account_id: candidate.id,
       imported_or_updated: saved,
@@ -255,7 +258,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       timestamp: new Date().toISOString(),
       level: "error",
       service: "worker.email-sync",
-      message: "Gmail mailbox synchronization failed",
+      message: `${candidate.provider} mailbox synchronization failed`,
       organization_id: candidate.organization_id,
       account_id: candidate.id,
       reason: message,
@@ -267,7 +270,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
   }
 }
 
-export async function processGmailMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ attempted: number; succeeded: number }> {
+export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ attempted: number; succeeded: number }> {
   if (processing || !process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY) {
     return { attempted: 0, succeeded: 0 };
   }
@@ -276,11 +279,11 @@ export async function processGmailMailboxSyncBatch(limit = BATCH_SIZE): Promise<
   let succeeded = 0;
   try {
     const candidates = await query<Candidate>(
-      `SELECT a.id, a.organization_id, a.email_address,
+      `SELECT a.id, a.organization_id, a.email_address, a.provider,
          s.cursor AS sync_cursor, s.history_id, s.last_success_at
        FROM email_accounts a
        LEFT JOIN email_sync_states s ON s.email_account_id=a.id
-       WHERE a.provider='gmail' AND a.deleted_at IS NULL
+       WHERE a.provider IN ('gmail','zoho','imap_smtp') AND a.deleted_at IS NULL
          AND a.status IN ('pending','connected','error')
          AND COALESCE(s.status::text,'idle') <> 'paused'
          AND (s.next_attempt_at IS NULL OR s.next_attempt_at <= now())
@@ -302,7 +305,7 @@ export async function processGmailMailboxSyncBatch(limit = BATCH_SIZE): Promise<
   }
 }
 
-export function startGmailMailboxSyncLoop() {
+export function startMailboxSyncLoop() {
   if (!process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY || process.env.GMAIL_MAILBOX_SYNC_DISABLED === "true") {
     return () => undefined;
   }
@@ -310,13 +313,13 @@ export function startGmailMailboxSyncLoop() {
   const tick = async () => {
     if (stopped) return;
     try {
-      await processGmailMailboxSyncBatch();
+      await processMailboxSyncBatch();
     } catch (error) {
       console.error(JSON.stringify({
         timestamp: new Date().toISOString(),
         level: "error",
         service: "worker.email-sync",
-        message: "Gmail synchronization poll failed",
+        message: "Mailbox synchronization poll failed",
         reason: error instanceof Error ? error.message : "Unknown worker error",
       }));
     }
