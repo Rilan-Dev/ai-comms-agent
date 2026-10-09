@@ -100,3 +100,11 @@ If shared memory conflicts with current repository state or current requirements
 - Public OAuth callbacks require HTTPS and provider-side exact redirect URI registration. Google web clients reject raw IP hosts; an HTTP private IP cannot be made valid by code changes alone.
 - OAuth client IDs/secrets belong in organization-scoped Settings and encrypted persistence; worker refresh must use the per-account client used at consent, not global env defaults.
 - Zoho now follows the same multi-client UI pattern as Gmail; migration 0027 must be applied before settings work.
+
+
+### DEV-01 / Forge — 2026-10-09 draft discoverability
+- **Issue/symptom:** Persisted Drafts loaded all rows but had no search control, making saved/provider-synced drafts difficult to find as mailbox volume grows.
+- **Root cause:** The UI rendered the fetched array directly without query state or searchable-field normalization.
+- **Remedy:** Add client-side search across subject, body, recipient addresses, and mailbox address while retaining the organization-scoped persisted API as the source of records; display a distinct no-match state.
+- **Prevention:** For bounded list screens, make common search fields discoverable and distinguish an empty dataset from a query with no matches. Keep tenant scoping in the server/API boundary.
+- **Related record:** `apps/web/src/app/mail/drafts/drafts-client.tsx`; commit `8ccf1cb24039cb3bc745a51576a73ee68007e946`.
