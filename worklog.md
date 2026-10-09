@@ -1408,3 +1408,13 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Commits: `9c6bc94e` API, `95970d59` page, `c4cb353b` assertions, `ccbb50ed` migration inventory, `2018eca4` / `10551cbb` next action, `a00a0235` verification record.
 - Verification: no tests/typecheck/build/browser/API/database/live retrieval run. Source only; no PASS claimed.
 - Next: adapt Activity to the Lovable design, preserving real organization-scoped event data and empty/error/loading states, then Audit. Do not wait for CI/Vercel.
+ 
+
+## 2026-10-09 — DEV-01 Activity and Audit Lovable UI continuation
+
+- Reworked Activity into a responsive timeline backed by the existing organization-authorized `/api/audit?limit=50` endpoint. Added event-type and decision filters, refresh, semantic status styles, and explicit loading, empty, and error states. No synthetic events were introduced.
+- Reworked Audit into a compact responsive audit table with semantic decision styling, live search/event-type/decision filtering, request cancellation for stale results, refresh, and CSV/JSON export links carrying the active filters. The existing `audit.read` server authorization boundary and export routes remain authoritative.
+- Added static source-contract assertions and updated `docs/project-control/LOVABLE_UI_MIGRATION.md` plus `docs/project-control/NEXT_ACTION.md`.
+- Commits: `a0830b1342e811c2fa51a2deece63c05e2f3ad3a` (Activity), `7c118bbdcc8ee44ca51db8879de06797185367b2` (Audit), `23d9c3fc1592f97ba284e51f47e1195a2e522834` (contracts), `7419f5720a882b7cdad664f9bfef198d8c9508ef` (assertion correction), `ed8c5262c96237454e23bdaf53c07f69a2ef126e` (inventory), `2dcee8463a347f239df57071953799751f2368af` (NEXT_ACTION).
+- **Verification NOT RUN:** no tests, typecheck, build, browser/accessibility, or live API/database check. No CI/Vercel polling and no PASS claimed.
+- **Next:** continue route migration with Operations, then Settings/provider subsections, Login/Setup, agent detail/version/history, and responsive/accessibility review.
