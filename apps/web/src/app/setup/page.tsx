@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowRight, CheckCircle2, KeyRound } from "lucide-react";
 import { ArrowRight, CheckCircle2, KeyRound, ShieldCheck } from "lucide-react";
 
 export default function SetupPage() {
@@ -32,11 +33,11 @@ export default function SetupPage() {
   }
 
   if (done) {
-    return <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,oklch(0.88_0.105_152/.22),transparent_35%)] px-5 py-10">
+    return <main className="min-h-screen bg-background px-5 py-10">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-md items-center">
         <div className="w-full rounded-md border bg-background/95 p-8 text-center shadow-sm shadow-black/5">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md border border-emerald-500/20 bg-emerald-500/10 text-emerald-600"><CheckCircle2 className="h-6 w-6" /></div>
-          <h1 className="mt-5 text-2xl font-semibold">Workspace initialized</h1>
+          <h1 className="mt-5 font-display text-2xl font-medium">Workspace initialized</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">Your owner account is ready. Sign in to open the communications workspace.</p>
           <button onClick={() => router.replace("/login")} className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90">Continue to sign in <ArrowRight className="h-4 w-4" /></button>
         </div>
@@ -47,12 +48,12 @@ export default function SetupPage() {
   const update = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) =>
     setForm(current => ({ ...current, [key]: event.target.value }));
 
-  return <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,oklch(0.88_0.105_152/.22),transparent_35%),radial-gradient(circle_at_20%_20%,oklch(0.985_0.004_80/.75),transparent_32%)] px-5 py-10">
+  return <main className="min-h-screen bg-background px-5 py-10">
     <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-lg items-center">
       <div className="w-full rounded-md border bg-background/95 p-8 shadow-sm shadow-black/5 backdrop-blur">
         <div className="mb-7">
           <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.18em] text-muted-foreground"><KeyRound className="h-3.5 w-3.5 text-primary" /> Clara Comms · first run</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Initialize your workspace</h1>
+          <h1 className="mt-2 font-display text-3xl font-medium tracking-tight">Initialize your workspace</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">Create the first organization owner. This route is available only while no password credential exists and requires the server-side bootstrap secret.</p>
         </div>
         <form onSubmit={submit} className="space-y-4">
