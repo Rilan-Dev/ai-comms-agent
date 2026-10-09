@@ -8,13 +8,15 @@ test("IMAP/SMTP adapter advertises the implemented secure connection capabilitie
 
   assert.equal(capabilities.folders, true);
   assert.equal(capabilities.sync_full, true);
-  assert.equal(capabilities.sync_idle, true);
-  assert.equal(capabilities.search_server_side, true);
-  assert.equal(capabilities.drafts, true);
-  assert.equal(capabilities.send, true);
+  assert.equal(capabilities.sync_idle, false);
+  assert.equal(capabilities.search_server_side, false);
+  assert.equal(capabilities.sync_incremental, true);
+  assert.equal(capabilities.search_client_side, true);
+  assert.equal(capabilities.drafts, false);
+  assert.equal(capabilities.send, false);
   assert.equal(capabilities.labels, false);
   assert.equal(capabilities.archive, false);
-  assert.equal(capabilities.threads, false);
+  assert.equal(capabilities.threads, true);
 });
 
 test("IMAP/SMTP adapter rejects plaintext transport before opening sockets", async () => {
@@ -60,4 +62,25 @@ test("IMAP/SMTP adapter blocks private and local network targets to prevent serv
     () => provider.connect({ credential_type: "password", username: "user", password: "secret", host: "localhost", tls: true }),
     /public address/,
   );
+});
+
+
+test("IMAP RFC822 parser extracts identity, headers, recipients, body and draft folder semantics", () => {
+  const provider = new ImapSmtpAdapter() as unknown as {
+    parseRawMessage: (raw: string, folderId: string, uid: string, flags?: string) => {
+      provider_message_id?: string; message_id_header: string; from_address: string;
+      to_addresses: string[]; subject: string; text_body: string; is_read: boolean; is_draft: boolean;
+    };
+  };
+  const message = provider.parseRawMessage(
+    "From: Alice Example <alice@example.test>\\r\\nTo: Bob <bob@example.test>\\r\\nSubject: =?UTF-8?B?SGVsbG8=?=\\r\\nMessage-ID: <m-1@example.test>\\r\\nDate: Thu, 08 Oct 2026 10:00:00 +0000\\r\\nContent-Type: text/plain; charset=utf-8\\r\\n\\r\\nHello from IMAP",
+    "Drafts", "42", "* 1 FETCH (UID 42 FLAGS (\\\\Draft))",
+  );
+  assert.equal(message.provider_message_id, "Drafts:42");
+  assert.equal(message.message_id_header, "<m-1@example.test>");
+  assert.equal(message.from_address, "alice@example.test");
+  assert.deepEqual(message.to_addresses, ["bob@example.test"]);
+  assert.equal(message.subject, "Hello");
+  assert.equal(message.text_body, "Hello from IMAP");
+  assert.equal(message.is_draft, true);
 });
