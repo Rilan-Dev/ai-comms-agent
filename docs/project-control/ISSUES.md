@@ -87,6 +87,16 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 
 ---
 
+## ISS-019 — Web typecheck missing UI dependency and strict focus/test diagnostics
+
+- **Opened:** 2026-10-09
+- **Severity:** high (blocks web typecheck)
+- **Owner:** FIX-01 / Sentinel
+- **Status:** in_progress
+- **Description:** User-reported web typecheck found undeclared lucide-react imports across migrated UI, strict indexed-access errors in two focus traps, and an undefined newAgentPage test source variable.
+- **Source correction:** Declared Lucide in the web workspace and pnpm lockfile with published SHA-512 integrity; narrowed focus element types after the explicit empty-array guard; added the new-agent page source binding. Commits: 8f09785a, 7b1136e6, 3e35c1f5, a9dcb8e5, 52a4e348.
+- **Resolution evidence still pending:** frozen install, focused tests, and web/worker typechecks. Do not mark resolved until actual execution output is available.
+
 ## Issue history
 
 | ID | Date opened | Date resolved | Summary |
