@@ -52,14 +52,24 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   useEffect(() => {
     if (tab !== "channels") return;
     let cancelled = false;
-    fetch(`/api/email-accounts?organizationId=${encodeURIComponent(organizationId)}`, { headers: {} })
-      .then(async (response) => {
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.message ?? "Email accounts could not be loaded.");
-        if (!cancelled) { setEmailAccounts(payload.accounts ?? []); setWhatsappAccounts(payload.whatsappAccounts ?? []); }
+    void Promise.all([
+      fetch(`/api/email-accounts?organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" }),
+      fetch(`/api/whatsapp/accounts?organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" }),
+    ])
+      .then(async ([emailResponse, whatsappResponse]) => {
+        const [emailPayload, whatsappPayload] = await Promise.all([
+          emailResponse.json().catch(() => ({})),
+          whatsappResponse.json().catch(() => ({})),
+        ]);
+        if (!emailResponse.ok) throw new Error(emailPayload.message ?? "Email accounts could not be loaded.");
+        if (!whatsappResponse.ok) throw new Error(whatsappPayload.message ?? "WhatsApp accounts could not be loaded.");
+        if (!cancelled) {
+          setEmailAccounts(emailPayload.accounts ?? []);
+          setWhatsappAccounts(whatsappPayload.accounts ?? []);
+        }
       })
       .catch((error) => {
-        if (!cancelled) notify({ kind:"error", title:"Email accounts unavailable", message:error instanceof Error ? error.message : "Unable to load email accounts." });
+        if (!cancelled) notify({ kind:"error", title:"Channel accounts unavailable", message:error instanceof Error ? error.message : "Unable to load channel accounts." });
       });
     return () => { cancelled = true; };
   }, [tab, organizationId, notify]);
