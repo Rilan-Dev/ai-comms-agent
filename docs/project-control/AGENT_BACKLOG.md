@@ -31,3 +31,13 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - State: SOURCE_FIXED
 - Commit: `197e6535eab0cafde3e84db8f0605b7a174b3b03`
 - The login boundary now refuses to create sessions for accounts lacking an active organization membership, eliminating the success → `not_provisioned` redirect loop. Runtime deployment/verification remains with OPS-01.
+
+
+### BKL-008 — Mail tenant-context and inbox search query defects
+- **Work:** Inspect and correct the Drafts server page's use of `getDevOrgId()` instead of authenticated organization context; inspect Inbox repository SQL parameter placeholders and add regression coverage.
+- **Owner:** FIX-01 / Sentinel
+- **State:** ROUTED
+- **Dependency:** None for source diagnosis; runtime verification remains separate.
+- **Authorization:** Existing product security requirements and explicit instruction to route substantial bugs to FIX-01.
+- **Suggested next action:** Trace `/mail/drafts` organization resolution and `listInboxMessages()` SQL; preserve fail-closed organization authorization, correct confirmed defects, and add targeted tests.
+- **Related session/event/handoff:** DEV01-DRAFT-SEARCH-20261009; EVT-DEV01-MAIL-ROUTING-20261009.
