@@ -202,8 +202,8 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       ...result.added.map((item) => item.provider_message_id),
       ...result.updated.map((item) => item.provider_message_id),
     ]);
-    let saved = 0;
     const ids = [...messageIds];
+    const fetchedMessages: EmailMessage[] = [];
     for (let offset = 0; offset < ids.length; offset += 8) {
       const page = await Promise.all(ids.slice(offset, offset + 8).map((id) => adapter.getMessage(id)));
       for (const message of page) if (message) fetchedMessages.push(message);
