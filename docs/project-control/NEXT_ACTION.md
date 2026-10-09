@@ -905,3 +905,7 @@ A further source review found the Google Fonts CSS import after the Tailwind the
 ### Cross-route review finding routed to FIX-01 — audit export organization fallback (2026-10-09)
 
 Source inspection found `apps/web/src/app/api/audit/export/route.ts` falls back to `getDevOrgId()` when `organizationId` is omitted, while the Audit UI's export links omit that parameter. The export handler still calls `authorize`, but selecting the organization via a development fallback is inconsistent with the authenticated active-organization boundary used by `/api/audit`. This is a tenant-context/security correctness issue outside DEV-01's UI-only scope; route to FIX-01 for a minimal correction and regression coverage. Do not claim export tenant isolation is verified. DEV-01 continues the independent responsive/accessibility review; do not wait for CI/Vercel.
+
+ 
+### FIX-01 lockfile follow-up — 2026-10-09
+User's `pnpm run typecheck` was blocked before TypeScript by `ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY` for `amqplib@2.2.0`. Commit `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e` removes a stray concatenated YAML document and restores the worker package/snapshot entries. **Next:** pull latest `main`, run `pnpm install --frozen-lockfile`, then `pnpm run typecheck`; record real output. Source correction is not a verification PASS. Do not wait for CI/Vercel.
