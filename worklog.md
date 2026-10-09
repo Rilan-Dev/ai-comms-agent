@@ -1498,3 +1498,6 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Fixed the Agent Detail Channels tab to load WhatsApp accounts from `/api/whatsapp/accounts` instead of incorrectly expecting them in the email-account response. Both endpoints are queried with the active organization ID; the effect ignores stale results on tab/organization changes.
 - Added contract coverage and accessible labeling for the deployment/pause confirmation dialog. Source commits and unverified status are recorded in `docs/project-control/DEV-01/WORKLOG.md` and `docs/project-control/VERIFICATION_STATE.md`.
 - Tests/typecheck/build/browser/live API checks were not run. No PASS claimed.
+
+
+- **2026-10-09 follow-up:** during source-level responsive/accessibility review, the Activity route was found to use submitted server-side search/event/decision filters. Corrected the duplicate static UI assertion to match the actual /api/audit? request and filter-submit handler (c4615ab5). This was not a test run; tests/typecheck/build/browser remain NOT RUN.
