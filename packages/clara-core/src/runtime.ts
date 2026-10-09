@@ -214,6 +214,8 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
   if (!ctx.orgId || !process.env.DATABASE_URL) {
     return { ok: false, result: { sources: [] }, error: "PostgreSQL is not configured for local knowledge retrieval." };
   }
+  const terms = [...new Set(queryText.toLowerCase().match(/[\\p{L}\\p{N}_]{2,}/gu) ?? [])].slice(0, 12);
+  const textQuery = terms.join(" | ");
   try {
     const result = await query<{ id: string; content: string; metadata: Record<string, unknown> | null }>(
       `SELECT kc.id, kc.content, kc.metadata
@@ -228,10 +230,16 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
                OR ($2::text IS NOT NULL AND (kd.agent_id IS NULL OR kd.agent_id::text = $2))
              )
          )
-         AND kc.content ILIKE '%' || $3 || '%'
-       ORDER BY kc.created_at DESC
-       LIMIT $4`,
-      [ctx.orgId, ctx.agentId, queryText, Math.max(1, Math.min(topK, 12))],
+         AND (
+           kc.content ILIKE '%' || $3 || '%'
+           OR ($4::text <> '' AND to_tsvector('simple', kc.content) @@ to_tsquery('simple', $4))
+         )
+       ORDER BY
+         CASE WHEN kc.content ILIKE '%' || $3 || '%' THEN 0 ELSE 1 END,
+         CASE WHEN $4::text <> '' THEN ts_rank(to_tsvector('simple', kc.content), to_tsquery('simple', $4)) ELSE 0 END DESC,
+         kc.created_at DESC
+       LIMIT $5`,
+      [ctx.orgId, ctx.agentId, queryText, textQuery, Math.max(1, Math.min(topK, 12))],
     );
     return {
       ok: true,
