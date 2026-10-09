@@ -105,15 +105,15 @@ export function ChatClient({
   return (
     <main className="flex min-h-[calc(100vh-72px)] min-w-0 flex-col bg-background">
       <header className="border-b bg-background/85 px-5 py-4 backdrop-blur sm:px-7">
-        <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-4">
-          <div>
+        <div className="mx-auto flex max-w-[1180px] items-start justify-between gap-3 sm:items-center sm:gap-4">
+          <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Clara workspace</p>
             <h1 className="mt-1 font-display text-2xl font-medium tracking-tight">Chat with your agent<span className="text-tertiary">.</span></h1>
             <p className="mt-1 text-sm text-muted-foreground">Grounded through Clara. Actions remain behind the host authorization boundary.</p>
           </div>
-          <label className="hidden items-center gap-2 rounded-md border bg-background px-3 py-2 sm:flex">
-            <span className="text-xs text-muted-foreground">Agent</span>
-            <select value={activeAgent?.id ?? ""} onChange={(event) => void switchAgent(event.target.value)} className="bg-transparent text-sm font-semibold outline-none">
+          <label className="flex shrink-0 items-center gap-2 rounded-md border bg-background px-2 py-2 sm:px-3">
+            <span className="hidden text-xs text-muted-foreground sm:inline">Agent</span>
+            <select aria-label="Choose agent for chat" value={activeAgent?.id ?? ""} onChange={(event) => void switchAgent(event.target.value)} className="min-w-0 max-w-[38vw] bg-transparent text-xs font-semibold outline-none sm:max-w-none sm:text-sm">
               {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
             </select>
           </label>
