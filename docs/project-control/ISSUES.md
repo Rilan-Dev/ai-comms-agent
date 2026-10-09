@@ -314,3 +314,9 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Source remedy:** Replaced the multi-document file with the actual workspace lockfile and added the missing package resolution and empty snapshot for `amqplib@2.2.0`. Commit: `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e`.
 - **Verification:** Source structure inspected after commit (one lockfile document; importer/package/snapshot entries present). pnpm install/typecheck has not yet been rerun; no PASS claimed.
 - **Next action:** Pull latest `main`, run `pnpm install --frozen-lockfile`, then `pnpm run typecheck`. If frozen install reports further lockfile mismatch, regenerate using repository-pinned pnpm 12.8.1 and commit the generated lockfile. Do not wait for CI/Vercel.
+
+## ISS-017 follow-up — 2026-10-09
+- **Update:** Current main already contains the lockfile correction at `27f04065d08ec0ee7b6c7cd58ced0a60d510cd3e`. FIX-01 added regression source assertions in `apps/web/tests/migration-verification.test.ts`, commit `b9ba0c6738e32cf4ef8b670a4b65857a56eb50f2`.
+- **Root cause / failed remedy reaffirmed:** malformed concatenated lockfile documents plus missing `amqplib@2.2.0` package/snapshot records; `pnpm install --fix-lockfile` reproduced the same error.
+- **Status:** source_corrected_verification_pending. Frozen install, test, typecheck, and Docker build have not been run after the correction.
+- **Next action:** Pull latest main, run `pnpm install --frozen-lockfile`, then `pnpm run typecheck`. Route unrelated Docker host/build infrastructure defects to OPS-01.
