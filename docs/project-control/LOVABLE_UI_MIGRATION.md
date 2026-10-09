@@ -1,0 +1,67 @@
+# Lovable UI Migration Inventory
+
+Updated: 2026-10-09
+Owner: DEV-01 / Forge
+Authority: explicit owner request to migrate the Lovable-generated UI/UX into the existing application while preserving all existing functionality and validation.
+Source: `source/lovable-ui/` (Agentic AI Studio, TanStack/Vite reference UI).
+Target: `apps/web/src/app/**` (production Next.js application). Keep Next.js routes, server actions/API contracts, authenticated shell, tenant/RBAC boundaries, real PostgreSQL-backed state, validation and error states. Do not transplant the Vite/TanStack runtime or replace live data with source demo data.
+
+## Source design assets reviewed
+
+- `source/lovable-ui/src/styles.css`: warm off-white background, ink foreground, fine neutral borders, restrained green accent, compact radius, DM Sans + Space Grotesk, semantic status tokens, reduced-motion support.
+- `source/lovable-ui/src/components/workspace-shell.tsx`: page header/layout and workspace chrome.
+- `source/lovable-ui/src/components/ui/**`: shadcn/Radix interaction primitives and Lucide icon language.
+- `source/lovable-ui/src/routes/index.tsx`: daily briefing, priority inbox, agent composer and activity-oriented overview.
+- `source/lovable-ui/src/routes/mail/inbox.tsx`: three-pane inbox, source filters, conversation list and selected-message detail.
+- `source/lovable-ui/src/routes/settings/connections.tsx`: connection status cards and safe/not-connected states.
+- `source/lovable-ui/docs/migration/FUNCTIONALITY-MIGRATION.md` and `.lovable/plan/ai-communications-workspace-redesign-2026-10-04.md`: design and migration constraints.
+
+## Migration status (source inspection, not browser acceptance)
+
+| Surface | Target route(s) | Status | Remaining work / acceptance notes |
+|---|---|---|---|
+| Global semantic theme, typography, compact geometry, focus/reduced-motion | `app/globals.css`, `app/layout.tsx` | ADAPTED | Continue visual consistency review across all routes; no browser pass recorded. |
+| Workspace shell, responsive sidebar, top bar, navigation/icons | `components/sidebar.tsx`, `components/top-bar.tsx`, `app/layout.tsx` | ADAPTED | Validate each route's active nav, mobile behavior, icon fit and responsive overflow later. |
+| Overview / daily briefing | `app/page.tsx` | ADAPTED | API-backed overview, honest loading/error/empty states; visual/browser verification pending. |
+| Inbox | `app/mail/inbox/**` | ADAPTED | Search/filter/read-state/archive/move/refresh and links retained; verification pending. |
+| Agents list and create | `app/agents/**` | ADAPTED | Create API, slug/purpose validation and navigation retained. |
+| Mail accounts | `app/mail/accounts/**` | ADAPTED | Provider forms, test, save, disconnect/remove, mailbox search retained. |
+| Drafts | `app/mail/drafts/**` | ADAPTED | Persisted search, provider sync, edit and delete retained; tenant/query defects routed separately to FIX-01. |
+| Threads and thread detail | `app/mail/threads/**`, `app/mail/thread/**` | ADAPTED | Designed list/empty states and existing thread actions retained; verification pending. |
+| Compose | `app/mail/compose/**` | ADAPTED | Draft saving and explicit send-approval request retained; no implicit send. |
+| Approvals | `app/mail/approvals/**` | ADAPTED | Explicit approve/reject and truthful empty state retained; suspected server tenant-context defect routed to FIX-01 (BKL-012). |
+| WhatsApp | `app/whatsapp/**` | NOT YET ADAPTED | Apply theme, page hierarchy, connection/message states and Lucide icons while retaining real API behavior and clear unavailable/error states. |
+| Automations | `app/automations/**` | NOT YET ADAPTED | Adapt list/editor/status cards; preserve persistence, authorization, validation and execution safeguards. |
+| Schedules | `app/schedules/**` | NOT YET ADAPTED | Adapt schedule list/form/run states; preserve timezone, recurrence validation and durable job semantics. |
+| Chat | `app/chat/**` | NOT YET ADAPTED | Apply workspace composer/message layout and loading/error states; preserve Clara backend, auth and safe email-context behavior. |
+| AI & Voice | `app/ai-voice/**` | NOT YET ADAPTED | Adapt voice workspace, provider/status controls and responsive layout; preserve runtime configuration and session/error handling. |
+| Knowledge | `app/knowledge/**` | NOT YET ADAPTED | Adapt knowledge/RAG surfaces, indexing status and empty/error states without fake indexed data. |
+| Activity | `app/activity/**` | NOT YET ADAPTED | Adapt activity timeline, event labels/status icons and filters while retaining tenant-scoped records. |
+| Audit | `app/audit/**` | NOT YET ADAPTED | Adapt audit list/export presentation; never remove audit events, authorization or export safeguards. |
+| Operations | `app/operations/**` | NOT YET ADAPTED | Adapt health/worker/queue status hierarchy and degraded states; don't imply healthy without evidence. |
+| Settings (general, AI providers/runtime, Gmail OAuth, Zoho OAuth) | `app/settings/**` | NOT YET ADAPTED | Apply same cards, tabs/sections, field spacing, provider iconography and validation/error display. Keep secrets server-only and preserve validation. |
+| Login and setup | `app/login/**`, `app/setup/**` | PARTIAL / REVIEW | Keep existing authentication and provisioning validation intact; align visual language without weakening security or redirect/session boundaries. |
+| Agent detail/version/history and all remaining controls | `app/agents/[id]/**` | PARTIAL / REVIEW | Agents list/create is adapted; audit/policy/channels/deploy/simulate/versions and detail subviews need explicit screen-by-screen audit against the Lovable style and working behavior. |
+| Shared UI primitives/icons | existing `apps/web/src/components/**` | PARTIAL / REVIEW | Reuse installed Lucide icons and existing controls; don't add a parallel sidebar or copy incompatible Vite dependencies wholesale. |
+
+## Completion rule
+
+A screen is not "migrated" merely because global CSS tokens exist. Mark it ADAPTED only when the route's actual visual hierarchy, responsive layout, controls, icons, validation messages, loading/empty/error states and existing actions have been inspected and adapted. Add static contract assertions for important functionality. Record tests/typecheck/build/browser checks as NOT RUN unless actual output is available.
+
+## Exact remaining screen queue
+
+1. WhatsApp.
+2. Automations.
+3. Schedules.
+4. Chat.
+5. AI & Voice.
+6. Knowledge.
+7. Activity.
+8. Audit.
+9. Operations.
+10. Settings and provider-settings subpages.
+11. Login/setup visual consistency.
+12. Agent detail, version/history and secondary controls.
+13. Cross-route responsive/icon/accessibility review and focused test coverage.
+
+This is an explicit inventory, not a claim that every listed page is already migrated or verified.
