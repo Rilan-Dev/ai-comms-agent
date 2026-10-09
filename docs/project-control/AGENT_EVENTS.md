@@ -164,3 +164,14 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Owner:** FIX-01 / Sentinel
 - **Suggested next action:** Verify the defect, change only the server-side organization resolution, preserve authorization checks, and add focused regression coverage.
 - **Related records:** BKL-012; `apps/web/src/app/mail/approvals/page.tsx`.
+
+
+### EVT-DEV01-WHATSAPP-CONNECT-20261009 — 2026-10-09
+- Agent/session: DEV-01 / Forge — DEV01-WHATSAPP-CONNECT-20261009
+- Type: IMPLEMENTATION
+- Summary: Connected the WhatsApp route to its existing real client using authenticated organization context; the previously inert Connect WhatsApp Business button now opens the encrypted Meta Cloud API credential workflow.
+- Impact: Restores user-visible connection workflow continuity without inventing new APIs or falsely reporting verified status.
+- Source commits: 58ba5541, 94878571, 49c94de3, 2cbe4ab9, 9eb3a168.
+- Verification: NOT RUN — tests/typecheck/build/browser/Meta/webhook/live messaging not executed.
+- Next: Knowledge UI with real org-scoped persisted state, then remaining route migration. OPS-01 retains live database/Redis remediation; FIX-01 retains unrelated substantial bugs.
+- Session record: docs/project-control/sessions/DEV01-WHATSAPP-CONNECT-20261009.md.
