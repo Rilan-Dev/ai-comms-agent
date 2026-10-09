@@ -131,3 +131,11 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Next:** Run the focused tests and worker/web typechecks in a dependency-equipped environment, then continue real-server and provider→PostgreSQL→Clara acceptance. Redis, RabbitMQ, and Qdrant email indexing remain incomplete at application level. FIX-01 owns BKL-008; OPS-01 owns production infrastructure/deployment.
 
 - **Additional IMAP correction:** Stable thread IDs now use the oldest/root References identifier, then Message-ID, then folder/UID; parser regression assertion added. Commits `e21fd2fad824a41180deb6cf89b4f7aafb051f7c`, `d5dbd54cb7cb7b224d39b9b4e836b62501c575d3`. Tests remain unexecuted.
+
+
+### DEV01-FOCUSED-TEST-REVIEW-20261009 — 2026-10-09
+- **Task:** Review focused Zoho/IMAP test targets and correct deterministic source defects before runtime verification.
+- **Changes:** Fixed Zoho mock setup so tests cover the adapter's actual account discovery endpoint; corrected IMAP LIST command CRLF/mailbox quoting; aligned Zoho capability metadata with its bounded incremental refresh.
+- **Commits:** `f04eb93d27ee01934970e64679be381d6dec6500`, `fe3e2d39157f74c66741772966125cfee81055a1`, `5a59ec5745f8d3a3f735220f9496e14c79dece22` (intermediate IMAP source correction commits `2146facf04762ffd07fbd1458ad5a9f4256cf56`, `2f5b63e1a65b6aded5b602c0f439c689cd49c45f`).
+- **Verification:** No test/typecheck command ran. These are source-review corrections, not passing-test evidence. Real-server and deployed DB/chat acceptance remain unavailable in this source-edit session.
+- **Next:** Run focused Zoho/IMAP tests and worker/web typechecks in a dependency-equipped environment, then continue email-to-PostgreSQL-to-Clara verification and infrastructure integrations. FIX-01 owns BKL-008; OPS-01 owns production infrastructure/deployment.
