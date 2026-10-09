@@ -115,3 +115,11 @@
 
 
 - **Cross-route source review follow-up:** the Activity page was advanced concurrently to use submitted server-side search/event/decision filters on the existing /api/audit endpoint. Updated the duplicate static contract assertion to match the actual server-backed filter implementation rather than the earlier client-filter draft. Commit: c4615ab5. This is source inspection only; Vitest was not run.
+## 2026-10-09 — DEV-01 cross-route responsive/accessibility review (in progress)
+
+- Inspected the current sticky top bar, mobile sidebar, global focus styles, Settings section navigation, auth pages and agent-detail navigation while continuing the Lovable UI migration.
+- Corrected Settings section navigation from `top-0 z-20` to `top-[64px] z-10`, keeping it below the 64px global sticky top bar and preventing same-level stacking conflicts.
+- Added Escape-key dismissal for the mobile sidebar and `aria-expanded` / `aria-controls` state on the open-navigation trigger.
+- Added focused source assertions for the sticky offset, sidebar control linkage, and Escape affordance. Commits: Settings nav `1761c404`; sidebar `8235d93c`; contract assertions `7dd88044`, `ab03be9f`, `46fff87b`; inventory `ff18009c`; NEXT_ACTION `0a56626f`.
+- **Verification NOT RUN:** static assertions have not been executed; no tests, typecheck, build, browser, screen reader, or device checks were run. No PASS claimed.
+- **Next:** continue route-by-route narrow viewport and keyboard/accessibility inspection; check visible secondary controls and loading/error/status announcements. Do not wait for CI/Vercel. OPS-01's migration/Redis runtime incident remains separate.
