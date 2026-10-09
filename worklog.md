@@ -1533,3 +1533,5 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - Chat now exposes a labelled conversation log and announces the thinking state; its composer has an accessible name. Agent channel account/role selectors also have explicit accessible names.
 - Source commits: `d73099d6`, `3d8ac3a3`, `837b4b19`; static assertions: `0a603b76`, `f8c3aefd`; inventory `fb4edaa9`; NEXT_ACTION `31289d12`.
 - Tests/typecheck/build/browser/screen-reader/narrow-device checks NOT RUN. No PASS claimed. Continue the cross-route review without CI/Vercel waiting; OPS-01 owns the independent database-migration/Redis incident.
+
+- **Mobile Chat selector correction:** source review found the agent selector was hidden below the `sm` breakpoint, preventing agent switching on narrow screens. Made it visible at all widths with a constrained mobile width and accessible name. Source commit `bc8e698f`, assertion `ad7dc7f8`; browser/device checks NOT RUN.
