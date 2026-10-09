@@ -69,3 +69,12 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Authorization:** User-supplied live runtime logs and active FIX-01 incident.
 - **Suggested next action:** Pull latest `main`; apply migrations through `0029` using the repository migration procedure; verify web and worker share the intended PostgreSQL endpoint; rebuild/restart both images; inspect the Redis error after the diagnostic patch. Fix AUTH/ACL/TLS/URL as evidenced. Do not disable lease locking or force unsafe concurrent polling.
 - **Related records:** ISS-015; FIX-01 worklog entry dated 2026-10-09.
+
+### BKL-012 — 2026-10-09
+- **Work:** Review and correct Mail Approvals organization context if confirmed; `apps/web/src/app/mail/approvals/page.tsx` currently calls `ensureDevSeed()` and `getDevOrgId()` rather than resolving the authenticated user's active organization.
+- **Owner:** FIX-01 / Sentinel
+- **State:** ROUTED
+- **Dependency:** None for source diagnosis; runtime verification is separate.
+- **Authorization:** Existing product security/tenant-isolation requirements and DEV-01 source discovery while executing the authorized UI migration.
+- **Suggested next action:** Trace the approvals client/API contract and replace seeded development-organization selection with the authenticated request context; preserve API-side permission checks and add a regression assertion. Do not weaken authorization.
+- **Related session/event/handoff:** DEV01-LOVABLE-UI-MIGRATION-20261009; `apps/web/src/app/mail/approvals/page.tsx`.
