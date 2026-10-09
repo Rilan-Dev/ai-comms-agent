@@ -152,7 +152,7 @@ export class ImapSmtpAdapter implements EmailProvider {
     await smtpCommand(smtpReader, `EHLO ${smtpHost}`);
     const auth = await smtpCommand(
       smtpReader,
-      `AUTH PLAIN ${Buffer.from(`\\0${username}\\0${password}`).toString("base64")}`,
+      `AUTH PLAIN ${Buffer.from(`\0${username}\0${password}`).toString("base64")}`,
     );
     if (!/^235\b/.test(auth)) {
       smtpSocket.destroy();
@@ -291,7 +291,8 @@ export class ImapSmtpAdapter implements EmailProvider {
       previousValidity = parts[2] ?? "";
     }
     const checkpoints: Record<string, { uid: number; validity: string }> = {};
-    if (state.sync_mode === "incremental" && state.history_token?.startsWith("imap-v1:")) {
+    // Checkpoints must survive bounded initial-import batches too, not only incremental runs.
+    if (state.history_token?.startsWith("imap-v1:")) {
       try { Object.assign(checkpoints, JSON.parse(decodeURIComponent(state.history_token.slice(8)))); } catch { /* invalid cursor forces safe rescan */ }
     }
     const added: SyncResult["added"] = [];
@@ -319,7 +320,17 @@ export class ImapSmtpAdapter implements EmailProvider {
       pages++;
       if (fresh.length === 50 && (uids.find((uid) => uid > fresh[fresh.length - 1]!) !== undefined)) {
         lastUid = fresh[fresh.length - 1]!;
-        return { added, updated, deleted: [], new_state: { ...state, cursor: `imap:${folderIndex}:${lastUid}:${validity}`, history_token: state.history_token, sync_mode: "initial", last_sync_at: new Date().toISOString() } };
+        checkpoints[folder.provider_folder_id] = { uid: lastUid, validity };
+        return {
+          added, updated, deleted: [],
+          new_state: {
+            ...state,
+            cursor: `imap:${folderIndex}:${lastUid}:${validity}`,
+            history_token: `imap-v1:${encodeURIComponent(JSON.stringify(checkpoints))}`,
+            sync_mode: "initial",
+            last_sync_at: new Date().toISOString(),
+          },
+        };
       }
       checkpoints[folder.provider_folder_id] = { uid: uids.length ? Math.max(...uids) : 0, validity };
       folderIndex++;
