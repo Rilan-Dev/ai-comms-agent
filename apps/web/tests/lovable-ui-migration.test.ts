@@ -9,6 +9,7 @@ const topBar = readFileSync(resolve(__dirname, "../src/components/top-bar.tsx"),
 const overview = readFileSync(resolve(__dirname, "../src/app/page.tsx"), "utf8");
 const inbox = readFileSync(resolve(__dirname, "../src/app/mail/inbox/inbox-client.tsx"), "utf8");
 const login = readFileSync(resolve(__dirname, "../src/app/login/page.tsx"), "utf8");
+const agents = readFileSync(resolve(__dirname, "../src/app/agents/agents-client.tsx"), "utf8");
 
 describe("Lovable Agentic AI Studio UI adaptation", () => {
   it("uses the Lovable semantic palette and typography without replacing Tailwind tokens", () => {
@@ -28,6 +29,12 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(sidebar).toContain('href: "/ai-voice"');
     expect(sidebar).toContain("setMobileOpen(true)");
     expect(sidebar).toContain("/api/auth/logout");
+  });
+
+  it("uses inline agent iconography without changing the persisted create flow", () => {
+    expect(agents).toContain("function AgentMark");
+    expect(agents).toContain("slugifyAgentName(name)");
+    expect(agents).toContain("router.push(");
   });
 
   it("keeps workspace search connected to the real Inbox query state", () => {
