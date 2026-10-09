@@ -11,6 +11,8 @@ import { ImapSmtpAdapter } from "./imap-smtp-adapter";
 import { randomUUID } from "node:crypto";
 import { acquireRedisLease, releaseRedisLease } from "./redis-lease";
 import type { EmailProvider } from "@ai-comms-agent/shared";
+import { publishEmailSync } from "../queues/email-sync-rabbitmq";
+import type { EmailSyncPayload } from "../queues/email-sync-message";
 
 type Candidate = {
   id: string;
@@ -273,6 +275,71 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
   }
 }
 
+export async function processMailboxSyncMessage(payload: EmailSyncPayload): Promise<void> {
+  if (!process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY) {
+    throw new Error("PostgreSQL and credential encryption must be configured for email sync.");
+  }
+  const result = await query<Candidate>(
+    `SELECT a.id, a.organization_id, a.email_address, a.provider,
+       s.cursor AS sync_cursor, s.history_id, s.last_success_at
+     FROM email_accounts a
+     LEFT JOIN email_sync_states s ON s.email_account_id=a.id
+     WHERE a.id=$1 AND a.deleted_at IS NULL
+       AND a.provider IN ('gmail','zoho','imap_smtp')
+       AND a.status IN ('pending','connected','error')`,
+    [payload.account_id],
+  );
+  const candidate = result.rows[0];
+  // Deleted or disconnected accounts are terminal outcomes, not retryable failures.
+  if (!candidate) return;
+  const succeeded = await processAccount(candidate);
+  if (!succeeded) throw new Error("Mailbox sync did not complete; retry delivery is required.");
+}
+
+async function enqueueDueMailboxSyncs(limit = BATCH_SIZE): Promise<number> {
+  if (!process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY || !process.env.RABBITMQ_URL) return 0;
+  const result = await query<Candidate>(
+    `SELECT a.id, a.organization_id, a.email_address, a.provider,
+       s.cursor AS sync_cursor, s.history_id, s.last_success_at
+     FROM email_accounts a
+     LEFT JOIN email_sync_states s ON s.email_account_id=a.id
+     WHERE a.provider IN ('gmail','zoho','imap_smtp') AND a.deleted_at IS NULL
+       AND a.status IN ('pending','connected','error')
+       AND COALESCE(s.status::text,'idle') <> 'paused'
+       AND (s.next_attempt_at IS NULL OR s.next_attempt_at <= now())
+       AND (s.status IS NULL OR s.status <> 'running'
+         OR s.last_attempt_at < now()-interval '10 minutes')
+       AND (s.last_attempt_at IS NULL OR s.last_attempt_at < now()-interval '10 seconds')
+       AND (s.cursor IS NOT NULL OR s.last_success_at IS NULL
+         OR s.last_success_at < now()-interval '15 minutes'
+         OR a.status IN ('pending','error'))
+     ORDER BY CASE a.status WHEN 'pending' THEN 0 WHEN 'error' THEN 1 ELSE 2 END,
+       COALESCE(s.last_success_at, a.created_at) ASC
+     LIMIT $1`,
+    [Math.max(1, Math.min(limit, 10))],
+  );
+  let enqueued = 0;
+  for (const candidate of result.rows) {
+    await publishEmailSync({
+      account_id: candidate.id,
+      history_id: candidate.history_id ?? undefined,
+      triggered_by: "poll",
+    });
+    // Suppress repeat publication after broker confirmation. Consumer success clears this.
+    await query(
+      `INSERT INTO email_sync_states
+         (email_account_id, organization_id, status, next_attempt_at, updated_at)
+       VALUES ($1,$2,'idle',now()+interval '15 minutes',now())
+       ON CONFLICT (email_account_id) DO UPDATE SET
+         next_attempt_at=now()+interval '15 minutes', updated_at=now()
+       WHERE email_sync_states.status <> 'running'`,
+      [candidate.id, candidate.organization_id],
+    );
+    enqueued += 1;
+  }
+  return enqueued;
+}
+
 export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ attempted: number; succeeded: number }> {
   if (processing || !process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY) {
     return { attempted: 0, succeeded: 0 };
@@ -349,16 +416,18 @@ export function startMailboxSyncLoop() {
     return () => undefined;
   }
   let stopped = false;
+  const queueEnabled = Boolean(process.env.RABBITMQ_URL?.trim());
   const tick = async () => {
     if (stopped) return;
     try {
-      await processMailboxSyncBatch();
+      if (queueEnabled) await enqueueDueMailboxSyncs();
+      else await processMailboxSyncBatch();
     } catch (error) {
       console.error(JSON.stringify({
         timestamp: new Date().toISOString(),
         level: "error",
         service: "worker.email-sync",
-        message: "Mailbox synchronization poll failed",
+        message: queueEnabled ? "Mailbox queue producer poll failed" : "Mailbox synchronization poll failed",
         reason: error instanceof Error ? error.message : "Unknown worker error",
       }));
     }
