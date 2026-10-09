@@ -290,3 +290,16 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Verification:** source accepted by GitHub only. Migration has not been applied to the live database; no typecheck/test/build, live Redis command, mailbox sync, or runtime PASS is claimed.
 - **Next action:** OPS-01 pulls current `main`, applies migrations through `0029` to the exact PostgreSQL database used by both containers, rolls out matching web/worker images, and inspects the now-specific Redis error. Correct Redis credentials/ACL/TLS/URL based on the exact response; never bypass the lease failure or force uncoordinated multi-worker polling.
 - **Security note:** user pasted live-looking session/access and OAuth state/verifier values. Treat as exposed; rotate/revoke applicable session/access credentials and restart the OAuth flow. Do not copy those values into logs or project docs.
+
+## ISS-016 — Live inbox schema drift and Redis authentication
+- **Opened:** 2026-10-09
+- **Severity:** high
+- **Owner:** OPS-01 for live Redis credentials and migration rollout; FIX-01 for source/schema compatibility
+- **Status:** in_progress
+- **Evidence:** User-provided production logs show `email_messages.from_name` missing when loading the inbox. Worker reports Redis `WRONGPASS invalid username-password pair or user is disabled`, so the distributed lease fails and batches are skipped. The sync endpoint's `202 queued` / `queued: true` response means accepted for processing, not imported.
+- **Source remedy:** migration `0030_email_messages_runtime_reconciliation.sql` adds canonical inbox sender/recipient/body/direction columns and backfills compatible legacy names. Static migration regression source added.
+- **Commits:** migration `69c51678c8c12e0a0c070214dc09db77e0758dae`; static regression `e7a1e7ee396d542ffdf3edada895938a087b6a27`.
+- **Verification:** source committed only. Neither migration `0029` nor `0030` is confirmed applied; tests/build not run; Redis auth remains failing; no mailbox import success confirmed.
+- **Next action:** OPS-01 applies migrations through `0030` to the exact database used by web/worker, rebuilds/restarts both containers, and corrects `REDIS_URL` username/password against the actual Redis ACL/user configuration. Then retry sync and verify persisted message counts plus inbox rows. Do not bypass lease locking.
+- **UI correctness:** preserve the response as queued until worker completion; expose failed sync state and last_error rather than treating request acceptance as success.
+- **Security:** live-looking access/session values were pasted in the request. Revoke/rotate applicable tokens/cookies and restart OAuth as needed; never log or commit their values.
