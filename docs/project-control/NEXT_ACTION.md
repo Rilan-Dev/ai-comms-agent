@@ -6,6 +6,17 @@ The single exact next authorized action. Update this file on every commit.
 
 ## Current next action
 
+### DEV-01 Lovable UI migration — authoritative continuation update (2026-10-09)
+
+The owner explicitly requires the production application to adopt the Lovable-generated Agentic AI Studio visual design across all screens, without losing current application functionality or frontend validation. The route-by-route coverage matrix is maintained in `docs/project-control/LOVABLE_UI_MIGRATION.md`; use it as the migration checklist and update statuses as each screen is actually adapted.
+
+**Already adapted (source commits recorded in worklog):** shared semantic theme and shell; Overview; Inbox; Agents list/create; Mail Accounts; Drafts; Threads/thread view; Compose; Approvals. Static contract tests cover key preserved behavior. These are source-level adaptation claims only; no tests/typecheck/build/browser verification is claimed.
+
+**Still not yet adapted / needs explicit screen review:** WhatsApp, Automations, Schedules, Chat, AI & Voice, Knowledge, Activity, Audit, Operations, general Settings and provider-setting subsections (AI provider/runtime, Gmail OAuth, Zoho OAuth), Login/Setup consistency, Agent detail/version/history and secondary controls. A global CSS token does not count as route migration. Full responsive/accessibility/icon consistency review remains outstanding.
+
+**Exact next action:** adapt the WhatsApp route group to the Lovable visual system, then Automations, then Schedules. For each screen preserve the existing Next.js route and server/API contracts, real data, organization authorization, validation, explicit send/approval safeguards, and loading/empty/error states. Reuse Lucide icons and semantic theme tokens; do not import the Vite/TanStack runtime or replace real data with source mock data. Add/update focused static contract assertions and the migration matrix. Continue into the remaining listed screens without waiting for CI/Vercel; record verification as NOT RUN unless actually executed. Route substantial bugs to FIX-01 and deployment/infrastructure work to OPS-01.
+
+
 ### Immediate user-reported Zoho OAuth defect
 
 The user reports that Zoho consent returns to the application but no mailbox appears, with `Zoho did not return the required token metadata.` Source correction committed in `apps/web/src/app/api/oauth/zoho/callback/route.ts` (`2cb976b`): token responses no longer require `api_domain`, regional Mail API hosts are selected from the signed/validated data-center setting, and token-exchange failures return actionable non-secret guidance. Static regression assertions committed (`53d96a0`). **Not tested and not live-verified.** Next, continue the queued UI migration and connected-mailbox integration work; when the user deploys/retries, capture the safe provider error outcome if the failure persists without sharing OAuth codes, state, verifier, or tokens.
