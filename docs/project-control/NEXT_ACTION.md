@@ -1,5 +1,12 @@
 # NEXT_ACTION.md
 
+## Current next action — FIX-01 role hierarchy correction (2026-10-10)
+
+The web build's TypeScript error is source-level and has been corrected on `main`: `MembershipRole` includes `viewer`, while the authorization rank map omitted it. Source commit `44a08522f23e807755114ebe46b8b1e04e6056da`; regression coverage commit `3853ecf046c175e15a4f824e9679f50fb7132cf9`.
+
+**Exact next action:** In the local checkout, run `pnpm --filter @ai-comms-agent/web exec vitest run tests/rbac.test.ts`, then `pnpm --filter @ai-comms-agent/web typecheck`, then rerun `bash scripts/manual-up.sh` and record the actual output. Do not wait for CI/Vercel. Route only independent Docker daemon/base-image/registry/deployment/environment defects to OPS-01. Post-fix verification is pending; no PASS is claimed.
+
+
 The single exact next authorized action. Update this file on every commit.
 
 ---
