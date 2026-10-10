@@ -1621,3 +1621,12 @@ User rerun confirmed the scheduling idempotency test passes. The remaining IMAP 
 - NOT RUN: tests, SQL migration execution, typechecks, Docker rebuild/start, or runtime checks. GitHub source writes do not prove migration success.
 - Checksum caution: the reported target DB failed before recording 0032, but another database that recorded the previous checksum may reject the changed migration. Inspect ledgers before rollout; never delete ledger entries blindly.
 - Next: pull latest main, inspect local worktree, confirm search_path=aca,public, rerun bash scripts/manual-up.sh, and capture the next concrete result. Do not wait for CI/Vercel.
+
+## 2026-10-10 — Correct audit DELETE RLS policy syntax (OPS-01 / FIX-01)
+
+- User reran `bash scripts/manual-up.sh`: images built and migrations 0000–0031 skipped; 0032 advanced past schema resolution but failed at line 39 with PostgreSQL error `WITH CHECK cannot be applied to SELECT or DELETE`.
+- Root cause: `audit_events_delete_deny` used `WITH CHECK (false)`, which PostgreSQL does not permit on DELETE policies. The UPDATE deny policy legitimately keeps both `USING (false)` and `WITH CHECK (false)`.
+- Fixed migration 0032 DELETE policy to use `USING (false)` only. Added a static regression assertion for the DELETE policy's valid shape.
+- Commits: SQL `03f8e87c039c097784e0acb9e671ba853f5ca852`; test `454b5361317a5df61e6de338a7e45b63fbd3fdd8`.
+- NOT RUN: PostgreSQL migration, Vitest, container startup, or runtime checks. Do not infer migration success from source commits.
+- Next: pull latest main and rerun `bash scripts/manual-up.sh`; report the first concrete error if any. Do not wait for CI/Vercel.
