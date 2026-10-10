@@ -60,7 +60,9 @@ RESULT="$(redis_cli SET "$KEY" "$OTHER_TOKEN" NX PX 15000 2>&1)" || {
   printf 'FAIL: Second acquisition returned: %s\n' "$RESULT" >&2
   exit 1
 }
-if [[ "$RESULT" != "(nil)" ]]; then
+# redis-cli output for a nil bulk reply varies by version/output mode: it may be
+# an empty string or the literal "(nil)". Both mean SET NX correctly declined.
+if [[ -n "$RESULT" && "$RESULT" != "(nil)" ]]; then
   printf 'FAIL: Expected second acquisition to be rejected (nil); received: %s\n' "$RESULT" >&2
   exit 1
 fi
