@@ -99,7 +99,7 @@ test("Redis lease applies the optional key namespace consistently on acquire and
       await acquireRedisLease(url, "ai-comms-agent:mailbox-sync:batch", "owner-token", 600000);
       await releaseRedisLease(url, "ai-comms-agent:mailbox-sync:batch", "owner-token");
       assert.equal(commands[0]?.[1], "project-c:ai-comms-agent:mailbox-sync:batch");
-      assert.equal(commands[1]?.[4], "project-c:ai-comms-agent:mailbox-sync:batch");
+      assert.equal(commands[1]?.[3], "project-c:ai-comms-agent:mailbox-sync:batch");
     });
   } finally {
     if (previous === undefined) delete process.env.REDIS_KEY_PREFIX;
