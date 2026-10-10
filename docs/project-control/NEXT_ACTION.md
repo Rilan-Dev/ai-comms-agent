@@ -6,6 +6,15 @@ The single exact next authorized action. Update this file on every commit.
 
 ## Current next action
 
+### OPS-01 audit migration schema fix — 2026-10-10
+
+GitHub source correction committed on main: migration 0032 now resolves audit_events through the connection's active search_path, compatible with the application's aca,public schema layout. Static regression assertion updated. Commits: 387c7e50f258c13e0e4aa03ae5b319896b27eabc and 4e455f4d55051ffa16bb7a52f85baf1c3218e3f5.
+
+Verification: source writes only. SQL migration, focused tests, typechecks, build, container startup, and runtime checks NOT RUN. The reported DB failed before recording 0032. If another DB already recorded the previous checksum, inspect its ledger before rollout; do not delete ledger rows blindly.
+
+Exact next action: pull latest main without discarding local work; inspect git status --short; confirm the migration connection uses search_path=aca,public; rerun bash scripts/manual-up.sh. Record actual output and fix the next concrete issue without waiting for CI/Vercel.
+
+
 ### FIX-01 worker/web contract correction — 2026-10-10
 
 Source corrections committed on `fix/migration-verification-phase4-contract` after reviewing the user-reported worker-suite and email-action contract failures:
