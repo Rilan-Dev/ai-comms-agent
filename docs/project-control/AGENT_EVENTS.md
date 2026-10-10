@@ -261,3 +261,14 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Commits:** `44a08522f23e807755114ebe46b8b1e04e6056da`; `3853ecf046c175e15a4f824e9679f50fb7132cf9`.
 - **Verification:** Source changes committed; focused test/typecheck/build NOT RUN after fix. No PASS claimed.
 - **Next action:** Run `pnpm --filter @ai-comms-agent/web exec vitest run tests/rbac.test.ts` and `pnpm --filter @ai-comms-agent/web typecheck`; route infrastructure/build environment issues to OPS-01.
+
+
+### EVT-FIX01-RBAC-TEST-FIXTURE-FOLLOWUP-20261010 — 2026-10-10
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** REGRESSION_TEST_CORRECTION
+- **Summary:** User executed the focused RBAC suite after the role-rank fix and exposed a bug in the newly added test: it referenced nonexistent `fixture.adminA`.
+- **Evidence:** User output: 15 tests passed, 1 failed with `UnauthorizedError: Authentication required`; typecheck reported TS2339 for `TestFixture.adminA`.
+- **Root cause:** Undefined test fixture user caused auth failure before role ranking was exercised.
+- **Remedy:** Commit `113b2b3ee094042e9380404f3073c39b17e07951` promotes the existing `memberA` to admin using the fixture repository, then tests admin and owner.
+- **Verification:** Corrected source re-fetch/commit only. Retest, typecheck and Docker build remain pending. No PASS claimed.
+- **Next action:** Focused RBAC Vitest → web typecheck → manual-up. Preserve local modified lockfile; OPS-01 only for independent environment defects.
