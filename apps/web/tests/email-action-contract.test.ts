@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 const actionRoute = readFileSync(resolve(__dirname, "../src/app/api/mail/actions/route.ts"), "utf8");
 const actionRepository = readFileSync(resolve(__dirname, "../../../packages/db/src/email/actions.ts"), "utf8");
 const executor = readFileSync(resolve(__dirname, "../../../apps/worker/src/email/action-executor.ts"), "utf8");
+const actionWorker = readFileSync(resolve(__dirname, "../../../apps/worker/src/email/action-worker.ts"), "utf8");
 
 describe("approval-safe email action contract", () => {
   it("creates only sensitive email actions in pending approval", () => {
@@ -53,7 +54,8 @@ describe("approval-safe email action contract", () => {
   });
 
   it("requires approval before provider send/reply/forward", () => {
-    expect(executor).toContain("status = 'approved'");
+    expect(actionRepository).toContain("status = 'approved'");
+    expect(executor).toContain("claimApprovedEmailAction(actionId, organizationId)");
     expect(executor).toContain("connected.sendDraft");
     expect(executor).toContain("connected.reply");
     expect(executor).toContain("connected.forward");
@@ -63,8 +65,8 @@ describe("approval-safe email action contract", () => {
     expect(actionRepository).toContain("recoverStaleExecutingEmailActions");
     expect(actionRepository).toContain("provider outcome is unknown");
     expect(actionRepository).toContain("providerOutcomeUnknown");
-    expect(executor).toContain("email.action.execution_interrupted");
-    expect(executor).toContain("manualVerificationRequired");
+    expect(actionWorker).toContain("email.action.execution_interrupted");
+    expect(actionWorker).toContain("manualVerificationRequired");
   });
 
 });

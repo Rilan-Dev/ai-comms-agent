@@ -1578,3 +1578,35 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 - **Commit:** `58730eb8b0fa46bfdd5fca581295209921582dbe` on `fix/migration-verification-phase4-contract`.
 - **Lockfile:** GitHub branch lockfile has exactly one `lockfileVersion` and one `importers` header. User's local working tree has a modified lockfile with two documents. Preserve local backups and reconcile the local file against the fetched PR branch before rerunning the focused test.
 - **Verification:** Fix committed; rerun focused Vitest is pending. No PASS claimed.
+
+### 2026-10-10 — FIX-01 worker/web test-contract correction
+
+- Reviewed the reported worker-suite failures and web email-action contract failures against the current branch source.
+- Standardized three worker contract tests on the worker package's existing Node test runner and replaced ESM-incompatible `__dirname` paths in six worker tests.
+- Applied bounded transient retries to provider capability discovery; corrected RFC 2047 encoded-word matching for IMAP header decoding.
+- Preserved informational message metadata for email provider events while keeping canonical organization/action/account/correlation values authoritative.
+- Corrected static contract coverage to ignore comments when checking Clara's PostgreSQL indexer for Qdrant/vector-reference writes.
+- Aligned tests with CRLF boundaries in IMAP literals, Zoho OAuth URLSearchParams refresh bodies and account-discovery requests, and the actual DB-repository/action-worker ownership of approval and stale-execution recovery.
+- Source commits were accepted on `fix/migration-verification-phase4-contract`; representative commits: `a45c5bea`, `c10ec941`, `d84ae1b6`, `3a56e8d7`, `4e1f5694`.
+- **Verification:** tests, typechecks, build, runtime integration, and deployment were not executed by the GitHub connector. No deployment success is claimed. Preserve `pnpm-lock.yaml` and the four local lockfile backup artifacts.
+- **Next:** pull/fetch the branch without overwriting local work; run the focused web email-action and migration tests, then the worker suite and web/worker typechecks. Correct any remaining concrete failures without weakening behavior or waiting for CI/Vercel.
+
+### 2026-10-10 — Preview deployment blocked by Vercel API quota
+
+- Requested a preview deployment of `fix/migration-verification-phase4-contract` at `a4877ee23152b4895bf5eae48243ddb0202c8155`.
+- Vercel rejected the deployment request with HTTP 402 `api-deployments-free-per-day`: more than 100 deployment API calls in the daily allowance, retry after 24 hours.
+- No deployment was created; earlier branch deployments shown by Vercel were canceled and targeted earlier commits.
+- **No deployment success is claimed.** The preview request should be retried after the cooldown/account quota resolution and after focused tests/typechecks are run. No quota or billing settings were changed.
+
+
+### 2026-10-10 — Follow-up to user-run test results
+
+- User-run email action contract: 8/8 passed. Migration verification: 85/86 passed; the only failure is duplicate lockfileVersion: in /docker/ai-comms-agent/pnpm-lock.yaml.
+- Checked the current branch's canonical lockfile via GitHub: exactly one lockfileVersion: and one importers: header. Treat the local runtime result as a working-tree/mount discrepancy until git status --short, realpath pnpm-lock.yaml, and a header grep establish the cause. Do not overwrite lockfile or remove backup files.
+- Worker suite: 79/81 passed. Corrected the IMAP multiple-literal test to assert the CRLF boundary explicitly and corrected over-escaped SQL regexes in the scheduling-idempotency test.
+- Commits: a666d98b8b9f1e437355c392d01c42a9dc54bfe9, bb987c60129ebd1d4f3d5bd8f132068859ffb6c2. Web and worker typechecks produced no errors in the pasted output; re-run the focused tests before recording these test fixes as verified. Build, runtime integration, and deployment remain unverified.
+
+
+### 2026-10-10 — IMAP assertion follow-up and lockfile diagnosis
+
+User rerun confirmed the scheduling idempotency test passes. The remaining IMAP assertion used unescaped `{5}`, which regex syntax interprets as a quantifier, not the literal IMAP `{5}` length marker. Both assertions were corrected in b87d5bc804331470a280bf54ee020b463a186d5f. User's migration test still reports duplicate lockfileVersion; their `git status` confirms pnpm-lock.yaml is modified, and grep shows duplicate header sets at lines 2/159. GitHub's canonical branch copy has one lockfileVersion and one importers header. Preserve the four untracked backup files; inspect the tracked lockfile diff and restore only pnpm-lock.yaml from HEAD if the change is the known duplicate-document corruption. Rerun focused tests afterward. Deployment remains unverified.

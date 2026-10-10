@@ -161,3 +161,19 @@ WORK-01 may execute SAFE-LOCAL or already AUTHORIZED daily work, but it cannot b
 The user does not need to carry project context between chats. For a fresh session, the preferred copy/paste instructions are in `docs/project-control/HOW_TO_USE_AGENTS.md`. The invoked agent must recover the project from GitHub and durable project-control records rather than requiring the previous conversation.
 
 The user may invoke DEV-01, FIX-01, OPS-01, or WORK-01 while another agent is active. The new session must work independently, avoid conflicting edits, route dependencies, and continue any independent valid work without repeated waiting/polling.
+
+## Latest continuation snapshot — 2026-10-10
+
+Current working branch for the latest FIX-01 corrections is `fix/migration-verification-phase4-contract`. GitHub commits corrected worker test-runner/ESM incompatibilities, provider discovery retry, IMAP encoded-word parsing, provider-event informational metadata, and test contracts/mocks for Clara indexing, IMAP literals, Zoho refresh/account discovery, and email-action approval/recovery.
+
+Do not infer test or deployment success from the commits. Tests, typechecks, build, live integration, and deployment remain unverified in this continuation. The exact next action is in `docs/project-control/NEXT_ACTION.md`; verification truth is in `docs/project-control/VERIFICATION_STATE.md`. Keep the local lockfile and backup files intact, and continue without waiting for GitHub Actions or Vercel.
+
+
+
+## Latest continuation snapshot — 2026-10-10, user test feedback
+
+User-run output: email action contract 8/8 passed; migration verification 85/86 passed (lockfile header count differs in /docker/ai-comms-agent from GitHub's current branch lockfile, which has one of each top-level header); worker suite 79/81 passed (IMAP multiple-literal and scheduling-idempotency assertion failures). Targeted test fixes are now committed in a666d98b8b9f1e437355c392d01c42a9dc54bfe9 and bb987c60129ebd1d4f3d5bd8f132068859ffb6c2. Web/worker typechecks showed no errors. Next: pull latest branch, re-run focused tests, and diagnose realpath pnpm-lock.yaml plus git status --short/header grep in the user's runtime; preserve local backups. Do not claim full suite, build, integration, or deployment success until observed.
+
+
+## 2026-10-10 follow-up
+User reran focused tests: scheduling idempotency passes; IMAP multiple-literal test failed because regex `/BODY\[\] {5}/` interprets `{5}` as quantifier rather than literal marker. Corrected both marker regexes in commit b87d5bc804331470a280bf54ee020b463a186d5f. User's local lockfile inspection found duplicate headers at lines 2 and 159, and `git status` shows tracked `pnpm-lock.yaml` modified plus four untracked backup artifacts. GitHub branch lockfile has a single header pair. Next: pull latest, run focused IMAP test; inspect `git diff -- pnpm-lock.yaml`, preserve backups, restore tracked lockfile to HEAD if it is only the accidental duplicate document, then rerun migration verification. No claim of full suite or deployment success.

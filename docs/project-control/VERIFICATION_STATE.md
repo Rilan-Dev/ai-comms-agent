@@ -1180,3 +1180,30 @@ source_review:
 - Corrected test expectations for valid PostgreSQL `$$` delimiters and narrowed single-dollar regexes in commit `58730eb8b0fa46bfdd5fca581295209921582dbe`.
 - **Pending:** Re-run the focused Vitest test after reconciling the local duplicate-document lockfile against the PR branch. No PASS claimed.
 - GitHub branch lockfile is single-document; local working copy remains modified and must be reconciled carefully.
+
+## Continuation record — 2026-10-10 (FIX-01)
+
+- Branch: `fix/migration-verification-phase4-contract`.
+- Source changes committed: Node test-runner compatibility for three worker contract tests; ESM-safe fixture paths in six worker tests; provider capability-discovery retry; RFC 2047 IMAP encoded-header matching; provider-event informational message metadata; and corrections to Clara, IMAP, Zoho, and email-action static contracts/mocks.
+- GitHub accepted source and control commits. This confirms commit creation only.
+- **NOT RUN / NOT VERIFIED:** focused web tests, full worker test suite, web/worker typechecks, build, provider/database runtime integration, and deployment.
+- No deployment PASS is claimed. Preserve the lockfile and local backup artifacts. Next verification is specified in `docs/project-control/NEXT_ACTION.md`.
+
+## Deployment attempt — 2026-10-10
+
+- Requested a preview deployment for branch `fix/migration-verification-phase4-contract`, commit `a4877ee23152b4895bf5eae48243ddb0202c8155`.
+- Vercel rejected the API request with HTTP 402: `api-deployments-free-per-day` (daily deployment API quota exceeded; retry after 24 hours).
+- No new deployment was created. Recent branch deployments visible in Vercel were canceled and were for earlier commits.
+- **Deployment status: NOT DEPLOYED / NOT VERIFIED.** Do not label this change production-ready or claim a successful deployment. Resolve the Vercel quota with the account owner or retry after the provider's stated cooldown, after local tests/typechecks are run.
+
+
+## User-run verification update — 2026-10-10
+
+- tests/email-action-contract.test.ts: PASS, 8/8.
+- tests/migration-verification.test.ts: 85/86; remaining failure says two lockfileVersion: declarations in the runtime file under /docker/ai-comms-agent. The current GitHub branch pnpm-lock.yaml was fetched and contains exactly one lockfileVersion: and one importers: declaration, so this is presently a local/container file discrepancy, not a reason to overwrite the canonical lockfile.
+- Worker suite: 79/81; failures were the IMAP multiple-literal test assertion and scheduling migration regex assertion. Both assertions have been corrected in commits a666d98b8b9f1e437355c392d01c42a9dc54bfe9 and bb987c60129ebd1d4f3d5bd8f132068859ffb6c2.
+- Web and worker typechecks produced no errors in the user's pasted output. Re-run focused tests to verify the new commits. Full build, live integration, and deployment remain unverified; Vercel previously returned HTTP 402 daily deployment quota exceeded.
+
+
+## Follow-up verification — 2026-10-10
+The user's focused rerun shows scheduling idempotency test passes; IMAP multiple-literal assertion still failed because regex braces were unescaped. Corrected in commit b87d5bc804331470a280bf54ee020b463a186d5f; this commit is not yet user-rerun verified. The user also confirmed the duplicate lockfile headers are in their modified local tracked pnpm-lock.yaml (headers at lines 2/159); GitHub branch copy has one top-level header pair. Four local backup artifacts remain untracked and must be preserved. Recommended recovery is to inspect the diff and restore the tracked lockfile from HEAD only after confirming the backup files exist and the diff is the accidental duplicate document. No deployment verification.

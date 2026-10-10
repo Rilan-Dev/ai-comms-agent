@@ -277,9 +277,19 @@ export class ImapSmtpAdapter implements EmailProvider {
       const colon = line.indexOf(":");
       if (colon > 0) headers.set(line.slice(0, colon).trim().toLowerCase(), line.slice(colon + 1).trim());
     }
-    const decodeHeader = (value: string) => value.replace(/=?UTF-8?\?B\?([^?]+)\?=/gi, (_m, encoded: string) => {
-      try { return Buffer.from(encoded, "base64").toString("utf8"); } catch { return encoded; }
-    }).replace(/=?UTF-8?\?Q\?([^?]+)\?=/gi, (_m, encoded: string) => encoded.replace(/_/g, " ").replace(/=([0-9A-F]{2})/gi, (_h, hex: string) => String.fromCharCode(parseInt(hex, 16))));
+    const decodeHeader = (value: string) => value.replace(/=\?([^?]+)\?([bq])\?([^?]*)\?=/gi, (match, charset: string, encoding: string, encoded: string) => {
+      try {
+        const normalizedCharset = charset.toLowerCase().replace("-", "");
+        if (encoding.toLowerCase() === "b") {
+          const bytes = Buffer.from(encoded, "base64");
+          return normalizedCharset === "utf8" ? bytes.toString("utf8") : bytes.toString("latin1");
+        }
+        const bytes = encoded.replace(/_/g, " ").replace(/=([0-9a-f]{2})/gi, (_hexMatch: string, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+        return Buffer.from(bytes, "latin1").toString(normalizedCharset === "utf8" ? "utf8" : "latin1");
+      } catch {
+        return match;
+      }
+    });
     const addressList = (value: string | undefined) => (value ?? "").split(",").map((item) => item.match(/<([^>]+)>/)?.[1] ?? item.trim()).filter((item) => /^[^\s@]+@[^\s@]+$/.test(item));
     const from = headers.get("from") ?? "";
     const contentType = headers.get("content-type") ?? "text/plain";
