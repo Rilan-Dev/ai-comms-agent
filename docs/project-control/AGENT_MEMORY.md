@@ -255,3 +255,13 @@ If shared memory conflicts with current repository state or current requirements
 - **Prevention:** Test behavior/contracts, not incidental source spelling. For already-deployed schemas, add forward-only migrations rather than editing historical migrations. After source/API writes, inspect the committed literal regex and run focused tests.
 - **Evidence:** Commits `7557a6cd`, `ee85b554`, `cecae73e`, `c4d4abd0`, `96996d82`; no local test execution available in this session.
 - **Next action:** Pull latest main, compare local lockfile to origin/main (current main has exactly one lockfileVersion and one importers header), run focused migration and worker tests, then web/worker typechecks sequentially. No PASS claimed.
+
+
+### FIX-01 / Sentinel — 2026-10-10 — Membership role rank must cover the complete union
+- **Issue/symptom:** Docker web build compiled JavaScript but TypeScript failed because `Record<MembershipRole, number>` omitted `viewer`.
+- **Root cause:** Shared `MembershipRole` includes `owner | admin | member | viewer`, while the minimum-role rank map only included member/admin/owner. The rank map is exhaustive by design, so TypeScript correctly rejected it.
+- **Failed approaches to avoid:** Do not remove `Record<MembershipRole, number>`, cast away the missing key, or change the shared role union to silence the error. Those approaches weaken exhaustiveness or alter the domain model.
+- **Remedy:** Add `viewer: 0` to the hierarchy, preserving `viewer < member < admin < owner`; add regression cases proving viewer fails a member minimum and admin/owner satisfy it.
+- **Prevention:** When a union type expands, update every exhaustive record/switch and test the security semantics of the new member. Typecheck the web workspace after the source change.
+- **Evidence:** Commits `44a08522f23e807755114ebe46b8b1e04e6056da` (source) and `3853ecf046c175e15a4f824e9679f50fb7132cf9` (regression test). Test/build/typecheck not run by this agent.
+- **Next action:** Run the focused RBAC Vitest file and web typecheck locally; route Docker/runtime or CI/deployment-only issues to OPS-01.
