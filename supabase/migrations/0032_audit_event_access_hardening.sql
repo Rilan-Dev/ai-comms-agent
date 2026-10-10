@@ -36,6 +36,6 @@ CREATE POLICY audit_events_update_deny ON audit_events
 DROP POLICY IF EXISTS audit_events_delete_deny ON audit_events;
 CREATE POLICY audit_events_delete_deny ON audit_events
   AS RESTRICTIVE FOR DELETE TO authenticated
-  USING (false) WITH CHECK (false);
+  USING (false);
 
 COMMENT ON TABLE audit_events IS 'audit_events is append-only; updates and deletes are denied by restrictive RLS policies.';
