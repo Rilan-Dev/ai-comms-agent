@@ -460,7 +460,7 @@ describe("Application database domain static verification (0002_application_doma
     expect(auditHardeningSql).toContain("AS RESTRICTIVE FOR UPDATE");
     expect(auditHardeningSql).toContain("AS RESTRICTIVE FOR DELETE");
     expect(auditHardeningSql).toContain("USING (false) WITH CHECK (false)");
-    expect(auditHardeningSql).toMatch(/CREATE POLICY audit_events_delete_deny ON audit_events\\s+AS RESTRICTIVE FOR DELETE TO authenticated\\s+USING \\(false\\);/);
+    expect(auditHardeningSql).toContain("CREATE POLICY audit_events_delete_deny ON audit_events\n  AS RESTRICTIVE FOR DELETE TO authenticated\n  USING (false);");
     expect(auditHardeningSql).toContain("public.can_access_organization(organization_id)");
   });
 });
