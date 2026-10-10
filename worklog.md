@@ -1610,3 +1610,14 @@ The Mail sidebar group now remains expanded/active across Inbox, Threads, Drafts
 ### 2026-10-10 — IMAP assertion follow-up and lockfile diagnosis
 
 User rerun confirmed the scheduling idempotency test passes. The remaining IMAP assertion used unescaped `{5}`, which regex syntax interprets as a quantifier, not the literal IMAP `{5}` length marker. Both assertions were corrected in b87d5bc804331470a280bf54ee020b463a186d5f. User's migration test still reports duplicate lockfileVersion; their `git status` confirms pnpm-lock.yaml is modified, and grep shows duplicate header sets at lines 2/159. GitHub's canonical branch copy has one lockfileVersion and one importers header. Preserve the four untracked backup files; inspect the tracked lockfile diff and restore only pnpm-lock.yaml from HEAD if the change is the known duplicate-document corruption. Rerun focused tests afterward. Deployment remains unverified.
+
+
+## 2026-10-10 — Fix audit migration schema resolution (OPS-01 / FIX-01)
+
+- User-provided scripts/manual-up.sh output showed Docker images built and migrations 0000–0031 skipped, but migration 0032 failed because it required public.audit_events.
+- Source comparison found 0002_application_domain.sql creates audit_events unqualified. With search_path=aca,public, the table resolves in aca, so 0032's hard-coded public.audit_events was inconsistent with the base schema contract.
+- Updated 0032_audit_event_access_hardening.sql to resolve the table through the active search_path; retained public.can_access_organization helper qualification and organization-scoped read/insert plus restrictive update/delete policies. Added a static regression assertion.
+- Commits: migration 387c7e50f258c13e0e4aa03ae5b319896b27eabc; test 4e455f4d55051ffa16bb7a52f85baf1c3218e3f5.
+- NOT RUN: tests, SQL migration execution, typechecks, Docker rebuild/start, or runtime checks. GitHub source writes do not prove migration success.
+- Checksum caution: the reported target DB failed before recording 0032, but another database that recorded the previous checksum may reject the changed migration. Inspect ledgers before rollout; never delete ledger entries blindly.
+- Next: pull latest main, inspect local worktree, confirm search_path=aca,public, rerun bash scripts/manual-up.sh, and capture the next concrete result. Do not wait for CI/Vercel.
