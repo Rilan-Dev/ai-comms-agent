@@ -11,6 +11,13 @@ describe("Gmail automatic mailbox synchronization", () => {
     expect(entry).toContain("stopMailboxSync()");
   });
 
+  it("falls back to the same leased direct-sync batch when RabbitMQ enqueue fails", () => {
+    const worker = read("../../../apps/worker/src/email/mailbox-sync-worker.ts");
+    expect(worker).toContain("Mailbox queue producer poll failed; attempting leased direct-sync fallback");
+    expect(worker).toContain("const result = await processMailboxSyncBatch()");
+    expect(worker).toContain("Redis mailbox-sync lease unavailable; batch skipped to avoid uncoordinated multi-worker polling");
+  });
+
   it("claims due Gmail accounts durably and records cursor, retry and success state", () => {
     const worker = read("../../../apps/worker/src/email/mailbox-sync-worker.ts");
     expect(worker).toContain("email_sync_states");
