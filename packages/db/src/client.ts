@@ -63,7 +63,30 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   values: unknown[] = [],
 ): Promise<QueryResult<T>> {
-  return getPostgresPool().query<T>(text, values);
+  try {
+    return await getPostgresPool().query<T>(text, values);
+  } catch (error) {
+    const postgresError = error && typeof error === "object"
+      ? error as { message?: unknown; code?: unknown; position?: unknown; routine?: unknown }
+      : {};
+
+    // Log the SQL template, never bound values: values may contain email content,
+    // tenant identifiers, or other sensitive data. Keep the original error intact.
+    console.error(JSON.stringify({
+      level: "error",
+      service: "db.query",
+      message: typeof postgresError.message === "string"
+        ? postgresError.message
+        : "PostgreSQL query failed",
+      code: typeof postgresError.code === "string" ? postgresError.code : undefined,
+      position: typeof postgresError.position === "string" ? postgresError.position : undefined,
+      routine: typeof postgresError.routine === "string" ? postgresError.routine : undefined,
+      sql: text,
+      parameter_count: values.length,
+    }));
+
+    throw error;
+  }
 }
 
 export async function withTransaction<T>(
@@ -79,7 +102,7 @@ export async function withTransaction<T>(
     try {
       await client.query("ROLLBACK");
     } catch {
-      // Preserve the original transaction error.
+      // Preserve the original error.
     }
     throw error;
   } finally {
