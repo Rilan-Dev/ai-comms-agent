@@ -1248,3 +1248,9 @@ The user's focused rerun shows scheduling idempotency test passes; IMAP multiple
 ## 2026-10-10 — User-run test command path mismatch
 
 User ran `npm test -- src/modules/integrations/oauth-app-validation.test.ts src/modules/integrations/oauth-setup-guides.test.ts` in `Rilan-Dev/ai-comms-agent`, not the separate Clara AI Platform checkout. Root test script invokes `pnpm -r test`; the web Vitest config only discovers `tests/**/*.test.ts`, so it correctly reported no test files for those Clara-specific paths. The worker process was terminated by `SIGKILL`; supplied output does not identify an assertion failure or the kill cause. This is a command/workspace mismatch plus an unexplained process termination, not evidence that the Clara OAuth tests failed. Corrected workspace-scoped commands are recorded in `AGENT_EVENTS.md`. The email-account runtime diagnostic script remains unrun; no IMAP/SMTP or OAuth sync root cause is established.
+
+### Live OAuth mailbox sync — 2026-10-10
+- **Runtime result:** NOT PASS. The account remains pending/idle with zero stored messages after a queued sync.
+- **Blocking evidence:** RabbitMQ configured with literal placeholder vhost `YOUR_EXISTING_VHOST`; Redis returns `WRONGPASS`; worker logs show repeated connection failures and safe batch skips.
+- **Next verification:** Correct deployed `RABBITMQ_URL` and `REDIS_URL`, restart worker, requeue sync, then verify account timestamps/status and persisted message rows. Do not infer success from health 200 or HTTP 202.
+- **Unrelated local check:** migration static test had 86 passed and 1 failed because local lockfile had two `lockfileVersion:` headers; worker RabbitMQ contract test passed 10/10. These do not establish live mailbox success.
