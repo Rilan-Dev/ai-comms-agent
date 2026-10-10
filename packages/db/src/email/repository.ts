@@ -169,7 +169,7 @@ export class PostgresEmailAccountRepository {
     lastError?: string | null,
   ): Promise<EmailAccount | null> {
     const r = await query<Row>(
-      "UPDATE email_accounts SET status = $1, last_error = CASE WHEN $1 = 'error' THEN $2 ELSE NULL END, connected_at = CASE WHEN $1 = 'connected' THEN COALESCE(connected_at, now()) ELSE connected_at END WHERE id = $3 AND deleted_at IS NULL RETURNING *",
+      "UPDATE email_accounts SET status = $1::email_account_status, last_error = CASE WHEN $1::email_account_status = 'error'::email_account_status THEN $2 ELSE NULL END, connected_at = CASE WHEN $1::email_account_status = 'connected'::email_account_status THEN COALESCE(connected_at, now()) ELSE connected_at END WHERE id = $3 AND deleted_at IS NULL RETURNING *",
       [status, lastError ?? null, id],
     );
     return r.rows[0] ? account(r.rows[0]) : null;
