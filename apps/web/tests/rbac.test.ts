@@ -296,4 +296,28 @@ describe("RBAC and permissions", () => {
     );
     expect(() => requireRole(subject, "member", "viewer")).not.toThrow();
   });
+
+  it("requireRole does not treat VIEWER as MEMBER", async () => {
+    const request = createAuthedRequest(fixture.viewerA);
+    const subject = await requireOrganizationMember(
+      request,
+      asOrganizationId(fixture.orgA),
+      adapter,
+      fixture.repo,
+    );
+    expect(() => requireRole(subject, "member")).toThrow(ForbiddenError);
+  });
+
+  it("requireRole treats ADMIN and OWNER as at least MEMBER", async () => {
+    for (const userId of [fixture.adminA, fixture.ownerA]) {
+      const request = createAuthedRequest(userId);
+      const subject = await requireOrganizationMember(
+        request,
+        asOrganizationId(fixture.orgA),
+        adapter,
+        fixture.repo,
+      );
+      expect(() => requireRole(subject, "member")).not.toThrow();
+    }
+  });
 });
