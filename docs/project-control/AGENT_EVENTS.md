@@ -249,3 +249,15 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Verification:** Source re-fetched after commits; focused tests/typechecks/migration execution NOT RUN. No PASS claimed.
 - **Next action:** Pull latest main, reconcile local lockfile against origin/main, run focused web migration and worker RabbitMQ tests, then web/worker typechecks sequentially.
 - **Related records:** ISS-019; FIX01-MIGRATION-WORKER-TEST-DRIFT-20261009; migration 0032.
+
+
+### EVT-FIX01-AUTH-ROLE-RANK-20261010 — 2026-10-10
+- **Agent/session:** FIX-01 / Sentinel — FIX01-AUTH-ROLE-RANK-20261010
+- **Type:** CORRECTION
+- **Summary:** Corrected a web production-build TypeScript error in the exhaustive membership-role rank map and added RBAC regression coverage.
+- **Root cause:** `MembershipRole` includes `viewer`, but the rank map omitted it.
+- **Impact:** local — web image build blocked at Next.js type validation after compilation succeeded.
+- **Owner:** FIX-01 for source and RBAC regression; OPS-01 only for independent Docker/runtime/environment defects.
+- **Commits:** `44a08522f23e807755114ebe46b8b1e04e6056da`; `3853ecf046c175e15a4f824e9679f50fb7132cf9`.
+- **Verification:** Source changes committed; focused test/typecheck/build NOT RUN after fix. No PASS claimed.
+- **Next action:** Run `pnpm --filter @ai-comms-agent/web exec vitest run tests/rbac.test.ts` and `pnpm --filter @ai-comms-agent/web typecheck`; route infrastructure/build environment issues to OPS-01.
