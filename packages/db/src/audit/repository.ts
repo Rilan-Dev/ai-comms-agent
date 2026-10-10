@@ -29,14 +29,14 @@ function mapAuditRows(rows:Record<string,unknown>[]):AuditEvent[]{
 export async function listOrganizationAuditEvents(organizationId:string,limit=100,filters:AuditEventFilters={}):Promise<AuditEvent[]>{
  const safeLimit=Math.min(Math.max(Math.floor(limit),1),100);
  const clauses=["organization_id=$1"]; const params:unknown[]=[organizationId]; let n=2;
- if(filters.eventType){clauses.push(`event_type=${n++}`);params.push(filters.eventType);}
- if(filters.decision){clauses.push(`decision=${n++}`);params.push(filters.decision);}
- if(filters.actorUserId){clauses.push(`actor_user_id=${n++}`);params.push(filters.actorUserId);}
- if(filters.search){clauses.push(`(event_type ILIKE ${n} OR action ILIKE ${n} OR target_type ILIKE ${n} OR target_id::text ILIKE ${n})`);params.push(`%${filters.search}%`);n++;}
- if(filters.from){clauses.push(`created_at >= ${n++}`);params.push(filters.from);}
- if(filters.to){clauses.push(`created_at < ${n++}`);params.push(filters.to);}
+ if(filters.eventType){clauses.push(`event_type=$${n++}`);params.push(filters.eventType);}
+ if(filters.decision){clauses.push(`decision=$${n++}`);params.push(filters.decision);}
+ if(filters.actorUserId){clauses.push(`actor_user_id=$${n++}`);params.push(filters.actorUserId);}
+ if(filters.search){clauses.push(`(event_type ILIKE $${n} OR action ILIKE $${n} OR target_type ILIKE $${n} OR target_id::text ILIKE $${n})`);params.push(`%${filters.search}%`);n++;}
+ if(filters.from){clauses.push(`created_at >= $${n++}`);params.push(filters.from);}
+ if(filters.to){clauses.push(`created_at < $${n++}`);params.push(filters.to);}
  params.push(safeLimit);
- const r=await query<Record<string,unknown>>(`SELECT id,organization_id,actor_user_id,agent_id,event_type,target_type,target_id,action,decision,correlation_id,metadata,created_at FROM audit_events WHERE ${clauses.join(" AND ")} ORDER BY created_at DESC LIMIT ${n}`,params);
+ const r=await query<Record<string,unknown>>(`SELECT id,organization_id,actor_user_id,agent_id,event_type,target_type,target_id,action,decision,correlation_id,metadata,created_at FROM audit_events WHERE ${clauses.join(" AND ")} ORDER BY created_at DESC LIMIT $${n}`,params);
  return mapAuditRows(r.rows);
 }
 
