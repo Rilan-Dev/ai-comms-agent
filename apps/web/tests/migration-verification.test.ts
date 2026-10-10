@@ -448,7 +448,10 @@ describe("Application database domain static verification (0002_application_doma
     expect(applicationDomainSql).toContain("SET search_path = public");
   });
 
-  it("makes audit events append-only with organization-scoped access", () => {
+  it("makes audit events append-only with organization-scoped access and resolves the active schema", () => {
+    expect(auditHardeningSql).toContain("to_regclass('audit_events')");
+    expect(auditHardeningSql).not.toContain("to_regclass('public.audit_events')");
+    expect(auditHardeningSql).toContain("ALTER TABLE audit_events ENABLE ROW LEVEL SECURITY");
     expect(auditHardeningSql).toContain("audit_events_insert");
     expect(auditHardeningSql).toContain("audit_events_read");
     expect(auditHardeningSql).toContain("audit_events is append-only");
