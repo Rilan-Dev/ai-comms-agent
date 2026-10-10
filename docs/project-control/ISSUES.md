@@ -408,4 +408,5 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - Commits: migration 387c7e50f258c13e0e4aa03ae5b319896b27eabc; test 4e455f4d55051ffa16bb7a52f85baf1c3218e3f5.
 - Migration-history caution: the reported database failed before recording 0032. Any database that already recorded the old 0032 checksum may reject the updated file; inspect its migration ledger before rollout and do not delete ledger entries blindly.
 - Verification: GitHub source writes only. No SQL migration, focused test, typecheck, build, or runtime deployment was run. No PASS claimed.
-- Next action: pull latest main, inspect git status --short, confirm search_path=aca,public, then rerun bash scripts/manual-up.sh and capture actual output.
+- Follow-up from user's rerun (2026-10-10): schema resolution passed, but PostgreSQL rejected the DELETE deny policy because DELETE policies accept USING and not WITH CHECK. Corrected `audit_events_delete_deny` to `USING (false)` only; UPDATE deny policy retains `USING (false) WITH CHECK (false)`. Added static regression coverage. Commits: SQL `03f8e87c039c097784e0acb9e671ba853f5ca852`; test `454b5361317a5df61e6de338a7e45b63fbd3fdd8`.
+- Verification pending: user must pull latest main and rerun manual-up; no migration success or runtime PASS claimed.
