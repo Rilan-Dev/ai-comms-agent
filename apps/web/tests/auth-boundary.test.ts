@@ -33,9 +33,10 @@ describe("production authentication boundary", () => {
     expect(layout).toContain('pathname.startsWith("/login") || pathname.startsWith("/setup")');
   });
 
-  it("treats owner as satisfying admin-level authorization guards", () => {
+  it("applies hierarchical minimum-role guards to members, admins, and owners", () => {
     const authorization = read("src/lib/identity/authorization.ts");
-    expect(authorization).toContain('role === "owner" && roles.includes("admin")');
+    expect(authorization).toContain('const rank: Record<MembershipRole, number> = { member: 1, admin: 2, owner: 3 }');
+    expect(authorization).toContain('roles.some((requiredRole) => rank[role] >= rank[requiredRole])');
   });
 
   it("uses PostgreSQL-owned sessions for production identity resolution", () => {
