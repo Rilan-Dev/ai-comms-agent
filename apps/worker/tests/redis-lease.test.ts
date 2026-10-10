@@ -65,14 +65,46 @@ test("Redis lease release uses token-checked Lua so it cannot delete another own
   });
 });
 
-test("Redis lease supports authenticated URLs and selects the configured database", async () => {
-  await withFakeRedis((args) => args[0] === "SET" ? "+OK\r\n" : "+OK\r\n", async (base, commands) => {
+test("Redis lease supports ACL username/password and selects the configured database", async () => {
+  await withFakeRedis(() => "+OK\r\n", async (base, commands) => {
     const url = base.replace("redis://", "redis://worker:secret@").concat("/2");
     assert.equal(await acquireRedisLease(url, "mailbox:batch", "owner-token", 600000), true);
     assert.deepEqual(commands.map((args) => args[0]), ["AUTH", "SELECT", "SET"]);
     assert.deepEqual(commands[0], ["AUTH", "worker", "secret"]);
     assert.deepEqual(commands[1], ["SELECT", "2"]);
   });
+});
+
+test("Redis lease supports legacy password-only authentication", async () => {
+  await withFakeRedis(() => "+OK\r\n", async (base, commands) => {
+    const url = base.replace("redis://", "redis://:secret@");
+    assert.equal(await acquireRedisLease(url, "mailbox:batch", "owner-token", 600000), true);
+    assert.deepEqual(commands.map((args) => args[0]), ["AUTH", "SET"]);
+    assert.deepEqual(commands[0], ["AUTH", "secret"]);
+  });
+});
+
+test("Redis lease supports passwordless servers without sending AUTH", async () => {
+  await withFakeRedis(() => "+OK\r\n", async (url, commands) => {
+    assert.equal(await acquireRedisLease(url, "mailbox:batch", "owner-token", 600000), true);
+    assert.deepEqual(commands, [["SET", "mailbox:batch", "owner-token", "NX", "PX", "600000"]]);
+  });
+});
+
+test("Redis lease applies the optional key namespace consistently on acquire and release", async () => {
+  const previous = process.env.REDIS_KEY_PREFIX;
+  process.env.REDIS_KEY_PREFIX = "project-c";
+  try {
+    await withFakeRedis(() => "+OK\r\n", async (url, commands) => {
+      await acquireRedisLease(url, "ai-comms-agent:mailbox-sync:batch", "owner-token", 600000);
+      await releaseRedisLease(url, "ai-comms-agent:mailbox-sync:batch", "owner-token");
+      assert.equal(commands[0]?.[1], "project-c:ai-comms-agent:mailbox-sync:batch");
+      assert.equal(commands[1]?.[4], "project-c:ai-comms-agent:mailbox-sync:batch");
+    });
+  } finally {
+    if (previous === undefined) delete process.env.REDIS_KEY_PREFIX;
+    else process.env.REDIS_KEY_PREFIX = previous;
+  }
 });
 
 test("Redis lease preserves a bounded server error for authentication and ACL diagnosis", async () => {
