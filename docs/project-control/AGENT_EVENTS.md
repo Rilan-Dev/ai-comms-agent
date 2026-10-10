@@ -282,3 +282,14 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Owner:** FIX-01 for source defects; OPS-01 for confirmed environment/network/runtime issues.
 - **Suggested next action:** Run `scripts/diagnose-email-accounts.sh` on the server and review public/local responses, sync DB state, message counts, and sanitized worker logs.
 - **Related records:** ISS-024; `scripts/diagnose-email-accounts.sh`; commit `a529ffe43915495d099c17b353fb517d53fac10b`.
+
+
+### EVT-FIX01-WORKSPACE-TEST-COMMAND-MISMATCH-20261010 — 2026-10-10
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** VERIFICATION BLOCKER
+- **Evidence:** User ran `npm test -- src/modules/integrations/oauth-app-validation.test.ts src/modules/integrations/oauth-setup-guides.test.ts` from the `ai-comms-agent` root after pulling `main` from `6d935ab` to `f938fd3`.
+- **Root cause:** Those requested paths belong to the separate Clara AI Platform workstream and are not paths in this monorepo. Root `npm test` executes `pnpm -r test`, which forwards the arguments into every workspace package rather than targeting the intended Clara repo tests. The web Vitest include is `tests/**/*.test.ts`; therefore it reported no tests found. The worker process was then killed with `SIGKILL`; the provided output does not establish an assertion failure or its cause.
+- **Failed approach:** Running Clara-specific test paths through the ai-comms-agent recursive root script. Do not copy Clara OAuth files into this repo merely to make this command pass.
+- **Remedy:** Use workspace-relative test paths in this repo, e.g. `pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts` and `pnpm --filter @ai-comms-agent/worker exec node --import tsx --test tests/email-sync-rabbitmq.test.ts`. Run one workspace at a time to isolate resource kills.
+- **Next action precedence:** The active email runtime issue still requires `bash scripts/diagnose-email-accounts.sh` from repository root and review of its sanitized report. This test-command mismatch does not diagnose the IMAP/SMTP 502 or OAuth mailbox import issue.
+- **Verification:** User's output confirms the web no-tests-found condition and worker SIGKILL. Corrected commands and live diagnostics have not yet been run. No test PASS claimed.
