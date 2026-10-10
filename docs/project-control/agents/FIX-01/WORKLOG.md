@@ -195,3 +195,15 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Discrepancy:** User's local output says pnpm-lock.yaml contains two lockfile documents; current main's file has exactly one `lockfileVersion:` and one `importers:` header. Treat the local duplicate as stale/uncommitted/local merge state until `git status` and diff against origin/main identify its origin; do not make a needless lockfile edit on current main.
 - **Failed approaches to avoid:** Don't rewrite valid DO blocks to appease a named-tag-only test; don't add redundant retry metadata; don't remove the Qdrant explanatory comment; don't edit historical migration 0002/0013 for a live schema correction.
 - **Next action:** Pull latest main; inspect local `git status --short` and compare `pnpm-lock.yaml` to `origin/main`; run focused migration-verification and worker RabbitMQ tests; then run web and worker typechecks sequentially. Route Docker/CI/deployment/environment failures to OPS-01.
+
+### FIX01-WORKER-CONTRACT-20261010 / 2026-10-10
+- **Task:** Correct worker test-suite startup failures and the reported email/provider contract regressions.
+- **Authorization:** User explicitly requested repository inspection/fixes/commits on GitHub; current `NEXT_ACTION.md`.
+- **Started from:** `fix/migration-verification-phase4-contract` at `f8fe225aa392dab26e23779d64e9bbe613aa3c30`.
+- **Actions:** Converted three worker Vitest-based contract tests to `node:test`; replaced ESM-incompatible `__dirname` in six worker test files; used the existing bounded retry helper for capability discovery; corrected IMAP RFC 2047 encoded-word matching; preserved non-canonical informational messageId metadata; adjusted the Clara source assertion to strip comments; corrected IMAP literal regex and Zoho OAuth body/account-discovery mocks; moved email approval/recovery assertions to the DB repository and action worker.
+- **Files/code:** Worker test files, `apps/worker/src/email/provider-verification.ts`, `apps/worker/src/email/imap-smtp-adapter.ts`, `apps/worker/src/events/provider-events.ts`, `apps/web/tests/email-action-contract.test.ts`, and project-control records.
+- **Evidence:** GitHub connector accepted commits. No tests/typechecks/build/runtime/deployment were executed in this session. Do not mark PASS.
+- **Blockers/dependencies:** Local test execution is needed to validate these corrections and reveal any remaining suite failures. Preserve local `pnpm-lock.yaml` and backups.
+- **Lesson:** Align source-text contracts with the module that owns the behavior; use the package's existing test runner and ESM path conventions rather than introducing unnecessary dependencies.
+- **Next action:** Follow `docs/project-control/NEXT_ACTION.md`; run focused web tests, worker suite, and web/worker typechecks locally without waiting for CI/Vercel.
+

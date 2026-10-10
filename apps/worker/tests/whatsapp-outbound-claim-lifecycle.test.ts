@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const repository = readFileSync(
   resolve(__dirname, "../../../packages/db/src/messaging/whatsapp-repository.ts"),
@@ -17,27 +21,27 @@ const migration = readFileSync(
 
 describe("WhatsApp outbound claim lifecycle", () => {
   it("atomically claims queued messages with SKIP LOCKED", () => {
-    expect(repository).toContain("export async function claimQueuedWhatsAppOutbound");
-    expect(repository).toContain("FOR UPDATE SKIP LOCKED");
-    expect(repository).toContain("SET status = 'executing'");
+    assert.equal(repository.includes("export async function claimQueuedWhatsAppOutbound"), true);
+    assert.equal(repository.includes("FOR UPDATE SKIP LOCKED"), true);
+    assert.equal(repository.includes("SET status = 'executing'"), true);
   });
 
   it("only completes or fails a message owned by the current execution claim", () => {
-    expect(repository).toContain("status = 'executing' RETURNING id");
-    expect(worker).toContain("claimQueuedWhatsAppOutbound(limit)");
+    assert.equal(repository.includes("status = 'executing' RETURNING id"), true);
+    assert.equal(worker.includes("claimQueuedWhatsAppOutbound(limit)"), true);
   });
 
   it("fails abandoned sends closed instead of making them eligible for replay", () => {
-    expect(repository).toContain("recoverStaleWhatsAppOutbound");
-    expect(repository).toContain("provider outcome is unknown. Manual verification required.");
-    expect(worker).toContain("whatsapp.message.execution_interrupted");
-    expect(worker).toContain("manualVerificationRequired: true");
-    expect(worker).toContain("persistenceConflict: true");
-    expect(worker).toContain("providerAccepted: true");
+    assert.equal(repository.includes("recoverStaleWhatsAppOutbound"), true);
+    assert.equal(repository.includes("provider outcome is unknown. Manual verification required."), true);
+    assert.equal(worker.includes("whatsapp.message.execution_interrupted"), true);
+    assert.equal(worker.includes("manualVerificationRequired: true"), true);
+    assert.equal(worker.includes("persistenceConflict: true"), true);
+    assert.equal(worker.includes("providerAccepted: true"), true);
   });
 
   it("allows the executing state in the forward-only schema migration", () => {
-    expect(migration).toContain("'queued','executing','sent'");
-    expect(migration).toContain("whatsapp_messages_outbound_claim_idx");
+    assert.equal(migration.includes("'queued','executing','sent'"), true);
+    assert.equal(migration.includes("whatsapp_messages_outbound_claim_idx"), true);
   });
 });

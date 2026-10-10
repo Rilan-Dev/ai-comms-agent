@@ -6,12 +6,21 @@ The single exact next authorized action. Update this file on every commit.
 
 ## Current next action
 
-### FIX-01 migration test alignment — 2026-10-10
+### FIX-01 worker/web contract correction — 2026-10-10
 
-A test-only correction is committed on `fix/migration-verification-phase4-contract` (`c51d5a79dfd999dd4382cc60005798531e5517be`). The `summary_sources` table belongs to migration 0003 and its RLS policy to migration 0004, not migration 0002. The static test now follows that migration ownership.
+Source corrections committed on `fix/migration-verification-phase4-contract` after reviewing the user-reported worker-suite and email-action contract failures:
+- Converted the three worker contract tests that imported Vitest to Node's built-in `node:test` / `node:assert` runner, matching `apps/worker/package.json`.
+- Replaced ESM-incompatible `__dirname` usage in worker test fixtures with `fileURLToPath(import.meta.url)`.
+- Applied the existing bounded transient-error retry helper to provider capability discovery.
+- Corrected RFC 2047 encoded-word matching in IMAP header decoding.
+- Preserved informational `messageId` metadata for email provider events while canonical organization/action/account/correlation fields remain authoritative.
+- Corrected test contracts/mocks for Clara indexing comments, IMAP literal line boundaries, Zoho OAuth form-body parsing/account discovery, and email-action approval/recovery module boundaries.
 
-**Next action:** fetch the branch and run `pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts`. Then run the worker RabbitMQ contract test and web/worker typechecks sequentially. Do not wait for CI/Vercel. The user's local lockfile displayed two YAML documents, but fetched current main has one; compare local `pnpm-lock.yaml` with the newly fetched `origin/main` before changing it. Record actual output; do not claim PASS before execution.
+**Verification status:** GitHub accepted source commits. Focused tests, the full worker suite, typechecks, build, browser/runtime checks, and deployment have NOT been executed or verified in this continuation. Do not describe the branch as deployment-successful yet. The lockfile and local backup files remain out of scope and must be preserved.
 
+**Deployment blocker:** A preview deployment request for commit `a4877ee23152b4895bf5eae48243ddb0202c8155` was rejected by Vercel with HTTP 402 (`api-deployments-free-per-day`, over 100 deployment API calls in the daily allowance; retry after 24 hours). No deployment was created. Do not claim deployment success or repeatedly retry/bypass the quota. Existing recent branch deployments were `CANCELED` and do not validate the latest source.
+
+**Exact next action:** fetch/pull this branch into the local checkout without discarding local changes or the four lockfile backups. Run the focused web email-action contract and migration-verification tests, then `pnpm --filter @ai-comms-agent/worker test`; follow with web and worker typechecks. Fix any remaining concrete failures and update this file/worklog with actual output. Continue without waiting for GitHub Actions or Vercel; only report deployment success after a deployment result is observed.
 
 ## Immediate FIX-01 migration/worker test follow-up — 2026-10-09
 
@@ -944,3 +953,13 @@ User's `pnpm run typecheck` was blocked before TypeScript by `ERR_PNPM_LOCKFILE_
 
 ### FIX-01 — Retest migration assertions and reconcile local lockfile (2026-10-10)
 The user-reported focused run had 83 passed / 3 failed. The two SQL failures were test false positives against valid PostgreSQL `$$` delimiters; assertions were corrected in commit `58730eb8b0fa46bfdd5fca581295209921582dbe`. The third failure is local lockfile drift: local `pnpm-lock.yaml` has two YAML document headers, while the PR branch lockfile has one. Preserve backups and inspect `git status --short`; then reconcile only the lockfile from `origin/fix/migration-verification-phase4-contract` if no intended local lockfile edits need to be kept. Re-run `pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts`. Then continue with worker RabbitMQ contract tests and web/worker typechecks sequentially. Do not wait for CI/Vercel; do not claim PASS without the output.
+
+
+### FIX-01 — Latest user test run and targeted worker test fixes (2026-10-10)
+The user reports email-action-contract.test.ts passes 8/8; migration verification reports 85/86 with the lockfile-header assertion failing; worker tests report 79/81 with two test assertion failures; both web and worker tsc --noEmit commands produced no errors. The GitHub branch pnpm-lock.yaml was inspected and contains exactly one lockfileVersion: and one importers: header. The user's runtime reports two lockfile headers from /docker/ai-comms-agent; diagnose the local/container working-tree discrepancy using git status --short, grep -nE '^(lockfileVersion|importers):' pnpm-lock.yaml, and realpath pnpm-lock.yaml before changing it. Do not replace the lockfile blindly or delete the local backup files.
+
+Targeted source changes committed: IMAP multiple-literal test now asserts the exact CRLF boundary and second literal marker; scheduling idempotency test regexes no longer incorrectly require literal backslashes around SQL parentheses. Re-run the two failed worker tests and focused migration test. Continue fixing concrete failures without waiting for CI/Vercel; no build/deployment PASS is implied.
+
+
+### Follow-up — 2026-10-10
+The focused worker rerun isolated the remaining IMAP failure: regexes treated `{5}` as a regex quantifier instead of the literal IMAP byte-count marker. Fixed both assertions by escaping the braces in commit b87d5bc804331470a280bf54ee020b463a186d5f. Scheduling idempotency test now passes in the user's rerun. Pull and rerun the focused IMAP test. The local pnpm-lock.yaml is modified and has duplicate headers at lines 2/159 while GitHub's branch version has one lockfileVersion and one importers header. Preserve all backup files; inspect `git diff -- pnpm-lock.yaml` and restore only the tracked lockfile to branch HEAD after saving/confirming the backup artifacts if the diff consists solely of the known accidental duplicate document. Then rerun migration verification.

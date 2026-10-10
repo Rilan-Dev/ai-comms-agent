@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const attachmentSource = readFileSync(
   resolve(__dirname, "../src/email/attachment-service.ts"),
@@ -13,23 +17,23 @@ const actionSource = readFileSync(
 
 describe("worker email security boundaries", () => {
   it("keeps attachment provider access in the worker", () => {
-    expect(attachmentSource).toContain("retrieveEmailAttachment");
-    expect(attachmentSource).toContain("organizationId");
-    expect(attachmentSource).toContain("getMailMessageForOrganization");
-    expect(attachmentSource).toContain("downloadAttachment(attachmentId)");
-    expect(attachmentSource).toContain("MAX_EMAIL_ATTACHMENT_BYTES");
+    assert.equal(attachmentSource.includes("retrieveEmailAttachment"), true);
+    assert.equal(attachmentSource.includes("organizationId"), true);
+    assert.equal(attachmentSource.includes("getMailMessageForOrganization"), true);
+    assert.equal(attachmentSource.includes("downloadAttachment(attachmentId)"), true);
+    assert.equal(attachmentSource.includes("MAX_EMAIL_ATTACHMENT_BYTES"), true);
   });
 
   it("never accepts provider credentials from the browser boundary", () => {
-    expect(attachmentSource).toContain("CREDENTIALS_MASTER_KEY");
-    expect(attachmentSource).toContain("loadCredentials");
-    expect(attachmentSource).not.toContain("Request");
-    expect(attachmentSource).not.toContain("NextResponse");
+    assert.equal(attachmentSource.includes("CREDENTIALS_MASTER_KEY"), true);
+    assert.equal(attachmentSource.includes("loadCredentials"), true);
+    assert.equal(attachmentSource.includes("Request"), false);
+    assert.equal(attachmentSource.includes("NextResponse"), false);
   });
 
   it("sends an already-synchronized provider draft instead of creating a duplicate", () => {
-    expect(actionSource).toContain("draft.provider_draft_id");
-    expect(actionSource).toContain("connected.sendDraft(providerDraftId)");
-    expect(actionSource).toContain("markLocalDraftSentForOrganization");
+    assert.equal(actionSource.includes("draft.provider_draft_id"), true);
+    assert.equal(actionSource.includes("connected.sendDraft(providerDraftId)"), true);
+    assert.equal(actionSource.includes("markLocalDraftSentForOrganization"), true);
   });
 });
