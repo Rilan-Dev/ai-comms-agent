@@ -440,17 +440,54 @@ export function startMailboxSyncLoop() {
   const queueEnabled = Boolean(process.env.RABBITMQ_URL?.trim());
   const tick = async () => {
     if (stopped) return;
+    if (!queueEnabled) {
+      try {
+        await processMailboxSyncBatch();
+      } catch (error) {
+        console.error(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level: "error",
+          service: "worker.email-sync",
+          message: "Mailbox synchronization poll failed",
+          reason: error instanceof Error ? error.message : "Unknown worker error",
+        }));
+      }
+      return;
+    }
+
     try {
-      if (queueEnabled) await enqueueDueMailboxSyncs();
-      else await processMailboxSyncBatch();
+      await enqueueDueMailboxSyncs();
     } catch (error) {
+      // A configured but unavailable broker must not silently strand all mailboxes
+      // in pending/queued state. Use the same leased batch processor as the
+      // no-queue deployment mode; it fails closed if the Redis distributed lease
+      // cannot be acquired, so this fallback does not permit uncoordinated workers.
       console.error(JSON.stringify({
         timestamp: new Date().toISOString(),
         level: "error",
         service: "worker.email-sync",
-        message: queueEnabled ? "Mailbox queue producer poll failed" : "Mailbox synchronization poll failed",
-        reason: error instanceof Error ? error.message : "Unknown worker error",
+        message: "Mailbox queue producer poll failed; attempting leased direct-sync fallback",
+        reason: error instanceof Error ? error.message : "Unknown queue error",
       }));
+      try {
+        const result = await processMailboxSyncBatch();
+        console.error(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level: result.succeeded > 0 ? "info" : "warn",
+          service: "worker.email-sync",
+          message: "Leased direct-sync fallback completed",
+          attempted: result.attempted,
+          succeeded: result.succeeded,
+        }));
+      } catch (fallbackError) {
+        console.error(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level: "error",
+          service: "worker.email-sync",
+          message: "Leased direct-sync fallback failed",
+          reason: fallbackError instanceof Error ? fallbackError.message : "Unknown fallback error",
+        }));
+      }
     }
   };
   void tick();
