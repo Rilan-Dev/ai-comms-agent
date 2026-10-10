@@ -441,3 +441,13 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Correction:** Commit `113b2b3ee094042e9380404f3073c39b17e07951` promotes the real `fixture.memberA` to admin via repository API and then verifies both admin and owner satisfy the member minimum.
 - **Pending:** Rerun focused RBAC Vitest, web typecheck, then manual-up. User has a modified local `pnpm-lock.yaml`; preserve and inspect separately.
 - **Status:** Source correction committed; execution pending. No PASS claimed.
+
+
+### FIX01-EMAIL-ACCOUNT-RUNTIME-DIAGNOSTICS-20261010 — 2026-10-10
+- **Invocation:** User reports 502 from POST /api/email-accounts for IMAP/SMTP and OAuth-connected mailboxes not fetching/syncing after application startup.
+- **Startup evidence supplied:** RBAC focused suite 16/16 passed, web typecheck passed, Docker web/worker images built, migration chain completed, both containers started. No live mailbox evidence supplied yet.
+- **Source inspection:** IMAP/SMTP connection-test failures map to HTTP 502; manual sync route currently accepts Gmail only; worker's periodic query includes Gmail, Zoho and IMAP-SMTP.
+- **Action:** Committed a server-run diagnostic script that compares public/local API behavior, optionally tests provider connectivity, snapshots sync state/message counts, and captures sanitized logs.
+- **Commit:** a529ffe43915495d099c17b353fb517d53fac10b.
+- **Status:** Script not executed against live host; no live root cause or PASS claimed.
+- **Next:** User runs script and returns sanitized report; route source vs runtime issue from evidence. Never request secrets in chat.
