@@ -293,3 +293,10 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Remedy:** Use workspace-relative test paths in this repo, e.g. `pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts` and `pnpm --filter @ai-comms-agent/worker exec node --import tsx --test tests/email-sync-rabbitmq.test.ts`. Run one workspace at a time to isolate resource kills.
 - **Next action precedence:** The active email runtime issue still requires `bash scripts/diagnose-email-accounts.sh` from repository root and review of its sanitized report. This test-command mismatch does not diagnose the IMAP/SMTP 502 or OAuth mailbox import issue.
 - **Verification:** User's output confirms the web no-tests-found condition and worker SIGKILL. Corrected commands and live diagnostics have not yet been run. No test PASS claimed.
+
+### EVT-OPS01-OAUTH-SYNC-RUNTIME-20261010
+- **Owner:** OPS-01
+- **Type:** RUNTIME BLOCKER
+- **Summary:** User-provided sanitized diagnostic confirms queued Gmail sync is not processed: account stays pending/idle with zero stored messages; worker RabbitMQ URL exposes literal placeholder vhost `YOUR_EXISTING_VHOST`; Redis lease authentication returns `WRONGPASS`.
+- **Action:** Correct deployed RabbitMQ and Redis URLs/credentials/ACL/vhost/TLS settings, recreate worker, requeue sync, and verify persisted message count. Never bypass distributed lease coordination.
+- **Verification:** Live ingestion not yet verified; HTTP 200 health and HTTP 202 queue acceptance are insufficient.
