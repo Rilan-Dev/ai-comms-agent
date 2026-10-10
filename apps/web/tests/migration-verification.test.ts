@@ -31,6 +31,8 @@ const phase4CleanupPath = resolve(__dirname, "../../../supabase/migrations/0004_
 const phase4CleanupSql = readFileSync(phase4CleanupPath, "utf8");
 const auditHardeningPath = resolve(__dirname, "../../../supabase/migrations/0032_audit_event_access_hardening.sql");
 const auditHardeningSql = readFileSync(auditHardeningPath, "utf8");
+const attachmentCompatibilityPath = resolve(__dirname, "../../../supabase/migrations/0033_email_attachment_message_id_compatibility.sql");
+const attachmentCompatibilitySql = readFileSync(attachmentCompatibilityPath, "utf8");
 
 describe("Disposable PostgreSQL bootstrap static verification", () => {
   it("uses valid dollar-quoted DO blocks", () => {
@@ -38,6 +40,15 @@ describe("Disposable PostgreSQL bootstrap static verification", () => {
     expect(initSql).toMatch(/END\s*\$\$;/);
     expect(initSql).not.toMatch(/^DO \$(?!\$)/m);
     expect(initSql).not.toMatch(/^\$(?!\$)/m);
+  });
+});
+
+describe("Migration static verification (0033_email_attachment_message_id_compatibility.sql)", () => {
+  it("reconciles legacy email_message_id rows into the repository's message_id contract", () => {
+    expect(attachmentCompatibilitySql).toContain("ADD COLUMN IF NOT EXISTS message_id uuid REFERENCES email_messages(id)");
+    expect(attachmentCompatibilitySql).toContain("UPDATE email_attachments SET message_id = email_message_id WHERE message_id IS NULL");
+    expect(attachmentCompatibilitySql).toContain("ON email_attachments(message_id)");
+    expect(attachmentCompatibilitySql).toContain("RAISE EXCEPTION '0033 attachment reconciliation found rows without message_id");
   });
 });
 
