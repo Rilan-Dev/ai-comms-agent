@@ -1644,3 +1644,12 @@ User rerun confirmed the scheduling idempotency test passes. The remaining IMAP 
 ## 2026-10-10 — FIX-01: wrong workspace/test paths
 
 User ran Clara AI Platform OAuth test paths from the `ai-comms-agent` repository. Root `npm test` recursively runs each workspace package; web Vitest only includes `tests/**/*.test.ts`, so those paths yielded “No test files found.” Worker test process ended with SIGKILL; no worker assertion failure or kill cause is established from the pasted output. Do not port unrelated Clara OAuth files into this repository. Run the correct repository-relative tests individually using workspace filters, and prioritize the existing email runtime diagnosis via `bash scripts/diagnose-email-accounts.sh`. No PASS and no live mailbox root cause established.
+
+## 2026-10-10 — Live OAuth mailbox sync blocked by runtime configuration
+
+- **Owner:** ChatGPT / OPS-01 handoff.
+- User's sanitized diagnostic showed a Gmail account still `pending` / `idle`, with no sync attempt/success timestamps and zero stored messages after the manual endpoint returned HTTP 202.
+- Root cause for the observed worker not processing the queued sync: RabbitMQ consumer repeatedly fails because the running `RABBITMQ_URL` resolves to virtual host literal `YOUR_EXISTING_VHOST`; the worker's Redis mailbox-sync lease also fails with `WRONGPASS`, so the worker safely skips processing. Public/local health 200 only reflects configured packages/values, not live broker/Redis authentication.
+- Required host fix: replace placeholder RabbitMQ endpoint/auth/vhost and align Redis URL with active ACL credentials/TLS/database in local `.env.docker`; recreate/restart worker, then requeue sync. Keep secrets out of chat/logs. Never bypass the distributed lease.
+- Separate IMAP/SMTP probe had mismatched entered username and failed authentication; this does not diagnose the OAuth credential.
+- Verification: user ran RabbitMQ contract test 10/10 passed; migration static test 86/87 failed on local duplicate lockfile header. Neither verifies live email ingestion. No runtime PASS claimed.
