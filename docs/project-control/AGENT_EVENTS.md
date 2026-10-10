@@ -272,3 +272,13 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Remedy:** Commit `113b2b3ee094042e9380404f3073c39b17e07951` promotes the existing `memberA` to admin using the fixture repository, then tests admin and owner.
 - **Verification:** Corrected source re-fetch/commit only. Retest, typecheck and Docker build remain pending. No PASS claimed.
 - **Next action:** Focused RBAC Vitest → web typecheck → manual-up. Preserve local modified lockfile; OPS-01 only for independent environment defects.
+
+
+### EVT-FIX01-EMAIL-ACCOUNT-RUNTIME-DIAGNOSTICS-20261010 — 2026-10-10
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** BLOCKER
+- **Summary:** User's application starts after Docker build/migrations but IMAP/SMTP configuration returns 502 and OAuth mailboxes do not sync. Source inspection distinguishes an application-generated provider connection 502 from a Cloudflare/upstream 502 and confirms the manual-sync endpoint is Gmail-only while the periodic worker scans Gmail, Zoho, and IMAP-SMTP.
+- **Impact:** Core mailbox connection and ingestion are unverified in production.
+- **Owner:** FIX-01 for source defects; OPS-01 for confirmed environment/network/runtime issues.
+- **Suggested next action:** Run `scripts/diagnose-email-accounts.sh` on the server and review public/local responses, sync DB state, message counts, and sanitized worker logs.
+- **Related records:** ISS-024; `scripts/diagnose-email-accounts.sh`; commit `a529ffe43915495d099c17b353fb517d53fac10b`.
