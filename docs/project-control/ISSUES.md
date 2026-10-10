@@ -425,3 +425,16 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Verification:** Source committed only. Tests, typechecks, image rebuild, migration 0033 execution, provider fetch, queue/Redis authentication, and live API behavior have NOT been run here. Do not claim inbox/sync/drafts are fixed until the user reruns the stack.
 - **Security note:** User's pasted curl included session cookies and an access token. Treat the token as exposed: revoke/logout and obtain a fresh session; never paste or commit credentials.
 - **Next action:** Pull latest `main`, rebuild/restart web and worker and run `bash scripts/manual-up.sh`. Confirm migration 0033 applies, inbox no longer errors, and drafts GET works for owner/admin/member. Inspect sanitized RabbitMQ diagnostics. If queue remains unavailable, check the direct-sync fallback result and Redis lease error; never bypass the distributed lease. Confirm actual provider sync completion and persisted email rows rather than treating queued/HTTP 202 as success.
+
+
+## ISS-020 — Membership role rank map omits viewer
+
+- **Opened:** 2026-10-10
+- **Severity:** blocker (web production build/typecheck)
+- **Owner:** FIX-01 / Sentinel
+- **Status:** in_progress
+- **Description:** User's `bash scripts/manual-up.sh` failed in the Docker web build after Next.js compilation, during type validation: `apps/web/src/lib/identity/authorization.ts:109` declared `Record<MembershipRole, number>` with only member/admin/owner. Shared `MembershipRole` also contains viewer.
+- **Root cause:** Exhaustive rank record was not updated when the role union included viewer. The intended minimum-role hierarchy is viewer < member < admin < owner.
+- **Remedy:** Added `viewer: 0` to the rank map (commit `44a08522f23e807755114ebe46b8b1e04e6056da`) and added RBAC regression cases (commit `3853ecf046c175e15a4f824e9679f50fb7132cf9`).
+- **Verification state:** Source committed; focused Vitest, web typecheck, Docker build, and runtime checks not yet run after the fix.
+- **Next action:** Run `pnpm --filter @ai-comms-agent/web exec vitest run tests/rbac.test.ts`, then `pnpm --filter @ai-comms-agent/web typecheck`, then rerun `bash scripts/manual-up.sh` and capture output. Route separate infrastructure/deployment defects to OPS-01.
