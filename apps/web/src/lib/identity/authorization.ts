@@ -106,7 +106,7 @@ export function requireRole(subject: AuthSubject, ...roles: MembershipRole[]): v
   // owner >= admin >= member. In particular, draft/mail routes requiring
   // "member" must not reject owners or admins.
   const role = subject.membership.role;
-  const rank: Record<MembershipRole, number> = { member: 1, admin: 2, owner: 3 };
+  const rank: Record<MembershipRole, number> = { viewer: 0, member: 1, admin: 2, owner: 3 };
   const satisfies = roles.some((requiredRole) => rank[role] >= rank[requiredRole]);
   if (!satisfies) {
     throw new ForbiddenError(
