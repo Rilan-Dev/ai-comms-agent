@@ -1,12 +1,14 @@
 # NEXT_ACTION.md
 
-## Current next action — Diagnose live email account setup and sync (2026-10-10)
+## Current next action — Restore live OAuth mailbox ingestion (2026-10-10)
 
-User reports `POST https://aca.ostechnologies.in/api/email-accounts` returns 502 for IMAP/SMTP and OAuth mailboxes do not import messages. User-provided deployment output confirms focused RBAC tests 16/16, web typecheck, Docker web/worker image builds, migration chain completion, and both containers started; it does not establish email runtime health.
+The user has now run `bash scripts/diagnose-email-accounts.sh`. The evidence identifies a live worker configuration blocker: the RabbitMQ URL used by the running worker contains the literal virtual host `YOUR_EXISTING_VHOST`, and Redis rejects the worker's authentication with `WRONGPASS`. The Gmail account remains pending/idle, with no sync attempt/success timestamps and zero stored messages even after the API returned HTTP 202. Public/local `/api/health` HTTP 200 only proves the app process is alive/configuration values are present; it does not prove broker or Redis connectivity.
 
-Source inspection found: IMAP/SMTP provider connection errors intentionally become application JSON HTTP 502; compare public and local origin to distinguish provider connectivity from Cloudflare/upstream failure. Manual sync API currently supports Gmail only, while background worker polling includes Gmail, Zoho, and IMAP-SMTP. A connected OAuth account or HTTP 202 is not proof of persisted mail.
+**Exact next action (OPS-01 / server operator):** On the host, inspect the local `.env.docker` without sharing its contents. Correct `RABBITMQ_URL` to the actual broker endpoint, valid username/password, and real virtual host (URL-encode reserved characters). Correct `REDIS_URL` to the actual Redis ACL/authentication, database and TLS mode. Recreate/restart the worker so it receives the corrected environment. Do not guess credentials, copy placeholder values, or bypass Redis lease coordination.
 
-**Exact next action:** Pull latest `main`, then from repository root run `bash scripts/diagnose-email-accounts.sh`. The script checks public/local health, authenticated account listing, optionally tests IMAP/SMTP without saving, optionally requests Gmail manual sync, snapshots PostgreSQL sync state/message counts, and gathers sanitized web/worker logs. Share only the reviewed report—never share the session cookie, mailbox password, OAuth code, or tokens. Diagnose evidence before choosing a source fix vs OPS-01 runtime/network fix. Preserve local `pnpm-lock.yaml` changes. Do not wait for CI/Vercel; no live email PASS is claimed.
+**Recovery verification:** confirm sanitized worker logs no longer show RabbitMQ `ConnectionClose` or Redis `WRONGPASS`; requeue the Gmail sync; then confirm the account's status/last-attempt/last-success fields advance and the persisted `email_messages` row count increases. HTTP 202, healthy status, and a passing contract test are not live-ingestion success. If broker/Redis are corrected but the account still does not fetch, return to FIX-01 with the new sanitized provider/token-refresh error.
+
+The separate IMAP/SMTP probe returned authentication failure after a mailbox username/address mismatch; it does not establish whether the OAuth credentials are valid. Do not paste cookies, environment URLs, passwords, OAuth codes/tokens, or mailbox contents. Preserve local lockfile changes. Do not wait for CI/Vercel; no live email PASS is claimed.
 
 
 The single exact next authorized action. Update this file on every commit.
