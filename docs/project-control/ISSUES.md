@@ -396,3 +396,16 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Commit:** `58730eb8b0fa46bfdd5fca581295209921582dbe`.
 - **Separate local state:** Local `pnpm-lock.yaml` has two document headers and is marked modified; the fetched PR branch lockfile has one. Do not overwrite until local backups/status are preserved; restore/reconcile from the PR branch once confirmed.
 - **Verification pending:** Rerun focused Vitest after local lockfile reconciliation. No PASS claimed.
+
+
+## ISS-022 — Audit hardening migration assumes public schema (2026-10-10)
+- Severity: high (manual deployment blocked before app services start)
+- Owner: OPS-01 / FIX-01
+- Status: source_corrected_execution_pending
+- User evidence: Docker images built, migrations 0000–0031 were skipped, and migration 0032 failed because public.audit_events was absent.
+- Root cause: the base migration creates audit_events without schema qualification. With search_path=aca,public this resolves to aca.audit_events, but migration 0032 required public.audit_events.
+- Correction: migration 0032 now checks and operates on audit_events through the active connection search_path; the organization helper remains explicitly qualified as public.can_access_organization. Added a static regression assertion rejecting the old hard-coded prerequisite.
+- Commits: migration 387c7e50f258c13e0e4aa03ae5b319896b27eabc; test 4e455f4d55051ffa16bb7a52f85baf1c3218e3f5.
+- Migration-history caution: the reported database failed before recording 0032. Any database that already recorded the old 0032 checksum may reject the updated file; inspect its migration ledger before rollout and do not delete ledger entries blindly.
+- Verification: GitHub source writes only. No SQL migration, focused test, typecheck, build, or runtime deployment was run. No PASS claimed.
+- Next action: pull latest main, inspect git status --short, confirm search_path=aca,public, then rerun bash scripts/manual-up.sh and capture actual output.
