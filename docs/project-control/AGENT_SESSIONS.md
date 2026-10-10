@@ -432,3 +432,12 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** No local checkout/shell execution available in this session; GitHub source commits are not runtime/build verification.
 - **Handoff:** OPS-01 only if a separate Docker daemon, base-image, registry, deployment, or environment issue remains after the source correction.
 - **Next action:** Run focused RBAC Vitest and web typecheck locally; do not wait for CI/Vercel and do not claim PASS without actual output.
+
+
+### FIX01-RBAC-TEST-FIXTURE-FOLLOWUP-20261010 — 2026-10-10
+- **Invocation:** User provided actual focused RBAC test and web typecheck output following FIX01-AUTH-ROLE-RANK-20261010.
+- **Observed:** 15/16 RBAC tests passed. New admin/owner test failed authentication; typecheck reported `fixture.adminA` absent from `TestFixture`.
+- **Root cause:** Test referenced a nonexistent fixture property; undefined user ID meant the auth test never reached role comparison.
+- **Correction:** Commit `113b2b3ee094042e9380404f3073c39b17e07951` promotes the real `fixture.memberA` to admin via repository API and then verifies both admin and owner satisfy the member minimum.
+- **Pending:** Rerun focused RBAC Vitest, web typecheck, then manual-up. User has a modified local `pnpm-lock.yaml`; preserve and inspect separately.
+- **Status:** Source correction committed; execution pending. No PASS claimed.
