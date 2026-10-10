@@ -419,3 +419,16 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Pending:** Focused Vitest and worker node:test; sequential web/worker typechecks; inspect the local lockfile discrepancy.
 - **Blockers:** No local checkout/shell was available through this session to execute the user's test commands. The local lockfile duplicate is not present in current main.
 - **Next action:** Pull latest main, compare lockfile to origin/main, run focused tests then package typechecks sequentially; route infrastructure/deployment issues to OPS-01.
+
+
+### FIX01-AUTH-ROLE-RANK-20261010 — 2026-10-10
+- **Agent:** FIX-01 / Sentinel
+- **Invocation:** Recover current repository/project-control state; trace the reported Docker web build TypeScript error; apply the smallest authorized fix and RBAC regression coverage.
+- **Started from:** `main`; user reported `git pull --ff-only origin main` already up to date and a Next.js 15.5.27 type error at `apps/web/src/lib/identity/authorization.ts:109`.
+- **Scope:** Membership role-rank source correction, focused RBAC tests, and durable project-control records only.
+- **Status:** HANDOFF — source corrected, execution pending.
+- **Completed:** Added `viewer: 0` to the exhaustive rank map; added tests that viewer cannot satisfy a member minimum and admin/owner can. Commits `44a08522f23e807755114ebe46b8b1e04e6056da`, `3853ecf046c175e15a4f824e9679f50fb7132cf9`.
+- **Pending:** Focused RBAC Vitest, web typecheck, and user's Docker build rerun.
+- **Blockers:** No local checkout/shell execution available in this session; GitHub source commits are not runtime/build verification.
+- **Handoff:** OPS-01 only if a separate Docker daemon, base-image, registry, deployment, or environment issue remains after the source correction.
+- **Next action:** Run focused RBAC Vitest and web typecheck locally; do not wait for CI/Vercel and do not claim PASS without actual output.
