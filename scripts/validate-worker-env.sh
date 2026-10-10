@@ -1,4 +1,3 @@
-```bash
 #!/usr/bin/env bash
 # Safe preflight for the self-hosted worker.
 # Run from the repository root. Never prints credential values.
@@ -346,4 +345,3 @@ if (( FAIL > 0 )); then
 fi
 
 echo "Static checks passed. Review live dependency-check results before proceeding."
-```
