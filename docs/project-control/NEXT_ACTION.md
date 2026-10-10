@@ -1,10 +1,12 @@
 # NEXT_ACTION.md
 
-## Current next action — FIX-01 RBAC test-fixture correction (2026-10-10)
+## Current next action — Diagnose live email account setup and sync (2026-10-10)
 
-The original production-build type error is corrected by adding `viewer: 0` to the exhaustive role-rank map (commit `44a08522f23e807755114ebe46b8b1e04e6056da`). User-run verification then found the added ADMIN/OWNER regression test referenced nonexistent `fixture.adminA`, yielding TS2339 and an unauthenticated-test failure. Corrected the test to promote the existing `fixture.memberA` to admin through the repository (commit `113b2b3ee094042e9380404f3073c39b17e07951`).
+User reports `POST https://aca.ostechnologies.in/api/email-accounts` returns 502 for IMAP/SMTP and OAuth mailboxes do not import messages. User-provided deployment output confirms focused RBAC tests 16/16, web typecheck, Docker web/worker image builds, migration chain completion, and both containers started; it does not establish email runtime health.
 
-**Exact next action:** Rerun `pnpm --filter @ai-comms-agent/web exec vitest run tests/rbac.test.ts`, then `pnpm --filter @ai-comms-agent/web typecheck`, then `bash scripts/manual-up.sh`; capture actual output. Preserve the user's modified `pnpm-lock.yaml` and inspect it separately—do not reset or overwrite it. Do not wait for CI/Vercel. Route only independent Docker daemon/base-image/registry/deployment/environment defects to OPS-01. The corrected source has not yet been executed; no PASS is claimed.
+Source inspection found: IMAP/SMTP provider connection errors intentionally become application JSON HTTP 502; compare public and local origin to distinguish provider connectivity from Cloudflare/upstream failure. Manual sync API currently supports Gmail only, while background worker polling includes Gmail, Zoho, and IMAP-SMTP. A connected OAuth account or HTTP 202 is not proof of persisted mail.
+
+**Exact next action:** Pull latest `main`, then from repository root run `bash scripts/diagnose-email-accounts.sh`. The script checks public/local health, authenticated account listing, optionally tests IMAP/SMTP without saving, optionally requests Gmail manual sync, snapshots PostgreSQL sync state/message counts, and gathers sanitized web/worker logs. Share only the reviewed report—never share the session cookie, mailbox password, OAuth code, or tokens. Diagnose evidence before choosing a source fix vs OPS-01 runtime/network fix. Preserve local `pnpm-lock.yaml` changes. Do not wait for CI/Vercel; no live email PASS is claimed.
 
 
 The single exact next authorized action. Update this file on every commit.
