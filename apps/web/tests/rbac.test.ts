@@ -309,7 +309,14 @@ describe("RBAC and permissions", () => {
   });
 
   it("requireRole treats ADMIN and OWNER as at least MEMBER", async () => {
-    for (const userId of [fixture.adminA, fixture.ownerA]) {
+    // The fixture has memberA and ownerA, but no adminA. Promote memberA
+    // through the repository so the test exercises a real authenticated admin.
+    const memberships = await fixture.repo.getMembershipsForOrg(asOrganizationId(fixture.orgA));
+    const memberMembership = memberships.find((membership) => membership.userId === fixture.memberA);
+    expect(memberMembership).toBeDefined();
+    await fixture.repo.updateMembershipRole(asMembershipId(memberMembership!.id), "admin");
+
+    for (const userId of [fixture.memberA, fixture.ownerA]) {
       const request = createAuthedRequest(userId);
       const subject = await requireOrganizationMember(
         request,
