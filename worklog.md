@@ -1630,3 +1630,12 @@ User rerun confirmed the scheduling idempotency test passes. The remaining IMAP 
 - Commits: SQL `03f8e87c039c097784e0acb9e671ba853f5ca852`; test `b955d4bb2a076616de5d396f7b14f3ff23bdc772`.
 - NOT RUN: PostgreSQL migration, Vitest, container startup, or runtime checks. Do not infer migration success from source commits.
 - Next: pull latest main and rerun `bash scripts/manual-up.sh`; report the first concrete error if any. Do not wait for CI/Vercel.
+
+## 2026-10-10 — Inbox attachment compatibility, role hierarchy, and broker fallback
+- User evidence: after migration 0032 succeeded, inbox query failed with missing `email_attachments.message_id`; drafts GET rejected a user with `insufficient_role`; RabbitMQ consumer and enqueue attempts repeatedly failed during connection opening.
+- Source findings: legacy migration 0002 names the FK `email_message_id`, current DB repository uses `message_id`; role guard failed to let admin/owner satisfy a member-level minimum; queue polling stopped after broker enqueue errors even though a Redis-leased direct batch path exists.
+- Corrections committed to main: migration 0033 reconciles old attachment references and refuses orphaned rows; authorization now uses hierarchical role ranks; queue polling attempts the existing leased direct-sync batch after enqueue errors and reports its result; RabbitMQ connection startup logs sanitized endpoint/error details; static migration/auth/fallback assertions added.
+- Commits: `de8a79b2`, `0ab61969`, `25d35236`, `65ca6a0d`, `a0124202`, `d058b5e1`, `27d960eb`, `c45f6a9d`.
+- Verification: source writes only; tests/typecheck, manual-up migration 0033, Docker rebuild, Redis/RabbitMQ connectivity, live API, and provider email fetch not run here.
+- Security: user's pasted curl included a session access token/cookies; treat as exposed and rotate/revoke. No secret was recorded in source or project-control docs.
+- Next: user pulls main and runs manual-up; inspect sanitized worker/web logs. Verify persisted email rows and successful provider sync, not merely queued status. If Redis lease acquisition fails, repair Redis auth/config without bypassing the lease.
