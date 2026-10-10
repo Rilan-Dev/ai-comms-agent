@@ -9,6 +9,20 @@ const DEAD_QUEUE = "email.sync.dlq";
 const RETRY_DELAY_MS = 30_000;
 const PREFETCH = 1;
 
+function safeRabbitEndpoint(raw: string): Record<string, string> {
+  try {
+    const endpoint = new URL(raw);
+    return {
+      protocol: endpoint.protocol,
+      hostname: endpoint.hostname,
+      port: endpoint.port || (endpoint.protocol === "amqps:" ? "5671" : "5672"),
+      virtual_host: decodeURIComponent(endpoint.pathname.replace(/^\\/+/, "")) || "/",
+    };
+  } catch {
+    return { protocol: "invalid" };
+  }
+}
+
 function queueOptions() {
   return { durable: true } as const;
 }
@@ -210,7 +224,19 @@ export function startEmailSyncRabbitMq(
       confirmChannel = undefined;
       consumerTag = undefined;
       await newConnection?.close().catch(() => undefined);
-      console.error(JSON.stringify({ level: "error", service: "worker.email-sync-queue", message: "RabbitMQ consumer startup failed", reason: error instanceof Error ? error.message : "connection failed" }));
+      const details = error && typeof error === "object"
+        ? error as { code?: unknown; replyCode?: unknown; replyText?: unknown }
+        : {};
+      console.error(JSON.stringify({
+        level: "error",
+        service: "worker.email-sync-queue",
+        message: "RabbitMQ consumer startup failed",
+        reason: error instanceof Error ? error.message : "connection failed",
+        error_code: typeof details.code === "string" ? details.code : undefined,
+        reply_code: typeof details.replyCode === "number" ? details.replyCode : undefined,
+        reply_text: typeof details.replyText === "string" ? details.replyText.slice(0, 300) : undefined,
+        endpoint: safeRabbitEndpoint(url),
+      }));
       scheduleReconnect();
     } finally {
       booting = false;
