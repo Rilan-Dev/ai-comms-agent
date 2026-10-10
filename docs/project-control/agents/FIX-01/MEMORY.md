@@ -71,3 +71,13 @@ The authentication loop was traced to session issuance preceding active organiza
 - **Evidence:** Commits 7557a6cd, ee85b554, ceca e73e, c4d4abd0, 96996d82 (worker source/test and migration test source commits); tests NOT RUN.
 - **Prevention:** Assert runtime contracts rather than exact implementation spelling. Inspect source after API writes; no source-only PASS claims.
 - **Next:** Pull latest main, compare lockfile to origin/main, run focused tests and sequential web/worker typechecks.
+
+
+### FIX-01 / Sentinel — 2026-10-10 — Membership role rank exhaustiveness
+- **Symptom:** Docker web build failed during Next.js TypeScript validation because `Record<MembershipRole, number>` lacked `viewer`.
+- **Root cause:** The role union includes viewer, but the authorization hierarchy map listed only member/admin/owner.
+- **Failed approaches:** Do not cast around the missing role, loosen the Record type, or delete viewer from the domain union.
+- **Remedy:** Set ranks to viewer=0, member=1, admin=2, owner=3 and test minimum-role semantics.
+- **Evidence:** `44a08522f23e807755114ebe46b8b1e04e6056da`, `3853ecf046c175e15a4f824e9679f50fb7132cf9`. Post-fix tests/typecheck/build not run.
+- **Prevention:** Update exhaustive records and RBAC tests whenever a shared union type includes a new variant.
+- **Next action:** Run focused RBAC Vitest, web typecheck, then manual-up; OPS-01 owns independent infrastructure/deployment/environment issues.
