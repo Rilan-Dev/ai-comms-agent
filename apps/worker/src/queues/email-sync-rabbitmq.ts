@@ -16,7 +16,7 @@ function safeRabbitEndpoint(raw: string): Record<string, string> {
       protocol: endpoint.protocol,
       hostname: endpoint.hostname,
       port: endpoint.port || (endpoint.protocol === "amqps:" ? "5671" : "5672"),
-      virtual_host: decodeURIComponent(endpoint.pathname.replace(/^\\/+/, "")) || "/",
+      virtual_host: decodeURIComponent(endpoint.pathname).split("/").filter(Boolean).join("/") || "/",
     };
   } catch {
     return { protocol: "invalid" };
