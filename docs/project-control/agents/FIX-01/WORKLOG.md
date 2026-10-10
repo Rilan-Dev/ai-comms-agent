@@ -207,3 +207,17 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Lesson:** Align source-text contracts with the module that owns the behavior; use the package's existing test runner and ESM path conventions rather than introducing unnecessary dependencies.
 - **Next action:** Follow `docs/project-control/NEXT_ACTION.md`; run focused web tests, worker suite, and web/worker typechecks locally without waiting for CI/Vercel.
 
+
+
+### FIX01-AUTH-ROLE-RANK-20261010 — 2026-10-10
+- **Task:** Fix the reported web Docker build TypeScript error without expanding scope.
+- **Authorization:** User explicitly invoked FIX-01 / Sentinel and authorized root-cause-first diagnosis, smallest corrective change, regression protection, and durable records. No DEV-01 dependency; OPS-01 boundary preserved.
+- **Repository/context:** `Rilan-Dev/ai-comms-agent`, branch `main`; user reported `git pull --ff-only origin main` already up to date. Error surfaced after Next.js compilation at `apps/web/src/lib/identity/authorization.ts:109`.
+- **Symptom:** `Record<MembershipRole, number>` literal had member/admin/owner but TypeScript required viewer as well.
+- **Root cause:** `packages/shared/src/identity/types.ts` defines `MembershipRole = "owner" | "admin" | "member" | "viewer"`. The hierarchy map failed to include viewer.
+- **Failed approaches:** No retries, casts, role-union changes, or infrastructure changes. The compiler error is deterministic source/type drift, not a Docker daemon or deployment defect.
+- **Remedy:** Add `viewer: 0` to preserve viewer < member < admin < owner. Added tests proving viewer does not satisfy a minimum member role and admin/owner do.
+- **Files/commits:** `apps/web/src/lib/identity/authorization.ts` — `44a08522f23e807755114ebe46b8b1e04e6056da`; `apps/web/tests/rbac.test.ts` — `3853ecf046c175e15a4f824e9679f50fb7132cf9`.
+- **Evidence:** GitHub accepted both source commits. Tests, web typecheck, Docker build and runtime were NOT executed after the fix; no PASS claimed.
+- **Prevention lesson:** Exhaustive records must track every member of their canonical union. Regression tests must preserve role hierarchy semantics, especially least privilege for viewer.
+- **Next action:** Run `pnpm --filter @ai-comms-agent/web exec vitest run tests/rbac.test.ts`; then `pnpm --filter @ai-comms-agent/web typecheck`; then `bash scripts/manual-up.sh`. Route any separate Docker/build-host/network/runtime issue to OPS-01.
