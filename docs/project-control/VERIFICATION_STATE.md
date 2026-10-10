@@ -1214,3 +1214,13 @@ The user's focused rerun shows scheduling idempotency test passes; IMAP multiple
 - Regression source added for migration compatibility, role hierarchy, and leased fallback.
 - **Not verified:** Vitest, typecheck, Docker build, migration 0033 execution, broker/Redis connectivity, actual provider sync, or live API behavior. No PASS claimed.
 - User must pull latest main and run `bash scripts/manual-up.sh`, then inspect sanitized web/worker logs and persisted email rows.
+
+
+## FIX-01 membership role rank correction — 2026-10-10
+
+- **Source commits:** `44a08522f23e807755114ebe46b8b1e04e6056da` (authorization rank map); `3853ecf046c175e15a4f824e9679f50fb7132cf9` (RBAC regression tests).
+- **Reported pre-fix evidence:** Next.js 15.5.27 production build compiled successfully, then failed during TypeScript validation at `apps/web/src/lib/identity/authorization.ts:109`: `viewer` missing from `Record<MembershipRole, number>`.
+- **Source inspection:** Shared union is `owner | admin | member | viewer`; role permissions and transfer-ownership tests confirm viewer is a first-class role.
+- **Correction:** Rank map now explicitly defines `viewer: 0`; regression tests cover viewer denial for minimum member and admin/owner acceptance for minimum member.
+- **Post-fix verification:** Focused Vitest NOT RUN; web typecheck NOT RUN; Docker build/manual-up NOT RUN; deployment/runtime NOT RUN. No PASS claimed.
+- **Required next evidence:** Actual output from focused RBAC test, web typecheck, and manual-up build. Do not wait for GitHub Actions or Vercel; report any independent environment/infra failure to OPS-01.
