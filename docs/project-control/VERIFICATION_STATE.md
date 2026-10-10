@@ -1207,3 +1207,10 @@ source_review:
 
 ## Follow-up verification — 2026-10-10
 The user's focused rerun shows scheduling idempotency test passes; IMAP multiple-literal assertion still failed because regex braces were unescaped. Corrected in commit b87d5bc804331470a280bf54ee020b463a186d5f; this commit is not yet user-rerun verified. The user also confirmed the duplicate lockfile headers are in their modified local tracked pnpm-lock.yaml (headers at lines 2/159); GitHub branch copy has one top-level header pair. Four local backup artifacts remain untracked and must be preserved. Recommended recovery is to inspect the diff and restore the tracked lockfile from HEAD only after confirming the backup files exist and the diff is the accidental duplicate document. No deployment verification.
+
+## 2026-10-10 — Inbox schema / role guard / RabbitMQ fallback source updates
+- User runtime evidence: inbox query failed on `ea.message_id`; draft list returned 403 `insufficient_role`; RabbitMQ connect/queue producer failed repeatedly.
+- Source-only corrections on main: migration 0033 reconciles legacy `email_message_id` into `message_id`; role guards implement member < admin < owner; enqueue failure invokes the existing Redis-leased direct-sync batch; RabbitMQ startup logs sanitized endpoint and error metadata.
+- Regression source added for migration compatibility, role hierarchy, and leased fallback.
+- **Not verified:** Vitest, typecheck, Docker build, migration 0033 execution, broker/Redis connectivity, actual provider sync, or live API behavior. No PASS claimed.
+- User must pull latest main and run `bash scripts/manual-up.sh`, then inspect sanitized web/worker logs and persisted email rows.
