@@ -439,3 +439,16 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Verification state:** Source committed; focused Vitest, web typecheck, Docker build, and runtime checks not yet run after the fix.
 - **Next action:** Run `pnpm --filter @ai-comms-agent/web exec vitest run tests/rbac.test.ts`, then `pnpm --filter @ai-comms-agent/web typecheck`, then rerun `bash scripts/manual-up.sh` and capture output. Route separate infrastructure/deployment defects to OPS-01.
 - **Verification follow-up:** The user's first focused run found a test-only bug: `fixture.adminA` does not exist, causing an unauthenticated subject and TS2339. Corrected in commit `113b2b3ee094042e9380404f3073c39b17e07951` by promoting `fixture.memberA` to admin through the repository. Retest/typecheck/build remain pending.
+
+
+## ISS-024 — Email account setup returns 502; OAuth mailbox sync unverified
+
+- **Opened:** 2026-10-10
+- **Severity:** high (mailbox connection and core email ingestion)
+- **Owner:** FIX-01 / Sentinel for source defects; OPS-01 for confirmed deployment/runtime/network defects
+- **Status:** diagnostics_committed_waiting_for_server_evidence
+- **Description:** User reports `POST /api/email-accounts` returns HTTP 502 when configuring IMAP/SMTP and OAuth-connected mailboxes are not syncing/fetching messages. Their deployment log shows web/worker images built, migrations completed, and both containers started, but does not include authenticated API response bodies, per-account sync state, message counts, or worker failure evidence.
+- **Source findings:** The account API deliberately returns 502 when IMAP/SMTP connection testing fails. The manual sync endpoint accepts Gmail only (returns 409 for Zoho/IMAP-SMTP), while the worker's periodic due-account query includes Gmail, Zoho and IMAP-SMTP. OAuth callback completion and HTTP 202 are not evidence that messages were persisted.
+- **Remedy so far:** Added `scripts/diagnose-email-accounts.sh` in commit `a529ffe43915495d099c17b353fb517d53fac10b` to compare public Cloudflare and local origin, test the provider connection without saving, inspect PostgreSQL sync state/message counts, and capture sanitized web/worker logs.
+- **Verification:** Script source committed; not yet executed on the user's host. Live root cause remains unknown. No fix/pass claimed for the reported runtime failures.
+- **Next action:** User executes script from repo root and shares the sanitized report. FIX-01 corrects source bugs; OPS-01 handles confirmed DNS/outbound network, reverse-proxy, database/Redis/RabbitMQ, container configuration or runtime deployment defects.
