@@ -1639,3 +1639,8 @@ User rerun confirmed the scheduling idempotency test passes. The remaining IMAP 
 - Verification: source writes only; tests/typecheck, manual-up migration 0033, Docker rebuild, Redis/RabbitMQ connectivity, live API, and provider email fetch not run here.
 - Security: user's pasted curl included a session access token/cookies; treat as exposed and rotate/revoke. No secret was recorded in source or project-control docs.
 - Next: user pulls main and runs manual-up; inspect sanitized worker/web logs. Verify persisted email rows and successful provider sync, not merely queued status. If Redis lease acquisition fails, repair Redis auth/config without bypassing the lease.
+
+
+## 2026-10-10 — FIX-01: wrong workspace/test paths
+
+User ran Clara AI Platform OAuth test paths from the `ai-comms-agent` repository. Root `npm test` recursively runs each workspace package; web Vitest only includes `tests/**/*.test.ts`, so those paths yielded “No test files found.” Worker test process ended with SIGKILL; no worker assertion failure or kill cause is established from the pasted output. Do not port unrelated Clara OAuth files into this repository. Run the correct repository-relative tests individually using workspace filters, and prioritize the existing email runtime diagnosis via `bash scripts/diagnose-email-accounts.sh`. No PASS and no live mailbox root cause established.
