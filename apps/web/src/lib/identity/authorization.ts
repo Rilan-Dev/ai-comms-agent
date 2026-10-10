@@ -102,12 +102,12 @@ export function requireRole(subject: AuthSubject, ...roles: MembershipRole[]): v
     );
   }
 
-  // Owner is the highest organization role and must satisfy admin-level
-  // guards. Callers that need to exclude owners can require an exact role
-  // through a dedicated check; ordinary "admin" capability gates are
-  // intentionally hierarchical.
+  // Organization roles are hierarchical for minimum-role guards:
+  // owner >= admin >= member. In particular, draft/mail routes requiring
+  // "member" must not reject owners or admins.
   const role = subject.membership.role;
-  const satisfies = roles.includes(role) || (role === "owner" && roles.includes("admin"));
+  const rank: Record<MembershipRole, number> = { member: 1, admin: 2, owner: 3 };
+  const satisfies = roles.some((requiredRole) => rank[role] >= rank[requiredRole]);
   if (!satisfies) {
     throw new ForbiddenError(
       "insufficient_role",
