@@ -88,10 +88,10 @@ export async function POST(request: Request) {
     }
 
     const runtimeSettings = await query<{ knowledge_base_id: string }>("SELECT knowledge_base_id FROM organization_ai_runtime_settings WHERE organization_id = $1", [organizationId]);
-    const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim();
-    if (!kbId) {
-      return NextResponse.json({ error: "configuration_required", message: "CLARA_KB_ID is not configured." }, { status: 503 });
-    }
+    // KB ID is OPTIONAL for basic chat. RAG features are skipped when no KB
+    // is configured. The previous 503 hard-block prevented chat from working
+    // at all without a knowledge base, which the product does not require.
+    const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim() || "default";
 
     const requestedConversationId = typeof body?.conversationId === "string" ? body.conversationId.trim() : "";
     const conversation = requestedConversationId
