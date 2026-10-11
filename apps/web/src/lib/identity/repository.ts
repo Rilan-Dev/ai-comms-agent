@@ -45,10 +45,17 @@ export function getIdentityAdapter(): IdentityAdapter {
 /**
  * Seed development data. Idempotent. Only runs in non-production.
  * Creates a dev organization + dev user with owner role.
+ *
+ * In production, this is a safe no-op (returns immediately) so that
+ * production code paths that call ensureDevSeed() don't throw. The dev
+ * seed data is only relevant for local development and test environments.
  */
 export async function ensureDevSeed(): Promise<void> {
+  // In production, silently skip — the dev seed is only for local dev.
+  // The previous behavior threw an error which broke chat/voice/audit
+  // routes in production because they all call ensureDevSeed().
   if (process.env.NODE_ENV === "production" && process.env.ACA_ENABLE_DEV_IDENTITY !== "true") {
-    throw new Error("ensureDevSeed MUST NOT be called in production.");
+    return;
   }
   if (_seeded) return;
   _seeded = true;
