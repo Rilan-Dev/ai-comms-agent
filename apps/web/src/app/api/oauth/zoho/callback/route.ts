@@ -135,10 +135,31 @@ export async function GET(request: Request) {
     });
     if (!accountsResponse.ok) return oauthError("Zoho account verification failed.", request, 502);
     const accountsPayload = await accountsResponse.json() as {
-      data?: Array<{ accountId?: string | number; emailAddress?: string; displayName?: string }>;
+      data?: Array<{ accountId?: string | number; emailAddress?: string | unknown; displayName?: string; mailId?: string }>;
     };
     const remote = accountsPayload.data?.[0];
-    if (!remote?.accountId || !remote.emailAddress) return oauthError("Zoho did not return a usable mail account.", request, 502);
+    if (!remote?.accountId) return oauthError("Zoho did not return a usable mail account.", request, 502);
+
+    // Zoho's /api/accounts response wraps emailAddress as a JSON object
+    // (e.g., {"isAlias":false,"isPrimary":true,"mailId":"user@domain.com"}).
+    // Extract the plain email string from it.
+    let emailAddress = "";
+    if (typeof remote.emailAddress === "string") {
+      // If it's a plain string, use it directly. If it's a JSON string, parse it.
+      try {
+        const parsed = JSON.parse(remote.emailAddress);
+        emailAddress = typeof parsed === "object" && parsed ? (parsed.mailId ?? parsed.email ?? String(parsed)) : String(parsed);
+      } catch {
+        emailAddress = remote.emailAddress;
+      }
+    }
+    // Also check mailId directly (some Zoho API versions use this field)
+    if (!emailAddress && typeof remote.mailId === "string") {
+      emailAddress = remote.mailId;
+    }
+    if (!emailAddress) return oauthError("Zoho did not return a usable email address.", request, 502);
+
+    const displayName = remote.displayName ?? emailAddress;
 
     const masterKey = process.env.CREDENTIALS_MASTER_KEY
       ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY)
@@ -161,11 +182,11 @@ export async function GET(request: Request) {
     }
     const existing = payload.accountId
       ? await repository.getById(payload.accountId)
-      : await repository.findByOrganizationProviderAddress(payload.organizationId, "zoho", remote.emailAddress);
+      : await repository.findByOrganizationProviderAddress(payload.organizationId, "zoho", emailAddress);
     const account = existing
       ? await repository.updateConnection(existing.id, {
-          emailAddress: remote.emailAddress,
-          displayName: remote.displayName ?? remote.emailAddress,
+          emailAddress,
+          displayName,
           connectionConfig: {
             apiDomain,
             dataCenter: payload.dataCenter,
@@ -177,8 +198,8 @@ export async function GET(request: Request) {
       : await repository.create({
           organizationId: payload.organizationId,
           provider: "zoho",
-          emailAddress: remote.emailAddress,
-          displayName: remote.displayName ?? remote.emailAddress,
+          emailAddress,
+          displayName,
           connectionConfig: {
             apiDomain,
             dataCenter: payload.dataCenter,

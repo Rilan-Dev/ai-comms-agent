@@ -173,8 +173,21 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     const stored = await accounts.loadCredentials(candidate.id, parseCredentialsMasterKey(masterKey));
     if (!stored) throw new Error("Encrypted mailbox credentials are missing. Reconnect this mailbox.");
 
+    // Load the account's connection_config — it contains provider-specific
+    // settings that aren't stored in the encrypted credentials (e.g., Zoho's
+    // api_domain, Gmail's historyId/oauthConfigId). Merge these into the
+    // credentials object before passing to the adapter.
+    const accountRow = await query<{ connection_config: Record<string, unknown> | null }>(
+      "SELECT connection_config FROM email_accounts WHERE id = $1",
+      [candidate.id],
+    );
+    const connectionConfig = (accountRow.rows[0]?.connection_config ?? {}) as Record<string, unknown>;
+
     const credentials: EmailCredentials = {
       ...(stored as unknown as EmailCredentials),
+      // Merge connection_config fields into credentials. For Zoho, this
+      // provides api_domain. For Gmail, this provides historyId/oauthScope.
+      ...connectionConfig,
       credential_type: candidate.provider === "imap_smtp" ? ((stored as unknown as EmailCredentials).credential_type ?? "app_password") : "oauth_token",
     };
     await adapter.connect(credentials);
