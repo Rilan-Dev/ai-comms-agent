@@ -26,8 +26,8 @@ export async function POST(
     if (!account || account.organization_id !== organizationId) {
       return NextResponse.json({ error: "not_found", message: "Mailbox was not found in this organization." }, { status: 404 });
     }
-    if (account.provider !== "gmail") {
-      return NextResponse.json({ error: "unsupported_provider", message: "Manual queueing is currently available for Gmail mailboxes." }, { status: 409 });
+    if (account.provider !== "gmail" && account.provider !== "zoho" && account.provider !== "imap_smtp") {
+      return NextResponse.json({ error: "unsupported_provider", message: "Manual sync is available for Gmail, Zoho, and IMAP/SMTP mailboxes." }, { status: 409 });
     }
     if (account.status === "revoked" || account.status === "disconnected") {
       return NextResponse.json({ error: "reconnect_required", message: "Reconnect this mailbox before synchronizing." }, { status: 409 });
