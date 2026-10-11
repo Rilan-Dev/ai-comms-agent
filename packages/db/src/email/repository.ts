@@ -93,13 +93,18 @@ export class PostgresEmailAccountRepository {
       status: "pending" | "connected" | "error" | "disconnected" | "revoked";
     },
   ): Promise<EmailAccount | null> {
+    // Use $5 for the status column (enum type email_account_status) and $6
+    // (a separate text parameter with the same value) for the CASE comparison.
+    // PgBouncer/Prisma Postgres can't infer a single type when the same
+    // parameter is used as both enum and text — it returns 42P08 "inconsistent
+    // types deduced for parameter". Splitting into two params avoids this.
     const r = await query<Row>(
       `UPDATE email_accounts
        SET email_address = $1, display_name = $2, connection_config = $3::jsonb,
-           capabilities = $4::jsonb, status = $5::text,
-           last_error = NULL, connected_at = CASE WHEN $5::text = 'connected' THEN now() ELSE connected_at END,
+           capabilities = $4::jsonb, status = $5,
+           last_error = NULL, connected_at = CASE WHEN $6 = 'connected' THEN now() ELSE connected_at END,
            updated_at = now()
-       WHERE id = $6
+       WHERE id = $7
        RETURNING *`,
       [
         input.emailAddress,
@@ -107,6 +112,7 @@ export class PostgresEmailAccountRepository {
         JSON.stringify(input.connectionConfig),
         JSON.stringify(input.capabilities),
         input.status,
+        input.status, // duplicate as text param for CASE comparison
         id,
       ],
     );
