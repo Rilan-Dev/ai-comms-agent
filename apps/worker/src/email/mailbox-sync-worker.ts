@@ -254,6 +254,8 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     // persisted message. Upserts make a retry safe if a process exits between
     // persistence and checkpoint removal.
     for (const id of ids) {
+      // Stay well below the per-user Gmail API minute quota during initial import.
+      await new Promise((resolve) => setTimeout(resolve, 250));
       const message = await adapter.getMessage(id);
       if (message) {
         if (message.is_draft && !draftIdsByMessage && adapter.listDraftIdsByMessage) {
@@ -349,8 +351,13 @@ export async function processMailboxSyncMessage(payload: EmailSyncPayload): Prom
 
   // Duplicate deliveries are expected with at-least-once queues. If another worker
   // owns a fresh PostgreSQL claim, acknowledge this delivery instead of exhausting retries.
-  const state = await query<{ status: string; last_attempt_at: string | null }>(
-    "SELECT status, last_attempt_at FROM email_sync_states WHERE email_account_id=$1",
+  const state = await query<{
+    status: string;
+    last_attempt_at: string | null;
+    next_attempt_at: string | null;
+    last_error: string | null;
+  }>(
+    "SELECT status, last_attempt_at, next_attempt_at, last_error FROM email_sync_states WHERE email_account_id=$1",
     [candidate.id],
   );
   const current = state.rows[0];
@@ -358,6 +365,15 @@ export async function processMailboxSyncMessage(payload: EmailSyncPayload): Prom
     && current.last_attempt_at !== null
     && Date.now() - new Date(current.last_attempt_at).getTime() < 10 * 60_000;
   if (activeClaim) return;
+
+  // Quota failures have a durable database backoff. Ack the current RabbitMQ
+  // delivery and let the due-sync poller enqueue it after that deadline rather
+  // than exhausting retries every 30 seconds and sending it to the DLQ.
+  const quotaDeferred = current?.status === "error"
+    && /quota\/rate limit|quota exceeded|userRateLimitExceeded|rateLimitExceeded|RESOURCE_EXHAUSTED/i.test(current.last_error ?? "")
+    && current.next_attempt_at !== null
+    && new Date(current.next_attempt_at).getTime() > Date.now();
+  if (quotaDeferred) return;
   throw new Error("Mailbox sync did not complete; retry delivery is required.");
 }
 
