@@ -69,30 +69,28 @@ type SocketReader = {
 };
 
 function createReader(socket: tls.TLSSocket): SocketReader {
-  return { socket, buffer: Buffer.alloc(0) };
+  const reader: SocketReader = { socket, buffer: Buffer.alloc(0) };
+  // One PERSISTENT data listener per reader. All readLine / readBytes calls
+  // poll this same buffer; no readLine/readBytes ever registers its own
+  // data listener. This eliminates the buffer-duplication bug where two
+  // listeners (a persistent one from readLine and a transient one from
+  // readBytes) would each append the same chunk to the same buffer.
+  socket.on("data", (chunk: Buffer | string) => {
+    reader.buffer = Buffer.concat([reader.buffer, Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)]);
+  });
+  socket.on("error", (error: Error) => { reader.error = error; });
+  return reader;
 }
 
 async function readBytes(reader: SocketReader, length: number, timeoutMs = 10_000): Promise<Buffer> {
   if (!Number.isSafeInteger(length) || length < 0) throw new Error("Invalid IMAP literal length");
-  while (reader.buffer.length < length) {
-    await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => cleanup(new Error("TLS response timeout")), timeoutMs);
-      const onData = (chunk: Buffer | string) => {
-        reader.buffer = Buffer.concat([reader.buffer, Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)]);
-        cleanup();
-        resolve();
-      };
-      const onError = (error: Error) => cleanup(error);
-      const cleanup = (error?: Error) => {
-        clearTimeout(timer);
-        reader.socket.off("data", onData);
-        reader.socket.off("error", onError);
-        if (error) reject(error);
-      };
-      reader.socket.on("data", onData);
-      reader.socket.once("error", onError);
-    });
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (reader.buffer.length >= length) break;
+    if (reader.error) throw reader.error;
+    await new Promise<void>((resolve) => setImmediate(resolve));
   }
+  if (reader.buffer.length < length) throw new Error("TLS response timeout");
   const result = reader.buffer.subarray(0, length);
   reader.buffer = reader.buffer.subarray(length);
   return result;
@@ -100,37 +98,22 @@ async function readBytes(reader: SocketReader, length: number, timeoutMs = 10_00
 
 async function readLine(reader: SocketReader, timeoutMs = 10_000): Promise<string> {
   const delimiter = Buffer.from("\r\n");
-  const existing = reader.buffer.indexOf(delimiter);
-  if (existing >= 0) {
-    const line = reader.buffer.subarray(0, existing).toString("utf8");
-    reader.buffer = reader.buffer.subarray(existing + delimiter.length);
-    return line;
-  }
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => cleanup(new Error("TLS response timeout")), timeoutMs);
-    const onData = (chunk: Buffer | string) => {
-      reader.buffer = Buffer.concat([reader.buffer, Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)]);
-      const index = reader.buffer.indexOf(delimiter);
-      if (index < 0) return;
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const index = reader.buffer.indexOf(delimiter);
+    if (index >= 0) {
       const line = reader.buffer.subarray(0, index).toString("utf8");
       reader.buffer = reader.buffer.subarray(index + delimiter.length);
-      cleanup();
-      resolve(line);
-    };
-    const onError = (error: Error) => cleanup(error);
-    const cleanup = (error?: Error) => {
-      clearTimeout(timer);
-      reader.socket.off("data", onData);
-      reader.socket.off("error", onError);
-      if (error) reject(error);
-    };
-    reader.socket.on("data", onData);
-    reader.socket.once("error", onError);
-  });
+      return line;
+    }
+    if (reader.error) throw reader.error;
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+  throw new Error("TLS response timeout");
 }
 
 /** Read an IMAP response while consuming literal payloads by octet length. */
-export async function readImapResponse(reader: SocketReader, timeoutMs = 20_000): Promise<string> {
+export async function readImapResponse(reader: SocketReader, timeoutMs = 60_000): Promise<string> {
   let response = await readLine(reader, timeoutMs);
   const literalMarker = /\{(\d+)\+?\}$/;
   while (true) {
@@ -144,9 +127,38 @@ export async function readImapResponse(reader: SocketReader, timeoutMs = 20_000)
   }
 }
 
+/**
+ * Read lines from the IMAP socket until we find one whose tag matches `tag`.
+ *
+ * IMAP servers can emit zero or more untagged responses (lines starting with
+ * `*`) before the tagged response (e.g. `A0001 OK …`). The plain readLine
+ * helper only reads the FIRST line, which broke against Gmail's LOGIN
+ * response: Gmail sends `* CAPABILITY …\r\nA0001 OK authenticated` and the
+ * first-line check saw `* CAPABILITY` instead of `A0001 OK`, producing a
+ * spurious "IMAP authentication failed" error.
+ */
+async function readUntilTag(reader: SocketReader, tag: string, timeoutMs = 20_000): Promise<string> {
+  while (true) {
+    const line = await readLine(reader, timeoutMs);
+    // Tagged response matches "<tag> <result>" (e.g. "A0001 OK …").
+    if (line.startsWith(tag + " ")) return line;
+    // Untagged responses (`* …`) and continuation requests (`+ …`) are
+    // skipped; we keep reading until the tagged response arrives.
+  }
+}
+
 async function smtpCommand(reader: SocketReader, command: string): Promise<string> {
   reader.socket.write(command + "\r\n");
-  return readLine(reader);
+  // SMTP responses can be multi-line: continuation lines have the form
+  // "NNN-" and the final line has the form "NNN " (3-digit code, then either
+  // '-' for continuation or ' ' for the final line). We must consume ALL
+  // continuation lines, otherwise the next smtpCommand reads a stale buffered
+  // line instead of its own response.
+  let line = await readLine(reader);
+  while (/^\d{3}-/.test(line)) {
+    line = await readLine(reader);
+  }
+  return line;
 }
 
 export class ImapSmtpAdapter implements EmailProvider {
@@ -176,10 +188,14 @@ export class ImapSmtpAdapter implements EmailProvider {
     const connection: ImapConnection & { reader: SocketReader } = { socket: imapSocket, buffer: "", tag: 0, reader: imapReader };
     const loginTag = this.nextTag(connection);
     imapSocket.write(`${loginTag} LOGIN ${quote(username)} ${quote(password)}\r\n`);
-    const login = await readLine(imapReader);
+    // Read past untagged CAPABILITY / continuation lines until the tagged
+    // OK/NO/BAD response arrives. Gmail emits `* CAPABILITY …\r\nA0001 OK …`
+    // which a single readLine would not match.
+    const login = await readUntilTag(imapReader, loginTag);
     if (!login.startsWith(`${loginTag} OK`)) {
       imapSocket.destroy();
-      throw new Error("IMAP authentication failed");
+      const detail = login.slice(loginTag.length + 1).trim();
+      throw new Error(`IMAP authentication failed: ${detail || "server rejected credentials"}`);
     }
 
     const smtpSocket = await connectTls(smtpHost, smtpPort);
@@ -258,7 +274,7 @@ export class ImapSmtpAdapter implements EmailProvider {
     imap.socket.write(`${tag} ${command}\r\n`);
     const lines: string[] = [];
     while (true) {
-      const line = await readImapResponse(imap.reader, 20_000);
+      const line = await readImapResponse(imap.reader, 60_000);
       if (line.startsWith(`${tag} OK`)) return lines;
       if (line.startsWith(`${tag} NO`) || line.startsWith(`${tag} BAD`)) {
         throw new Error(`IMAP command failed (${command.split(" ")[0]}): ${line}`);

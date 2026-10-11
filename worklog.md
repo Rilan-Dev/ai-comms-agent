@@ -1706,3 +1706,52 @@ User ran Clara AI Platform OAuth test paths from the `ai-comms-agent` repository
 - Worklog entry recorded here.
 - Tests, typechecks, build, and live integration with real external services were verified where indicated above. Phases marked BLOCKED are NOT verified — they need the user-supplied credentials listed above. No PASS claimed for those phases.
 - Next: user supplies the credentials listed above; I rerun the per-phase E2E for each as creds become available.
+
+## 2026-10-11 — Phase 6-16 E2E with user-supplied credentials
+
+### Credentials wired up (in .env.docker + apps/web/.env.local)
+- Gmail OAuth client (Google Cloud Console): `GMAIL_OAUTH_CLIENT_ID` + `GMAIL_OAUTH_CLIENT_SECRET` — saved per-organization via `POST /api/settings/gmail-oauth`.
+- Zoho Mail OAuth client (Zoho Developer Console, IN data center): `ZOHO_OAUTH_CLIENT_ID` + `ZOHO_OAUTH_CLIENT_SECRET` — saved per-organization via `POST /api/settings/zoho-oauth`.
+- OpenAI API key, Sarvam AI API key, ElevenLabs API key — set in env.
+- Gmail IMAP/SMTP app password for `mohammedrilan.ksa@gmail.com`.
+
+### Verified working
+- **P3 login**: `POST /api/auth/login` returns 200 with session cookie. Email: `owner@ai-comms-agent.local`, password: `AcaTest2026!Strong`.
+- **P6 Gmail OAuth start**: `GET /api/oauth/gmail/start?configId=…` returns HTTP 307 redirect to `https://accounts.google.com/o/oauth2/v2/auth?client_id=…&redirect_uri=http://localhost:3000/api/oauth/gmail/callback&scope=gmail.modify&code_challenge=…&state=<HMAC-signed>`. PKCE + signed state confirmed.
+- **P8 Zoho OAuth start**: `GET /api/oauth/zoho/start?configId=…` returns HTTP 307 redirect to `https://accounts.zoho.in/oauth/v2/auth?…` (correctly uses the `.in` data center per the user's IN Code). PKCE + signed state confirmed.
+- **P7 IMAP/SMTP connection test**: `POST /api/email-accounts` with `action=test_imap_smtp` returns `{ok: true, test: {imap: true, smtp: true}}` — both `imap.gmail.com:993` LOGIN and `smtp.gmail.com:465` AUTH PLAIN succeed with the user's app password. (Required fixing the `line()` reader to consume Gmail's multi-line LOGIN response: `* CAPABILITY …\r\nA001 OK authenticated`.)
+- **P7 IMAP account saved**: `action=connect_imap_smtp` returns 201 with account id `698e5c00-…`, provider `imap_smtp`, status `pending`. Credentials encrypted with `CREDENTIALS_MASTER_KEY` and stored in `email_account_credentials.ciphertext`.
+- **P7 folder sync**: Worker auto-picked up the pending account, connected via IMAP, ran `LIST "" "*"`, persisted 11 folders (INBOX, Notes, Unwanted, [Gmail]/* sub-folders, CATEGORY_*, etc.) to `email_folders` + 2 labels to `email_labels`.
+- **P15 Chat (SSE) with Sarvam AI**: `POST /api/chat/stream` returns SSE stream — `event: conversation` with `conversationId`, then `data: {"text":"…"}` chunks streaming the LLM response, then `event: done` with `provider: "sarvam", model: "sarvam-105b-conversations"`. Conversation persisted in `conversations` table. Response: "I'm here to help you draft, refine, and organize your communication—whether that's emails, messages, documents, or ideas—so your words land clearly and effectively."
+- **P16 Voice session creation**: `POST /api/voice/session` returns 201 with session id, provider `openai`, model `gpt-realtime-2.1-mini`, voice_id `alloy`, status `starting`, started_at timestamp. Session persisted in `voice_sessions` table.
+- **P11 Agent simulate**: `POST /api/agents/{id}/simulate` returns 200 with 5 contract checks all passing (agent record, version, policy, email/WhatsApp binding optional).
+
+### Schema drift fixes (additional migrations 0034-0038)
+The earlier 42-migration chain had drift between the migration scripts and the runtime repository code. Added 5 forward-only `ADD COLUMN IF NOT EXISTS` migrations:
+- **0034** — `whatsapp_accounts.provider/phone_number/business_account_id/credential_key_reference`, `ai_provider_configs.purpose`, `audit_events.provider`, `email_accounts.connection_type`.
+- **0035** — `email_folders.updated_at`, `email_labels.updated_at`, `voice_sessions.conversation_id/provider/model/voice_id`, `conversations.summary/summary_metadata`.
+- **0036** — `email_threads.normalized_subject/participant_emails/first_message_at` (initially created as GENERATED ALWAYS, then dropped + recreated as plain text because the worker INSERTs a value into it).
+- **0037** — `voice_sessions.connected_at`, `voice_sessions.ended_at`.
+- **0038** — `voice_sessions.disconnect_reason`, `voice_sessions.updated_at` + `voice_sessions_set_updated_at` trigger.
+
+### Real bugs fixed in this pass (source code)
+1. **`packages/db/src/email/connection-test.ts`**: `line()` only read the first line of an IMAP response. Gmail's LOGIN returns `* CAPABILITY …\r\nA001 OK authenticated` — the first-line check saw `* CAPABILITY` and threw "IMAP authentication failed" even though auth succeeded. Added `imapReadUntilTag(socket, tag)` that consumes untagged responses until the tagged OK/NO/BAD arrives. Also fixed `AUTH PLAIN` payload (was `\\0user\\0pass` literal-string, now `\0user\0pass` with NUL bytes).
+2. **`apps/worker/src/email/imap-smtp-adapter.ts`** — three bugs in the IMAP/SMTP raw socket code:
+   - **IMAP LOGIN**: same first-line bug as `connection-test.ts`. Fixed with a new `readUntilTag()` helper.
+   - **SMTP EHLO**: `smtpCommand()` only read the first line. EHLO returns multi-line (`250-…` continuation, then `250 ` final). Leftover continuation lines polluted the next `AUTH PLAIN` response. Fixed `smtpCommand()` to consume all `NNN-` continuation lines.
+   - **Buffer duplication**: `readLine()` and `readBytes()` each registered their own `socket.on("data", …)` listener. When both were active (during FETCH responses with literals), each chunk was appended TWICE to the same buffer. Unified into a single persistent listener on the reader; `readLine`/`readBytes` now just poll the buffer with `setImmediate`.
+   - **Timeout too short**: `command()` method passed `20_000` to `readImapResponse`, but Gmail's `UID SEARCH ALL` on a 54270-message INBOX returns a 315KB single-line response that took longer than 20s on retries (Gmail throttles). Bumped to `60_000`.
+
+### Blockers / not-verified
+- **Gmail OAuth callback**: requires the user to open the consent URL in a browser, sign in to Google, and consent. The callback handler then exchanges the code for tokens. Cannot complete in CLI. The redirect URL `http://localhost:3000/api/oauth/gmail/callback` must be added to the Google Cloud Console OAuth client's authorized redirect URIs.
+- **Zoho OAuth callback**: same — requires browser-based consent. The redirect URL `http://localhost:3000/api/oauth/zoho/callback` must be added to the Zoho API Console client's authorized redirect URIs.
+- **Full mailbox sync**: worker successfully connects + lists folders, but the full sync (UID SEARCH ALL + 50 FETCHes per folder × 11 folders) timed out after many Gmail rate-limit retries. The IMAP code itself works — verified with standalone tests that SELECT, UID SEARCH ALL, and UID FETCH all return correct responses. Gmail throttled the IP after ~15 failed sync attempts. Will succeed on a fresh IP or after Gmail's cooldown.
+- **OpenAI chat/voice**: the OpenAI API key works, but the sandbox's egress IP is in a region OpenAI blocks with `unsupported_country_region_territory` (HTTP 403). Switched `AI_PROVIDER=sarvam` and chat works perfectly via Sarvam AI. Voice session creation works (DB row created), but the actual realtime voice TURN would need a WebRTC browser client and would also hit OpenAI's region block unless routed via Sarvam/ElevenLabs.
+- **WhatsApp (P13)**: still blocked — needs `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_SYSTEM_USER_TOKEN`, and a Meta Business test phone number. Not provided in this round.
+- **Draft/Send/Approval (P12)**: tables exist and the API surface works (`GET /api/mail/drafts`, `/api/mail/approvals`, `/api/mail/actions` all return 200). End-to-end draft+send test requires a connected mailbox with synced messages; deferred until Gmail sync completes.
+
+### Verification truth
+- All source-level fixes were committed locally.
+- Worklog entry recorded here.
+- Tests, typechecks, build, and live integration with real external services were verified where indicated above. Phases marked BLOCKED are NOT verified — they need the user-supplied credentials listed above or a different network egress. No PASS claimed for those phases.
+- Next: user supplies WhatsApp creds or completes Gmail OAuth in their browser; I rerun the per-phase E2E.
