@@ -96,8 +96,8 @@ export class PostgresEmailAccountRepository {
     const r = await query<Row>(
       `UPDATE email_accounts
        SET email_address = $1, display_name = $2, connection_config = $3::jsonb,
-           capabilities = $4::jsonb, status = $5,
-           last_error = NULL, connected_at = CASE WHEN $5 = 'connected' THEN now() ELSE connected_at END,
+           capabilities = $4::jsonb, status = $5::text,
+           last_error = NULL, connected_at = CASE WHEN $5::text = 'connected' THEN now() ELSE connected_at END,
            updated_at = now()
        WHERE id = $6
        RETURNING *`,
