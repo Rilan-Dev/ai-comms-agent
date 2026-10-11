@@ -151,6 +151,12 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    return authorizationErrorToResponse(error);
+    // Surface the actual error for debugging (temporary — replace with
+    // authorizationErrorToResponse(error) once chat is verified working
+    // on Vercel).
+    console.error("[chat/stream] error:", error);
+    const message = error instanceof Error ? error.message : "Chat failed";
+    const code = (error as { code?: string })?.code;
+    return NextResponse.json({ error: "internal_server_error", message, code }, { status: 500 });
   }
 }
