@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const workerUrl = new URL("../src/email/mailbox-sync-worker.ts", import.meta.url);
 const adapterUrl = new URL("../src/email/gmail-adapter.ts", import.meta.url);
-const migrationUrl = new URL("../../../../supabase/migrations/0032_email_sync_resumable_page_checkpoints.sql", import.meta.url);
+const migrationUrl = new URL("../../../supabase/migrations/0032_email_sync_resumable_page_checkpoints.sql", import.meta.url);
 
 test("mailbox sync stages page IDs and checkpoints each completed message", async () => {
   const source = await readFile(workerUrl, "utf8");
