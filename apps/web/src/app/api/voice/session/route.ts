@@ -21,9 +21,28 @@ export async function POST(request: Request) {
     const agent = await new PostgresAgentRepository().get(organizationId, agentId);
     if (!agent) return NextResponse.json({ error: "not_found", message: "Agent was not found in this organization." }, { status: 404 });
 
-    const runtimeSettings = await query<{ knowledge_base_id: string }>("SELECT knowledge_base_id FROM organization_ai_runtime_settings WHERE organization_id = $1", [organizationId]);
+    // Read per-agent voice config (falls back to org-level settings when not set)
+    const agentVoice = await query<{ voice_provider: string | null; voice_model: string | null; voice_id: string | null }>(
+      "SELECT voice_provider, voice_model, voice_id FROM agents WHERE id = $1 AND organization_id = $2",
+      [agentId, organizationId],
+    );
+    const agentVoiceRow = agentVoice.rows[0];
+
+    const runtimeSettings = await query<{ knowledge_base_id: string; realtime_voice_provider: string; realtime_voice_model: string; voice_id: string }>(
+      "SELECT knowledge_base_id, realtime_voice_provider, realtime_voice_model, voice_id FROM organization_ai_runtime_settings WHERE organization_id = $1",
+      [organizationId],
+    );
+    const orgSettings = runtimeSettings.rows[0];
+
     // KB ID is OPTIONAL for voice. RAG features are skipped when no KB is configured.
-    const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim() || "default";
+    const kbId = orgSettings?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim() || "default";
+
+    // Per-agent voice config takes priority over org-level settings.
+    // If the agent has voice_provider/voice_model/voice_id set, use those.
+    // Otherwise fall back to org-level realtime_voice_provider/model/voice_id.
+    const voiceProvider = agentVoiceRow?.voice_provider?.trim() || orgSettings?.realtime_voice_provider?.trim() || process.env.REALTIME_VOICE_PROVIDER || "openai";
+    const voiceModel = agentVoiceRow?.voice_model?.trim() || orgSettings?.realtime_voice_model?.trim() || process.env.OPENAI_REALTIME_MODEL || "gpt-realtime-2.1-mini";
+    const voiceId = agentVoiceRow?.voice_id?.trim() || orgSettings?.voice_id?.trim() || process.env.OPENAI_DEFAULT_VOICE || "alloy";
 
     // Persist the lifecycle record before requesting realtime transport details,
     // so failures cannot leave an untracked session that the UI believes started.
