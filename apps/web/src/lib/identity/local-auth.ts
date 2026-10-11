@@ -227,7 +227,22 @@ export function assertSameOrigin(request: Request): void {
   if (!origin) return;
   const expected = process.env.APP_ORIGIN;
   if (expected) {
-    if (origin !== expected) throw new ValidationError("Invalid request origin.");
+    if (origin === expected) return;
+    // Accept any *.vercel.app subdomain when APP_ORIGIN is a vercel.app URL.
+    // Vercel assigns multiple automatic aliases (project-name.vercel.app,
+    // project-name-git-main-*.vercel.app, deployment-specific *.vercel.app)
+    // and the user may also add a custom project alias. All of these are
+    // first-party origins and should pass the same-origin check.
+    if (expected.endsWith(".vercel.app") && origin.endsWith(".vercel.app")) {
+      return;
+    }
+    // Also accept the host-based origin (protocol://host) as a fallback
+    // for Vercel previews where APP_ORIGIN is a different alias.
+    const host = request.headers.get("host");
+    const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+    const protocol = forwardedProto || (process.env.NODE_ENV === "production" ? "https" : "http");
+    if (host && origin === `${protocol}://${host}`) return;
+    throw new ValidationError("Invalid request origin.");
     return;
   }
   const host = request.headers.get("host");
