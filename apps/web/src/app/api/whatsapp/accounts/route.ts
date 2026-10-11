@@ -44,7 +44,10 @@ export async function POST(request: Request) {
     await recordAuditEvent({ organizationId, actorUserId: actor.user.id, eventType: "whatsapp.account.saved", targetType: "whatsapp_account", targetId: account.id, action: "save", decision: "allowed" });
     return NextResponse.json({ account: { ...account, status: "pending" }, message: "Credentials stored encrypted. Provider verification is still required before this account is marked connected." }, { status: 201 });
   } catch (error) {
-    return authorizationErrorToResponse(error);
+    console.error("[whatsapp/accounts] POST error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const code = (error as { code?: string })?.code;
+    return NextResponse.json({ error: "internal_server_error", message, code }, { status: 500 });
   }
 }
 
