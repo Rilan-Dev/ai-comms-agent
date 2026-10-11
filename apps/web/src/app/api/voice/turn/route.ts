@@ -50,13 +50,8 @@ export async function POST(request: Request) {
     }
 
     const runtimeSettings = await query<{ knowledge_base_id: string }>("SELECT knowledge_base_id FROM organization_ai_runtime_settings WHERE organization_id = $1", [organizationId]);
-    const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim();
-    if (!kbId) {
-      return NextResponse.json(
-        { error: "configuration_required", message: "CLARA_KB_ID is not configured." },
-        { status: 503 },
-      );
-    }
+    // KB ID is OPTIONAL for voice turns. RAG features are skipped when no KB is configured.
+    const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim() || "default";
 
     const executionId = crypto.randomUUID();
     const turn = await claraRuntime.createChatTurn({
