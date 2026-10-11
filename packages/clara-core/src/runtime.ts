@@ -163,7 +163,12 @@ async function openAICompatibleStream(config: ProviderConfig, messages: ChatMess
       messages,
       stream: true,
       temperature: options.temperature,
-      max_tokens: options.maxTokens,
+      // OpenAI deprecated max_tokens in favor of max_completion_tokens for
+      // newer models (o1, o3, gpt-5, etc.). The old parameter causes a 400
+      // error with those models. max_completion_tokens is accepted by both
+      // old and new OpenAI models, and Sarvam's OpenAI-compatible API
+      // silently ignores unknown parameters.
+      max_completion_tokens: options.maxTokens,
       stop: options.stop,
     }),
   });
