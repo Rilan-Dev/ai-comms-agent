@@ -196,6 +196,7 @@ export async function POST(request: Request) {
         await repository.saveCredentials(account.id, "password", { username, password, host, port, imap_host: host, imap_port: port, smtp_host: smtpHost, smtp_port: smtpPort, tls: true }, masterKey);
       } catch (error) {
         await repository.updateStatus(account.id, "error", "Mailbox configuration was saved without credentials. Reconnect to finish setup.");
+        console.error("[email-accounts] saveCredentials failed:", error);
         throw error;
       }
       await recordAuditEvent({
@@ -233,6 +234,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ account: updated });
   } catch (error) {
-    return authorizationErrorToResponse(error);
+    console.error("[email-accounts] POST error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const code = (error as { code?: string })?.code;
+    return NextResponse.json({ error: "internal_server_error", message, code }, { status: 500 });
   }
 }

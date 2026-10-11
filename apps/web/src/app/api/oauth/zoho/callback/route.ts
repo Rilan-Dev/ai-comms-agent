@@ -78,10 +78,13 @@ export async function GET(request: Request) {
   if (!accountsDomain || !oauthConfig || oauthConfig.dataCenter !== payload.dataCenter) return oauthError("The selected Zoho OAuth configuration was removed or disabled.", request, 409);
   const clientId = oauthConfig.clientId;
   const clientSecret = oauthConfig.clientSecret;
-  let redirectUri: string;
+  // Use the redirect_uri from the signed state (payload.redirectUri) for the
+  // token exchange. This is the URI that was sent to Zoho during the auth
+  // start. Re-deriving from the callback request can produce a different URI
+  // when Vercel deploys between start and callback (different deployment URL).
+  // The state is HMAC-signed, so payload.redirectUri is trusted.
+  const redirectUri = payload.redirectUri;
   try {
-    redirectUri = getOAuthRedirectUri(request, "zoho");
-    if (redirectUri !== payload.redirectUri) return oauthError("The callback host changed during authorization. Restart Zoho connection from the same application URL.", request, 400);
     assertOAuthRedirectUriSecure(redirectUri);
   } catch (error) {
     return oauthError(error instanceof Error ? error.message : "A valid HTTPS callback is required.", request, 400);
