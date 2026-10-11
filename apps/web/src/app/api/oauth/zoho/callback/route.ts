@@ -140,20 +140,37 @@ export async function GET(request: Request) {
     const remote = accountsPayload.data?.[0];
     if (!remote?.accountId) return oauthError("Zoho did not return a usable mail account.", request, 502);
 
-    // Zoho's /api/accounts response wraps emailAddress as a JSON object
-    // (e.g., {"isAlias":false,"isPrimary":true,"mailId":"user@domain.com"}).
-    // Extract the plain email string from it.
+    // Zoho's /api/accounts response wraps emailAddress in various formats:
+    // - A plain string: "user@domain.com"
+    // - A JSON string: '{"isAlias":false,"mailId":"user@domain.com"}'
+    // - An array of objects: [{"isAlias":false,"mailId":"user@domain.com"}]
+    // - An object: {"isAlias":false,"mailId":"user@domain.com"}
+    // Extract the plain email string from any of these formats.
     let emailAddress = "";
-    if (typeof remote.emailAddress === "string") {
-      // If it's a plain string, use it directly. If it's a JSON string, parse it.
+    const ea = remote.emailAddress;
+    if (typeof ea === "string") {
+      // Try parsing as JSON first, fall back to plain string
       try {
-        const parsed = JSON.parse(remote.emailAddress);
-        emailAddress = typeof parsed === "object" && parsed ? (parsed.mailId ?? parsed.email ?? String(parsed)) : String(parsed);
+        const parsed = JSON.parse(ea);
+        if (typeof parsed === "string") {
+          emailAddress = parsed;
+        } else if (Array.isArray(parsed)) {
+          emailAddress = parsed.find((p: any) => p?.mailId)?.mailId ?? parsed[0]?.mailId ?? "";
+        } else if (typeof parsed === "object" && parsed) {
+          emailAddress = (parsed as any).mailId ?? (parsed as any).email ?? "";
+        }
       } catch {
-        emailAddress = remote.emailAddress;
+        emailAddress = ea; // plain string
       }
+    } else if (Array.isArray(ea)) {
+      // Array of email objects
+      const first = ea.find((e: any) => e?.isPrimary) ?? ea[0];
+      emailAddress = first?.mailId ?? first?.email ?? "";
+    } else if (typeof ea === "object" && ea) {
+      // Single email object
+      emailAddress = (ea as any).mailId ?? (ea as any).email ?? "";
     }
-    // Also check mailId directly (some Zoho API versions use this field)
+    // Also check mailId directly
     if (!emailAddress && typeof remote.mailId === "string") {
       emailAddress = remote.mailId;
     }
