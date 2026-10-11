@@ -48,7 +48,7 @@ export async function GET(request: Request) {
       if (!resp.ok) {
         return NextResponse.json({ models: getStaticModels(provider), source: `static_api_${resp.status}` });
       }
-      const data = await resp.json() as { data?: Array<{ id: string }>; models?: Array<{ name: string }>; items?: Array<{ id: string }> };
+      const data = await resp.json() as { data?: Array<{ id?: string; name?: string }>; models?: Array<{ id?: string; name?: string }>; items?: Array<{ id?: string; name?: string }> };
       const rawModels = data.data ?? data.models ?? data.items ?? [];
       const models = rawModels.map((m) => ({ id: m.id ?? m.name ?? "", name: m.id ?? m.name ?? "" })).filter((m) => m.id);
       if (models.length === 0) {
