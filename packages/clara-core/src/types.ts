@@ -32,6 +32,8 @@ export interface EmbedOptions {
 
 export interface LLMProvider {
   chatStream(messages: ChatMessage[], options?: ChatOptions): AsyncGenerator<string, void, unknown>;
+  /** Optional for compatibility; unsupported providers must fail explicitly, never silently ignore tools. */
+  chatWithTools?(messages: ToolChatMessage[], tools: ChatToolDefinition[], options?: ChatOptions): Promise<ChatToolCompletion>;
   embedText(text: string, options?: EmbedOptions): Promise<number[]>;
   embedBatch(texts: string[], options?: EmbedOptions): Promise<number[][]>;
   getProviderName(): string;
