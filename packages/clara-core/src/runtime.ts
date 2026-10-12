@@ -306,6 +306,9 @@ async function chatWithTools(
   if (config.provider === "sarvam") {
     throw new Error("Native tool calling is not enabled for Sarvam until provider function-call semantics are verified.");
   }
+  if (config.provider !== "openai" && config.provider !== "gemini") {
+    throw new Error(`Native tool calling is not supported for provider ${config.provider}.`);
+  }
 
   if (config.provider === "gemini") {
     const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\\n\\n");
@@ -381,6 +384,9 @@ async function chatWithTools(
   };
   const choice = payload.choices?.[0];
   const rawCalls = choice?.message?.tool_calls ?? [];
+  if (choice?.finish_reason === "tool_calls" && rawCalls.length === 0) {
+    return { text: "I couldn't safely interpret the requested email operation, so I did not execute it. Please rephrase the request.", toolCalls: [], finishReason: "invalid_tool_call" };
+  }
   const toolCalls: ChatToolCompletion["toolCalls"] = [];
   for (const [index, call] of rawCalls.entries()) {
     if (!call.function?.name) {
