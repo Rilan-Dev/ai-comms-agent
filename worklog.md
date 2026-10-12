@@ -1763,3 +1763,11 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 - Evidence: GitHub accepted source/control writes. No tests, typechecks, builds, provider API calls, live database, browser or deployment checks were executed. No feature or runtime PASS is claimed.
 - Routing: OPS-01 retains the recorded RabbitMQ placeholder-vhost / Redis WRONGPASS runtime incident and ingestion proof; FIX-01 retains substantial source bugs and regression tests.
 - Exact DEV-01 next action: owner/architect review the plan and approve/correct slices E1 (Gmail incremental-sync correctness) and E3 (host-owned email tool catalogue) before material implementation.
+
+## 2026-10-13 — Email operations E1/E3 source work
+- Continued from EMAIL-OPS-01 after the user instructed DEV-01 to proceed.
+- Gmail incremental history now pages through all history responses and classifies message additions, label changes, and deletions. Worker reconciliation removes deleted local messages and derived email knowledge documents before advancing the durable cursor. Gmail reply/forward capability flags fail closed until thread-aware semantics are complete.
+- Added canonical shared email tool descriptor metadata with JSON Schemas, permissions, sensitivity, channel scope, provider capability requirements, and allowlist filtering. Updated the shared exports and tool contract documentation.
+- Added source regression tests for paginated history and capability filtering.
+- Verification: GitHub source writes only. No tests, typecheck, build, provider, database, browser, CI or deployment verification executed.
+- Exact next action: implement the executable host registry and read-only tenant-scoped email handlers with execution-time authorization, capability checks, bounded/redacted outputs and audit. OPS-01 owns live runtime; FIX-01 owns substantial bug/regression remediation.
