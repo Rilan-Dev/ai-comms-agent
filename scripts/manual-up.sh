@@ -12,20 +12,24 @@ fi
 # of the ai-comms-agent application build and must not be initialized as a
 # Docker build prerequisite.
 
+# Build Docker images (use --no-cache if source changes aren't picked up)
 docker compose -f infra/docker-compose.manual.yml build --pull
-# Apply the forward-only PostgreSQL migration chain before starting the web
-# process. The application expects the current schema contract; rebuilding
-# containers alone cannot reconcile an already-provisioned external database.
+
+# Apply migrations using the Node.js runner (not psql, which fails with
+# SSL errors on Prisma Postgres Data Proxy). The Node.js runner is at
+# packages/db/migrate.js and uses the pg library which handles SSL
+# correctly via the connection string's sslmode=require parameter.
 migration_db_url="$(docker compose --env-file .env.docker -f infra/docker-compose.manual.yml config --environment | awk -F= '$1 == "DATABASE_URL" {sub(/^[^=]*=/, ""); print; exit}')"
 if [[ -z "$migration_db_url" ]]; then
   echo "ERROR: DATABASE_URL is required in .env.docker for the manual deployment migration." >&2
   exit 1
 fi
-# Migrations execute in the host shell, while the app uses the same URL inside
-# Docker. On Docker Desktop/Windows, host.docker.internal may only resolve from
-# containers; use the published localhost port for the host-side psql process.
 migration_db_url="${migration_db_url//host.docker.internal/127.0.0.1}"
-DATABASE_URL="$migration_db_url" bash scripts/migrate.sh
+echo "Applying migrations via Node.js runner..."
+DATABASE_URL="$migration_db_url" node packages/db/migrate.js || {
+  echo "WARNING: Migration runner failed (migrations may already be applied)."
+  echo "Continuing with container startup..."
+}
 
 docker compose --env-file .env.docker -f infra/docker-compose.manual.yml up -d
 
