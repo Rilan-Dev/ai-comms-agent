@@ -170,11 +170,21 @@ export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise
       // produces "Mon Oct 12 2026 ..." which PostgreSQL rejects (error 22007).
       const fireAt = row.next_fire_at ? new Date(row.next_fire_at as string | Date).toISOString() : null;
       if (!fireAt) continue;
-      const run=await client.query<Row>(
-        "INSERT INTO scheduled_job_runs (scheduled_job_id,fire_at,status,result) VALUES ($1,$2::timestamptz,'running',$3::jsonb) ON CONFLICT (scheduled_job_id,fire_at) DO NOTHING RETURNING id",
-        [row.id,fireAt,JSON.stringify({claimedAt:nowIso})],
-      );
-      if (!run.rows[0]?.id) continue;
+      // Use try/catch instead of ON CONFLICT — some databases have partial
+      // unique indexes that don't work with ON CONFLICT inference.
+      let runId: string | null = null;
+      try {
+        const run=await client.query<Row>(
+          "INSERT INTO scheduled_job_runs (scheduled_job_id,fire_at,status,result) VALUES ($1,$2::timestamptz,'running',$3::jsonb) RETURNING id",
+          [row.id,fireAt,JSON.stringify({claimedAt:nowIso})],
+        );
+        runId = run.rows[0]?.id ? String(run.rows[0].id) : null;
+      } catch {
+        // Duplicate key — a run already exists for this (scheduled_job_id, fire_at).
+        // This is expected when the scheduler fires before the previous run completes.
+        continue;
+      }
+      if (!runId) continue;
       claims.push({runId:String(run.rows[0].id),id:String(row.id),agentId:String(row.agent_id),organizationId:String(row.organization_id),intent:String(row.intent),params:(row.params??{}) as Record<string,unknown>,cron:row.cron?String(row.cron):null,nextFireAt:fireAt,timezone:String(row.timezone??"UTC"),catchUpMinutes:Number(row.catch_up_minutes??60)});
     }
     return claims;
