@@ -352,7 +352,7 @@ async function chatWithTools(
     body: JSON.stringify({
       model: config.chatModel,
       messages,
-      tools: tools.map((tool) => ({ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.parameters, strict: true } })),
+      tools: tools.map((tool) => ({ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.parameters, strict: false } })),
       tool_choice: "auto",
       parallel_tool_calls: false,
       temperature: options.temperature,
