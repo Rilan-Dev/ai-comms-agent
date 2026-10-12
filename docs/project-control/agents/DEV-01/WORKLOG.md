@@ -212,3 +212,14 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - Important implementation finding: a persisted `whatsapp-client.tsx` exists with server-side credential submission, account list/disconnect, persisted message polling, and idempotent outbound queueing, but the visible `whatsapp/page.tsx` was still a static preview at the point inspected. The required route wiring must be completed without losing the existing authenticated organization context. Do not present the static Connect button as functional.
 - Verification: no tests, typecheck, build, browser or runtime checks executed. No PASS claimed.
 - Exact next action: follow the current `docs/project-control/NEXT_ACTION.md` (the latest main version names WhatsApp route-group integration as the immediate UI tranche). First reconcile the current route against the existing `whatsapp-client.tsx` and authenticated organization context, then continue remaining route groups. Do not repeatedly retry a stale SHA conflict; route substantial tenant bugs to FIX-01 and runtime/infrastructure to OPS-01.
+
+### DEV01-EMAIL-OPS-PLAN-20261012 / 2026-10-12
+- **Task:** Recover current GitHub state and prepare a comprehensive modular email operations + AI tool access plan.
+- **Authorization:** Explicit owner request to inspect and prepare implementation plans; planning/documentation only, not material implementation authorization.
+- **Started from:** `main` `4dc991fa5616f9a04ed3050a7c748e489c6e75f5`.
+- **Actions:** Inspected project-control and role-local records, email provider/agent architecture, provider adapters, sync worker/queue, shared email/tool contracts, Clara reuse boundary, current issues and active role routing. Added `docs/plans/EMAIL-OPS-01-IMPLEMENTATION-PLAN.md` and session record.
+- **Files/code:** Plan and session documents only; no product code changed.
+- **Evidence:** GitHub accepted plan commit `53c2b7ec` and session commit `6f042417`. Tests/typechecks/build/browser/provider/database/deployment checks NOT RUN.
+- **Blockers/dependencies:** OPS-01 owns live RabbitMQ vhost/Redis WRONGPASS and runtime ingestion proof; FIX-01 owns substantial source bugs/test failures. Tool/schema/policy/provider-scope decisions require owner/architect approval.
+- **Lesson:** Adapter declarations and HTTP 202 are not ingestion proof. The host app owns email tools; all channels must share execution-time authorization and audit. Cursor advancement follows persisted/reconciled work.
+- **Next action:** Owner/architect review the plan and approve/correct E1 (Gmail sync correctness) and E3 (host-owned email tool catalogue) before material implementation.
