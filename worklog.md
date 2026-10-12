@@ -1755,3 +1755,11 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 - Worklog entry recorded here.
 - Tests, typechecks, build, and live integration with real external services were verified where indicated above. Phases marked BLOCKED are NOT verified — they need the user-supplied credentials listed above or a different network egress. No PASS claimed for those phases.
 - Next: user supplies WhatsApp creds or completes Gmail OAuth in their browser; I rerun the per-phase E2E.
+
+## 2026-10-12 — DEV-01 email operations implementation plan
+- Recovered the current `main` code baseline at `4dc991fa5616f9a04ed3050a7c748e489c6e75f5` and the email-related architecture, tool contracts, role-local DEV-01 records, active issue routing and latest session records.
+- Created `docs/plans/EMAIL-OPS-01-IMPLEMENTATION-PLAN.md`, covering modular folder boundaries, sync correctness, Gmail history reconciliation, MIME/parsing, mailbox actions, provider capability parity, AI tool catalogue, execution-time authorization, indexing, observability and staged tests.
+- Created `docs/project-control/sessions/DEV01-EMAIL-OPS-PLAN-20261012.md`; updated shared session/event/backlog/memory and DEV-01 role-local worklog/memory.
+- Evidence: GitHub accepted source/control writes. No tests, typechecks, builds, provider API calls, live database, browser or deployment checks were executed. No feature or runtime PASS is claimed.
+- Routing: OPS-01 retains the recorded RabbitMQ placeholder-vhost / Redis WRONGPASS runtime incident and ingestion proof; FIX-01 retains substantial source bugs and regression tests.
+- Exact DEV-01 next action: owner/architect review the plan and approve/correct slices E1 (Gmail incremental-sync correctness) and E3 (host-owned email tool catalogue) before material implementation.
