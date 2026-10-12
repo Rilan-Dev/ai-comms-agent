@@ -489,3 +489,13 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Added the shared registry, read-only email handler module, invocation pipeline, and agent-scoped runtime factory with durable audit adapter.
 - These modules are not yet wired into the live model tool-call loop or channel transports. No tests/typecheck/build/runtime verification has been run.
 - **Next:** connect the runtime to model tool calls and channel adapters; keep tools hidden until that path is used. ISS-026 remains assigned to FIX-01.
+
+
+### DEV01-EMAIL-TOOL-LOOP-20261013 — provider adapter, loop and self-review
+- **Agent:** DEV-01 / Forge
+- **Branch:** `feature/email-ops-e1-e3`
+- **Status:** Source implemented; verification pending; not transport-integrated.
+- **Changes:** Provider-neutral Clara tool-call contracts; OpenAI-compatible/Gemini tool completion; explicit Sarvam unsupported boundary; bounded worker email tool loop; source tests; self-review quality audit.
+- **Security boundary:** Only registered/allowlisted read handlers can be offered. Unknown model tool names pass through executor for audit. No draft/mutation/send contracts are executable. FIX-01 owns ISS-026; DEV-01 must not patch the chat isolation bug.
+- **Verification:** No tests/typecheck/build/live provider/database/sync/deployment run.
+- **Next:** Add mocked provider contract tests and execute focused tests/typechecks. Then integrate the loop only through a trusted server transport after ISS-026 is resolved.
