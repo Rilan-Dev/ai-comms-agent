@@ -17,7 +17,8 @@ export type {
   Intent,
 } from "./agent/types";
 
-export { INTENT_TAXONOMY, EMAIL_TOOL_CATALOG, listEmailToolDescriptors } from "./agent/intents";
+export { INTENT_TAXONOMY } from "./agent/intents";
+export { EMAIL_TOOL_CATALOG, listEmailToolDescriptors } from "./agent/mail-operations";
 
 // Email provider types
 export type {
