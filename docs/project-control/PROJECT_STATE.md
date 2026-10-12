@@ -4,7 +4,7 @@ One-screen project status. This file is the canonical answer to "where are we?".
 
 ---
 
-> **Active continuation (2026-10-09):** RabbitMQ email.sync transport and the PostgreSQL-backed lexical Clara indexing adapter have source implementations, with runtime acceptance still pending. The current independent DEV-01 task is the cross-route Lovable UI responsive/accessibility review; OPS-01 retains the database-migration/Redis runtime incident. Exact next action: `docs/project-control/NEXT_ACTION.md`.
+> **Active continuation (2026-10-12):** DEV-01 has prepared `docs/plans/EMAIL-OPS-01-IMPLEMENTATION-PLAN.md`; owner/architect review is required before material implementation. The latest recorded live RabbitMQ/Redis mailbox-ingestion incident remains OPS-01-owned. Existing phase/verification records contain historical drift and must not be treated as fresh runtime evidence. See `docs/project-control/NEXT_ACTION.md`.
 
 ```yaml
 project: ai-comms-agent
