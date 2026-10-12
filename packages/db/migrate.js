@@ -126,6 +126,22 @@ const PRIVILEGE_ERROR_CODES = new Set([
   "42704", // undefined_object (e.g. role "authenticated" does not exist)
 ]);
 
+// "Already exists" / "duplicate" errors — when migrating into a schema
+// that already has overlapping objects (e.g. Supabase project with another
+// app's schema in `public`, our migrations landing in `aca`). All our
+// migrations are written idempotently with IF NOT EXISTS / DO $$ EXCEPTION
+// WHEN duplicate_object, but in rare cases (e.g. ALTER TABLE ADD COLUMN
+// without IF NOT EXISTS in an older migration, or a partial index that
+// already exists under a different name) we want to demote the error to a
+// warning and continue rather than abort the chain.
+const ALREADY_EXISTS_ERROR_CODES = new Set([
+  "42710", // duplicate_object — e.g. CREATE TYPE foo AS ENUM (...) when foo exists
+  "42P07", // duplicate_table — CREATE TABLE foo when foo exists (paranoia; IF NOT EXISTS handles this)
+  "42701", // duplicate_column — ALTER TABLE ADD COLUMN when column exists
+  "42723", // duplicate_function
+  "23505", // unique_violation — races on idempotent INSERT INTO ledger
+]);
+
 function looksLikePrivilegeStatement(stmt) {
   const s = stmt.trimLeft().toUpperCase();
   return (
@@ -188,6 +204,7 @@ async function main() {
     let applied = 0;
     let skipped = 0;
     let privilegeWarnings = 0;
+    let alreadyExistsWarnings = 0;
     let stmtIdx = 0;
     for (const fname of files) {
       const fpath = join(MIGRATIONS_DIR, fname);
@@ -228,9 +245,18 @@ async function main() {
             );
             continue;
           }
+          if (err && typeof err === "object" && "code" in err && ALREADY_EXISTS_ERROR_CODES.has(err.code)) {
+            alreadyExistsWarnings++;
+            const preview = stmt.replace(/\s+/g, " ").slice(0, 80);
+            console.log(
+              `  SKIP stmt#${stmtIdx} (${err.code}) ${preview}…`,
+            );
+            continue;
+          }
           console.error(`ERROR: migration failed: ${fname}`);
           console.error(`  code: ${err.code}`);
           console.error(`  message: ${err.message}`);
+          console.error(`  stmt#${stmtIdx} preview: ${stmt.replace(/\s+/g, " ").slice(0, 200)}`);
           process.exit(1);
         }
       }
@@ -249,7 +275,7 @@ async function main() {
       applied++;
     }
     console.log(
-      `PASS: migration chain complete. applied=${applied} skipped=${skipped} privilege_warnings=${privilegeWarnings} total=${files.length}`,
+      `PASS: migration chain complete. applied=${applied} skipped=${skipped} privilege_warnings=${privilegeWarnings} already_exists_skips=${alreadyExistsWarnings} total=${files.length}`,
     );
   } finally {
     client.release();
