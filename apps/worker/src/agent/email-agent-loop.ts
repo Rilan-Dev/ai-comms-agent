@@ -80,7 +80,10 @@ export async function runEmailAgentTurn(
       const finishReason = completion.finishReason === "invalid_tool_call" || completion.finishReason === "invalid_tool_arguments"
         ? completion.finishReason
         : "completed";
-      return { text: completion.text, toolCalls: summaries, finishReason };
+      const finalText = completion.text.trim()
+        ? completion.text
+        : "I couldn't complete the email request safely. Please try again or narrow the request.";
+      return { text: finalText, toolCalls: summaries, finishReason };
     }
 
     // Preserve the provider's assistant tool-call turn before appending results.
