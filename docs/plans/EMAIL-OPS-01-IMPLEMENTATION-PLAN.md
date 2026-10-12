@@ -265,3 +265,13 @@ DEV-01 has begun the next approved development slices on branch `feature/email-o
 **DEV-01:** connect `invokeEmailReadTool()` to the actual chat/realtime voice/WhatsApp/scheduled transport path with a trusted auth subject and model tool-call loop. Keep tool exposure disabled until the caller uses this runtime. FIX-01 must remediate ISS-026 (organization-only email context leaking across agent mailbox bindings); DEV-01 must not patch that substantial security bug. Then prove cross-channel reuse. Do not expose descriptors to the model until that wiring is complete. Before exposure, prove server-side account ownership and agent binding from PostgreSQL, schema validation, provider capability checks, execution-time permission checks, bounded/redacted outputs and audit. Then add the policy-gated draft and mutation handlers. Do not expose contract-only descriptors until each handler and its authorization path is implemented and tested. FIX-01 owns substantial source bug/regression remediation; OPS-01 retains live runtime and deployment proof.
 
 **Verification status:** GitHub source inspection only. No files modified at plan creation, no tests/typechecks/build/runtime/provider calls executed, and no feature is claimed complete or verified.
+
+
+## 12. DEV-01 provider tool-call and bounded loop update — 2026-10-13
+
+- Added provider-neutral tool-call contracts to `packages/clara-core/src/types.ts` and exports.
+- Added a native non-streaming function-call completion path in `packages/clara-core/src/runtime.ts`: OpenAI-compatible and Gemini request/response mappings; Sarvam is explicitly rejected for tool calling pending provider contract verification.
+- Added `apps/worker/src/agent/email-agent-loop.ts`: it builds schemas only from actual registered/allowlisted tools, verifies the trusted organization/agent pair, bounds execution to four model rounds/eight calls, sends results through the shared executor/audit path, and marks returned mail/tool content as untrusted data.
+- Added `apps/worker/tests/email-agent-loop.test.ts` source coverage for success, context mismatch, and call limits. Tests and typechecks have not been run.
+- **Still not transport-wired:** chat/realtime voice/WhatsApp/scheduled execution do not yet call the loop. Only read handlers are registered; catalogue contracts for drafts, mutations, attachments and sending remain unavailable. ISS-026 remains FIX-01-owned.
+- **Next exact DEV-01 action:** add mocked provider-contract tests for OpenAI/Gemini wire formats and failure cases, then run the focused worker test and Clara/worker typechecks if a local checkout is available. Continue independent work without waiting for CI/Vercel; do not expose tools or claim verified until transport/security evidence exists.
