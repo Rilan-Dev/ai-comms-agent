@@ -689,6 +689,7 @@ export const claraRuntime = {
 export function createProvider(config: ProviderConfig) {
   return {
     chatStream: (messages: ChatMessage[], options: ChatOptions = {}) => chatStream(config, messages, options),
+    chatWithTools: (messages: ToolChatMessage[], tools: ChatToolDefinition[], options: ChatOptions = {}) => chatWithTools(config, messages, tools, options),
     embedText: (text: string) => embedTextOnce(
       {
         provider: config.provider,
