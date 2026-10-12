@@ -99,3 +99,52 @@ export type { AgentExecutionSource, AgentExecutionRequest, AgentExecutionDispatc
 // Realtime voice transport contract — host adapter only; Clara owns provider transport.
 export type { VoiceTransportState, VoiceTranscriptEvent, VoiceTransportSession, VoiceTransportAdapter } from "./voice";
 export { isCurrentVoiceSequence } from "./voice";
+
+// AI model catalog (chat / TTS / STT / realtime / embedding) — single source
+// of truth for provider+model selection across the platform. SERVER-ONLY.
+export type {
+  ChatProvider,
+  VoiceChatProvider,
+  RealtimeProvider,
+  EmbeddingProvider,
+  AiPurpose,
+  ChatModelEntry,
+  TtsModelEntry,
+  SttModelEntry,
+  RealtimeModelEntry,
+  EmbeddingModelEntry,
+} from "./ai/model-catalog";
+export {
+  OPENAI_CHAT_MODELS,
+  GEMINI_CHAT_MODELS,
+  SARVAM_CHAT_MODELS,
+  ALL_CHAT_MODELS,
+  ELEVENLABS_TTS_MODELS,
+  SARVAM_TTS_MODELS,
+  ALL_TTS_MODELS,
+  ELEVENLABS_STT_MODELS,
+  SARVAM_STT_MODELS,
+  ALL_STT_MODELS,
+  REALTIME_MODELS,
+  OPENAI_REALTIME_VOICES,
+  OPENAI_EMBEDDING_MODELS,
+  GEMINI_EMBEDDING_MODELS,
+  ALL_EMBEDDING_MODELS,
+  CHAT_PROVIDER_LABELS,
+  VOICE_CHAT_PROVIDER_LABELS,
+  REALTIME_PROVIDER_LABELS,
+  EMBEDDING_PROVIDER_LABELS,
+  findChatModel,
+  findTtsModel,
+  findSttModel,
+  findRealtimeModel,
+  findEmbeddingModel,
+  isKnownChatModel,
+  isKnownTtsModel,
+  isKnownSttModel,
+  isKnownRealtimeModel,
+  isKnownEmbeddingModel,
+  defaultChatModelFor,
+  defaultEmbeddingModelFor,
+  embeddingDimensionFor,
+} from "./ai/model-catalog";

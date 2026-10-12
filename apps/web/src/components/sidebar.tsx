@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { label: "Activity", href: "/activity", icon: "activity" },
   { label: "Audit", href: "/audit", icon: "shield" },
   { label: "Operations", href: "/operations", icon: "pulse" },
+  { label: "AI Provider Setup", href: "/settings/ai-provider-setup", icon: "key" },
   { label: "Settings", href: "/settings", icon: "settings" },
 ] as const;
 
@@ -35,6 +36,7 @@ function NavIcon({ name }: { name: string }) {
     activity: <><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></>,
     shield: <><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11z"/><path d="m9 12 2 2 4-4"/></>,
     pulse: <><path d="M3 12h4l3-8 4 16 3-8h4"/></>,
+    key: <><circle cx="7.5" cy="15.5" r="3.5"/><path d="M10 13 19 4M16 7l3 3M14 9l3 3"/></>,
     settings: <><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.6a8 8 0 0 1-1.7 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.7-1l-1.7.6-1.4-2.4L7.3 15a8 8 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.6a8 8 0 0 1 1.7-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.7 1l1.7-.6 1.4 2.4-1.4 1.1a8 8 0 0 1 0 2z"/></>,
   };
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="h-[17px] w-[17px] shrink-0">{paths[name]}</svg>;

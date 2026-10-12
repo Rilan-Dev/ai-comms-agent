@@ -112,3 +112,25 @@ export {
   type CreateVoiceSessionInput,
   type VoiceSessionStatus,
 } from "./voice/repository";
+
+// AI provider configuration — multi-purpose provider credentials
+// (chat / tts / stt / realtime / embedding), org-level runtime defaults,
+// and per-agent overrides. See supabase/migrations/0044_ai_provider_setup.sql
+// for the schema.
+export {
+  listProviderConfigs,
+  getProviderConfig,
+  getDecryptedProviderConfig,
+  upsertProviderConfig,
+  deleteProviderConfig,
+  getOrgAiRuntimeSettings,
+  upsertOrgAiRuntimeSettings,
+  getAgentAiSettings,
+  upsertAgentAiSettings,
+  type ProviderConfigRow,
+  type UpsertProviderConfigInput,
+  type OrgAiRuntimeSettings,
+  type UpsertOrgAiRuntimeInput,
+  type AgentAiSettings,
+  type UpsertAgentAiSettingsInput,
+} from "./ai-provider/repository";

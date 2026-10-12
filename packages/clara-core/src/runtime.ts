@@ -69,12 +69,15 @@ function resolvedConfig(provider: AIProvider): ResolvedAIConfig {
   };
 }
 
-async function organizationAIConfig(orgId: string | null): Promise<{ provider: AIProvider; providerConfig: ProviderConfig; resolved: ResolvedAIConfig; voice?: { provider: string; model: string; voiceId: string } } | null> {
+async function organizationAIConfig(orgId: string | null, agentId?: string | null): Promise<{ provider: AIProvider; providerConfig: ProviderConfig; resolved: ResolvedAIConfig; voice?: { provider: string; model: string; voiceId: string }; embedding?: { provider: string; model: string; dimension: number | null } } | null> {
   if (!orgId || !process.env.DATABASE_URL) return null;
   const settingsResult = await query<{
     default_provider: string; temperature: number | string; max_tokens: number | string;
     system_prompt: string; realtime_voice_provider: string; realtime_voice_model: string; voice_id: string;
-  }>("SELECT default_provider,temperature,max_tokens,system_prompt,realtime_voice_provider,realtime_voice_model,voice_id FROM organization_ai_runtime_settings WHERE organization_id=$1", [orgId]);
+    voice_chat_provider: string | null; voice_chat_tts_model: string | null; voice_chat_stt_model: string | null; voice_chat_voice_id: string | null;
+    realtime_stt_model: string | null; realtime_tts_model: string | null;
+    embedding_provider: string | null; embedding_model: string | null; embedding_dimension: number | null;
+  }>("SELECT default_provider,temperature,max_tokens,system_prompt,realtime_voice_provider,realtime_voice_model,voice_id,voice_chat_provider,voice_chat_tts_model,voice_chat_stt_model,voice_chat_voice_id,realtime_stt_model,realtime_tts_model,embedding_provider,embedding_model,embedding_dimension FROM organization_ai_runtime_settings WHERE organization_id=$1", [orgId]);
   const settings = settingsResult.rows[0];
   if (!settings) return null;
   const provider = (["openai", "gemini", "sarvam"].includes(settings.default_provider) ? settings.default_provider : "openai") as AIProvider;
@@ -83,34 +86,107 @@ async function organizationAIConfig(orgId: string | null): Promise<{ provider: A
     [orgId, provider, "chat"],
   );
   const saved = providerResult.rows[0];
-  if (saved?.enabled && saved.encrypted_api_key?.length) {
+
+  // Per-agent overrides — agentId is optional. NULL columns mean "inherit".
+  let agentOverrides: {
+    chatProvider: string | null; chatModel: string | null;
+    realtimeVoiceProviderOverride: string | null; realtimeVoiceIdOverride: string | null;
+    voiceChatProvider: string | null; voiceChatTtsModel: string | null;
+    voiceChatSttModel: string | null; voiceChatVoiceId: string | null;
+    embeddingProvider: string | null; embeddingModel: string | null; embeddingDimension: number | null;
+    systemPromptOverride: string | null; temperatureOverride: number | null; maxTokensOverride: number | null;
+  } | null = null;
+  if (agentId) {
+    const agentResult = await query<{
+      chat_provider: string | null; chat_model: string | null;
+      realtime_voice_provider_override: string | null; realtime_voice_id_override: string | null;
+      voice_chat_provider: string | null; voice_chat_tts_model: string | null;
+      voice_chat_stt_model: string | null; voice_chat_voice_id: string | null;
+      embedding_provider: string | null; embedding_model: string | null; embedding_dimension: number | null;
+      system_prompt_override: string | null; temperature_override: number | string | null; max_tokens_override: number | null;
+    }>(
+      "SELECT chat_provider, chat_model, realtime_voice_provider_override, realtime_voice_id_override, voice_chat_provider, voice_chat_tts_model, voice_chat_stt_model, voice_chat_voice_id, embedding_provider, embedding_model, embedding_dimension, system_prompt_override, temperature_override, max_tokens_override FROM agent_ai_settings WHERE organization_id=$1 AND agent_id=$2 LIMIT 1",
+      [orgId, agentId],
+    );
+    if (agentResult.rows[0]) {
+      const a = agentResult.rows[0];
+      agentOverrides = {
+        chatProvider: a.chat_provider, chatModel: a.chat_model,
+        realtimeVoiceProviderOverride: a.realtime_voice_provider_override,
+        realtimeVoiceIdOverride: a.realtime_voice_id_override,
+        voiceChatProvider: a.voice_chat_provider, voiceChatTtsModel: a.voice_chat_tts_model,
+        voiceChatSttModel: a.voice_chat_stt_model, voiceChatVoiceId: a.voice_chat_voice_id,
+        embeddingProvider: a.embedding_provider, embeddingModel: a.embedding_model,
+        embeddingDimension: a.embedding_dimension != null ? Number(a.embedding_dimension) : null,
+        systemPromptOverride: a.system_prompt_override,
+        temperatureOverride: a.temperature_override != null ? Number(a.temperature_override) : null,
+        maxTokensOverride: a.max_tokens_override,
+      };
+    }
+  }
+
+  // Effective provider/model — agent override wins, then org settings, then env.
+  const effectiveProvider = (agentOverrides?.chatProvider && ["openai", "gemini", "sarvam"].includes(agentOverrides.chatProvider)
+    ? agentOverrides.chatProvider
+    : provider) as AIProvider;
+  const effectiveChatModel = (agentOverrides?.chatModel ?? saved?.model?.trim() ?? providerModel(effectiveProvider));
+
+  // Re-fetch provider config if agent overrode the provider (different row in ai_provider_configs).
+  let effectiveSaved = saved;
+  if (agentOverrides?.chatProvider && agentOverrides.chatProvider !== provider) {
+    const altResult = await query<{ model: string | null; encrypted_api_key: Buffer | null; config: Record<string, unknown> | null; enabled: boolean }>(
+      "SELECT model,encrypted_api_key,config,enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider=$2 AND purpose=$3 LIMIT 1",
+      [orgId, agentOverrides.chatProvider, "chat"],
+    );
+    if (altResult.rows[0]) effectiveSaved = altResult.rows[0];
+  }
+
+  if (effectiveSaved?.enabled && effectiveSaved.encrypted_api_key?.length) {
     const rawMasterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
     if (!rawMasterKey) throw new Error("AI provider credentials are saved, but CREDENTIALS_MASTER_KEY is not configured on the runtime.");
-    const apiKey = decryptCredential(Buffer.from(saved.encrypted_api_key), parseCredentialsMasterKey(rawMasterKey)).toString("utf8");
-    const baseUrl = typeof saved.config?.baseUrl === "string" && saved.config.baseUrl ? saved.config.baseUrl : providerBaseUrl(provider);
-    const model = saved.model?.trim() || providerModel(provider);
+    const apiKey = decryptCredential(Buffer.from(effectiveSaved.encrypted_api_key), parseCredentialsMasterKey(rawMasterKey)).toString("utf8");
+    const baseUrl = typeof effectiveSaved.config?.baseUrl === "string" && effectiveSaved.config.baseUrl ? effectiveSaved.config.baseUrl : providerBaseUrl(effectiveProvider);
+    const model = effectiveChatModel || providerModel(effectiveProvider);
     return {
-      provider,
-      providerConfig: { provider, apiKey, baseUrl, chatModel: model },
+      provider: effectiveProvider,
+      providerConfig: { provider: effectiveProvider, apiKey, baseUrl, chatModel: model },
       resolved: {
-        provider, model,
-        maxTokens: Number.isFinite(Number(settings.max_tokens)) ? Number(settings.max_tokens) : 1500,
-        temperature: Number.isFinite(Number(settings.temperature)) ? Number(settings.temperature) : 0.8,
-        assistantConfig: { systemPrompt: settings.system_prompt || "You are Clara, a helpful AI assistant for the user's communication workspace." },
+        provider: effectiveProvider, model,
+        maxTokens: agentOverrides?.maxTokensOverride ?? (Number.isFinite(Number(settings.max_tokens)) ? Number(settings.max_tokens) : 1500),
+        temperature: agentOverrides?.temperatureOverride ?? (Number.isFinite(Number(settings.temperature)) ? Number(settings.temperature) : 0.8),
+        assistantConfig: { systemPrompt: agentOverrides?.systemPromptOverride ?? settings.system_prompt ?? "You are Clara, a helpful AI assistant for the user's communication workspace." },
       },
-      voice: { provider: settings.realtime_voice_provider, model: settings.realtime_voice_model, voiceId: settings.voice_id },
+      voice: {
+        provider: agentOverrides?.realtimeVoiceProviderOverride ?? settings.realtime_voice_provider,
+        model: settings.realtime_voice_model,
+        voiceId: agentOverrides?.realtimeVoiceIdOverride ?? settings.voice_id,
+      },
+      embedding: {
+        provider: agentOverrides?.embeddingProvider ?? settings.embedding_provider ?? "openai",
+        model: agentOverrides?.embeddingModel ?? settings.embedding_model ?? "text-embedding-3-small",
+        dimension: agentOverrides?.embeddingDimension ?? (settings.embedding_dimension != null ? Number(settings.embedding_dimension) : 1536),
+      },
     };
   }
   return {
-    provider,
-    providerConfig: providerConfig(provider),
+    provider: effectiveProvider,
+    providerConfig: providerConfig(effectiveProvider),
     resolved: {
-      ...resolvedConfig(provider),
-      maxTokens: Number.isFinite(Number(settings.max_tokens)) ? Number(settings.max_tokens) : 1500,
-      temperature: Number.isFinite(Number(settings.temperature)) ? Number(settings.temperature) : 0.8,
-      assistantConfig: { systemPrompt: settings.system_prompt || "You are Clara, a helpful AI assistant for the user's communication workspace." },
+      ...resolvedConfig(effectiveProvider),
+      maxTokens: agentOverrides?.maxTokensOverride ?? (Number.isFinite(Number(settings.max_tokens)) ? Number(settings.max_tokens) : 1500),
+      temperature: agentOverrides?.temperatureOverride ?? (Number.isFinite(Number(settings.temperature)) ? Number(settings.temperature) : 0.8),
+      assistantConfig: { systemPrompt: agentOverrides?.systemPromptOverride ?? settings.system_prompt ?? "You are Clara, a helpful AI assistant for the user's communication workspace." },
     },
-    voice: { provider: settings.realtime_voice_provider, model: settings.realtime_voice_model, voiceId: settings.voice_id },
+    voice: {
+      provider: agentOverrides?.realtimeVoiceProviderOverride ?? settings.realtime_voice_provider,
+      model: settings.realtime_voice_model,
+      voiceId: agentOverrides?.realtimeVoiceIdOverride ?? settings.voice_id,
+    },
+    embedding: {
+      provider: agentOverrides?.embeddingProvider ?? settings.embedding_provider ?? "openai",
+      model: agentOverrides?.embeddingModel ?? settings.embedding_model ?? "text-embedding-3-small",
+      dimension: agentOverrides?.embeddingDimension ?? (settings.embedding_dimension != null ? Number(settings.embedding_dimension) : 1536),
+    },
   };
 }
 
@@ -215,6 +291,72 @@ function tokenlessEmbeddingError(): Promise<number[]> {
   return Promise.reject(new Error("Embedding is not configured in the local Clara boundary. Configure a Clara/Qdrant indexing pipeline before requesting embeddings."));
 }
 
+/**
+ * Generate an embedding vector for a single text input using the resolved
+ * org/agent embedding provider. Supports OpenAI text-embedding-* models and
+ * Gemini embedding-* models. TEI (local) is the operator's responsibility —
+ * we surface the configured baseUrl if set, otherwise throw a clear error.
+ */
+async function embedTextOnce(
+  config: { provider: string; model: string; apiKey: string; baseUrl: string },
+  text: string,
+): Promise<number[]> {
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error("Cannot embed empty text.");
+  if (config.provider === "gemini") {
+    const url = `${config.baseUrl}/v1beta/models/${encodeURIComponent(config.model)}:embedContent?key=${encodeURIComponent(config.apiKey)}`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content: { parts: [{ text: trimmed }] } }),
+    });
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new Error(`Gemini embedding failed (${response.status}): ${body.slice(0, 500)}`);
+    }
+    const payload = await response.json() as { embedding?: { values?: number[] } };
+    if (!payload.embedding?.values?.length) throw new Error("Gemini returned no embedding values.");
+    return payload.embedding.values;
+  }
+  // OpenAI-compatible (covers OpenAI + TEI proxies + vLLM embedding servers).
+  const response = await fetch(`${config.baseUrl}/v1/embeddings`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${config.apiKey}` },
+    body: JSON.stringify({ model: config.model, input: trimmed }),
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`OpenAI embedding failed (${response.status}): ${body.slice(0, 500)}`);
+  }
+  const payload = await response.json() as { data?: Array<{ embedding?: number[] }> };
+  const vec = payload.data?.[0]?.embedding;
+  if (!vec?.length) throw new Error("Provider returned no embedding values.");
+  return vec;
+}
+
+async function embedBatchOnce(
+  config: { provider: string; model: string; apiKey: string; baseUrl: string },
+  texts: string[],
+): Promise<number[][]> {
+  if (texts.length === 0) return [];
+  if (config.provider === "gemini") {
+    // Gemini has no batch endpoint — embed each text in parallel.
+    return Promise.all(texts.map((t) => embedTextOnce(config, t)));
+  }
+  // OpenAI-compatible — single batched request.
+  const response = await fetch(`${config.baseUrl}/v1/embeddings`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${config.apiKey}` },
+    body: JSON.stringify({ model: config.model, input: texts.map((t) => t.trim()) }),
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`OpenAI batch embedding failed (${response.status}): ${body.slice(0, 500)}`);
+  }
+  const payload = await response.json() as { data?: Array<{ embedding?: number[] }> };
+  return (payload.data ?? []).map((item) => item.embedding ?? []);
+}
+
 async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: number): Promise<GroundedContext> {
   if (!ctx.orgId || !process.env.DATABASE_URL) {
     return { ok: false, result: { sources: [] }, error: "PostgreSQL is not configured for local knowledge retrieval." };
@@ -266,13 +408,13 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
 
 export const claraRuntime = {
   async resolveProvider(ctx: ClaraRuntimeContext, surface: "chat" | "realtime" | "embed" = "chat") {
-    const organizationConfig = await organizationAIConfig(ctx.orgId);
+    const organizationConfig = await organizationAIConfig(ctx.orgId, ctx.agentId);
     const provider = organizationConfig?.provider ?? selectedProvider();
     return { ...(organizationConfig?.resolved ?? resolvedConfig(provider)), surface, orgId: ctx.orgId, agentId: ctx.agentId };
   },
 
   async resolveVoice(ctx: ClaraRuntimeContext) {
-    const organizationConfig = await organizationAIConfig(ctx.orgId);
+    const organizationConfig = await organizationAIConfig(ctx.orgId, ctx.agentId);
     const provider = organizationConfig?.voice?.provider ?? env("REALTIME_VOICE_PROVIDER") ?? selectedProvider();
     return {
       realtimeProvider: provider,
@@ -286,12 +428,83 @@ export const claraRuntime = {
     return groundContext(ctx, queryText, options?.topK ?? 8);
   },
 
+  /**
+   * Embed a single text using the org/agent embedding provider.
+   * Falls back to throwing the legacy "not configured" error when no org
+   * embedding settings exist (preserves previous behavior for callers that
+   * don't yet opt into embeddings).
+   */
+  async embedText(ctx: ClaraRuntimeContext, text: string): Promise<number[]> {
+    const organizationConfig = await organizationAIConfig(ctx.orgId, ctx.agentId);
+    const embedding = organizationConfig?.embedding;
+    if (!embedding?.provider || !embedding?.model) {
+      // Fall back to env-provided OPENAI_API_KEY / GEMINI_API_KEY + a default model.
+      const provider = (env("EMBEDDING_PROVIDER") ?? "openai") as string;
+      const model = env("EMBEDDING_MODEL") ?? "text-embedding-3-small";
+      const apiKey = provider === "gemini" ? env("GEMINI_API_KEY") : env("OPENAI_API_KEY");
+      const baseUrl = provider === "gemini" ? "https://generativelanguage.googleapis.com" : "https://api.openai.com";
+      if (!apiKey) return tokenlessEmbeddingError();
+      return embedTextOnce({ provider, model, apiKey, baseUrl }, text);
+    }
+    // Resolve the embedding provider's API key from ai_provider_configs(purpose='embedding').
+    const embeddingConfigResult = await query<{ encrypted_api_key: Buffer | null; config: Record<string, unknown> | null; enabled: boolean }>(
+      "SELECT encrypted_api_key,config,enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider=$2 AND purpose=$3 LIMIT 1",
+      [ctx.orgId, embedding.provider, "embedding"],
+    );
+    const saved = embeddingConfigResult.rows[0];
+    let apiKey: string | undefined;
+    if (saved?.enabled && saved.encrypted_api_key?.length) {
+      const rawMasterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
+      if (!rawMasterKey) throw new Error("CREDENTIALS_MASTER_KEY is not configured.");
+      apiKey = decryptCredential(Buffer.from(saved.encrypted_api_key), parseCredentialsMasterKey(rawMasterKey)).toString("utf8");
+    } else {
+      apiKey = embedding.provider === "gemini" ? env("GEMINI_API_KEY") : env("OPENAI_API_KEY");
+    }
+    if (!apiKey) return tokenlessEmbeddingError();
+    const baseUrl = (typeof saved?.config?.baseUrl === "string" && saved.config.baseUrl)
+      ? saved.config.baseUrl
+      : embedding.provider === "gemini" ? "https://generativelanguage.googleapis.com" : "https://api.openai.com";
+    return embedTextOnce({ provider: embedding.provider, model: embedding.model, apiKey, baseUrl }, text);
+  },
+
+  async embedBatch(ctx: ClaraRuntimeContext, texts: string[]): Promise<number[][]> {
+    if (texts.length === 0) return [];
+    const organizationConfig = await organizationAIConfig(ctx.orgId, ctx.agentId);
+    const embedding = organizationConfig?.embedding;
+    if (!embedding?.provider || !embedding?.model) {
+      const provider = (env("EMBEDDING_PROVIDER") ?? "openai") as string;
+      const model = env("EMBEDDING_MODEL") ?? "text-embedding-3-small";
+      const apiKey = provider === "gemini" ? env("GEMINI_API_KEY") : env("OPENAI_API_KEY");
+      const baseUrl = provider === "gemini" ? "https://generativelanguage.googleapis.com" : "https://api.openai.com";
+      if (!apiKey) return Promise.all(texts.map(() => tokenlessEmbeddingError())) as unknown as Promise<number[][]>;
+      return embedBatchOnce({ provider, model, apiKey, baseUrl }, texts);
+    }
+    const embeddingConfigResult = await query<{ encrypted_api_key: Buffer | null; config: Record<string, unknown> | null; enabled: boolean }>(
+      "SELECT encrypted_api_key,config,enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider=$2 AND purpose=$3 LIMIT 1",
+      [ctx.orgId, embedding.provider, "embedding"],
+    );
+    const saved = embeddingConfigResult.rows[0];
+    let apiKey: string | undefined;
+    if (saved?.enabled && saved.encrypted_api_key?.length) {
+      const rawMasterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
+      if (!rawMasterKey) throw new Error("CREDENTIALS_MASTER_KEY is not configured.");
+      apiKey = decryptCredential(Buffer.from(saved.encrypted_api_key), parseCredentialsMasterKey(rawMasterKey)).toString("utf8");
+    } else {
+      apiKey = embedding.provider === "gemini" ? env("GEMINI_API_KEY") : env("OPENAI_API_KEY");
+    }
+    if (!apiKey) return Promise.all(texts.map(() => tokenlessEmbeddingError())) as unknown as Promise<number[][]>;
+    const baseUrl = (typeof saved?.config?.baseUrl === "string" && saved.config.baseUrl)
+      ? saved.config.baseUrl
+      : embedding.provider === "gemini" ? "https://generativelanguage.googleapis.com" : "https://api.openai.com";
+    return embedBatchOnce({ provider: embedding.provider, model: embedding.model, apiKey, baseUrl }, texts);
+  },
+
   async createChatTurn(request: ClaraAgentTurnRequest): Promise<ClaraAgentTurn> {
     const messages = request.messages.filter((message) => message.content.trim());
     const lastUserMessage = [...messages].reverse().find((message) => message.role === "user");
     if (!lastUserMessage) throw new Error("A user message is required.");
 
-    const organizationConfig = await organizationAIConfig(request.orgId);
+    const organizationConfig = await organizationAIConfig(request.orgId, request.agentId);
     const provider = organizationConfig?.provider ?? selectedProvider();
     const config = organizationConfig?.resolved ?? resolvedConfig(provider);
     const providerSettings = organizationConfig?.providerConfig ?? providerConfig(provider);
@@ -340,8 +553,24 @@ export const claraRuntime = {
 export function createProvider(config: ProviderConfig) {
   return {
     chatStream: (messages: ChatMessage[], options: ChatOptions = {}) => chatStream(config, messages, options),
-    embedText: () => tokenlessEmbeddingError(),
-    embedBatch: () => tokenlessEmbeddingError(),
+    embedText: (text: string) => embedTextOnce(
+      {
+        provider: config.provider,
+        model: config.embeddingModel ?? "text-embedding-3-small",
+        apiKey: config.apiKey ?? "",
+        baseUrl: config.baseUrl ?? providerBaseUrl(config.provider as AIProvider),
+      },
+      text,
+    ),
+    embedBatch: (texts: string[]) => embedBatchOnce(
+      {
+        provider: config.provider,
+        model: config.embeddingModel ?? "text-embedding-3-small",
+        apiKey: config.apiKey ?? "",
+        baseUrl: config.baseUrl ?? providerBaseUrl(config.provider as AIProvider),
+      },
+      texts,
+    ),
     getProviderName: () => config.provider,
     getModelName: (type: "chat" | "embedding") => type === "chat" ? (config.chatModel ?? "unknown") : (config.embeddingModel ?? "unknown"),
     getEmbeddingDimension: () => Number(config.embeddingDimension ?? 0),
