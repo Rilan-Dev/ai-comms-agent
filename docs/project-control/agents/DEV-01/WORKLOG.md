@@ -234,3 +234,10 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Blockers/dependencies:** Tool descriptors are contract metadata, not yet executable host handlers. OPS-01 retains the RabbitMQ/Redis runtime issue and persisted-ingestion proof. FIX-01 retains substantial source defects and regression remediation.
 - **Lesson:** Do not advance Gmail history checkpoints before every history page and resulting database reconciliation completes. Do not expose a tool merely because a contract/capability flag exists.
 - **Next action:** Implement the actual host registry and tenant-scoped email handlers, starting with read-only operations; prove account binding, permission/capability checks, schema validation, output bounds/redaction, and audit before exposing them to any model/channel.
+
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 / 2026-10-13
+- User authorized continuation of EMAIL-OPS-01 on `feature/email-ops-e1-e3`.
+- Updated Gmail history paging/classification and local reconciliation; added regression coverage. Added/exported shared email tool contract metadata with capability/allowlist filtering.
+- Verification: source writes only; tests/typecheck/build/runtime not run. Tool contracts are not executable handlers.
+- Next: implement the shared host registry and read-only tenant-scoped handlers with execution-time authorization and audit. OPS-01 retains infrastructure; FIX-01 retains substantial bug remediation.
