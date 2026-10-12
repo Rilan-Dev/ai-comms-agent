@@ -472,3 +472,15 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Pending:** Execute focused tests/typecheck; implement actual shared runtime registry and executable tenant-scoped handlers; add authorization, policy/approval, audit and cross-channel wiring; prove live ingestion separately.
 - **Blockers:** OPS-01 owns live RabbitMQ/Redis and deployment/runtime proof; FIX-01 owns substantial bug/test remediation.
 - **Next action:** Build the host registry and read-only email handlers; keep contract-only tools unavailable until runtime registration and execution-time controls are tested.
+
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 — 2026-10-13
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Continue the next email development work after the plan; user said proceed.
+- **Started from:** `feature/email-ops-e1-e3`.
+- **Scope:** Gmail history correctness and canonical email tool contract inventory.
+- **Status:** SOURCE CHANGES WRITTEN; verification pending.
+- **Completed:** Gmail history pagination and add/update/delete classification, local deletion reconciliation before cursor commit, focused regression test, fail-closed reply/forward flags, shared contract descriptors and capability/allowlist filter.
+- **Pending:** Run tests/typecheck; wire executable handlers and runtime authorization/audit; prove live mailbox ingestion separately.
+- **Blockers/owners:** OPS-01 owns broker/Redis/runtime; FIX-01 owns substantial bug/regression remediation.
+- **Next action:** Implement the shared host registry and read-only tenant-scoped email handlers before exposing tools to the model.
