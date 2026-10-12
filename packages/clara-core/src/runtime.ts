@@ -351,7 +351,20 @@ async function chatWithTools(
     headers: { "content-type": "application/json", authorization: `Bearer ${config.apiKey}` },
     body: JSON.stringify({
       model: config.chatModel,
-      messages,
+      messages: messages.map((message) => {
+        if (message.role === "assistant" && "tool_calls" in message && message.tool_calls?.length) {
+          return {
+            role: "assistant",
+            content: message.content,
+            tool_calls: message.tool_calls.map((call) => ({
+              id: call.id,
+              type: "function",
+              function: { name: call.name, arguments: JSON.stringify(call.arguments) },
+            })),
+          };
+        }
+        return message;
+      }),
       tools: tools.map((tool) => ({ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.parameters, strict: false } })),
       tool_choice: "auto",
       parallel_tool_calls: false,
