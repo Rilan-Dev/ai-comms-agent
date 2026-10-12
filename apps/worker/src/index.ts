@@ -72,7 +72,17 @@ function main() {
   const whatsappVerifyTimer = checks.credentials_master_key_configured
     ? setInterval(() => { void verifyPendingWhatsAppAccounts(); }, 10_000)
     : undefined;
-  const schedulerTimer = setInterval(() => { void processScheduledJobs(); }, 15_000);
+  const schedulerTimer = setInterval(() => {
+    void processScheduledJobs().catch((error) => {
+      console.error(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: "error",
+        service: "worker.scheduler",
+        message: "Scheduled job processing failed",
+        reason: error instanceof Error ? error.message : "Unknown error",
+      }));
+    });
+  }, 15_000);
   const interval = setInterval(() => { log("health check", healthCheck()); }, HEALTH_INTERVAL_MS);
 
   const shutdown = (signal: string) => {

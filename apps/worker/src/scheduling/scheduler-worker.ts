@@ -4,7 +4,11 @@ import { nextCronFire } from "./cron";
 
 export async function processScheduledJobs(limit=25,now=new Date()):Promise<{claimed:number;completed:number;failed:number}>{
   if(!process.env.DATABASE_URL) return {claimed:0,completed:0,failed:0};
-  const jobs=await claimDueScheduledJobs(limit,now.toISOString()); let completed=0,failed=0;
+  // Use ISO 8601 format for PostgreSQL timestamptz — not the default
+  // Date.toString() format ("Mon Oct 12 2026 ...") which PostgreSQL
+  // rejects with error 22007 "invalid input syntax for type timestamp".
+  const nowIso = now.toISOString();
+  const jobs=await claimDueScheduledJobs(limit,nowIso); let completed=0,failed=0;
   for(const job of jobs){
     try{
       const result=await dispatchAgentExecution({executionId:job.runId,organizationId:job.organizationId,agentId:job.agentId,source:"schedule",intent:job.intent,params:job.params,requestedAt:now.toISOString()});
