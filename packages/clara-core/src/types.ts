@@ -107,3 +107,25 @@ export interface ClaraAgentTurn {
   stream: AsyncGenerator<string, void, unknown>;
   grounding: GroundedContext;
 }
+
+
+/** Provider-neutral tool calling contracts. Tool results are data, never trusted instructions. */
+export interface ChatToolDefinition {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+export interface ChatToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+export type ToolChatMessage =
+  | ChatMessage
+  | { role: "assistant"; content: string | null; tool_calls?: ChatToolCall[] }
+  | { role: "tool"; content: string; tool_call_id: string; name: string };
+export interface ChatToolCompletion {
+  text: string;
+  toolCalls: ChatToolCall[];
+  finishReason: string | null;
+}
