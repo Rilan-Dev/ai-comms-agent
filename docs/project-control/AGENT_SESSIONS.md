@@ -451,3 +451,13 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Commit:** a529ffe43915495d099c17b353fb517d53fac10b.
 - **Status:** Script not executed against live host; no live root cause or PASS claimed.
 - **Next:** User runs script and returns sanitized report; route source vs runtime issue from evidence. Never request secrets in chat.
+
+### DEV01-EMAIL-OPS-PLAN-20261012 — 2026-10-12
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Recover repository state and prepare modular implementation plans for complete email sync/operations and shared AI-agent access.
+- **Baseline:** `main` at `4dc991fa5616f9a04ed3050a7c748e489c6e75f5`.
+- **Status:** PLAN PREPARED — awaiting owner/architect review; implementation not authorized by the plan alone.
+- **Artifact:** `docs/plans/EMAIL-OPS-01-IMPLEMENTATION-PLAN.md`.
+- **Findings:** Gmail sync delta/deletion/history pagination and MIME parsing require audit; Gmail reply/forward adapter helpers send immediately; Zoho/IMAP operation parity is incomplete; capability flags must match tested behavior; all AI channels need one host-owned tool execution path with execution-time authz. Live RabbitMQ placeholder-vhost and Redis WRONGPASS remain OPS-01-owned according to current durable records.
+- **Evidence:** Source/document inspection and GitHub file writes only. No tests, typechecks, builds, live providers, DB, browser or deployment checks run.
+- **Next action:** Owner/architect review and approve/correct E1 (Gmail sync correctness) and E3 (tool catalogue) before material implementation. OPS-01's runtime recovery action remains separate.
