@@ -2,7 +2,7 @@
  * Shared host tool registry.
  * Registration never grants access; handlers/runtime must still authorize each call.
  */
-import type { Tool } from "./types";
+import type { Tool, ToolContext, ToolResult } from "./types";
 
 export type AgentToolAllowlist = (agentId: string) => readonly string[] | null;
 export interface ToolValidationResult { valid: boolean; errors?: string[]; }
@@ -51,7 +51,7 @@ function validateObject(input: unknown, schema: Schema): ToolValidationResult {
 
 export class ToolRegistry {
   private readonly tools = new Map<string, Tool>();
-  constructor(private readonly allowedToolsForAgent: AgentToolAllowlist) {}
+  constructor(private readonly allowedToolsForAgent: AgentToolAllowlist, private readonly hooks?: ToolRegistryHooks) {}
 
   register(tool: Tool): void {
     if (!tool.name.trim()) throw new Error("Tool name is required.");
@@ -72,6 +72,56 @@ export class ToolRegistry {
     if (!allowed) return [];
     const allowset = new Set(allowed);
     return this.list().filter((tool) => allowset.has(tool.name));
+  }
+
+
+  /**
+   * Execute through the shared boundary. If authorization or durable audit hooks
+   * are absent, execution fails closed rather than invoking a handler directly.
+   */
+  async invoke(toolName: string, input: unknown, context: ToolContext): Promise<ToolResult> {
+    const tool = this.get(toolName);
+    let outcome: ToolResult;
+    if (!tool) {
+      outcome = failedToolResult(toolName, "unknown_tool", "This tool is not registered.");
+    } else if (!this.listForAgent(context.agent_id).some((item) => item.name === toolName)) {
+      outcome = failedToolResult(toolName, "tool_not_allowed", "This tool is not enabled for the current agent.");
+    } else {
+      const validation = this.validate(toolName, input);
+      if (!validation.valid) {
+        outcome = failedToolResult(toolName, "invalid_input", (validation.errors ?? []).slice(0, 5).join("; "));
+      } else if (!context.auth_subject.permissions.includes(tool.required_permission)) {
+        outcome = failedToolResult(toolName, "permission_denied", "The current actor lacks the required permission.");
+      } else if (!this.hooks) {
+        outcome = failedToolResult(toolName, "runtime_not_configured", "Tool execution is disabled until authorization and durable audit hooks are configured.");
+      } else {
+        try {
+          const decision = await this.hooks.authorize(tool, input, context);
+          if (!decision.allowed) {
+            outcome = failedToolResult(toolName, decision.code ?? "execution_denied", decision.message ?? "The tool call was not authorized.", decision.retryable ?? false);
+          } else {
+            try {
+              outcome = await tool.execute(input, context);
+            } catch {
+              outcome = failedToolResult(toolName, "tool_execution_failed", "The tool could not complete the request.");
+            }
+          }
+        } catch {
+          outcome = failedToolResult(toolName, "authorization_unavailable", "Authorization could not be confirmed; the tool was not executed.");
+        }
+      }
+    }
+
+    // An audit failure must never be reported as a clean success. Do not retry
+    // side effects automatically: the handler may already have completed.
+    if (this.hooks) {
+      try {
+        await this.hooks.audit(toolName, tool, context, outcome);
+      } catch {
+        return failedToolResult(toolName, "audit_persistence_failed", "The audit record could not be persisted; do not automatically retry this operation.");
+      }
+    }
+    return outcome;
   }
 
   validate(toolName: string, input: unknown): ToolValidationResult {
