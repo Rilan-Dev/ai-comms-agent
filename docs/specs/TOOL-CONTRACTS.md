@@ -336,3 +336,8 @@ The Clara boundary now has provider-neutral tool-call types and `claraRuntime.co
 Do not send contract-only catalogue entries to the model. Currently registered handlers are read-only. Drafts, mutation, attachment, and send descriptors are not executable. The runtime still needs execution-time allowlist/policy refresh, all-of/any-of capability enforcement for future multi-capability tools, cancellation/timeouts, token-aware output limits, and live provider contract evidence. ISS-026 remains FIX-01-owned and blocks safe chat transport integration.
 
 Source tests were added but not run. No typecheck/build/provider/database/runtime/CI/deployment PASS is claimed.
+
+
+### Authorization follow-up — 2026-10-13
+
+`email-tool-runtime.ts` now re-reads the persisted agent allowlist during each invocation and applies all-of/any-of capability checks from the canonical `EMAIL_TOOL_CATALOG` descriptor for account-scoped calls. This is still source-only: add tests for allowlist revocation between tool calls, missing one required capability, and no supported any-capability alternative. Keep contract-only tools hidden until these checks and transport wiring are verified.
