@@ -140,7 +140,6 @@ describe("GmailAdapter", () => {
     );
   });
 
-});
 
   it("paginates history and reports additions, label changes, and deletions", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch")
@@ -166,3 +165,4 @@ describe("GmailAdapter", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(String(fetchMock.mock.calls[2][0])).toContain("pageToken=p2");
   });
+});
