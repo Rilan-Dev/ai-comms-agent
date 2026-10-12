@@ -251,3 +251,8 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - Added `apps/worker/src/agent/email-read-tools.ts` with safe read-only account/capability/folder/label/message/thread/search/sync-status handlers. Account-scoped calls recheck org + agent binding; send-only bindings cannot read. Outputs are bounded and error summaries are sanitized.
 - Added a registration helper; actual channel runtime registration and durable audit persistence remain pending.
 - **Exact next action:** wire the handlers into the shared runtime, enforce allowlist/permission/schema/capability/policy at invocation, persist audit, and ensure chat/voice/WhatsApp/schedules use one path. Verification remains unrun.
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 — runtime factory continuation
+- Added `apps/worker/src/agent/tool-executor.ts` as the shared invocation pipeline and `apps/worker/src/agent/email-tool-runtime.ts` to load the persisted agent allowlist, register read-only handlers, recheck mailbox grants/capabilities, and write sanitized tool-call audit events.
+- Added test source for allowlist denial, schema rejection, authorization denial, and audit handling. Tests were not executed.
+- **Next action:** connect `invokeEmailReadTool()` to the actual chat/realtime voice/WhatsApp/scheduled transport and model tool-call loop. Do not expose catalogue descriptors before that path is used. FIX-01 owns ISS-026; OPS-01 owns live infrastructure verification.
