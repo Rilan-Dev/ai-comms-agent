@@ -463,3 +463,14 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Recovery sequence:** verify worker logs no longer show RabbitMQ `ConnectionClose` or Redis `WRONGPASS`; requeue Gmail sync; then confirm account status/sync timestamps advance and persisted `email_messages` count increases. HTTP 202 alone is not success. Check inbox only after rows are persisted.
 - **Security:** Do not paste environment URLs, credentials, cookies, OAuth codes, access tokens or mailbox contents into chat or project-control files.
 - **Verification:** Source-level RabbitMQ test passed 10/10 in user terminal; migration static test passed 86/87 with a separate local duplicate-lockfile-header failure. Neither is a live sync PASS. Live provider ingestion remains blocked/unverified.
+
+
+## ISS-026 — Chat email context is organization-scoped rather than agent-account-scoped
+- **Opened:** 2026-10-13
+- **Severity:** critical (cross-agent mailbox isolation)
+- **Owner:** FIX-01 / Sentinel
+- **Status:** open — source remediation required
+- **Evidence:** `apps/web/src/app/api/chat/stream/route.ts` calls `loadEmailContext(organizationId, content)`. Its SQL filters by organization and connected account status but does not join `agent_email_accounts` or filter by the active `agentId`. An agent can therefore receive local email context from another agent's mailbox in the same organization, even though account bindings are the product authorization boundary.
+- **Required remedy:** FIX-01 must make email context account-scoped to the active agent's bindings and permitted binding roles, pass `agentId` into the loader, add cross-agent/cross-account regression coverage, and ensure email content remains marked untrusted. Do not rely on organization membership alone for agent mailbox access.
+- **Verification:** Source inspection only; exploitability and remediation have not been runtime-tested. No PASS claimed.
+- **Role routing:** DEV-01 does not take ownership of this substantial security bug; continue modular tool work against the bound-account repository contract. OPS-01 remains responsible for infrastructure/deployment defects.
