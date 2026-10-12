@@ -307,3 +307,15 @@ Tools are not added silently. Every new tool is an architectural decision (recor
 Tools are versioned with the agent (per `agent_versions.config.tools`). If a tool's schema changes, old agent versions continue using the old schema; new versions use the new schema. This requires tool implementations to support multiple schema versions — managed via a `tool_versions` table (Phase 11).
 
 For Phase 1, the catalogue above is the v1 shape.
+
+---
+
+## 8. Email tool contract inventory (EMAIL-OPS-01)
+
+The current shared source exports `EMAIL_TOOL_CATALOG` and `listEmailToolDescriptors()` from `packages/shared/src/agent/intents.ts` and `packages/shared/src/index.ts`. The inventory covers account/capability discovery, folders/labels, paginated message reads, thread reads, search, sync status, drafts, reply/forward draft intent, read/archive/move/label actions, attachment metadata/download, summaries, sensitive send/reply/forward, trash, and bounded bulk operations.
+
+Each descriptor includes a JSON Schema, permission name, sensitivity, channel list, required provider capabilities, optional alternative capabilities, and whether the policy engine is required. The helper filters against the connected account's *actual capability set* and an optional agent allowlist.
+
+**Important status boundary:** these descriptors are contract metadata, not executable tool handlers. They must not be sent to a model or invoked as if implemented until the host runtime has registered the corresponding service handler and passed execution-time organization, agent, account, permission, capability, policy, approval, idempotency, and audit checks. A catalogue entry does not prove provider support. Chat, realtime voice, WhatsApp and scheduled execution must reuse one host registry and one service path.
+
+Gmail reply and forward capability flags are deliberately fail-closed while thread-aware RFC reply/forward semantics are incomplete. Re-enable them only after implementation and adapter contract tests prove the operation. A generic draft capability is not proof that a provider can construct a correct reply/forward draft.
