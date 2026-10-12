@@ -2,7 +2,7 @@
 
 **Plan ID:** EMAIL-OPS-01  
 **Owner:** DEV-01 / Forge  
-**Status:** PROPOSED — planning authorized; implementation requires owner/architect approval  
+**Status:** IMPLEMENTATION IN PROGRESS — owner has directed DEV-01 to proceed with the next slices  
 **Baseline:** `main` at `4dc991fa5616f9a04ed3050a7c748e489c6e75f5` (2026-10-12)  
 **Scope:** Reliable multi-account email ingestion, synchronization, mailbox operations, and complete host-authorized AI-agent access to email features across chat, realtime voice, WhatsApp, and scheduled execution.
 
@@ -244,8 +244,20 @@ Each slice is separately reviewable and reusable. Reorder only after inventory r
 
 Current runtime blocker from durable records: placeholder RabbitMQ vhost plus Redis `WRONGPASS` was observed in the deployed worker; the current state must be rechecked. It is not resolved by this document and must remain with OPS-01. Do not disable Redis coordination as a workaround.
 
-## 10. Exact next action
+## 10. Implementation progress — 2026-10-13
 
-**DEV-01:** review this plan against the current source and contract docs, then request owner/architect approval for implementation slice E1 (Gmail incremental-sync correctness) and E3 (host-owned email tool inventory/catalogue), including any required architecture decisions. Until that approval, do not silently implement a new tool architecture or change provider/permission contracts. Independently safe source inventory and plan refinement may continue.
+DEV-01 has begun the next approved development slices on branch `feature/email-ops-e1-e3`:
+
+- **E1 source changes:** Gmail history API now pages through every history response, requests add/label/delete event types, separates added/updated/deleted provider IDs, and retains the old history checkpoint on any failed page. Expired-history 404 still falls back to idempotent initial import. The worker now applies provider-reported deletions to account/org-scoped local message rows and recalculates affected thread counts before persisting the new cursor; matching derived email knowledge documents are removed as well.
+- **E1 regression test:** added a focused adapter test for paginated history, label updates and deletions.
+- **Capability safety:** Gmail's reply/forward capabilities are disabled until thread-aware behavior is implemented and tested; the catalogue requires those capabilities before offering reply/forward contracts.
+- **E3 source changes:** added the shared `EmailToolDescriptor` contract and a canonical email tool metadata inventory with JSON Schemas, permissions, sensitivity, channel scope, provider-capability requirements and capability/agent-allowlist filtering. Exported the inventory through the shared package entry point.
+- **E3 regression test:** added a capability-filtering test for the descriptor catalogue.
+- **Boundary:** E3 is **catalogue/contract groundwork only**. The current host runtime still needs registered executable handlers and end-to-end execution-time authorization/policy/audit wiring before any descriptor can be exposed to the LLM. No new tool is claimed live.
+- **Not run:** no pnpm tests, typecheck, build, provider calls, database checks, browser checks, CI or deployment verification have been run from this session.
+
+## 11. Exact next action
+
+**DEV-01:** complete the shared host registry/executable email handlers, beginning with read-only account/folder/message/search/sync-status operations. Before exposure, prove server-side account ownership and agent binding from PostgreSQL, schema validation, provider capability checks, execution-time permission checks, bounded/redacted outputs and audit. Then add the policy-gated draft and mutation handlers. Do not expose contract-only descriptors until each handler and its authorization path is implemented and tested. FIX-01 owns substantial source bug/regression remediation; OPS-01 retains live runtime and deployment proof.
 
 **Verification status:** GitHub source inspection only. No files modified at plan creation, no tests/typechecks/build/runtime/provider calls executed, and no feature is claimed complete or verified.
