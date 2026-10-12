@@ -153,8 +153,9 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **State:** PARTIALLY IMPLEMENTED — shared runtime factory exists; channel integration pending.
 - **Authorization:** User instructed DEV-01 to proceed after the EMAIL-OPS-01 plan.
 - **Dependency:** Resolve current authenticated organization context, agent-to-account binding, policy engine and audit repository before wiring tool handlers.
-- **Progress:** Shared registry, schema validator, read-only email handlers, invocation pipeline, and agent-scoped runtime factory are added. The factory loads the agent allowlist, checks mailbox grants/capabilities, and persists sanitized audit events.
-- **Next:** Connect the factory to the real model tool-call loop and chat/voice/WhatsApp/schedule transports. Keep tool exposure disabled until the shared path is used. FIX-01 owns ISS-026 cross-agent context isolation. Add sensitive actions only through the approval policy path.
+- **Progress:** Shared registry, schema validator, read-only email handlers, invocation pipeline, agent-scoped runtime factory, provider tool-call adapter (OpenAI-compatible/Gemini only), and bounded worker loop are source-implemented. Source tests exist but are not run. The loop is not wired to any transport.
+- **Next:** Add mocked provider contract tests and run focused tests/typechecks. Then wire through a trusted server transport only after FIX-01 resolves ISS-026. Keep contract-only tools unavailable; add sensitive actions only through approval policy.
+
 - **Safety:** Contract descriptors must remain unavailable to the model until executable handlers and runtime checks exist. OPS-01 and FIX-01 retain their own responsibilities.
 
 
