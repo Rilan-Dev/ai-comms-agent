@@ -18,6 +18,16 @@ function log(message: string, meta?: Record<string, unknown>) {
   }));
 }
 
+function logError(service: string, message: string, error: unknown) {
+  console.error(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level: "error",
+    service,
+    message,
+    reason: error instanceof Error ? error.message : "Unknown error",
+  }));
+}
+
 function healthCheck() {
   const possibleClaraPaths = [
     "node_modules/@ai-comms-agent/clara-core",
@@ -51,6 +61,14 @@ function healthCheck() {
   return checks;
 }
 
+// Wrap any tick fn so transient DB / broker errors NEVER crash the worker.
+// Logs structured error and lets the next interval tick retry. This is
+// critical for Prisma Postgres Data Proxy (PgBouncer transaction-mode) and
+// for broker hiccups — both are recoverable.
+function safeTick(service: string, label: string, fn: () => Promise<unknown>) {
+  fn().catch((error) => logError(service, `${label} failed`, error));
+}
+
 function main() {
   log("worker starting", { node_version: process.version, environment: process.env.NODE_ENV ?? "development" });
   const checks = healthCheck();
@@ -64,25 +82,30 @@ function main() {
   const stopProviderDraftSync = startProviderDraftSyncLoop();
   const stopMailboxSync = startMailboxSyncLoop();
   const stopEmailSyncQueue = startEmailSyncRabbitMq(processMailboxSyncMessage);
-  const actionTimer = setInterval(() => { void processApprovedEmailActions(); }, 5_000);
+  const actionTimer = setInterval(
+    () => safeTick("worker.email-actions", "Approved email actions poll", processApprovedEmailActions),
+    5_000,
+  );
   const whatsappTimer = checks.credentials_master_key_configured
-    ? setInterval(() => { void processQueuedWhatsAppMessages(); }, 5_000)
+    ? setInterval(
+        () => safeTick("worker.whatsapp-outbound", "WhatsApp queued message poll", processQueuedWhatsAppMessages),
+        5_000,
+      )
     : undefined;
-  const whatsappInboundTimer = setInterval(() => { void processRoutedWhatsAppInbound(); }, 5_000);
+  const whatsappInboundTimer = setInterval(
+    () => safeTick("worker.whatsapp-inbound", "WhatsApp inbound router poll", processRoutedWhatsAppInbound),
+    5_000,
+  );
   const whatsappVerifyTimer = checks.credentials_master_key_configured
-    ? setInterval(() => { void verifyPendingWhatsAppAccounts(); }, 10_000)
+    ? setInterval(
+        () => safeTick("worker.whatsapp-verify", "WhatsApp pending verification poll", verifyPendingWhatsAppAccounts),
+        10_000,
+      )
     : undefined;
-  const schedulerTimer = setInterval(() => {
-    void processScheduledJobs().catch((error) => {
-      console.error(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        level: "error",
-        service: "worker.scheduler",
-        message: "Scheduled job processing failed",
-        reason: error instanceof Error ? error.message : "Unknown error",
-      }));
-    });
-  }, 15_000);
+  const schedulerTimer = setInterval(
+    () => safeTick("worker.scheduler", "Scheduled job processing", processScheduledJobs),
+    15_000,
+  );
   const interval = setInterval(() => { log("health check", healthCheck()); }, HEALTH_INTERVAL_MS);
 
   const shutdown = (signal: string) => {
@@ -98,6 +121,17 @@ function main() {
 
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
+  // Defensive: an unhandled rejection MUST NOT crash the worker. The
+  // safeTick wrapper covers setInterval ticks; this catches any remaining
+  // promise rejection from queued microtasks (e.g. fire-and-forget side
+  // effects inside a tick).
+  process.on("unhandledRejection", (error) => {
+    logError("worker.unhandled-rejection", "Unhandled promise rejection", error);
+  });
+  process.on("uncaughtException", (error) => {
+    logError("worker.uncaught-exception", "Uncaught exception", error);
+    // Continue running — operator can decide to restart via health check.
+  });
   log("worker ready — multi-provider mailbox sync, RabbitMQ email.sync queue when configured, provider draft, WhatsApp inbound/outbound, and durable scheduler loops enabled when PostgreSQL and required credentials are configured");
 }
 
