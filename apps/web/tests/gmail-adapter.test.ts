@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { GmailAdapter } from "../../../apps/worker/src/email/gmail-adapter";
+import { listEmailToolDescriptors } from "../../../packages/shared/src/agent/intents";
 
 describe("GmailAdapter", () => {
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
@@ -164,5 +165,11 @@ describe("GmailAdapter", () => {
     expect(result.new_state.history_token).toBe("120");
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(String(fetchMock.mock.calls[2][0])).toContain("pageToken=p2");
+  });
+
+  it("filters email contracts by account capability", () => {
+    const result = listEmailToolDescriptors({ folders: true, labels: false });
+    expect(result.some((item) => item.name === "email.folders.list")).toBe(true);
+    expect(result.some((item) => item.name === "email.labels.list")).toBe(false);
   });
 });
