@@ -31,7 +31,28 @@ export function startProviderDraftSyncLoop() {
     if (stopped) return;
     await processPendingProviderDraftSync();
   };
-  void tick();
-  const timer = setInterval(() => { void tick(); }, INTERVAL_MS);
+  void tick().catch((error) => {
+    // Transient DB errors (e.g. Prisma Postgres planLimitReached, connection
+    // resets, PgBouncer transaction-mode hiccups) MUST NOT crash the worker.
+    // Log structured error and let the next interval tick retry.
+    console.error(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: "error",
+      service: "worker.provider-draft-sync",
+      message: "Provider draft sync tick failed",
+      reason: error instanceof Error ? error.message : "Unknown error",
+    }));
+  });
+  const timer = setInterval(() => {
+    void tick().catch((error) => {
+      console.error(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: "error",
+        service: "worker.provider-draft-sync",
+        message: "Provider draft sync tick failed",
+        reason: error instanceof Error ? error.message : "Unknown error",
+      }));
+    });
+  }, INTERVAL_MS);
   return () => { stopped = true; clearInterval(timer); };
 }
