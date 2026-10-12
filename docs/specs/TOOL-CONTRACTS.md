@@ -319,3 +319,9 @@ Each descriptor includes a JSON Schema, permission name, sensitivity, channel li
 **Important status boundary:** these descriptors are contract metadata, not executable tool handlers. They must not be sent to a model or invoked as if implemented until the host runtime has registered the corresponding service handler and passed execution-time organization, agent, account, permission, capability, policy, approval, idempotency, and audit checks. A catalogue entry does not prove provider support. Chat, realtime voice, WhatsApp and scheduled execution must reuse one host registry and one service path.
 
 Gmail reply and forward capability flags are deliberately fail-closed while thread-aware RFC reply/forward semantics are incomplete. Re-enable them only after implementation and adapter contract tests prove the operation. A generic draft capability is not proof that a provider can construct a correct reply/forward draft.
+
+## 9. Shared registry implementation status
+
+`packages/shared/src/agent/registry.ts` now provides a provider-neutral registry with duplicate-registration rejection, tool lookup/listing, agent allowlist filtering, and validation for the JSON Schema subset used by current tool descriptors. A missing agent allowlist fails closed and exposes no tools.
+
+The registry is **not** the full execution security boundary: it does not itself resolve an email account, prove the agent/account binding, evaluate the approval policy, or persist audit events. The next implementation slice must add executable host handlers and enforce those checks immediately before execution. Do not wire the catalogue directly to a model until those handlers exist.
