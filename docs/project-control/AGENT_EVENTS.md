@@ -300,3 +300,13 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Summary:** User-provided sanitized diagnostic confirms queued Gmail sync is not processed: account stays pending/idle with zero stored messages; worker RabbitMQ URL exposes literal placeholder vhost `YOUR_EXISTING_VHOST`; Redis lease authentication returns `WRONGPASS`.
 - **Action:** Correct deployed RabbitMQ and Redis URLs/credentials/ACL/vhost/TLS settings, recreate worker, requeue sync, and verify persisted message count. Never bypass distributed lease coordination.
 - **Verification:** Live ingestion not yet verified; HTTP 200 health and HTTP 202 queue acceptance are insufficient.
+
+### EVT-DEV01-EMAIL-OPS-PLAN-20261012
+- **Agent/session:** DEV-01 / Forge — `DEV01-EMAIL-OPS-PLAN-20261012`
+- **Type:** PLAN_PREPARED / ARCHITECT_REVIEW_REQUIRED
+- **Summary:** Prepared a phased email operations plan covering provider sync reconciliation, MIME parsing, truthful capability matrix, drafts/send safety, host-owned email tools, execution-time authorization across channels, indexing and recovery.
+- **Plan:** `docs/plans/EMAIL-OPS-01-IMPLEMENTATION-PLAN.md`
+- **Authorization boundary:** Current user request authorizes research/planning. New tool contracts, schema changes, OAuth scope changes, provider dependency decisions and policy changes are proposed only; do not silently implement them.
+- **Verification:** GitHub source inspection and docs writes only; no runtime/test/build evidence.
+- **Blockers/owners:** OPS-01 owns RabbitMQ/Redis/runtime ingestion; FIX-01 owns substantial source bugs and regression remediation.
+- **Next action:** Owner/architect reviews plan and authorizes/corrects E1 + E3 before material implementation.
