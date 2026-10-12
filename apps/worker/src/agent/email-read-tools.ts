@@ -175,7 +175,8 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
     if (dateTo && Number.isFinite(Date.parse(dateTo))) add((n) => `m.received_at <= $${n}::timestamptz`, dateTo);
     const limit = boundedInt(input.limit, 25, 100) || 25;
     const cursor = text(input.cursor);
-    const offset = cursor && /^\d+$/.test(cursor) ? boundedInt(Number(cursor), 0, 1000000) : 0;
+    if (cursor && !/^\d+$/.test(cursor)) throw new EmailToolFailure("invalid_cursor", "The mailbox page cursor is invalid.");
+    const offset = cursor ? boundedInt(Number(cursor), 0, 1000000) : 0;
     values.push(limit, offset);
     const rows = await query<Row>(
       `SELECT m.id, m.email_account_id, m.thread_id, m.folder_id,
