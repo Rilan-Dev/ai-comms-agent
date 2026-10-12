@@ -461,3 +461,14 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Findings:** Gmail sync delta/deletion/history pagination and MIME parsing require audit; Gmail reply/forward adapter helpers send immediately; Zoho/IMAP operation parity is incomplete; capability flags must match tested behavior; all AI channels need one host-owned tool execution path with execution-time authz. Live RabbitMQ placeholder-vhost and Redis WRONGPASS remain OPS-01-owned according to current durable records.
 - **Evidence:** Source/document inspection and GitHub file writes only. No tests, typechecks, builds, live providers, DB, browser or deployment checks run.
 - **Next action:** Owner/architect review and approve/correct E1 (Gmail sync correctness) and E3 (tool catalogue) before material implementation. OPS-01's runtime recovery action remains separate.
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 — 2026-10-13
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Continue the next authorized email operations development slice after plan review; user explicitly instructed to proceed.
+- **Started from:** `feature/email-ops-e1-e3`, derived from current main and EMAIL-OPS-01 plan.
+- **Scope:** E1 Gmail incremental history correctness and E3 canonical host email-tool contract inventory.
+- **Status:** SOURCE CHANGES WRITTEN — verification pending; not a feature PASS.
+- **Completed:** Gmail history pagination and event classification; local deleted-message/thread reconciliation and derived knowledge cleanup before cursor commit; history pagination regression test; fail-closed Gmail reply/forward capability flags; shared email tool descriptor metadata, capability/allowlist filter and contract documentation.
+- **Pending:** Execute focused tests/typecheck; implement actual shared runtime registry and executable tenant-scoped handlers; add authorization, policy/approval, audit and cross-channel wiring; prove live ingestion separately.
+- **Blockers:** OPS-01 owns live RabbitMQ/Redis and deployment/runtime proof; FIX-01 owns substantial bug/test remediation.
+- **Next action:** Build the host registry and read-only email handlers; keep contract-only tools unavailable until runtime registration and execution-time controls are tested.
