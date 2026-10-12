@@ -156,3 +156,11 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Progress:** Shared registry, schema validator, read-only email handlers, invocation pipeline, and agent-scoped runtime factory are added. The factory loads the agent allowlist, checks mailbox grants/capabilities, and persists sanitized audit events.
 - **Next:** Connect the factory to the real model tool-call loop and chat/voice/WhatsApp/schedule transports. Keep tool exposure disabled until the shared path is used. FIX-01 owns ISS-026 cross-agent context isolation. Add sensitive actions only through the approval policy path.
 - **Safety:** Contract descriptors must remain unavailable to the model until executable handlers and runtime checks exist. OPS-01 and FIX-01 retain their own responsibilities.
+
+
+### FIX01-HANDOFF-ISS-026 — Cross-agent email context isolation
+- **Owner:** FIX-01 / Sentinel.
+- **Severity:** Critical.
+- **Source:** `apps/web/src/app/api/chat/stream/route.ts` — `loadEmailContext` scopes by organization but not by active agent's `agent_email_accounts` bindings.
+- **Required work:** Pass the authenticated agent ID into the loader, restrict context rows to that agent's permitted account bindings/roles, and add cross-agent/cross-account regression tests. Preserve untrusted-email-content wrapping.
+- **DEV-01 boundary:** This is a substantial security bug and remains FIX-01-owned; do not duplicate its remediation in the email-tool feature branch.
