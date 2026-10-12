@@ -17,8 +17,8 @@ export interface EmailToolRuntime {
 }
 
 /**
- * Build an agent-scoped view of the shared registry. The allowlist is loaded
- * from the persisted agent policy and missing policy fails closed.
+ * Build an agent-scoped view of the shared registry. Create this runtime per turn/request
+ * so persisted allowlist changes are reloaded; missing policy fails closed.
  */
 export async function createEmailToolRuntime(organizationId: string, agentId: string): Promise<EmailToolRuntime> {
   const agents = new PostgresAgentRepository();
