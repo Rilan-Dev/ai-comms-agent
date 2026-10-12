@@ -6,7 +6,8 @@
  * classify with confidence above a threshold, the runtime asks for clarification.
  */
 
-import type { Intent } from "./types";
+import type { Intent, EmailToolDescriptor } from "./types";
+import type { CapabilitySet, EmailProviderCapability } from "../email/provider";
 
 export const INTENT_TAXONOMY: Record<
   Intent,
@@ -104,8 +105,6 @@ export const INTENT_TAXONOMY: Record<
  * local account, validate schema, check permissions/capabilities/policy again,
  * and write the host audit record before/after any side effect.
  */
-import type { EmailToolDescriptor } from "./types";
-import type { CapabilitySet, EmailProviderCapability } from "../email/provider";
 
 const emailChannels = ["chat", "voice", "whatsapp", "schedule"] as const;
 const emailAccountId = { type: "string", minLength: 1, description: "Local email account ID, resolved by the host." };
@@ -131,8 +130,8 @@ export const EMAIL_TOOL_CATALOG: readonly EmailToolDescriptor[] = [
   emailTool("email.draft.create", "Create a draft without sending it.", "email.write", emailObject({ account_id: emailAccountId, to: emailMessageIds, cc: emailMessageIds, bcc: emailMessageIds, subject: { type: "string", maxLength: 998 }, body_text: { type: "string", maxLength: 100000 } }, ["account_id", "to", "subject", "body_text"]), ["drafts"]),
   emailTool("email.draft.update", "Update an existing draft.", "email.write", emailObject({ account_id: emailAccountId, draft_id: { type: "string" }, to: emailMessageIds, subject: { type: "string" }, body_text: { type: "string" } }, ["account_id", "draft_id"]), ["drafts"]),
   emailTool("email.draft.delete", "Delete a draft without sending it.", "email.write", emailObject({ account_id: emailAccountId, draft_id: { type: "string" } }, ["account_id", "draft_id"]), ["drafts"]),
-  emailTool("email.draft_reply", "Create a reply draft for an existing message.", "email.write", emailObject({ account_id: emailAccountId, message_id: { type: "string" }, body_text: { type: "string" } }, ["account_id", "message_id", "body_text"]), ["drafts"]),
-  emailTool("email.draft_forward", "Create a forward draft for an existing message.", "email.write", emailObject({ account_id: emailAccountId, message_id: { type: "string" }, to: emailMessageIds }, ["account_id", "message_id", "to"]), ["drafts"]),
+  emailTool("email.draft_reply", "Create a reply draft for an existing message.", "email.write", emailObject({ account_id: emailAccountId, message_id: { type: "string" }, body_text: { type: "string" } }, ["account_id", "message_id", "body_text"]), ["drafts", "reply"]),
+  emailTool("email.draft_forward", "Create a forward draft for an existing message.", "email.write", emailObject({ account_id: emailAccountId, message_id: { type: "string" }, to: emailMessageIds }, ["account_id", "message_id", "to"]), ["drafts", "forward"]),
   emailTool("email.message.mark_read", "Mark messages read or unread.", "email.write", emailObject({ account_id: emailAccountId, message_ids: emailMessageIds, is_read: { type: "boolean" } }, ["account_id", "message_ids", "is_read"]), ["mark_read"]),
   emailTool("email.message.archive", "Archive messages.", "email.write", emailObject({ account_id: emailAccountId, message_ids: emailMessageIds }, ["account_id", "message_ids"]), ["archive"]),
   emailTool("email.message.move", "Move messages to a provider folder.", "email.write", emailObject({ account_id: emailAccountId, message_ids: emailMessageIds, target_folder_id: { type: "string" } }, ["account_id", "message_ids", "target_folder_id"]), ["move"]),
