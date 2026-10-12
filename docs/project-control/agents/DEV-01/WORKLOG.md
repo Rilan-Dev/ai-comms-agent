@@ -256,3 +256,14 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - Added `apps/worker/src/agent/tool-executor.ts` as the shared invocation pipeline and `apps/worker/src/agent/email-tool-runtime.ts` to load the persisted agent allowlist, register read-only handlers, recheck mailbox grants/capabilities, and write sanitized tool-call audit events.
 - Added test source for allowlist denial, schema rejection, authorization denial, and audit handling. Tests were not executed.
 - **Next action:** connect `invokeEmailReadTool()` to the actual chat/realtime voice/WhatsApp/scheduled transport and model tool-call loop. Do not expose catalogue descriptors before that path is used. FIX-01 owns ISS-026; OPS-01 owns live infrastructure verification.
+
+
+### DEV01-EMAIL-TOOL-LOOP-20261013 — provider adapter and bounded loop
+- **Task:** Continue the next authorized email runtime feature after the shared registry/runtime groundwork.
+- **Authorization:** Existing EMAIL-OPS-01 plan and user instruction to proceed with the next feature.
+- **Started from:** `feature/email-ops-e1-e3`; latest source baseline was the Clara boundary on `main`.
+- **Actions:** Added provider-neutral tool-call contracts; native non-streaming tool-call mappings for OpenAI-compatible and Gemini; explicit fail-closed behavior for Sarvam; malformed-argument fail-closed response; bounded worker loop using registered/allowlisted handlers and shared executor/audit.
+- **Files:** `packages/clara-core/src/types.ts`, `packages/clara-core/src/index.ts`, `packages/clara-core/src/runtime.ts`, `apps/worker/src/agent/email-agent-loop.ts`, `apps/worker/tests/email-agent-loop.test.ts`, `docs/reviews/EMAIL-OPS-01-DEV01-SELF-REVIEW-20261013.md`.
+- **Evidence:** GitHub accepted source writes. No tests, typecheck, lint, build, provider API, database, live mailbox, browser, CI, or deployment verification was executed.
+- **Self-review:** External `ai-reusable-libraries` repository could not be resolved through connected repository calls; comparison is against the current `main` baseline only. New loop is not transport-wired; only read handlers are registered; Sarvam tool calling remains unsupported; FIX-01 ISS-026 remains a critical dependency; OPS-01 live infra blocker remains.
+- **Next action:** Add mocked OpenAI/Gemini provider-contract tests for wire serialization, multiple/invalid calls, empty content, and non-2xx responses; then run focused tests and Clara/worker typechecks if local checkout is available. Keep PR draft and unmerged.
