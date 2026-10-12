@@ -210,9 +210,9 @@ export class GmailAdapter implements EmailProvider {
   }
 
   async sync(state: SyncState): Promise<SyncResult> {
-    // Complete a paginated initial import before switching to history-based
-    // incremental sync. Capture historyId before page one so changes arriving
-    // during the import are picked up by the first incremental pass.
+    // Complete the initial import before switching to history-based incremental
+    // sync. Keep the baseline historyId stable while paging the import so every
+    // change that arrives during the import is replayed by the first delta pass.
     if (state.sync_mode === "initial" || state.cursor || !state.history_token) {
       const profile = state.history_token ? null : await this.request("/profile");
       const baselineHistoryId = state.history_token ?? profile?.historyId;
@@ -237,34 +237,84 @@ export class GmailAdapter implements EmailProvider {
       };
     }
 
-    let history: any;
+    // Gmail history is paginated. Never commit the returned historyId until
+    // every page has been read and the caller has persisted all resulting
+    // changes. A 404 means the cursor expired and triggers an idempotent
+    // re-baseline instead of advancing a stale checkpoint.
+    const added = new Set<string>();
+    const updated = new Set<string>();
+    const deleted = new Set<string>();
+    let pageToken: string | undefined;
+    let newestHistoryId: string | undefined = state.history_token;
+
     try {
-      history = await this.request(`/history?startHistoryId=${encodeURIComponent(state.history_token)}&historyTypes=messageAdded&historyTypes=labelAdded&historyTypes=labelRemoved`);
+      do {
+        const params = new URLSearchParams({
+          startHistoryId: state.history_token!,
+          historyTypes: "messageAdded",
+        });
+        params.append("historyTypes", "labelAdded");
+        params.append("historyTypes", "labelRemoved");
+        params.append("historyTypes", "messageDeleted");
+        if (pageToken) params.set("pageToken", pageToken);
+
+        const history = await this.request(`/history?${params.toString()}`);
+        if (typeof history.historyId === "string") newestHistoryId = history.historyId;
+
+        for (const item of history.history ?? []) {
+          for (const event of item.messagesAdded ?? []) {
+            const id = event.message?.id;
+            if (typeof id !== "string" || !id) continue;
+            deleted.delete(id);
+            updated.delete(id);
+            added.add(id);
+          }
+          for (const event of item.labelsAdded ?? []) {
+            const id = event.message?.id;
+            if (typeof id !== "string" || !id || added.has(id) || deleted.has(id)) continue;
+            updated.add(id);
+          }
+          for (const event of item.labelsRemoved ?? []) {
+            const id = event.message?.id;
+            if (typeof id !== "string" || !id || added.has(id) || deleted.has(id)) continue;
+            updated.add(id);
+          }
+          for (const event of item.messagesDeleted ?? []) {
+            const id = event.message?.id;
+            if (typeof id !== "string" || !id) continue;
+            added.delete(id);
+            updated.delete(id);
+            deleted.add(id);
+          }
+          // Gmail's aggregate messages array contains messages involved in
+          // history records. Treat these as updates unless a more specific
+          // add/delete event above already classified the message.
+          for (const message of item.messages ?? []) {
+            const id = message.id;
+            if (typeof id !== "string" || !id || added.has(id) || deleted.has(id)) continue;
+            updated.add(id);
+          }
+        }
+
+        pageToken = typeof history.nextPageToken === "string" && history.nextPageToken
+          ? history.nextPageToken
+          : undefined;
+      } while (pageToken);
     } catch (error) {
-      // Gmail history IDs expire after enough mailbox changes. Re-baseline with
-      // a paginated full import; database upserts make this recovery idempotent.
       if (error instanceof Error && /Gmail API 404:/.test(error.message)) {
         return this.sync({ ...state, cursor: undefined, history_token: undefined, sync_mode: "initial" });
       }
       throw error;
     }
-    const ids = new Set<string>();
-    for (const item of history.history ?? []) {
-      for (const added of item.messagesAdded ?? []) {
-        if (typeof added.message?.id === "string") ids.add(added.message.id);
-      }
-      for (const message of item.messages ?? []) {
-        if (typeof message.id === "string") ids.add(message.id);
-      }
-    }
+
     return {
-      added: [...ids].map((id) => ({ message_id: id, provider_message_id: id })),
-      updated: [],
-      deleted: [],
+      added: [...added].map((id) => ({ message_id: id, provider_message_id: id })),
+      updated: [...updated].map((id) => ({ message_id: id, provider_message_id: id })),
+      deleted: [...deleted],
       new_state: {
         ...state,
         cursor: undefined,
-        history_token: history.historyId ?? state.history_token,
+        history_token: newestHistoryId,
         last_sync_at: new Date().toISOString(),
         sync_mode: "incremental",
       },
