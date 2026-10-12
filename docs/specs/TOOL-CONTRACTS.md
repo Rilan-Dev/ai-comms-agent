@@ -312,7 +312,7 @@ For Phase 1, the catalogue above is the v1 shape.
 
 ## 8. Email tool contract inventory (EMAIL-OPS-01)
 
-The current shared source exports `EMAIL_TOOL_CATALOG` and `listEmailToolDescriptors()` from `packages/shared/src/agent/intents.ts` and `packages/shared/src/index.ts`. The inventory covers account/capability discovery, folders/labels, paginated message reads, thread reads, search, sync status, drafts, reply/forward draft intent, read/archive/move/label actions, attachment metadata/download, summaries, trash, and bounded bulk operations. Sensitive send/reply/forward descriptors remain withheld until their executable approval-safe handlers are registered.
+The current shared source exports `EMAIL_TOOL_CATALOG` and `listEmailToolDescriptors()` from `packages/shared/src/agent/mail-operations.ts` and `packages/shared/src/index.ts`. The inventory covers account/capability discovery, folders/labels, paginated message reads, thread reads, search, sync status, drafts, reply/forward draft intent, read/archive/move/label actions, attachment metadata/download, summaries, trash, and bounded bulk operations. Sensitive send/reply/forward descriptors remain withheld until their executable approval-safe handlers are registered.
 
 Each descriptor includes a JSON Schema, permission name, sensitivity, channel list, required provider capabilities, optional alternative capabilities, and whether the policy engine is required. The helper filters against the connected account's *actual capability set* and an optional agent allowlist.
 
