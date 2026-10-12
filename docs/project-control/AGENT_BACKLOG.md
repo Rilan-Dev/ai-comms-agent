@@ -145,3 +145,13 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Known dependencies:** current schema/cursor inventory; current tool registry/runtime route inventory; existing OAuth scopes; provider capability tests; execution-time organization/agent/account grants; current RabbitMQ/Redis live incident.
 - **Acceptance outline:** resumable/idempotent sync with durable cursors and correct delta reconciliation; complete tested capability matrix; modular provider mappers/parsers/services; one channel-independent tool path; sensitive actions require deterministic policy/approval; cross-tenant and prompt-injection regression coverage; separate source and runtime verification records.
 - **Safety:** This backlog entry and plan do not authorize schema, dependency, OAuth-scope, architecture or policy changes by themselves. Do not disable Redis lease coordination or claim sync success from HTTP 202.
+
+
+### BKL-EMAIL-OPS-RUNTIME-01 — 2026-10-13
+- **Work:** Connect email tool descriptors to executable host handlers and a shared registry.
+- **Owner:** DEV-01 / Forge.
+- **State:** ACTIVE NEXT ACTION.
+- **Authorization:** User instructed DEV-01 to proceed after the EMAIL-OPS-01 plan.
+- **Dependency:** Resolve current authenticated organization context, agent-to-account binding, policy engine and audit repository before wiring tool handlers.
+- **Next:** Implement read-only account/folder/message/thread/search/sync-status handlers first; enforce schema, account grants, permissions, capabilities, bounded output and audit at execution. Add sensitive actions only through the approval policy path.
+- **Safety:** Contract descriptors must remain unavailable to the model until executable handlers and runtime checks exist. OPS-01 and FIX-01 retain their own responsibilities.
