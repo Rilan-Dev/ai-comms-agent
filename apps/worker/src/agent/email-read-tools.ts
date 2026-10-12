@@ -64,7 +64,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
       throw new EmailToolFailure("permission_denied", "The current actor is not authorized to read email.");
     }
   }
-  async function resolveAccount(accountId: string, context: ToolContext) {
+  async function resolveAccount(accountId: string, context: ToolContext, requireConnected = true) {
     if (!accountId) throw new EmailToolFailure("invalid_account", "A connected email account is required.");
     const binding = await query<{ role: string }>(
       `SELECT b.role FROM agent_email_accounts b
@@ -79,7 +79,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
     if (!role || role === "send_only") throw new EmailToolFailure("account_not_available", "This agent is not allowed to read that mailbox.");
     const account = await accounts.getForAgent(context.organization_id, context.agent_id, accountId);
     if (!account) throw new EmailToolFailure("account_not_available", "This mailbox is not bound to this agent in the active organization.");
-    if (account.status !== "connected") throw new EmailToolFailure("account_not_connected", "This mailbox is not connected.");
+    if (requireConnected && account.status !== "connected") throw new EmailToolFailure("account_not_connected", "This mailbox is not connected.");
     return account;
   }
   function definition(name: string) {
@@ -123,7 +123,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
     for (const binding of bindings) {
       if (binding.role === "send_only") continue;
       const account = await accounts.getForAgent(context.organization_id, context.agent_id, binding.emailAccountId);
-      if (!account || account.status !== "connected") continue;
+      if (!account) continue;
       visible.push({
         id: account.id, provider: account.provider, email_address: account.email_address,
         display_name: account.display_name, status: account.status, capabilities: account.capabilities,
@@ -134,8 +134,8 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
   });
 
   const capabilities = readTool("email.capabilities.get", async (input, context) => {
-    const account = await resolveAccount(text(input.account_id), context);
-    return { account_id: account.id, provider: account.provider, capabilities: account.capabilities };
+    const account = await resolveAccount(text(input.account_id), context, false);
+    return { account_id: account.id, provider: account.provider, status: account.status, capabilities: account.capabilities };
   });
 
   const listFolders = readTool("email.folders.list", async (input, context) => {
@@ -220,7 +220,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
   });
 
   const syncStatus = readTool("email.sync.status", async (input, context) => {
-    const account = await resolveAccount(text(input.account_id), context);
+    const account = await resolveAccount(text(input.account_id), context, false);
     const state = await query<Row>(
       `SELECT status, last_attempt_at, last_success_at, next_attempt_at, error_count
        FROM email_sync_states WHERE email_account_id=$1 AND organization_id=$2 LIMIT 1`,
