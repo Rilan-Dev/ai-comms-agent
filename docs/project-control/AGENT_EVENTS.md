@@ -310,3 +310,11 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Verification:** GitHub source inspection and docs writes only; no runtime/test/build evidence.
 - **Blockers/owners:** OPS-01 owns RabbitMQ/Redis/runtime ingestion; FIX-01 owns substantial source bugs and regression remediation.
 - **Next action:** Owner/architect reviews plan and authorizes/corrects E1 + E3 before material implementation.
+
+
+### EVT-DEV01-EMAIL-OPS-IMPLEMENT-20261013
+- **Agent/session:** DEV-01 / Forge — `DEV01-EMAIL-OPS-IMPLEMENT-20261013`
+- **Type:** LESSON
+- **Summary:** Gmail history paging and deletion reconciliation now have source changes and regression coverage. Shared email tool descriptors and capability filtering are in place; descriptors are not executable handlers.
+- **Owner:** DEV-01 for host runtime/tool work; FIX-01 for substantial bugs; OPS-01 for runtime/deployment.
+- **Next:** Implement read-only host handlers with execution-time tenant authorization and audit before exposing catalogue entries.
