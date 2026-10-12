@@ -21,7 +21,7 @@ export interface EmailAgentTurnInput {
 export interface EmailAgentTurnResult {
   text: string;
   toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; durationMs: number }>;
-  finishReason: "completed" | "round_limit" | "tool_limit";
+  finishReason: "completed" | "round_limit" | "tool_limit" | "invalid_tool_call" | "invalid_tool_arguments";
 }
 
 export interface EmailToolLoopDependencies {
@@ -77,7 +77,10 @@ export async function runEmailAgentTurn(
       definitions,
     );
     if (completion.toolCalls.length === 0) {
-      return { text: completion.text, toolCalls: summaries, finishReason: "completed" };
+      const finishReason = completion.finishReason === "invalid_tool_call" || completion.finishReason === "invalid_tool_arguments"
+        ? completion.finishReason
+        : "completed";
+      return { text: completion.text, toolCalls: summaries, finishReason };
     }
 
     // Preserve the provider's assistant tool-call turn before appending results.
