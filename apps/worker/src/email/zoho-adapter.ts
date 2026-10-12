@@ -71,6 +71,7 @@ export class ZohoAdapter implements EmailProvider {
     this.accessToken = credentials.access_token;
     this.refreshToken = credentials.refresh_token;
     this.apiDomain = normalizeZohoApiDomain(required(credentials.api_domain, "api_domain"));
+  console.error("[zoho-adapter] api_domain:", credentials.api_domain, "type:", typeof credentials.api_domain, "normalized:", this.apiDomain);
     this.accountId = credentials.account_id;
     this.expiresAt = credentials.expires_at ? Date.parse(credentials.expires_at) : undefined;
 
