@@ -135,3 +135,13 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - Evidence: User-reported web typecheck has TS2307 for lucide-react, TS18048 in Agent Detail and sidebar focus traps, and TS2304 for the missing newAgentPage test source.
 - Correction commits: 8f09785a (web dependency), 7b1136e6 (lockfile), 3e35c1f5 and a9dcb8e5 (focus typing), 52a4e348 (test binding).
 - Next action: Pull latest main; frozen install; run focused web migration and worker RabbitMQ tests; run web and worker typechecks sequentially. Record actual results; no source-only PASS claim.
+
+### BKL-EMAIL-OPS-01 — Complete email operations and shared AI tool harness
+- **Scope:** Deliver reliable Gmail/Zoho/IMAP-SMTP sync and complete authorized email operations through one host-owned AI tool catalogue shared across chat, realtime voice, WhatsApp and schedules.
+- **Owner:** DEV-01 / Forge for approved product implementation; FIX-01 for substantial source bugs/regressions; OPS-01 for live runtime, deployment and infrastructure.
+- **State:** PLAN_PREPARED; OWNER_REVIEW_REQUIRED before material implementation.
+- **Plan:** `docs/plans/EMAIL-OPS-01-IMPLEMENTATION-PLAN.md`.
+- **Initial slices proposed:** E1 Gmail incremental-sync correctness; E3 host-owned email tool catalogue/authorization inventory; sequence and contracts to be confirmed after source inventory.
+- **Known dependencies:** current schema/cursor inventory; current tool registry/runtime route inventory; existing OAuth scopes; provider capability tests; execution-time organization/agent/account grants; current RabbitMQ/Redis live incident.
+- **Acceptance outline:** resumable/idempotent sync with durable cursors and correct delta reconciliation; complete tested capability matrix; modular provider mappers/parsers/services; one channel-independent tool path; sensitive actions require deterministic policy/approval; cross-tenant and prompt-injection regression coverage; separate source and runtime verification records.
+- **Safety:** This backlog entry and plan do not authorize schema, dependency, OAuth-scope, architecture or policy changes by themselves. Do not disable Redis lease coordination or claim sync success from HTTP 202.
