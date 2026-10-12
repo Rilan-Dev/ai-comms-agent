@@ -14,6 +14,7 @@ function validateValue(value: unknown, schema: Schema, path: string, errors: str
     if (typeof value !== "string") { errors.push(`${path} must be a string`); return; }
     if (typeof schema.minLength === "number" && value.length < schema.minLength) errors.push(`${path} is too short`);
     if (typeof schema.maxLength === "number" && value.length > schema.maxLength) errors.push(`${path} is too long`);
+    if (Array.isArray(schema.enum) && !schema.enum.some((item) => Object.is(item, value))) errors.push(`${path} is not an allowed value`);
     if (schema.format === "date-time" && (!Number.isFinite(Date.parse(value)) || !/[Tt]/.test(value))) errors.push(`${path} must be an ISO date-time`);
     return;
   }
