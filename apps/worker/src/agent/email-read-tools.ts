@@ -231,3 +231,11 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
 
   return [listAccounts, capabilities, listFolders, listLabels, messages, getMessage, thread, search, syncStatus];
 }
+
+
+/** Register the implemented read-only email handlers with the host registry. */
+export function registerEmailReadTools(register: (tool: Tool) => void, deps: EmailReadToolDependencies = {}): number {
+  const tools = createEmailReadTools(deps);
+  for (const tool of tools) register(tool);
+  return tools.length;
+}
