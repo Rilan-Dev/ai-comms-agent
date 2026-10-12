@@ -183,6 +183,19 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     );
     const connectionConfig = (accountRow.rows[0]?.connection_config ?? {}) as Record<string, unknown>;
 
+    // Map camelCase connection_config keys to the snake_case format expected
+    // by the provider adapters. The Zoho callback stores "apiDomain" but
+    // the ZohoAdapter reads "api_domain".
+    if (connectionConfig.apiDomain && !connectionConfig.api_domain) {
+      connectionConfig.api_domain = connectionConfig.apiDomain;
+    }
+    if (connectionConfig.dataCenter && !connectionConfig.data_center) {
+      connectionConfig.data_center = connectionConfig.dataCenter;
+    }
+    if (connectionConfig.remoteAccountId && !connectionConfig.remote_account_id) {
+      connectionConfig.remote_account_id = connectionConfig.remoteAccountId;
+    }
+
     const credentials: EmailCredentials = {
       ...(stored as unknown as EmailCredentials),
       // Merge connection_config fields into credentials. For Zoho, this
