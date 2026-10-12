@@ -9,7 +9,7 @@ function makeTool(name = "kb.search"): Tool {
     description: "Search authorized knowledge.",
     input_schema: {
       type: "object",
-      properties: { query: { type: "string", minLength: 1, maxLength: 50 } },
+      properties: { query: { type: "string", minLength: 1, maxLength: 50, enum: ["mail", "files"] } },
       required: ["query"],
       additionalProperties: false,
     },
@@ -30,6 +30,7 @@ describe("ToolRegistry", () => {
     expect(registry.validate("kb.search", { query: "mail" })).toEqual({ valid: true });
     expect(registry.validate("kb.search", {})).toMatchObject({ valid: false });
     expect(registry.validate("kb.search", { query: 12 })).toMatchObject({ valid: false });
+    expect(registry.validate("kb.search", { query: "unknown" })).toMatchObject({ valid: false });
     expect(registry.validate("kb.search", { query: "mail", extra: true })).toMatchObject({ valid: false });
   });
 
