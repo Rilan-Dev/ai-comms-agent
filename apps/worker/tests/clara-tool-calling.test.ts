@@ -53,13 +53,23 @@ test("OpenAI tool adapter fails closed on malformed function arguments", async (
 });
 
 test("Gemini tool adapter maps function-call parts and rejects HTTP failures", async () => {
-  globalThis.fetch = (async () => new Response(JSON.stringify({
+  let requestBody: Record<string, unknown> | undefined;
+  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return new Response(JSON.stringify({
     candidates: [{ finishReason: "STOP", content: { parts: [{ functionCall: { name: "email.accounts.list", args: {} } }] } }],
   }), { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
 
   const provider = createProvider({ provider: "gemini", apiKey: "test-key", baseUrl: "https://provider.test", chatModel: "test-model" });
-  const completion = await provider.chatWithTools?.([{ role: "user", content: "List my mailboxes" }], tools);
+  const completion = await provider.chatWithTools?.([
+    { role: "user", content: "List my mailboxes" },
+    { role: "assistant", content: "", tool_calls: [{ id: "prior-call", name: "email.accounts.list", arguments: {} }] },
+    { role: "tool", tool_call_id: "prior-call", name: "email.accounts.list", content: "UNTRUSTED TOOL RESULT" },
+  ], tools);
   assert.equal(completion?.toolCalls[0]?.name, "email.accounts.list");
+  const contents = requestBody?.contents as Array<{ role: string; parts: Array<Record<string, unknown>> }>;
+  assert.equal(contents.some((entry) => entry.role === "model" && entry.parts.some((part) => "functionCall" in part)), true);
+  assert.equal(contents.some((entry) => entry.role === "user" && entry.parts.some((part) => "functionResponse" in part)), true);
 
   globalThis.fetch = (async () => new Response("provider down", { status: 503 })) as typeof fetch;
   await assert.rejects(() => provider.chatWithTools?.([{ role: "user", content: "List my mailboxes" }], tools), /Gemini tool request failed \(503\)/);
