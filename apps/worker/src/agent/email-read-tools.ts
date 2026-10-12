@@ -158,7 +158,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
       values.push(value); conditions.push(condition(values.length));
     };
     const folderId = text(input.folder_id) || text(input.folder);
-    if (folderId) add((n) => `(m.folder_id::text = ${n} OR EXISTS (SELECT 1 FROM email_folders f WHERE f.id::text = ${n} OR f.provider_folder_id = ${n} OR f.name ILIKE ${n} AND f.email_account_id = m.email_account_id AND f.organization_id = $1))`, folderId);
+    if (folderId) add((n) => `(m.folder_id::text = ${n} OR EXISTS (SELECT 1 FROM email_folders f WHERE f.email_account_id = m.email_account_id AND f.organization_id = $1 AND (f.id::text = ${n} OR f.provider_folder_id = ${n} OR f.name ILIKE ${n})))`, folderId);
     const queryText = text(input.query);
     if (queryText) add((n) => `(m.subject ILIKE $${n} OR m.from_email ILIKE $${n} OR m.from_name ILIKE $${n} OR m.text_body ILIKE $${n} OR m.snippet ILIKE $${n})`, `%${queryText.slice(0, 300)}%`);
     const from = text(input.from);
