@@ -484,3 +484,8 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Pending:** Run tests/typecheck; wire executable handlers and runtime authorization/audit; prove live mailbox ingestion separately.
 - **Blockers/owners:** OPS-01 owns broker/Redis/runtime; FIX-01 owns substantial bug/regression remediation.
 - **Next action:** Implement the shared host registry and read-only tenant-scoped email handlers before exposing tools to the model.
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 — runtime source update
+- Added the shared registry, read-only email handler module, invocation pipeline, and agent-scoped runtime factory with durable audit adapter.
+- These modules are not yet wired into the live model tool-call loop or channel transports. No tests/typecheck/build/runtime verification has been run.
+- **Next:** connect the runtime to model tool calls and channel adapters; keep tools hidden until that path is used. ISS-026 remains assigned to FIX-01.
