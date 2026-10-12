@@ -4,7 +4,7 @@ import {
   query,
   recordAuditEvent,
 } from "@ai-comms-agent/db";
-import { ToolRegistry } from "@ai-comms-agent/shared";
+import { EMAIL_TOOL_CATALOG, ToolRegistry } from "@ai-comms-agent/shared";
 import type { ToolContext } from "@ai-comms-agent/shared";
 import { registerEmailReadTools } from "./email-read-tools";
 import { executeRegisteredTool } from "./tool-executor";
@@ -32,6 +32,12 @@ export async function createEmailToolRuntime(organizationId: string, agentId: st
     if (context.organization_id !== organizationId || context.agent_id !== agentId) {
       return { allowed: false, code: "context_mismatch", message: "The tool context does not match the initialized agent runtime." };
     }
+    // Re-read persisted policy for every invocation so a revoked allowlist entry
+    // is not honored for the remainder of a long-running model turn.
+    const currentPolicy = await agents.policy(organizationId, agentId);
+    if (!currentPolicy || !currentPolicy.allowedTools.includes(tool.name)) {
+      return { allowed: false, code: "tool_not_allowed", message: "This tool is not enabled for the current agent." };
+    }
     if (tool.sensitivity !== "safe") {
       return { allowed: false, code: "approval_required", message: "This operation requires a dedicated approval workflow that is not registered in this runtime." };
     }
@@ -54,7 +60,15 @@ export async function createEmailToolRuntime(organizationId: string, agentId: st
       }
       const account = await accountRepository.getForAgent(organizationId, agentId, accountId);
       if (!account) return { allowed: false, code: "account_not_available", message: "This mailbox is not bound to this agent." };
-      if (tool.required_capability && (account.capabilities as Record<string, boolean>)[tool.required_capability] !== true) {
+      const descriptor = EMAIL_TOOL_CATALOG.find((item) => item.name === tool.name);
+      const capabilities = account.capabilities as Record<string, boolean>;
+      if (descriptor?.required_capabilities.some((capability) => capabilities[capability] !== true)) {
+        return { allowed: false, code: "capability_not_supported", message: "This mailbox does not support every required part of the requested operation." };
+      }
+      if (descriptor?.any_capabilities?.length && !descriptor.any_capabilities.some((capability) => capabilities[capability] === true)) {
+        return { allowed: false, code: "capability_not_supported", message: "This mailbox does not support any compatible form of the requested operation." };
+      }
+      if (!descriptor && tool.required_capability && capabilities[tool.required_capability] !== true) {
         return { allowed: false, code: "capability_not_supported", message: "This mailbox does not support the requested operation." };
       }
     }
