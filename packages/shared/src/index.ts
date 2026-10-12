@@ -10,13 +10,14 @@ export type {
   AgentRequest,
   AgentResponse,
   ToolSensitivity,
+  EmailToolDescriptor,
   Tool,
   ToolContext,
   ToolResult,
   Intent,
 } from "./agent/types";
 
-export { INTENT_TAXONOMY } from "./agent/intents";
+export { INTENT_TAXONOMY, EMAIL_TOOL_CATALOG, listEmailToolDescriptors } from "./agent/intents";
 
 // Email provider types
 export type {
