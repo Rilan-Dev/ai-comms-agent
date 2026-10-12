@@ -498,4 +498,4 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Changes:** Provider-neutral Clara tool-call contracts; OpenAI-compatible/Gemini tool completion; explicit Sarvam unsupported boundary; bounded worker email tool loop; source tests; self-review quality audit.
 - **Security boundary:** Only registered/allowlisted read handlers can be offered. Unknown model tool names pass through executor for audit. No draft/mutation/send contracts are executable. FIX-01 owns ISS-026; DEV-01 must not patch the chat isolation bug.
 - **Verification:** No tests/typecheck/build/live provider/database/sync/deployment run.
-- **Next:** Add mocked provider contract tests and execute focused tests/typechecks. Then integrate the loop only through a trusted server transport after ISS-026 is resolved.
+- **Next:** Execute the newly added mocked provider contract and worker-loop tests plus Clara/worker typechecks. Then integrate the loop only through a trusted server transport after ISS-026 is resolved.
