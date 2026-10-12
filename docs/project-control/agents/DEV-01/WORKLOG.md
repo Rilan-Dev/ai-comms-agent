@@ -267,3 +267,9 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Evidence:** GitHub accepted source writes. No tests, typecheck, lint, build, provider API, database, live mailbox, browser, CI, or deployment verification was executed.
 - **Self-review:** External `ai-reusable-libraries` repository could not be resolved through connected repository calls; comparison is against the current `main` baseline only. New loop is not transport-wired; only read handlers are registered; Sarvam tool calling remains unsupported; FIX-01 ISS-026 remains a critical dependency; OPS-01 live infra blocker remains.
 - **Next action:** Run the newly added OpenAI/Gemini provider-contract tests and worker-loop tests, then run Clara/worker typechecks if a local checkout is available. Fix concrete failures and record actual output. Keep PR draft and unmerged.
+
+
+### DEV01-EMAIL-AUTH-RECHECK-20261013 — execution-time authorization hardening
+- **Actions:** Updated `email-tool-runtime.ts` to reload persisted agent allowlist on each tool invocation and check descriptor all-of/any-of provider capabilities, retaining fail-closed authorization behavior.
+- **Evidence:** GitHub accepted source update only; no tests/typecheck/runtime checks were run.
+- **Next:** Add regression tests for mid-turn policy revocation and multi-capability denial, then run focused tests/typechecks if local checkout is available.
