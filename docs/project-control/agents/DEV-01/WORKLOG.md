@@ -241,3 +241,8 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - Updated Gmail history paging/classification and local reconciliation; added regression coverage. Added/exported shared email tool contract metadata with capability/allowlist filtering.
 - Verification: source writes only; tests/typecheck/build/runtime not run. Tool contracts are not executable handlers.
 - Next: implement the shared host registry and read-only tenant-scoped handlers with execution-time authorization and audit. OPS-01 retains infrastructure; FIX-01 retains substantial bug remediation.
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 — continuation
+- Added `packages/shared/src/agent/registry.ts` with registration duplicate protection, lookup/listing, fail-closed agent allowlist discovery and schema validation; exported it from the shared package and added focused registry tests.
+- Updated TOOL-CONTRACTS and EMAIL-OPS-01 plan to document the registry boundary. It does not yet authorize account access, evaluate approvals, or persist audit records.
+- **Exact next action:** wire executable read-only email handlers to the registry with tenant/account binding, permissions, capability checks, bounded outputs and audit; keep contract-only descriptors unavailable to the model until then.
