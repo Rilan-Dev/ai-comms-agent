@@ -380,18 +380,23 @@ async function chatWithTools(
     choices?: Array<{ finish_reason?: string; message?: { content?: string | null; tool_calls?: Array<{ id?: string; function?: { name?: string; arguments?: string } }> } }>;
   };
   const choice = payload.choices?.[0];
-  const toolCalls = (choice?.message?.tool_calls ?? []).flatMap((call, index) => {
-    if (!call.function?.name) return [];
-    let args: Record<string, unknown>;
-    try {
-      const parsed: unknown = JSON.parse(call.function.arguments ?? "{}");
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
-      args = parsed as Record<string, unknown>;
-    } catch {
-      return [];
+  const rawCalls = choice?.message?.tool_calls ?? [];
+  const toolCalls: ChatToolCompletion["toolCalls"] = [];
+  for (const [index, call] of rawCalls.entries()) {
+    if (!call.function?.name) {
+      return { text: "I couldn't safely interpret the requested email operation, so I did not execute it. Please rephrase the request.", toolCalls: [], finishReason: "invalid_tool_call" };
     }
-    return [{ id: call.id ?? `openai-call-${Date.now()}-${index}`, name: call.function.name, arguments: args }];
-  });
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(call.function.arguments ?? "{}");
+    } catch {
+      return { text: "I couldn't safely interpret the requested email operation, so I did not execute it. Please rephrase the request.", toolCalls: [], finishReason: "invalid_tool_arguments" };
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return { text: "I couldn't safely interpret the requested email operation, so I did not execute it. Please rephrase the request.", toolCalls: [], finishReason: "invalid_tool_arguments" };
+    }
+    toolCalls.push({ id: call.id ?? `openai-call-${Date.now()}-${index}`, name: call.function.name, arguments: parsed as Record<string, unknown> });
+  }
   return { text: choice?.message?.content ?? "", toolCalls, finishReason: choice?.finish_reason ?? null };
 }
 
