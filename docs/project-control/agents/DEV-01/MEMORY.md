@@ -36,3 +36,9 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 - The Lovable project uses Vite/TanStack Start; the current product remains Next.js. Copy design patterns/tokens and adapt components, never transplant framework bootstrapping or replace server/API behavior.
 - Preserve real API-backed values, auth/session boundaries, organization scope, form validations, loading/empty/error states and approval/audit behavior. Preview-only controls from the design reference must not replace working application actions.
 - Source edits made through GitHub API are not tests. Clearly record typecheck/build/browser/runtime checks as pending unless actually executed.
+
+### 2026-10-12 — Email sync and AI-tool architecture
+- Treat the repository's email capability matrix as an assertion to verify, not proof of working behavior. In the current source review, Gmail sync returns empty updated/deleted arrays and must be checked for history pagination and label/delete reconciliation; Gmail reply/forward convenience methods send immediately, so the host approval boundary must be enforced independently.
+- Separate provider mapping/parsing from provider transport and orchestration. Prefer incremental extraction into feature-specific modules with contract tests over a risky all-at-once folder migration.
+- A bounded chat-context query is not equivalent to a complete tool harness. Clara's tool interface is narrow; host-owned email tools must share schemas, permission/capability checks, execution-time grants, policy and audit across chat, realtime voice, WhatsApp and scheduled jobs.
+- Runtime issue ownership remains distinct: OPS-01 handles RabbitMQ/Redis/config/deployment and persisted-ingestion proof; FIX-01 handles substantial source defects and regression tests. Do not claim verification from GitHub source writes.
