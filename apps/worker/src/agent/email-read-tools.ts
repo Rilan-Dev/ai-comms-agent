@@ -26,6 +26,31 @@ function boundedInt(value: unknown, fallback: number, max: number): number {
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isInteger(parsed) && parsed >= 0 ? Math.min(parsed, max) : fallback;
 }
+function publicMessage(row: Row, bodyLimit: number): Record<string, unknown> {
+  return {
+    id: row.id,
+    email_account_id: row.email_account_id,
+    thread_id: row.thread_id,
+    folder_id: row.folder_id,
+    from_address: row.from_address ?? row.from_email ?? row.from_name ?? "",
+    to_addresses: row.to_addresses ?? row.to_recipients ?? [],
+    cc_addresses: row.cc_addresses ?? row.cc_recipients ?? [],
+    bcc_addresses: row.bcc_addresses ?? row.bcc_recipients ?? [],
+    subject: typeof row.subject === "string" ? row.subject.slice(0, 500) : "",
+    text_body: typeof row.text_body === "string" ? row.text_body.slice(0, bodyLimit) : "",
+    snippet: typeof row.snippet === "string" ? row.snippet.slice(0, 600) : "",
+    received_at: row.received_at ?? null,
+    is_read: row.is_read,
+    is_starred: row.is_starred,
+    is_draft: row.is_draft,
+    is_outbound: row.is_outbound ?? row.is_sent,
+    importance_score: row.importance_score,
+    action_required: row.action_required,
+    has_attachments: row.has_attachments,
+    account_email: row.account_email,
+    account_name: row.account_name,
+  };
+}
 function summary(tool: string, count?: number): string {
   return count === undefined ? tool : `${tool}: ${count} result(s)`;
 }
@@ -206,8 +231,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
     const account = await resolveAccount(text(input.account_id), context);
     const message = await getMailMessageForOrganization(context.organization_id, text(input.message_id));
     if (!message || String(message.email_account_id) !== account.id) throw new EmailToolFailure("message_not_found", "Message not found in this mailbox.");
-    const body = typeof message.text_body === "string" ? message.text_body.slice(0, 12000) : "";
-    return { ...message, text_body: body, html_body: undefined };
+    return publicMessage(message, 12000);
   });
 
   const thread = readTool("email.thread.get", async (input, context) => {
@@ -216,7 +240,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
     const rows = await getMailThreadForOrganization(context.organization_id, text(input.thread_id));
     const visible = rows.filter((row) => String(row.email_account_id) === account.id).slice(0, 50);
     if (!visible.length) throw new EmailToolFailure("thread_not_found", "Thread not found in this mailbox.");
-    return visible.map((row) => ({ ...row, text_body: typeof row.text_body === "string" ? row.text_body.slice(0, 6000) : "", html_body: undefined }));
+    return visible.map((row) => publicMessage(row, 6000));
   });
 
   const syncStatus = readTool("email.sync.status", async (input, context) => {
