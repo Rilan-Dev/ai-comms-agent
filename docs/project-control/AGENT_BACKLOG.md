@@ -150,9 +150,9 @@ If a task belongs to another agent, create or update a backlog entry and continu
 ### BKL-EMAIL-OPS-RUNTIME-01 — 2026-10-13
 - **Work:** Connect email tool descriptors to executable host handlers and the shared registry.
 - **Owner:** DEV-01 / Forge.
-- **State:** PARTIALLY IMPLEMENTED — runtime wiring and durable audit pending.
+- **State:** PARTIALLY IMPLEMENTED — shared runtime factory exists; channel integration pending.
 - **Authorization:** User instructed DEV-01 to proceed after the EMAIL-OPS-01 plan.
 - **Dependency:** Resolve current authenticated organization context, agent-to-account binding, policy engine and audit repository before wiring tool handlers.
-- **Progress:** Shared registry, schema validator, read-only email handler source and registration helper are added. Handlers recheck organization/agent/account binding and deny reads for send-only bindings.
-- **Next:** Wire handlers into the real shared runtime; enforce allowlist/permission/schema/capability/policy at invocation, persist audit, and verify chat/voice/WhatsApp/schedule reuse one path. Add sensitive actions only through the approval policy path.
+- **Progress:** Shared registry, schema validator, read-only email handlers, invocation pipeline, and agent-scoped runtime factory are added. The factory loads the agent allowlist, checks mailbox grants/capabilities, and persists sanitized audit events.
+- **Next:** Connect the factory to the real model tool-call loop and chat/voice/WhatsApp/schedule transports. Keep tool exposure disabled until the shared path is used. FIX-01 owns ISS-026 cross-agent context isolation. Add sensitive actions only through the approval policy path.
 - **Safety:** Contract descriptors must remain unavailable to the model until executable handlers and runtime checks exist. OPS-01 and FIX-01 retain their own responsibilities.
