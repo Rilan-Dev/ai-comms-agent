@@ -52,7 +52,7 @@ test("OpenAI tool adapter fails closed on malformed function arguments", async (
   assert.match(completion?.text ?? "", /did not execute/i);
 });
 
-test("Gemini tool adapter maps function-call parts and rejects HTTP failures", async (t) => {
+test("Gemini tool adapter maps function-call parts and rejects HTTP failures", async () => {
   globalThis.fetch = (async () => new Response(JSON.stringify({
     candidates: [{ finishReason: "STOP", content: { parts: [{ functionCall: { name: "email.accounts.list", args: {} } }] } }],
   }), { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
