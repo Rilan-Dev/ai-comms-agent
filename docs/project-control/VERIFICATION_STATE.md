@@ -1254,3 +1254,15 @@ User ran `npm test -- src/modules/integrations/oauth-app-validation.test.ts src/
 - **Blocking evidence:** RabbitMQ configured with literal placeholder vhost `YOUR_EXISTING_VHOST`; Redis returns `WRONGPASS`; worker logs show repeated connection failures and safe batch skips.
 - **Next verification:** Correct deployed `RABBITMQ_URL` and `REDIS_URL`, restart worker, requeue sync, then verify account timestamps/status and persisted message rows. Do not infer success from health 200 or HTTP 202.
 - **Unrelated local check:** migration static test had 86 passed and 1 failed because local lockfile had two `lockfileVersion:` headers; worker RabbitMQ contract test passed 10/10. These do not establish live mailbox success.
+
+
+## 2026-10-13 — EMAIL-OPS-01 source-only status
+
+- **Branch/PR:** `feature/email-ops-e1-e3`, PR #15 (open draft).
+- **Source written:** Gmail history pagination/deletion reconciliation; shared tool contracts/registry/read handlers/executor/runtime; OpenAI-compatible and Gemini tool-call adapters; bounded worker email tool loop; provider/loop test source; DEV-01 self-review.
+- **Tests/typecheck/lint/build:** NOT RUN in this session.
+- **Live provider/database/mailbox sync/browser/deployment:** NOT RUN.
+- **Transport integration:** NOT COMPLETE. The worker loop is not called by chat, realtime voice, WhatsApp, or scheduled transports.
+- **Security dependency:** ISS-026 remains FIX-01-owned; no transport exposure is authorized until the cross-agent mailbox-context issue is remediated.
+- **Infrastructure:** OPS-01's RabbitMQ/Redis live ingestion blocker remains unverified.
+- **Acceptance:** No PASS, merge, or deployment claim.
