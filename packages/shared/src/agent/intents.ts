@@ -109,6 +109,7 @@ export const INTENT_TAXONOMY: Record<
 const emailChannels = ["chat", "voice", "whatsapp", "schedule"] as const;
 const emailAccountId = { type: "string", minLength: 1, description: "Local email account ID, resolved by the host." };
 const emailMessageIds = { type: "array", minItems: 1, maxItems: 100, items: { type: "string", minLength: 1 } };
+const emailRecipients = { type: "array", maxItems: 100, items: { type: "string", minLength: 1 } };
 const emailObject = (properties: Record<string, unknown>, required: string[] = []) => ({
   type: "object", properties, required, additionalProperties: false,
 });
@@ -127,8 +128,8 @@ export const EMAIL_TOOL_CATALOG: readonly EmailToolDescriptor[] = [
   emailTool("email.thread.get", "Read a provider thread.", "email.read", emailObject({ account_id: emailAccountId, thread_id: { type: "string", minLength: 1 } }, ["account_id", "thread_id"]), ["threads"]),
   emailTool("email.search", "Search provider or tenant-scoped local mail.", "email.read", emailObject({ account_id: emailAccountId, query: { type: "string", maxLength: 1000 }, from: { type: "string" }, subject: { type: "string" }, date_from: { type: "string", format: "date-time" }, date_to: { type: "string", format: "date-time" }, folder: { type: "string" }, label: { type: "string" }, limit: { type: "integer", minimum: 1, maximum: 100 } }, ["account_id"], "safe", ["search_server_side", "search_client_side"])),
   emailTool("email.sync.status", "Read synchronization state for an account.", "email.read", emailObject({ account_id: emailAccountId }, ["account_id"])),
-  emailTool("email.draft.create", "Create a draft without sending it.", "email.write", emailObject({ account_id: emailAccountId, to: emailMessageIds, cc: emailMessageIds, bcc: emailMessageIds, subject: { type: "string", maxLength: 998 }, body_text: { type: "string", maxLength: 100000 } }, ["account_id", "to", "subject", "body_text"]), ["drafts"]),
-  emailTool("email.draft.update", "Update an existing draft.", "email.write", emailObject({ account_id: emailAccountId, draft_id: { type: "string" }, to: emailMessageIds, subject: { type: "string" }, body_text: { type: "string" } }, ["account_id", "draft_id"]), ["drafts"]),
+  emailTool("email.draft.create", "Create a draft without sending it.", "email.write", emailObject({ account_id: emailAccountId, to: emailMessageIds, cc: emailRecipients, bcc: emailRecipients, subject: { type: "string", maxLength: 998 }, body_text: { type: "string", maxLength: 100000 } }, ["account_id", "to", "subject", "body_text"]), ["drafts"]),
+  emailTool("email.draft.update", "Update an existing draft.", "email.write", emailObject({ account_id: emailAccountId, draft_id: { type: "string" }, to: emailRecipients, subject: { type: "string" }, body_text: { type: "string" } }, ["account_id", "draft_id"]), ["drafts"]),
   emailTool("email.draft.delete", "Delete a draft without sending it.", "email.write", emailObject({ account_id: emailAccountId, draft_id: { type: "string" } }, ["account_id", "draft_id"]), ["drafts"]),
   emailTool("email.draft_reply", "Create a reply draft for an existing message.", "email.write", emailObject({ account_id: emailAccountId, message_id: { type: "string" }, body_text: { type: "string" } }, ["account_id", "message_id", "body_text"]), ["drafts", "reply"]),
   emailTool("email.draft_forward", "Create a forward draft for an existing message.", "email.write", emailObject({ account_id: emailAccountId, message_id: { type: "string" }, to: emailMessageIds }, ["account_id", "message_id", "to"]), ["drafts", "forward"]),
