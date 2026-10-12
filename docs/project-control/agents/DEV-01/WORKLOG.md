@@ -246,3 +246,8 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - Added `packages/shared/src/agent/registry.ts` with registration duplicate protection, lookup/listing, fail-closed agent allowlist discovery and schema validation; exported it from the shared package and added focused registry tests.
 - Updated TOOL-CONTRACTS and EMAIL-OPS-01 plan to document the registry boundary. It does not yet authorize account access, evaluate approvals, or persist audit records.
 - **Exact next action:** wire executable read-only email handlers to the registry with tenant/account binding, permissions, capability checks, bounded outputs and audit; keep contract-only descriptors unavailable to the model until then.
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 — read handler continuation
+- Added `apps/worker/src/agent/email-read-tools.ts` with safe read-only account/capability/folder/label/message/thread/search/sync-status handlers. Account-scoped calls recheck org + agent binding; send-only bindings cannot read. Outputs are bounded and error summaries are sanitized.
+- Added a registration helper; actual channel runtime registration and durable audit persistence remain pending.
+- **Exact next action:** wire the handlers into the shared runtime, enforce allowlist/permission/schema/capability/policy at invocation, persist audit, and ensure chat/voice/WhatsApp/schedules use one path. Verification remains unrun.
