@@ -60,6 +60,13 @@ export async function runEmailAgentTurn(
     parameters: tool.input_schema,
   }));
   const exposedNames = new Set(definitions.map((tool) => tool.name));
+  if (definitions.length === 0) {
+    return {
+      text: "Email tools are not enabled for this agent. Ask an administrator to enable the required tools and mailbox permissions.",
+      toolCalls: [],
+      finishReason: "completed",
+    };
+  }
   const history: ToolChatMessage[] = input.messages.map((message) => ({ ...message }));
   const summaries: EmailAgentTurnResult["toolCalls"] = [];
   let totalCalls = 0;
