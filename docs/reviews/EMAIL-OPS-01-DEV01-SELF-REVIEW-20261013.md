@@ -16,7 +16,7 @@ Reviewed the branch's Clara provider boundary, shared email tool catalogue/regis
 - Serializes assistant tool-call history into OpenAI's required `tool_calls[].function.arguments` wire shape; maps Gemini function-call and function-response turns separately.
 - Fails closed on malformed OpenAI tool-call arguments instead of silently dropping them and potentially treating an incomplete tool request as a final answer.
 - Added `apps/worker/src/agent/email-agent-loop.ts`: builds exposed definitions only from the current agent's registered/allowlisted handlers, validates trusted tenant/agent identity, executes calls through the shared executor, serializes bounded untrusted tool results, limits the turn to 4 model rounds and 8 calls, and routes unexpected tool names through the executor so denial is audited.
-- Added source tests for loop success, tenant/agent context mismatch, and tool-call limit behavior.
+- Added source tests for loop success, tenant/agent context mismatch, tool-call limits, executor allowlist/schema/permission/authorization/audit failure paths, and OpenAI/Gemini/Sarvam provider tool-call contracts. These are not executed yet.
 
 ## Critical remaining gaps (do not claim production-ready)
 
