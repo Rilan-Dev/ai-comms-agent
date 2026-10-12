@@ -223,3 +223,14 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Blockers/dependencies:** OPS-01 owns live RabbitMQ vhost/Redis WRONGPASS and runtime ingestion proof; FIX-01 owns substantial source bugs/test failures. Tool/schema/policy/provider-scope decisions require owner/architect approval.
 - **Lesson:** Adapter declarations and HTTP 202 are not ingestion proof. The host app owns email tools; all channels must share execution-time authorization and audit. Cursor advancement follows persisted/reconciled work.
 - **Next action:** Owner/architect review the plan and approve/correct E1 (Gmail sync correctness) and E3 (host-owned email tool catalogue) before material implementation.
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 / 2026-10-13
+- **Task:** Continue EMAIL-OPS-01 with Gmail history reconciliation and the shared email tool contract inventory.
+- **Authorization:** User explicitly said to proceed with the next after the plan; implementation of E1/E3 began on a dedicated feature branch.
+- **Started from:** `main` with prior plan/control records; working branch `feature/email-ops-e1-e3`.
+- **Actions:** Paged Gmail history, classified additions/label changes/deletions, handled expired history cursor fallback, persisted account/org-scoped local deletions and thread counts before advancing the checkpoint, removed derived email knowledge documents, added history pagination regression coverage, failed closed on incomplete Gmail reply/forward capability flags, and added/exported the shared email tool descriptor contract and capability/allowlist filtering plus focused tests.
+- **Files/code:** `apps/worker/src/email/gmail-adapter.ts`; `apps/worker/src/email/mailbox-sync-worker.ts`; `apps/worker/src/knowledge/email-knowledge-indexer.ts`; `apps/web/tests/gmail-adapter.test.ts`; `packages/shared/src/agent/types.ts`; `packages/shared/src/agent/intents.ts`; `packages/shared/src/index.ts`; `docs/specs/TOOL-CONTRACTS.md`; `docs/plans/EMAIL-OPS-01-IMPLEMENTATION-PLAN.md`.
+- **Evidence:** GitHub accepted source changes and test source writes on the feature branch. Tests/typecheck/build/live-provider/database/browser/deployment verification NOT RUN.
+- **Blockers/dependencies:** Tool descriptors are contract metadata, not yet executable host handlers. OPS-01 retains the RabbitMQ/Redis runtime issue and persisted-ingestion proof. FIX-01 retains substantial source defects and regression remediation.
+- **Lesson:** Do not advance Gmail history checkpoints before every history page and resulting database reconciliation completes. Do not expose a tool merely because a contract/capability flag exists.
+- **Next action:** Implement the actual host registry and tenant-scoped email handlers, starting with read-only operations; prove account binding, permission/capability checks, schema validation, output bounds/redaction, and audit before exposing them to any model/channel.
