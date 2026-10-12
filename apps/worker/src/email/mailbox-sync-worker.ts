@@ -12,7 +12,7 @@ import { randomUUID } from "node:crypto";
 import { acquireRedisLease, releaseRedisLease } from "./redis-lease";
 import type { EmailProvider } from "@ai-comms-agent/shared";
 import { publishEmailSync } from "../queues/email-sync-rabbitmq";
-import { indexEmailKnowledge } from "../knowledge/email-knowledge-indexer";
+import { deleteEmailKnowledge, indexEmailKnowledge } from "../knowledge/email-knowledge-indexer";
 import type { EmailSyncPayload } from "../queues/email-sync-message";
 
 type Candidate = {
@@ -146,6 +146,41 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
   });
 }
 
+
+/**
+ * Apply provider-reported hard deletions before committing the sync cursor.
+ * Provider IDs are scoped by the connected local account; never delete by
+ * provider_message_id alone. A replay is safe after a worker crash.
+ */
+async function removeDeletedMessages(account: Candidate, providerMessageIds: string[]): Promise<void> {
+  const uniqueIds = [...new Set(providerMessageIds.filter((id) => typeof id === "string" && id.length > 0))];
+  if (uniqueIds.length === 0) return;
+
+  const removed = await query<{ thread_id: string | null; provider_message_id: string }>(
+    `DELETE FROM email_messages
+     WHERE email_account_id = $1
+       AND organization_id = $2
+       AND provider_message_id = ANY($3::text[])
+     RETURNING thread_id, provider_message_id`,
+    [account.id, account.organization_id, uniqueIds],
+  );
+
+  const affectedThreads = [...new Set(removed.rows.map((row) => row.thread_id).filter((id): id is string => Boolean(id)))];
+  for (const threadId of affectedThreads) {
+    await query(
+      `UPDATE email_threads SET
+         message_count=(SELECT count(*) FROM email_messages WHERE thread_id=$1),
+         updated_at=now()
+       WHERE id=$1 AND email_account_id=$2 AND organization_id=$3`,
+      [threadId, account.id, account.organization_id],
+    );
+  }
+
+  // Remove derived retrieval documents even when the local message row was
+  // already absent (e.g. a retry after a partial failure).
+  await Promise.all(uniqueIds.map((id) => deleteEmailKnowledge(account.organization_id, account.id, id)));
+}
+
 async function processAccount(candidate: Candidate): Promise<boolean> {
   const claimed = await query<{
     cursor: string | null;
@@ -261,6 +296,8 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       await persistMessage(candidate, message, providerDraftId);
       saved += 1;
     }
+
+    await removeDeletedMessages(candidate, result.deleted);
 
     await query(
       `UPDATE email_sync_states SET cursor_token=$1, history_id=$2, status='idle',
