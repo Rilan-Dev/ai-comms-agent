@@ -48,4 +48,4 @@ Reviewed the branch's Clara provider boundary, shared email tool catalogue/regis
 
 ## Exact next action
 
-DEV-01 should continue with mocked provider-contract tests and static type-safety corrections for the new Clara tool-call adapter/worker loop, then update this audit with actual evidence. In parallel, wait for FIX-01's ISS-026 handoff only at the point transport integration depends on it; continue independent source work without polling CI/Vercel. Keep the PR draft and unmerged.
+Mocked OpenAI/Gemini provider-contract tests have now been added in `apps/worker/tests/clara-tool-calling.test.ts`, alongside the worker loop tests. They remain unrun. Exact next action: execute the focused tests and Clara/worker typechecks in a checkout, fix concrete source failures, and update this audit with actual command output. Continue independent source work without polling CI/Vercel. Transport integration remains dependent on FIX-01's ISS-026 remediation. Keep the PR draft and unmerged.
