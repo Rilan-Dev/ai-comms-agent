@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { GmailAdapter } from "../../../apps/worker/src/email/gmail-adapter";
-import { listEmailToolDescriptors } from "../../../packages/shared/src/agent/intents";
+import { listEmailToolDescriptors } from "../../../packages/shared/src/agent/mail-operations";
 
 describe("GmailAdapter", () => {
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
