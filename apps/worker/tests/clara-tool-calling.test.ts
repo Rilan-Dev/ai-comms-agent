@@ -74,3 +74,12 @@ test("Gemini tool adapter maps function-call parts and rejects HTTP failures", a
   globalThis.fetch = (async () => new Response("provider down", { status: 503 })) as typeof fetch;
   await assert.rejects(() => provider.chatWithTools?.([{ role: "user", content: "List my mailboxes" }], tools), /Gemini tool request failed \(503\)/);
 });
+
+
+test("Sarvam tool adapter is explicitly unavailable until its contract is verified", async () => {
+  const provider = createProvider({ provider: "sarvam", apiKey: "test-key", baseUrl: "https://provider.test", chatModel: "test-model" });
+  await assert.rejects(
+    () => provider.chatWithTools?.([{ role: "user", content: "List my mailboxes" }], tools),
+    /not enabled for Sarvam/,
+  );
+});
