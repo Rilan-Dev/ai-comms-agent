@@ -1,3 +1,5 @@
+> **DEV-01 session update (2026-10-12):** The owner requested planning for comprehensive email operations and a shared AI email-tool harness. The proposed plan is `docs/plans/EMAIL-OPS-01-IMPLEMENTATION-PLAN.md`; session is `docs/project-control/sessions/DEV01-EMAIL-OPS-PLAN-20261012.md`. The plan is prepared, not an implementation authorization. DEV-01's exact next action is owner/architect review and approval/correction of E1 (Gmail sync correctness) and E3 (host-owned email tool catalogue). This parallel product plan does **not** replace the active OPS-01 runtime action below or take over its ownership. Re-check the full file before assuming which operational follow-up is current; this file has accumulated historical/contradictory appended sections.
+
 # NEXT_ACTION.md
 
 ## Current next action — Restore live OAuth mailbox ingestion (2026-10-10)
