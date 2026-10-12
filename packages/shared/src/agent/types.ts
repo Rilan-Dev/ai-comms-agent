@@ -139,8 +139,8 @@ export interface EmailToolDescriptor {
   input_schema: Record<string, unknown>;
   sensitivity: ToolSensitivity;
   required_permission: string;
-  required_capabilities: readonly string[];
-  any_capabilities?: readonly string[];
+  required_capabilities: readonly ("folders" | "labels" | "sync_incremental" | "sync_full" | "sync_webhook" | "sync_idle" | "search_server_side" | "search_client_side" | "drafts" | "reply" | "forward" | "mark_read" | "archive" | "move" | "threads" | "attachments_download" | "attachments_upload" | "send")[];
+  any_capabilities?: readonly ("folders" | "labels" | "sync_incremental" | "sync_full" | "sync_webhook" | "sync_idle" | "search_server_side" | "search_client_side" | "drafts" | "reply" | "forward" | "mark_read" | "archive" | "move" | "threads" | "attachments_download" | "attachments_upload" | "send")[];
   channels: readonly Channel[];
   policy_required: boolean;
   contract_status: "contract";
