@@ -165,7 +165,10 @@ export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise
     );
     const claims:ScheduledJobClaim[]=[];
     for(const row of jobs.rows){
-      const fireAt = row.next_fire_at ? String(row.next_fire_at) : null;
+      // Convert the DB-returned Date object to ISO 8601 string.
+      // pg returns Date objects for timestamptz columns; String(date)
+      // produces "Mon Oct 12 2026 ..." which PostgreSQL rejects (error 22007).
+      const fireAt = row.next_fire_at ? new Date(row.next_fire_at as string | Date).toISOString() : null;
       if (!fireAt) continue;
       const run=await client.query<Row>(
         "INSERT INTO scheduled_job_runs (scheduled_job_id,fire_at,status,result) VALUES ($1,$2::timestamptz,'running',$3::jsonb) ON CONFLICT (scheduled_job_id,fire_at) DO NOTHING RETURNING id",
