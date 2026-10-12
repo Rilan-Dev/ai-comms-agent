@@ -131,3 +131,17 @@ export interface ToolResult<O = unknown> {
     }>;
   };
 }
+
+/** Metadata contract for host-owned email tools. Descriptors are not executable handlers. */
+export interface EmailToolDescriptor {
+  name: `email.${string}`;
+  description: string;
+  input_schema: Record<string, unknown>;
+  sensitivity: ToolSensitivity;
+  required_permission: string;
+  required_capabilities: readonly string[];
+  any_capabilities?: readonly string[];
+  channels: readonly Channel[];
+  policy_required: boolean;
+  contract_status: "contract";
+}
