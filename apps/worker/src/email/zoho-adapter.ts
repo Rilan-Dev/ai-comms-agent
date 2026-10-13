@@ -136,7 +136,15 @@ export class ZohoAdapter implements EmailProvider {
       if (!data.access_token) throw new Error("Zoho token refresh returned no access token");
       this.accessToken = data.access_token;
       this.expiresAt = data.expires_in ? Date.now() + data.expires_in * 1000 : undefined;
-      if (data.api_domain) this.apiDomain = normalizeZohoApiDomain(data.api_domain);
+      // NOTE: Zoho's OAuth token-refresh response includes an `api_domain`
+      // field, but it returns the GENERAL Zoho API endpoint
+      // (https://www.zohoapis.com), NOT the Mail-specific endpoint
+      // (https://mail.zoho.com). Overwriting this.apiDomain with that value
+      // would fail the SSRF whitelist in normalizeZohoApiDomain() and break
+      // every subsequent Mail API call. The Mail API domain is correctly
+      // set ONCE at connect() time from connection_config (saved by the
+      // OAuth callback from the MAIL_API_DOMAINS map keyed by dataCenter).
+      // Do NOT overwrite it here.
     })();
     try { await this.refreshPromise; } finally { this.refreshPromise = undefined; }
   }
