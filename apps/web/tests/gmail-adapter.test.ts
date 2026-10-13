@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { GmailAdapter } from "../../../apps/worker/src/email/gmail-adapter";
+import { listEmailToolDescriptors } from "../../../packages/shared/src/agent/mail-operations";
 
 describe("GmailAdapter", () => {
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
@@ -140,4 +141,35 @@ describe("GmailAdapter", () => {
     );
   });
 
+
+  it("paginates history and reports additions, label changes, and deletions", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ historyId: "connected" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        historyId: "110", nextPageToken: "p2",
+        history: [
+          { messagesAdded: [{ message: { id: "added-1" } }] },
+          { labelsAdded: [{ message: { id: "updated-1" } }] },
+          { messagesDeleted: [{ message: { id: "deleted-1" } }] },
+        ],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        historyId: "120", history: [{ messagesAdded: [{ message: { id: "added-2" } }] }],
+      }), { status: 200 }));
+    const adapter = new GmailAdapter();
+    await adapter.connect({ credential_type: "oauth_token", access_token: "test-token" });
+    const result = await adapter.sync({ sync_mode: "incremental", history_token: "100", last_sync_at: new Date(0).toISOString() });
+    expect(result.added.map((m) => m.provider_message_id)).toEqual(["added-1", "added-2"]);
+    expect(result.updated.map((m) => m.provider_message_id)).toEqual(["updated-1"]);
+    expect(result.deleted).toEqual(["deleted-1"]);
+    expect(result.new_state.history_token).toBe("120");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(String(fetchMock.mock.calls[2][0])).toContain("pageToken=p2");
+  });
+
+  it("filters email contracts by account capability", () => {
+    const result = listEmailToolDescriptors({ folders: true, labels: false });
+    expect(result.some((item) => item.name === "email.folders.list")).toBe(true);
+    expect(result.some((item) => item.name === "email.labels.list")).toBe(false);
+  });
 });

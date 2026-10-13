@@ -4,7 +4,7 @@ One-screen project status. This file is the canonical answer to "where are we?".
 
 ---
 
-> **Active continuation (2026-10-12):** DEV-01 has prepared `docs/plans/EMAIL-OPS-01-IMPLEMENTATION-PLAN.md`; owner/architect review is required before material implementation. The latest recorded live RabbitMQ/Redis mailbox-ingestion incident remains OPS-01-owned. Existing phase/verification records contain historical drift and must not be treated as fresh runtime evidence. See `docs/project-control/NEXT_ACTION.md`.
+> **Active continuation (2026-10-13):** EMAIL-OPS-01 implementation is in progress on `feature/email-ops-e1-e3`, PR #15 (draft). Source now includes Gmail history reconciliation, tool registry/read handlers/executor/runtime, native OpenAI/Gemini tool-call adapter, bounded worker tool loop, and a DEV-01 self-review. The loop is not wired into transports; tests/typechecks/live provider/sync/deployment checks have NOT run. FIX-01 owns ISS-026 cross-agent email-context isolation; OPS-01 owns the live RabbitMQ/Redis ingestion blocker. Older phase/verification records contain historical drift; see `docs/project-control/NEXT_ACTION.md` and `docs/reviews/EMAIL-OPS-01-DEV01-SELF-REVIEW-20261013.md`.
 
 ```yaml
 project: ai-comms-agent
