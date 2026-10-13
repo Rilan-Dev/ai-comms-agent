@@ -188,7 +188,18 @@ export class GmailAdapter implements EmailProvider {
     }
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Gmail API ${response.status}: ${body.slice(0, 500)}`);
+      let quotaLimited = response.status === 429;
+      try {
+        const parsed = JSON.parse(body) as { error?: { errors?: Array<{ reason?: string }>; message?: string } };
+        const reasons = parsed.error?.errors?.map((item) => item.reason ?? "").join(" ") ?? "";
+        quotaLimited ||= /quotaExceeded|userRateLimitExceeded|rateLimitExceeded|RESOURCE_EXHAUSTED/i.test(
+          `${reasons} ${parsed.error?.message ?? ""}`,
+        );
+      } catch {
+        quotaLimited ||= /quota exceeded|user rate limit|rateLimitExceeded|userRateLimitExceeded/i.test(body);
+      }
+      const classification = quotaLimited ? " (quota/rate limit; retry later)" : "";
+      throw new Error(`Gmail API ${response.status}${classification}: ${body.slice(0, 500)}`);
     }
     return response.status === 204 ? null : response.json();
   }
