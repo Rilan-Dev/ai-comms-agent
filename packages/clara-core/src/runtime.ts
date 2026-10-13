@@ -628,7 +628,7 @@ export const claraRuntime = {
     const config = organizationConfig?.resolved ?? resolvedConfig(provider);
     const providerSettings = organizationConfig?.providerConfig ?? providerConfig(provider);
     const lastUserMessage = [...messages].reverse().find((message) => message.role === "user");
-    const grounding = lastUserMessage ? await groundContext(ctx, lastUserMessage.content, 6) : { ok: true, result: { sources: [] } };
+    const grounding = lastUserMessage ? await groundContext(ctx, lastUserMessage.content ?? "", 6) : { ok: true, result: { sources: [] } };
     const evidence = grounding.ok ? grounding.result.sources.map((source, index) => `[S${index + 1}] ${source.snippet}`).join("\n\n") : "";
     const system = [
       config.assistantConfig.systemPrompt,
