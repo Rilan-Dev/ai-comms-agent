@@ -151,6 +151,10 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     cursor: string | null;
     history_id: string | null;
     last_success_at: string | null;
+    pending_message_ids: string[] | null;
+    pending_cursor_token: string | null;
+    pending_history_id: string | null;
+    pending_sync_mode: string | null;
   }>(
     `INSERT INTO email_sync_states
       (email_account_id, organization_id, status, last_attempt_at, updated_at)
@@ -159,7 +163,8 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
        SET status='running', last_attempt_at=now(), updated_at=now()
        WHERE email_sync_states.status <> 'running'
           OR email_sync_states.last_attempt_at < now()-interval '10 minutes'
-     RETURNING cursor_token AS cursor, history_id, last_success_at`,
+     RETURNING cursor_token AS cursor, history_id, last_success_at,
+       pending_message_ids, pending_cursor_token, pending_history_id, pending_sync_mode`,
     [candidate.id, candidate.organization_id],
   );
   if (!claimed.rows[0]) return false;
@@ -227,7 +232,35 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       last_sync_at: claimed.rows[0].last_success_at ?? new Date(0).toISOString(),
       sync_mode: claimed.rows[0].cursor || !claimed.rows[0].history_id ? "initial" : "incremental",
     };
-    const result = await adapter.sync(state);
+
+    // Stage each provider page durably before fetching full messages. If Gmail
+    // throttles midway, the next attempt resumes the remaining IDs rather than
+    // listing and fetching the same page again.
+    let stagedCursor = claimed.rows[0].pending_cursor_token;
+    let stagedHistory = claimed.rows[0].pending_history_id;
+    let stagedMode = claimed.rows[0].pending_sync_mode;
+    let ids: string[];
+    if (stagedMode !== null && stagedMode !== undefined) {
+      ids = Array.isArray(claimed.rows[0].pending_message_ids) ? claimed.rows[0].pending_message_ids : [];
+    } else {
+      const result = await adapter.sync(state);
+      const messageIds = new Set([
+        ...result.added.map((item) => item.provider_message_id),
+        ...result.updated.map((item) => item.provider_message_id),
+      ]);
+      ids = [...messageIds];
+      stagedCursor = result.new_state.cursor ?? null;
+      stagedHistory = result.new_state.history_token ?? null;
+      stagedMode = result.new_state.sync_mode;
+      await query(
+        `UPDATE email_sync_states SET pending_message_ids=$1::jsonb,
+           pending_cursor_token=$2, pending_history_id=$3, pending_sync_mode=$4,
+           updated_at=now()
+         WHERE email_account_id=$5`,
+        [JSON.stringify(ids), stagedCursor, stagedHistory, stagedMode, candidate.id],
+      );
+    }
+
     const refreshedCredentials = adapter.getCredentialSnapshot?.();
     if (refreshedCredentials && (
       refreshedCredentials.access_token !== credentials.access_token ||
@@ -240,34 +273,43 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
         parseCredentialsMasterKey(masterKey),
       );
     }
-    const messageIds = new Set([
-      ...result.added.map((item) => item.provider_message_id),
-      ...result.updated.map((item) => item.provider_message_id),
-    ]);
-    const ids = [...messageIds];
-    const fetchedMessages: EmailMessage[] = [];
-    for (let offset = 0; offset < ids.length; offset += 8) {
-      const page = await Promise.all(ids.slice(offset, offset + 8).map((id) => adapter.getMessage(id)));
-      for (const message of page) if (message) fetchedMessages.push(message);
-    }
-    const draftIdsByMessage = fetchedMessages.some((message) => message.is_draft) && adapter.listDraftIdsByMessage
-      ? await adapter.listDraftIdsByMessage()
-      : new Map<string, string>();
+
     let saved = 0;
-    for (const message of fetchedMessages) {
-      const providerDraftId = message.is_draft
-        ? draftIdsByMessage.get(message.provider_message_id || message.id) ?? (candidate.provider === "zoho" ? (message.provider_message_id || message.id) : null)
-        : null;
-      await persistMessage(candidate, message, providerDraftId);
-      saved += 1;
+    let draftIdsByMessage: Map<string, string> | undefined;
+    // Deliberately pace full-message requests and checkpoint each successfully
+    // persisted message. Upserts make a retry safe if a process exits between
+    // persistence and checkpoint removal.
+    for (const id of ids) {
+      // Stay well below the per-user Gmail API minute quota during initial import.
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const message = await adapter.getMessage(id);
+      if (message) {
+        if (message.is_draft && !draftIdsByMessage && adapter.listDraftIdsByMessage) {
+          draftIdsByMessage = await adapter.listDraftIdsByMessage();
+        }
+        const providerDraftId = message.is_draft
+          ? draftIdsByMessage?.get(message.provider_message_id || message.id) ?? (candidate.provider === "zoho" ? (message.provider_message_id || message.id) : null)
+          : null;
+        await persistMessage(candidate, message, providerDraftId);
+        saved += 1;
+      }
+      await query(
+        `UPDATE email_sync_states
+         SET pending_message_ids=COALESCE(pending_message_ids,'[]'::jsonb)-$1::text,
+             updated_at=now()
+         WHERE email_account_id=$2`,
+        [id, candidate.id],
+      );
     }
 
     await query(
       `UPDATE email_sync_states SET cursor_token=$1, history_id=$2, status='idle',
+         pending_message_ids='[]'::jsonb, pending_cursor_token=NULL,
+         pending_history_id=NULL, pending_sync_mode=NULL,
          last_success_at=now(), last_attempt_at=now(), next_attempt_at=NULL,
          error_count=0, last_error=NULL, updated_at=now()
        WHERE email_account_id=$3`,
-      [result.new_state.cursor ?? null, result.new_state.history_token ?? null, candidate.id],
+      [stagedCursor, stagedHistory, candidate.id],
     );
     await accounts.updateSyncState(candidate.id, new Date().toISOString());
     console.log(JSON.stringify({
@@ -278,19 +320,23 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       organization_id: candidate.organization_id,
       account_id: candidate.id,
       imported_or_updated: saved,
-      sync_mode: result.new_state.sync_mode,
-      initial_import_remaining: result.new_state.sync_mode === "initial",
+      sync_mode: stagedMode,
+      initial_import_remaining: stagedMode === "initial" && stagedCursor !== null,
     }));
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message.slice(0, 500) : "Gmail synchronization failed.";
     const revoked = /invalid_grant|no refresh token is available|refresh token.*revoked/i.test(message);
+    const quotaLimited = /Gmail API (?:403|429) \(quota\/rate limit|quota exceeded|userRateLimitExceeded|rateLimitExceeded|RESOURCE_EXHAUSTED/i.test(message);
     await query(
       `UPDATE email_sync_states SET status='error', last_attempt_at=now(),
-         next_attempt_at=now()+make_interval(secs => LEAST(3600, 60 * power(2, LEAST(error_count,5))::int)),
+         next_attempt_at=now()+make_interval(secs => CASE
+           WHEN $3::boolean THEN LEAST(21600, 300 * power(2, LEAST(error_count,6))::int)
+           ELSE LEAST(3600, 60 * power(2, LEAST(error_count,5))::int)
+         END),
          error_count=error_count+1, last_error=$1, updated_at=now()
        WHERE email_account_id=$2`,
-      [message, candidate.id],
+      [message, candidate.id, quotaLimited],
     );
     await accounts.updateStatus(candidate.id, revoked ? "revoked" : "error", message);
     console.error(JSON.stringify({
@@ -331,8 +377,13 @@ export async function processMailboxSyncMessage(payload: EmailSyncPayload): Prom
 
   // Duplicate deliveries are expected with at-least-once queues. If another worker
   // owns a fresh PostgreSQL claim, acknowledge this delivery instead of exhausting retries.
-  const state = await query<{ status: string; last_attempt_at: string | null }>(
-    "SELECT status, last_attempt_at FROM email_sync_states WHERE email_account_id=$1",
+  const state = await query<{
+    status: string;
+    last_attempt_at: string | null;
+    next_attempt_at: string | null;
+    last_error: string | null;
+  }>(
+    "SELECT status, last_attempt_at, next_attempt_at, last_error FROM email_sync_states WHERE email_account_id=$1",
     [candidate.id],
   );
   const current = state.rows[0];
@@ -340,6 +391,15 @@ export async function processMailboxSyncMessage(payload: EmailSyncPayload): Prom
     && current.last_attempt_at !== null
     && Date.now() - new Date(current.last_attempt_at).getTime() < 10 * 60_000;
   if (activeClaim) return;
+
+  // Quota failures have a durable database backoff. Ack the current RabbitMQ
+  // delivery and let the due-sync poller enqueue it after that deadline rather
+  // than exhausting retries every 30 seconds and sending it to the DLQ.
+  const quotaDeferred = current?.status === "error"
+    && /quota\/rate limit|quota exceeded|userRateLimitExceeded|rateLimitExceeded|RESOURCE_EXHAUSTED/i.test(current.last_error ?? "")
+    && current.next_attempt_at !== null
+    && new Date(current.next_attempt_at).getTime() > Date.now();
+  if (quotaDeferred) return;
   throw new Error("Mailbox sync did not complete; retry delivery is required.");
 }
 
