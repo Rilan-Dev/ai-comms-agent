@@ -223,3 +223,53 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Blockers/dependencies:** OPS-01 owns live RabbitMQ vhost/Redis WRONGPASS and runtime ingestion proof; FIX-01 owns substantial source bugs/test failures. Tool/schema/policy/provider-scope decisions require owner/architect approval.
 - **Lesson:** Adapter declarations and HTTP 202 are not ingestion proof. The host app owns email tools; all channels must share execution-time authorization and audit. Cursor advancement follows persisted/reconciled work.
 - **Next action:** Owner/architect review the plan and approve/correct E1 (Gmail sync correctness) and E3 (host-owned email tool catalogue) before material implementation.
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 / 2026-10-13
+- **Task:** Continue EMAIL-OPS-01 with Gmail history reconciliation and the shared email tool contract inventory.
+- **Authorization:** User explicitly said to proceed with the next after the plan; implementation of E1/E3 began on a dedicated feature branch.
+- **Started from:** `main` with prior plan/control records; working branch `feature/email-ops-e1-e3`.
+- **Actions:** Paged Gmail history, classified additions/label changes/deletions, handled expired history cursor fallback, persisted account/org-scoped local deletions and thread counts before advancing the checkpoint, removed derived email knowledge documents, added history pagination regression coverage, failed closed on incomplete Gmail reply/forward capability flags, and added/exported the shared email tool descriptor contract and capability/allowlist filtering plus focused tests.
+- **Files/code:** `apps/worker/src/email/gmail-adapter.ts`; `apps/worker/src/email/mailbox-sync-worker.ts`; `apps/worker/src/knowledge/email-knowledge-indexer.ts`; `apps/web/tests/gmail-adapter.test.ts`; `packages/shared/src/agent/types.ts`; `packages/shared/src/agent/intents.ts`; `packages/shared/src/index.ts`; `docs/specs/TOOL-CONTRACTS.md`; `docs/plans/EMAIL-OPS-01-IMPLEMENTATION-PLAN.md`.
+- **Evidence:** GitHub accepted source changes and test source writes on the feature branch. Tests/typecheck/build/live-provider/database/browser/deployment verification NOT RUN.
+- **Blockers/dependencies:** Tool descriptors are contract metadata, not yet executable host handlers. OPS-01 retains the RabbitMQ/Redis runtime issue and persisted-ingestion proof. FIX-01 retains substantial source defects and regression remediation.
+- **Lesson:** Do not advance Gmail history checkpoints before every history page and resulting database reconciliation completes. Do not expose a tool merely because a contract/capability flag exists.
+- **Next action:** Implement the actual host registry and tenant-scoped email handlers, starting with read-only operations; prove account binding, permission/capability checks, schema validation, output bounds/redaction, and audit before exposing them to any model/channel.
+
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 / 2026-10-13
+- User authorized continuation of EMAIL-OPS-01 on `feature/email-ops-e1-e3`.
+- Updated Gmail history paging/classification and local reconciliation; added regression coverage. Added/exported shared email tool contract metadata with capability/allowlist filtering.
+- Verification: source writes only; tests/typecheck/build/runtime not run. Tool contracts are not executable handlers.
+- Next: implement the shared host registry and read-only tenant-scoped handlers with execution-time authorization and audit. OPS-01 retains infrastructure; FIX-01 retains substantial bug remediation.
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 — continuation
+- Added `packages/shared/src/agent/registry.ts` with registration duplicate protection, lookup/listing, fail-closed agent allowlist discovery and schema validation; exported it from the shared package and added focused registry tests.
+- Updated TOOL-CONTRACTS and EMAIL-OPS-01 plan to document the registry boundary. It does not yet authorize account access, evaluate approvals, or persist audit records.
+- **Exact next action:** wire executable read-only email handlers to the registry with tenant/account binding, permissions, capability checks, bounded outputs and audit; keep contract-only descriptors unavailable to the model until then.
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 — read handler continuation
+- Added `apps/worker/src/agent/email-read-tools.ts` with safe read-only account/capability/folder/label/message/thread/search/sync-status handlers. Account-scoped calls recheck org + agent binding; send-only bindings cannot read. Outputs are bounded and error summaries are sanitized.
+- Added a registration helper; actual channel runtime registration and durable audit persistence remain pending.
+- **Exact next action:** wire the handlers into the shared runtime, enforce allowlist/permission/schema/capability/policy at invocation, persist audit, and ensure chat/voice/WhatsApp/schedules use one path. Verification remains unrun.
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 — runtime factory continuation
+- Added `apps/worker/src/agent/tool-executor.ts` as the shared invocation pipeline and `apps/worker/src/agent/email-tool-runtime.ts` to load the persisted agent allowlist, register read-only handlers, recheck mailbox grants/capabilities, and write sanitized tool-call audit events.
+- Added test source for allowlist denial, schema rejection, authorization denial, and audit handling. Tests were not executed.
+- **Next action:** connect `invokeEmailReadTool()` to the actual chat/realtime voice/WhatsApp/scheduled transport and model tool-call loop. Do not expose catalogue descriptors before that path is used. FIX-01 owns ISS-026; OPS-01 owns live infrastructure verification.
+
+
+### DEV01-EMAIL-TOOL-LOOP-20261013 — provider adapter and bounded loop
+- **Task:** Continue the next authorized email runtime feature after the shared registry/runtime groundwork.
+- **Authorization:** Existing EMAIL-OPS-01 plan and user instruction to proceed with the next feature.
+- **Started from:** `feature/email-ops-e1-e3`; latest source baseline was the Clara boundary on `main`.
+- **Actions:** Added provider-neutral tool-call contracts; native non-streaming tool-call mappings for OpenAI-compatible and Gemini; explicit fail-closed behavior for Sarvam; malformed-argument fail-closed response; bounded worker loop using registered/allowlisted handlers and shared executor/audit.
+- **Files:** `packages/clara-core/src/types.ts`, `packages/clara-core/src/index.ts`, `packages/clara-core/src/runtime.ts`, `apps/worker/src/agent/email-agent-loop.ts`, `apps/worker/tests/email-agent-loop.test.ts`, `apps/worker/tests/clara-tool-calling.test.ts`, `apps/worker/tests/tool-executor.test.ts`, `docs/reviews/EMAIL-OPS-01-DEV01-SELF-REVIEW-20261013.md`.
+- **Evidence:** GitHub accepted source writes. No tests, typecheck, lint, build, provider API, database, live mailbox, browser, CI, or deployment verification was executed.
+- **Self-review:** External `ai-reusable-libraries` repository could not be resolved through connected repository calls; comparison is against the current `main` baseline only. New loop is not transport-wired; only read handlers are registered; Sarvam tool calling remains unsupported; FIX-01 ISS-026 remains a critical dependency; OPS-01 live infra blocker remains.
+- **Next action:** Run the newly added OpenAI/Gemini provider-contract tests and worker-loop tests, then run Clara/worker typechecks if a local checkout is available. Fix concrete failures and record actual output. Keep PR draft and unmerged.
+
+
+### DEV01-EMAIL-AUTH-RECHECK-20261013 — execution-time authorization hardening
+- **Actions:** Updated `email-tool-runtime.ts` to reload persisted agent allowlist on each tool invocation and check descriptor all-of/any-of provider capabilities, retaining fail-closed authorization behavior.
+- **Evidence:** GitHub accepted source update only; no tests/typecheck/runtime checks were run.
+- **Next:** Add regression tests for mid-turn policy revocation and multi-capability denial, then run focused tests/typechecks if local checkout is available.

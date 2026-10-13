@@ -2,7 +2,7 @@
 
 **Plan ID:** EMAIL-OPS-01  
 **Owner:** DEV-01 / Forge  
-**Status:** PROPOSED — planning authorized; implementation requires owner/architect approval  
+**Status:** IMPLEMENTATION IN PROGRESS — owner has directed DEV-01 to proceed with the next slices  
 **Baseline:** `main` at `4dc991fa5616f9a04ed3050a7c748e489c6e75f5` (2026-10-12)  
 **Scope:** Reliable multi-account email ingestion, synchronization, mailbox operations, and complete host-authorized AI-agent access to email features across chat, realtime voice, WhatsApp, and scheduled execution.
 
@@ -244,8 +244,34 @@ Each slice is separately reviewable and reusable. Reorder only after inventory r
 
 Current runtime blocker from durable records: placeholder RabbitMQ vhost plus Redis `WRONGPASS` was observed in the deployed worker; the current state must be rechecked. It is not resolved by this document and must remain with OPS-01. Do not disable Redis coordination as a workaround.
 
-## 10. Exact next action
+## 10. Implementation progress — 2026-10-13
 
-**DEV-01:** review this plan against the current source and contract docs, then request owner/architect approval for implementation slice E1 (Gmail incremental-sync correctness) and E3 (host-owned email tool inventory/catalogue), including any required architecture decisions. Until that approval, do not silently implement a new tool architecture or change provider/permission contracts. Independently safe source inventory and plan refinement may continue.
+DEV-01 has begun the next approved development slices on branch `feature/email-ops-e1-e3`:
+
+- **E1 source changes:** Gmail history API now pages through every history response, requests add/label/delete event types, separates added/updated/deleted provider IDs, and retains the old history checkpoint on any failed page. Expired-history 404 still falls back to idempotent initial import. The worker now applies provider-reported deletions to account/org-scoped local message rows and recalculates affected thread counts before persisting the new cursor; matching derived email knowledge documents are removed as well.
+- **E1 regression test:** added a focused adapter test for paginated history, label updates and deletions.
+- **Capability safety:** Gmail's reply/forward capabilities are disabled until thread-aware behavior is implemented and tested; the catalogue requires those capabilities before offering reply/forward contracts.
+- **E3 source changes:** added the shared `EmailToolDescriptor` contract and a canonical email tool metadata inventory with JSON Schemas, permissions, sensitivity, channel scope, provider-capability requirements and capability/agent-allowlist filtering. Exported the inventory through the shared package entry point.
+- **Registry foundation:** added `packages/shared/src/agent/registry.ts` with duplicate protection, lookup/listing, fail-closed agent allowlist discovery and schema validation. This is not yet an execution authorization boundary and is not wired to email handlers.
+- **Read-only handler source:** added `apps/worker/src/agent/email-read-tools.ts` with account listing, capability/folder/label discovery, bounded local message/search queries, message/thread reads and sync status. Every account-scoped handler rechecks organization + agent binding; `send_only` bindings are denied for reads. The handlers return bounded results and audit summaries, but are not yet wired into a channel runtime or durable audit sink.
+- **Shared invocation pipeline:** added `apps/worker/src/agent/tool-executor.ts`; it fails closed on missing tool/agent allowlist, invalid schema, missing permission, or a denied/unavailable authorization callback, and requires a durable audit writer before returning a result. It is not yet called by chat, realtime voice, WhatsApp, or scheduled transports.
+- **Agent-scoped runtime factory:** added `apps/worker/src/agent/email-tool-runtime.ts` to load persisted agent allowlist policy, register read-only handlers, recheck account binding/capabilities, and persist sanitized tool-call audit events. The shared path is callable, but chat/realtime voice/WhatsApp/scheduled adapters do not yet use it.
+- **E3 regression test:** added a capability-filtering test for the descriptor catalogue.
+- **Boundary:** E3 is **catalogue/contract groundwork only**. The current host runtime still needs registered executable handlers and end-to-end execution-time authorization/policy/audit wiring before any descriptor can be exposed to the LLM. No new tool is claimed live.
+- **Not run:** no pnpm tests, typecheck, build, provider calls, database checks, browser checks, CI or deployment verification have been run from this session.
+
+## 11. Exact next action
+
+**DEV-01:** connect `invokeEmailReadTool()` to the actual chat/realtime voice/WhatsApp/scheduled transport path with a trusted auth subject and model tool-call loop. Keep tool exposure disabled until the caller uses this runtime. FIX-01 must remediate ISS-026 (organization-only email context leaking across agent mailbox bindings); DEV-01 must not patch that substantial security bug. Then prove cross-channel reuse. Do not expose descriptors to the model until that wiring is complete. Before exposure, prove server-side account ownership and agent binding from PostgreSQL, schema validation, provider capability checks, execution-time permission checks, bounded/redacted outputs and audit. Then add the policy-gated draft and mutation handlers. Do not expose contract-only descriptors until each handler and its authorization path is implemented and tested. FIX-01 owns substantial source bug/regression remediation; OPS-01 retains live runtime and deployment proof.
 
 **Verification status:** GitHub source inspection only. No files modified at plan creation, no tests/typechecks/build/runtime/provider calls executed, and no feature is claimed complete or verified.
+
+
+## 12. DEV-01 provider tool-call and bounded loop update — 2026-10-13
+
+- Added provider-neutral tool-call contracts to `packages/clara-core/src/types.ts` and exports.
+- Added a native non-streaming function-call completion path in `packages/clara-core/src/runtime.ts`: OpenAI-compatible and Gemini request/response mappings; Sarvam is explicitly rejected for tool calling pending provider contract verification.
+- Added `apps/worker/src/agent/email-agent-loop.ts`: it builds schemas only from actual registered/allowlisted tools, verifies the trusted organization/agent pair, bounds execution to four model rounds/eight calls, sends results through the shared executor/audit path, and marks returned mail/tool content as untrusted data.
+- Added `apps/worker/tests/email-agent-loop.test.ts`, `apps/worker/tests/clara-tool-calling.test.ts`, and `apps/worker/tests/tool-executor.test.ts` source coverage for provider wire contracts, fail-closed executor/audit paths, context mismatch and call limits. Tests and typechecks have not been run.
+- **Still not transport-wired:** chat/realtime voice/WhatsApp/scheduled execution do not yet call the loop. Only read handlers are registered; catalogue contracts for drafts, mutations, attachments and sending remain unavailable. ISS-026 remains FIX-01-owned.
+- **Next exact DEV-01 action:** run the newly added mocked OpenAI/Gemini provider-contract tests plus worker loop tests, then run Clara/worker typechecks in a local checkout if available. Fix concrete failures and record actual output. Continue independent work without waiting for CI/Vercel; do not expose tools or claim verified until transport/security evidence exists.

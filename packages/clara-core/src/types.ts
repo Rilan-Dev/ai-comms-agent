@@ -32,6 +32,8 @@ export interface EmbedOptions {
 
 export interface LLMProvider {
   chatStream(messages: ChatMessage[], options?: ChatOptions): AsyncGenerator<string, void, unknown>;
+  /** Optional for compatibility; unsupported providers must fail explicitly, never silently ignore tools. */
+  chatWithTools?(messages: ToolChatMessage[], tools: ChatToolDefinition[], options?: ChatOptions): Promise<ChatToolCompletion>;
   embedText(text: string, options?: EmbedOptions): Promise<number[]>;
   embedBatch(texts: string[], options?: EmbedOptions): Promise<number[][]>;
   getProviderName(): string;
@@ -106,4 +108,26 @@ export interface ClaraAgentTurn {
   model: string;
   stream: AsyncGenerator<string, void, unknown>;
   grounding: GroundedContext;
+}
+
+
+/** Provider-neutral tool calling contracts. Tool results are data, never trusted instructions. */
+export interface ChatToolDefinition {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+export interface ChatToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+export type ToolChatMessage =
+  | ChatMessage
+  | { role: "assistant"; content: string | null; tool_calls?: ChatToolCall[] }
+  | { role: "tool"; content: string; tool_call_id: string; name: string };
+export interface ChatToolCompletion {
+  text: string;
+  toolCalls: ChatToolCall[];
+  finishReason: string | null;
 }

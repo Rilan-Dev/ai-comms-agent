@@ -1,5 +1,7 @@
 # CURRENT_PHASE.md — Phase 4 Database Foundation and Migrations
 
+> **Active product workstream update (2026-10-13):** EMAIL-OPS-01 is being developed on `feature/email-ops-e1-e3` / draft PR #15. Provider tool-call adapter and bounded worker loop are source-implemented but not transport-wired or verified. This note does not mark Phase 4 complete or change its historical phase acceptance. See the EMAIL-OPS-01 plan and DEV-01 self-review.
+
 ---
 
 ```yaml

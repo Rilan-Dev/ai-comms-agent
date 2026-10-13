@@ -97,3 +97,13 @@ export const INTENT_TAXONOMY: Record<
     required_permission: "agent.read",
   },
 };
+
+/**
+ * Canonical email tool contracts for the host-owned agent runtime.
+ * These descriptors are not handlers: production execution must resolve the
+ * local account, validate schema, check permissions/capabilities/policy again,
+ * and write the host audit record before/after any side effect.
+ */
+
+
+export { EMAIL_TOOL_CATALOG, listEmailToolDescriptors } from "./mail-operations";

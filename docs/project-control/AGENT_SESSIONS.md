@@ -461,3 +461,41 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Findings:** Gmail sync delta/deletion/history pagination and MIME parsing require audit; Gmail reply/forward adapter helpers send immediately; Zoho/IMAP operation parity is incomplete; capability flags must match tested behavior; all AI channels need one host-owned tool execution path with execution-time authz. Live RabbitMQ placeholder-vhost and Redis WRONGPASS remain OPS-01-owned according to current durable records.
 - **Evidence:** Source/document inspection and GitHub file writes only. No tests, typechecks, builds, live providers, DB, browser or deployment checks run.
 - **Next action:** Owner/architect review and approve/correct E1 (Gmail sync correctness) and E3 (tool catalogue) before material implementation. OPS-01's runtime recovery action remains separate.
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 — 2026-10-13
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Continue the next authorized email operations development slice after plan review; user explicitly instructed to proceed.
+- **Started from:** `feature/email-ops-e1-e3`, derived from current main and EMAIL-OPS-01 plan.
+- **Scope:** E1 Gmail incremental history correctness and E3 canonical host email-tool contract inventory.
+- **Status:** SOURCE CHANGES WRITTEN — verification pending; not a feature PASS.
+- **Completed:** Gmail history pagination and event classification; local deleted-message/thread reconciliation and derived knowledge cleanup before cursor commit; history pagination regression test; fail-closed Gmail reply/forward capability flags; shared email tool descriptor metadata, capability/allowlist filter and contract documentation.
+- **Pending:** Execute focused tests/typecheck; implement actual shared runtime registry and executable tenant-scoped handlers; add authorization, policy/approval, audit and cross-channel wiring; prove live ingestion separately.
+- **Blockers:** OPS-01 owns live RabbitMQ/Redis and deployment/runtime proof; FIX-01 owns substantial bug/test remediation.
+- **Next action:** Build the host registry and read-only email handlers; keep contract-only tools unavailable until runtime registration and execution-time controls are tested.
+
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 — 2026-10-13
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Continue the next email development work after the plan; user said proceed.
+- **Started from:** `feature/email-ops-e1-e3`.
+- **Scope:** Gmail history correctness and canonical email tool contract inventory.
+- **Status:** SOURCE CHANGES WRITTEN; verification pending.
+- **Completed:** Gmail history pagination and add/update/delete classification, local deletion reconciliation before cursor commit, focused regression test, fail-closed reply/forward flags, shared contract descriptors and capability/allowlist filter.
+- **Pending:** Run tests/typecheck; wire executable handlers and runtime authorization/audit; prove live mailbox ingestion separately.
+- **Blockers/owners:** OPS-01 owns broker/Redis/runtime; FIX-01 owns substantial bug/regression remediation.
+- **Next action:** Implement the shared host registry and read-only tenant-scoped email handlers before exposing tools to the model.
+
+### DEV01-EMAIL-OPS-IMPLEMENT-20261013 — runtime source update
+- Added the shared registry, read-only email handler module, invocation pipeline, and agent-scoped runtime factory with durable audit adapter.
+- These modules are not yet wired into the live model tool-call loop or channel transports. No tests/typecheck/build/runtime verification has been run.
+- **Next:** connect the runtime to model tool calls and channel adapters; keep tools hidden until that path is used. ISS-026 remains assigned to FIX-01.
+
+
+### DEV01-EMAIL-TOOL-LOOP-20261013 — provider adapter, loop, executor tests and self-review
+- **Agent:** DEV-01 / Forge
+- **Branch:** `feature/email-ops-e1-e3`
+- **Status:** Source implemented; verification pending; not transport-integrated.
+- **Changes:** Provider-neutral Clara tool-call contracts; OpenAI-compatible/Gemini tool completion; explicit Sarvam unsupported boundary; bounded worker email tool loop; source tests for provider contracts, executor fail-closed/audit paths, and loop bounds; self-review quality audit.
+- **Security boundary:** Only registered/allowlisted read handlers can be offered. Unknown model tool names pass through executor for audit. No draft/mutation/send contracts are executable. FIX-01 owns ISS-026; DEV-01 must not patch the chat isolation bug.
+- **Verification:** No tests/typecheck/build/live provider/database/sync/deployment run.
+- **Next:** Execute the newly added mocked provider contract and worker-loop tests plus Clara/worker typechecks. Then integrate the loop only through a trusted server transport after ISS-026 is resolved.

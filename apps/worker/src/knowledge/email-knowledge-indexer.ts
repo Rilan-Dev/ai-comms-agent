@@ -124,3 +124,27 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
     );
   }
 }
+
+/**
+ * Remove the derived Clara document for a provider message that no longer
+ * exists remotely. PostgreSQL remains authoritative; this deletes only the
+ * email-specific knowledge document/chunks and never touches user-uploaded KBs.
+ * Replays are safe when the document was already removed.
+ */
+export async function deleteEmailKnowledge(
+  organizationId: string,
+  accountId: string,
+  providerMessageId: string,
+): Promise<void> {
+  if (!organizationId || !accountId || !providerMessageId) {
+    throw new Error("Email knowledge deletion requires organization, account, and provider message IDs.");
+  }
+  const storagePath = `${accountId}/${encodeURIComponent(providerMessageId.trim())}`;
+  await query(
+    `DELETE FROM knowledge_documents
+     WHERE organization_id = $1
+       AND storage_bucket = 'email-account'
+       AND storage_path = $2`,
+    [organizationId, storagePath],
+  );
+}

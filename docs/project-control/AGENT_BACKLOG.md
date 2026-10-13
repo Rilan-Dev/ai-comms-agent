@@ -145,3 +145,23 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Known dependencies:** current schema/cursor inventory; current tool registry/runtime route inventory; existing OAuth scopes; provider capability tests; execution-time organization/agent/account grants; current RabbitMQ/Redis live incident.
 - **Acceptance outline:** resumable/idempotent sync with durable cursors and correct delta reconciliation; complete tested capability matrix; modular provider mappers/parsers/services; one channel-independent tool path; sensitive actions require deterministic policy/approval; cross-tenant and prompt-injection regression coverage; separate source and runtime verification records.
 - **Safety:** This backlog entry and plan do not authorize schema, dependency, OAuth-scope, architecture or policy changes by themselves. Do not disable Redis lease coordination or claim sync success from HTTP 202.
+
+
+### BKL-EMAIL-OPS-RUNTIME-01 — 2026-10-13
+- **Work:** Connect email tool descriptors to executable host handlers and the shared registry.
+- **Owner:** DEV-01 / Forge.
+- **State:** PARTIALLY IMPLEMENTED — shared runtime factory exists; channel integration pending.
+- **Authorization:** User instructed DEV-01 to proceed after the EMAIL-OPS-01 plan.
+- **Dependency:** Resolve current authenticated organization context, agent-to-account binding, policy engine and audit repository before wiring tool handlers.
+- **Progress:** Shared registry, schema validator, read-only email handlers, invocation pipeline, agent-scoped runtime factory, provider tool-call adapter (OpenAI-compatible/Gemini only), and bounded worker loop are source-implemented. Source tests exist but are not run. The loop is not wired to any transport. Source tests now cover provider contracts, loop bounds, and executor audit/denial paths, but have not been run.
+- **Next:** Run the newly added mocked provider contract/worker-loop tests and typechecks. Then wire through a trusted server transport only after FIX-01 resolves ISS-026. Keep contract-only tools unavailable; add sensitive actions only through approval policy.
+
+- **Safety:** Contract descriptors must remain unavailable to the model until executable handlers and runtime checks exist. OPS-01 and FIX-01 retain their own responsibilities.
+
+
+### FIX01-HANDOFF-ISS-026 — Cross-agent email context isolation
+- **Owner:** FIX-01 / Sentinel.
+- **Severity:** Critical.
+- **Source:** `apps/web/src/app/api/chat/stream/route.ts` — `loadEmailContext` scopes by organization but not by active agent's `agent_email_accounts` bindings.
+- **Required work:** Pass the authenticated agent ID into the loader, restrict context rows to that agent's permitted account bindings/roles, and add cross-agent/cross-account regression tests. Preserve untrusted-email-content wrapping.
+- **DEV-01 boundary:** This is a substantial security bug and remains FIX-01-owned; do not duplicate its remediation in the email-tool feature branch.

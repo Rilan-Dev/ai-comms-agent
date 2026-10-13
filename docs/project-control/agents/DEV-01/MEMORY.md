@@ -42,3 +42,14 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 - Separate provider mapping/parsing from provider transport and orchestration. Prefer incremental extraction into feature-specific modules with contract tests over a risky all-at-once folder migration.
 - A bounded chat-context query is not equivalent to a complete tool harness. Clara's tool interface is narrow; host-owned email tools must share schemas, permission/capability checks, execution-time grants, policy and audit across chat, realtime voice, WhatsApp and scheduled jobs.
 - Runtime issue ownership remains distinct: OPS-01 handles RabbitMQ/Redis/config/deployment and persisted-ingestion proof; FIX-01 handles substantial source defects and regression tests. Do not claim verification from GitHub source writes.
+
+### 2026-10-13 — Gmail history and email tool contracts
+- Gmail history requires full pagination and separate handling for messageAdded, labelAdded, labelRemoved and messageDeleted. Keep the old cursor on any page failure; persist message updates/deletions and derived-index cleanup before writing the new cursor.
+- When a provider operation has incorrect/incomplete thread semantics, set its capability false until the implementation and contract tests prove it. Reply/forward must not be made available solely because a method exists.
+- The shared email catalogue currently describes schemas, permissions, sensitivity, channels and capabilities only. It is not a live registry and must not be advertised to the model until executable host handlers and runtime checks are connected.
+
+
+### 2026-10-13 — Email operations implementation
+- Gmail history must be fully paginated; classify message additions, label changes, and deletions, and do not advance the cursor until local reconciliation and derived email-document cleanup finish.
+- If provider reply/forward semantics are incomplete, fail closed by disabling those capability flags until adapter tests prove support.
+- The shared email tool catalogue is contract metadata only. Do not expose descriptors to a model until executable host handlers and execution-time authorization/policy/audit are wired.

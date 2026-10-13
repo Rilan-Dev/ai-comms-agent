@@ -307,3 +307,37 @@ Tools are not added silently. Every new tool is an architectural decision (recor
 Tools are versioned with the agent (per `agent_versions.config.tools`). If a tool's schema changes, old agent versions continue using the old schema; new versions use the new schema. This requires tool implementations to support multiple schema versions — managed via a `tool_versions` table (Phase 11).
 
 For Phase 1, the catalogue above is the v1 shape.
+
+---
+
+## 8. Email tool contract inventory (EMAIL-OPS-01)
+
+The current shared source exports `EMAIL_TOOL_CATALOG` and `listEmailToolDescriptors()` from `packages/shared/src/agent/mail-operations.ts` and `packages/shared/src/index.ts`. The inventory covers account/capability discovery, folders/labels, paginated message reads, thread reads, search, sync status, drafts, reply/forward draft intent, read/archive/move/label actions, attachment metadata/download, summaries, trash, and bounded bulk operations. Sensitive send/reply/forward descriptors remain withheld until their executable approval-safe handlers are registered.
+
+Each descriptor includes a JSON Schema, permission name, sensitivity, channel list, required provider capabilities, optional alternative capabilities, and whether the policy engine is required. The helper filters against the connected account's *actual capability set* and an optional agent allowlist.
+
+**Important status boundary:** these descriptors are contract metadata, not executable tool handlers. They must not be sent to a model or invoked as if implemented until the host runtime has registered the corresponding service handler and passed execution-time organization, agent, account, permission, capability, policy, approval, idempotency, and audit checks. A catalogue entry does not prove provider support. Chat, realtime voice, WhatsApp and scheduled execution must reuse one host registry and one service path.
+
+Gmail reply and forward capability flags are deliberately fail-closed while thread-aware RFC reply/forward semantics are incomplete. Re-enable them only after implementation and adapter contract tests prove the operation. A generic draft capability is not proof that a provider can construct a correct reply/forward draft.
+
+## 9. Shared registry implementation status
+
+`packages/shared/src/agent/registry.ts` now provides a provider-neutral registry with duplicate-registration rejection, tool lookup/listing, agent allowlist filtering, and validation for the JSON Schema subset used by current tool descriptors. A missing agent allowlist fails closed and exposes no tools.
+
+The registry is **not** the full execution security boundary: it does not itself invoke handlers, resolve an email account, prove the agent/account binding, evaluate the approval policy, or persist audit events. Read-only handlers exist in `apps/worker/src/agent/email-read-tools.ts`; they recheck the organization/agent/account binding and return bounded outputs with audit summaries. `apps/worker/src/agent/email-tool-runtime.ts` loads the persisted agent allowlist, creates an agent-scoped registry, supplies account/capability authorization, and writes sanitized tool-call audit events through the DB audit repository. `apps/worker/src/agent/tool-executor.ts` requires the authorizer and audit writer and fails closed on denial or audit failure. These helpers are not yet called by the actual chat/realtime voice/WhatsApp/scheduled transport pipeline. Do not expose tools to a model until the transport uses this shared path and the cross-agent context isolation issue ISS-026 is fixed by FIX-01.
+
+
+## 10. Native provider tool-call adapter and bounded worker loop (2026-10-13)
+
+The Clara boundary now has provider-neutral tool-call types and `claraRuntime.completeWithTools(ctx, messages, tools)`. OpenAI-compatible calls serialize assistant tool-call history into the provider wire shape; Gemini uses functionCall/functionResponse parts. Malformed OpenAI tool arguments fail closed. Sarvam tool calling deliberately throws an explicit unsupported error until its behavior is verified.
+
+`apps/worker/src/agent/email-agent-loop.ts` uses only tools actually registered and allowlisted for the agent, creates a bounded 4-round / 8-call loop, validates trusted tenant/agent identity, invokes every model-emitted tool name through the shared executor (including unknown names so denials reach durable audit), caps tool result text, and marks results as untrusted data. The loop is reusable by transports but is **not currently called by chat, voice, WhatsApp, or schedule transports**.
+
+Do not send contract-only catalogue entries to the model. Currently registered handlers are read-only. Drafts, mutation, attachment, and send descriptors are not executable. The runtime still needs execution-time allowlist/policy refresh, all-of/any-of capability enforcement for future multi-capability tools, cancellation/timeouts, token-aware output limits, and live provider contract evidence. ISS-026 remains FIX-01-owned and blocks safe chat transport integration.
+
+Source tests were added but not run. No typecheck/build/provider/database/runtime/CI/deployment PASS is claimed.
+
+
+### Authorization follow-up — 2026-10-13
+
+`email-tool-runtime.ts` now re-reads the persisted agent allowlist during each invocation and applies all-of/any-of capability checks from the canonical `EMAIL_TOOL_CATALOG` descriptor for account-scoped calls. This is still source-only: add tests for allowlist revocation between tool calls, missing one required capability, and no supported any-capability alternative. Keep contract-only tools hidden until these checks and transport wiring are verified.
