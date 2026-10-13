@@ -12,15 +12,32 @@
  *     migration chain can complete against a Prisma Postgres restricted superuser.
  *
  * Usage:  DATABASE_URL=<url> node migrate.js [migrations-dir]
+ *
+ * If [migrations-dir] is not provided, the runner auto-detects the
+ * migrations directory relative to THIS file's location. This file lives
+ * at <repo-root>/packages/db/migrate.js, so the migrations directory is at
+ * <repo-root>/supabase/migrations. This makes the runner work regardless
+ * of the absolute checkout path (e.g., /docker/ai-comms-agent vs
+ * /home/z/my-project/ai-comms-agent vs CI runner paths).
  */
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
 
 const DB_URL = process.env.DATABASE_URL;
-const MIGRATIONS_DIR =
-  process.argv[2] || "/home/z/my-project/ai-comms-agent/supabase/migrations";
+
+// Auto-detect migrations dir relative to this file. This file is at
+// <repo-root>/packages/db/migrate.js, so migrations live at
+// <repo-root>/supabase/migrations.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const AUTO_DETECTED_MIGRATIONS_DIR = resolve(__dirname, "..", "..", "supabase", "migrations");
+
+const MIGRATIONS_DIR = process.argv[2]
+  ? resolve(process.argv[2])
+  : AUTO_DETECTED_MIGRATIONS_DIR;
 
 if (!DB_URL) {
   console.error("ERROR: DATABASE_URL env var is required.");
@@ -28,6 +45,7 @@ if (!DB_URL) {
 }
 
 console.log("DB_URL (masked):", DB_URL.replace(/:[^@]+@/, ":***@"));
+console.log("Migrations dir:", MIGRATIONS_DIR);
 
 const useSSL = DB_URL.includes("sslmode=require");
 const pool = new Pool({
