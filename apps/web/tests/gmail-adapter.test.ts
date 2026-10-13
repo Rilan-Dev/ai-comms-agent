@@ -164,7 +164,7 @@ describe("GmailAdapter", () => {
     expect(result.deleted).toEqual(["deleted-1"]);
     expect(result.new_state.history_token).toBe("120");
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(String(fetchMock.mock.calls[2][0])).toContain("pageToken=p2");
+    expect(String(fetchMock.mock.calls[2]?.[0] ?? "")).toContain("pageToken=p2");
   });
 
   it("filters email contracts by account capability", () => {
