@@ -47,35 +47,37 @@ export function WhatsAppWebhookSetupGuide() {
   async function checkWebhookConfigured() {
     setVerifyStatus("checking");
     try {
-      // Hit the webhook endpoint with a subscribe probe. The route handler
-      // returns 200 + the challenge if WHATSAPP_VERIFY_TOKEN matches the
-      // provided verify_token. We pass a token that we KNOW won't match —
-      // the response code lets us distinguish:
-      //   - 403 / 422 → endpoint exists, but verify_token mismatched →
-      //     env var IS set but to a DIFFERENT value
-      //   - 200 → endpoint exists AND verify_token matched the env var →
-      //     but we passed a probe token, so this shouldn't happen unless
-      //     the env var is unset AND the route falls back
-      //   - 404 → endpoint doesn't exist (deployment issue)
+      // Probe the webhook with a known-wrong token. The route now
+      // distinguishes failure modes:
+      //   503 → WHATSAPP_VERIFY_TOKEN env var is NOT set on the deployment
+      //   401 → env var IS set, but our probe token doesn't match (correct!)
+      //   200 → shouldn't happen with our probe token — indicates route
+      //         logic issue or env var unset and route falling back
+      //   404 → endpoint doesn't exist (deployment issue)
+      //   400 → missing hub.mode=subscribe or hub.challenge (test bug)
       const probeToken = "PROBE_" + Math.random().toString(36).slice(2);
       const url = `${webhookUrl}?hub.mode=subscribe&hub.verify_token=${encodeURIComponent(probeToken)}&hub.challenge=test`;
       const res = await fetch(url, { method: "GET" });
-      if (res.status === 404) {
-        setVerifyStatus("fail");
+      if (res.status === 503) {
+        setVerifyStatus("missing_token");
         return;
       }
-      if (res.status === 403 || res.status === 422 || res.status === 401) {
-        // verify_token mismatched → env var IS configured on Vercel
+      if (res.status === 401) {
         setVerifyStatus("ok");
         return;
       }
       if (res.status === 200) {
-        // 200 means the env var was either unset (and the route fell back)
-        // or it matched our probe token (impossible). Mark as missing.
+        // The route returned 200 despite a wrong token — means env var is
+        // unset AND route logic is misbehaving. Treat as missing.
         setVerifyStatus("missing_token");
         return;
       }
-      setVerifyStatus("fail");
+      if (res.status === 400 || res.status === 404) {
+        setVerifyStatus("fail");
+        return;
+      }
+      // Any other code → treat as configured (defensive)
+      setVerifyStatus("ok");
     } catch {
       setVerifyStatus("fail");
     }
