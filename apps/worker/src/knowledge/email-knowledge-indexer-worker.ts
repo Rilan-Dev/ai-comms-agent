@@ -27,11 +27,15 @@ type PendingMessage = {
   organization_id: string;
   email_account_id: string;
   provider: "gmail" | "zoho" | "imap_smtp";
-  // Columns needed to reconstruct an EmailMessage for indexEmailKnowledge:
+  // Columns needed to reconstruct an EmailMessage for indexEmailKnowledge.
+  // NOTE: `references` is a PostgreSQL reserved keyword and also exists as an
+  // ARRAY column on email_messages. We intentionally DON'T select it — the
+  // indexer doesn't need it (indexEmailKnowledge uses subject+body only).
+  // The `references_header` text column would also work but isn't needed
+  // for chunking/embedding.
   provider_message_id: string;
   message_id_header: string | null;
   in_reply_to: string | null;
-  references: string[] | null;
   thread_id: string | null;
   folder_id: string | null;
   from_address: string | null;
@@ -66,7 +70,10 @@ function toEmailMessage(row: PendingMessage): any {
     provider_message_id: row.provider_message_id,
     message_id_header: row.message_id_header ?? undefined,
     in_reply_to: row.in_reply_to ?? undefined,
-    references: row.references ? parseStringArray(row.references) : [],
+    // references intentionally omitted — indexEmailKnowledge() does not
+    // use this field for chunking or embedding. Avoids the reserved-word
+    // SELECT error (42601: syntax error at or near "references").
+    references: [],
     thread_id: row.thread_id ?? undefined,
     folder_id: row.folder_id ?? undefined,
     from_address: row.from_address ?? "",
@@ -94,7 +101,7 @@ export async function processEmailKnowledgeIndexingBatch(limit = INDEXER_BATCH_S
   try {
     const result = await query<PendingMessage>(
       `SELECT id, organization_id, email_account_id, provider_message_id,
-              message_id_header, in_reply_to, references, thread_id, folder_id,
+              message_id_header, in_reply_to, thread_id, folder_id,
               from_address, to_addresses, cc_addresses, bcc_addresses, subject,
               text_body, snippet, is_read, is_starred, is_draft, is_outbound,
               received_at, importance_score, action_required, has_attachments,
