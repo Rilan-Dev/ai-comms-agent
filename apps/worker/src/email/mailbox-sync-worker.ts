@@ -398,18 +398,18 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       }
 
       // Single UPDATE per batch — much cheaper than one UPDATE per message.
+      // Uses the `jsonb - text[]` operator which removes matching string values
+      // from a JSON array. The previous jsonb_agg approach tried to compare
+      // jsonb elem = text, which Postgres rejects (42883: operator does not
+      // exist: jsonb = text). `jsonb - text[]` is the idiomatic way to do this.
       const savedIds = messages
         .filter((entry) => entry.message !== null)
         .map((entry) => entry.id);
       if (savedIds.length > 0) {
         await query(
           `UPDATE email_sync_states
-           SET pending_message_ids = (
-             SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb)
-             FROM jsonb_array_elements(COALESCE(pending_message_ids, '[]'::jsonb)) AS elem
-             WHERE NOT (elem = ANY($1::text[]) AND jsonb_typeof(elem) = 'string')
-           ),
-           updated_at = now()
+           SET pending_message_ids = COALESCE(pending_message_ids, '[]'::jsonb) - $1::text[],
+               updated_at = now()
            WHERE email_account_id=$2`,
           [savedIds, candidate.id],
         );
@@ -422,12 +422,8 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       if (missedIds.length > 0) {
         await query(
           `UPDATE email_sync_states
-           SET pending_message_ids = (
-             SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb)
-             FROM jsonb_array_elements(COALESCE(pending_message_ids, '[]'::jsonb)) AS elem
-             WHERE NOT (elem = ANY($1::text[]) AND jsonb_typeof(elem) = 'string')
-           ),
-           updated_at = now()
+           SET pending_message_ids = COALESCE(pending_message_ids, '[]'::jsonb) - $1::text[],
+               updated_at = now()
            WHERE email_account_id=$2`,
           [missedIds, candidate.id],
         );

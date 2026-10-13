@@ -100,15 +100,33 @@ export async function processEmailKnowledgeIndexingBatch(limit = INDEXER_BATCH_S
   running = true;
   try {
     const result = await query<PendingMessage>(
-      `SELECT id, organization_id, email_account_id, provider_message_id,
-              message_id_header, in_reply_to, thread_id, folder_id,
-              from_address, to_addresses, cc_addresses, bcc_addresses, subject,
-              text_body, snippet, is_read, is_starred, is_draft, is_outbound,
-              received_at, importance_score, action_required, has_attachments,
+      `SELECT email_messages.id AS id,
+              email_messages.organization_id AS organization_id,
+              email_messages.email_account_id AS email_account_id,
+              email_messages.provider_message_id AS provider_message_id,
+              email_messages.message_id_header AS message_id_header,
+              email_messages.in_reply_to AS in_reply_to,
+              email_messages.thread_id AS thread_id,
+              email_messages.folder_id AS folder_id,
+              email_messages.from_address AS from_address,
+              email_messages.to_addresses AS to_addresses,
+              email_messages.cc_addresses AS cc_addresses,
+              email_messages.bcc_addresses AS bcc_addresses,
+              email_messages.subject AS subject,
+              email_messages.text_body AS text_body,
+              email_messages.snippet AS snippet,
+              email_messages.is_read AS is_read,
+              email_messages.is_starred AS is_starred,
+              email_messages.is_draft AS is_draft,
+              email_messages.is_outbound AS is_outbound,
+              email_messages.received_at AS received_at,
+              email_messages.importance_score AS importance_score,
+              email_messages.action_required AS action_required,
+              email_messages.has_attachments AS has_attachments,
               email_accounts.provider AS provider
          FROM email_messages
          JOIN email_accounts ON email_accounts.id = email_messages.email_account_id
-        WHERE indexed_at IS NULL
+        WHERE email_messages.indexed_at IS NULL
           AND email_messages.is_draft = false
         ORDER BY email_messages.received_at ASC
         LIMIT $1`,
