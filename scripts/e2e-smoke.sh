@@ -3,7 +3,11 @@
 # Bootstraps admin account, logs in, walks through every API surface, reports pass/fail per endpoint.
 set -uo pipefail
 
-cd /home/z/my-project/ai-comms-agent
+# Auto-detect the repo root from this script's location.
+# scripts/e2e-smoke.sh → repo root is one directory up.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
 bash start-stack.sh > /dev/null 2>&1 || true
 
 ORIGIN="http://localhost:3000"
@@ -170,7 +174,7 @@ record "P8" "Zoho OAuth start" "BLOCKED" "needs ZOHO_OAUTH_CLIENT_ID/SECRET (Goo
 echo ""
 echo "==================== PHASE 9: Email sync queues + workers ===================="
 echo "--- Worker log tail (RabbitMQ consumer should be ready) ---"
-tail -10 /home/z/my-project/ai-comms-agent/worker.log
+tail -10 "$REPO_ROOT/worker.log" 2>/dev/null || echo "(worker.log not found)"
 record "P9" "RabbitMQ email.sync consumer" "READY" "(from worker log)"
 
 echo ""

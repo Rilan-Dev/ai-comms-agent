@@ -2,7 +2,10 @@
 # Final E2E smoke test for ai-comms-agent — uses orgId from /api/settings/organization
 set -uo pipefail
 
-cd /home/z/my-project/ai-comms-agent
+# Auto-detect the repo root from this script's location.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
 bash start-stack.sh > /dev/null 2>&1 || true
 
 ORIGIN="http://localhost:3000"
