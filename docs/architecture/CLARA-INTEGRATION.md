@@ -291,8 +291,8 @@ Clara is integrated as a **git submodule** at `vendor/clara/` (pinned to commit 
 
 ### Audit artifacts
 
-- Target-side verifier script: `/home/z/my-project/scripts/clara-verify-target.py` (preserved in the Z.AI workspace, not committed to the repo).
-- Full clone: `/home/z/my-project/work/clara-lib-full/` (preserved for reference; the committed integration uses the git submodule at `vendor/clara/`).
+- Target-side verifier script: `<workspace>/scripts/clara-verify-target.py` (preserved in the original Z.AI workspace, not committed to the repo — recreate locally if needed).
+- Full clone: `<workspace>/work/clara-lib-full/` (preserved for reference in the original workspace; the committed integration uses the git submodule at `vendor/clara/`).
 
 ---
 
