@@ -16,8 +16,16 @@ export async function GET(request: Request) {
   const mode = url.searchParams.get("hub.mode");
   const token = url.searchParams.get("hub.verify_token");
   const challenge = url.searchParams.get("hub.challenge");
-  if (mode !== "subscribe" || !challenge || !process.env.WHATSAPP_VERIFY_TOKEN || token !== process.env.WHATSAPP_VERIFY_TOKEN) {
-    return new Response("Forbidden", { status: 403 });
+  // Distinguish failure modes so the in-app setup guide can tell the user
+  // whether they need to set env vars on Vercel vs. fix their Meta App config.
+  if (mode !== "subscribe" || !challenge) {
+    return new Response("Bad Request — missing hub.mode=subscribe or hub.challenge", { status: 400 });
+  }
+  if (!process.env.WHATSAPP_VERIFY_TOKEN) {
+    return new Response("Service Unavailable — WHATSAPP_VERIFY_TOKEN env var is not set on the deployment.", { status: 503 });
+  }
+  if (token !== process.env.WHATSAPP_VERIFY_TOKEN) {
+    return new Response("Unauthorized — verify_token does not match WHATSAPP_VERIFY_TOKEN env var.", { status: 401 });
   }
   return new Response(challenge, { status: 200, headers: { "content-type": "text/plain" } });
 }
