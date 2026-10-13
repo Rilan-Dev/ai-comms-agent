@@ -17,8 +17,12 @@ import { query } from "@ai-comms-agent/db";
 import { indexEmailKnowledge } from "./email-knowledge-indexer";
 
 const INDEXER_INTERVAL_MS = 5_000;
-const INDEXER_BATCH_SIZE = 25;     // messages per tick
-const INDEXER_CONCURRENCY = 5;     // parallel chunk + INSERT per batch
+const INDEXER_BATCH_SIZE = 15;     // messages per tick (lowered from 25 to reduce per-tick DB pressure)
+// INDEXER_CONCURRENCY must stay BELOW DATABASE_POOL_MAX (user has 5 on
+// Supabase transaction-mode pooler). The mailbox-sync loop also runs
+// concurrently with PERSIST_CONCURRENCY=4 (Gmail) — 4+3=7 still under 5? no,
+// but the Supabase pooler will queue overflow. 3 is the safe choice here.
+const INDEXER_CONCURRENCY = 3;    // parallel chunk + INSERT per batch
 
 let running = false;
 
