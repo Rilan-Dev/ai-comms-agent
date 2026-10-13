@@ -12,7 +12,7 @@ import { randomUUID } from "node:crypto";
 import { acquireRedisLease, releaseRedisLease } from "./redis-lease";
 import type { EmailProvider } from "@ai-comms-agent/shared";
 import { publishEmailSync } from "../queues/email-sync-rabbitmq";
-import { deleteEmailKnowledge, indexEmailKnowledge } from "../knowledge/email-knowledge-indexer";
+import { deleteEmailKnowledge } from "../knowledge/email-knowledge-indexer";
 import type { EmailSyncPayload } from "../queues/email-sync-message";
 
 type Candidate = {
@@ -138,12 +138,15 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
     );
   }
 
-  await indexEmailKnowledge({
-    organizationId: account.organization_id,
-    accountId: account.id,
-    provider: account.provider,
-    message,
-  });
+  // NOTE: RAG indexing is intentionally NOT done inline here. The
+  // persistMessage path runs inside the Gmail/Zoho/IMAP sync loop, which
+  // needs to stay fast so we don't stall on per-message chunking +
+  // knowledge_chunks INSERTs while the provider rate-limit clock is
+  // running. The new email_messages.indexed_at column (migration 0045)
+  // is NULL on insert; a separate worker tick
+  // (processEmailKnowledgeIndexingBatch in apps/worker/src/knowledge/)
+  // selects messages where indexed_at IS NULL and runs chunking +
+  // knowledge_documents / knowledge_chunks INSERTs in batched fashion.
 }
 
 
@@ -275,6 +278,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     let stagedHistory = claimed.rows[0].pending_history_id;
     let stagedMode = claimed.rows[0].pending_sync_mode;
     let ids: string[];
+    let providerDeleted: string[] = [];
     if (stagedMode !== null && stagedMode !== undefined) {
       ids = Array.isArray(claimed.rows[0].pending_message_ids) ? claimed.rows[0].pending_message_ids : [];
     } else {
@@ -287,6 +291,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       stagedCursor = result.new_state.cursor ?? null;
       stagedHistory = result.new_state.history_token ?? null;
       stagedMode = result.new_state.sync_mode;
+      providerDeleted = result.deleted;
       await query(
         `UPDATE email_sync_states SET pending_message_ids=$1::jsonb,
            pending_cursor_token=$2, pending_history_id=$3, pending_sync_mode=$4,
@@ -311,33 +316,125 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
 
     let saved = 0;
     let draftIdsByMessage: Map<string, string> | undefined;
-    // Deliberately pace full-message requests and checkpoint each successfully
-    // persisted message. Upserts make a retry safe if a process exits between
-    // persistence and checkpoint removal.
-    for (const id of ids) {
-      // Stay well below the per-user Gmail API minute quota during initial import.
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      const message = await adapter.getMessage(id);
-      if (message) {
-        if (message.is_draft && !draftIdsByMessage && adapter.listDraftIdsByMessage) {
-          draftIdsByMessage = await adapter.listDraftIdsByMessage();
-        }
-        const providerDraftId = message.is_draft
-          ? draftIdsByMessage?.get(message.provider_message_id || message.id) ?? (candidate.provider === "zoho" ? (message.provider_message_id || message.id) : null)
-          : null;
+
+    // ─── Batched fetch + persist ────────────────────────────────────────
+    // Old loop: one HTTP request per message ID + 250ms throttle = ~4
+    // messages/sec. New loop: Gmail batch endpoint fetches 100 messages
+    // per HTTP request; Zoho/IMAP fall back to Promise.all concurrency
+    // of 10. Persistence is parallel via Promise.all too. After each
+    // batch, we update the pending_message_ids checkpoint in one UPDATE.
+    const isGmail = candidate.provider === "gmail";
+    const BATCH_FETCH_SIZE = isGmail ? 100 : 25;        // HTTP batch size
+    const PERSIST_CONCURRENCY = isGmail ? 10 : 5;        // DB write concurrency
+    const persistMessageSafe = async (id: string, message: EmailMessage | null) => {
+      if (!message) return;
+      if (message.is_draft && !draftIdsByMessage && adapter.listDraftIdsByMessage) {
+        draftIdsByMessage = await adapter.listDraftIdsByMessage();
+      }
+      const providerDraftId = message.is_draft
+        ? draftIdsByMessage?.get(message.provider_message_id || message.id) ?? (candidate.provider === "zoho" ? (message.provider_message_id || message.id) : null)
+        : null;
+      try {
         await persistMessage(candidate, message, providerDraftId);
         saved += 1;
+      } catch (persistError) {
+        // Log + continue — don't fail the entire batch for one bad message.
+        console.error(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level: "error",
+          service: "worker.email-sync.persist",
+          message: "Persist failed for single message; continuing batch",
+          account_id: candidate.id,
+          provider_message_id: id,
+          reason: persistError instanceof Error ? persistError.message : "Unknown error",
+        }));
       }
-      await query(
-        `UPDATE email_sync_states
-         SET pending_message_ids=COALESCE(pending_message_ids,'[]'::jsonb)-$1::text,
-             updated_at=now()
-         WHERE email_account_id=$2`,
-        [id, candidate.id],
-      );
+    };
+
+    for (let batchStart = 0; batchStart < ids.length; batchStart += BATCH_FETCH_SIZE) {
+      const batchIds = ids.slice(batchStart, batchStart + BATCH_FETCH_SIZE);
+      const messages: Array<{ id: string; message: EmailMessage | null }> = [];
+
+      if (isGmail && typeof (adapter as any).batchGetMessages === "function") {
+        // Gmail: 1 HTTP request per 100 IDs.
+        const batchMap = await (adapter as any).batchGetMessages(batchIds) as Map<string, EmailMessage>;
+        for (const id of batchIds) {
+          messages.push({ id, message: batchMap.get(id) ?? null });
+        }
+      } else {
+        // Zoho / IMAP: limited Promise.all concurrency (no native batch endpoint).
+        const concurrency = PERSIST_CONCURRENCY;
+        for (let i = 0; i < batchIds.length; i += concurrency) {
+          const slice = batchIds.slice(i, i + concurrency);
+          const settled = await Promise.all(
+            slice.map(async (id) => {
+              try {
+                return { id, message: await adapter.getMessage(id) };
+              } catch (getError) {
+                console.error(JSON.stringify({
+                  timestamp: new Date().toISOString(),
+                  level: "error",
+                  service: "worker.email-sync.fetch",
+                  message: "Single-message fetch failed; will retry on next sync",
+                  account_id: candidate.id,
+                  provider_message_id: id,
+                  reason: getError instanceof Error ? getError.message : "Unknown error",
+                }));
+                return { id, message: null };
+              }
+            }),
+          );
+          messages.push(...settled);
+        }
+      }
+
+      // Persist messages with bounded concurrency.
+      // Sequential chunks of PERSIST_CONCURRENCY so we don't blow the
+      // Postgres connection pool (DATABASE_POOL_MAX=5 with Supabase
+      // transaction-mode pooler).
+      for (let i = 0; i < messages.length; i += PERSIST_CONCURRENCY) {
+        const slice = messages.slice(i, i + PERSIST_CONCURRENCY);
+        await Promise.all(slice.map((entry) => persistMessageSafe(entry.id, entry.message)));
+      }
+
+      // Single UPDATE per batch — much cheaper than one UPDATE per message.
+      const savedIds = messages
+        .filter((entry) => entry.message !== null)
+        .map((entry) => entry.id);
+      if (savedIds.length > 0) {
+        await query(
+          `UPDATE email_sync_states
+           SET pending_message_ids = (
+             SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb)
+             FROM jsonb_array_elements(COALESCE(pending_message_ids, '[]'::jsonb)) AS elem
+             WHERE NOT (elem = ANY($1::text[]) AND jsonb_typeof(elem) = 'string')
+           ),
+           updated_at = now()
+           WHERE email_account_id=$2`,
+          [savedIds, candidate.id],
+        );
+      }
+      // Mark the un-fetched IDs (e.g., 404 from Gmail) as acked too —
+      // they're gone from the server, retrying won't help.
+      const missedIds = messages
+        .filter((entry) => entry.message === null)
+        .map((entry) => entry.id);
+      if (missedIds.length > 0) {
+        await query(
+          `UPDATE email_sync_states
+           SET pending_message_ids = (
+             SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb)
+             FROM jsonb_array_elements(COALESCE(pending_message_ids, '[]'::jsonb)) AS elem
+             WHERE NOT (elem = ANY($1::text[]) AND jsonb_typeof(elem) = 'string')
+           ),
+           updated_at = now()
+           WHERE email_account_id=$2`,
+          [missedIds, candidate.id],
+        );
+      }
     }
 
-    await removeDeletedMessages(candidate, result.deleted);
+    await removeDeletedMessages(candidate, providerDeleted);
 
     await query(
       `UPDATE email_sync_states SET cursor_token=$1, history_id=$2, status='idle',
@@ -360,6 +457,77 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       sync_mode: stagedMode,
       initial_import_remaining: stagedMode === "initial" && stagedCursor !== null,
     }));
+
+    // ─── Delta catch-up after long initial sync ───────────────────────
+    // An initial sync can take many minutes (Gmail quota, large archives).
+    // Emails that arrived during the import are NOT picked up by the
+    // initial-mode `messages.list` pagination (which is forward-only
+    // from a fixed point). For Gmail, the baseline `history_id` we
+    // captured at sync start is the anchor — re-running in incremental
+    // mode now replays every Gmail history event since that baseline.
+    // For Zoho/IMAP we run one more "incremental" pass with the
+    // new history_token. The catch-up is best-effort; any error just
+    // schedules a normal due-sync via next_attempt_at.
+    if (stagedMode === "initial" && stagedCursor === null && stagedHistory) {
+      try {
+        const catchUpState: SyncState = {
+          cursor: undefined,
+          history_token: stagedHistory,
+          last_sync_at: new Date().toISOString(),
+          sync_mode: "incremental",
+        };
+        const delta = await adapter.sync(catchUpState);
+        const deltaIds = new Set<string>([
+          ...delta.added.map((item) => item.provider_message_id),
+          ...delta.updated.map((item) => item.provider_message_id),
+        ]);
+        let deltaSaved = 0;
+        for (const id of deltaIds) {
+          try {
+            const message = await adapter.getMessage(id);
+            if (message) {
+              await persistMessage(candidate, message, null);
+              deltaSaved += 1;
+            }
+          } catch {
+            // Best-effort — leave for the next scheduled sync.
+          }
+        }
+        if (delta.deleted.length > 0) {
+          await removeDeletedMessages(candidate, delta.deleted);
+        }
+        if (deltaIds.size > 0) {
+          console.log(JSON.stringify({
+            timestamp: new Date().toISOString(),
+            level: "info",
+            service: "worker.email-sync",
+            message: `${candidate.provider} delta catch-up after initial sync`,
+            organization_id: candidate.organization_id,
+            account_id: candidate.id,
+            delta_added_or_updated: deltaIds.size,
+            delta_saved: deltaSaved,
+            delta_deleted: delta.deleted.length,
+          }));
+        }
+      } catch (catchUpError) {
+        console.error(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level: "warn",
+          service: "worker.email-sync",
+          message: `${candidate.provider} delta catch-up failed; scheduling next sync`,
+          organization_id: candidate.organization_id,
+          account_id: candidate.id,
+          reason: catchUpError instanceof Error ? catchUpError.message : "Unknown error",
+        }));
+        // Force a near-immediate due-sync so the regular poller picks this
+        // up rather than waiting 15 minutes.
+        await query(
+          `UPDATE email_sync_states SET next_attempt_at=now()+interval '30 seconds',
+             updated_at=now() WHERE email_account_id=$1`,
+          [candidate.id],
+        );
+      }
+    }
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message.slice(0, 500) : "Gmail synchronization failed.";

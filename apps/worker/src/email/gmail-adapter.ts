@@ -374,6 +374,128 @@ export class GmailAdapter implements EmailProvider {
     }
   }
 
+  /**
+   * Batch fetch up to 100 messages per HTTP request using Gmail's multipart
+   * batch endpoint (POST /batch/gmail/v1). Returns a Map keyed by message id
+   * for O(1) lookup by callers.
+   *
+   * The single-message `getMessage` path sends one HTTP request per message
+   * ID — at Gmail's 250ms throttle that's ~4 messages/sec. With batching
+   * the same 100 messages land in one HTTP round-trip (~500ms), giving a
+   * ~50× throughput improvement for initial sync.
+   *
+   * Idempotent and safe to retry: if the batch endpoint returns 4xx for a
+   * single sub-request (e.g., 404 for a deleted message), we still resolve
+   * the rest. Network errors throw and the caller's checkpoint loop will
+   * retry the un-acked IDs.
+   */
+  async batchGetMessages(messageIds: string[]): Promise<Map<string, EmailMessage>> {
+    const result = new Map<string, EmailMessage>();
+    if (messageIds.length === 0) return result;
+
+    // Gmail's batch endpoint caps at 100 sub-requests per multipart request.
+    const CHUNK_SIZE = 100;
+    for (let offset = 0; offset < messageIds.length; offset += CHUNK_SIZE) {
+      const chunk = messageIds.slice(offset, offset + CHUNK_SIZE);
+      if (this.expiresAt && this.expiresAt <= Date.now() + 30_000) await this.refreshAccessToken();
+      if (!this.accessToken) throw new Error("Gmail adapter is not connected");
+
+      // Build multipart/mixed body with one sub-request per message id.
+      const boundary = `batch_${Math.random().toString(36).slice(2)}`;
+      const lines: string[] = [];
+      for (const id of chunk) {
+        lines.push(`--${boundary}`);
+        lines.push("Content-Type: application/http");
+        lines.push("Content-ID: <" + id + "@ai-comms-agent.local>");
+        lines.push("");
+        lines.push(`GET /gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=full HTTP/1.1`);
+        lines.push("Accept: application/json");
+        lines.push("");
+      }
+      lines.push(`--${boundary}--`, "");
+      const body = lines.join("\r\n");
+
+      const response = await fetch("https://www.googleapis.com/batch/gmail/v1", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          "Content-Type": `multipart/mixed; boundary=${boundary}`,
+        },
+        body,
+      });
+
+      if (response.status === 401 && this.refreshToken) {
+        await this.refreshAccessToken();
+        // Retry the chunk once after token refresh.
+        const retryResponse = await fetch("https://www.googleapis.com/batch/gmail/v1", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+            "Content-Type": `multipart/mixed; boundary=${boundary}`,
+          },
+          body,
+        });
+        this.parseBatchResponse(await retryResponse.text(), chunk, result);
+        continue;
+      }
+      if (!response.ok) {
+        const errBody = await response.text().catch(() => "");
+        throw new Error(`Gmail batch get failed (${response.status}): ${errBody.slice(0, 500)}`);
+      }
+      this.parseBatchResponse(await response.text(), chunk, result);
+    }
+    return result;
+  }
+
+  /** Parse a multipart batch response and append to the result Map. */
+  private parseBatchResponse(body: string, chunk: string[], result: Map<string, EmailMessage>): void {
+    // Split on the boundary marker. The exact boundary is in the response's
+    // Content-Type header; we read it from the first line of the body to
+    // avoid needing to parse headers separately.
+    const firstLine = body.split(/\r?\n/, 1)[0] ?? "";
+    const boundary = firstLine.replace(/^--/, "").trim();
+    if (!boundary) return;
+    const parts = body.split(`--${boundary}`);
+    // Build Content-ID → message id mapping from the request chunk.
+    const contentIdToMessageId = new Map<string, string>();
+    for (const id of chunk) contentIdToMessageId.set(`<${id}@ai-comms-agent.local>`, id);
+
+    for (const part of parts) {
+      if (!part.trim() || part.startsWith("--")) continue;
+      const headersEnd = part.indexOf("\r\n\r\n");
+      if (headersEnd < 0) continue;
+      const partHeaders = part.slice(0, headersEnd);
+      const partBody = part.slice(headersEnd + 4).trim();
+
+      // Extract Content-ID
+      const cidMatch = partHeaders.match(/Content-ID:\s*<([^>]+)>/i);
+      const contentId = cidMatch ? `<${cidMatch[1]}>` : "";
+      const messageId = contentIdToMessageId.get(contentId) ?? contentId.replace(/[<>]/g, "").replace(/@.*$/, "");
+
+      // The part body is itself an HTTP response: status line + headers + JSON.
+      const statusMatch = partBody.match(/^HTTP\/[\d.]+\s+(\d+)/);
+      const status = statusMatch ? Number(statusMatch[1]) : 0;
+      if (status !== 200) {
+        // 404 means the message was deleted between list+get; mark as not found.
+        continue;
+      }
+      const jsonStart = partBody.indexOf("\r\n\r\n");
+      if (jsonStart < 0) continue;
+      const jsonText = partBody.slice(jsonStart + 4).trim();
+      try {
+        const raw = JSON.parse(jsonText);
+        const message = toMessage(raw);
+        if (messageId) {
+          result.set(messageId, message);
+        } else if (raw.id) {
+          result.set(String(raw.id), message);
+        }
+      } catch {
+        // Skip unparseable part — the sync loop will retry this ID on next tick.
+      }
+    }
+  }
+
   async getThread(threadId: string): Promise<EmailMessage[]> {
     const data = await this.request(`/threads/${encodeURIComponent(threadId)}?format=full`);
     return (data.messages ?? []).map(toMessage);
