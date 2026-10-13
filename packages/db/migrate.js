@@ -17,8 +17,9 @@
  * migrations directory relative to THIS file's location. This file lives
  * at <repo-root>/packages/db/migrate.js, so the migrations directory is at
  * <repo-root>/supabase/migrations. This makes the runner work regardless
- * of the absolute checkout path (e.g., /docker/ai-comms-agent vs
- * /home/z/my-project/ai-comms-agent vs CI runner paths).
+ * of the absolute checkout path (e.g., /docker/ai-comms-agent on the user's
+ * local machine, /home/z/ai-comms-agent in another environment, or a CI
+ * runner workspace path).
  */
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
