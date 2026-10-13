@@ -324,8 +324,17 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     // of 10. Persistence is parallel via Promise.all too. After each
     // batch, we update the pending_message_ids checkpoint in one UPDATE.
     const isGmail = candidate.provider === "gmail";
-    const BATCH_FETCH_SIZE = isGmail ? 100 : 25;        // HTTP batch size
-    const PERSIST_CONCURRENCY = isGmail ? 10 : 5;        // DB write concurrency
+    // BATCH_FETCH_SIZE controls the HTTP fetch batch (Gmail batch endpoint
+    // caps at 100; Zoho/IMAP have no batch endpoint so they fall back to
+    // Promise.all of PERSIST_CONCURRENCY at a time).
+    // PERSIST_CONCURRENCY must stay BELOW DATABASE_POOL_MAX (default 10,
+    // user-set 5 on Supabase transaction-mode pooler) — otherwise the local
+    // pg Pool throws ECHECKOUTTIMEOUT when all 5 connections are in use.
+    // We use 4 for Gmail (leaves headroom for indexer/scheduler/whatsapp
+    // ticks that may run concurrently) and 3 for Zoho/IMAP (which also
+    // does an HTTP fetch per ID, so the persist path is the only DB pressure).
+    const BATCH_FETCH_SIZE = isGmail ? 50 : 25;          // HTTP batch size
+    const PERSIST_CONCURRENCY = isGmail ? 4 : 3;         // DB write concurrency
     const persistMessageSafe = async (id: string, message: EmailMessage | null) => {
       if (!message) return;
       if (message.is_draft && !draftIdsByMessage && adapter.listDraftIdsByMessage) {
