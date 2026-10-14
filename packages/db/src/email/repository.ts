@@ -344,7 +344,12 @@ export async function listMailFoldersForOrganization(
 ): Promise<Array<Record<string, unknown>>> {
   const values: unknown[] = [organizationId];
   const conditions = ["a.organization_id = $1", "a.deleted_at IS NULL"];
-  if (accountId) { values.push(accountId); conditions.push(`f.email_account_id = ${values.length}`); }
+  // IMPORTANT: use $${values.length} (double-$$) to produce the PostgreSQL
+  // parameter placeholder $2, $3, etc. Single-$$ would inject the literal
+  // integer into the SQL string, producing `f.email_account_id = 2` which
+  // fails with "operator does not exist: uuid = integer" because
+  // email_account_id is a UUID column and there's no implicit integer→uuid cast.
+  if (accountId) { values.push(accountId); conditions.push(`f.email_account_id = $${values.length}`); }
   const r = await query<Row>(
     `SELECT f.id, f.email_account_id, f.provider_folder_id, f.name, f.role, f.unread_count
      FROM email_folders f JOIN email_accounts a ON a.id = f.email_account_id
