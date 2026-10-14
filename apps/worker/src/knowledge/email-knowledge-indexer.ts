@@ -80,10 +80,12 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
     throw new Error("Email knowledge indexing requires organization, account, and provider message IDs.");
   }
   const activeAccount = await query<{ id: string }>(
-    `SELECT id FROM email_accounts
-      WHERE id=$1 AND organization_id=$2 AND provider=$3 AND deleted_at IS NULL
+    `SELECT a.id FROM email_accounts a
+       JOIN email_messages m ON m.email_account_id=a.id AND m.organization_id=a.organization_id
+      WHERE a.id=$1 AND a.organization_id=$2 AND a.provider=$3 AND a.deleted_at IS NULL
+        AND m.provider_message_id=$4
       LIMIT 1`,
-    [accountId, organizationId, provider],
+    [accountId, organizationId, provider, providerMessageId],
   );
   if (!activeAccount.rows[0]) {
     await deleteEmailKnowledge(organizationId, accountId, providerMessageId, provider);
@@ -156,14 +158,20 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
         `UPDATE knowledge_documents
             SET filename=$1, metadata=$2::jsonb, updated_at=now()
           WHERE id=$3 AND organization_id=$4 AND storage_bucket='email-account'
-            AND EXISTS (SELECT 1 FROM email_accounts a WHERE a.id=$5 AND a.organization_id=$4 AND a.provider=$6 AND a.deleted_at IS NULL)`,
-        [(message.subject || providerMessageId).slice(0, 500), JSON.stringify(metadata), existingDocument.id, organizationId, accountId, provider],
+            AND EXISTS (
+              SELECT 1 FROM email_accounts a JOIN email_messages m ON m.email_account_id=a.id AND m.organization_id=a.organization_id
+               WHERE a.id=$5 AND a.organization_id=$4 AND a.provider=$6 AND a.deleted_at IS NULL AND m.provider_message_id=$7
+            )`,
+        [(message.subject || providerMessageId).slice(0, 500), JSON.stringify(metadata), existingDocument.id, organizationId, accountId, provider, providerMessageId],
       );
       await query(
         `UPDATE knowledge_chunks SET metadata=$1::jsonb
           WHERE document_id=$2 AND organization_id=$3
-            AND EXISTS (SELECT 1 FROM email_accounts a WHERE a.id=$4 AND a.organization_id=$3 AND a.provider=$5 AND a.deleted_at IS NULL)`,
-        [JSON.stringify(metadata), existingDocument.id, organizationId, accountId, provider],
+            AND EXISTS (
+              SELECT 1 FROM email_accounts a JOIN email_messages m ON m.email_account_id=a.id AND m.organization_id=a.organization_id
+               WHERE a.id=$4 AND a.organization_id=$3 AND a.provider=$5 AND a.deleted_at IS NULL AND m.provider_message_id=$6
+            )`,
+        [JSON.stringify(metadata), existingDocument.id, organizationId, accountId, provider, providerMessageId],
       );
     }
     // Content is unchanged: metadata-only changes do not rebuild chunks or re-embed.
@@ -177,12 +185,18 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
         sha256, size_bytes, status, metadata, updated_at)
      SELECT $1, NULL, $2, 'message/rfc822', 'email-account', $3, $4, $5, 'ready', $6::jsonb, now()
        FROM email_accounts a
+       JOIN email_messages m ON m.email_account_id=a.id AND m.organization_id=a.organization_id
       WHERE a.id=$7 AND a.organization_id=$1 AND a.provider=$8 AND a.deleted_at IS NULL
+        AND m.provider_message_id=$9
      ON CONFLICT (organization_id, storage_bucket, storage_path) WHERE storage_path IS NOT NULL
      DO UPDATE SET filename=EXCLUDED.filename, content_type=EXCLUDED.content_type,
        sha256=EXCLUDED.sha256, size_bytes=EXCLUDED.size_bytes, status='ready',
        metadata=EXCLUDED.metadata, updated_at=now()
-     WHERE EXISTS (SELECT 1 FROM email_accounts a WHERE a.id=$7 AND a.organization_id=$1 AND a.provider=$8 AND a.deleted_at IS NULL)
+     WHERE EXISTS (
+       SELECT 1 FROM email_accounts a JOIN email_messages m ON m.email_account_id=a.id AND m.organization_id=a.organization_id
+        WHERE a.id=$7 AND a.organization_id=$1 AND a.provider=$8 AND a.deleted_at IS NULL
+          AND m.provider_message_id=$9
+     )
      RETURNING id`,
     [
       organizationId,
@@ -193,13 +207,15 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
       JSON.stringify(metadata),
       accountId,
       provider,
+      providerMessageId,
     ],
   );
   const documentId = document.rows[0]?.id;
   if (!documentId) {
     const stillActive = await query<{ id: string }>(
-      `SELECT id FROM email_accounts WHERE id=$1 AND organization_id=$2 AND provider=$3 AND deleted_at IS NULL LIMIT 1`,
-      [accountId, organizationId, provider],
+      `SELECT a.id FROM email_accounts a JOIN email_messages m ON m.email_account_id=a.id AND m.organization_id=a.organization_id
+        WHERE a.id=$1 AND a.organization_id=$2 AND a.provider=$3 AND a.deleted_at IS NULL AND m.provider_message_id=$4 LIMIT 1`,
+      [accountId, organizationId, provider, providerMessageId],
     );
     if (!stillActive.rows[0]) {
       await deleteEmailKnowledge(organizationId, accountId, providerMessageId, provider);
