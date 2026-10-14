@@ -165,8 +165,8 @@ export class PostgresEmailAccountRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    // Persist the vector-cleanup request before removing the account. The
-    // account_id in email_knowledge_cleanup_jobs deliberately has no FK so the
+    // Persist the vector-sync request before removing the account. The
+    // account_id in email_knowledge_sync_jobs deliberately has no FK so the
     // job survives account deletion and can target provider/account-scoped points.
     const r = await query<Row>(
       `WITH target AS MATERIALIZED (
@@ -175,9 +175,9 @@ export class PostgresEmailAccountRepository {
           WHERE id=$1
        ),
        cleanup AS (
-         INSERT INTO email_knowledge_cleanup_jobs (organization_id, account_id, provider, scope, status)
-         SELECT organization_id, id, provider, 'account', 'pending' FROM target
-         ON CONFLICT (organization_id, account_id) WHERE scope='account' DO UPDATE
+         INSERT INTO email_knowledge_sync_jobs (organization_id, account_id, provider, operation, status)
+         SELECT organization_id, id, provider, 'delete_account', 'pending' FROM target
+         ON CONFLICT (organization_id, account_id) WHERE operation='delete_account' DO UPDATE
            SET status='pending', attempts=0, next_attempt_at=now(),
                last_error=NULL, completed_at=NULL, updated_at=now()
          RETURNING account_id
