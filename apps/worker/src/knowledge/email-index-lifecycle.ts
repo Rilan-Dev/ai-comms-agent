@@ -1,3 +1,5 @@
+import { createEmailIndexHashes } from "./email-index-identity";
+
 export type EmailKnowledgeSyncJob = {
   id: string;
   organization_id: string;
@@ -68,7 +70,11 @@ function messageIdentity(job: EmailKnowledgeSyncJob): {
     accountId: job.account_id,
     provider: job.provider,
     providerMessageId: job.provider_message_id,
-    sourceIdentityHash: job.source_identity_hash ?? "",
+    sourceIdentityHash: job.source_identity_hash ?? createEmailIndexHashes(
+      { organizationId: job.organization_id, accountId: job.account_id, provider: job.provider, providerMessageId: job.provider_message_id },
+      "",
+      {},
+    ).sourceIdentityHash,
   };
 }
 
