@@ -83,7 +83,29 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$25,$10::jsonb,$11::jsonb,$12::jsonb,$13,$14,$15,$16,
        '{}'::jsonb,$17::jsonb,$18,$19,$20,$21,$22,$23,$24,$23,now())
      ON CONFLICT (email_account_id, provider_message_id)
-     DO UPDATE SET thread_id=EXCLUDED.thread_id, folder_id=EXCLUDED.folder_id,
+     DO UPDATE SET
+       indexed_at = CASE
+         WHEN email_messages.folder_id IS DISTINCT FROM EXCLUDED.folder_id
+           OR email_messages.from_email IS DISTINCT FROM EXCLUDED.from_email
+           OR email_messages.from_name IS DISTINCT FROM EXCLUDED.from_name
+           OR email_messages.to_recipients IS DISTINCT FROM EXCLUDED.to_recipients
+           OR email_messages.cc_recipients IS DISTINCT FROM EXCLUDED.cc_recipients
+           OR email_messages.bcc_recipients IS DISTINCT FROM EXCLUDED.bcc_recipients
+           OR email_messages.subject IS DISTINCT FROM EXCLUDED.subject
+           OR email_messages.text_body IS DISTINCT FROM EXCLUDED.text_body
+           OR email_messages.snippet IS DISTINCT FROM EXCLUDED.snippet
+           OR email_messages.labels IS DISTINCT FROM EXCLUDED.labels
+           OR email_messages.is_read IS DISTINCT FROM EXCLUDED.is_read
+           OR email_messages.is_starred IS DISTINCT FROM EXCLUDED.is_starred
+           OR email_messages.is_draft IS DISTINCT FROM EXCLUDED.is_draft
+           OR email_messages.is_sent IS DISTINCT FROM EXCLUDED.is_sent
+           OR email_messages.importance_score IS DISTINCT FROM EXCLUDED.importance_score
+           OR email_messages.action_required IS DISTINCT FROM EXCLUDED.action_required
+           OR email_messages.received_at IS DISTINCT FROM EXCLUDED.received_at
+           OR email_messages.sent_at IS DISTINCT FROM EXCLUDED.sent_at
+           OR email_messages.provider_updated_at IS DISTINCT FROM EXCLUDED.provider_updated_at
+         THEN NULL ELSE email_messages.indexed_at END,
+       thread_id=EXCLUDED.thread_id, folder_id=EXCLUDED.folder_id,
        internet_message_id=EXCLUDED.internet_message_id, in_reply_to=EXCLUDED.in_reply_to,
        references_header=EXCLUDED.references_header, from_email=EXCLUDED.from_email,
        from_name=EXCLUDED.from_name,
