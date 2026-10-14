@@ -25,7 +25,7 @@ const snapshot: EmailKnowledgeVectorSnapshot = {
   contentHash: "content-hash",
   metadataHash: "metadata-hash",
   metadata: { email_account_id: "account-2" },
-  chunks: [{ index: 0, content: "email content", contentHash: "chunk-hash", metadata: { email_account_id: "account-2" } }],
+  chunks: [{ index: 0, pointId: "00000000-0000-5000-8000-000000000000", content: "email content", contentHash: "chunk-hash", metadata: { email_account_id: "account-2" } }],
 };
 
 function dependencies(overrides: Partial<EmailKnowledgeSyncDependencies> = {}) {
