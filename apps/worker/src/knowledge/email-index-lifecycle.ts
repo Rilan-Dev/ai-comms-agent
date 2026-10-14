@@ -22,12 +22,12 @@ export type EmailKnowledgeVectorSnapshot = {
   contentHash: string;
   metadataHash: string;
   metadata: Record<string, unknown>;
-  chunks: Array<{ index: number; content: string; contentHash: string; metadata: Record<string, unknown> }>;
+  chunks: Array<{ index: number; pointId: string; content: string; contentHash: string; metadata: Record<string, unknown> }>;
 };
 
 export type EmailKnowledgeVectorAdapter = {
   /**
-   * Upsert points by deterministic source identity + chunk index. Compare hashes:
+   * Upsert points using each chunk.pointId (derived from source identity + chunk index). Compare hashes:
    * changed contentHash requires embedding refresh; changed metadataHash alone
    * updates point payload without re-embedding.
    */
