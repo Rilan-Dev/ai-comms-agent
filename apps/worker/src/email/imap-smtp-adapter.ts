@@ -496,7 +496,7 @@ export class ImapSmtpAdapter implements EmailProvider {
 
   private async appendDraft(raw: string): Promise<DraftRef> {
     const { imap, credentials } = this.ensureConnected();
-    const folder = (await this.listFolders()).find((item) => item.role === "drafts");
+    const folder = (await this.listFolders()).find((item) => item.role === "drafts" || /drafts/i.test(item.name));
     if (!folder) throw new Error("The IMAP server does not expose a Drafts folder");
     await this.command(`SELECT ${quote(folder.provider_folder_id)}`);
     const tag = this.nextTag(imap);
@@ -562,7 +562,7 @@ export class ImapSmtpAdapter implements EmailProvider {
     const { smtp, credentials } = this.ensureConnected();
     const sender = (credentials.username ?? "").trim();
     if (!sender || !/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(sender)) throw new Error("A valid authenticated sender address is required");
-    const recipients = [...this.validateAddresses(params.to), ...(params.cc ? this.validateAddresses(params.cc) : []), ...(params.bcc ? this.validateAddresses(params.bcc) : [])];
+    const recipients = [...this.validateAddresses(params.to), ...(params.cc?.length ? this.validateAddresses(params.cc) : []), ...(params.bcc?.length ? this.validateAddresses(params.bcc) : [])];
     const messageId = `<${randomUUID()}@ai-comms-agent.local>`;
     // Bcc recipients belong in the SMTP envelope, never in the delivered headers.
     const raw = this.buildMime(params, messageId, extraHeaders).replace(/^Bcc:.*\r?\n/im, "");
