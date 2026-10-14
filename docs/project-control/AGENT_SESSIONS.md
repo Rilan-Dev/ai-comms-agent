@@ -499,3 +499,12 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Security boundary:** Only registered/allowlisted read handlers can be offered. Unknown model tool names pass through executor for audit. No draft/mutation/send contracts are executable. FIX-01 owns ISS-026; DEV-01 must not patch the chat isolation bug.
 - **Verification:** No tests/typecheck/build/live provider/database/sync/deployment run.
 - **Next:** Execute the newly added mocked provider contract and worker-loop tests plus Clara/worker typechecks. Then integrate the loop only through a trusted server transport after ISS-026 is resolved.
+
+
+### DEV01-EMAIL-INDEX-LIFECYCLE-20261014
+- **Invocation:** Continue email tool security regression work and implement mailbox-to-index consistency for multiple provider accounts, message updates/deletions, and account removal.
+- **Branch:** `feature/email-index-lifecycle-v1` (not merged).
+- **Source work:** identity/content/metadata hashes; deterministic point IDs; changed-message requeueing; metadata-only updates; durable outbox for upsert/delete/account purge; account-scoped PostgreSQL document cleanup; retryable injected vector adapter processor; allowlist/capability tests.
+- **Boundary:** repository has no supported Clara RAG/vector adapter; the outbox processor is not wired into startup. Do not invent direct Qdrant access or an undocumented API. Vector sync is not complete until adapter integration and runtime evidence exist.
+- **Verification:** tests, TypeScript checks, DB migration, vector integration, and live ingestion were not run because there is no local checkout in this execution environment.
+- **Next:** bind supported vector adapter, run provider/loop/executor/hash/policy/outbox/lifecycle tests and Clara/worker typechecks. FIX-01 owns ISS-026; OPS-01 owns live infrastructure/ingestion verification.
