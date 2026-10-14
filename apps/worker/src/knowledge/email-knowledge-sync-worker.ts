@@ -1,5 +1,5 @@
 import { query } from "@ai-comms-agent/db";
-import { createEmailIndexHashes } from "./email-index-identity";
+import { createEmailIndexHashes, createEmailVectorPointId } from "./email-index-identity";
 import { processEmailKnowledgeSyncJob } from "./email-index-lifecycle";
 import type { EmailKnowledgeSyncDependencies, EmailKnowledgeSyncJob, EmailKnowledgeVectorAdapter, EmailKnowledgeVectorSnapshot } from "./email-index-lifecycle";
 
@@ -30,8 +30,8 @@ async function claimJobs(limit: number): Promise<EmailKnowledgeSyncJob[]> {
        SELECT id FROM email_knowledge_sync_jobs
         WHERE status IN ('pending','retry') AND next_attempt_at <= now()
         ORDER BY next_attempt_at ASC, created_at ASC
-        FOR UPDATE SKIP LOCKED
         LIMIT $1
+        FOR UPDATE SKIP LOCKED
      )
      UPDATE email_knowledge_sync_jobs j
         SET status='running', attempts=j.attempts+1, updated_at=now()
@@ -89,6 +89,7 @@ async function loadCurrentMessage(job: EmailKnowledgeSyncJob): Promise<EmailKnow
     metadata,
     chunks: chunksResult.rows.map((chunk) => ({
       index: chunk.chunk_index,
+      pointId: createEmailVectorPointId(String(metadata.source_identity_hash ?? job.source_identity_hash ?? identity.sourceIdentityHash), chunk.chunk_index),
       content: chunk.content,
       contentHash: chunk.content_hash,
       metadata: parseObject(chunk.metadata),
