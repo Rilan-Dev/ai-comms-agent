@@ -131,7 +131,6 @@ export async function processEmailKnowledgeIndexingBatch(limit = INDEXER_BATCH_S
          FROM email_messages
          JOIN email_accounts ON email_accounts.id = email_messages.email_account_id
         WHERE email_messages.indexed_at IS NULL
-          AND email_messages.is_draft = false
           AND email_accounts.deleted_at IS NULL
           AND email_accounts.organization_id = email_messages.organization_id
         ORDER BY email_messages.received_at ASC
@@ -152,13 +151,8 @@ export async function processEmailKnowledgeIndexingBatch(limit = INDEXER_BATCH_S
         }
         try {
           const message = toEmailMessage(row);
-          // Skip empty / draft-only messages — indexEmailKnowledge also
-          // checks is_draft and returns early, but we want to mark them
-          // indexed_at = now() to skip them on the next tick.
-          if (message.is_draft || !message.text_body && !message.snippet) {
-            await query("UPDATE email_messages SET indexed_at=now() WHERE id=$1", [row.id]);
-            return;
-          }
+          // The indexer also removes stale derived documents when a message
+          // becomes a draft or its searchable content becomes empty.
           await indexEmailKnowledge({
             organizationId: row.organization_id,
             accountId: row.email_account_id,
