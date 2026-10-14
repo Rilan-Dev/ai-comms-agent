@@ -1,3 +1,13 @@
+
+### Email index lifecycle branch — 2026-10-14
+
+- Source branch: `feature/email-index-lifecycle-v1` (not merged).
+- Added stable account/provider/message source identity, content and metadata hashes, deterministic chunk vector IDs, changed-message requeueing, metadata-only document/chunk metadata refresh, draft/empty-message stale document removal, and durable vector sync outbox operations.
+- Account deletion queues a durable account-vector purge and deletes account-scoped PostgreSQL email knowledge docs; message deletion queues account/message-scoped vector cleanup. Added an injected adapter processor with retry semantics and stale-job handling.
+- Added tests for allowlist revocation and capability combinations, identity/content/metadata hashes, vector point ID uniqueness, outbox migration shape, stale upsert/delete behavior and retry handling.
+- **NOT RUN:** provider-contract tests, worker loop tests, executor tests, new worker tests, Clara/worker typechecks, DB migrations, or live vector/mailbox integration. No PASS claimed because the current execution environment has no local checkout.
+- **Not yet complete:** production Clara RAG/vector adapter and worker startup wiring. This repository has no existing supported adapter; no undocumented endpoint or parallel Qdrant implementation was invented. Do not merge as fully working until this adapter boundary is resolved and checks are run.
+- FIX-01 owns ISS-026. OPS-01 owns live infrastructure and ingestion verification.
 # VERIFICATION_STATE.md
 
 Machine-readable verification record. The goal is to distinguish "developer says complete" from "implementation verified / tests verified / architecture reviewed / integration verified / deployment verified". This file is the canonical source of *what was actually verified*.
