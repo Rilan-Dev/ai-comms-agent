@@ -50,6 +50,29 @@ export function chunkEmailKnowledgeBody(body: string): string[] {
  * contract. Writes tenant-scoped PostgreSQL knowledge records only; it never
  * writes directly to Qdrant or changes the immutable Clara reference sources.
  */
+async function enqueueEmailKnowledgeUpsert(
+  organizationId: string,
+  accountId: string,
+  provider: EmailKnowledgeSource["provider"],
+  providerMessageId: string,
+  hashes: { sourceIdentityHash: string; contentHash: string; metadataHash: string },
+): Promise<void> {
+  await query(
+    `INSERT INTO email_knowledge_sync_jobs
+       (organization_id, account_id, provider, operation, provider_message_id,
+        source_identity_hash, content_hash, metadata_hash, status)
+     VALUES ($1,$2,$3,'upsert_message',$4,$5,$6,$7,'pending')
+     ON CONFLICT (organization_id, account_id, provider_message_id)
+       WHERE operation='upsert_message'
+     DO UPDATE SET provider=EXCLUDED.provider,
+       source_identity_hash=EXCLUDED.source_identity_hash,
+       content_hash=EXCLUDED.content_hash, metadata_hash=EXCLUDED.metadata_hash,
+       status='pending', attempts=0, next_attempt_at=now(), last_error=NULL,
+       completed_at=NULL, updated_at=now()`,
+    [organizationId, accountId, provider, providerMessageId, hashes.sourceIdentityHash, hashes.contentHash, hashes.metadataHash],
+  );
+}
+
 export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise<void> {
   const { organizationId, accountId, provider, message } = source;
   const providerMessageId = (message.provider_message_id || message.id).trim();
@@ -63,11 +86,11 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
     [accountId, organizationId, provider],
   );
   if (!activeAccount.rows[0]) {
-    await deleteEmailKnowledge(organizationId, accountId, providerMessageId);
+    await deleteEmailKnowledge(organizationId, accountId, providerMessageId, provider);
     return;
   }
   if (message.is_draft) {
-    await deleteEmailKnowledge(organizationId, accountId, providerMessageId);
+    await deleteEmailKnowledge(organizationId, accountId, providerMessageId, provider);
     return;
   }
 
@@ -79,7 +102,7 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
     message.text_body || message.snippet || "",
   ].filter(Boolean).join("\n\n").trim();
   if (!body) {
-    await deleteEmailKnowledge(organizationId, accountId, providerMessageId);
+    await deleteEmailKnowledge(organizationId, accountId, providerMessageId, provider);
     return;
   }
 
@@ -144,6 +167,7 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
       );
     }
     // Content is unchanged: metadata-only changes do not rebuild chunks or re-embed.
+    await enqueueEmailKnowledgeUpsert(organizationId, accountId, provider, providerMessageId, hashes);
     return;
   }
 
@@ -178,7 +202,7 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
       [accountId, organizationId, provider],
     );
     if (!stillActive.rows[0]) {
-      await deleteEmailKnowledge(organizationId, accountId, providerMessageId);
+      await deleteEmailKnowledge(organizationId, accountId, providerMessageId, provider);
       return;
     }
     throw new Error("Clara email knowledge document could not be persisted.");
@@ -201,6 +225,7 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
       [documentId, organizationId, chunkIndex, content, contentHash, JSON.stringify(metadata)],
     );
   }
+  await enqueueEmailKnowledgeUpsert(organizationId, accountId, provider, providerMessageId, hashes);
 }
 
 /**
@@ -213,20 +238,41 @@ export async function deleteEmailKnowledge(
   organizationId: string,
   accountId: string,
   providerMessageId: string,
+  provider: EmailKnowledgeSource["provider"],
 ): Promise<void> {
-  if (!organizationId || !accountId || !providerMessageId) {
-    throw new Error("Email knowledge deletion requires organization, account, and provider message IDs.");
+  if (!organizationId || !accountId || !providerMessageId || !provider) {
+    throw new Error("Email knowledge deletion requires organization, account, provider, and provider message IDs.");
   }
-  const storagePath = `${accountId}/${encodeURIComponent(providerMessageId.trim())}`;
+  const normalizedProviderMessageId = providerMessageId.trim();
+  const storagePath = `${accountId}/${encodeURIComponent(normalizedProviderMessageId)}`;
   await query(
-    `DELETE FROM knowledge_documents
-     WHERE organization_id = $1
-       AND storage_bucket = 'email-account'
-       AND storage_path = $2`,
-    [organizationId, storagePath],
+    `WITH cancelled_upserts AS (
+       UPDATE email_knowledge_sync_jobs
+          SET status='completed', completed_at=now(), updated_at=now(),
+              last_error='Superseded by message deletion'
+        WHERE organization_id=$1 AND account_id=$2 AND provider_message_id=$4
+          AND operation='upsert_message' AND status IN ('pending','retry')
+        RETURNING id
+     ),
+     queued_delete AS (
+       INSERT INTO email_knowledge_sync_jobs
+         (organization_id, account_id, provider, operation, provider_message_id, status)
+       VALUES ($1,$2,$3,'delete_message',$4,'pending')
+       ON CONFLICT (organization_id, account_id, provider_message_id)
+         WHERE operation='delete_message'
+       DO UPDATE SET status='pending', attempts=0, next_attempt_at=now(),
+         last_error=NULL, completed_at=NULL, updated_at=now()
+       RETURNING id
+     ),
+     removed_document AS (
+       DELETE FROM knowledge_documents
+        WHERE organization_id=$1 AND storage_bucket='email-account' AND storage_path=$5
+       RETURNING id
+     )
+     SELECT id FROM queued_delete`,
+    [organizationId, accountId, provider, normalizedProviderMessageId, storagePath],
   );
 }
-
 
 /**
  * Purge every email-derived Clara document for one removed connected account.
