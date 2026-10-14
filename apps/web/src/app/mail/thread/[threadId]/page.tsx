@@ -1,5 +1,7 @@
+import { cookies } from "next/headers";
 import { getMailThreadForOrganization } from "@ai-comms-agent/db";
-import { ensureDevSeed, getDevOrgId } from "@/lib/identity/repository";
+import { getAuthenticatedAppContext } from "@/lib/identity/repository";
+import { redirect } from "next/navigation";
 import { ThreadClient } from "./thread-client";
 
 export const dynamic = "force-dynamic";
@@ -8,9 +10,18 @@ export default async function MailThreadPage({ params }: { params: Promise<{ thr
   const { threadId } = await params;
   if (!process.env.DATABASE_URL) return <State title="Mail needs PostgreSQL" body="Configure DATABASE_URL to open persisted threads." />;
   try {
-    await ensureDevSeed();
-    const organizationId = getDevOrgId();
-    if (!organizationId) throw new Error("Development organization could not be resolved.");
+    // Resolve the user's REAL organization context from the auth cookie —
+    // not the dev org ID. The old version called getDevOrgId() which only
+    // works when ACA_ENABLE_DEV_IDENTITY=true. In production the user's
+    // auth cookie resolves to a real org membership; getDevOrgId returned
+    // undefined and the page fell through to "Thread not found".
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get("aca-access-token")?.value;
+    const authHeaders = new Headers();
+    if (accessToken) authHeaders.set("cookie", `aca-access-token=${encodeURIComponent(accessToken)}`);
+    const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: authHeaders }));
+    if (!context) redirect("/login?reason=not_provisioned");
+    const organizationId = context.organizationId;
     const messages = await getMailThreadForOrganization(organizationId, threadId);
     if (!messages.length) return <State title="Thread not found" body="This thread is unavailable in the current organization." />;
     return <ThreadClient organizationId={organizationId} threadId={threadId} initialMessages={messages as never[]} />;

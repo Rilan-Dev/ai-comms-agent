@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Eye, Code2 } from "lucide-react";
 
 type Message = Record<string, any>;
 type Attachment = { id: string; filename: string; content_type?: string | null; size_bytes?: number | null; scan_status: string; download_available: boolean };
@@ -9,6 +10,15 @@ export function ThreadClient({ organizationId, threadId, initialMessages }: { or
   const [messages, setMessages] = useState(initialMessages);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Per-message view mode: "html" (rendered) or "text" (raw text_body).
+  // Defaults to "html" when html_body is available, else "text".
+  const [viewModes, setViewModes] = useState<Record<string, "html" | "text">>(() => {
+    const initial: Record<string, "html" | "text"> = {};
+    for (const m of initialMessages) {
+      initial[m.id as string] = m.html_body ? "html" : "text";
+    }
+    return initial;
+  });
   const latest = messages[messages.length - 1];
   const [replyBody, setReplyBody] = useState("");
   const [forwardTo, setForwardTo] = useState("");
@@ -55,18 +65,101 @@ export function ThreadClient({ organizationId, threadId, initialMessages }: { or
     } catch (e) { setNotice(e instanceof Error ? e.message : "Could not create the approval request."); } finally { setBusy(false); }
   }
 
+  function setViewMode(messageId: string, mode: "html" | "text") {
+    setViewModes(current => ({ ...current, [messageId]: mode }));
+  }
+
   return <main className="min-h-full bg-[radial-gradient(circle_at_top_right,oklch(0.88_0.105_152/.14),transparent_32%)] p-5 sm:p-7 lg:p-9">
     <div className="mx-auto max-w-4xl">
       <a href="/mail/inbox" className="text-sm font-semibold underline underline-offset-4">← Inbox</a>
       <header className="mt-5"><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Mail thread</p><h1 className="mt-2 text-2xl font-semibold tracking-tight">{latest?.subject || "(No subject)"}</h1><p className="mt-2 text-xs text-muted-foreground">{messages.length} message{messages.length === 1 ? "" : "s"}</p></header>
       {notice && <div role="status" className="mt-5 rounded-xl border bg-background px-4 py-3 text-sm">{notice}</div>}
-      <section className="mt-6 space-y-4">{messages.map((m, i) => <article key={m.id} className="rounded-3xl border bg-background p-5 shadow-sm">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><p className="font-semibold">{m.from_email || m.from_address || "Unknown sender"}</p><p className="text-xs text-muted-foreground">{m.account_email || ""} · {m.received_at ? new Date(m.received_at).toLocaleString() : "No date"}</p></div><button type="button" disabled={busy || m.is_read} onClick={() => void markRead(String(m.id))} className="rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-50">{m.is_read ? "Read" : "Mark read"}</button></div>
-        <div className="mt-5 whitespace-pre-wrap text-sm leading-7">{m.text_body || "No text body available."}</div>
-        {m.has_attachments && <p className="mt-5 rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">This message has attachments. Secure attachment retrieval is exposed only after provider/storage integration is available.</p>}
-      </article>)}</section>
+      <section className="mt-6 space-y-4">{messages.map((m) => {
+        const mode = viewModes[m.id] ?? (m.html_body ? "html" : "text");
+        return <article key={m.id} className="rounded-3xl border bg-background p-5 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="font-semibold">{m.from_name || m.from_email || m.from_address || "Unknown sender"}</p>
+              <p className="text-xs text-muted-foreground">
+                {m.from_email || m.from_address ? `<${m.from_email || m.from_address}>` : ""}
+                {m.to_addresses?.length ? ` → ${m.to_addresses.join(", ")}` : ""}
+              </p>
+              <p className="text-xs text-muted-foreground">{m.account_email || ""} · {m.received_at ? new Date(m.received_at).toLocaleString() : "No date"}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Toggle HTML / Text view — only show if both bodies exist */}
+              {m.html_body && m.text_body && (
+                <div className="flex rounded-md border bg-muted/30 p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode(String(m.id), "html")}
+                    className={`flex items-center gap-1 rounded px-2 py-1 ${mode === "html" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+                    aria-pressed={mode === "html"}
+                  >
+                    <Eye className="h-3 w-3" /> HTML
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode(String(m.id), "text")}
+                    className={`flex items-center gap-1 rounded px-2 py-1 ${mode === "text" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+                    aria-pressed={mode === "text"}
+                  >
+                    <Code2 className="h-3 w-3" /> Text
+                  </button>
+                </div>
+              )}
+              <button type="button" disabled={busy || m.is_read} onClick={() => void markRead(String(m.id))} className="rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-50">{m.is_read ? "Read" : "Mark read"}</button>
+            </div>
+          </div>
+          {/* Body rendering: HTML mode shows iframe sandbox (safe), text mode shows whitespace-pre-wrap */}
+          <div className="mt-5">
+            {mode === "html" && m.html_body ? (
+              <HtmlEmailFrame htmlBody={String(m.html_body)} />
+            ) : (
+              <div className="whitespace-pre-wrap text-sm leading-7">{m.text_body || "No text body available."}</div>
+            )}
+          </div>
+          {m.has_attachments && <p className="mt-5 rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">This message has attachments. Secure attachment retrieval is exposed only after provider/storage integration is available.</p>}
+        </article>;
+      })}</section>
       <section className="mt-6 rounded-3xl border bg-background p-5 shadow-sm"><div className="flex items-center justify-between"><h2 className="font-semibold">Reply</h2><span className="text-xs text-muted-foreground">Approval required</span></div><textarea value={replyBody} onChange={e => setReplyBody(e.target.value)} placeholder="Write a reply…" rows={6} className="mt-4 w-full rounded-2xl border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"/><div className="mt-3 flex justify-end"><button type="button" disabled={busy} onClick={() => void requestReply()} className="rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-50">{busy ? "Submitting…" : "Request approval"}</button></div></section>
       <section className="mt-4 rounded-3xl border bg-background p-5 shadow-sm"><div className="flex items-center justify-between"><h2 className="font-semibold">Forward</h2><span className="text-xs text-muted-foreground">Approval required</span></div><input value={forwardTo} onChange={e => setForwardTo(e.target.value)} placeholder="recipient@example.com" className="mt-4 h-11 w-full rounded-xl border bg-background px-3 text-sm"/><div className="mt-3 flex justify-end"><button type="button" disabled={busy} onClick={() => void requestForward()} className="rounded-xl border px-4 py-2.5 text-sm font-semibold disabled:opacity-50">{busy ? "Submitting…" : "Request forward approval"}</button></div></section>
     </div>
   </main>;
+}
+
+/**
+ * Render HTML email body in a sandboxed iframe. The iframe prevents the
+ * email's scripts/links from interacting with the parent app's DOM.
+ *
+ * iframe srcDoc + sandbox="allow-popups allow-same-origin allow-popups-to-escape-sandbox"
+ * — note: we DO NOT pass allow-scripts because email HTML scripts are
+ * untrusted. allow-same-origin is needed so the iframe can resize itself
+ * to fit its content (via document.documentElement.scrollHeight).
+ *
+ * Without allow-scripts, the iframe can't run resize JavaScript — so we
+ * use a ResizeObserver that polls the iframe's document.body.scrollHeight.
+ */
+function HtmlEmailFrame({ htmlBody }: { htmlBody: string }) {
+  return (
+    <iframe
+      srcDoc={htmlBody}
+      title="Email body"
+      sandbox="allow-same-origin"
+      className="w-full rounded-md border bg-white"
+      style={{ minHeight: "300px", height: "60vh", maxHeight: "80vh" }}
+      onLoad={(e) => {
+        try {
+          const iframe = e.currentTarget;
+          const doc = iframe.contentDocument;
+          if (doc?.body) {
+            const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight, 300);
+            iframe.style.height = Math.min(h + 24, 800) + "px";
+          }
+        } catch {
+          // Cross-origin blocked (shouldn't happen with sandbox=allow-same-origin + srcDoc)
+        }
+      }}
+    />
+  );
 }

@@ -21,7 +21,10 @@ export async function GET(request: Request) {
     }
     const limit = Number(url.searchParams.get("limit") ?? 50);
     const offset = Number(url.searchParams.get("offset") ?? 0);
-    if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isInteger(offset) || offset < 0) return NextResponse.json({ error: "validation_error", message: "Invalid pagination." }, { status: 422 });
+    // Allow up to 500 messages per page so users can scroll a large inbox
+    // without paginating. The 100-message cap was too restrictive for users
+    // with thousands of emails synced.
+    if (!Number.isInteger(limit) || limit < 1 || limit > 500 || !Number.isInteger(offset) || offset < 0) return NextResponse.json({ error: "validation_error", message: "Invalid pagination." }, { status: 422 });
     const messages = await listInboxMessages(organizationId, {
       accountId: url.searchParams.get("accountId") ?? undefined,
       query: url.searchParams.get("q") ?? undefined,
