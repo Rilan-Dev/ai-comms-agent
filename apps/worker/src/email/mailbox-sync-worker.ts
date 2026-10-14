@@ -210,7 +210,7 @@ async function removeDeletedMessages(account: Candidate, providerMessageIds: str
 
   // Remove derived retrieval documents even when the local message row was
   // already absent (e.g. a retry after a partial failure).
-  await Promise.all(uniqueIds.map((id) => deleteEmailKnowledge(account.organization_id, account.id, id)));
+  await Promise.all(uniqueIds.map((id) => deleteEmailKnowledge(account.organization_id, account.id, id, account.provider)));
 }
 
 async function processAccount(candidate: Candidate): Promise<boolean> {
