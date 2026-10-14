@@ -175,9 +175,9 @@ export class PostgresEmailAccountRepository {
           WHERE id=$1
        ),
        cleanup AS (
-         INSERT INTO email_knowledge_cleanup_jobs (organization_id, account_id, provider, status)
-         SELECT organization_id, id, provider, 'pending' FROM target
-         ON CONFLICT (organization_id, account_id) DO UPDATE
+         INSERT INTO email_knowledge_cleanup_jobs (organization_id, account_id, provider, scope, status)
+         SELECT organization_id, id, provider, 'account', 'pending' FROM target
+         ON CONFLICT (organization_id, account_id) WHERE scope='account' DO UPDATE
            SET status='pending', attempts=0, next_attempt_at=now(),
                last_error=NULL, completed_at=NULL, updated_at=now()
          RETURNING account_id
