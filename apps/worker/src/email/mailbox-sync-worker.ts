@@ -79,9 +79,9 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
        internet_message_id, in_reply_to, references_header, from_email, from_name, to_recipients,
        cc_recipients, bcc_recipients, subject, text_body, html_body_sanitized, snippet,
        headers, labels, is_read, is_starred, is_draft, is_sent, importance_score,
-       action_required, received_at, sent_at, provider_updated_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$25,$10::jsonb,$11::jsonb,$12::jsonb,$13,$14,$15,$16,
-       '{}'::jsonb,$17::jsonb,$18,$19,$20,$21,$22,$23,$24,$23,now())
+       action_required, received_at, sent_at, provider_updated_at, updated_at, has_attachments)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13::jsonb,$14,$15,$16,$17,
+       '{}'::jsonb,$18::jsonb,$19,$20,$21,$22,$23,$24,$25,$26,NULL,now(),$27)
      ON CONFLICT (email_account_id, provider_message_id)
      DO UPDATE SET
        indexed_at = CASE
@@ -103,7 +103,7 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
            OR email_messages.action_required IS DISTINCT FROM EXCLUDED.action_required
            OR email_messages.received_at IS DISTINCT FROM EXCLUDED.received_at
            OR email_messages.sent_at IS DISTINCT FROM EXCLUDED.sent_at
-           OR email_messages.provider_updated_at IS DISTINCT FROM EXCLUDED.provider_updated_at
+           OR email_messages.has_attachments IS DISTINCT FROM EXCLUDED.has_attachments
          THEN NULL ELSE email_messages.indexed_at END,
        thread_id=EXCLUDED.thread_id, folder_id=EXCLUDED.folder_id,
        internet_message_id=EXCLUDED.internet_message_id, in_reply_to=EXCLUDED.in_reply_to,
@@ -115,7 +115,9 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
        snippet=EXCLUDED.snippet, labels=EXCLUDED.labels,
        is_read=EXCLUDED.is_read, is_starred=EXCLUDED.is_starred, is_draft=EXCLUDED.is_draft,
        is_sent=EXCLUDED.is_sent, importance_score=EXCLUDED.importance_score,
-       provider_updated_at=EXCLUDED.provider_updated_at, updated_at=now()`,
+       action_required=EXCLUDED.action_required, received_at=EXCLUDED.received_at,
+       sent_at=EXCLUDED.sent_at, has_attachments=EXCLUDED.has_attachments,
+       updated_at=now()`,
     [
       account.id,
       account.organization_id,
@@ -126,16 +128,14 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
       message.in_reply_to || null,
       (message.references ?? []).join(" ") || null,
       message.from_address || null,
-      // $10-$12: jsonb arrays
+      message.from_name || null,
       JSON.stringify(message.to_addresses ?? []),
       JSON.stringify(message.cc_addresses ?? []),
       JSON.stringify(message.bcc_addresses ?? []),
-      // $13-$16: subject, text_body, html_body_sanitized, snippet
       message.subject || "",
       message.text_body || "",
       message.html_body || null,
       message.snippet || "",
-      // $17-$24: labels + flags + dates
       JSON.stringify(labels),
       message.is_read,
       message.is_starred,
@@ -145,8 +145,7 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
       message.action_required,
       message.received_at,
       message.is_outbound ? message.received_at : null,
-      // $25: from_name (display name extracted by the RFC822 parser)
-      message.from_name || null,
+      Boolean(message.has_attachments),
     ],
   );
 
