@@ -56,6 +56,16 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
   if (!organizationId || !accountId || !providerMessageId) {
     throw new Error("Email knowledge indexing requires organization, account, and provider message IDs.");
   }
+  const activeAccount = await query<{ id: string }>(
+    `SELECT id FROM email_accounts
+      WHERE id=$1 AND organization_id=$2 AND provider=$3 AND deleted_at IS NULL
+      LIMIT 1`,
+    [accountId, organizationId, provider],
+  );
+  if (!activeAccount.rows[0]) {
+    await deleteEmailKnowledge(organizationId, accountId, providerMessageId);
+    return;
+  }
   if (message.is_draft) {
     await deleteEmailKnowledge(organizationId, accountId, providerMessageId);
     return;
@@ -122,12 +132,15 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
       await query(
         `UPDATE knowledge_documents
             SET filename=$1, metadata=$2::jsonb, updated_at=now()
-          WHERE id=$3 AND organization_id=$4 AND storage_bucket='email-account'`,
-        [(message.subject || providerMessageId).slice(0, 500), JSON.stringify(metadata), existingDocument.id, organizationId],
+          WHERE id=$3 AND organization_id=$4 AND storage_bucket='email-account'
+            AND EXISTS (SELECT 1 FROM email_accounts a WHERE a.id=$5 AND a.organization_id=$4 AND a.provider=$6 AND a.deleted_at IS NULL)`,
+        [(message.subject || providerMessageId).slice(0, 500), JSON.stringify(metadata), existingDocument.id, organizationId, accountId, provider],
       );
       await query(
-        "UPDATE knowledge_chunks SET metadata=$1::jsonb WHERE document_id=$2 AND organization_id=$3",
-        [JSON.stringify(metadata), existingDocument.id, organizationId],
+        `UPDATE knowledge_chunks SET metadata=$1::jsonb
+          WHERE document_id=$2 AND organization_id=$3
+            AND EXISTS (SELECT 1 FROM email_accounts a WHERE a.id=$4 AND a.organization_id=$3 AND a.provider=$5 AND a.deleted_at IS NULL)`,
+        [JSON.stringify(metadata), existingDocument.id, organizationId, accountId, provider],
       );
     }
     // Content is unchanged: metadata-only changes do not rebuild chunks or re-embed.
@@ -138,11 +151,14 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
     `INSERT INTO knowledge_documents
        (organization_id, agent_id, filename, content_type, storage_bucket, storage_path,
         sha256, size_bytes, status, metadata, updated_at)
-     VALUES ($1, NULL, $2, 'message/rfc822', 'email-account', $3, $4, $5, 'ready', $6::jsonb, now())
+     SELECT $1, NULL, $2, 'message/rfc822', 'email-account', $3, $4, $5, 'ready', $6::jsonb, now()
+       FROM email_accounts a
+      WHERE a.id=$7 AND a.organization_id=$1 AND a.provider=$8 AND a.deleted_at IS NULL
      ON CONFLICT (organization_id, storage_bucket, storage_path) WHERE storage_path IS NOT NULL
      DO UPDATE SET filename=EXCLUDED.filename, content_type=EXCLUDED.content_type,
        sha256=EXCLUDED.sha256, size_bytes=EXCLUDED.size_bytes, status='ready',
        metadata=EXCLUDED.metadata, updated_at=now()
+     WHERE EXISTS (SELECT 1 FROM email_accounts a WHERE a.id=$7 AND a.organization_id=$1 AND a.provider=$8 AND a.deleted_at IS NULL)
      RETURNING id`,
     [
       organizationId,
@@ -151,10 +167,22 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
       digest,
       Buffer.byteLength(body, "utf8"),
       JSON.stringify(metadata),
+      accountId,
+      provider,
     ],
   );
   const documentId = document.rows[0]?.id;
-  if (!documentId) throw new Error("Clara email knowledge document could not be persisted.");
+  if (!documentId) {
+    const stillActive = await query<{ id: string }>(
+      `SELECT id FROM email_accounts WHERE id=$1 AND organization_id=$2 AND provider=$3 AND deleted_at IS NULL LIMIT 1`,
+      [accountId, organizationId, provider],
+    );
+    if (!stillActive.rows[0]) {
+      await deleteEmailKnowledge(organizationId, accountId, providerMessageId);
+      return;
+    }
+    throw new Error("Clara email knowledge document could not be persisted.");
+  }
 
   const chunks = chunkEmailKnowledgeBody(body);
   // Rebuild this document's chunk set before inserting to avoid transient
