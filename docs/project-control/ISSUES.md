@@ -474,3 +474,15 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Required remedy:** FIX-01 must make email context account-scoped to the active agent's bindings and permitted binding roles, pass `agentId` into the loader, add cross-agent/cross-account regression coverage, and ensure email content remains marked untrusted. Do not rely on organization membership alone for agent mailbox access.
 - **Verification:** Source inspection only; exploitability and remediation have not been runtime-tested. No PASS claimed.
 - **Role routing:** DEV-01 does not take ownership of this substantial security bug; continue modular tool work against the bound-account repository contract. OPS-01 remains responsible for infrastructure/deployment defects.
+
+
+## ISS-027 — Email vector sync outbox has no production Clara RAG adapter
+- **Opened:** 2026-10-14
+- **Severity:** high (email retrieval consistency and account-removal data lifecycle)
+- **Owner:** DEV-01 / Forge for supported adapter integration; OPS-01 only for live infrastructure/ingestion verification after source integration.
+- **Status:** adapter_contract_implemented_runtime_binding_pending
+- **Evidence:** Source review found `apps/worker/src/knowledge/email-knowledge-indexer.ts` persists email-derived `knowledge_documents` and `knowledge_chunks` in PostgreSQL, but the repository has no supported Clara RAG/vector adapter or direct Qdrant client. The existing architecture explicitly says to use Clara's supported RAG APIs rather than creating a parallel vector implementation.
+- **Remedy so far:** Draft PR #16 adds account-scoped source/content/metadata hashes, deterministic vector point IDs, a durable `email_knowledge_sync_jobs` outbox, account/message deletion events, and an injected retryable vector adapter contract. The processor is not wired into worker startup because the actual supported adapter/API contract is absent.
+- **Required next action:** Identify the supported Clara RAG ingestion/update/delete API from the authoritative Clara implementation, implement the adapter, wire `startEmailKnowledgeSyncLoop` into worker startup, and test content re-embedding versus metadata-only payload update, stale chunk removal, message delete, account purge, retry/idempotency, and multi-account isolation.
+- **Verification:** No tests/typecheck/migration/live vector verification were run in this environment; no vector sync PASS is claimed. Do not merge PR #16 as fully working until the adapter is bound and checks are run.
+- **Boundaries:** FIX-01 retains ISS-026 ownership; OPS-01 owns live infrastructure and ingestion verification.
