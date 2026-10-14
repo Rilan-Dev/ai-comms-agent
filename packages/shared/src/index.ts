@@ -95,6 +95,12 @@ export { EmailProviderRegistry, type EmailProviderFactory } from "./email/regist
 
 export { EMAIL_CAPABILITIES, emptyCapabilitySet, normalizeCapabilitySet, assertCapability } from "./email/capabilities";
 
+// RFC822 / MIME message parser — used by the Zoho adapter (which fetches
+// raw RFC822 source from /originalmessage) and the IMAP adapter (which
+// fetches raw RFC822 source via FETCH BODY[]). Parses subject/from/to/body
+// + handles multipart MIME + QP/Base64 decoding.
+export { parseRfc822, type ParsedEmail } from "./email/rfc822-parser";
+
 export type { AgentStatus, DeploymentEnvironment, AgentEmailAccountRole, Agent, AgentVersion, AgentDeployment, AgentPolicy, AgentEmailBinding, AgentWhatsAppBinding } from "./agent/domain";
 
 export type { AgentExecutionSource, AgentExecutionRequest, AgentExecutionDispatchResult, ProductActionResult } from "./agent/execution";

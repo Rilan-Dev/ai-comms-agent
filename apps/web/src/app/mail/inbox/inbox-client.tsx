@@ -25,18 +25,37 @@ export function InboxClient({ organizationId, initialMessages }: { organizationI
   const [accountId, setAccountId] = useState("all"); const [unread, setUnread] = useState(false);
   const [action, setAction] = useState(false); const [busy, setBusy] = useState(false); const [notice, setNotice] = useState<string | null>(null);
   const [folders, setFolders] = useState<Array<{ id: string; name: string; role: string; email_account_id: string }>>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const PAGE_SIZE = 100;
   const accounts = useMemo(() => Array.from(new Map(messages.map(m => [m.email_account_id, { id: m.email_account_id, label: m.account_email }])).values()), [messages]);
   async function refresh() {
     setBusy(true); setNotice(null);
     try {
-      const params = new URLSearchParams({ organizationId, limit: "100" });
+      const params = new URLSearchParams({ organizationId, limit: String(PAGE_SIZE), offset: "0" });
       if (q.trim()) params.set("q", q.trim()); if (accountId !== "all") params.set("accountId", accountId);
       if (unread) params.set("unread", "true"); if (action) params.set("action", "true");
       const response = await fetch("/api/mail/inbox?" + params.toString(), { cache: "no-store" });
       const data = await response.json(); if (!response.ok) throw new Error(data.message ?? "Could not load inbox.");
       setMessages(data.messages ?? []);
+      // If the API returned exactly PAGE_SIZE messages, there are likely more.
+      setHasMore((data.messages ?? []).length === PAGE_SIZE);
     } catch (error) { setNotice(error instanceof Error ? error.message : "Could not load inbox."); }
     finally { setBusy(false); }
+  }
+  async function loadMore() {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true); setNotice(null);
+    try {
+      const params = new URLSearchParams({ organizationId, limit: String(PAGE_SIZE), offset: String(messages.length) });
+      if (q.trim()) params.set("q", q.trim()); if (accountId !== "all") params.set("accountId", accountId);
+      if (unread) params.set("unread", "true"); if (action) params.set("action", "true");
+      const response = await fetch("/api/mail/inbox?" + params.toString(), { cache: "no-store" });
+      const data = await response.json(); if (!response.ok) throw new Error(data.message ?? "Could not load more messages.");
+      setMessages(prev => [...prev, ...(data.messages ?? [])]);
+      setHasMore((data.messages ?? []).length === PAGE_SIZE);
+    } catch (error) { setNotice(error instanceof Error ? error.message : "Could not load more messages."); }
+    finally { setLoadingMore(false); }
   }
   useEffect(() => { const timer = setTimeout(() => { void refresh(); }, 250); return () => clearTimeout(timer); }, [q, accountId, unread, action]);
   useEffect(() => { void (async()=>{ try { const params = new URLSearchParams({ organizationId }); if (accountId !== "all") params.set("accountId", accountId); const response = await fetch("/api/mail/messages/folder?" + params.toString(), { cache: "no-store" }); const data = await response.json(); if (response.ok) setFolders(data.folders ?? []); } catch {} })(); }, [organizationId, accountId]);
@@ -60,6 +79,13 @@ export function InboxClient({ organizationId, initialMessages }: { organizationI
           <a href={"/mail/thread/" + m.thread_id} className="min-w-0"><p className={"truncate text-sm " + (!m.is_read ? "font-semibold" : "font-medium")}>{m.subject || "(No subject)"}</p><p className="mt-1 truncate text-xs text-muted-foreground">{m.snippet || "No preview available"}</p></a>
           <div className="flex items-center gap-2 md:justify-end"><span className="text-xs text-muted-foreground">{relative(m.received_at)}</span>{m.action_required && <span className="rounded-sm bg-attention-subtle px-2 py-1 text-[10px] font-medium text-attention">Action</span>}{m.has_attachments && <span aria-label="Has attachments" className="text-xs text-muted-foreground"><svg aria-hidden="true" viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m21.4 11.1-8.5 8.5a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg></span>}<button type="button" aria-label={m.is_read ? "Mark unread" : "Mark read"} disabled={busy} onClick={async()=>{setBusy(true);setNotice(null);try{const response=await fetch("/api/mail/messages/read-state",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,messageIds:[m.id],isRead:!m.is_read})});const data=await response.json();if(!response.ok)throw new Error(data.message??"Could not update message.");if(data.updated!==1)throw new Error("Message was not updated.");setMessages(current=>current.map(item=>item.id===m.id?{...item,is_read:!m.is_read}:item));}catch(error){setNotice(error instanceof Error?error.message:"Could not update message.");}finally{setBusy(false);}}} className="rounded-md border border-border px-2.5 py-1.5 text-[11px] font-medium transition-colors hover:bg-secondary disabled:opacity-50">{m.is_read ? "Unread" : "Read"}</button><button type="button" disabled={busy} onClick={()=>void folderAction(m.id,"archive")} className="rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold hover:bg-muted disabled:opacity-50">Archive</button>{folders.filter(f=>f.email_account_id===m.email_account_id && f.role!=="inbox").length>0 && <select aria-label="Move message" defaultValue="" disabled={busy} onChange={e=>{const value=e.target.value;if(value)void folderAction(m.id,"move",value);e.currentTarget.value="";}} className="max-w-28 rounded-lg border bg-background px-2 py-1.5 text-[11px]"><option value="">Move…</option>{folders.filter(f=>f.email_account_id===m.email_account_id).map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select>}</div>
         </div>)}
+        {hasMore && (
+          <div className="border-b border-border px-4 py-4 text-center sm:px-5">
+            <button type="button" disabled={loadingMore} onClick={() => void loadMore()} className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50">
+              {loadingMore ? "Loading more…" : `Load more (showing ${messages.length})`}
+            </button>
+          </div>
+        )}
       </div>}
       </section>
     </div>

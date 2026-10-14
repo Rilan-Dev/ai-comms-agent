@@ -2,6 +2,7 @@ import type {
   CapabilitySet, DraftParams, DraftRef, EmailCredentials, EmailFolder, EmailLabel,
   EmailMessage, EmailProvider, ListOptions, SearchQuery, SentMessageRef, SyncResult, SyncState,
 } from "@ai-comms-agent/shared";
+import { parseRfc822 } from "@ai-comms-agent/shared";
 
 const CAPABILITIES: CapabilitySet = {
   folders: true, labels: true, sync_incremental: true, sync_full: true,
@@ -265,26 +266,85 @@ export class ZohoAdapter implements EmailProvider {
     };
   }
 
+  /**
+   * Normalize a Zoho Mail API message object into our EmailMessage shape.
+   *
+   * The Zoho API returns DIFFERENT shapes depending on the endpoint:
+   *   - /messages/view (list): { subject, fromAddress, toAddress, content, ... }
+   *     metadata with body content as a string field
+   *   - /messages/{id}/originalmessage: returns raw RFC822 source as the
+   *     `content` field (full MIME source — "Delivered-To: ... Return-Path:
+   *     ... Subject: ... <body>")
+   *
+   * The /originalmessage endpoint is what getMessage() calls during sync
+   * (because Zoho's structured /messages/{id} endpoint doesn't return
+   * body content). So when `content` looks like RFC822 source (starts
+   * with "Delivered-To:" / "Received:" / "Return-Path:"), we PARSE it
+   * to extract the real subject / from / to / text_body / html_body.
+   *
+   * This fixes the bug where Zoho emails showed raw RFC822 headers as
+   * the snippet (e.g., "Delivered-To: rilan@... Return-Path: <...> ARC-Seal:...")
+   * and "(No subject)" as the subject.
+   */
   private normalizeMessage(message: any, folderId = String(message?.folderId ?? "")): EmailMessage {
-    const to = String(message.toAddress ?? "").split(",").map((v: string) => v.trim()).filter(Boolean);
-    const cc = String(message.ccAddress ?? "").split(",").map((v: string) => v.trim()).filter(Boolean);
+    const rawContent = String(message.content ?? message.summary ?? "");
+    const isRfc822Source = /^[A-Za-z-]+:/i.test(rawContent) && (
+      rawContent.startsWith("Delivered-To:") ||
+      rawContent.startsWith("Return-Path:") ||
+      rawContent.startsWith("Received:") ||
+      rawContent.startsWith("MIME-Version:") ||
+      rawContent.startsWith("ARC-Seal:")
+    );
+
+    // If we have raw RFC822 source, parse it and use the parsed values
+    // as the source of truth (Zoho's API metadata fields may be empty
+    // or stale on the /originalmessage endpoint).
+    const parsed = isRfc822Source ? parseRfc822(rawContent) : null;
+
+    const to = parsed
+      ? parsed.to
+      : String(message.toAddress ?? "").split(",").map((v: string) => v.trim()).filter(Boolean);
+    const cc = parsed
+      ? parsed.cc
+      : String(message.ccAddress ?? "").split(",").map((v: string) => v.trim()).filter(Boolean);
+
+    const subject = parsed ? parsed.subject : String(message.subject ?? "");
+    const textBody = parsed ? parsed.text_body : rawContent;
+    const htmlBody = parsed ? parsed.html_body : (message.content ? String(message.content) : undefined);
+    const fromAddress = parsed ? parsed.from : String(message.fromAddress ?? "");
+    const messageIdHeader = parsed ? parsed.message_id : String(message.messageIdHeader ?? "");
+    const inReplyTo = parsed ? parsed.in_reply_to : (message.inReplyTo ? String(message.inReplyTo) : "");
+    const references = parsed
+      ? parsed.references
+      : (message.references ? String(message.references).split(/\s+/).filter(Boolean) : undefined);
+
+    // Build a clean snippet from the text body — strip remaining header
+    // artifacts and collapse whitespace.
+    const snippetText = textBody || rawContent;
+    const snippet = snippetText
+      .replace(/\r\n/g, " ")
+      .replace(/\n/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 240);
+
     return {
       id: String(message.messageId),
       email_account_id: String(this.accountId),
       thread_id: String(message.threadId ?? message.messageId),
       folder_id: folderId,
       provider_message_id: String(message.messageId),
-      message_id_header: String(message.messageIdHeader ?? ""),
-      in_reply_to: message.inReplyTo ? String(message.inReplyTo) : undefined,
-      references: message.references ? String(message.references).split(/\s+/).filter(Boolean) : undefined,
-      from_address: String(message.fromAddress ?? ""),
+      message_id_header: messageIdHeader,
+      in_reply_to: inReplyTo || undefined,
+      references: references && references.length ? references : undefined,
+      from_address: fromAddress,
       to_addresses: to,
       cc_addresses: cc,
       bcc_addresses: String(message.bccAddress ?? "").split(",").map((v: string) => v.trim()).filter(Boolean),
-      subject: String(message.subject ?? ""),
-      text_body: String(message.content ?? message.summary ?? ""),
-      html_body: message.content ? String(message.content) : undefined,
-      snippet: String(message.summary ?? message.content ?? "").slice(0, 240),
+      subject: subject || "(No subject)",
+      text_body: textBody,
+      html_body: htmlBody,
+      snippet,
       received_at: new Date(Number(message.receivedTime ?? message.date ?? Date.now())).toISOString(),
       is_read: String(message.status ?? "1") !== "0",
       is_starred: String(message.flagid ?? "").includes("flag"),
