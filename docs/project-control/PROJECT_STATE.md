@@ -538,3 +538,8 @@ Next product UI action remains Knowledge UI with real organization-scoped persis
 
 ### 2026-10-09 — Inbox and sync cursor code review
 Additional source defects were found and corrected: migration 0030's PL/pgSQL block delimiter, inbox search parameter placeholders, and legacy JSONB-vs-text sync cursor incompatibility. Migration 0031 adds canonical `cursor_token`; worker reads/writes were aligned. Static regression assertions were added. Tests, migration execution, Redis AUTH, deployment, and actual email import remain unverified. OPS-01 owns live rollout and Redis correction; see ISS-016.
+
+### 2026-10-14 — Email indexing lifecycle planning
+- PR #15's email-tool/Gmail history changes are merged to main (merge commit d444cf1b35939008058532b0754b46daef7cc312).
+- Added docs/plans/EMAIL-INDEX-IDENTITY-AND-ACCOUNT-LIFECYCLE.md. Key source-level gap: message content updates do not visibly invalidate indexed_at, and account removal lacks an explicit, retryable vector-index purge contract.
+- No test/typecheck/build or live vector/index acceptance is claimed. The current execution environment has no local checkout and cannot resolve github.com.
