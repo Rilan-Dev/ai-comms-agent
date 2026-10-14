@@ -4,9 +4,9 @@
 - Added stable source identity/content/metadata hashes and deterministic account-scoped vector point IDs; message content/metadata changes now requeue PostgreSQL-derived indexing through `indexed_at`.
 - Added durable `email_knowledge_sync_jobs` outbox for message upserts, message deletes and account purges; account deletion queues cleanup and removes its PostgreSQL email knowledge docs. Added retryable vector-adapter processor and tests.
 - Added execution-time policy/capability regression tests for allowlist revocation, all-required capabilities and any-capability alternatives.
-- **Next:** obtain/bind the supported Clara RAG vector adapter; then run provider-contract, worker-loop, executor, hash, policy, outbox and lifecycle tests in a local checkout, followed by Clara/worker typechecks. Fix concrete failures and record actual output.
+- **Next:** obtain/bind the supported Clara RAG vector adapter; then run `pnpm --filter @ai-comms-agent/worker test`, `pnpm --filter @ai-comms-agent/clara-core typecheck`, `pnpm --filter @ai-comms-agent/worker typecheck`, and `pnpm --filter @ai-comms-agent/web exec vitest run tests/agent-tool-registry.test.ts tests/email-read-tools.test.ts`, followed by `pnpm --filter @ai-comms-agent/web typecheck`. Fix concrete failures and record actual output.
 - **Critical boundary:** the repo has no existing supported RAG/vector adapter or direct Qdrant client. Outbox processor is adapter-injected and not wired into worker startup yet; live vector upsert/deletion is not complete. Do not claim it is.
-- No local checkout is available in this environment; tests/typechecks have not run. Do not wait/poll CI/Vercel while independent source work exists.
+- No local checkout is available in this environment; `git ls-remote https://github.com/Rilan-Dev/ai-comms-agent.git refs/heads/main` failed with exit 128: `Could not resolve host: github.com`. Tests/typechecks have not run. Do not wait/poll CI/Vercel while independent source work exists.
 - FIX-01 owns ISS-026; OPS-01 owns live infrastructure and ingestion verification. Keep the live model tool catalogue hidden until transport/security checks complete.
 
 ---
