@@ -1,3 +1,9 @@
+
+### Email index lifecycle branch — 2026-10-14
+- DEV-01 source branch `feature/email-index-lifecycle-v1` adds identity/content/metadata hashes, deterministic vector point IDs, content/metadata requeueing, durable vector sync outbox and retryable adapter processor.
+- Account removal queues a vector purge and purges account-scoped PostgreSQL email knowledge docs; message deletion queues vector cleanup.
+- Current gap: production Clara RAG vector adapter and worker startup wiring are not present in this repo. Vector jobs remain queued until a supported adapter is connected; do not claim vector sync complete.
+- Tests/typechecks are not run because this environment has no local checkout. Keep FIX-01/OPS-01 ownership boundaries and tool-catalogue gate unchanged.
 # PROJECT_STATE.md
 
 One-screen project status. This file is the canonical answer to "where are we?". Update it on every commit.
