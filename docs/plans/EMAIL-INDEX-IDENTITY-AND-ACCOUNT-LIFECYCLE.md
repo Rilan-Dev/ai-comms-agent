@@ -12,7 +12,7 @@ Implemented on branch `feature/email-index-lifecycle-v1` (not merged):
 
 ### Important incomplete integration boundary
 
-The repository currently has no supported Clara RAG/vector adapter or direct Qdrant client. Per the existing architecture contract, this change intentionally does not invent a parallel Qdrant collection or an undocumented endpoint. The durable outbox processor is implemented as an injected adapter boundary, but **the production vector adapter and worker startup wiring are still pending**. Until that is supplied, PostgreSQL inbox/document reconciliation and outbox persistence are source changes; live vector upsert/deletion is not complete and queued vector jobs must not be reported as completed.
+The ai-comms-agent repository has no supported server-to-server Clara RAG/vector adapter. Clara AI Platform has internal KB-aware vector-store functions (`upsertDocumentsKb`, `deleteDocumentChunks`), but no established cross-repository email-index API. The current RAG path is KB-scoped; adding email vectors to a shared KB before FIX-01 closes ISS-026 and establishes agent/account retrieval filters risks cross-agent mailbox leakage. This change intentionally does not invent an undocumented endpoint or parallel Qdrant collection. The durable outbox processor is implemented as an injected adapter boundary, but **production vector adapter and worker startup wiring remain pending**. PostgreSQL reconciliation and outbox persistence are source changes; live vector upsert/deletion is not complete and queued vector jobs must not be reported as completed.
 
 ### Verification state
 
