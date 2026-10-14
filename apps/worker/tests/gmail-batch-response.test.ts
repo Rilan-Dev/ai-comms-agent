@@ -31,7 +31,7 @@ test("Gmail batch parser strips Google's response- Content-ID prefix", () => {
     JSON.stringify(message),
     "--batch_response_boundary--",
     "",
-  ].join("\\r\\n");
+  ].join("\r\n");
 
   (adapter as any).parseBatchResponse(body, ["gmail-message-123"], result);
 
