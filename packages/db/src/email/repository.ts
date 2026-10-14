@@ -174,6 +174,16 @@ export class PostgresEmailAccountRepository {
            FROM email_accounts
           WHERE id=$1
        ),
+       cancelled_message_jobs AS (
+         UPDATE email_knowledge_sync_jobs j
+            SET status='completed', completed_at=now(), updated_at=now(),
+                last_error='Superseded by account deletion'
+           FROM target t
+          WHERE j.organization_id=t.organization_id AND j.account_id=t.id
+            AND j.operation IN ('upsert_message','delete_message')
+            AND j.status IN ('pending','retry')
+         RETURNING j.id
+       ),
        cleanup AS (
          INSERT INTO email_knowledge_sync_jobs (organization_id, account_id, provider, operation, status)
          SELECT organization_id, id, provider, 'delete_account', 'pending' FROM target
