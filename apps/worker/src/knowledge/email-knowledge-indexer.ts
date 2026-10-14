@@ -58,17 +58,29 @@ async function enqueueEmailKnowledgeUpsert(
   hashes: { sourceIdentityHash: string; contentHash: string; metadataHash: string },
 ): Promise<void> {
   await query(
-    `INSERT INTO email_knowledge_sync_jobs
-       (organization_id, account_id, provider, operation, provider_message_id,
-        source_identity_hash, content_hash, metadata_hash, status)
-     VALUES ($1,$2,$3,'upsert_message',$4,$5,$6,$7,'pending')
-     ON CONFLICT (organization_id, account_id, provider_message_id)
-       WHERE operation='upsert_message'
-     DO UPDATE SET provider=EXCLUDED.provider,
-       source_identity_hash=EXCLUDED.source_identity_hash,
-       content_hash=EXCLUDED.content_hash, metadata_hash=EXCLUDED.metadata_hash,
-       status='pending', attempts=0, next_attempt_at=now(), last_error=NULL,
-       completed_at=NULL, updated_at=now()`,
+    `WITH cancelled_deletes AS (
+       UPDATE email_knowledge_sync_jobs
+          SET status='completed', completed_at=now(), updated_at=now(),
+              last_error='Superseded by current message version'
+        WHERE organization_id=$1 AND account_id=$2 AND provider_message_id=$4
+          AND operation='delete_message' AND status IN ('pending','retry')
+        RETURNING id
+     ),
+     queued_upsert AS (
+       INSERT INTO email_knowledge_sync_jobs
+         (organization_id, account_id, provider, operation, provider_message_id,
+          source_identity_hash, content_hash, metadata_hash, status)
+       VALUES ($1,$2,$3,'upsert_message',$4,$5,$6,$7,'pending')
+       ON CONFLICT (organization_id, account_id, provider_message_id)
+         WHERE operation='upsert_message'
+       DO UPDATE SET provider=EXCLUDED.provider,
+         source_identity_hash=EXCLUDED.source_identity_hash,
+         content_hash=EXCLUDED.content_hash, metadata_hash=EXCLUDED.metadata_hash,
+         status='pending', attempts=0, next_attempt_at=now(), last_error=NULL,
+         completed_at=NULL, updated_at=now()
+       RETURNING id
+     )
+     SELECT id FROM queued_upsert`,
     [organizationId, accountId, provider, providerMessageId, hashes.sourceIdentityHash, hashes.contentHash, hashes.metadataHash],
   );
 }
