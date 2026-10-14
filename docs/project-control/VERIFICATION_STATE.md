@@ -1,3 +1,13 @@
+### Gmail empty-inbox source fix — 2026-10-14
+
+- Branch: `feature/imap-smtp-mail-actions`, draft PR #18.
+- Source fix: strip Google's `response-` prefix from Gmail batch response Content-ID values before mapping to the requested message ID.
+- Source fix: acknowledge only IDs whose PostgreSQL persistence succeeded; retain failed IDs in the durable pending checkpoint and fail the sync attempt so it retries.
+- Source fix: automatic incremental polling threshold changed from 15 minutes to 2 minutes. Gmail push/watch capability is now false until the Pub/Sub receiver is implemented.
+- Regression tests added: `apps/worker/tests/gmail-batch-response.test.ts` and `apps/worker/tests/mailbox-sync-checkpoint.test.ts`.
+- **NOT RUN after these edits:** new regression tests, full worker test suite, worker typecheck, build, live Gmail synchronization, database row-count verification, or deployment. Prior user output (114/114 and typecheck) predates these edits and does not verify them.
+- OPS-01 must verify worker environment, intended shared database, RabbitMQ/Redis connectivity, and live import after deployment. Do not mark runtime success based on HTTP 200 or a connected OAuth badge.
+
 
 ### Email index lifecycle branch — 2026-10-14
 
