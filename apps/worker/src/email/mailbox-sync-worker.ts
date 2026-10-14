@@ -85,7 +85,8 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
      ON CONFLICT (email_account_id, provider_message_id)
      DO UPDATE SET
        indexed_at = CASE
-         WHEN email_messages.folder_id IS DISTINCT FROM EXCLUDED.folder_id
+         WHEN email_messages.thread_id IS DISTINCT FROM EXCLUDED.thread_id
+           OR email_messages.folder_id IS DISTINCT FROM EXCLUDED.folder_id
            OR email_messages.from_email IS DISTINCT FROM EXCLUDED.from_email
            OR email_messages.from_name IS DISTINCT FROM EXCLUDED.from_name
            OR email_messages.to_recipients IS DISTINCT FROM EXCLUDED.to_recipients
