@@ -123,6 +123,10 @@ test("IMAP response reader handles literal markers and payload split across sock
   const { PassThrough } = await import("node:stream");
   const socket = new PassThrough();
   const reader = { socket: socket as never, buffer: Buffer.alloc(0) };
+  // Mirror createReader(): one persistent listener accumulates socket chunks.
+  socket.on("data", (chunk: Buffer | string) => {
+    reader.buffer = Buffer.concat([reader.buffer, Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)]);
+  });
   const responsePromise = readImapResponse(reader);
   const chunks = [
     "* 7 FETCH (BODY[] {",
