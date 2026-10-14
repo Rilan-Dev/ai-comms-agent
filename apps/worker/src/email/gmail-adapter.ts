@@ -6,7 +6,8 @@ import type {
 const BASE = "https://gmail.googleapis.com/gmail/v1/users/me";
 const CAPABILITIES: CapabilitySet = {
   folders: true, labels: true, sync_incremental: true, sync_full: true,
-  sync_webhook: true, sync_idle: false, search_server_side: true,
+  // Gmail push/watch is not wired to a Pub/Sub receiver in this app yet.
+  sync_webhook: false, sync_idle: false, search_server_side: true,
   search_client_side: true, drafts: true, reply: false, forward: false,
   mark_read: true, archive: true, move: true, threads: true,
   attachments_download: true, attachments_upload: false, send: true,
@@ -469,8 +470,14 @@ export class GmailAdapter implements EmailProvider {
 
       // Extract Content-ID
       const cidMatch = partHeaders.match(/Content-ID:\s*<([^>]+)>/i);
-      const contentId = cidMatch ? `<${cidMatch[1]}>` : "";
-      const messageId = contentIdToMessageId.get(contentId) ?? contentId.replace(/[<>]/g, "").replace(/@.*$/, "");
+      // Google prefixes every response Content-ID with "response-". Remove
+      // that protocol prefix before mapping the response back to our request ID.
+      // Without this, every valid response was keyed as "response-<id>" and
+      // batchGetMessages() returned no messages for the original IDs.
+      const responseContentId = cidMatch?.[1] ?? "";
+      const requestContentId = responseContentId.replace(/^response-/i, "");
+      const messageId = contentIdToMessageId.get(`<${requestContentId}>`)
+        ?? requestContentId.replace(/@.*$/, "");
 
       // The part body is itself an HTTP response: status line + headers + JSON.
       const statusMatch = partBody.match(/^HTTP\/[\d.]+\s+(\d+)/);
