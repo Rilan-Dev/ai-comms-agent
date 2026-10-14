@@ -273,3 +273,11 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Actions:** Updated `email-tool-runtime.ts` to reload persisted agent allowlist on each tool invocation and check descriptor all-of/any-of provider capabilities, retaining fail-closed authorization behavior.
 - **Evidence:** GitHub accepted source update only; no tests/typecheck/runtime checks were run.
 - **Next:** Add regression tests for mid-turn policy revocation and multi-capability denial, then run focused tests/typechecks if local checkout is available.
+
+
+### DEV01-EMAIL-INDEX-LIFECYCLE-20261014 — account-scoped vector sync outbox
+- Added branch `feature/email-index-lifecycle-v1`: stable source identity/content/metadata hashes, deterministic chunk point IDs, metadata-only refresh behavior, changed-message requeueing, and draft/empty-message cleanup.
+- Added `email_knowledge_sync_jobs` migration/outbox for upsert, message delete and account purge. Account deletion queues purge before deleting the account and removes account-scoped PostgreSQL email knowledge docs. Added an injected vector adapter processor with retries and stale-job checks.
+- Added allowlist-revocation/capability tests, hash/point-ID tests, outbox migration contract test, and vector sync lifecycle tests.
+- **Not complete:** no supported Clara RAG/vector adapter exists in the repo and the new outbox worker is not wired to worker startup. Do not claim live vector sync until the supported adapter is bound.
+- **Verification:** no local checkout available; tests/typechecks were not run. No PASS claimed. Next action: bind the supported Clara RAG adapter, run focused tests and Clara/worker typechecks, fix concrete failures.

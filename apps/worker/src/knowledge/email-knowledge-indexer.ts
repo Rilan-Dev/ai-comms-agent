@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
 import { query } from "@ai-comms-agent/db";
+import { createEmailIndexHashes, sha256 } from "./email-index-identity";
 import type { EmailMessage } from "@ai-comms-agent/shared";
 
 export type EmailKnowledgeSource = {
@@ -11,10 +11,6 @@ export type EmailKnowledgeSource = {
 
 const MAX_CHUNK_CHARS = 1_200;
 const CHUNK_OVERLAP_CHARS = 160;
-
-function sha256(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
-}
 
 /**
  * Split email content into bounded, overlapping retrieval chunks. Prefer
@@ -54,13 +50,63 @@ export function chunkEmailKnowledgeBody(body: string): string[] {
  * contract. Writes tenant-scoped PostgreSQL knowledge records only; it never
  * writes directly to Qdrant or changes the immutable Clara reference sources.
  */
+async function enqueueEmailKnowledgeUpsert(
+  organizationId: string,
+  accountId: string,
+  provider: EmailKnowledgeSource["provider"],
+  providerMessageId: string,
+  hashes: { sourceIdentityHash: string; contentHash: string; metadataHash: string },
+): Promise<void> {
+  await query(
+    `WITH cancelled_deletes AS (
+       UPDATE email_knowledge_sync_jobs
+          SET status='completed', completed_at=now(), updated_at=now(),
+              last_error='Superseded by current message version'
+        WHERE organization_id=$1 AND account_id=$2 AND provider_message_id=$4
+          AND operation='delete_message' AND status IN ('pending','retry')
+        RETURNING id
+     ),
+     queued_upsert AS (
+       INSERT INTO email_knowledge_sync_jobs
+         (organization_id, account_id, provider, operation, provider_message_id,
+          source_identity_hash, content_hash, metadata_hash, status)
+       VALUES ($1,$2,$3,'upsert_message',$4,$5,$6,$7,'pending')
+       ON CONFLICT (organization_id, account_id, provider_message_id)
+         WHERE operation='upsert_message'
+       DO UPDATE SET provider=EXCLUDED.provider,
+         source_identity_hash=EXCLUDED.source_identity_hash,
+         content_hash=EXCLUDED.content_hash, metadata_hash=EXCLUDED.metadata_hash,
+         status='pending', attempts=0, next_attempt_at=now(), last_error=NULL,
+         completed_at=NULL, updated_at=now()
+       RETURNING id
+     )
+     SELECT id FROM queued_upsert`,
+    [organizationId, accountId, provider, providerMessageId, hashes.sourceIdentityHash, hashes.contentHash, hashes.metadataHash],
+  );
+}
+
 export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise<void> {
   const { organizationId, accountId, provider, message } = source;
   const providerMessageId = (message.provider_message_id || message.id).trim();
   if (!organizationId || !accountId || !providerMessageId) {
     throw new Error("Email knowledge indexing requires organization, account, and provider message IDs.");
   }
-  if (message.is_draft) return;
+  const activeAccount = await query<{ id: string }>(
+    `SELECT a.id FROM email_accounts a
+       JOIN email_messages m ON m.email_account_id=a.id AND m.organization_id=a.organization_id
+      WHERE a.id=$1 AND a.organization_id=$2 AND a.provider=$3 AND a.deleted_at IS NULL
+        AND m.provider_message_id=$4
+      LIMIT 1`,
+    [accountId, organizationId, provider, providerMessageId],
+  );
+  if (!activeAccount.rows[0]) {
+    await deleteEmailKnowledge(organizationId, accountId, providerMessageId, provider);
+    return;
+  }
+  if (message.is_draft) {
+    await deleteEmailKnowledge(organizationId, accountId, providerMessageId, provider);
+    return;
+  }
 
   const body = [
     message.subject ? `Subject: ${message.subject}` : "",
@@ -69,30 +115,100 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
     message.received_at ? `Received: ${message.received_at}` : "",
     message.text_body || message.snippet || "",
   ].filter(Boolean).join("\n\n").trim();
-  if (!body) return;
+  if (!body) {
+    await deleteEmailKnowledge(organizationId, accountId, providerMessageId, provider);
+    return;
+  }
 
   const storagePath = `${accountId}/${encodeURIComponent(providerMessageId)}`;
-  const digest = sha256(body);
-  const metadata = {
+  const retrievalMetadata = {
     source: "email",
     provider,
     email_account_id: accountId,
     provider_message_id: providerMessageId,
     provider_thread_id: message.thread_id || null,
+    folder_id: message.folder_id || null,
     from_address: message.from_address || null,
+    to_addresses: message.to_addresses ?? [],
+    cc_addresses: message.cc_addresses ?? [],
+    bcc_addresses: message.bcc_addresses ?? [],
     received_at: message.received_at || null,
+    is_read: Boolean(message.is_read),
+    is_starred: Boolean(message.is_starred),
+    is_draft: Boolean(message.is_draft),
     is_outbound: Boolean(message.is_outbound),
+    has_attachments: Boolean(message.has_attachments),
   };
+  const hashes = createEmailIndexHashes(
+    { organizationId, provider, accountId, providerMessageId },
+    body,
+    retrievalMetadata,
+  );
+  const digest = hashes.contentHash;
+  const metadata = {
+    ...retrievalMetadata,
+    source_identity_hash: hashes.sourceIdentityHash,
+    content_hash: hashes.contentHash,
+    metadata_hash: hashes.metadataHash,
+  };
+
+  const existing = await query<{ id: string; sha256: string; metadata: Record<string, unknown> | string }>(
+    `SELECT id, sha256, metadata
+       FROM knowledge_documents
+      WHERE organization_id=$1 AND storage_bucket='email-account' AND storage_path=$2
+      LIMIT 1`,
+    [organizationId, storagePath],
+  );
+  const existingDocument = existing.rows[0];
+  const existingMetadata = typeof existingDocument?.metadata === "string"
+    ? (() => { try { return JSON.parse(existingDocument.metadata) as Record<string, unknown>; } catch { return {}; } })()
+    : (existingDocument?.metadata ?? {});
+  if (existingDocument && existingDocument.sha256 === digest) {
+    if (existingMetadata.metadata_hash !== hashes.metadataHash ||
+        existingMetadata.source_identity_hash !== hashes.sourceIdentityHash) {
+      await query(
+        `UPDATE knowledge_documents
+            SET filename=$1, metadata=$2::jsonb, updated_at=now()
+          WHERE id=$3 AND organization_id=$4 AND storage_bucket='email-account'
+            AND EXISTS (
+              SELECT 1 FROM email_accounts a JOIN email_messages m ON m.email_account_id=a.id AND m.organization_id=a.organization_id
+               WHERE a.id=$5 AND a.organization_id=$4 AND a.provider=$6 AND a.deleted_at IS NULL AND m.provider_message_id=$7
+            )`,
+        [(message.subject || providerMessageId).slice(0, 500), JSON.stringify(metadata), existingDocument.id, organizationId, accountId, provider, providerMessageId],
+      );
+      await query(
+        `UPDATE knowledge_chunks SET metadata=$1::jsonb
+          WHERE document_id=$2 AND organization_id=$3
+            AND EXISTS (
+              SELECT 1 FROM email_accounts a JOIN email_messages m ON m.email_account_id=a.id AND m.organization_id=a.organization_id
+               WHERE a.id=$4 AND a.organization_id=$3 AND a.provider=$5 AND a.deleted_at IS NULL AND m.provider_message_id=$6
+            )`,
+        [JSON.stringify(metadata), existingDocument.id, organizationId, accountId, provider, providerMessageId],
+      );
+    }
+    // Content is unchanged: metadata-only changes do not rebuild chunks or re-embed.
+    await enqueueEmailKnowledgeUpsert(organizationId, accountId, provider, providerMessageId, hashes);
+    return;
+  }
 
   const document = await query<{ id: string }>(
     `INSERT INTO knowledge_documents
        (organization_id, agent_id, filename, content_type, storage_bucket, storage_path,
         sha256, size_bytes, status, metadata, updated_at)
-     VALUES ($1, NULL, $2, 'message/rfc822', 'email-account', $3, $4, $5, 'ready', $6::jsonb, now())
+     SELECT $1, NULL, $2, 'message/rfc822', 'email-account', $3, $4, $5, 'ready', $6::jsonb, now()
+       FROM email_accounts a
+       JOIN email_messages m ON m.email_account_id=a.id AND m.organization_id=a.organization_id
+      WHERE a.id=$7 AND a.organization_id=$1 AND a.provider=$8 AND a.deleted_at IS NULL
+        AND m.provider_message_id=$9
      ON CONFLICT (organization_id, storage_bucket, storage_path) WHERE storage_path IS NOT NULL
      DO UPDATE SET filename=EXCLUDED.filename, content_type=EXCLUDED.content_type,
        sha256=EXCLUDED.sha256, size_bytes=EXCLUDED.size_bytes, status='ready',
        metadata=EXCLUDED.metadata, updated_at=now()
+     WHERE EXISTS (
+       SELECT 1 FROM email_accounts a JOIN email_messages m ON m.email_account_id=a.id AND m.organization_id=a.organization_id
+        WHERE a.id=$7 AND a.organization_id=$1 AND a.provider=$8 AND a.deleted_at IS NULL
+          AND m.provider_message_id=$9
+     )
      RETURNING id`,
     [
       organizationId,
@@ -101,10 +217,24 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
       digest,
       Buffer.byteLength(body, "utf8"),
       JSON.stringify(metadata),
+      accountId,
+      provider,
+      providerMessageId,
     ],
   );
   const documentId = document.rows[0]?.id;
-  if (!documentId) throw new Error("Clara email knowledge document could not be persisted.");
+  if (!documentId) {
+    const stillActive = await query<{ id: string }>(
+      `SELECT a.id FROM email_accounts a JOIN email_messages m ON m.email_account_id=a.id AND m.organization_id=a.organization_id
+        WHERE a.id=$1 AND a.organization_id=$2 AND a.provider=$3 AND a.deleted_at IS NULL AND m.provider_message_id=$4 LIMIT 1`,
+      [accountId, organizationId, provider, providerMessageId],
+    );
+    if (!stillActive.rows[0]) {
+      await deleteEmailKnowledge(organizationId, accountId, providerMessageId, provider);
+      return;
+    }
+    throw new Error("Clara email knowledge document could not be persisted.");
+  }
 
   const chunks = chunkEmailKnowledgeBody(body);
   // Rebuild this document's chunk set before inserting to avoid transient
@@ -123,6 +253,7 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
       [documentId, organizationId, chunkIndex, content, contentHash, JSON.stringify(metadata)],
     );
   }
+  await enqueueEmailKnowledgeUpsert(organizationId, accountId, provider, providerMessageId, hashes);
 }
 
 /**
@@ -135,16 +266,61 @@ export async function deleteEmailKnowledge(
   organizationId: string,
   accountId: string,
   providerMessageId: string,
+  provider: EmailKnowledgeSource["provider"],
 ): Promise<void> {
-  if (!organizationId || !accountId || !providerMessageId) {
-    throw new Error("Email knowledge deletion requires organization, account, and provider message IDs.");
+  if (!organizationId || !accountId || !providerMessageId || !provider) {
+    throw new Error("Email knowledge deletion requires organization, account, provider, and provider message IDs.");
   }
-  const storagePath = `${accountId}/${encodeURIComponent(providerMessageId.trim())}`;
+  const normalizedProviderMessageId = providerMessageId.trim();
+  const storagePath = `${accountId}/${encodeURIComponent(normalizedProviderMessageId)}`;
+  await query(
+    `WITH cancelled_upserts AS (
+       UPDATE email_knowledge_sync_jobs
+          SET status='completed', completed_at=now(), updated_at=now(),
+              last_error='Superseded by message deletion'
+        WHERE organization_id=$1 AND account_id=$2 AND provider_message_id=$4
+          AND operation='upsert_message' AND status IN ('pending','retry')
+        RETURNING id
+     ),
+     queued_delete AS (
+       INSERT INTO email_knowledge_sync_jobs
+         (organization_id, account_id, provider, operation, provider_message_id, status)
+       VALUES ($1,$2,$3,'delete_message',$4,'pending')
+       ON CONFLICT (organization_id, account_id, provider_message_id)
+         WHERE operation='delete_message'
+       DO UPDATE SET status='pending', attempts=0, next_attempt_at=now(),
+         last_error=NULL, completed_at=NULL, updated_at=now()
+       RETURNING id
+     ),
+     removed_document AS (
+       DELETE FROM knowledge_documents
+        WHERE organization_id=$1 AND storage_bucket='email-account' AND storage_path=$5
+       RETURNING id
+     )
+     SELECT id FROM queued_delete`,
+    [organizationId, accountId, provider, normalizedProviderMessageId, storagePath],
+  );
+}
+
+/**
+ * Purge every email-derived Clara document for one removed connected account.
+ * This is deliberately limited to the email-account bucket and organization.
+ * The repository has no direct Qdrant client; vector deletion must be performed
+ * by the configured Clara knowledge/RAG lifecycle integration before purge is
+ * reported complete.
+ */
+export async function deleteEmailKnowledgeForAccount(
+  organizationId: string,
+  accountId: string,
+): Promise<void> {
+  if (!organizationId || !accountId) {
+    throw new Error("Email account knowledge purge requires organization and account IDs.");
+  }
   await query(
     `DELETE FROM knowledge_documents
-     WHERE organization_id = $1
-       AND storage_bucket = 'email-account'
-       AND storage_path = $2`,
-    [organizationId, storagePath],
+      WHERE organization_id=$1
+        AND storage_bucket='email-account'
+        AND metadata->>'email_account_id'=$2`,
+    [organizationId, accountId],
   );
 }
