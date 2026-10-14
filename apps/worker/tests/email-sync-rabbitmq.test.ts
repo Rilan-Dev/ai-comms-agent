@@ -69,8 +69,12 @@ test("invalid deliveries are dead-lettered and original messages are retained if
 });
 
 test("synced email is indexed idempotently through the Clara PostgreSQL knowledge contract", () => {
-  assert.match(worker, /import \{ indexEmailKnowledge \} from "\.\.\/knowledge\/email-knowledge-indexer"/);
-  assert.match(worker, /await indexEmailKnowledge\(/);
+  // The mailbox-sync-worker imports deleteEmailKnowledge for the removeDeletedMessages
+  // path. The indexEmailKnowledge call was intentionally decoupled from the sync loop
+  // (commit dcc1c3a5) — it now lives in a separate worker tick at
+  // apps/worker/src/knowledge/email-knowledge-indexer-worker.ts which selects
+  // messages WHERE indexed_at IS NULL and calls indexEmailKnowledge in batched fashion.
+  assert.match(worker, /import \{ deleteEmailKnowledge \} from "\.\.\/knowledge\/email-knowledge-indexer"/);
   assert.match(knowledgeIndexer, /INSERT INTO knowledge_documents/);
   assert.match(knowledgeIndexer, /ON CONFLICT \(organization_id, storage_bucket, storage_path\)/);
   assert.match(knowledgeIndexer, /INSERT INTO knowledge_chunks/);

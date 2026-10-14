@@ -9,9 +9,16 @@ const migrationUrl = new URL("../../../supabase/migrations/0032_email_sync_resum
 test("mailbox sync stages page IDs and checkpoints each completed message", async () => {
   const source = await readFile(workerUrl, "utf8");
   assert.match(source, /pending_message_ids=\$1::jsonb/);
-  assert.match(source, /pending_message_ids=COALESCE\(pending_message_ids,'\[\]'::jsonb\)-\$1::text/);
+  // The checkpoint UPDATE uses the `jsonb - text[]` operator (batch removal)
+  // instead of the old `jsonb - text` (single removal). This is more efficient
+  // — one UPDATE per batch instead of one per message.
+  assert.match(source, /pending_message_ids\s*=\s*COALESCE\(pending_message_ids,\s*'\[\]'::jsonb\)\s*-\s*\$1::text\[\]/);
   assert.match(source, /pending_cursor_token=NULL/);
-  assert.match(source, /setTimeout\(resolve, 250\)/);
+  // The 250ms per-message throttle was removed in favor of batched fetch
+  // (Gmail batch endpoint fetches 100 messages per HTTP request).
+  // The sync loop now uses BATCH_FETCH_SIZE + PERSIST_CONCURRENCY instead.
+  assert.match(source, /BATCH_FETCH_SIZE/);
+  assert.match(source, /PERSIST_CONCURRENCY/);
 });
 
 test("Gmail quota errors are classified and deferred instead of rapidly retried", async () => {
