@@ -56,7 +56,10 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
   if (!organizationId || !accountId || !providerMessageId) {
     throw new Error("Email knowledge indexing requires organization, account, and provider message IDs.");
   }
-  if (message.is_draft) return;
+  if (message.is_draft) {
+    await deleteEmailKnowledge(organizationId, accountId, providerMessageId);
+    return;
+  }
 
   const body = [
     message.subject ? `Subject: ${message.subject}` : "",
@@ -65,7 +68,10 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
     message.received_at ? `Received: ${message.received_at}` : "",
     message.text_body || message.snippet || "",
   ].filter(Boolean).join("\n\n").trim();
-  if (!body) return;
+  if (!body) {
+    await deleteEmailKnowledge(organizationId, accountId, providerMessageId);
+    return;
+  }
 
   const storagePath = `${accountId}/${encodeURIComponent(providerMessageId)}`;
   const retrievalMetadata = {
