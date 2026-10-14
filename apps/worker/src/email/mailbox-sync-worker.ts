@@ -13,6 +13,7 @@ import { acquireRedisLease, releaseRedisLease } from "./redis-lease";
 import type { EmailProvider } from "@ai-comms-agent/shared";
 import { publishEmailSync } from "../queues/email-sync-rabbitmq";
 import { deleteEmailKnowledge } from "../knowledge/email-knowledge-indexer";
+import { unavailableMessageIds, successfullyPersistedMessageIds } from "./mailbox-sync-checkpoint";
 import type { EmailSyncPayload } from "../queues/email-sync-message";
 
 type Candidate = {
@@ -365,8 +366,9 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     // does an HTTP fetch per ID, so the persist path is the only DB pressure).
     const BATCH_FETCH_SIZE = isGmail ? 50 : 25;          // HTTP batch size
     const PERSIST_CONCURRENCY = isGmail ? 4 : 3;         // DB write concurrency
-    const persistMessageSafe = async (id: string, message: EmailMessage | null) => {
-      if (!message) return;
+    const failedPersistIds = new Set<string>();
+    const persistMessageSafe = async (id: string, message: EmailMessage | null): Promise<boolean> => {
+      if (!message) return false;
       if (message.is_draft && !draftIdsByMessage && adapter.listDraftIdsByMessage) {
         draftIdsByMessage = await adapter.listDraftIdsByMessage();
       }
@@ -376,17 +378,21 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       try {
         await persistMessage(candidate, message, providerDraftId);
         saved += 1;
+        return true;
       } catch (persistError) {
-        // Log + continue — don't fail the entire batch for one bad message.
+        // Keep failed IDs in the durable pending list. Advancing the cursor
+        // after a failed DB write silently loses mail from the local inbox.
+        failedPersistIds.add(id);
         console.error(JSON.stringify({
           timestamp: new Date().toISOString(),
           level: "error",
           service: "worker.email-sync.persist",
-          message: "Persist failed for single message; continuing batch",
+          message: "Persist failed for message; preserving checkpoint for retry",
           account_id: candidate.id,
           provider_message_id: id,
           reason: persistError instanceof Error ? persistError.message : "Unknown error",
         }));
+        return false;
       }
     };
 
@@ -433,31 +439,22 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       // transaction-mode pooler).
       for (let i = 0; i < messages.length; i += PERSIST_CONCURRENCY) {
         const slice = messages.slice(i, i + PERSIST_CONCURRENCY);
-        await Promise.all(slice.map((entry) => persistMessageSafe(entry.id, entry.message)));
+        const persisted = await Promise.all(slice.map((entry) => persistMessageSafe(entry.id, entry.message)));
+        const persistedIds = successfullyPersistedMessageIds(slice, persisted);
+        if (persistedIds.length > 0) {
+          await query(
+            `UPDATE email_sync_states
+             SET pending_message_ids = COALESCE(pending_message_ids, '[]'::jsonb) - $1::text[],
+                 updated_at = now()
+             WHERE email_account_id=$2`,
+            [persistedIds, candidate.id],
+          );
+        }
       }
 
-      // Single UPDATE per batch — much cheaper than one UPDATE per message.
-      // Uses the `jsonb - text[]` operator which removes matching string values
-      // from a JSON array. The previous jsonb_agg approach tried to compare
-      // jsonb elem = text, which Postgres rejects (42883: operator does not
-      // exist: jsonb = text). `jsonb - text[]` is the idiomatic way to do this.
-      const savedIds = messages
-        .filter((entry) => entry.message !== null)
-        .map((entry) => entry.id);
-      if (savedIds.length > 0) {
-        await query(
-          `UPDATE email_sync_states
-           SET pending_message_ids = COALESCE(pending_message_ids, '[]'::jsonb) - $1::text[],
-               updated_at = now()
-           WHERE email_account_id=$2`,
-          [savedIds, candidate.id],
-        );
-      }
       // Mark the un-fetched IDs (e.g., 404 from Gmail) as acked too —
       // they're gone from the server, retrying won't help.
-      const missedIds = messages
-        .filter((entry) => entry.message === null)
-        .map((entry) => entry.id);
+      const missedIds = unavailableMessageIds(messages);
       if (missedIds.length > 0) {
         await query(
           `UPDATE email_sync_states
@@ -466,6 +463,10 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
            WHERE email_account_id=$2`,
           [missedIds, candidate.id],
         );
+      }
+      const failedInBatch = messages.filter((entry) => failedPersistIds.has(entry.id));
+      if (failedInBatch.length > 0) {
+        throw new Error(`Failed to persist ${failedInBatch.length} email message(s); pending IDs preserved for retry.`);
       }
     }
 
@@ -658,7 +659,7 @@ async function enqueueDueMailboxSyncs(limit = BATCH_SIZE): Promise<number> {
          OR s.last_attempt_at < now()-interval '10 minutes')
        AND (s.last_attempt_at IS NULL OR s.last_attempt_at < now()-interval '10 seconds')
        AND (s.last_success_at IS NULL
-         OR s.last_success_at < now()-interval '15 minutes'
+         OR s.last_success_at < now()-interval '2 minutes'
          OR a.status IN ('pending','error')
          OR s.sync_mode = 'initial')
      ORDER BY CASE a.status WHEN 'pending' THEN 0 WHEN 'error' THEN 1 ELSE 2 END,
@@ -731,7 +732,7 @@ export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ att
            OR s.last_attempt_at < now()-interval '10 minutes')
          AND (s.last_attempt_at IS NULL OR s.last_attempt_at < now()-interval '10 seconds')
          AND (s.last_success_at IS NULL
-           OR s.last_success_at < now()-interval '15 minutes'
+           OR s.last_success_at < now()-interval '2 minutes'
            OR a.status IN ('pending','error')
            OR s.sync_mode = 'initial')
        ORDER BY CASE a.status WHEN 'pending' THEN 0 WHEN 'error' THEN 1 ELSE 2 END,
