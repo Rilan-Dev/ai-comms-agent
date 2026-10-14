@@ -76,19 +76,21 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
   await query(
     `INSERT INTO email_messages
       (email_account_id, organization_id, thread_id, folder_id, provider_message_id,
-       internet_message_id, in_reply_to, references_header, from_email, to_recipients,
+       internet_message_id, in_reply_to, references_header, from_email, from_name, to_recipients,
        cc_recipients, bcc_recipients, subject, text_body, html_body_sanitized, snippet,
        headers, labels, is_read, is_starred, is_draft, is_sent, importance_score,
        action_required, received_at, sent_at, provider_updated_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12::jsonb,$13,$14,NULL,$15,
-       '{}'::jsonb,$16::jsonb,$17,$18,$19,$20,$21,$22,$23,$24,$23,now())
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$25,$10::jsonb,$11::jsonb,$12::jsonb,$13,$14,$15,$16,
+       '{}'::jsonb,$17::jsonb,$18,$19,$20,$21,$22,$23,$24,$23,now())
      ON CONFLICT (email_account_id, provider_message_id)
      DO UPDATE SET thread_id=EXCLUDED.thread_id, folder_id=EXCLUDED.folder_id,
        internet_message_id=EXCLUDED.internet_message_id, in_reply_to=EXCLUDED.in_reply_to,
        references_header=EXCLUDED.references_header, from_email=EXCLUDED.from_email,
+       from_name=EXCLUDED.from_name,
        to_recipients=EXCLUDED.to_recipients, cc_recipients=EXCLUDED.cc_recipients,
        bcc_recipients=EXCLUDED.bcc_recipients, subject=EXCLUDED.subject,
-       text_body=EXCLUDED.text_body, snippet=EXCLUDED.snippet, labels=EXCLUDED.labels,
+       text_body=EXCLUDED.text_body, html_body_sanitized=EXCLUDED.html_body_sanitized,
+       snippet=EXCLUDED.snippet, labels=EXCLUDED.labels,
        is_read=EXCLUDED.is_read, is_starred=EXCLUDED.is_starred, is_draft=EXCLUDED.is_draft,
        is_sent=EXCLUDED.is_sent, importance_score=EXCLUDED.importance_score,
        provider_updated_at=EXCLUDED.provider_updated_at, updated_at=now()`,
@@ -102,12 +104,16 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
       message.in_reply_to || null,
       (message.references ?? []).join(" ") || null,
       message.from_address || null,
+      // $10-$12: jsonb arrays
       JSON.stringify(message.to_addresses ?? []),
       JSON.stringify(message.cc_addresses ?? []),
       JSON.stringify(message.bcc_addresses ?? []),
+      // $13-$16: subject, text_body, html_body_sanitized, snippet
       message.subject || "",
       message.text_body || "",
+      message.html_body || null,
       message.snippet || "",
+      // $17-$24: labels + flags + dates
       JSON.stringify(labels),
       message.is_read,
       message.is_starred,
@@ -117,6 +123,8 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
       message.action_required,
       message.received_at,
       message.is_outbound ? message.received_at : null,
+      // $25: from_name (display name extracted by the RFC822 parser)
+      message.from_name || null,
     ],
   );
 

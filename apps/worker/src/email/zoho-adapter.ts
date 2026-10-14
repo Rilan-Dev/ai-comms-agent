@@ -312,6 +312,7 @@ export class ZohoAdapter implements EmailProvider {
     const textBody = parsed ? parsed.text_body : rawContent;
     const htmlBody = parsed ? parsed.html_body : (message.content ? String(message.content) : undefined);
     const fromAddress = parsed ? parsed.from : String(message.fromAddress ?? "");
+    const fromName = parsed ? parsed.from_name : "";
     const messageIdHeader = parsed ? parsed.message_id : String(message.messageIdHeader ?? "");
     const inReplyTo = parsed ? parsed.in_reply_to : (message.inReplyTo ? String(message.inReplyTo) : "");
     const references = parsed
@@ -338,6 +339,7 @@ export class ZohoAdapter implements EmailProvider {
       in_reply_to: inReplyTo || undefined,
       references: references && references.length ? references : undefined,
       from_address: fromAddress,
+      from_name: fromName || undefined,
       to_addresses: to,
       cc_addresses: cc,
       bcc_addresses: String(message.bccAddress ?? "").split(",").map((v: string) => v.trim()).filter(Boolean),
