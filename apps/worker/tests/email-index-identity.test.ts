@@ -42,5 +42,5 @@ test("vector point IDs are deterministic and unique across account identities an
   assert.equal(pointA, createEmailVectorPointId(first.sourceIdentityHash, 0));
   assert.notEqual(pointA, createEmailVectorPointId(first.sourceIdentityHash, 1));
   assert.notEqual(pointA, createEmailVectorPointId(otherAccount.sourceIdentityHash, 0));
-  assert.match(pointA, /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  assert.match(pointA, /^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
 });
