@@ -7,6 +7,7 @@ import {
 import { EMAIL_TOOL_CATALOG, ToolRegistry } from "@ai-comms-agent/shared";
 import type { ToolContext } from "@ai-comms-agent/shared";
 import { registerEmailReadTools } from "./email-read-tools";
+import { hasEmailToolCapabilities, isEmailToolAllowedByPolicy } from "./email-tool-policy";
 import { executeRegisteredTool } from "./tool-executor";
 import type { ToolAuthorizationDecision, ToolAuditWriter } from "./tool-executor";
 
@@ -35,7 +36,7 @@ export async function createEmailToolRuntime(organizationId: string, agentId: st
     // Re-read persisted policy for every invocation so a revoked allowlist entry
     // is not honored for the remainder of a long-running model turn.
     const currentPolicy = await agents.policy(organizationId, agentId);
-    if (!currentPolicy || !currentPolicy.allowedTools.includes(tool.name)) {
+    if (!isEmailToolAllowedByPolicy(currentPolicy, tool.name)) {
       return { allowed: false, code: "tool_not_allowed", message: "This tool is not enabled for the current agent." };
     }
     if (tool.sensitivity !== "safe") {
@@ -62,11 +63,8 @@ export async function createEmailToolRuntime(organizationId: string, agentId: st
       if (!account) return { allowed: false, code: "account_not_available", message: "This mailbox is not bound to this agent." };
       const descriptor = EMAIL_TOOL_CATALOG.find((item) => item.name === tool.name);
       const capabilities = account.capabilities as Record<string, boolean>;
-      if (descriptor?.required_capabilities.some((capability) => capabilities[capability] !== true)) {
-        return { allowed: false, code: "capability_not_supported", message: "This mailbox does not support every required part of the requested operation." };
-      }
-      if (descriptor?.any_capabilities?.length && !descriptor.any_capabilities.some((capability) => capabilities[capability] === true)) {
-        return { allowed: false, code: "capability_not_supported", message: "This mailbox does not support any compatible form of the requested operation." };
+      if (descriptor && !hasEmailToolCapabilities(descriptor, capabilities)) {
+        return { allowed: false, code: "capability_not_supported", message: "This mailbox does not support the required capabilities for the requested operation." };
       }
       if (!descriptor && tool.required_capability && capabilities[tool.required_capability] !== true) {
         return { allowed: false, code: "capability_not_supported", message: "This mailbox does not support the requested operation." };

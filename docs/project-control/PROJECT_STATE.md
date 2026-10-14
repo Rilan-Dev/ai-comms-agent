@@ -1,3 +1,9 @@
+
+### Email index lifecycle branch — 2026-10-14
+- DEV-01 source branch `feature/email-index-lifecycle-v1` adds identity/content/metadata hashes, deterministic vector point IDs, content/metadata requeueing, durable vector sync outbox and retryable adapter processor.
+- Account removal queues a vector purge and purges account-scoped PostgreSQL email knowledge docs; message deletion queues vector cleanup.
+- Current gap: ai-comms-agent has no supported server-to-server Clara RAG email-index API. Clara's internal vector functions are KB-scoped; wiring them before FIX-01 closes ISS-026 and establishes agent/account retrieval filters risks cross-agent mailbox leakage. Worker startup wiring remains pending; do not claim vector sync complete.
+- Tests/typechecks are not run because this environment has no local checkout. Keep FIX-01/OPS-01 ownership boundaries and tool-catalogue gate unchanged.
 # PROJECT_STATE.md
 
 One-screen project status. This file is the canonical answer to "where are we?". Update it on every commit.

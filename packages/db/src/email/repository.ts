@@ -165,7 +165,53 @@ export class PostgresEmailAccountRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    const r = await query<Row>("DELETE FROM email_accounts WHERE id = $1 RETURNING id", [id]);
+    // Persist the vector-sync request before removing the account. The
+    // account_id in email_knowledge_sync_jobs deliberately has no FK so the
+    // job survives account deletion and can target provider/account-scoped points.
+    const r = await query<Row>(
+      `WITH target AS MATERIALIZED (
+         SELECT id, organization_id, provider::text AS provider
+           FROM email_accounts
+          WHERE id=$1
+       ),
+       cancelled_message_jobs AS (
+         UPDATE email_knowledge_sync_jobs j
+            SET status='completed', completed_at=now(), updated_at=now(),
+                last_error='Superseded by account deletion'
+           FROM target t
+          WHERE j.organization_id=t.organization_id AND j.account_id=t.id
+            AND j.operation IN ('upsert_message','delete_message')
+            AND j.status IN ('pending','retry')
+         RETURNING j.id
+       ),
+       cleanup AS (
+         INSERT INTO email_knowledge_sync_jobs (organization_id, account_id, provider, operation, status)
+         SELECT organization_id, id, provider, 'delete_account', 'pending' FROM target
+         ON CONFLICT (organization_id, account_id) WHERE operation='delete_account' DO UPDATE
+           SET status='pending', attempts=0, next_attempt_at=now(),
+               last_error=NULL, completed_at=NULL, updated_at=now()
+         RETURNING account_id
+       ),
+       purged_documents AS (
+         DELETE FROM knowledge_documents d
+          USING target t
+          WHERE d.organization_id=t.organization_id
+            AND d.storage_bucket='email-account'
+            AND (
+              d.metadata->>'email_account_id'=t.id::text
+              OR d.storage_path LIKE t.id::text || '/%'
+            )
+         RETURNING d.id
+       ),
+       removed AS (
+         DELETE FROM email_accounts a
+          USING target t, cleanup c
+          WHERE a.id=t.id AND c.account_id=t.id
+         RETURNING a.id
+       )
+       SELECT id FROM removed`,
+      [id],
+    );
     return r.rows.length > 0;
   }
 

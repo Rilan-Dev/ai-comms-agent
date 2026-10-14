@@ -1,3 +1,16 @@
+## DEV-01 — Email index lifecycle implementation (2026-10-14)
+
+- Working branch: `feature/email-index-lifecycle-v1`; not merged.
+- Added stable source identity/content/metadata hashes and deterministic account-scoped vector point IDs; message content/metadata changes now requeue PostgreSQL-derived indexing through `indexed_at`.
+- Added durable `email_knowledge_sync_jobs` outbox for message upserts, message deletes and account purges; account deletion queues cleanup and removes its PostgreSQL email knowledge docs. Added retryable vector-adapter processor and tests.
+- Added execution-time policy/capability regression tests for allowlist revocation, all-required capabilities and any-capability alternatives.
+- **Next:** obtain/bind the supported Clara RAG vector adapter; then run `pnpm --filter @ai-comms-agent/worker test`, `pnpm --filter @ai-comms-agent/clara-core typecheck`, `pnpm --filter @ai-comms-agent/worker typecheck`, and `pnpm --filter @ai-comms-agent/web exec vitest run tests/agent-tool-registry.test.ts tests/email-read-tools.test.ts`, followed by `pnpm --filter @ai-comms-agent/web typecheck`. Fix concrete failures and record actual output.
+- **Critical boundary:** Clara Platform has internal KB-aware vector functions, but ai-comms-agent has no supported server-to-server email-index API. The current retrieval scope is KB-level; do not add email vectors to a shared KB until FIX-01 closes ISS-026 and establishes agent/account filters. Outbox processor is adapter-injected and not wired into worker startup; live vector upsert/deletion is not complete.
+- No local checkout is available in this environment; `git ls-remote https://github.com/Rilan-Dev/ai-comms-agent.git refs/heads/main` failed with exit 128: `Could not resolve host: github.com`. Tests/typechecks have not run. Do not wait/poll CI/Vercel while independent source work exists.
+- FIX-01 owns ISS-026; OPS-01 owns live infrastructure and ingestion verification. Keep the live model tool catalogue hidden until transport/security checks complete.
+
+---
+
 ## Active DEV-01 continuation — email tool verification and vector-index lifecycle (2026-10-14)
 
 - PR #15 is already closed and merged into main (GitHub merge commit: d444cf1b35939008058532b0754b46daef7cc312). Main contains the email agent loop, shared executor, provider tool-call adapter, Gmail deletion reconciliation, and self-review source.
