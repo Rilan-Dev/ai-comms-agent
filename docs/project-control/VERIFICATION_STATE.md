@@ -6,7 +6,7 @@
 - Account deletion queues a durable account-vector purge and deletes account-scoped PostgreSQL email knowledge docs; message deletion queues account/message-scoped vector cleanup. Added an injected adapter processor with retry semantics and stale-job handling.
 - Added tests for allowlist revocation and capability combinations, identity/content/metadata hashes, vector point ID uniqueness, outbox migration shape, stale upsert/delete behavior and retry handling.
 - **NOT RUN:** provider-contract tests, worker loop tests, executor tests, new worker tests, Clara/worker typechecks, DB migrations, or live vector/mailbox integration. No PASS claimed because the current execution environment has no local checkout.
-- **Not yet complete:** production Clara RAG/vector adapter and worker startup wiring. This repository has no existing supported adapter; no undocumented endpoint or parallel Qdrant implementation was invented. Do not merge as fully working until this adapter boundary is resolved and checks are run.
+- **Not yet complete:** supported server-to-server Clara RAG email-index API and worker startup wiring. Clara Platform has internal KB-aware vector functions, but its current retrieval path is KB-scoped; FIX-01 must close ISS-026 and establish agent/account filters before email vectors are exposed to shared retrieval. No undocumented endpoint or parallel Qdrant implementation was invented. Do not merge as fully working until this security/adapter boundary is resolved and checks are run.
 - FIX-01 owns ISS-026. OPS-01 owns live infrastructure and ingestion verification.
 # VERIFICATION_STATE.md
 
