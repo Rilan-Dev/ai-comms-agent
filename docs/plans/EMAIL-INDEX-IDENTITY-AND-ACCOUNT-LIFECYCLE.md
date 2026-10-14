@@ -1,3 +1,28 @@
+## Implementation progress — 2026-10-14
+
+Implemented on branch `feature/email-index-lifecycle-v1` (not merged):
+
+- Added `email-index-identity.ts` with stable SHA-256 source identity, content and metadata hashes, and deterministic UUID-shaped vector point IDs based on source identity + chunk index.
+- Updated the email knowledge indexer to persist hashes in document metadata, avoid rebuilding chunks for metadata-only changes, and enqueue idempotent vector upsert jobs after PostgreSQL document/chunk writes.
+- Updated mailbox message upserts to reset `indexed_at` when retrieval-relevant content or metadata changes. Corrected canonical DB field mappings in the background indexer and ensured drafts/empty messages are processed so stale knowledge documents are removed.
+- Message hard deletes enqueue account-scoped vector-delete jobs and remove the PostgreSQL email knowledge document. Account removal queues an account-wide vector purge and deletes account-scoped email knowledge documents before the account row is removed.
+- Added migration `0048_email_knowledge_sync_jobs.sql` for a durable outbox with distinct upsert-message, delete-message, and delete-account operations and idempotency indexes.
+- Added an injected vector-adapter contract and retryable outbox processor. Stale upsert jobs check the authoritative current message; stale delete jobs do not remove vectors when the message exists again. Account purge waits for in-flight message jobs.
+- Extracted execution-time allowlist and all-of/any-of capability checks and added regression tests. Added hash/point-ID, outbox migration contract, and vector lifecycle retry tests.
+
+### Important incomplete integration boundary
+
+The repository currently has no supported Clara RAG/vector adapter or direct Qdrant client. Per the existing architecture contract, this change intentionally does not invent a parallel Qdrant collection or an undocumented endpoint. The durable outbox processor is implemented as an injected adapter boundary, but **the production vector adapter and worker startup wiring are still pending**. Until that is supplied, PostgreSQL inbox/document reconciliation and outbox persistence are source changes; live vector upsert/deletion is not complete and queued vector jobs must not be reported as completed.
+
+### Verification state
+
+- No local checkout exists in the current execution environment, so provider-contract, worker-loop, executor, new hash/policy/outbox/lifecycle tests, and Clara/worker TypeScript checks have **not been run**.
+- No test/build/typecheck/runtime PASS is claimed.
+- Before merge, use a real checkout to run the focused tests and typechecks, fix concrete failures, and bind the vector adapter to Clara's supported RAG API. FIX-01 retains ISS-026 ownership; OPS-01 retains live infrastructure and ingestion verification.
+- Do not expose the email tool catalogue to the live model before transport integration and security checks are complete.
+
+---
+
 # Email Index Identity and Account-Lifecycle Reconciliation Plan
 
 Date: 2026-10-14
