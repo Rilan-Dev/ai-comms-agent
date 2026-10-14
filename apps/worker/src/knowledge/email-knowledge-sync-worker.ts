@@ -27,9 +27,22 @@ async function claimJobs(limit: number): Promise<EmailKnowledgeSyncJob[]> {
   const safeLimit = Math.min(Math.max(Math.floor(limit), 1), 100);
   const result = await query<EmailKnowledgeSyncJob>(
     `WITH due AS (
-       SELECT id FROM email_knowledge_sync_jobs
-        WHERE status IN ('pending','retry') AND next_attempt_at <= now()
-        ORDER BY next_attempt_at ASC, created_at ASC
+       SELECT j.id FROM email_knowledge_sync_jobs j
+        WHERE (j.status IN ('pending','retry') OR
+               (j.status='running' AND j.updated_at < now()-interval '5 minutes'))
+          AND j.next_attempt_at <= now()
+          AND (
+            j.operation <> 'delete_account'
+            OR NOT EXISTS (
+              SELECT 1 FROM email_knowledge_sync_jobs active
+               WHERE active.organization_id=j.organization_id
+                 AND active.account_id=j.account_id
+                 AND active.id<>j.id
+                 AND active.operation IN ('upsert_message','delete_message')
+                 AND active.status='running'
+            )
+          )
+        ORDER BY j.next_attempt_at ASC, j.created_at ASC
         LIMIT $1
         FOR UPDATE SKIP LOCKED
      )
