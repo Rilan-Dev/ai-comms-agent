@@ -551,9 +551,9 @@ export class ImapSmtpAdapter implements EmailProvider {
     await this.command(`SELECT ${quote(folder)}`);
     await this.command(`UID STORE ${uid} +FLAGS.SILENT (\\Deleted)`);
     await this.command("UID EXPUNGE " + uid).catch(async () => {
-      // Servers without UIDPLUS may not support UID EXPUNGE; use guarded EXPUNGE
-      // only after marking the exact draft deleted. Other pre-deleted messages are
-      // not guaranteed safe on such servers, so fail closed instead of broad EXPUNGE.
+      // Roll back the Deleted flag when UID EXPUNGE is unavailable; never fall back
+      // to EXPUNGE, which could remove unrelated messages already marked deleted.
+      await this.command(`UID STORE ${uid} -FLAGS.SILENT (\\\\Deleted)`).catch(() => undefined);
       throw new Error("This IMAP server lacks UID EXPUNGE; draft deletion is not safe to complete");
     });
   }
