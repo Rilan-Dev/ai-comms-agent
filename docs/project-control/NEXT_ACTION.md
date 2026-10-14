@@ -1,3 +1,16 @@
+## Latest root-cause fix — Gmail OAuth connected but inbox remains empty (2026-10-14)
+
+- **Root cause found in source:** Gmail's batch API prefixes each response `Content-ID` with `response-`. `GmailAdapter.parseBatchResponse()` did not remove that prefix, so valid batch responses were stored in the map under the wrong message IDs. The mailbox worker then looked up the original IDs, treated every message as missing, acknowledged those IDs, and logged `imported_or_updated: 0`. This matches the observed empty inbox and repeated initial-import progress. Google documents the response prefix in the [Gmail batch request guide](https://developers.google.com/workspace/gmail/api/guides/batch).
+- Fixed response ID normalization and added a regression test using Google's documented response format.
+- Fixed a second data-loss path: DB persistence errors were logged and swallowed, then the worker acknowledged all fetched IDs and advanced the sync cursor. Failed writes now remain in the durable pending-ID checkpoint and cause the sync attempt to fail/retry; only successfully persisted messages are acknowledged.
+- Automatic fallback polling is now every 2 minutes instead of every 15 minutes. Gmail push/watch is explicitly reported unsupported until a Pub/Sub receiver is implemented/configured. This is automatic near-real-time polling, not push-event real time.
+- Added focused tests for Gmail batch response mapping and persistence checkpoint selection. **These new tests and typechecks have NOT been run by ChatGPT** because this environment has no local repository checkout. User's previously reported 114/114 worker tests and typecheck were for the pre-fix branch state.
+- **Next action:** in `/docker/ai-comms-agent`, pull the latest `feature/imap-smtp-mail-actions`, run `pnpm --filter @ai-comms-agent/worker test` and `pnpm --filter @ai-comms-agent/worker typecheck`, then deploy/restart the worker from the same commit as the web app. Verify the Gmail account's persisted message count increases and `/mail/inbox` shows actual DB-backed messages. No live production ingestion is claimed until this is observed.
+- **Environment boundary:** the previous diagnosis also recorded a RabbitMQ placeholder vhost (`YOUR_EXISTING_VHOST`) and Redis `WRONGPASS`. Recheck sanitized worker logs and ensure web + worker use the same intended production database; never paste credential values. If the batch fix is deployed and messages still remain absent, use the logged provider error and counts to distinguish credentials/transport, persistence, and inbox-query issues.
+- **Role boundary:** DEV-01 fixed source behavior; OPS-01 still owns production worker environment/deployment verification. Do not wait for CI/Vercel polling before continuing independent work.
+
+---
+
 ## DEV-01 — Email index lifecycle implementation (2026-10-14)
 
 - Working branch: `feature/email-index-lifecycle-v1`; not merged.
