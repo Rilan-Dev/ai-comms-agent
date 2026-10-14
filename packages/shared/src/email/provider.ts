@@ -75,6 +75,7 @@ export interface EmailMessage {
   in_reply_to?: string;
   references?: string[];
   from_address: string;
+  from_name?: string;
   to_addresses: string[];
   cc_addresses: string[];
   bcc_addresses: string[];

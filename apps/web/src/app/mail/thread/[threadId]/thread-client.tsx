@@ -111,12 +111,19 @@ export function ThreadClient({ organizationId, threadId, initialMessages }: { or
               <button type="button" disabled={busy || m.is_read} onClick={() => void markRead(String(m.id))} className="rounded-lg border px-3 py-1.5 text-xs font-semibold disabled:opacity-50">{m.is_read ? "Read" : "Mark read"}</button>
             </div>
           </div>
-          {/* Body rendering: HTML mode shows iframe sandbox (safe), text mode shows whitespace-pre-wrap */}
+          {/* Body rendering: HTML mode shows iframe sandbox (safe), text mode shows whitespace-pre-wrap.
+              For very large text bodies (>100KB), truncate to prevent browser DOM freeze. */}
           <div className="mt-5">
             {mode === "html" && m.html_body ? (
               <HtmlEmailFrame htmlBody={String(m.html_body)} />
             ) : (
-              <div className="whitespace-pre-wrap text-sm leading-7">{m.text_body || "No text body available."}</div>
+              <div className="whitespace-pre-wrap text-sm leading-7">
+                {m.text_body
+                  ? (String(m.text_body).length > 100000
+                      ? String(m.text_body).slice(0, 100000) + "\n\n… (truncated — full text body is " + Math.round(String(m.text_body).length / 1024) + "KB)"
+                      : m.text_body)
+                  : "No text body available."}
+              </div>
             )}
           </div>
           {m.has_attachments && <p className="mt-5 rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">This message has attachments. Secure attachment retrieval is exposed only after provider/storage integration is available.</p>}
