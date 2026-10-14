@@ -1266,3 +1266,10 @@ User ran `npm test -- src/modules/integrations/oauth-app-validation.test.ts src/
 - **Security dependency:** ISS-026 remains FIX-01-owned; no transport exposure is authorized until the cross-agent mailbox-context issue is remediated.
 - **Infrastructure:** OPS-01's RabbitMQ/Redis live ingestion blocker remains unverified.
 - **Acceptance:** No PASS, merge, or deployment claim.
+
+### 2026-10-14 — Email tool merge and index lifecycle plan
+
+- GitHub reports PR #15 merged; merge commit d444cf1b35939008058532b0754b46daef7cc312. Source inspection confirms main contains apps/worker/src/agent/email-agent-loop.ts, apps/worker/src/agent/tool-executor.ts, and the Clara provider tool-call implementation.
+- Added docs/plans/EMAIL-INDEX-IDENTITY-AND-ACCOUNT-LIFECYCLE.md based on main-source inspection. The current indexer uses an account-scoped document path and body SHA-256, but its background worker only selects indexed_at IS NULL; existing message updates need a reliable dirty/version signal. Account-wide Qdrant/vector deletion and stale-job prevention require explicit lifecycle work.
+- Verification status: NOT RUN for provider-contract tests, worker-loop tests, executor tests, Clara/worker TypeScript checks, full build, DB integration, vector integration, and live mailbox sync. A local checkout was not available and outbound DNS to github.com failed. Do not claim runtime correctness or vector cleanup is verified.
+- Ownership: FIX-01 owns ISS-026. OPS-01 owns live infrastructure and ingestion verification.
