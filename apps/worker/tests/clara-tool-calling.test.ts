@@ -43,7 +43,7 @@ test("OpenAI tool adapter serializes assistant calls and parses function argumen
 test("OpenAI tool adapter fails closed on malformed function arguments", async () => {
   globalThis.fetch = (async () => new Response(JSON.stringify({
     choices: [{ finish_reason: "tool_calls", message: { content: "I'll do that", tool_calls: [{ id: "call-bad", function: { name: "email.accounts.list", arguments: "{bad json" } }] } }],
-  }), { status: 200, headers: { "content-type": "application/json" } }) as typeof fetch;
+  }), { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
 
   const provider = createProvider({ provider: "openai", apiKey: "test-key", baseUrl: "https://provider.test", chatModel: "test-model" });
   const completion = await provider.chatWithTools?.([{ role: "user", content: "List my mailboxes" }], tools);
@@ -59,6 +59,7 @@ test("Gemini tool adapter maps function-call parts and rejects HTTP failures", a
     return new Response(JSON.stringify({
     candidates: [{ finishReason: "STOP", content: { parts: [{ functionCall: { name: "email.accounts.list", args: {} } }] } }],
   }), { status: 200, headers: { "content-type": "application/json" } }) as typeof fetch;
+  });
 
   const provider = createProvider({ provider: "gemini", apiKey: "test-key", baseUrl: "https://provider.test", chatModel: "test-model" });
   const completion = await provider.chatWithTools?.([
