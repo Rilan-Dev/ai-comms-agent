@@ -538,8 +538,9 @@ export class ImapSmtpAdapter implements EmailProvider {
       body_html: params.body_html,
       reply_to_message_id: params.reply_to_message_id ?? existing.in_reply_to,
     };
+    const replacement = await this.createDraft(updated);
     await this.deleteDraft(draftId);
-    return this.createDraft(updated);
+    return replacement;
   }
 
   async deleteDraft(draftId: string): Promise<void> {
@@ -563,7 +564,8 @@ export class ImapSmtpAdapter implements EmailProvider {
     if (!sender || !/^[^\\s<>@]+@[^\\s<>@]+\\.[^\\s<>@]+$/.test(sender)) throw new Error("A valid authenticated sender address is required");
     const recipients = [...this.validateAddresses(params.to), ...(params.cc ? this.validateAddresses(params.cc) : []), ...(params.bcc ? this.validateAddresses(params.bcc) : [])];
     const messageId = `<${randomUUID()}@ai-comms-agent.local>`;
-    const raw = this.buildMime(params, messageId, extraHeaders);
+    // Bcc recipients belong in the SMTP envelope, never in the delivered headers.
+    const raw = this.buildMime(params, messageId, extraHeaders).replace(/^Bcc:.*\\r?\\n/im, "");
     const mail = await smtpCommand(this.smtp!.reader, `MAIL FROM:<${sender}>`);
     if (!/^250\\b/.test(mail)) throw new Error("SMTP server rejected sender");
     for (const recipient of recipients) {
