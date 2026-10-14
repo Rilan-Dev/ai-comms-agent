@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
 import { query } from "@ai-comms-agent/db";
+import { createEmailIndexHashes, sha256 } from "./email-index-identity";
 import type { EmailMessage } from "@ai-comms-agent/shared";
 
 export type EmailKnowledgeSource = {
@@ -11,10 +11,6 @@ export type EmailKnowledgeSource = {
 
 const MAX_CHUNK_CHARS = 1_200;
 const CHUNK_OVERLAP_CHARS = 160;
-
-function sha256(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
-}
 
 /**
  * Split email content into bounded, overlapping retrieval chunks. Prefer
@@ -72,17 +68,65 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
   if (!body) return;
 
   const storagePath = `${accountId}/${encodeURIComponent(providerMessageId)}`;
-  const digest = sha256(body);
-  const metadata = {
+  const retrievalMetadata = {
     source: "email",
     provider,
     email_account_id: accountId,
     provider_message_id: providerMessageId,
     provider_thread_id: message.thread_id || null,
+    folder_id: message.folder_id || null,
     from_address: message.from_address || null,
+    to_addresses: message.to_addresses ?? [],
+    cc_addresses: message.cc_addresses ?? [],
+    bcc_addresses: message.bcc_addresses ?? [],
     received_at: message.received_at || null,
+    is_read: Boolean(message.is_read),
+    is_starred: Boolean(message.is_starred),
+    is_draft: Boolean(message.is_draft),
     is_outbound: Boolean(message.is_outbound),
+    has_attachments: Boolean(message.has_attachments),
   };
+  const hashes = createEmailIndexHashes(
+    { organizationId, provider, accountId, providerMessageId },
+    body,
+    retrievalMetadata,
+  );
+  const digest = hashes.contentHash;
+  const metadata = {
+    ...retrievalMetadata,
+    source_identity_hash: hashes.sourceIdentityHash,
+    content_hash: hashes.contentHash,
+    metadata_hash: hashes.metadataHash,
+  };
+
+  const existing = await query<{ id: string; sha256: string; metadata: Record<string, unknown> | string }>(
+    `SELECT id, sha256, metadata
+       FROM knowledge_documents
+      WHERE organization_id=$1 AND storage_bucket='email-account' AND storage_path=$2
+      LIMIT 1`,
+    [organizationId, storagePath],
+  );
+  const existingDocument = existing.rows[0];
+  const existingMetadata = typeof existingDocument?.metadata === "string"
+    ? (() => { try { return JSON.parse(existingDocument.metadata) as Record<string, unknown>; } catch { return {}; } })()
+    : (existingDocument?.metadata ?? {});
+  if (existingDocument && existingDocument.sha256 === digest) {
+    if (existingMetadata.metadata_hash !== hashes.metadataHash ||
+        existingMetadata.source_identity_hash !== hashes.sourceIdentityHash) {
+      await query(
+        `UPDATE knowledge_documents
+            SET filename=$1, metadata=$2::jsonb, updated_at=now()
+          WHERE id=$3 AND organization_id=$4 AND storage_bucket='email-account'`,
+        [(message.subject || providerMessageId).slice(0, 500), JSON.stringify(metadata), existingDocument.id, organizationId],
+      );
+      await query(
+        "UPDATE knowledge_chunks SET metadata=$1::jsonb WHERE document_id=$2 AND organization_id=$3",
+        [JSON.stringify(metadata), existingDocument.id, organizationId],
+      );
+    }
+    // Content is unchanged: metadata-only changes do not rebuild chunks or re-embed.
+    return;
+  }
 
   const document = await query<{ id: string }>(
     `INSERT INTO knowledge_documents
@@ -146,5 +190,29 @@ export async function deleteEmailKnowledge(
        AND storage_bucket = 'email-account'
        AND storage_path = $2`,
     [organizationId, storagePath],
+  );
+}
+
+
+/**
+ * Purge every email-derived Clara document for one removed connected account.
+ * This is deliberately limited to the email-account bucket and organization.
+ * The repository has no direct Qdrant client; vector deletion must be performed
+ * by the configured Clara knowledge/RAG lifecycle integration before purge is
+ * reported complete.
+ */
+export async function deleteEmailKnowledgeForAccount(
+  organizationId: string,
+  accountId: string,
+): Promise<void> {
+  if (!organizationId || !accountId) {
+    throw new Error("Email account knowledge purge requires organization and account IDs.");
+  }
+  await query(
+    `DELETE FROM knowledge_documents
+      WHERE organization_id=$1
+        AND storage_bucket='email-account'
+        AND metadata->>'email_account_id'=$2`,
+    [organizationId, accountId],
   );
 }
