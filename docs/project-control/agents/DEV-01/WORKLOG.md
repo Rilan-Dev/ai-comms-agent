@@ -281,3 +281,15 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - Added allowlist-revocation/capability tests, hash/point-ID tests, outbox migration contract test, and vector sync lifecycle tests.
 - **Not complete:** no supported Clara RAG/vector adapter exists in the repo and the new outbox worker is not wired to worker startup. Do not claim live vector sync until the supported adapter is bound.
 - **Verification:** no local checkout available; tests/typechecks were not run. No PASS claimed. Next action: bind the supported Clara RAG adapter, run focused tests and Clara/worker typechecks, fix concrete failures.
+
+
+### DEV01-EMAIL-RAG-REVIEW-20261016 / 2026-10-16
+- **Task:** Review existing email indexing/retrieval and recommend the best architecture for fast accurate email RAG in Chat and realtime voice before changing product code.
+- **Authorization:** Explicit user request for current-code inspection, self-critique, PostgreSQL vs Qdrant recommendation, and session/lesson/next-action records; explicit instruction to review before touching code. Product code changes intentionally deferred.
+- **Started from:** GitHub main; source/control refs observed during review point to `5d8d2dbc70fd4a36b665e709816cb24c65419b6d`.
+- **Actions:** Inspected indexer chunking, PostgreSQL knowledge tables, durable vector outbox/adapter contract, worker startup, local Clara retrieval/embedding code, email read handlers, Chat email-context loader, control docs, and Clara Core reference map/agent rules. Wrote `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md`.
+- **Files/code:** One new proposal document only; no application code changed.
+- **Evidence:** GitHub accepted proposal commit `4f95fcd122c146b41de099bc98aaeeb614a53d87`. No tests/typechecks/build/Qdrant calls/provider ingestion/latency/runtime isolation checks executed.
+- **Blockers/dependencies:** FIX-01 must close ISS-026 and establish active-agent account retrieval scope; a supported Clara server-to-server email-vector adapter is not bound; vector outbox loop is not wired into worker startup; architecture review required before material implementation.
+- **Lesson:** SQL chunk persistence is not vector retrieval. Exact time/count/latest questions need SQL; semantic topic questions benefit from filtered Qdrant plus lexical search and authoritative revalidation. Avoid unsupported Qdrant endpoint/collection guesses.
+- **Next action:** Review/correct the proposal, confirm the supported Clara adapter contract, coordinate with FIX-01 on ISS-026, then implement only after the retrieval authorization boundary is established. OPS-01 handles live runtime and latency acceptance.
