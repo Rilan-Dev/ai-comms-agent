@@ -1,3 +1,16 @@
+## Provider-neutral real-time email sync — 2026-10-16
+
+- Owner request: new messages should appear automatically in the application inbox across supported providers without a manual Sync action.
+- Read the project-control entry points and email architecture/provider contract before changing code. Added implementation plan: `docs/plans/PROVIDER-REALTIME-EMAIL-SYNC-PLAN.md`.
+- **Implemented on this branch:** inbox client now refreshes the first page every 5 seconds while visible and refreshes immediately when the tab becomes visible; preserves search/account/unread/action filters and avoids overlapping poll requests. This only reflects messages after they are persisted in PostgreSQL.
+- **Not yet implemented:** Gmail Pub/Sub receiver + authenticated OIDC validation + watch registration/renewal + History API reconciliation; persistent IMAP IDLE listener; verified Zoho webhook path; browser push transport. Current 2-minute worker fallback is not equivalent to instant push.
+- **Next development order:** (1) run web/worker tests and typechecks for the inbox polling + prior Gmail parser/checkpoint fixes; (2) implement Gmail Pub/Sub securely and add history reconciliation/watch renewal; (3) implement a long-lived, leased, reconnecting IMAP IDLE listener; (4) validate Zoho push capabilities and retain polling fallback; (5) measure delivered-email-to-inbox latency on deployed services.
+- OPS-01 must configure Google Cloud Pub/Sub, webhook authentication/audience, production worker, RabbitMQ/Redis, and shared production DB. No app password pasted into chat should be reused; revoke it and rotate credentials.
+- Manual sync remains an optional recovery action. Normal sync must begin on account connect and run continuously while the worker is healthy.
+- Current branch: `feature/provider-realtime-email-sync`, based on `feature/imap-smtp-mail-actions`. Latest new UI changes and plan have not been locally tested or deployed.
+
+---
+
 ## Latest root-cause fix — Gmail OAuth connected but inbox remains empty (2026-10-14)
 
 - **Root cause found in source:** Gmail's batch API prefixes each response `Content-ID` with `response-`. `GmailAdapter.parseBatchResponse()` did not remove that prefix, so valid batch responses were stored in the map under the wrong message IDs. The mailbox worker then looked up the original IDs, treated every message as missing, acknowledged those IDs, and logged `imported_or_updated: 0`. This matches the observed empty inbox and repeated initial-import progress. Google documents the response prefix in the [Gmail batch request guide](https://developers.google.com/workspace/gmail/api/guides/batch).
