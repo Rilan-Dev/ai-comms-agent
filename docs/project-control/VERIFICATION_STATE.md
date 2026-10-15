@@ -1309,3 +1309,5 @@ User ran `npm test -- src/modules/integrations/oauth-app-validation.test.ts src/
 - **Tests/typecheck/lint/build:** NOT RUN after these changes.
 - **Google Cloud setup / live push:** NOT RUN. Required environment: `GMAIL_PUBSUB_TOPIC`, `GMAIL_PUBSUB_PUSH_AUDIENCE`, `GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT`, Gmail API enabled, Pub/Sub topic publisher permission for Gmail, and a push subscription configured with OIDC authentication and the matching audience/service account.
 - **End-to-end mailbox behavior:** NOT VERIFIED. Do not claim instant mail delivery, successful renewal, or production readiness. Next: run focused web/worker tests and typechecks, add valid/invalid JWT and notification-path coverage, then OPS-01 performs an independent-account send and measures provider-to-DB-to-inbox latency. Continue with IMAP IDLE after Gmail reconciliation hardening.
+
+- Additional source added after initial note: migration `0049_email_sync_pending_push.sql`; worker preserves a newer `pending_push_at` that arrives during an active sync and schedules a follow-up pass. The watch loop checks every five minutes. Migration application and concurrency tests are NOT RUN.
