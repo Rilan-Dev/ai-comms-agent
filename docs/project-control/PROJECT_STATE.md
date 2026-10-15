@@ -639,3 +639,12 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - Added opt-in actual-Qdrant filter/deletion integration coverage in src/modules/email-vectors/core/qdrant-filter.integration.test.ts; requires QDRANT_INTEGRATION_URL and optionally QDRANT_INTEGRATION_API_KEY.
 - Source-authored only. No test/typecheck/live Qdrant result is claimed.
 - ISS-026 remains FIX-01-owned/open. Adapter remains unbound; vector-sync loop remains stopped; no user-facing email retrieval is exposed.
+
+### 2026-10-16 — shared email hybrid retrieval core authored (not transport-wired)
+
+- Added shared host retrieval core in `packages/db/src/email/hybrid-retrieval.ts` with fresh DB-resolved agent/account bindings, `primary`/`read_only` role checks, bounded PostgreSQL lexical retrieval, Clara vector candidate fusion, final authoritative SQL revalidation, and message citation tokens.
+- Added `packages/db/src/email/clara-vector-search.ts` to call the authenticated Clara search API, with timeout/HTTPS/credential checks and defensive org/account filtering. Exported both through `packages/db/src/index.ts`.
+- Semantic candidates now carry the indexed content hash. The shared service discards semantic-only candidates if the current PostgreSQL source hash is missing or differs; returned snippets/metadata always come from SQL.
+- Added worker test source for fresh binding resolution, out-of-scope candidate filtering, final SQL revalidation, degraded lexical fallback, and Clara adapter scope/credential handling.
+- Chat route, realtime voice runtime and worker startup were deliberately not wired; ISS-026 remains open and FIX-01-owned. The outbox loop remains stopped.
+- Source edits only. No tests/typecheck/lint/build/live service or Qdrant integration execution was performed.
