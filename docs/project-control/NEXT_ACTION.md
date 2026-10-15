@@ -1148,3 +1148,12 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Contract update:** Clara API now allows nullable received timestamps and accepts content/metadata/per-chunk hashes to skip re-embedding when content and chunk identities are unchanged.
 - **Next DEV-01 action:** Run focused worker adapter tests/typecheck and review the Clara endpoint contract against the adapter. Continue independent source corrections; do not wait for CI. After FIX-01 closes ISS-026 and Clara API executable checks are addressed, wire the adapter + outbox loop and implement one shared authorized PostgreSQL + Qdrant retrieval service for Chat and realtime voice.
 - **OPS-01:** Configure the production endpoint and server-only credential, validate Qdrant/embedding behavior, perform initial ingestion and cross-account runtime checks, then measure p50/p95 latency, freshness and correctness.
+
+### DEV-01 — focused source review follow-up (2026-10-16)
+
+- Corrected a metadata lifecycle bug: the adapter now transmits explicit null/empty sender and folder-label values when source metadata contains those keys, so Qdrant can clear stale values instead of preserving them indefinitely. Clara's upsert/metadata-update contract accepts these explicit clears.
+- Corrected Clara's request-body cap to measure UTF-8 bytes rather than JavaScript string characters.
+- Added an opt-in Qdrant integration test at src/modules/email-vectors/core/qdrant-filter.integration.test.ts that checks actual Qdrant org + explicit-account filtering and scoped deletion. It runs only when QDRANT_INTEGRATION_URL is configured (optional QDRANT_INTEGRATION_API_KEY).
+- Not executed: dependency-equipped tests/typecheck and live Qdrant were not available in this work session. These are authored checks, not passing evidence.
+- Still blocked: do not bind the adapter/start the outbox loop or expose Chat/voice email retrieval until FIX-01 closes ISS-026 and execution-time account authorization is in place.
+- Next: continue contract review and targeted source corrections; run worker/Clara tests and typechecks when the dependency-equipped environment is available. OPS-01 owns live Qdrant setup, ingestion, isolation evidence, and latency/correctness acceptance.
