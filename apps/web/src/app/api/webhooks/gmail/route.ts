@@ -137,11 +137,12 @@ export async function POST(request: Request) {
 
   try {
     const matches = await query<{ id: string; organization_id: string; history_id: string | null; sync_status: string | null }>(
-      `SELECT id, organization_id
-         FROM email_accounts
-        WHERE provider='gmail' AND deleted_at IS NULL
-          AND lower(email_address)=lower($1)
-        ORDER BY created_at ASC
+      `SELECT a.id, a.organization_id, s.history_id, s.status::text AS sync_status
+         FROM email_accounts a
+         LEFT JOIN email_sync_states s ON s.email_account_id=a.id
+        WHERE a.provider='gmail' AND a.deleted_at IS NULL
+          AND lower(a.email_address)=lower($1)
+        ORDER BY a.created_at ASC
         LIMIT 2`,
       [payload.emailAddress],
     );
