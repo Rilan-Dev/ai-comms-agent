@@ -480,49 +480,62 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
   if (!ctx.orgId || !process.env.DATABASE_URL) {
     return { ok: false, result: { sources: [] }, error: "PostgreSQL is not configured for local knowledge retrieval." };
   }
+  // Extract individual keywords from the query (for full-text search)
   const terms = [...new Set(queryText.toLowerCase().match(/[\p{L}\p{N}_]{2,}/gu) ?? [])].slice(0, 12);
   const textQuery = terms.join(" | ");
-  if (!queryText.trim() || terms.length === 0) {
+
+  // Extract email addresses from the query (for targeted from_email search)
+  // This handles "mohamedrilan.ksa@gmail.com" or "mohammed rilan ksa" etc.
+  const emailAddresses = queryText.match(/[\w.+-]+@[\w.-]+\.\w+/g) ?? [];
+  // Also extract individual name fragments for fuzzy sender matching
+  // (e.g., "mohammed rilan ksa" → ["mohammed", "rilan", "ksa"])
+  const nameFragments = terms.filter(t => t.length >= 3 && !["the", "and", "for", "from", "with", "how", "many", "last", "show", "find", "check", "email", "emails", "inbox", "received", "hours", "days", "about", "this", "that", "have", "your", "what", "need", "please", "want", "ask", "any", "all", "summarize", "summary"].includes(t));
+
+  if (!queryText.trim() || (terms.length === 0 && emailAddresses.length === 0)) {
     return { ok: true, result: { sources: [] } };
   }
-  try {
-    // PRIMARY: Search knowledge_chunks (indexed email content) — up to 20 results
-    // for richer context. Also search email_messages directly for recent emails
-    // that may not be indexed yet.
-    const chunkResult = await query<{ id: string; content: string; metadata: Record<string, unknown> | null }>(
-      `SELECT kc.id, kc.content, kc.metadata
-       FROM knowledge_chunks kc
-       WHERE kc.organization_id = $1
-         AND EXISTS (
-           SELECT 1 FROM knowledge_documents kd
-           WHERE kd.id = kc.document_id
-             AND kd.organization_id = kc.organization_id
-             AND (
-               ($2::text IS NULL AND kd.agent_id IS NULL)
-               OR ($2::text IS NOT NULL AND (kd.agent_id IS NULL OR kd.agent_id::text = $2))
-             )
-         )
-         AND (
-           kc.content ILIKE '%' || $3 || '%'
-           OR ($4::text <> '' AND to_tsvector('simple', kc.content) @@ to_tsquery('simple', $4))
-         )
-       ORDER BY
-         CASE WHEN kc.content ILIKE '%' || $3 || '%' THEN 0 ELSE 1 END,
-         CASE WHEN $4::text <> '' THEN ts_rank(to_tsvector('simple', kc.content), to_tsquery('simple', $4)) ELSE 0 END DESC,
-         kc.created_at DESC
-       LIMIT $5`,
-      [ctx.orgId, ctx.agentId, queryText, textQuery, Math.max(1, Math.min(topK, 30))],
-    );
 
-    // SECONDARY: Search email_messages directly for recent emails (last 7 days)
-    // that may not be indexed yet. This ensures the AI can answer questions about
-    // recent emails even if the indexer hasn't processed them yet.
+  try {
+    // PRIMARY: Search knowledge_chunks (indexed email content) — up to 30 results
+    // Uses tsquery for full-text search on indexed chunks
+    const chunkResult = textQuery
+      ? await query<{ id: string; content: string; metadata: Record<string, unknown> | null }>(
+          `SELECT kc.id, kc.content, kc.metadata
+           FROM knowledge_chunks kc
+           WHERE kc.organization_id = $1
+             AND EXISTS (
+               SELECT 1 FROM knowledge_documents kd
+               WHERE kd.id = kc.document_id
+                 AND kd.organization_id = kc.organization_id
+                 AND (
+                   ($2::text IS NULL AND kd.agent_id IS NULL)
+                   OR ($2::text IS NOT NULL AND (kd.agent_id IS NULL OR kd.agent_id::text = $2))
+                 )
+             )
+             AND to_tsvector('simple', kc.content) @@ to_tsquery('simple', $3)
+           ORDER BY ts_rank(to_tsvector('simple', kc.content), to_tsquery('simple', $3)) DESC,
+             kc.created_at DESC
+           LIMIT $4`,
+          [ctx.orgId, ctx.agentId, textQuery, Math.max(1, Math.min(topK, 30))],
+        )
+      : { rows: [] };
+
+    // SECONDARY: Search email_messages directly — this is the key fix.
+    // Instead of using the full query text as an ILIKE pattern (which never matches
+    // because no email field contains the full user sentence), we search by:
+    //   1. Email address (if the user mentioned one)
+    //   2. Individual name fragments (fuzzy sender matching)
+    //   3. Full-text search on the search_vector column
+    // We also return structured data (subject, from, date, snippet, body preview)
+    // so the AI can show exact email content to the user.
     const recentResult = await query<{ id: string; content: string; metadata: Record<string, unknown> | null }>(
       `SELECT
          em.id AS id,
          (COALESCE('Subject: ' || em.subject, '') ||
           CASE WHEN em.from_email IS NOT NULL THEN '\nFrom: ' || em.from_email ELSE '' END ||
+          CASE WHEN em.from_name IS NOT NULL AND em.from_name <> '' THEN ' (' || em.from_name || ')' ELSE '' END ||
           CASE WHEN em.received_at IS NOT NULL THEN '\nDate: ' || em.received_at::text ELSE '' END ||
+          CASE WHEN em.snippet IS NOT NULL AND em.snippet <> '' THEN '\nPreview: ' || em.snippet ELSE '' END ||
           CASE WHEN em.text_body IS NOT NULL THEN '\n\n' || left(em.text_body, 2000) ELSE '' END
          ) AS content,
          jsonb_build_object(
@@ -530,6 +543,7 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
            'email_account_id', em.email_account_id,
            'provider_message_id', em.provider_message_id,
            'from_email', em.from_email,
+           'from_name', em.from_name,
            'subject', em.subject,
            'received_at', em.received_at,
            'snippet', em.snippet
@@ -538,27 +552,30 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
        WHERE em.organization_id = $1
          AND em.is_draft = false
          AND (
-           em.subject ILIKE '%' || $3 || '%'
-           OR em.from_email ILIKE '%' || $3 || '%'
-           OR em.snippet ILIKE '%' || $3 || '%'
-           OR em.text_body ILIKE '%' || $3 || '%'
-           OR ($4::text <> '' AND em.search_vector @@ to_tsquery('simple', $4))
+           -- Search by email address (exact ILIKE on from_email)
+           ${emailAddresses.length > 0 ? emailAddresses.map((_, i) => `em.from_email ILIKE '%' || $${5 + i} || '%'`).join(' OR ') : 'FALSE'}
+           -- OR search by individual name fragments on from_email + from_name
+           ${nameFragments.length > 0 ? `OR em.from_email ILIKE '%' || $5 || '%' OR em.from_name ILIKE '%' || $5 || '%'` : ''}
+           -- OR full-text search on search_vector
+           ${textQuery ? `OR em.search_vector @@ to_tsquery('simple', $4)` : ''}
+           -- OR subject/snippet/body search with individual keywords
+           ${nameFragments.length > 0 ? `OR em.subject ILIKE '%' || $5 || '%' OR em.snippet ILIKE '%' || $5 || '%' OR em.text_body ILIKE '%' || $5 || '%'` : ''}
          )
        ORDER BY
-         CASE WHEN em.subject ILIKE '%' || $3 || '%' THEN 0 ELSE 1 END,
          em.received_at DESC
-       LIMIT 10`,
-      [ctx.orgId, queryText, textQuery],
+       LIMIT 20`,
+      [ctx.orgId, textQuery, ...(emailAddresses.length > 0 ? emailAddresses : [nameFragments[0] ?? '']), ...(emailAddresses.length > 0 ? emailAddresses : [])],
     );
 
-    // Merge results — chunks first (deeper content), then recent emails (fresh)
+    // Merge results — recent emails first (most relevant for user questions),
+    // then chunks (deeper content for context)
     const sources = [
-      ...chunkResult.rows.map((row) => ({
+      ...recentResult.rows.map((row) => ({
         id: row.id,
         snippet: row.content,
         metadata: row.metadata ?? {},
       })),
-      ...recentResult.rows.map((row) => ({
+      ...chunkResult.rows.map((row) => ({
         id: row.id,
         snippet: row.content,
         metadata: row.metadata ?? {},
