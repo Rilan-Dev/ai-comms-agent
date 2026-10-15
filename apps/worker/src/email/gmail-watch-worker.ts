@@ -3,7 +3,6 @@ import {
   PostgresEmailAccountRepository,
   query,
 } from "@ai-comms-agent/db";
-import type { EmailCredentials } from "@ai-comms-agent/shared";
 import { GmailAdapter } from "./gmail-adapter";
 
 type WatchCandidate = {
@@ -55,7 +54,7 @@ async function renewDueWatches(): Promise<{ checked: number; renewed: number }> 
       if (stored.credential_type !== "oauth_token" && stored.credential_type !== "password" && stored.credential_type !== "app_password") {
         throw new Error("Encrypted Gmail credentials have an invalid credential type.");
       }
-      await adapter.connect({ ...stored, credential_type: stored.credential_type } as EmailCredentials);
+      await adapter.connect({ ...stored, credential_type: stored.credential_type });
       const profile = await adapter.getMailboxProfile();
       if (profile.emailAddress.trim().toLowerCase() !== candidate.email_address.trim().toLowerCase()) {
         throw new Error("Authenticated Gmail mailbox does not match the connected account address.");
