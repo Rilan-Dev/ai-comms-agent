@@ -331,3 +331,12 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - Security boundary: ISS-026 remains FIX-01-owned/open. Adapter remains unbound and outbox loop stopped.
 - Next: run targeted worker/Clara tests and typechecks in a dependency-equipped environment; execute Qdrant integration test only against an explicit test endpoint. After FIX-01 closes ISS-026, bind adapter/outbox and implement shared authorized SQL + Qdrant retrieval. OPS-01 owns live ingestion/isolation/performance acceptance.
 - Additional Clara review correction: deterministic point-ID and embedding-model hash inputs now use actual NUL separators rather than the two-character backslash-zero sequence, preventing ambiguous concatenation of identifier parts. This remains source-only and untested.
+
+### DEV01-SHARED-EMAIL-HYBRID-RETRIEVAL-20261016
+
+- **Task:** Implement the shared PostgreSQL + Clara/Qdrant retrieval core without bypassing ISS-026.
+- **Changes:** Added `packages/db/src/email/hybrid-retrieval.ts`, `packages/db/src/email/clara-vector-search.ts`, package exports, and tests for grant scoping, final SQL revalidation, lexical fallback and Clara response filtering. Clara search hits now include contentHash; semantic-only candidates are checked against current PostgreSQL document hashes.
+- **Files:** ai-comms-agent PR #23; Clara PR #298.
+- **Verification:** Source edits only. Tests/typecheck/lint/build/live API/Qdrant were not run.
+- **Boundary:** No transport wiring or worker outbox startup; ISS-026 remains open/FIX-01-owned. OPS-01 owns live Qdrant, ingestion, runtime isolation and performance acceptance.
+- **Next:** focused review, then targeted tests/typechecks when dependency-equipped; after FIX-01 closes ISS-026, connect shared service to Chat + realtime voice and bind/start outbox.
