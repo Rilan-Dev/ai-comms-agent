@@ -17,7 +17,7 @@ import type {
 } from "@ai-comms-agent/shared";
 
 const GRAPH_ORIGIN = "https://graph.microsoft.com";
-const GRAPH_BASE = GRAPH_ORIGIN + "/v1.0";
+const GRAPH_BASE = GRAPH_ORIGIN + "/v1.0/";
 const DELTA_SELECT = [
   "id", "conversationId", "internetMessageId", "internetMessageHeaders",
   "subject", "from", "toRecipients", "ccRecipients", "bccRecipients",
@@ -213,7 +213,7 @@ export class MicrosoftGraphAdapter implements EmailProvider {
 
   private async request<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
     if (!this.credentials?.access_token) throw new Error("Microsoft Graph adapter is not connected.");
-    const url = path.startsWith("https://") ? new URL(path) : new URL(path, GRAPH_BASE);
+    const url = path.startsWith("https://") ? new URL(path) : new URL(path.replace(/^\\/+/, ""), GRAPH_BASE);
     if (url.origin !== GRAPH_ORIGIN || !url.pathname.startsWith("/v1.0/")) {
       throw new Error("Refusing an untrusted Microsoft Graph URL.");
     }
