@@ -20,7 +20,11 @@ async function renewDueWatches(): Promise<{ checked: number; renewed: number }> 
   const topicName = process.env.GMAIL_PUBSUB_TOPIC?.trim();
   const databaseUrl = process.env.DATABASE_URL?.trim();
   const masterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
-  if (!topicName || !databaseUrl || !masterKey) return { checked: 0, renewed: 0 };
+  const pushAudience = process.env.GMAIL_PUBSUB_PUSH_AUDIENCE?.trim();
+  const pushServiceAccount = process.env.GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT?.trim();
+  if (!topicName || !databaseUrl || !masterKey || !pushAudience || !pushServiceAccount) {
+    return { checked: 0, renewed: 0 };
+  }
 
   const due = await query<WatchCandidate>(
     `SELECT a.id, a.organization_id, a.email_address, a.connection_config
@@ -108,12 +112,15 @@ async function renewDueWatches(): Promise<{ checked: number; renewed: number }> 
 }
 
 export function startGmailWatchRenewalLoop() {
-  if (!process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY || !process.env.GMAIL_PUBSUB_TOPIC?.trim()) {
+  if (!process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY
+    || !process.env.GMAIL_PUBSUB_TOPIC?.trim()
+    || !process.env.GMAIL_PUBSUB_PUSH_AUDIENCE?.trim()
+    || !process.env.GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT?.trim()) {
     console.log(JSON.stringify({
       timestamp: new Date().toISOString(),
       level: "warn",
       service: "worker.email-gmail-watch",
-      message: "Gmail watch renewal disabled: DATABASE_URL, CREDENTIALS_MASTER_KEY, and GMAIL_PUBSUB_TOPIC are required",
+      message: "Gmail watch renewal disabled: database, credential encryption, Pub/Sub topic, push audience, and push service account are required",
     }));
     return () => undefined;
   }
