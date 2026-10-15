@@ -480,13 +480,16 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
   if (!ctx.orgId || !process.env.DATABASE_URL) {
     return { ok: false, result: { sources: [] }, error: "PostgreSQL is not configured for local knowledge retrieval." };
   }
-  const terms = [...new Set(queryText.toLowerCase().match(/[\\p{L}\\p{N}_]{2,}/gu) ?? [])].slice(0, 12);
+  const terms = [...new Set(queryText.toLowerCase().match(/[\p{L}\p{N}_]{2,}/gu) ?? [])].slice(0, 12);
   const textQuery = terms.join(" | ");
   if (!queryText.trim() || terms.length === 0) {
     return { ok: true, result: { sources: [] } };
   }
   try {
-    const result = await query<{ id: string; content: string; metadata: Record<string, unknown> | null }>(
+    // PRIMARY: Search knowledge_chunks (indexed email content) — up to 20 results
+    // for richer context. Also search email_messages directly for recent emails
+    // that may not be indexed yet.
+    const chunkResult = await query<{ id: string; content: string; metadata: Record<string, unknown> | null }>(
       `SELECT kc.id, kc.content, kc.metadata
        FROM knowledge_chunks kc
        WHERE kc.organization_id = $1
@@ -508,17 +511,63 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
          CASE WHEN $4::text <> '' THEN ts_rank(to_tsvector('simple', kc.content), to_tsquery('simple', $4)) ELSE 0 END DESC,
          kc.created_at DESC
        LIMIT $5`,
-      [ctx.orgId, ctx.agentId, queryText, textQuery, Math.max(1, Math.min(topK, 12))],
+      [ctx.orgId, ctx.agentId, queryText, textQuery, Math.max(1, Math.min(topK, 30))],
     );
+
+    // SECONDARY: Search email_messages directly for recent emails (last 7 days)
+    // that may not be indexed yet. This ensures the AI can answer questions about
+    // recent emails even if the indexer hasn't processed them yet.
+    const recentResult = await query<{ id: string; content: string; metadata: Record<string, unknown> | null }>(
+      `SELECT
+         em.id AS id,
+         (COALESCE('Subject: ' || em.subject, '') ||
+          CASE WHEN em.from_email IS NOT NULL THEN '\nFrom: ' || em.from_email ELSE '' END ||
+          CASE WHEN em.received_at IS NOT NULL THEN '\nDate: ' || em.received_at::text ELSE '' END ||
+          CASE WHEN em.text_body IS NOT NULL THEN '\n\n' || left(em.text_body, 2000) ELSE '' END
+         ) AS content,
+         jsonb_build_object(
+           'source', 'email',
+           'email_account_id', em.email_account_id,
+           'provider_message_id', em.provider_message_id,
+           'from_email', em.from_email,
+           'subject', em.subject,
+           'received_at', em.received_at,
+           'snippet', em.snippet
+         ) AS metadata
+       FROM email_messages em
+       WHERE em.organization_id = $1
+         AND em.is_draft = false
+         AND (
+           em.subject ILIKE '%' || $3 || '%'
+           OR em.from_email ILIKE '%' || $3 || '%'
+           OR em.snippet ILIKE '%' || $3 || '%'
+           OR em.text_body ILIKE '%' || $3 || '%'
+           OR ($4::text <> '' AND em.search_vector @@ to_tsquery('simple', $4))
+         )
+       ORDER BY
+         CASE WHEN em.subject ILIKE '%' || $3 || '%' THEN 0 ELSE 1 END,
+         em.received_at DESC
+       LIMIT 10`,
+      [ctx.orgId, queryText, textQuery],
+    );
+
+    // Merge results — chunks first (deeper content), then recent emails (fresh)
+    const sources = [
+      ...chunkResult.rows.map((row) => ({
+        id: row.id,
+        snippet: row.content,
+        metadata: row.metadata ?? {},
+      })),
+      ...recentResult.rows.map((row) => ({
+        id: row.id,
+        snippet: row.content,
+        metadata: row.metadata ?? {},
+      })),
+    ];
+
     return {
       ok: true,
-      result: {
-        sources: result.rows.map((row) => ({
-          id: row.id,
-          snippet: row.content,
-          metadata: row.metadata ?? {},
-        })),
-      },
+      result: { sources },
     };
   } catch (error) {
     return { ok: false, result: { sources: [] }, error: error instanceof Error ? error.message : "Knowledge retrieval failed." };
