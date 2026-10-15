@@ -1353,3 +1353,11 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Regression protection:** Worker TypeScript compilation is the immediate regression check; targeted tests are queued in BKL-FIX01-WORKER-CREDENTIAL-TYPE-20261016. No new dedicated unit test was added because the defect is a compile-time boundary mismatch and the fix adds runtime discriminant rejection.
 - **Not verified:** Worker typecheck, worker test suite, Docker worker rebuild, and full compose startup have not been run by FIX-01 in this environment. Do not mark this correction PASS until the typecheck/build evidence is available.
 - **Source commits:** `185b729d`, `60fadabf`, `e3ba38c9`, `18948e08`; follow-up project-control records are committed on `main`.
+
+
+### 2026-10-16 — Email RAG architecture review
+- **Source review:** Inspected the PostgreSQL email chunk indexer, vector outbox/adapter contract, worker startup, local Clara retrieval, email read tools, Chat context loader, and Clara Core guidance.
+- **Finding:** Current source does not establish working Qdrant email retrieval. PostgreSQL chunks are written; the vector-sync loop is not started and no supported concrete Clara email vector adapter is bound. Local retrieval remains SQL/tsvector/ILIKE. Chat email context is a fixed up-to-20 organization-scoped sample and lacks active agent-account binding (ISS-026, FIX-01-owned).
+- **Artifact:** `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md`, commit `4f95fcd122c146b41de099bc98aaeeb614a53d87`.
+- **Verification:** Documentation/source inspection only. No tests, typecheck, build, DB migration, Qdrant request, provider sync, latency benchmark, or runtime isolation test executed. No PASS and no 10x performance claim.
+- **Next:** Architecture approval/correction and supported adapter/security contract before material code changes; FIX-01 owns ISS-026, OPS-01 owns live infrastructure/ingestion and latency evidence.
