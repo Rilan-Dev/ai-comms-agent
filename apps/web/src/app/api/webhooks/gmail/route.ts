@@ -1,4 +1,4 @@
-import { createPublicKey, verify as verifySignature } from "node:crypto";
+import { X509Certificate, verify as verifySignature } from "node:crypto";
 import { NextResponse } from "next/server";
 import { query } from "@ai-comms-agent/db";
 
@@ -60,7 +60,7 @@ async function verifyGooglePushJwt(token: string): Promise<GooglePushClaims> {
   const keys = await googleSigningCertificates();
   const certificate = keys[header.kid];
   if (!certificate) throw new Error("Unknown Google signing key");
-  const publicKey = createPublicKey(certificate);
+  const publicKey = new X509Certificate(certificate).publicKey;
   const signature = Buffer.from(parts[2], "base64url");
   const validSignature = verifySignature(
     "RSA-SHA256",
@@ -117,12 +117,14 @@ export async function POST(request: Request) {
   if (contentLength > 1_000_000) return NextResponse.json({ error: "payload_too_large" }, { status: 413 });
 
   let payload: GmailPushPayload;
+  let pubSubMessageId = "";
   try {
     const envelope = await request.json() as PubSubEnvelope;
     if (!envelope.message?.data || typeof envelope.message.messageId !== "string") {
       return NextResponse.json({ error: "invalid_pubsub_envelope" }, { status: 400 });
     }
     payload = decodePubSubData(envelope.message.data);
+    pubSubMessageId = envelope.message.messageId;
   } catch {
     return NextResponse.json({ error: "invalid_notification" }, { status: 400 });
   }
@@ -143,7 +145,6 @@ export async function POST(request: Request) {
         level: "warn",
         service: "webhook.gmail",
         message: matches.rows.length ? "Gmail notification mailbox matched multiple accounts" : "Gmail notification mailbox is not connected",
-        notification_email: payload.emailAddress,
         account_match_count: matches.rows.length,
       }));
       // Unknown or ambiguous mailbox identities should not create account state.
@@ -168,8 +169,7 @@ export async function POST(request: Request) {
       organization_id: account.organization_id,
       account_id: account.id,
       history_id: payload.historyId,
-      pubsub_message_id: (await Promise.resolve(request.headers.get("x-cloud-trace-context"))) ? "present" : undefined,
-      service_account: claims.email,
+      pubsub_message_id: pubSubMessageId,
     }));
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (error) {
