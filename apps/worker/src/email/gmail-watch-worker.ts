@@ -52,14 +52,10 @@ async function renewDueWatches(): Promise<{ checked: number; renewed: number }> 
     try {
       const stored = await accounts.loadCredentials(candidate.id, key);
       if (!stored) throw new Error("Encrypted Gmail credentials are missing.");
-<<<<<<< Updated upstream
       if (stored.credential_type !== "oauth_token" && stored.credential_type !== "password" && stored.credential_type !== "app_password") {
         throw new Error("Encrypted Gmail credentials have an invalid credential type.");
       }
       await adapter.connect({ ...stored, credential_type: stored.credential_type } as EmailCredentials);
-=======
-      await adapter.connect(stored as unknown as EmailCredentials);
->>>>>>> Stashed changes
       const profile = await adapter.getMailboxProfile();
       if (profile.emailAddress.trim().toLowerCase() !== candidate.email_address.trim().toLowerCase()) {
         throw new Error("Authenticated Gmail mailbox does not match the connected account address.");
