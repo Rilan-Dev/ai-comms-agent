@@ -79,13 +79,13 @@ describe("Gmail Pub/Sub webhook", () => {
   });
 
   it.each([
-    ["wrong audience", { aud: "https://attacker.example/" }],
-    ["wrong service account", { email: "attacker@example.com" }],
-    ["unverified service account", { email_verified: false }],
-    ["expired token", { exp: 1 }],
-    ["wrong issuer", { iss: "https://attacker.example/" }],
-    ["future-issued token", { iat: Math.floor(Date.now() / 1000) + 600 }],
-  ])("rejects a correctly signed token with %s", async (_label, claims) => {
+    { label: "wrong audience", claims: { aud: "https://attacker.example/" } },
+    { label: "wrong service account", claims: { email: "attacker@example.com" } },
+    { label: "unverified service account", claims: { email_verified: false } },
+    { label: "expired token", claims: { exp: 1 } },
+    { label: "wrong issuer", claims: { iss: "https://attacker.example/" } },
+    { label: "future-issued token", claims: { iat: Math.floor(Date.now() / 1000) + 600 } },
+  ])("rejects a correctly signed token with $label", async ({ claims }) => {
     const response = await POST(request(signToken(claims), "{}"));
     expect(response.status).toBe(401);
     expect(queryMock).not.toHaveBeenCalled();
