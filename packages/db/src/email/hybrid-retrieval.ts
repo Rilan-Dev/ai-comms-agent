@@ -179,6 +179,7 @@ export function createEmailHybridRetriever(dependencies: {
     const candidates = new Map<string, Candidate>();
     const addCandidate = (accountId: string, providerMessageId: string, score: number, method: "lexical" | "semantic", contentHash?: string) => {
       if (!accountId || !providerMessageId || !allowedAccountIds.includes(accountId)) return;
+      if (method === "semantic" && (!contentHash || !/^[a-f0-9]{64}$/i.test(contentHash))) return;
       const key = `${accountId}\\0${providerMessageId}`;
       const prior = candidates.get(key);
       if (prior) {
