@@ -328,3 +328,14 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Owner:** FIX-01
 - **Suggested next action:** Run worker typecheck/build and targeted tests on the deployment host; report any remaining Docker build or runtime issue to the correct owner.
 - **Related records:** `docs/project-control/agents/FIX-01/WORKLOG.md`, `docs/project-control/agents/FIX-01/MEMORY.md`, commits `185b729d`, `60fadabf`, `e3ba38c9`, `18948e08`
+
+
+### EVT-DEV01-EMAIL-RAG-REVIEW-20261016 — 2026-10-16
+- **Agent:** DEV-01 / Forge
+- **Type:** architecture_review / product_gap
+- **Summary:** Reviewed main-source email indexing and retrieval before changing product code. Recommended hybrid PostgreSQL + Qdrant: PostgreSQL remains authoritative for exact/time/structured queries; Qdrant supplies semantically relevant chunk candidates; every result must be revalidated against current org/agent/account authorization and authoritative SQL rows.
+- **Evidence:** `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md`, commit `4f95fcd122c146b41de099bc98aaeeb614a53d87`.
+- **Findings:** Existing email chunks are written to PostgreSQL; no concrete supported Clara email-vector adapter is bound; vector-sync loop is not started from worker entrypoint; current local retrieval uses SQL/tsvector/ILIKE; Chat context path samples up to 20 organization emails without active-agent account binding.
+- **Routing:** ISS-026 remains FIX-01-owned. OPS-01 owns live infrastructure and ingestion/latency acceptance. DEV-01 did not modify product code or take over either role.
+- **Verification:** No tests/typechecks/build/live vector/provider/latency tests run. No 10x speed claim made.
+- **Next:** Obtain architecture review/correction, resolve the supported Clara adapter contract and FIX-01 security dependency, then implement the authorized retrieval path.
