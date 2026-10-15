@@ -303,3 +303,12 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Artifact:** Updated `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md`, commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`.
 - **Verification:** Source inspection only; no endpoint calls, tests, typechecks, builds, DB/Qdrant operations, or performance tests.
 - **Exact next action:** Establish an explicit authenticated Clara email-vector API contract and implement it in the Clara source-of-truth repository, with deterministic point IDs, upsert/metadata-update/delete/purge operations, mandatory organization + allowed-account search filters, and citation-bearing results. After FIX-01 closes ISS-026, bind that supported contract in ai-comms-agent, wire the outbox worker, and implement shared retrieval. OPS-01 retains live runtime/ingestion/latency acceptance.
+
+
+
+### 2026-10-16 — Clara email-vector API draft implementation
+- **Scope:** Implemented Clara's explicit supported email-vector API after user authorization; updated ai-comms-agent plan/control records.
+- **Artifacts:** Clara draft PR #298 (https://github.com/Rilan-Dev/Clara-AI-Platform/pull/298), contract docs, route boundary tests, Clara handoff/session log, and updated hybrid RAG plan.
+- **Security:** API search requires org + non-empty explicit allowed-account IDs and rechecks returned payloads. The service token is not a mailbox authorization substitute. ISS-026 remains FIX-01-owned/open; no adapter binding or retrieval exposure.
+- **Verification:** No tests/typecheck/lint/build/live Qdrant/embedding/isolation/performance tests run.
+- **Exact next action:** Run focused executable checks and Qdrant integration coverage for the Clara API draft; prepare ai-comms-agent adapter contract but keep it disabled until ISS-026 closes. OPS-01 handles live infrastructure, ingestion, and latency acceptance.
