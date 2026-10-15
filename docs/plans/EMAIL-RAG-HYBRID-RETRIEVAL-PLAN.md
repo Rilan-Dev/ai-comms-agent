@@ -152,3 +152,13 @@ A follow-up source inspection of the current `Rilan-Dev/Clara-AI-Platform` main 
 Therefore, do not call these internal functions from `ai-comms-agent`, do not place email content in a shared KB collection, and do not treat `/api/embed/search` as an email search endpoint. The correct next cross-repository dependency is to establish and implement an explicit authenticated Clara email-vector adapter contract, including deterministic point IDs, metadata-only updates, stale-chunk cleanup, account purge, semantic search with mandatory organization + allowed-account filters, and final PostgreSQL revalidation. Until that contract exists and ISS-026 is resolved, keep the vector outbox unbound and retrieval unexposed.
 
 This follow-up was source inspection only; no Clara repository or product code was modified and no endpoint was called.
+
+
+
+## 2026-10-16 implementation update — Clara API draft PR
+
+After explicit user authorization to modify the Clara source-of-truth repository, DEV-01 implemented the first supported API draft on Clara branch `feature/email-vector-api` and opened [draft PR #298](https://github.com/Rilan-Dev/Clara-AI-Platform/pull/298). The contract is documented in Clara's `docs/plans/EMAIL-VECTOR-API-CONTRACT.md`.
+
+Implemented in the draft: authenticated server-to-server POST endpoint, deterministic org/account/message/chunk point IDs, separate org/model-specific collections, upsert and stale-chunk cleanup, metadata-only updates, message/account/org deletion, semantic search requiring orgId plus an explicit allowedAccountIds list, and basic route-boundary tests. The API uses a dedicated secret `CLARA_EMAIL_VECTOR_API_KEY` (at least 32 characters) and is not connected to ai-comms-agent yet.
+
+This advances the API prerequisite but does not close it as a production dependency: PR #298 is draft, and no executable test/typecheck/lint/build, live Qdrant/embedding call, or isolation runtime check has been run. The global bearer secret authenticates the trusted worker only; ai-comms-agent must freshly authorize mailbox grants. ISS-026 remains FIX-01-owned and open. Keep the outbox unbound and user-facing retrieval unexposed until ISS-026 closes and the API receives executable verification. OPS-01 owns live infrastructure, ingestion, and latency acceptance.
