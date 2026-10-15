@@ -3,6 +3,7 @@ import { GmailAdapter } from "./gmail-adapter";
 import { MockEmailProvider } from "./mock-adapter";
 import { ImapSmtpAdapter } from "./imap-smtp-adapter";
 import { ZohoAdapter } from "./zoho-adapter";
+import { MicrosoftGraphAdapter } from "./microsoft-graph-adapter";
 
 /**
  * Server-side provider registry. Provider implementations are constructed per
@@ -14,5 +15,6 @@ export function createEmailProviderRegistry(): EmailProviderRegistry {
   registry.register("gmail", () => new GmailAdapter());
   registry.register("imap_smtp", () => new ImapSmtpAdapter());
   registry.register("zoho", () => new ZohoAdapter());
+  registry.register("microsoft_graph", () => new MicrosoftGraphAdapter());
   return registry;
 }
