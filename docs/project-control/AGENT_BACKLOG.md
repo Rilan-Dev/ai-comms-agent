@@ -165,3 +165,13 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Source:** `apps/web/src/app/api/chat/stream/route.ts` — `loadEmailContext` scopes by organization but not by active agent's `agent_email_accounts` bindings.
 - **Required work:** Pass the authenticated agent ID into the loader, restrict context rows to that agent's permitted account bindings/roles, and add cross-agent/cross-account regression tests. Preserve untrusted-email-content wrapping.
 - **DEV-01 boundary:** This is a substantial security bug and remains FIX-01-owned; do not duplicate its remediation in the email-tool feature branch.
+
+
+### BKL-FIX01-WORKER-CREDENTIAL-TYPE-20261016 — 2026-10-16
+- **Work:** Re-run worker typecheck/build and targeted Gmail History/IMAP IDLE tests after credential discriminant correction.
+- **Owner:** FIX-01
+- **State:** READY
+- **Dependency:** Access to the deployment checkout or CI runner for execution evidence; no dependency on DEV-01.
+- **Authorization:** User-explicit FIX-01 root-cause and smallest corrective change request dated 2026-10-16.
+- **Suggested next action:** Execute worker typecheck/tests, then rebuild Docker worker. Route only environment/compose/deployment failures to OPS-01.
+- **Related session/event/handoff:** `FIX01-WORKER-CREDENTIAL-TYPE-20261016`, `EVT-FIX01-WORKER-CREDENTIAL-TYPE-20261016`
