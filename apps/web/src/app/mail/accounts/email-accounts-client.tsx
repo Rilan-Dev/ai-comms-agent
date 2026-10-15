@@ -316,7 +316,7 @@ export function EmailAccountsClient({
               disabled={(provider.id === "gmail" && !selectedGmailConfig) || (provider.id === "zoho" && !selectedZohoConfig)}
               className="mt-5 h-10 w-full rounded-md border bg-muted/40 text-sm font-semibold transition hover:bg-muted disabled:opacity-50"
             >
-              {provider.id === "gmail" ? "Connect with Google" : provider.id === "zoho" ? "Connect with Zoho" : "Configure mailbox"}
+              {provider.id === "gmail" ? "Connect with Google" : provider.id === "zoho" ? "Connect with Zoho" : provider.id === "microsoft_graph" ? "Connect with Microsoft" : "Configure mailbox"}
             </button>
           </article>
         ))}
