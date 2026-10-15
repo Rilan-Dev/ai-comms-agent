@@ -8,6 +8,7 @@ import type { EmailCredentials, EmailMessage, SyncState } from "@ai-comms-agent/
 import { GmailAdapter } from "./gmail-adapter";
 import { ZohoAdapter } from "./zoho-adapter";
 import { ImapSmtpAdapter } from "./imap-smtp-adapter";
+import { MicrosoftGraphAdapter } from "./microsoft-graph-adapter";
 import { randomUUID } from "node:crypto";
 import { acquireRedisLease, releaseRedisLease } from "./redis-lease";
 import type { EmailProvider } from "@ai-comms-agent/shared";
@@ -20,7 +21,7 @@ type Candidate = {
   id: string;
   organization_id: string;
   email_address: string;
-  provider: "gmail" | "zoho" | "imap_smtp";
+  provider: "gmail" | "zoho" | "imap_smtp" | "microsoft_graph";
   sync_cursor: string | null;
   history_id: string | null;
   last_success_at: string | null;
@@ -243,7 +244,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
   if (!claimed.rows[0]) return false;
 
   const accounts = new PostgresEmailAccountRepository();
-  const adapter: EmailProvider & { getCredentialSnapshot?: () => EmailCredentials; listDraftIdsByMessage?: () => Promise<Map<string, string>> } = candidate.provider === "gmail" ? new GmailAdapter() : candidate.provider === "zoho" ? new ZohoAdapter() : new ImapSmtpAdapter();
+  const adapter: EmailProvider & { getCredentialSnapshot?: () => EmailCredentials; listDraftIdsByMessage?: () => Promise<Map<string, string>> } = candidate.provider === "gmail" ? new GmailAdapter() : candidate.provider === "zoho" ? new ZohoAdapter() : candidate.provider === "microsoft_graph" ? new MicrosoftGraphAdapter() : new ImapSmtpAdapter();
 
   try {
     const masterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
@@ -631,7 +632,7 @@ export async function processMailboxSyncMessage(payload: EmailSyncPayload): Prom
      FROM email_accounts a
      LEFT JOIN email_sync_states s ON s.email_account_id=a.id
      WHERE a.id=$1 AND a.deleted_at IS NULL
-       AND a.provider IN ('gmail','zoho','imap_smtp')
+       AND a.provider IN ('gmail','zoho','imap_smtp','microsoft_graph')
        AND a.status IN ('pending','connected','error')`,
     [payload.account_id],
   );
@@ -676,7 +677,7 @@ async function enqueueDueMailboxSyncs(limit = BATCH_SIZE): Promise<number> {
        s.cursor_token AS sync_cursor, s.history_id, s.last_success_at
      FROM email_accounts a
      LEFT JOIN email_sync_states s ON s.email_account_id=a.id
-     WHERE a.provider IN ('gmail','zoho','imap_smtp') AND a.deleted_at IS NULL
+     WHERE a.provider IN ('gmail','zoho','imap_smtp','microsoft_graph') AND a.deleted_at IS NULL
        AND a.status IN ('pending','connected','error')
        AND COALESCE(s.status::text,'idle') <> 'paused'
        AND (s.next_attempt_at IS NULL OR s.next_attempt_at <= now())
@@ -751,7 +752,7 @@ export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ att
          s.cursor_token AS sync_cursor, s.history_id, s.last_success_at
        FROM email_accounts a
        LEFT JOIN email_sync_states s ON s.email_account_id=a.id
-       WHERE a.provider IN ('gmail','zoho','imap_smtp') AND a.deleted_at IS NULL
+       WHERE a.provider IN ('gmail','zoho','imap_smtp','microsoft_graph') AND a.deleted_at IS NULL
          AND a.status IN ('pending','connected','error')
          AND COALESCE(s.status::text,'idle') <> 'paused'
          AND (s.next_attempt_at IS NULL OR s.next_attempt_at <= now())
