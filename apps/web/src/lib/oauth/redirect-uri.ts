@@ -46,7 +46,7 @@ export function getOAuthPublicOrigin(request: Request): string {
  * domain change. Production OAuth providers require HTTPS; plain HTTP is
  * accepted only for loopback development.
  */
-export function getOAuthRedirectUri(request: Request, provider: "gmail" | "zoho"): string {
+export function getOAuthRedirectUri(request: Request, provider: "gmail" | "zoho" | "microsoft"): string {
   return new URL("/api/oauth/" + provider + "/callback", getOAuthPublicOrigin(request)).toString();
 }
 

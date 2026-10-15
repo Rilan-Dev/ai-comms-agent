@@ -6,6 +6,20 @@ on:
       - feature/provider-realtime-email-sync
     paths:
       - "apps/web/src/app/api/webhooks/gmail/**"
+      - "apps/web/src/app/api/email-accounts/[accountId]/zoho-webhook/**"
+      - "apps/web/src/app/api/webhooks/zoho/**"
+      - "apps/web/src/app/api/oauth/microsoft/**"
+      - "apps/web/src/app/api/email-accounts/route.ts"
+      - "apps/web/src/app/api/email-accounts/[accountId]/sync/**"
+      - "apps/web/src/app/mail/accounts/email-accounts-client.tsx"
+      - "apps/worker/src/email/registry.ts"
+      - "apps/worker/src/email/mailbox-sync-worker.ts"
+      - "packages/shared/src/email/provider.ts"
+      - "apps/web/src/lib/oauth/redirect-uri.ts"
+      - ".env.example"
+      - "apps/web/src/app/api/webhooks/microsoft-graph/**"
+      - "apps/web/tests/microsoft-graph-webhook.test.ts"
+      - "apps/web/tests/zoho-webhook.test.ts"
       - "apps/web/src/app/api/oauth/gmail/**"
       - "apps/web/tests/gmail-webhook.test.ts"
       - "apps/web/tests/migration-verification.test.ts"
@@ -16,6 +30,10 @@ on:
       - "apps/worker/src/email/imap-idle-worker.ts"
       - "apps/worker/src/index.ts"
       - "apps/worker/tests/imap-idle.test.ts"
+      - "apps/worker/tests/microsoft-graph-adapter.test.ts"
+      - "apps/worker/src/email/microsoft-graph-adapter.ts"
+      - "apps/worker/src/email/microsoft-graph-subscription-worker.ts"
+      - "apps/worker/tests/microsoft-graph-adapter.test.ts"
       - "apps/worker/tests/gmail-*.test.ts"
       - "apps/worker/tests/mailbox-sync-checkpoint.test.ts"
       - "supabase/migrations/0049_email_sync_pending_push.sql"
@@ -30,6 +48,20 @@ on:
       - feature/imap-smtp-mail-actions
     paths:
       - "apps/web/src/app/api/webhooks/gmail/**"
+      - "apps/web/src/app/api/email-accounts/[accountId]/zoho-webhook/**"
+      - "apps/web/src/app/api/webhooks/zoho/**"
+      - "apps/web/src/app/api/oauth/microsoft/**"
+      - "apps/web/src/app/api/email-accounts/route.ts"
+      - "apps/web/src/app/api/email-accounts/[accountId]/sync/**"
+      - "apps/web/src/app/mail/accounts/email-accounts-client.tsx"
+      - "apps/worker/src/email/registry.ts"
+      - "apps/worker/src/email/mailbox-sync-worker.ts"
+      - "packages/shared/src/email/provider.ts"
+      - "apps/web/src/lib/oauth/redirect-uri.ts"
+      - ".env.example"
+      - "apps/web/src/app/api/webhooks/microsoft-graph/**"
+      - "apps/web/tests/microsoft-graph-webhook.test.ts"
+      - "apps/web/tests/zoho-webhook.test.ts"
       - "apps/web/src/app/api/oauth/gmail/**"
       - "apps/web/tests/gmail-webhook.test.ts"
       - "apps/web/tests/migration-verification.test.ts"
@@ -40,6 +72,9 @@ on:
       - "apps/worker/src/email/imap-idle-worker.ts"
       - "apps/worker/src/index.ts"
       - "apps/worker/tests/imap-idle.test.ts"
+      - "apps/worker/src/email/microsoft-graph-adapter.ts"
+      - "apps/worker/src/email/microsoft-graph-subscription-worker.ts"
+      - "apps/worker/tests/microsoft-graph-adapter.test.ts"
       - "apps/worker/tests/gmail-*.test.ts"
       - "apps/worker/tests/mailbox-sync-checkpoint.test.ts"
       - "supabase/migrations/0049_email_sync_pending_push.sql"
@@ -80,10 +115,10 @@ jobs:
         run: bash -n scripts/setup-gmail-pubsub.sh
 
       - name: Gmail webhook tests
-        run: pnpm --filter @ai-comms-agent/web exec vitest run tests/gmail-webhook.test.ts tests/migration-verification.test.ts
+        run: pnpm --filter @ai-comms-agent/web exec vitest run tests/gmail-webhook.test.ts tests/zoho-webhook.test.ts tests/microsoft-graph-webhook.test.ts tests/migration-verification.test.ts
 
-      - name: Gmail history, watch, batch, and checkpoint tests
-        run: pnpm --filter @ai-comms-agent/worker exec node --import tsx --test tests/gmail-history-sync.test.ts tests/gmail-watch-adapter.test.ts tests/gmail-batch-response.test.ts tests/mailbox-sync-checkpoint.test.ts tests/imap-idle.test.ts
+      - name: Gmail, IMAP IDLE, Microsoft Graph, and checkpoint tests
+        run: pnpm --filter @ai-comms-agent/worker exec node --import tsx --test tests/gmail-history-sync.test.ts tests/gmail-watch-adapter.test.ts tests/gmail-batch-response.test.ts tests/mailbox-sync-checkpoint.test.ts tests/imap-idle.test.ts tests/microsoft-graph-adapter.test.ts
 
       - name: Web typecheck
         run: pnpm --filter @ai-comms-agent/web typecheck
