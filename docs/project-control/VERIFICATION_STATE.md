@@ -8,7 +8,7 @@
 
 ### Gmail empty-inbox source fix — 2026-10-14
 
-- Branch: `feature/imap-smtp-mail-actions`, draft PR #18.
+- Branch: `feature/imap-smtp-mail-actions`; PR #18 is merged into `main` (2026-10-15).
 - Source fix: strip Google's `response-` prefix from Gmail batch response Content-ID values before mapping to the requested message ID.
 - Source fix: acknowledge only IDs whose PostgreSQL persistence succeeded; retain failed IDs in the durable pending checkpoint and fail the sync attempt so it retries.
 - Source fix: automatic incremental polling threshold changed from 15 minutes to 2 minutes. Gmail push/watch capability is now false until the Pub/Sub receiver is implemented.
@@ -1326,3 +1326,8 @@ Gmail follow-up hardening: watch failures now use stored retry backoff (5 minute
 - Google Cloud configuration, database migration application, actual Pub/Sub delivery, and independent-account delivery timing remain external acceptance items. No GCP/secret-management connector is available in this session, so cloud settings were documented but not applied.
 
 **Not verified:** focused workflow result, TypeScript compilation, database migration application, cloud setup, Pub/Sub delivery, watch renewal against Google, and end-to-end latency.
+
+
+### PR tracking correction — 2026-10-16
+
+PR #18 and PR #19 are closed/merged. The initial realtime inbox refresh and Gmail push foundation are present on `main`. The follow-up hardening is tracked in [PR #21](https://github.com/Rilan-Dev/ai-comms-agent/pull/21), an open draft targeting `main`. Do not describe PR #19 as still draft. Focused workflow results remain uninspected; no claim of passing tests, live Pub/Sub, applied production migration, or end-to-end latency is made.
