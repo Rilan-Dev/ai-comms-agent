@@ -98,6 +98,7 @@ A provider-neutral contract exposes *change signals*, not a promise that every p
 ## 6. Operational prerequisites
 
 - Gmail push requires a Google Cloud project, Gmail API enabled, Pub/Sub topic/subscription, Gmail service account publish permission, authenticated push delivery configuration, OAuth scopes and a reachable HTTPS endpoint. Configure secrets/identities in deployment settings, never in Git.
+- Current source expects server-side environment variables: `GMAIL_PUBSUB_TOPIC` (fully qualified `projects/<project>/topics/<topic>`), `GMAIL_PUBSUB_PUSH_AUDIENCE` (exact audience configured on the push subscription), and `GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT` (exact OIDC token email used by Pub/Sub). The Gmail watch-renewal worker remains disabled if these values are absent. Grant `gmail-api-push@system.gserviceaccount.com` permission to publish to the topic and configure the subscription to send OIDC-authenticated HTTPS push requests with the expected audience and service account.
 - Rotate any app password or token that was pasted into a chat, issue, log or source file before testing. Use OAuth where possible; otherwise use a new server-side secret in the secret manager.
 - Deploy the long-running worker separately from Vercel web. Confirm both use the intended same PostgreSQL database and healthy RabbitMQ/Redis.
 - Keep a bounded fallback poll even after push is enabled.
