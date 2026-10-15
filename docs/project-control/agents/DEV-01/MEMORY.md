@@ -62,3 +62,9 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 - Chat's current email context loader takes up to 20 organization-scoped messages and does not enforce active agent-to-account bindings. This is ISS-026, owned by FIX-01; do not duplicate or route around the fix.
 - Recommended design to propose, not silently impose: PostgreSQL exact filters + FTS + authoritative re-fetch; Qdrant semantic candidates with mandatory org/allowed-account/date payload filters; rank fusion and final authorization; one shared retrieval service for Chat and realtime voice.
 - A source review or GitHub write is not test/runtime evidence. No 10x claim without baseline benchmarks.
+
+
+### 2026-10-16 — Clara adapter contract follow-up
+- Follow-up inspection of Clara main confirmed no supported cross-repo email-vector API. `upsertDocumentsKb` and `deleteDocumentChunks` are internal KB/document functions; `/api/embed/search` is KB-scoped and does not expose email account filters or vector lifecycle operations.
+- Do not invent/call an endpoint or import Clara internals. An explicit authenticated email-vector API must be implemented in Clara before the ai-comms-agent adapter can be bound.
+- ISS-026 remains FIX-01-owned and open; no retrieval exposure or adapter startup until it closes. OPS-01 owns live infra acceptance.

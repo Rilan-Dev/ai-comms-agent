@@ -308,3 +308,10 @@ If shared memory conflicts with current repository state or current requirements
 - **Integration:** Do not invent a raw Qdrant client, parallel collection or undocumented Clara endpoint. Bind a supported Clara server-to-server adapter; durable vector outbox jobs must not be marked completed until upsert/delete is confirmed.
 - **Performance:** Never promise 10x speed without a repeatable same-workload baseline measuring p50/p95, recall, freshness and answer/source correctness.
 - **Verification:** Source inspection and docs only; no runtime/test PASS is implied.
+
+
+### DEV-01 / Forge — 2026-10-16 — Clara vector adapter research
+- The current Clara source does not expose a supported server-to-server email-vector API. Internal `upsertDocumentsKb` / `deleteDocumentChunks` functions are KB-scoped implementation details; `/api/embed/search` is KB-scoped retrieval with KB resolution/quota, not account-scoped email search.
+- Do not import/call Clara internals cross-repo, reuse KB routes for mail, or mix email chunks into a shared KB. Define and implement an explicit authenticated API with deterministic point IDs, update/delete/purge lifecycle, allowed-account filters, and source references.
+- ISS-026 remains FIX-01-owned/open. Do not bind/expose the vector retrieval path until the security contract is closed.
+- Current session is source inspection/docs only; no tests/runtime/latency verification or 10x claim.
