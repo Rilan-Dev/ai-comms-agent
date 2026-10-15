@@ -1,5 +1,6 @@
 import { isPostgresConfigured, parseCredentialsMasterKey } from "@ai-comms-agent/db";
 import { startProviderDraftSyncLoop } from "./email/provider-draft-worker";
+import { startGmailWatchRenewalLoop } from "./email/gmail-watch-worker";
 import { processMailboxSyncMessage, startMailboxSyncLoop } from "./email/mailbox-sync-worker";
 import { startEmailSyncRabbitMq } from "./queues/email-sync-rabbitmq";
 import { processApprovedEmailActions } from "./email/action-worker";
@@ -81,6 +82,7 @@ function main() {
   }
 
   const stopProviderDraftSync = startProviderDraftSyncLoop();
+  const stopGmailWatchRenewal = startGmailWatchRenewalLoop();
   const stopMailboxSync = startMailboxSyncLoop();
   const stopEmailSyncQueue = startEmailSyncRabbitMq(processMailboxSyncMessage);
   const stopEmailKnowledgeIndexer = startEmailKnowledgeIndexerLoop();
@@ -114,6 +116,7 @@ function main() {
     log(`received ${signal} — shutting down`);
     clearInterval(interval);
     stopProviderDraftSync();
+    stopGmailWatchRenewal();
     stopMailboxSync();
     stopEmailSyncQueue();
     stopEmailKnowledgeIndexer();
