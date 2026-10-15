@@ -1080,3 +1080,6 @@ RT-02 checkpoint hardening: migration `0049_email_sync_pending_push.sql` adds `e
 ### PR tracking correction — 2026-10-16
 
 PR #18 and PR #19 are closed/merged. The initial realtime inbox refresh and Gmail push foundation are present on `main`. The follow-up hardening is tracked in [PR #21](https://github.com/Rilan-Dev/ai-comms-agent/pull/21), an open draft targeting `main`. Do not describe PR #19 as still draft. Focused workflow results remain uninspected; no claim of passing tests, live Pub/Sub, applied production migration, or end-to-end latency is made.
+
+
+Gmail Cloud setup helper added: `scripts/setup-gmail-pubsub.sh` validates required inputs, enables Gmail API/Pub/Sub APIs, creates the topic/subscription, grants Gmail publisher permission, and configures OIDC push identity. `.env.example` lists the three runtime variables as commented placeholders. **No GCP project/endpoint/service-account values were available and no cloud resource or deployment environment was changed.** Before claiming Gmail complete, an operator must run the script from an authenticated `gcloud` shell, configure the same three variables for web and worker, apply migration 0049 to the shared DB, and run an external-account delivery test.
