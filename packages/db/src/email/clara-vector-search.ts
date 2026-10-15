@@ -75,6 +75,8 @@ export function createClaraEmailVectorSearch(config: {
           typeof value.orgId !== "string" ||
           typeof value.accountId !== "string" ||
           typeof value.messageId !== "string" ||
+          typeof value.contentHash !== "string" ||
+          !/^[a-f0-9]{64}$/i.test(value.contentHash) ||
           typeof value.score !== "number" ||
           !Number.isFinite(value.score)) continue;
       // Defense in depth: do not return cross-scope hits even if the upstream
@@ -85,6 +87,7 @@ export function createClaraEmailVectorSearch(config: {
         accountId: value.accountId,
         messageId: value.messageId,
         ...(typeof value.sourceId === "string" ? { sourceId: value.sourceId } : {}),
+        contentHash: value.contentHash,
         score: value.score,
       });
     }
