@@ -6,7 +6,8 @@ import type {
 const BASE = "https://gmail.googleapis.com/gmail/v1/users/me";
 const CAPABILITIES: CapabilitySet = {
   folders: true, labels: true, sync_incremental: true, sync_full: true,
-  sync_webhook: true, sync_idle: false, search_server_side: true,
+  // Gmail push/watch is not wired to a Pub/Sub receiver in this app yet.
+  sync_webhook: false, sync_idle: false, search_server_side: true,
   search_client_side: true, drafts: true, reply: false, forward: false,
   mark_read: true, archive: true, move: true, threads: true,
   attachments_download: true, attachments_upload: false, send: true,
@@ -449,14 +450,10 @@ export class GmailAdapter implements EmailProvider {
 
   /** Parse a multipart batch response and append to the result Map. */
   private parseBatchResponse(body: string, chunk: string[], result: Map<string, EmailMessage>): void {
-    // The Gmail batch API response starts with a optional leading \r\n
-    // before the first boundary line. Skip any leading empty lines/whitespace
-    // to find the actual boundary marker.
-    // The boundary is also available in the response's Content-Type header
-    // (e.g. "multipart/mixed; boundary=batch_XXX") but we read it from the
-    // body to avoid needing to pass headers into this method.
-    const trimmed = body.replace(/^[\r\n\s]+/, "");
-    const firstLine = trimmed.split(/\r?\n/, 1)[0] ?? "";
+    // Split on the boundary marker. The exact boundary is in the response's
+    // Content-Type header; we read it from the first line of the body to
+    // avoid needing to parse headers separately.
+    const firstLine = body.split(/\r?\n/, 1)[0] ?? "";
     const boundary = firstLine.replace(/^--/, "").trim();
     if (!boundary) return;
     const parts = body.split(`--${boundary}`);
@@ -471,9 +468,16 @@ export class GmailAdapter implements EmailProvider {
       const partHeaders = part.slice(0, headersEnd);
       const partBody = part.slice(headersEnd + 4).trim();
 
-      // Extract Content-ID (Gmail adds 'response-' prefix in the response)
+      // Extract Content-ID
       const cidMatch = partHeaders.match(/Content-ID:\s*<([^>]+)>/i);
-      const contentId = cidMatch ? cidMatch[1] : "";
+      // Google prefixes every response Content-ID with "response-". Remove
+      // that protocol prefix before mapping the response back to our request ID.
+      // Without this, every valid response was keyed as "response-<id>" and
+      // batchGetMessages() returned no messages for the original IDs.
+      const responseContentId = cidMatch?.[1] ?? "";
+      const requestContentId = responseContentId.replace(/^response-/i, "");
+      const messageId = contentIdToMessageId.get(`<${requestContentId}>`)
+        ?? requestContentId.replace(/@.*$/, "");
 
       // The part body is itself an HTTP response: status line + headers + JSON.
       const statusMatch = partBody.match(/^HTTP\/[\d.]+\s+(\d+)/);
@@ -488,11 +492,9 @@ export class GmailAdapter implements EmailProvider {
       try {
         const raw = JSON.parse(jsonText);
         const message = toMessage(raw);
-        // ALWAYS use raw.id from the JSON body as the key — this is the
-        // Gmail message ID, which is what the caller looks up by.
-        // The Content-ID has a 'response-' prefix that doesn't match the
-        // request's Content-ID, so it can't be used for lookup.
-        if (raw.id) {
+        if (messageId) {
+          result.set(messageId, message);
+        } else if (raw.id) {
           result.set(String(raw.id), message);
         }
       } catch {
