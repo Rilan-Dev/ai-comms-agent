@@ -476,16 +476,16 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Role routing:** DEV-01 does not take ownership of this substantial security bug; continue modular tool work against the bound-account repository contract. OPS-01 remains responsible for infrastructure/deployment defects.
 
 
-## ISS-027 — Email vector sync outbox has no production Clara RAG adapter
+## ISS-027 — Email vector sync outbox has no supported Clara email-vector API
 - **Opened:** 2026-10-14
 - **Severity:** high (email retrieval consistency and account-removal data lifecycle)
 - **Owner:** DEV-01 / Forge for supported adapter integration; OPS-01 only for live infrastructure/ingestion verification after source integration.
-- **Status:** adapter_contract_implemented_runtime_binding_pending
-- **Evidence:** ai-comms-agent currently persists email-derived `knowledge_documents` and `knowledge_chunks` in PostgreSQL but has no server-to-server vector adapter. Clara AI Platform has internal KB-aware vector-store functions (`upsertDocumentsKb`, `deleteDocumentChunks`), but no supported cross-repository email-index API has been established. Its current RAG path is KB-scoped; wiring email vectors into a shared KB before agent/account filtering is fixed could leak one mailbox's content to another agent. ISS-026 remains FIX-01-owned and is a security prerequisite, not something DEV-01 may route around.
-- **Remedy so far:** Draft PR #16 adds account-scoped source/content/metadata hashes, deterministic vector point IDs, a durable `email_knowledge_sync_jobs` outbox, account/message deletion events, and an injected retryable vector adapter contract. The processor is not wired into worker startup.
-- **Required next action:** After FIX-01 closes ISS-026 and confirms the retrieval authorization contract, expose/use an authenticated Clara RAG adapter that applies org + allowed-account scope. Wire `startEmailKnowledgeSyncLoop` into worker startup and test content re-embedding versus metadata-only payload update, stale chunk removal, message delete, account purge, retry/idempotency, and multi-account isolation.
-- **Verification:** No tests/typecheck/migration/live vector verification were run in this environment; no vector sync PASS is claimed. Do not merge PR #16 as fully working until the adapter is bound and checks are run.
-- **Boundaries:** FIX-01 retains ISS-026 ownership; OPS-01 owns live infrastructure and ingestion verification.
+- **Status:** blocked_on_supported_clara_api_and_ISS-026
+- **Evidence:** ai-comms-agent persists email-derived `knowledge_documents` and `knowledge_chunks` in PostgreSQL and has a durable `email_knowledge_sync_jobs` outbox plus an injected retryable vector adapter contract. Current Clara main source inspection found only internal KB-scoped functions (`upsertDocumentsKb`, `deleteDocumentChunks`) and KB-scoped `/api/embed/search`; no supported server-to-server email-vector API is established. The internal upsert uses random point IDs and KB/document payloads, and the search route resolves a KB/provider and applies KB quota; neither provides the required account-scoped email lifecycle/search contract.
+- **Security prerequisite:** ISS-026 remains open and FIX-01-owned. Do not bind/start the adapter or expose vector retrieval until active agent-to-account authorization is established.
+- **Required next action:** Establish and implement an explicit authenticated email-vector API in the Clara source-of-truth repository. It must support deterministic point IDs, content re-embedding, metadata-only payload updates, stale chunk deletion, message/account purge, semantic search with mandatory organization + allowed-account filters, and source IDs. Then bind it to the existing outbox and start the sync loop after ISS-026 closes.
+- **Verification:** Source inspection/docs only; no tests, typecheck, build, endpoint calls, live Qdrant operations, ingestion, or latency verification. No vector sync PASS claimed.
+- **Boundaries:** FIX-01 retains ISS-026 ownership; OPS-01 owns live infrastructure and ingestion/performance verification.
 
 
 ## ISS-027 — Worker build rejects unchecked decrypted credential records
