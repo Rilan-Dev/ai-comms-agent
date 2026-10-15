@@ -84,13 +84,16 @@ export async function POST(
       decision: "allowed",
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       ok: true,
       webhookUrl,
       message: "Copy this URL into Zoho Mail Settings → Integrations → Developer Space → Outgoing Webhooks. Treat the URL as a secret; it is shown only once. The first signed request bootstraps the per-account HMAC secret.",
       provider: "zoho",
       accountId: account.id,
     });
+    response.headers.set("cache-control", "no-store, max-age=0");
+    response.headers.set("pragma", "no-cache");
+    return response;
   } catch (error) {
     return authorizationErrorToResponse(error);
   }
