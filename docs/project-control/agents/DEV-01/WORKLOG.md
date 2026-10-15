@@ -293,3 +293,13 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Blockers/dependencies:** FIX-01 must close ISS-026 and establish active-agent account retrieval scope; a supported Clara server-to-server email-vector adapter is not bound; vector outbox loop is not wired into worker startup; architecture review required before material implementation.
 - **Lesson:** SQL chunk persistence is not vector retrieval. Exact time/count/latest questions need SQL; semantic topic questions benefit from filtered Qdrant plus lexical search and authoritative revalidation. Avoid unsupported Qdrant endpoint/collection guesses.
 - **Next action:** Review/correct the proposal, confirm the supported Clara adapter contract, coordinate with FIX-01 on ISS-026, then implement only after the retrieval authorization boundary is established. OPS-01 handles live runtime and latency acceptance.
+
+
+### DEV01-EMAIL-RAG-ADAPTER-INVESTIGATION-20261016 — follow-up
+- **Action:** Continued the authorized next step by inspecting the current Clara AI Platform main source for a supported server-to-server vector adapter.
+- **Evidence:** `src/modules/admin/core/vector-store-kb.ts` exposes internal KB-scoped upsert/delete functions; `src/app/api/embed/search/route.ts` is KB-scoped retrieval with quota and KB/provider resolution. Neither is a supported account-scoped email-vector API. The existing upsert uses random point IDs and KB/document payloads, not the deterministic account-scoped lifecycle contract required by ai-comms-agent.
+- **Decision:** Do not call internal functions across repository boundaries, use `/api/embed/search` for email retrieval, or place email vectors in a shared KB. No supported API exists in the inspected current source. No Clara repo or product code was modified.
+- **Security:** ISS-026 is still open and FIX-01-owned. No vector retrieval was exposed or outbox adapter bound.
+- **Artifact:** Updated `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md`, commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`.
+- **Verification:** Source inspection only; no endpoint calls, tests, typechecks, builds, DB/Qdrant operations, or performance tests.
+- **Exact next action:** Establish an explicit authenticated Clara email-vector API contract and implement it in the Clara source-of-truth repository, with deterministic point IDs, upsert/metadata-update/delete/purge operations, mandatory organization + allowed-account search filters, and citation-bearing results. After FIX-01 closes ISS-026, bind that supported contract in ai-comms-agent, wire the outbox worker, and implement shared retrieval. OPS-01 retains live runtime/ingestion/latency acceptance.
