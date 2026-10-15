@@ -72,7 +72,8 @@ export async function POST(request: Request) {
     let accepted = 0;
     let rejected = 0;
     for (const notification of notifications) {
-      if (!notification.subscriptionId || !notification.clientState) {
+      if (typeof notification.subscriptionId !== "string" || !notification.subscriptionId
+        || typeof notification.clientState !== "string" || !notification.clientState) {
         rejected += 1;
         continue;
       }
