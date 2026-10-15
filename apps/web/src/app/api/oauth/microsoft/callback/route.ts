@@ -68,7 +68,8 @@ export async function GET(request: Request) {
   if (!configuredClientId || !clientSecret || payload.clientId !== configuredClientId) {
     return oauthError("Microsoft OAuth configuration changed or is missing.", request, 503);
   }
-  if (!payload.organizationId || !payload.userId || !payload.tenantId || !payload.redirectUri || payload.exp < Date.now()) {
+  if (!payload.organizationId || !payload.userId || !payload.tenantId || !payload.redirectUri
+    || typeof payload.exp !== "number" || payload.exp < Date.now()) {
     return oauthError("Microsoft OAuth state has expired.", request);
   }
   try { assertOAuthRedirectUriSecure(payload.redirectUri); }
