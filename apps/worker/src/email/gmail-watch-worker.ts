@@ -13,7 +13,7 @@ type WatchCandidate = {
   connection_config: Record<string, unknown> | null;
 };
 
-const WATCH_RENEWAL_INTERVAL_MS = 12 * 60 * 60 * 1000;
+const WATCH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 let running = false;
 
 async function renewDueWatches(): Promise<{ checked: number; renewed: number }> {
@@ -126,6 +126,6 @@ export function startGmailWatchRenewalLoop() {
     }
   };
   void tick();
-  const timer = setInterval(() => { void tick(); }, WATCH_RENEWAL_INTERVAL_MS);
+  const timer = setInterval(() => { void tick(); }, WATCH_CHECK_INTERVAL_MS);
   return () => { stopped = true; clearInterval(timer); };
 }
