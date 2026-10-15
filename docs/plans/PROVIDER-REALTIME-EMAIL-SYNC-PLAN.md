@@ -143,3 +143,8 @@ Gmail follow-up hardening: watch failures now use stored retry backoff (5 minute
 - Google Cloud configuration, database migration application, actual Pub/Sub delivery, and independent-account delivery timing remain external acceptance items. No GCP/secret-management connector is available in this session, so cloud settings were documented but not applied.
 
 Zoho decision from official documentation review: Zoho Mail supports IMAP when enabled for the mailbox. Its documented outgoing webhook feature is configured within the product and can emit incoming-email events, but the public Mail REST API index does not provide a general API for registering mailbox-event subscriptions. The Zoho Campaigns webhook API is a different product and must not be used as evidence of Zoho Mail inbox event support. Preferred path: implement IMAP IDLE for accounts connected with supported IMAP credentials/OAuth; otherwise retain bounded Zoho API polling and reconciliation.
+
+
+### PR tracking correction — 2026-10-16
+
+PR #18 and PR #19 are closed/merged. The initial realtime inbox refresh and Gmail push foundation are present on `main`. The follow-up hardening is tracked in [PR #21](https://github.com/Rilan-Dev/ai-comms-agent/pull/21), an open draft targeting `main`. Do not describe PR #19 as still draft. Focused workflow results remain uninspected; no claim of passing tests, live Pub/Sub, applied production migration, or end-to-end latency is made.
