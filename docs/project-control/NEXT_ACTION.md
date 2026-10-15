@@ -1,3 +1,13 @@
+
+## FIX-01 immediate corrective action — 2026-10-16
+
+- **Symptom:** Clean Docker worker build failed TypeScript compilation with TS2352 in Gmail watch renewal and IMAP IDLE startup.
+- **Root cause:** Generic decrypted credential records were cast directly to `EmailCredentials`, whose required `credential_type` discriminant was not guaranteed.
+- **Source remedy committed:** Validate supported discriminant values (`oauth_token`, `password`, `app_password`), pass a narrowed spread object, and remove unsafe casts. See ISS-027 and FIX01-WORKER-CREDENTIAL-TYPE-20261016.
+- **Next action:** From the deployment checkout, run `pnpm --filter @ai-comms-agent/worker typecheck`, `pnpm --filter @ai-comms-agent/worker test`, then rebuild with `docker compose -f infra/docker-compose.manual.yml build --no-cache worker`. Re-run `docker compose --env-file .env.docker -f infra/docker-compose.manual.yml up -d` only after the worker image build succeeds.
+- **Verification state:** Source change committed; no typecheck/test/rebuild pass claimed. Keep ISS-027 open until evidence is recorded.
+- **Routing:** If the source build succeeds but compose, network, registry, host, or deployment operations fail, route that distinct failure to OPS-01. Do not wait for DEV-01.
+
 ## Provider-neutral real-time email sync — 2026-10-16
 
 - Owner request: new messages should appear automatically in the application inbox across supported providers without a manual Sync action.
@@ -1057,7 +1067,7 @@ The latest user-run command passed Clara AI Platform test paths to the `ai-comms
 
 ### Immediate next action — Gmail Pub/Sub receiver and watch lifecycle (2026-10-16)
 
-Active branch: `feature/provider-realtime-email-sync`, stacked on `feature/imap-smtp-mail-actions`; PR #19 is closed/merged; follow-up hardening is in draft PR #21 targeting `main`. RT-02 source implementation has started: Gmail adapter watch/profile methods, a worker watch-renewal loop, authenticated Pub/Sub webhook with Google X.509 JWT signature/issuer/audience/service-account/time checks, mailbox-to-account resolution, durable immediate-sync scheduling via `email_sync_states.pending_push_at` plus `next_attempt_at`, and due-sync query support. A focused web test covers missing/malformed bearer tokens.
+Active branch: `feature/provider-realtime-email-sync`, stacked on `feature/imap-smtp-mail-actions`; PR #19 is closed/merged; follow-up hardening was merged by PR #21 into `main`. RT-02 source implementation has started: Gmail adapter watch/profile methods, a worker watch-renewal loop, authenticated Pub/Sub webhook with Google X.509 JWT signature/issuer/audience/service-account/time checks, mailbox-to-account resolution, durable immediate-sync scheduling via `email_sync_states.pending_push_at` plus `next_attempt_at`, and due-sync query support. A focused web test covers missing/malformed bearer tokens.
 
 **Do next:** inspect the new webhook/worker code and add coverage for valid/invalid JWT claims, malformed Pub/Sub payloads, unknown/ambiguous mailbox, paused account, duplicate notifications, watch renewal, and history-cursor recovery. Add operational setup docs for `GMAIL_PUBSUB_TOPIC`, `GMAIL_PUBSUB_PUSH_AUDIENCE`, `GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT`, Google topic publisher permission, and Pub/Sub authenticated push subscription. Then implement IMAP IDLE only after Gmail reconciliation is secure. Do not claim the Gmail path complete until worker/web tests and typechecks are run and OPS-01 validates a real external email end-to-end. No tests, typechecks, build, deployment, cloud configuration, or live mailbox delivery were run in this session.
 
@@ -1117,3 +1127,25 @@ Next: continue with Outlook/Microsoft 365 Graph adapter work after the current p
 - **Not verified:** web/worker typechecks, tests, live Entra OAuth, Graph subscription validation, actual notification delivery, full mailbox delta behavior against a real tenant, or latency. The `sync_webhook` capability remains false until live acceptance.
 
 Next: register the Microsoft Entra app, configure the three Microsoft OAuth env values and public `APP_ORIGIN`/notification URL, then perform a real Outlook connection and delivery test. Keep Gmail Cloud Pub/Sub setup/migration and Zoho webhook UI bootstrap as separate operator acceptance tasks. Do not wait on unrelated CI; continue implementation but don't mark any provider realtime path production-verified.
+### Main branch status correction — 2026-10-16
+
+GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f48751a`. Main now contains Gmail watch-on-connect/config hardening, signed webhook and history tests, focused test/typecheck workflow, the Pub/Sub setup helper, and the first IMAP IDLE watcher. The merge status does not mean tests or typechecks passed: the focused workflow result has not been inspected, and live GCP/IMAP delivery, migration application, and latency acceptance remain unverified. Continue development without polling CI, but do not label these runtime paths production-verified.
+
+
+## DEV-01 — Hybrid email RAG architecture review (2026-10-16)
+
+- **Review artifact:** `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md`, commit `4f95fcd122c146b41de099bc98aaeeb614a53d87`.
+- **Recommendation:** Hybrid PostgreSQL + Qdrant, not either store alone. PostgreSQL remains authoritative for exact filters/counts/time/latest/permissions; Qdrant provides semantically relevant chunk candidates; use PostgreSQL FTS + Qdrant and final authoritative SQL revalidation.
+- **Current source gap:** PostgreSQL email chunks exist; a durable vector-sync outbox and injected adapter processor exist in source, but no concrete supported Clara vector adapter is bound and the vector-sync loop is not started in `apps/worker/src/index.ts`. The local runtime retrieval path is SQL/tsvector/ILIKE, not verified Qdrant search.
+- **Security boundary:** ISS-026 remains open and FIX-01-owned. Do not expose vector retrieval or the existing broad Chat email-context loader beyond the current authorization contract; DEV-01 must not take over the substantial tenant-security fix.
+- **Next DEV-01 action:** Obtain architecture review/correction; confirm the supported Clara server-to-server vector/RAG adapter; coordinate with FIX-01 on the allowed-account contract; then bind adapter, start outbox loop, and implement shared retrieval for Chat + realtime voice. Do not claim 10x without measured baseline.
+- **Verification:** Review and docs only. Tests/typechecks/build/live vector/provider/latency checks NOT RUN. OPS-01 owns runtime/infrastructure acceptance after source work.
+
+
+### DEV-01 — Clara email-vector adapter contract investigation (2026-10-16)
+
+- **Evidence:** `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md`, updated at commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`.
+- **Confirmed blocker:** Clara main currently has internal KB-scoped Qdrant functions and a KB-scoped `/api/embed/search`, but no supported server-to-server email-vector API. Do not call internal functions cross-repo or treat the KB search route as an email endpoint.
+- **Security blocker:** ISS-026 remains open and FIX-01-owned. No adapter binding or email-vector retrieval exposure until account-level authorization is established.
+- **Next DEV-01 action:** Establish and implement an authenticated email-vector API in the Clara source-of-truth repository (explicit cross-repo work), then bind it to ai-comms-agent's existing durable outbox and shared retrieval after ISS-026 closes. The contract must cover deterministic upsert, metadata-only update, stale-chunk deletion, message/account purge, filtered search, and source references.
+- **Verification:** Source inspection/docs only; no tests, typechecks, builds, live API calls, Qdrant operations, or latency benchmarks. OPS-01 owns runtime/ingestion/performance acceptance.

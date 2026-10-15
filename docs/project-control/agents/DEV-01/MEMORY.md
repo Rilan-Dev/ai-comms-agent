@@ -53,3 +53,18 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 - Gmail history must be fully paginated; classify message additions, label changes, and deletions, and do not advance the cursor until local reconciliation and derived email-document cleanup finish.
 - If provider reply/forward semantics are incomplete, fail closed by disabling those capability flags until adapter tests prove support.
 - The shared email tool catalogue is contract metadata only. Do not expose descriptors to a model until executable host handlers and execution-time authorization/policy/audit are wired.
+
+
+### 2026-10-16 — Hybrid email RAG
+- Current main source has an email chunker writing PostgreSQL `knowledge_documents` / `knowledge_chunks`; this is not the same as a functioning Qdrant vector index.
+- The durable email vector-sync outbox and injected adapter processor exist in source, but no supported Clara email-vector adapter is bound and `apps/worker/src/index.ts` does not start the vector-sync loop. The existing PostgreSQL indexer loop is started.
+- The local Clara runtime uses PostgreSQL chunk/metadata and message SQL search (tsvector/ILIKE); an embedding helper exists, but that alone does not establish Qdrant retrieval.
+- Chat's current email context loader takes up to 20 organization-scoped messages and does not enforce active agent-to-account bindings. This is ISS-026, owned by FIX-01; do not duplicate or route around the fix.
+- Recommended design to propose, not silently impose: PostgreSQL exact filters + FTS + authoritative re-fetch; Qdrant semantic candidates with mandatory org/allowed-account/date payload filters; rank fusion and final authorization; one shared retrieval service for Chat and realtime voice.
+- A source review or GitHub write is not test/runtime evidence. No 10x claim without baseline benchmarks.
+
+
+### 2026-10-16 — Clara adapter contract follow-up
+- Follow-up inspection of Clara main confirmed no supported cross-repo email-vector API. `upsertDocumentsKb` and `deleteDocumentChunks` are internal KB/document functions; `/api/embed/search` is KB-scoped and does not expose email account filters or vector lifecycle operations.
+- Do not invent/call an endpoint or import Clara internals. An explicit authenticated email-vector API must be implemented in Clara before the ai-comms-agent adapter can be bound.
+- ISS-026 remains FIX-01-owned and open; no retrieval exposure or adapter startup until it closes. OPS-01 owns live infra acceptance.

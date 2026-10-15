@@ -290,3 +290,28 @@ If shared memory conflicts with current repository state or current requirements
 - **Architecture boundary:** Clara's existing tool interface is narrow; email actions belong in the host-owned application registry/services. Chat, realtime voice, WhatsApp and scheduled jobs must share execution-time authorization and audit rather than each implementing its own email logic.
 - **Sync invariant:** persist/reconcile page effects before advancing a durable cursor; treat queue delivery as at-least-once; never represent failed/empty provider work as a successful import.
 - **Role routing:** OPS-01 owns live broker/Redis/deployment and persisted-ingestion proof; FIX-01 owns substantial source bugs and regression protection. Planning does not transfer either role or authorize material architecture changes.
+
+
+### 2026-10-16 — TypeScript credential boundary in provider workers
+- **Symptom:** Clean Docker worker build fails TS2352 when `Record<string, unknown>` from decrypted credential storage is asserted directly as `EmailCredentials` in Gmail watch renewal and IMAP IDLE startup.
+- **Root cause:** Repository boundary intentionally exposes untrusted decrypted JSON as a generic record; `EmailCredentials` requires a discriminant (`credential_type`) and the consumers skipped runtime validation.
+- **Remedy:** Validate `credential_type` against the three supported values (`oauth_token`, `password`, `app_password`), then pass a spread object with the narrowed discriminant to the adapter. Removed unsafe type assertions.
+- **Failed approach to avoid:** Do not silence TS2352 with `as unknown as EmailCredentials`; that hides malformed decrypted credential records.
+- **Prevention:** Validate persisted/decrypted data at trust boundaries before passing it to typed provider adapters. Treat worker `tsc`/Docker build as the regression check.
+- **Evidence:** User-provided build log identifies both source locations; corrective commits `185b729d`, `60fadabf`, `e3ba38c9`, `18948e08` on `main`. Typecheck/build not yet rerun in this environment.
+
+
+### DEV-01 / Forge — 2026-10-16 — Hybrid email RAG review
+- **Lesson:** PostgreSQL knowledge chunks do not prove vector embeddings or Qdrant retrieval are working. Inspect the whole lifecycle: source-message persistence → dirty/version signal → chunk persistence → embedding/vector upsert → vector search → tenant/account filter → authoritative message re-fetch → grounded response.
+- **Architecture guidance:** PostgreSQL is authoritative for time ranges, counts, sender/recipient/subject/flags, permissions, message state and citations. Qdrant is a derived semantic candidate index. Hybrid search is the correct proposal for natural-language email questions, but exact temporal/count/latest queries must use SQL, not semantic top-k.
+- **Security:** Every vector search must apply server-derived organization and allowed-account filters; final PostgreSQL revalidation is mandatory. Do not rely on org scope alone when mailbox bindings are the product authorization boundary. ISS-026 is FIX-01-owned and must not be bypassed by DEV-01.
+- **Integration:** Do not invent a raw Qdrant client, parallel collection or undocumented Clara endpoint. Bind a supported Clara server-to-server adapter; durable vector outbox jobs must not be marked completed until upsert/delete is confirmed.
+- **Performance:** Never promise 10x speed without a repeatable same-workload baseline measuring p50/p95, recall, freshness and answer/source correctness.
+- **Verification:** Source inspection and docs only; no runtime/test PASS is implied.
+
+
+### DEV-01 / Forge — 2026-10-16 — Clara vector adapter research
+- The current Clara source does not expose a supported server-to-server email-vector API. Internal `upsertDocumentsKb` / `deleteDocumentChunks` functions are KB-scoped implementation details; `/api/embed/search` is KB-scoped retrieval with KB resolution/quota, not account-scoped email search.
+- Do not import/call Clara internals cross-repo, reuse KB routes for mail, or mix email chunks into a shared KB. Define and implement an explicit authenticated API with deterministic point IDs, update/delete/purge lifecycle, allowed-account filters, and source references.
+- ISS-026 remains FIX-01-owned/open. Do not bind/expose the vector retrieval path until the security contract is closed.
+- Current session is source inspection/docs only; no tests/runtime/latency verification or 10x claim.

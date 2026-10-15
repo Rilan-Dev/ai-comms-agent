@@ -508,3 +508,40 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Boundary:** repository has no supported Clara RAG/vector adapter; the outbox processor is not wired into startup. Do not invent direct Qdrant access or an undocumented API. Vector sync is not complete until adapter integration and runtime evidence exist.
 - **Verification:** tests, TypeScript checks, DB migration, vector integration, and live ingestion were not run because there is no local checkout in this execution environment.
 - **Next:** bind supported vector adapter, run provider/loop/executor/hash/policy/outbox/lifecycle tests and Clara/worker typechecks. FIX-01 owns ISS-026; OPS-01 owns live infrastructure/ingestion verification.
+
+
+### FIX01-WORKER-CREDENTIAL-TYPE-20261016 — 2026-10-16
+- **Agent:** FIX-01
+- **Invocation:** Correct worker Docker build TypeScript errors for Gmail watch and IMAP IDLE credential casts; record root cause and prevention.
+- **Started from:** `main` at user-reported source revision `390546c` (post-pull state; exact current remote head advanced during corrective commits).
+- **Scope:** Minimal typed-boundary correction plus project-control evidence.
+- **Status:** HANDOFF
+- **Completed:** Added runtime validation for supported `credential_type` values in both worker paths and removed direct unsafe casts; updated shared and FIX-01 memory.
+- **Pending:** Re-run worker typecheck/build and targeted tests; inspect whether next Docker build exposes additional issues.
+- **Blockers:** No local checkout/build runner available in this session; user log is the only failure evidence so far.
+- **Handoff:** OPS-01 only if subsequent failure is infrastructure/environment/deployment-related.
+- **Next action:** On host, run `pnpm --filter @ai-comms-agent/worker typecheck`, `pnpm --filter @ai-comms-agent/worker test`, then rebuild worker; do not infer pass from source edits alone.
+
+
+### DEV01-EMAIL-RAG-REVIEW-20261016 — 2026-10-16
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Inspect current email indexing/RAG functionality, self-critique the existing PostgreSQL vs Qdrant design, recommend a fit-for-purpose architecture for fast accurate email queries/summaries in Chat and realtime voice, and record session/next action before product code changes.
+- **Started from:** GitHub main as observed during this session; source links resolve to commit `5d8d2dbc70fd4a36b665e709816cb24c65419b6d` for current control/source findings.
+- **Scope:** Source and architecture review + proposal document only. No product code changes.
+- **Status:** HANDOFF — review complete; architecture approval and FIX-01 security prerequisite remain.
+- **Completed:** Inspected the email indexer/chunker, PostgreSQL knowledge schema usage, vector-sync outbox/worker contract, Clara local runtime retrieval, email read tools, Chat context injection, worker startup, project-control issue and Clara Core reference rules. Created `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md` (commit `4f95fcd122c146b41de099bc98aaeeb614a53d87`).
+- **Key finding:** PostgreSQL chunks are currently indexed, but this is not evidence of working Qdrant embeddings/search. A durable vector outbox and injected adapter contract exist in source, but there is no supported concrete Clara email-vector adapter and the vector-sync loop is not started from `apps/worker/src/index.ts`. Current local retrieval is SQL/tsvector/ILIKE; Chat also injects a fixed organization-scoped sample of up to 20 messages and does not scope it to active agent mailbox bindings.
+- **Security dependency:** ISS-026 remains open and FIX-01-owned. No email vector retrieval exposure or bypass is authorized before account-level retrieval authorization is established.
+- **Verification:** GitHub source inspection and documentation write only. Tests, typechecks, build, live vector queries, provider ingestion, latency benchmark, and runtime isolation checks NOT RUN.
+- **Blockers:** Supported Clara server-to-server vector adapter contract; closure of ISS-026; architecture approval for the proposed hybrid retrieval flow. OPS-01 retains live infrastructure/runtime acceptance after source integration.
+- **Next action:** Review/correct the proposed plan, confirm the supported Clara vector/RAG adapter contract, and coordinate the ISS-026 boundary with FIX-01. Then bind the adapter and start the durable outbox loop only after the security contract is closed.
+
+
+### DEV01-EMAIL-RAG-ADAPTER-INVESTIGATION-20261016 — follow-up
+- **Action:** Continued the authorized next step by inspecting the current Clara AI Platform main source for a supported server-to-server vector adapter.
+- **Evidence:** `src/modules/admin/core/vector-store-kb.ts` exposes internal KB-scoped upsert/delete functions; `src/app/api/embed/search/route.ts` is KB-scoped retrieval with quota and KB/provider resolution. Neither is a supported account-scoped email-vector API. The existing upsert uses random point IDs and KB/document payloads, not the deterministic account-scoped lifecycle contract required by ai-comms-agent.
+- **Decision:** Do not call internal functions across repository boundaries, use `/api/embed/search` for email retrieval, or place email vectors in a shared KB. No supported API exists in the inspected current source. No Clara repo or product code was modified.
+- **Security:** ISS-026 is still open and FIX-01-owned. No vector retrieval was exposed or outbox adapter bound.
+- **Artifact:** Updated `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md`, commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`.
+- **Verification:** Source inspection only; no endpoint calls, tests, typechecks, builds, DB/Qdrant operations, or performance tests.
+- **Exact next action:** Establish an explicit authenticated Clara email-vector API contract and implement it in the Clara source-of-truth repository, with deterministic point IDs, upsert/metadata-update/delete/purge operations, mandatory organization + allowed-account search filters, and citation-bearing results. After FIX-01 closes ISS-026, bind that supported contract in ai-comms-agent, wire the outbox worker, and implement shared retrieval. OPS-01 retains live runtime/ingestion/latency acceptance.

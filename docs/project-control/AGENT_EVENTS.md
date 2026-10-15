@@ -318,3 +318,32 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Summary:** Gmail history paging and deletion reconciliation now have source changes and regression coverage. Shared email tool descriptors and capability filtering are in place; descriptors are not executable handlers.
 - **Owner:** DEV-01 for host runtime/tool work; FIX-01 for substantial bugs; OPS-01 for runtime/deployment.
 - **Next:** Implement read-only host handlers with execution-time tenant authorization and audit before exposing catalogue entries.
+
+
+### EVT-FIX01-WORKER-CREDENTIAL-TYPE-20261016 — 2026-10-16
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** CORRECTION
+- **Summary:** User's clean Docker build failed worker TypeScript compilation because Gmail watch renewal and IMAP IDLE startup asserted generic decrypted credential records directly as `EmailCredentials`, which requires `credential_type`. Both paths now validate the supported discriminant and avoid unsafe assertions.
+- **Impact:** local
+- **Owner:** FIX-01
+- **Suggested next action:** Run worker typecheck/build and targeted tests on the deployment host; report any remaining Docker build or runtime issue to the correct owner.
+- **Related records:** `docs/project-control/agents/FIX-01/WORKLOG.md`, `docs/project-control/agents/FIX-01/MEMORY.md`, commits `185b729d`, `60fadabf`, `e3ba38c9`, `18948e08`
+
+
+### EVT-DEV01-EMAIL-RAG-REVIEW-20261016 — 2026-10-16
+- **Agent:** DEV-01 / Forge
+- **Type:** architecture_review / product_gap
+- **Summary:** Reviewed main-source email indexing and retrieval before changing product code. Recommended hybrid PostgreSQL + Qdrant: PostgreSQL remains authoritative for exact/time/structured queries; Qdrant supplies semantically relevant chunk candidates; every result must be revalidated against current org/agent/account authorization and authoritative SQL rows.
+- **Evidence:** `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md`, commit `4f95fcd122c146b41de099bc98aaeeb614a53d87`.
+- **Findings:** Existing email chunks are written to PostgreSQL; no concrete supported Clara email-vector adapter is bound; vector-sync loop is not started from worker entrypoint; current local retrieval uses SQL/tsvector/ILIKE; Chat context path samples up to 20 organization emails without active-agent account binding.
+- **Routing:** ISS-026 remains FIX-01-owned. OPS-01 owns live infrastructure and ingestion/latency acceptance. DEV-01 did not modify product code or take over either role.
+- **Verification:** No tests/typechecks/build/live vector/provider/latency tests run. No 10x speed claim made.
+- **Next:** Obtain architecture review/correction, resolve the supported Clara adapter contract and FIX-01 security dependency, then implement the authorized retrieval path.
+
+
+### EVT-DEV01-EMAIL-RAG-ADAPTER-INVESTIGATION-20261016 — 2026-10-16
+- **Type:** adapter_contract_blocker
+- **Finding:** Current Clara source exposes internal KB-scoped Qdrant module functions and a KB-scoped search route, but no supported server-to-server email-vector API. The existing upsert's random point IDs/KB payload model does not satisfy deterministic account-scoped outbox lifecycle needs.
+- **Action:** Updated the email RAG plan with source evidence at commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`. No app code or Clara source was changed.
+- **Security:** ISS-026 remains open and FIX-01-owned; no vector retrieval exposed.
+- **Next:** Establish/implement an authenticated Clara email-vector API contract; after ISS-026 closure bind the adapter and worker loop. OPS-01 validates live infrastructure and latency.

@@ -559,7 +559,7 @@ Additional source defects were found and corrected: migration 0030's PL/pgSQL bl
 ### 2026-10-16 — Provider realtime email sync, RT-02 source progress
 
 - PR #19: https://github.com/Rilan-Dev/ai-comms-agent/pull/19 — closed/merged; the original browser refresh/Gmail webhook foundation and sync-pending migration are present on `main`.
-- PR #21: https://github.com/Rilan-Dev/ai-comms-agent/pull/21 — open draft targeting `main`; adds watch-on-connect, fail-closed capability/config, watch retry hardening, expanded webhook/history tests, focused test/typecheck workflow, and updated project-control docs.
+- PR #21: https://github.com/Rilan-Dev/ai-comms-agent/pull/21 — merged into `main` on 2026-10-15; focused verification remains uninspected; adds watch-on-connect, fail-closed capability/config, watch retry hardening, expanded webhook/history tests, focused test/typecheck workflow, and updated project-control docs.
 - Added Gmail adapter profile/watch/stop methods and `apps/worker/src/email/gmail-watch-worker.ts`; worker starts watch registration/renewal every 12 hours when configured and renews watches expiring within 24 hours. Watch expiry/history ID are stored in account `connection_config`.
 - Added `POST /api/webhooks/gmail`: Google certificate-backed RS256 verification, issuer/audience/configured service-account identity/expiry checks, bounded request body, Pub/Sub payload validation, mailbox resolution against trusted DB rows, and immediate durable sync scheduling. The worker due-query now allows a persisted `next_attempt_at` push trigger to bypass the ordinary two-minute polling delay.
 - Added a small web test for missing/malformed bearer token rejection.
@@ -617,3 +617,20 @@ Zoho source research: official Zoho Mail docs describe product-configured outgoi
 - Added Graph webhook validation-token response and notification handling that verifies subscription ID plus `clientState` before queueing durable reconciliation. Added adapter and webhook tests and wired them into the focused workflow.
 - Added Outlook connection/sync controls to the mail accounts UI and extended the worker's provider query/registry to include Microsoft Graph.
 - **Not verified:** web/worker typechecks, tests, live Entra OAuth, Graph subscription validation, actual notification delivery, full mailbox delta behavior against a real tenant, or latency. The `sync_webhook` capability remains false until live acceptance.
+### Main branch status correction — 2026-10-16
+
+GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f48751a`. Main now contains Gmail watch-on-connect/config hardening, signed webhook and history tests, focused test/typecheck workflow, the Pub/Sub setup helper, and the first IMAP IDLE watcher. The merge status does not mean tests or typechecks passed: the focused workflow result has not been inspected, and live GCP/IMAP delivery, migration application, and latency acceptance remain unverified. Continue development without polling CI, but do not label these runtime paths production-verified.
+
+
+### 2026-10-16 — Email RAG architecture review
+- DEV-01 reviewed current email indexing/RAG before touching product code and added `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md` (commit `4f95fcd122c146b41de099bc98aaeeb614a53d87`).
+- Recommendation: hybrid PostgreSQL + Qdrant; PostgreSQL is authoritative for exact structured/time queries, Qdrant is a derived semantic candidate index, and final results are revalidated against current account bindings and PostgreSQL.
+- Current source gap: PostgreSQL chunks are persisted, but the concrete supported Clara vector adapter is unbound and the vector-sync loop is not started from worker startup. Existing local retrieval is SQL/FTS/ILIKE, not proven Qdrant search.
+- ISS-026 remains FIX-01-owned and open; no email vector retrieval should be exposed until active agent-account authorization is established. Tests/typechecks/build/live vector/latency checks were not run.
+- **Next action:** review/correct the proposal and establish the adapter/security contract before material implementation. OPS-01 owns live infrastructure and ingestion/performance acceptance.
+
+
+### 2026-10-16 — Clara email-vector API investigation
+- Follow-up source review confirmed Clara main has internal KB-scoped Qdrant upsert/delete functions and a KB-scoped search endpoint, but no supported server-to-server email-vector API. See the updated email RAG plan at commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`.
+- Do not call Clara internals cross-repo or use the KB search endpoint for email retrieval. The supported API must provide deterministic vector lifecycle operations and mandatory org + allowed-account filtering.
+- ISS-026 remains open/FIX-01-owned. Adapter/outbox startup and retrieval remain blocked until API and security contracts exist. No tests or live Qdrant checks were run.

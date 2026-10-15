@@ -3,7 +3,6 @@ import {
   PostgresEmailAccountRepository,
   query,
 } from "@ai-comms-agent/db";
-import type { EmailCredentials } from "@ai-comms-agent/shared";
 import { ImapSmtpAdapter } from "./imap-smtp-adapter";
 
 type IdleCandidate = {
@@ -66,7 +65,10 @@ async function watchAccount(candidate: IdleCandidate, masterKey: Buffer, stopped
     const accounts = new PostgresEmailAccountRepository();
     const credentials = await accounts.loadCredentials(candidate.id, masterKey);
     if (!credentials) throw new Error("Encrypted IMAP credentials are missing.");
-    await adapter.connect(credentials as EmailCredentials);
+    if (credentials.credential_type !== "oauth_token" && credentials.credential_type !== "password" && credentials.credential_type !== "app_password") {
+      throw new Error("Encrypted IMAP credentials have an invalid credential type.");
+    }
+    await adapter.connect({ ...credentials, credential_type: credentials.credential_type });
 
     if (!(await adapter.supportsIdle())) {
       await updateIdleConfig(candidate.id, {
