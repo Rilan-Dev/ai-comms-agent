@@ -98,6 +98,8 @@ export function createClaraEmailVectorAdapter(config: AdapterConfig = {}): Email
         messageId: snapshot.providerMessageId,
         sourceId: snapshot.sourceIdentityHash,
         receivedAt: sourceDate(snapshot.metadata),
+        contentHash: snapshot.contentHash,
+        metadataHash: snapshot.metadataHash,
       };
       const sender = stringField(snapshot.metadata, "from_address", "sender");
       const subject = stringField(snapshot.metadata, "subject");
@@ -113,6 +115,7 @@ export function createClaraEmailVectorAdapter(config: AdapterConfig = {}): Email
           chunkIndex: chunk.index,
           sourceId: chunk.pointId,
           text: chunk.content,
+          contentHash: chunk.contentHash,
         })),
       });
     },
