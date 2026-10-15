@@ -68,3 +68,11 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 - Follow-up inspection of Clara main confirmed no supported cross-repo email-vector API. `upsertDocumentsKb` and `deleteDocumentChunks` are internal KB/document functions; `/api/embed/search` is KB-scoped and does not expose email account filters or vector lifecycle operations.
 - Do not invent/call an endpoint or import Clara internals. An explicit authenticated email-vector API must be implemented in Clara before the ai-comms-agent adapter can be bound.
 - ISS-026 remains FIX-01-owned and open; no retrieval exposure or adapter startup until it closes. OPS-01 owns live infra acceptance.
+
+
+
+### 2026-10-16 — Clara email-vector API draft
+- With explicit user authorization, a supported API draft was implemented in Clara-AI-Platform PR #298 on `feature/email-vector-api`. Contract: Clara `docs/plans/EMAIL-VECTOR-API-CONTRACT.md`.
+- API supports deterministic org/account/message/chunk point IDs, upsert and stale cleanup, metadata-only update, message/account/org deletion, and semantic search with mandatory org + explicit allowed-account filters. Dedicated credential: `CLARA_EMAIL_VECTOR_API_KEY` (server-only, at least 32 random characters).
+- The API's bearer secret authenticates the trusted worker; it does not prove mailbox grants. ai-comms-agent must authorize active agent/account bindings on every retrieval. ISS-026 remains FIX-01-owned/open; do not bind the outbox or expose Chat/voice retrieval before closure.
+- Source edits and PR creation are not verification. Tests/typecheck/lint/build/Qdrant/isolation/performance remain pending; OPS-01 owns live acceptance.
