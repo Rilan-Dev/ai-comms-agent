@@ -673,7 +673,7 @@ async function enqueueDueMailboxSyncs(limit = BATCH_SIZE): Promise<number> {
          OR s.last_attempt_at < now()-interval '10 minutes')
        AND (s.last_attempt_at IS NULL OR s.last_attempt_at < now()-interval '10 seconds')
        AND (s.last_success_at IS NULL
-         OR s.last_success_at < now()-interval '2 minutes'
+         OR s.last_success_at < now()-interval '30 seconds'
          OR a.status IN ('pending','error')
          OR s.sync_mode = 'initial')
      ORDER BY CASE a.status WHEN 'pending' THEN 0 WHEN 'error' THEN 1 ELSE 2 END,
@@ -692,9 +692,9 @@ async function enqueueDueMailboxSyncs(limit = BATCH_SIZE): Promise<number> {
     await query(
       `INSERT INTO email_sync_states
          (email_account_id, organization_id, status, next_attempt_at, updated_at)
-       VALUES ($1,$2,'idle',now()+interval '15 minutes',now())
+       VALUES ($1,$2,'idle',now()+interval '30 seconds',now())
        ON CONFLICT (email_account_id) DO UPDATE SET
-         next_attempt_at=now()+interval '15 minutes', updated_at=now()
+         next_attempt_at=now()+interval '30 seconds', updated_at=now()
        WHERE email_sync_states.status <> 'running'`,
       [candidate.id, candidate.organization_id],
     );
