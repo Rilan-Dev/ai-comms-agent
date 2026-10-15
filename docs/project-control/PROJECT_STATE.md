@@ -566,3 +566,6 @@ Additional source defects were found and corrected: migration 0030's PL/pgSQL bl
 
 
 RT-02 follow-up: added migration `0049_email_sync_pending_push.sql` and changed webhook/worker checkpointing so push events arriving while an account is already syncing are not cleared by that sync's completion. The watch worker now checks every five minutes for newly connected accounts and watches expiring within 24 hours. Still source-only and unverified.
+
+
+Gmail follow-up hardening: watch failures now use stored retry backoff (5 minutes with exponential growth capped at 6 hours); successful watch registration persists refreshed OAuth credentials and clears retry metadata. The webhook skips notifications already covered by the persisted Gmail history cursor and acknowledges intentionally paused sync accounts. These are source changes only; their tests and runtime behavior remain unverified.
