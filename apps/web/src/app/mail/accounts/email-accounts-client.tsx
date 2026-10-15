@@ -33,6 +33,7 @@ export function EmailAccountsClient({
   const [selectedZohoConfig, setSelectedZohoConfig] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [zohoWebhookUrls, setZohoWebhookUrls] = useState<Record<string, string>>({});
   const [showImapForm, setShowImapForm] = useState(false);
   const [imap, setImap] = useState({email:"",displayName:"",host:"",port:"993",username:"",password:"",smtpHost:"",smtpPort:"465",tls:true});
   const [savingImap, setSavingImap] = useState(false);
@@ -105,6 +106,26 @@ export function EmailAccountsClient({
       }
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Mailbox synchronization could not be queued.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function generateZohoWebhookUrl(account: EmailAccount) {
+    setBusy(account.id);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/email-accounts/${encodeURIComponent(account.id)}/zoho-webhook`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ organizationId }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message ?? "Could not generate the Zoho webhook URL.");
+      setZohoWebhookUrls((current) => ({ ...current, [account.id]: data.webhookUrl }));
+      setNotice("One-time Zoho webhook URL generated. Copy it now and configure it in Zoho Mail; it cannot be retrieved after leaving this page.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not generate the Zoho webhook URL.");
     } finally {
       setBusy(null);
     }
@@ -380,11 +401,31 @@ export function EmailAccountsClient({
                       {structureLoading === account.id ? "Loading…" : structure ? "Refresh folders" : "View folders"}
                     </button>
                   )}
+                  {account.status === "connected" && account.provider === "zoho" && (
+                    <button type="button" disabled={busy === account.id} onClick={() => generateZohoWebhookUrl(account)} className="h-10 rounded-md border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
+                      {busy === account.id ? "Generating…" : "Set up realtime webhook"}
+                    </button>
+                  )}
                   {account.status === "connected" && account.provider === "imap_smtp" && (
                     <button type="button" disabled={busy === account.id} onClick={() => reconnect(account)} className="h-10 rounded-md border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
                       {busy === account.id ? "Checking…" : "Test connection"}
                     </button>
                   )}
+                {zohoWebhookUrls[account.id] && (
+                  <div className="mt-3 w-full rounded-md border bg-muted/30 p-3 sm:max-w-xl">
+                    <p className="text-xs font-semibold">Zoho Mail webhook URL — shown once</p>
+                    <p className="mt-1 text-xs text-muted-foreground">In Zoho Mail, open Settings → Integrations → Developer Space → Outgoing Webhooks. Choose Mail, select incoming-mail events, and use Limited Data List. Treat this URL as a secret.</p>
+                    <input aria-label="Zoho webhook URL" readOnly value={zohoWebhookUrls[account.id]} className="mt-2 h-10 w-full rounded-md border bg-background px-3 font-mono text-xs" />
+                    <button type="button" onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(zohoWebhookUrls[account.id]);
+                        setNotice("Zoho webhook URL copied. Paste it into Zoho Mail now.");
+                      } catch {
+                        setNotice("Copy the URL from the field above and paste it into Zoho Mail.");
+                      }
+                    }} className="mt-2 h-9 rounded-md border px-3 text-xs font-semibold hover:bg-muted">Copy URL</button>
+                  </div>
+                )}
                   <button type="button" disabled={busy === account.id} onClick={() => deleteAccount(account)} className="h-10 rounded-md border border-destructive/30 px-4 text-sm font-semibold text-destructive transition hover:bg-destructive/5 disabled:opacity-50">
                     Remove
                   </button>
