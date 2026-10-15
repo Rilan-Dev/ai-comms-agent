@@ -5,6 +5,7 @@ export type EmailVectorCandidate = {
   accountId: string;
   messageId: string;
   sourceId?: string;
+  contentHash?: string;
   score: number;
 };
 
@@ -174,23 +175,24 @@ export function createEmailHybridRetriever(dependencies: {
     const vectorHits = vectorResult.hits;
     const vectorFailed = vectorResult.failed;
 
-    type Candidate = { accountId: string; providerMessageId: string; score: number; matchedBy: Set<"lexical" | "semantic"> };
+    type Candidate = { accountId: string; providerMessageId: string; score: number; contentHash?: string; matchedBy: Set<"lexical" | "semantic"> };
     const candidates = new Map<string, Candidate>();
-    const addCandidate = (accountId: string, providerMessageId: string, score: number, method: "lexical" | "semantic") => {
+    const addCandidate = (accountId: string, providerMessageId: string, score: number, method: "lexical" | "semantic", contentHash?: string) => {
       if (!accountId || !providerMessageId || !allowedAccountIds.includes(accountId)) return;
       const key = `${accountId}\\0${providerMessageId}`;
       const prior = candidates.get(key);
       if (prior) {
         prior.score = Math.max(prior.score, score);
         prior.matchedBy.add(method);
+        if (contentHash) prior.contentHash = contentHash;
       } else {
-        candidates.set(key, { accountId, providerMessageId, score, matchedBy: new Set([method]) });
+        candidates.set(key, { accountId, providerMessageId, score, ...(contentHash ? { contentHash } : {}), matchedBy: new Set([method]) });
       }
     };
     lexical.rows.forEach((row, index) => addCandidate(String(row.email_account_id), String(row.provider_message_id), 1 / (index + 1), "lexical"));
     for (const hit of vectorHits) {
       if (hit.orgId !== organizationId || !allowedAccountIds.includes(hit.accountId)) continue;
-      addCandidate(hit.accountId, hit.messageId, Math.max(0, Math.min(1, hit.score)), "semantic");
+      addCandidate(hit.accountId, hit.messageId, Math.max(0, Math.min(1, hit.score)), "semantic", hit.contentHash);
     }
     if (!candidates.size) {
       return {
@@ -208,6 +210,8 @@ export function createEmailHybridRetriever(dependencies: {
       provider_message_id: candidate.providerMessageId,
       score: candidate.score,
       matched_by: [...candidate.matchedBy],
+      content_hash: candidate.contentHash ?? null,
+      storage_path: candidate.accountId + "/" + encodeURIComponent(candidate.providerMessageId),
     })));
     const finalValues: unknown[] = [organizationId, agentId, allowedAccountIds, candidateJson];
     const finalConditions = [
@@ -234,15 +238,17 @@ export function createEmailHybridRetriever(dependencies: {
     finalValues.push(limit);
     const finalRows = await runQuery<DbRow>(
       `WITH candidates AS (
-         SELECT account_id, provider_message_id, score, matched_by
+         SELECT account_id, provider_message_id, score, matched_by, content_hash, storage_path
            FROM jsonb_to_recordset($4::jsonb)
-             AS c(account_id uuid, provider_message_id text, score double precision, matched_by text[])
+             AS c(account_id uuid, provider_message_id text, score double precision, matched_by text[], content_hash text, storage_path text)
        )
        SELECT m.id, m.provider_message_id, m.email_account_id, m.thread_id,
               m.from_email, m.to_recipients, m.subject, m.text_body, m.snippet,
               m.received_at, a.email_address, a.provider, c.score, c.matched_by
          FROM candidates c
          JOIN email_messages m ON m.email_account_id=c.account_id AND m.provider_message_id=c.provider_message_id
+         LEFT JOIN knowledge_documents d ON d.organization_id=m.organization_id
+              AND d.storage_bucket='email-account' AND d.storage_path=c.storage_path
          JOIN email_accounts a ON a.id=m.email_account_id
          JOIN agent_email_accounts b ON b.email_account_id=a.id
          JOIN agents g ON g.id=b.agent_id
