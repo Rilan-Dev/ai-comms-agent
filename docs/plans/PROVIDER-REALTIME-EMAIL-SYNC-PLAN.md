@@ -99,6 +99,7 @@ A provider-neutral contract exposes *change signals*, not a promise that every p
 
 - Gmail push requires a Google Cloud project, Gmail API enabled, Pub/Sub topic/subscription, Gmail service account publish permission, authenticated push delivery configuration, OAuth scopes and a reachable HTTPS endpoint. Configure secrets/identities in deployment settings, never in Git.
 - Current source expects server-side environment variables: `GMAIL_PUBSUB_TOPIC` (fully qualified `projects/<project>/topics/<topic>`), `GMAIL_PUBSUB_PUSH_AUDIENCE` (exact audience configured on the push subscription), and `GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT` (exact OIDC token email used by Pub/Sub). The Gmail watch-renewal worker remains disabled if these values are absent. Grant `gmail-api-push@system.gserviceaccount.com` permission to publish to the topic and configure the subscription to send OIDC-authenticated HTTPS push requests with the expected audience and service account.
+- A repeatable setup helper is available at `scripts/setup-gmail-pubsub.sh`. Run it from a trusted operator shell after `gcloud auth login`, with `GMAIL_PUBSUB_TOPIC`, `GMAIL_PUBSUB_SUBSCRIPTION` (subscription ID only), `GMAIL_PUBSUB_PUSH_ENDPOINT` (public HTTPS `/api/webhooks/gmail` URL), `GMAIL_PUBSUB_PUSH_AUDIENCE`, and `GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT` set in that shell. It enables the APIs, creates the topic/subscription if needed, grants Gmail publisher access, and grants the Pub/Sub service agent token-creator access on the OIDC service account. It does not deploy the app or write runtime environment secrets.
 - Rotate any app password or token that was pasted into a chat, issue, log or source file before testing. Use OAuth where possible; otherwise use a new server-side secret in the secret manager.
 - Deploy the long-running worker separately from Vercel web. Confirm both use the intended same PostgreSQL database and healthy RabbitMQ/Redis.
 - Keep a bounded fallback poll even after push is enabled.
@@ -131,3 +132,29 @@ Push-during-sync durability: migration `0049_email_sync_pending_push.sql` adds `
 
 
 Gmail follow-up hardening: watch failures now use stored retry backoff (5 minutes with exponential growth capped at 6 hours); successful watch registration persists refreshed OAuth credentials and clears retry metadata. The webhook skips notifications already covered by the persisted Gmail history cursor and acknowledges intentionally paused sync accounts. These are source changes only; their tests and runtime behavior remain unverified.
+
+
+### Gmail RT-02 follow-up — 2026-10-16
+
+- Added signed-JWT webhook tests using a synthetic test-only certificate/key: invalid audience, wrong service account, unverified identity, expired token, wrong issuer, future `iat`, malformed envelope/payload, unknown and ambiguous mailbox, paused mailbox, duplicate history cursor, and durable queueing.
+- Added Gmail History API tests for paginated incremental changes and expired-cursor fallback to a fresh initial baseline.
+- Gmail OAuth callback now attempts watch registration immediately when all three push settings are present, keeps `sync_webhook` capability disabled, and falls back to worker retry if watch registration fails.
+- Watch worker now requires all three push configuration values, compares normalized mailbox addresses, merges watch/retry metadata without replacing unrelated connection configuration, and uses bounded exponential backoff capped at six hours.
+- Added `.github/workflows/provider-realtime-email-sync.yml` for focused webhook/history/watch/checkpoint tests and web/worker typechecks. The workflow is push/PR triggered; it was not waited on or inspected in keeping with the no-polling instruction. Tests/typechecks have not been independently executed in this session.
+- Google Cloud configuration, database migration application, actual Pub/Sub delivery, and independent-account delivery timing remain external acceptance items. No GCP/secret-management connector is available in this session, so cloud settings were documented but not applied.
+
+Zoho decision from official documentation review: Zoho Mail supports IMAP when enabled for the mailbox. Its documented outgoing webhook feature is configured within the product and can emit incoming-email events, but the public Mail REST API index does not provide a general API for registering mailbox-event subscriptions. The Zoho Campaigns webhook API is a different product and must not be used as evidence of Zoho Mail inbox event support. Preferred path: implement IMAP IDLE for accounts connected with supported IMAP credentials/OAuth; otherwise retain bounded Zoho API polling and reconciliation.
+
+
+### PR tracking correction — 2026-10-16
+
+PR #18 and PR #19 are closed/merged. The initial realtime inbox refresh and Gmail push foundation are present on `main`. The follow-up hardening is tracked in [PR #21](https://github.com/Rilan-Dev/ai-comms-agent/pull/21), an open draft targeting `main`. Do not describe PR #19 as still draft. Focused workflow results remain uninspected; no claim of passing tests, live Pub/Sub, applied production migration, or end-to-end latency is made.
+
+
+### IMAP IDLE source progress — 2026-10-16
+
+- Added RFC 2177 IDLE support to `ImapSmtpAdapter`: detect the server's advertised `IDLE` capability, select `INBOX`, wait for `EXISTS`/`EXPUNGE`/`FETCH`/`VANISHED`, send `DONE` before returning, and reissue at a 25-minute maximum wait.
+- Added `apps/worker/src/email/imap-idle-worker.ts`, started from the worker entrypoint. It maintains up to 20 connected-account watchers, reconnects with bounded backoff, backs off six hours for servers that do not advertise IDLE, and persists account-scoped change signals via `email_sync_states.pending_push_at` so the existing reconciliation worker performs the actual fetch/persist/checkpoint.
+- Added focused parser tests and included them in the focused GitHub workflow. Periodic mailbox polling remains the fallback.
+- **Not verified:** IMAP IDLE socket integration, live provider behavior, tests/typechecks, database migration presence in deployed DB, reconnect behavior against real servers, and per-provider latency. Source has been committed but the focused workflow is not being polled.
+

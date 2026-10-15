@@ -20,7 +20,11 @@ async function renewDueWatches(): Promise<{ checked: number; renewed: number }> 
   const topicName = process.env.GMAIL_PUBSUB_TOPIC?.trim();
   const databaseUrl = process.env.DATABASE_URL?.trim();
   const masterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
-  if (!topicName || !databaseUrl || !masterKey) return { checked: 0, renewed: 0 };
+  const pushAudience = process.env.GMAIL_PUBSUB_PUSH_AUDIENCE?.trim();
+  const pushServiceAccount = process.env.GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT?.trim();
+  if (!topicName || !databaseUrl || !masterKey || !pushAudience || !pushServiceAccount) {
+    return { checked: 0, renewed: 0 };
+  }
 
   const due = await query<WatchCandidate>(
     `SELECT a.id, a.organization_id, a.email_address, a.connection_config
@@ -50,21 +54,21 @@ async function renewDueWatches(): Promise<{ checked: number; renewed: number }> 
       if (!stored) throw new Error("Encrypted Gmail credentials are missing.");
       await adapter.connect(stored as EmailCredentials);
       const profile = await adapter.getMailboxProfile();
-      if (profile.emailAddress !== candidate.email_address.trim().toLowerCase()) {
+      if (profile.emailAddress.trim().toLowerCase() !== candidate.email_address.trim().toLowerCase()) {
         throw new Error("Authenticated Gmail mailbox does not match the connected account address.");
       }
       const watch = await adapter.registerMailboxWatch(topicName);
-      await accounts.saveCredentials(candidate.id, "oauth_token", adapter.getCredentialSnapshot(), key);
-      const config = { ...(candidate.connection_config ?? {}) };
-      config.gmailWatchExpiresAt = watch.expiration;
-      config.gmailWatchHistoryId = watch.historyId;
-      config.gmailWatchRenewedAt = new Date().toISOString();
-      delete config.gmailWatchRetryAt;
-      delete config.gmailWatchErrorCount;
-      delete config.gmailWatchLastError;
+      await accounts.saveCredentials(candidate.id, "oauth_token", { ...adapter.getCredentialSnapshot() }, key);
+      const config = {
+        gmailWatchExpiresAt: watch.expiration,
+        gmailWatchHistoryId: watch.historyId,
+        gmailWatchRenewedAt: new Date().toISOString(),
+      };
       await query(
         `UPDATE email_accounts
-           SET connection_config=$1::jsonb, updated_at=now()
+           SET connection_config=(COALESCE(connection_config,'{}'::jsonb) || $1::jsonb)
+                 - ARRAY['gmailWatchRetryAt','gmailWatchErrorCount','gmailWatchLastError'],
+               updated_at=now()
            WHERE id=$2 AND provider='gmail' AND deleted_at IS NULL`,
         [JSON.stringify(config), candidate.id],
       );
@@ -79,17 +83,20 @@ async function renewDueWatches(): Promise<{ checked: number; renewed: number }> 
         expires_at: watch.expiration,
       }));
     } catch (error) {
-      const config = { ...(candidate.connection_config ?? {}) };
-      const previousCount = Number(config.gmailWatchErrorCount ?? 0);
+      const previousCount = Number(candidate.connection_config?.gmailWatchErrorCount ?? 0);
       const errorCount = Number.isFinite(previousCount) ? Math.max(0, Math.min(10, Math.floor(previousCount))) : 0;
-      const retryDelaySeconds = Math.min(21_600, 300 * 2 ** Math.min(errorCount, 6));
-      config.gmailWatchErrorCount = errorCount + 1;
-      config.gmailWatchRetryAt = new Date(Date.now() + retryDelaySeconds * 1000).toISOString();
-      config.gmailWatchLastError = error instanceof Error ? error.message.slice(0, 200) : "Unknown error";
+      const retryDelaySeconds = Math.min(21_600, 300 * 2 ** Math.min(errorCount, 7));
+      const retryConfig = {
+        gmailWatchErrorCount: errorCount + 1,
+        gmailWatchRetryAt: new Date(Date.now() + retryDelaySeconds * 1000).toISOString(),
+        gmailWatchLastError: error instanceof Error ? error.message.slice(0, 200) : "Unknown error",
+      };
       await query(
-        `UPDATE email_accounts SET connection_config=$1::jsonb, updated_at=now()
+        `UPDATE email_accounts
+           SET connection_config=COALESCE(connection_config,'{}'::jsonb) || $1::jsonb,
+               updated_at=now()
            WHERE id=$2 AND provider='gmail' AND deleted_at IS NULL`,
-        [JSON.stringify(config), candidate.id],
+        [JSON.stringify(retryConfig), candidate.id],
       ).catch(() => undefined);
       console.error(JSON.stringify({
         timestamp: new Date().toISOString(),
@@ -108,12 +115,15 @@ async function renewDueWatches(): Promise<{ checked: number; renewed: number }> 
 }
 
 export function startGmailWatchRenewalLoop() {
-  if (!process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY || !process.env.GMAIL_PUBSUB_TOPIC?.trim()) {
+  if (!process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY
+    || !process.env.GMAIL_PUBSUB_TOPIC?.trim()
+    || !process.env.GMAIL_PUBSUB_PUSH_AUDIENCE?.trim()
+    || !process.env.GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT?.trim()) {
     console.log(JSON.stringify({
       timestamp: new Date().toISOString(),
       level: "warn",
       service: "worker.email-gmail-watch",
-      message: "Gmail watch renewal disabled: DATABASE_URL, CREDENTIALS_MASTER_KEY, and GMAIL_PUBSUB_TOPIC are required",
+      message: "Gmail watch renewal disabled: database, credential encryption, Pub/Sub topic, push audience, and push service account are required",
     }));
     return () => undefined;
   }

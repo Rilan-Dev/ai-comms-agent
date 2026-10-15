@@ -1,6 +1,7 @@
 import { isPostgresConfigured, parseCredentialsMasterKey } from "@ai-comms-agent/db";
 import { startProviderDraftSyncLoop } from "./email/provider-draft-worker";
 import { startGmailWatchRenewalLoop } from "./email/gmail-watch-worker";
+import { startImapIdleWorker } from "./email/imap-idle-worker";
 import { processMailboxSyncMessage, startMailboxSyncLoop } from "./email/mailbox-sync-worker";
 import { startEmailSyncRabbitMq } from "./queues/email-sync-rabbitmq";
 import { processApprovedEmailActions } from "./email/action-worker";
@@ -83,6 +84,7 @@ function main() {
 
   const stopProviderDraftSync = startProviderDraftSyncLoop();
   const stopGmailWatchRenewal = startGmailWatchRenewalLoop();
+  const stopImapIdleWorker = startImapIdleWorker();
   const stopMailboxSync = startMailboxSyncLoop();
   const stopEmailSyncQueue = startEmailSyncRabbitMq(processMailboxSyncMessage);
   const stopEmailKnowledgeIndexer = startEmailKnowledgeIndexerLoop();
@@ -117,6 +119,7 @@ function main() {
     clearInterval(interval);
     stopProviderDraftSync();
     stopGmailWatchRenewal();
+    stopImapIdleWorker();
     stopMailboxSync();
     stopEmailSyncQueue();
     stopEmailKnowledgeIndexer();
@@ -138,7 +141,7 @@ function main() {
     logError("worker.uncaught-exception", "Uncaught exception", error);
     // Continue running — operator can decide to restart via health check.
   });
-  log("worker ready — multi-provider mailbox sync, RabbitMQ email.sync queue when configured, provider draft, WhatsApp inbound/outbound, and durable scheduler loops enabled when PostgreSQL and required credentials are configured");
+  log("worker ready — multi-provider mailbox sync, Gmail Pub/Sub watch renewal, IMAP IDLE watchers, RabbitMQ email.sync queue when configured, provider draft, WhatsApp inbound/outbound, and durable scheduler loops enabled when PostgreSQL and required credentials are configured");
 }
 
 main();

@@ -8,7 +8,7 @@
 
 ### Gmail empty-inbox source fix — 2026-10-14
 
-- Branch: `feature/imap-smtp-mail-actions`, draft PR #18.
+- Branch: `feature/imap-smtp-mail-actions`; PR #18 is merged into `main` (2026-10-15).
 - Source fix: strip Google's `response-` prefix from Gmail batch response Content-ID values before mapping to the requested message ID.
 - Source fix: acknowledge only IDs whose PostgreSQL persistence succeeded; retain failed IDs in the durable pending checkpoint and fail the sync attempt so it retries.
 - Source fix: automatic incremental polling threshold changed from 15 minutes to 2 minutes. Gmail push/watch capability is now false until the Pub/Sub receiver is implemented.
@@ -1314,3 +1314,29 @@ User ran `npm test -- src/modules/integrations/oauth-app-validation.test.ts src/
 
 
 Gmail follow-up hardening: watch failures now use stored retry backoff (5 minutes with exponential growth capped at 6 hours); successful watch registration persists refreshed OAuth credentials and clears retry metadata. The webhook skips notifications already covered by the persisted Gmail history cursor and acknowledges intentionally paused sync accounts. These are source changes only; their tests and runtime behavior remain unverified.
+
+
+### Gmail RT-02 follow-up — 2026-10-16
+
+- Added signed-JWT webhook tests using a synthetic test-only certificate/key: invalid audience, wrong service account, unverified identity, expired token, wrong issuer, future `iat`, malformed envelope/payload, unknown and ambiguous mailbox, paused mailbox, duplicate history cursor, and durable queueing.
+- Added Gmail History API tests for paginated incremental changes and expired-cursor fallback to a fresh initial baseline.
+- Gmail OAuth callback now attempts watch registration immediately when all three push settings are present, keeps `sync_webhook` capability disabled, and falls back to worker retry if watch registration fails.
+- Watch worker now requires all three push configuration values, compares normalized mailbox addresses, merges watch/retry metadata without replacing unrelated connection configuration, and uses bounded exponential backoff capped at six hours.
+- Added `.github/workflows/provider-realtime-email-sync.yml` for focused webhook/history/watch/checkpoint tests and web/worker typechecks. The workflow is push/PR triggered; it was not waited on or inspected in keeping with the no-polling instruction. Tests/typechecks have not been independently executed in this session.
+- Google Cloud configuration, database migration application, actual Pub/Sub delivery, and independent-account delivery timing remain external acceptance items. No GCP/secret-management connector is available in this session, so cloud settings were documented but not applied.
+
+**Not verified:** focused workflow result, TypeScript compilation, database migration application, cloud setup, Pub/Sub delivery, watch renewal against Google, and end-to-end latency.
+
+
+### PR tracking correction — 2026-10-16
+
+PR #18 and PR #19 are closed/merged. The initial realtime inbox refresh and Gmail push foundation are present on `main`. The follow-up hardening is tracked in [PR #21](https://github.com/Rilan-Dev/ai-comms-agent/pull/21), an open draft targeting `main`. Do not describe PR #19 as still draft. Focused workflow results remain uninspected; no claim of passing tests, live Pub/Sub, applied production migration, or end-to-end latency is made.
+
+
+### IMAP IDLE source progress — 2026-10-16
+
+- Added RFC 2177 IDLE support to `ImapSmtpAdapter`: detect the server's advertised `IDLE` capability, select `INBOX`, wait for `EXISTS`/`EXPUNGE`/`FETCH`/`VANISHED`, send `DONE` before returning, and reissue at a 25-minute maximum wait.
+- Added `apps/worker/src/email/imap-idle-worker.ts`, started from the worker entrypoint. It maintains up to 20 connected-account watchers, reconnects with bounded backoff, backs off six hours for servers that do not advertise IDLE, and persists account-scoped change signals via `email_sync_states.pending_push_at` so the existing reconciliation worker performs the actual fetch/persist/checkpoint.
+- Added focused parser tests and included them in the focused GitHub workflow. Periodic mailbox polling remains the fallback.
+- **Not verified:** IMAP IDLE socket integration, live provider behavior, tests/typechecks, database migration presence in deployed DB, reconnect behavior against real servers, and per-provider latency. Source has been committed but the focused workflow is not being polled.
+
