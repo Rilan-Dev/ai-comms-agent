@@ -98,9 +98,8 @@ export async function POST(request: Request) {
   const token = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
   if (!token) return unauthorized();
 
-  let claims: GooglePushClaims;
   try {
-    claims = await verifyGooglePushJwt(token);
+    await verifyGooglePushJwt(token);
   } catch (error) {
     // Do not log bearer tokens, JWT claims, or notification data.
     console.warn(JSON.stringify({
