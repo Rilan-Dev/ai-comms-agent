@@ -112,6 +112,10 @@ export async function POST(request: Request) {
     return unauthorized();
   }
 
+  const contentLength = Number(request.headers.get("content-length") ?? 0);
+  if (contentLength > 1_000_000) {
+    return NextResponse.json({ error: "payload_too_large" }, { status: 413 });
+  }
   let bodyText: string;
   try {
     bodyText = await request.text();
