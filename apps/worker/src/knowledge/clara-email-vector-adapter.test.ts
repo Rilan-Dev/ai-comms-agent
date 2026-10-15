@@ -107,6 +107,23 @@ describe("Clara email-vector adapter", () => {
     });
   });
 
+  it("clears stale sender and folder metadata when the source explicitly removes them", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response());
+    globalThis.fetch = fetchMock;
+    const adapter = createClaraEmailVectorAdapter({
+      baseUrl: "https://clara.example",
+      apiKey: "test-service-secret-that-is-long-enough-123",
+    });
+
+    await adapter.upsertMessageVectors({
+      ...snapshot,
+      metadata: { from_address: null, folder_id: null, received_at: null },
+    });
+
+    const body = JSON.parse(String((fetchMock.mock.calls[0] as [string, RequestInit])[1].body));
+    expect(body.metadata).toMatchObject({ sender: null, labels: [], receivedAt: null });
+  });
+
   it("fails closed when service credentials are absent or too short", () => {
     expect(() => createClaraEmailVectorAdapter({ baseUrl: "https://clara.example", apiKey: "" })).toThrow(/CLARA_EMAIL_VECTOR_API_KEY/);
   });
