@@ -1393,3 +1393,11 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - Test authored: opt-in Qdrant integration test exercises org/account allowlist filtering and account-scoped deletion against a configured Qdrant service.
 - Not run: Clara tests/typecheck/lint/build, worker tests/typecheck, or Qdrant integration test. Dependency-equipped local execution and a configured Qdrant integration endpoint were not available during this work.
 - Security: ISS-026 remains open/FIX-01-owned. No adapter binding, outbox startup, or Chat/realtime-voice retrieval exposure.
+
+### 2026-10-16 — shared hybrid retrieval source added; not executed
+
+- Authored shared PostgreSQL + Clara semantic retrieval core with per-call account grant resolution, lexical/vector candidate fusion, SQL source revalidation, citations, stale semantic hash rejection, and explicit degraded fallback status.
+- Authored worker tests at `apps/worker/tests/email-hybrid-retrieval.test.ts` and `apps/worker/tests/clara-vector-search.test.ts`; neither test file has been run.
+- Clara search response now includes `contentHash`; host adapter rejects missing/invalid hashes. The SQL freshness comparison is source-authored only and still needs execution against the real schema and fixtures.
+- No typecheck, test, lint, build, live Clara API, Qdrant, ingestion, isolation or latency test was run. No PASS claimed.
+- ISS-026 remains open/FIX-01-owned. No Chat/voice wiring or worker outbox startup was enabled.
