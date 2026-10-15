@@ -35,8 +35,8 @@ export function serverSupportsImapIdle(lines: string[]): boolean {
 }
 
 export function isImapIdleChangeNotification(line: string): boolean {
-  return /^\\*\\s+\\d+\\s+(?:EXISTS|EXPUNGE|FETCH)\\b/i.test(line)
-    || /^\\*\\s+VANISHED\\b/i.test(line);
+  return /^\*\s+\d+\s+(?:EXISTS|EXPUNGE|FETCH)\b/i.test(line)
+    || /^\*\s+VANISHED\b/i.test(line);
 }
 
 function isPrivateOrLocalAddress(address: string): boolean {
