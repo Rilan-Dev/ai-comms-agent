@@ -6,6 +6,7 @@ import type { EmailAccount } from "@ai-comms-agent/shared";
 const providers = [
   { id: "gmail", name: "Gmail", description: "Google Workspace and Gmail", method: "OAuth 2.0", tone: "G" },
   { id: "zoho", name: "Zoho Mail", description: "Regional Zoho Mail endpoints", method: "OAuth 2.0", tone: "Z" },
+  { id: "microsoft_graph", name: "Outlook / Microsoft 365", description: "Outlook.com and Microsoft 365 mailboxes", method: "Microsoft OAuth 2.0", tone: "M" },
   { id: "imap_smtp", name: "IMAP / SMTP", description: "Any compatible mailbox", method: "TLS · OAuth or app password", tone: "M" },
 ] as const;
 
@@ -67,6 +68,7 @@ export function EmailAccountsClient({
     const params = new URLSearchParams(window.location.search);
     if (params.get("connected") === "gmail") setNotice("Gmail authorization completed. The account is pending worker verification and initial synchronization.");
     if (params.get("connected") === "zoho") setNotice("Zoho authorization completed. The account is pending worker verification and initial synchronization.");
+    if (params.get("connected") === "microsoft_graph") setNotice("Outlook authorization completed. The account is pending worker verification and initial synchronization.");
     if (params.get("providerError")) setNotice(params.get("providerError"));
     if (params.has("connected") || params.has("providerError")) {
       window.history.replaceState({}, "", "/mail/accounts");
@@ -140,6 +142,10 @@ export function EmailAccountsClient({
     if (account.provider === "zoho") {
       if (!selectedZohoConfig) { setNotice("Add and enable a Zoho OAuth client in Settings before reconnecting Zoho Mail."); return; }
       window.location.assign(`/api/oauth/zoho/start?configId=${encodeURIComponent(selectedZohoConfig)}&accountId=${encodeURIComponent(account.id)}`);
+      return;
+    }
+    if (account.provider === "microsoft_graph") {
+      window.location.assign(`/api/oauth/microsoft/start?accountId=${encodeURIComponent(account.id)}`);
       return;
     }
     setBusy(account.id);
@@ -304,6 +310,7 @@ export function EmailAccountsClient({
               onClick={() => {
                 if (provider.id === "gmail") { if (!selectedGmailConfig) { setNotice("Add and enable a Gmail OAuth client in Settings before connecting Gmail."); return; } window.location.assign(`/api/oauth/gmail/start?configId=${encodeURIComponent(selectedGmailConfig)}`); }
                 if (provider.id === "zoho") { if (!selectedZohoConfig) { setNotice("Add and enable a Zoho OAuth client in Settings before connecting Zoho Mail."); return; } window.location.assign(`/api/oauth/zoho/start?configId=${encodeURIComponent(selectedZohoConfig)}`); }
+                if (provider.id === "microsoft_graph") window.location.assign("/api/oauth/microsoft/start");
                 if (provider.id === "imap_smtp") setShowImapForm(true);
               }}
               disabled={(provider.id === "gmail" && !selectedGmailConfig) || (provider.id === "zoho" && !selectedZohoConfig)}
@@ -386,7 +393,7 @@ export function EmailAccountsClient({
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {account.provider === "gmail" && account.status !== "revoked" && account.status !== "disconnected" && (
+                  {["gmail", "zoho", "imap_smtp", "microsoft_graph"].includes(account.provider) && account.status !== "revoked" && account.status !== "disconnected" && (
                     <button type="button" disabled={busy === account.id} onClick={() => syncNow(account)} className="h-10 rounded-md border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
                       {busy === account.id ? "Queueing…" : "Sync now"}
                     </button>
