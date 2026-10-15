@@ -573,3 +573,12 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** ISS-026 remains open/FIX-01-owned. Adapter is not imported in worker startup and vector outbox loop remains stopped. OPS-01 owns live Qdrant/ingestion/latency acceptance.
 - **Handoff:** Clara PR #298; ai-comms-agent PR #23.
 - **Next action:** Run focused adapter tests/typecheck when a dependency-equipped checkout is available; keep adapter unbound until ISS-026 closes.
+
+### SESSION-065 — Shared email hybrid retrieval core
+- **Role:** DEV-01 / Forge
+- **Status:** HANDOFF — source authored, not verified
+- **Scope:** Shared PostgreSQL + Clara/Qdrant candidate retrieval without enabling transports or worker vector sync.
+- **Completed:** Added `packages/db/src/email/hybrid-retrieval.ts`, `packages/db/src/email/clara-vector-search.ts`, DB package exports, and worker tests. Added Clara search `contentHash` metadata for stale semantic candidate checks.
+- **Security:** Service resolves active account bindings fresh per call and revalidates every candidate in SQL. Still do not wire transport or start vector sync until FIX-01 closes ISS-026.
+- **Verification:** Not run; no PASS claimed.
+- **Next:** source review and dependency-equipped tests/typecheck; after ISS-026 closure, connect one shared retrieval service to Chat and realtime voice, then bind/start vector sync. OPS-01 owns live Qdrant and acceptance evidence.
