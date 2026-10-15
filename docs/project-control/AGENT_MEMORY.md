@@ -290,3 +290,12 @@ If shared memory conflicts with current repository state or current requirements
 - **Architecture boundary:** Clara's existing tool interface is narrow; email actions belong in the host-owned application registry/services. Chat, realtime voice, WhatsApp and scheduled jobs must share execution-time authorization and audit rather than each implementing its own email logic.
 - **Sync invariant:** persist/reconcile page effects before advancing a durable cursor; treat queue delivery as at-least-once; never represent failed/empty provider work as a successful import.
 - **Role routing:** OPS-01 owns live broker/Redis/deployment and persisted-ingestion proof; FIX-01 owns substantial source bugs and regression protection. Planning does not transfer either role or authorize material architecture changes.
+
+
+### 2026-10-16 — TypeScript credential boundary in provider workers
+- **Symptom:** Clean Docker worker build fails TS2352 when `Record<string, unknown>` from decrypted credential storage is asserted directly as `EmailCredentials` in Gmail watch renewal and IMAP IDLE startup.
+- **Root cause:** Repository boundary intentionally exposes untrusted decrypted JSON as a generic record; `EmailCredentials` requires a discriminant (`credential_type`) and the consumers skipped runtime validation.
+- **Remedy:** Validate `credential_type` against the three supported values (`oauth_token`, `password`, `app_password`), then pass a spread object with the narrowed discriminant to the adapter. Removed unsafe type assertions.
+- **Failed approach to avoid:** Do not silence TS2352 with `as unknown as EmailCredentials`; that hides malformed decrypted credential records.
+- **Prevention:** Validate persisted/decrypted data at trust boundaries before passing it to typed provider adapters. Treat worker `tsc`/Docker build as the regression check.
+- **Evidence:** User-provided build log identifies both source locations; corrective commits `185b729d`, `60fadabf`, `e3ba38c9`, `18948e08` on `main`. Typecheck/build not yet rerun in this environment.
