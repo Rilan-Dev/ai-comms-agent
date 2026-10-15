@@ -220,6 +220,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     cursor: string | null;
     history_id: string | null;
     last_success_at: string | null;
+    sync_mode: string | null;
     pending_message_ids: string[] | null;
     pending_cursor_token: string | null;
     pending_history_id: string | null;
@@ -232,7 +233,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
        SET status='running', last_attempt_at=now(), updated_at=now()
        WHERE email_sync_states.status <> 'running'
           OR email_sync_states.last_attempt_at < now()-interval '10 minutes'
-     RETURNING cursor_token AS cursor, history_id, last_success_at,
+     RETURNING cursor_token AS cursor, history_id, last_success_at, sync_mode,
        pending_message_ids, pending_cursor_token, pending_history_id, pending_sync_mode`,
     [candidate.id, candidate.organization_id],
   );
@@ -299,7 +300,20 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       cursor: claimed.rows[0].cursor ?? undefined,
       history_token: claimed.rows[0].history_id ?? undefined,
       last_sync_at: claimed.rows[0].last_success_at ?? new Date(0).toISOString(),
-      sync_mode: claimed.rows[0].cursor || !claimed.rows[0].history_id ? "initial" : "incremental",
+      // Use the DB's sync_mode column directly. The old computation
+      // `cursor || !history_id ? 'initial' : 'incremental'` was WRONG because
+      // the first sync cycle sets history_id (from the Gmail profile) but
+      // doesn't set cursor (no pageToken yet). The computation then evaluates
+      // to 'incremental' → the worker calls the History API → gets 0 changes
+      // → imports 0 messages. The initial import NEVER runs.
+      //
+      // By using the DB column directly, when we set sync_mode='initial'
+      // (either via a fresh account or via a manual reset), the worker
+      // correctly enters the initial path (messages.list) and pages through
+      // ALL messages. When the adapter returns sync_mode='incremental' (no
+      // more pages), the completion UPDATE sets sync_mode='incremental' in
+      // the DB, and future syncs correctly use the History API.
+      sync_mode: (claimed.rows[0].sync_mode ?? "initial") as "initial" | "incremental",
     };
 
     // Stage each provider page durably before fetching full messages. If Gmail
