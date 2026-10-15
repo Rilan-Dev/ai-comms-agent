@@ -545,3 +545,17 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Artifact:** Updated `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md`, commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`.
 - **Verification:** Source inspection only; no endpoint calls, tests, typechecks, builds, DB/Qdrant operations, or performance tests.
 - **Exact next action:** Establish an explicit authenticated Clara email-vector API contract and implement it in the Clara source-of-truth repository, with deterministic point IDs, upsert/metadata-update/delete/purge operations, mandatory organization + allowed-account search filters, and citation-bearing results. After FIX-01 closes ISS-026, bind that supported contract in ai-comms-agent, wire the outbox worker, and implement shared retrieval. OPS-01 retains live runtime/ingestion/latency acceptance.
+
+
+
+### DEV01-EMAIL-RAG-API-20261016 — 2026-10-16
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Implement the supported authenticated Clara email-vector API after explicit user authorization.
+- **Started from:** ai-comms-agent main source review; Clara Vite-Converted at `58d3fd1fc0db11c8bd1e1bfd1a50812eb7e22e80`.
+- **Scope:** Clara API/store implementation, contract docs, boundary tests, project handoff, and update ai-comms-agent control records; do not cross into FIX-01 or OPS-01 responsibilities.
+- **Status:** HANDOFF
+- **Completed:** Opened Clara draft PR #298 with internal API/store, deterministic point IDs, org/model-scoped collections, upsert/update/search/delete/purge operations, and route validation tests. Updated hybrid retrieval plan and project-control records to reference the API draft.
+- **Pending:** Execute typecheck/tests/lint/build; add Qdrant integration tests; do not bind outbox or expose retrieval until ISS-026 closes.
+- **Blockers:** ISS-026 remains open/FIX-01-owned. Live Qdrant/embedding setup and ingestion/performance acceptance belong to OPS-01.
+- **Handoff:** Clara PR #298 and Clara docs/project-control/EMAIL_VECTOR_API_HANDOFF.md.
+- **Next action:** Continue independent API source verification; then prepare the ai-comms-agent adapter to call the documented contract, keeping it disabled until FIX-01 closes ISS-026.
