@@ -1,0 +1,92 @@
+name: Provider realtime email sync — focused checks
+
+on:
+  push:
+    branches:
+      - feature/provider-realtime-email-sync
+    paths:
+      - "apps/web/src/app/api/webhooks/gmail/**"
+      - "apps/web/src/app/api/oauth/gmail/**"
+      - "apps/web/tests/gmail-webhook.test.ts"
+      - "apps/web/tests/migration-verification.test.ts"
+      - "apps/worker/src/email/gmail-adapter.ts"
+      - "apps/worker/src/email/gmail-watch-worker.ts"
+      - "apps/worker/src/email/mailbox-sync-worker.ts"
+      - "apps/worker/src/email/imap-smtp-adapter.ts"
+      - "apps/worker/src/email/imap-idle-worker.ts"
+      - "apps/worker/src/index.ts"
+      - "apps/worker/tests/imap-idle.test.ts"
+      - "apps/worker/tests/gmail-*.test.ts"
+      - "apps/worker/tests/mailbox-sync-checkpoint.test.ts"
+      - "supabase/migrations/0049_email_sync_pending_push.sql"
+      - "scripts/setup-gmail-pubsub.sh"
+      - ".github/workflows/provider-realtime-email-sync.yml"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+  pull_request:
+    branches:
+      - main
+      - feature/imap-smtp-mail-actions
+    paths:
+      - "apps/web/src/app/api/webhooks/gmail/**"
+      - "apps/web/src/app/api/oauth/gmail/**"
+      - "apps/web/tests/gmail-webhook.test.ts"
+      - "apps/web/tests/migration-verification.test.ts"
+      - "apps/worker/src/email/gmail-adapter.ts"
+      - "apps/worker/src/email/gmail-watch-worker.ts"
+      - "apps/worker/src/email/mailbox-sync-worker.ts"
+      - "apps/worker/src/email/imap-smtp-adapter.ts"
+      - "apps/worker/src/email/imap-idle-worker.ts"
+      - "apps/worker/src/index.ts"
+      - "apps/worker/tests/imap-idle.test.ts"
+      - "apps/worker/tests/gmail-*.test.ts"
+      - "apps/worker/tests/mailbox-sync-checkpoint.test.ts"
+      - "supabase/migrations/0049_email_sync_pending_push.sql"
+      - "scripts/setup-gmail-pubsub.sh"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    name: Gmail webhook, history sync, and worker/web typechecks
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Validate Gmail Pub/Sub setup script syntax
+        run: bash -n scripts/setup-gmail-pubsub.sh
+
+      - name: Gmail webhook tests
+        run: pnpm --filter @ai-comms-agent/web exec vitest run tests/gmail-webhook.test.ts tests/migration-verification.test.ts
+
+      - name: Gmail history, watch, batch, and checkpoint tests
+        run: pnpm --filter @ai-comms-agent/worker exec node --import tsx --test tests/gmail-history-sync.test.ts tests/gmail-watch-adapter.test.ts tests/gmail-batch-response.test.ts tests/mailbox-sync-checkpoint.test.ts tests/imap-idle.test.ts
+
+      - name: Web typecheck
+        run: pnpm --filter @ai-comms-agent/web typecheck
+
+      - name: Worker typecheck
+        run: pnpm --filter @ai-comms-agent/worker typecheck

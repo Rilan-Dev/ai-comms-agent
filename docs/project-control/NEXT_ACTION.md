@@ -1057,9 +1057,39 @@ The latest user-run command passed Clara AI Platform test paths to the `ai-comms
 
 ### Immediate next action — Gmail Pub/Sub receiver and watch lifecycle (2026-10-16)
 
-Active branch: `feature/provider-realtime-email-sync`, stacked on `feature/imap-smtp-mail-actions`; PR #19 remains draft. RT-02 source implementation has started: Gmail adapter watch/profile methods, a worker watch-renewal loop, authenticated Pub/Sub webhook with Google X.509 JWT signature/issuer/audience/service-account/time checks, mailbox-to-account resolution, durable immediate-sync scheduling via `email_sync_states.pending_push_at` plus `next_attempt_at`, and due-sync query support. A focused web test covers missing/malformed bearer tokens.
+Active branch: `feature/provider-realtime-email-sync`, stacked on `feature/imap-smtp-mail-actions`; PR #19 is closed/merged; follow-up hardening is in draft PR #21 targeting `main`. RT-02 source implementation has started: Gmail adapter watch/profile methods, a worker watch-renewal loop, authenticated Pub/Sub webhook with Google X.509 JWT signature/issuer/audience/service-account/time checks, mailbox-to-account resolution, durable immediate-sync scheduling via `email_sync_states.pending_push_at` plus `next_attempt_at`, and due-sync query support. A focused web test covers missing/malformed bearer tokens.
 
 **Do next:** inspect the new webhook/worker code and add coverage for valid/invalid JWT claims, malformed Pub/Sub payloads, unknown/ambiguous mailbox, paused account, duplicate notifications, watch renewal, and history-cursor recovery. Add operational setup docs for `GMAIL_PUBSUB_TOPIC`, `GMAIL_PUBSUB_PUSH_AUDIENCE`, `GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT`, Google topic publisher permission, and Pub/Sub authenticated push subscription. Then implement IMAP IDLE only after Gmail reconciliation is secure. Do not claim the Gmail path complete until worker/web tests and typechecks are run and OPS-01 validates a real external email end-to-end. No tests, typechecks, build, deployment, cloud configuration, or live mailbox delivery were run in this session.
 
 
 RT-02 checkpoint hardening: migration `0049_email_sync_pending_push.sql` adds `email_sync_states.pending_push_at`. The webhook marks the durable signal, and a successful sync clears only signals that existed by its claim timestamp; a push arriving mid-sync remains due for another pass. Migration application and concurrency behavior are not verified yet.
+
+
+### Gmail RT-02 follow-up — 2026-10-16
+
+- Added signed-JWT webhook tests using a synthetic test-only certificate/key: invalid audience, wrong service account, unverified identity, expired token, wrong issuer, future `iat`, malformed envelope/payload, unknown and ambiguous mailbox, paused mailbox, duplicate history cursor, and durable queueing.
+- Added Gmail History API tests for paginated incremental changes and expired-cursor fallback to a fresh initial baseline.
+- Gmail OAuth callback now attempts watch registration immediately when all three push settings are present, keeps `sync_webhook` capability disabled, and falls back to worker retry if watch registration fails.
+- Watch worker now requires all three push configuration values, compares normalized mailbox addresses, merges watch/retry metadata without replacing unrelated connection configuration, and uses bounded exponential backoff capped at six hours.
+- Added `.github/workflows/provider-realtime-email-sync.yml` for focused webhook/history/watch/checkpoint tests and web/worker typechecks. The workflow is push/PR triggered; it was not waited on or inspected in keeping with the no-polling instruction. Tests/typechecks have not been independently executed in this session.
+- Google Cloud configuration, database migration application, actual Pub/Sub delivery, and independent-account delivery timing remain external acceptance items. No GCP/secret-management connector is available in this session, so cloud settings were documented but not applied.
+
+**Next:** run focused checks only if needed without polling unrelated jobs; inspect any failure when convenient. Confirm Google Cloud topic/subscription/OIDC values and apply migration 0049 to the same DB used by web and worker. After real Gmail push acceptance, proceed to IMAP IDLE; research found Zoho Mail docs describe configurable outgoing webhooks in the product UI but no public mailbox-event subscription API in the Mail REST API index, so don't treat Campaigns webhooks as Zoho Mail inbox events. Use IMAP IDLE where Zoho account access supports it; otherwise retain API reconciliation polling.
+
+
+### PR tracking correction — 2026-10-16
+
+PR #18 and PR #19 are closed/merged. The initial realtime inbox refresh and Gmail push foundation are present on `main`. The follow-up hardening is tracked in [PR #21](https://github.com/Rilan-Dev/ai-comms-agent/pull/21), an open draft targeting `main`. Do not describe PR #19 as still draft. Focused workflow results remain uninspected; no claim of passing tests, live Pub/Sub, applied production migration, or end-to-end latency is made.
+
+
+Gmail Cloud setup helper added: `scripts/setup-gmail-pubsub.sh` validates required inputs, enables Gmail API/Pub/Sub APIs, creates the topic/subscription, grants Gmail publisher permission, and configures OIDC push identity. `.env.example` lists the three runtime variables as commented placeholders. **No GCP project/endpoint/service-account values were available and no cloud resource or deployment environment was changed.** Before claiming Gmail complete, an operator must run the script from an authenticated `gcloud` shell, configure the same three variables for web and worker, apply migration 0049 to the shared DB, and run an external-account delivery test.
+
+
+### IMAP IDLE source progress — 2026-10-16
+
+- Added RFC 2177 IDLE support to `ImapSmtpAdapter`: detect the server's advertised `IDLE` capability, select `INBOX`, wait for `EXISTS`/`EXPUNGE`/`FETCH`/`VANISHED`, send `DONE` before returning, and reissue at a 25-minute maximum wait.
+- Added `apps/worker/src/email/imap-idle-worker.ts`, started from the worker entrypoint. It maintains up to 20 connected-account watchers, reconnects with bounded backoff, backs off six hours for servers that do not advertise IDLE, and persists account-scoped change signals via `email_sync_states.pending_push_at` so the existing reconciliation worker performs the actual fetch/persist/checkpoint.
+- Added focused parser tests and included them in the focused GitHub workflow. Periodic mailbox polling remains the fallback.
+- **Not verified:** IMAP IDLE socket integration, live provider behavior, tests/typechecks, database migration presence in deployed DB, reconnect behavior against real servers, and per-provider latency. Source has been committed but the focused workflow is not being polled.
+
+Next: keep Gmail cloud setup and live push acceptance as an OPS prerequisite, then harden the IMAP watcher with integration tests; after that implement Zoho Mail's configurable outgoing webhook only with a secure account-scoped bootstrap/signature scheme, otherwise use this IMAP IDLE path or bounded Zoho API polling. Outlook Graph remains later in the order.

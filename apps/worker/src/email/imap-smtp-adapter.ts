@@ -30,6 +30,15 @@ function quote(value: string): string {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
+export function serverSupportsImapIdle(lines: string[]): boolean {
+  return lines.some((line) => /^\* CAPABILITY\b/i.test(line) && /(?:^|\s)IDLE(?:\s|$)/i.test(line));
+}
+
+export function isImapIdleChangeNotification(line: string): boolean {
+  return /^\*\s+\d+\s+(?:EXISTS|EXPUNGE|FETCH)\b/i.test(line)
+    || /^\*\s+VANISHED\b/i.test(line);
+}
+
 function isPrivateOrLocalAddress(address: string): boolean {
   if (address === "::1" || address.startsWith("fe80:") || address.startsWith("fc") || address.startsWith("fd")) return true;
   const parts = address.split(".").map(Number);
@@ -165,6 +174,7 @@ async function smtpCommand(reader: SocketReader, command: string): Promise<strin
 export class ImapSmtpAdapter implements EmailProvider {
   readonly providerId = "imap_smtp" as const;
   private credentials?: EmailCredentials;
+  private idleSupported?: boolean;
   private imap?: ImapConnection & { reader: SocketReader };
   private smtp?: { socket: tls.TLSSocket; reader: SocketReader };
 
@@ -231,10 +241,89 @@ export class ImapSmtpAdapter implements EmailProvider {
     this.smtp = undefined;
     this.imap = undefined;
     this.credentials = undefined;
+    this.idleSupported = undefined;
   }
 
-  async discoverCapabilities(): Promise<CapabilitySet> { return { ...CAPABILITIES }; }
-  capabilities(): CapabilitySet { return { ...CAPABILITIES }; }
+  async supportsIdle(): Promise<boolean> {
+    const lines = await this.command("CAPABILITY");
+    this.idleSupported = serverSupportsImapIdle(lines);
+    return this.idleSupported;
+  }
+
+  async discoverCapabilities(): Promise<CapabilitySet> {
+    try { await this.supportsIdle(); } catch { this.idleSupported = false; }
+    return this.capabilities();
+  }
+  capabilities(): CapabilitySet {
+    return { ...CAPABILITIES, sync_idle: this.idleSupported ?? false };
+  }
+
+  /**
+   * Wait for an Inbox change using RFC 2177 IDLE. Always leave IDLE with DONE
+   * before returning so callers can run a normal UID/cursor reconciliation.
+   * A 25-minute default reissue interval stays below RFC 2177's 29-minute
+   * client termination recommendation.
+   */
+  async waitForMailboxChange(
+    timeoutMs = 25 * 60 * 1000,
+    signal?: AbortSignal,
+  ): Promise<"changed" | "timeout" | "unsupported"> {
+    const { imap } = this.ensureConnected();
+    if (!(await this.supportsIdle())) return "unsupported";
+    await this.command(`SELECT ${quote("INBOX")}`);
+
+    const tag = this.nextTag(imap);
+    imap.socket.write(`${tag} IDLE\r\n`);
+    const deadline = Date.now() + Math.max(1_000, timeoutMs);
+    let enteredIdle = false;
+    let taggedComplete = false;
+    let changed = false;
+    try {
+      while (!signal?.aborted && Date.now() < deadline) {
+        let line: string;
+        try {
+          line = await readLine(imap.reader, Math.min(1_000, Math.max(1, deadline - Date.now())));
+        } catch (error) {
+          if (error instanceof Error && error.message === "TLS response timeout") continue;
+          throw error;
+        }
+
+        if (!enteredIdle) {
+          if (line.startsWith("+")) {
+            enteredIdle = true;
+            continue;
+          }
+          if (line.startsWith(`${tag} NO`) || line.startsWith(`${tag} BAD`)) {
+            taggedComplete = true;
+            throw new Error(`IMAP IDLE rejected: ${line.slice(tag.length).trim()}`);
+          }
+          if (line.startsWith(`${tag} OK`)) {
+            taggedComplete = true;
+            changed = true;
+            break;
+          }
+          continue;
+        }
+
+        if (line.startsWith(`${tag} `)) {
+          taggedComplete = true;
+          changed = true;
+          break;
+        }
+        if (isImapIdleChangeNotification(line)) {
+          changed = true;
+          break;
+        }
+      }
+    } finally {
+      if (enteredIdle && !taggedComplete && !imap.socket.destroyed) {
+        imap.socket.write("DONE\r\n");
+        await readUntilTag(imap.reader, tag, 5_000).catch(() => undefined);
+      }
+    }
+
+    return changed ? "changed" : "timeout";
+  }
 
   private nextTag(connection: ImapConnection): string {
     connection.tag += 1;

@@ -110,7 +110,7 @@ export async function GET(request: Request) {
       }
     }
     const capabilities = {
-      folders: true, labels: true, sync_incremental: true, sync_full: true, sync_webhook: true, sync_idle: false,
+      folders: true, labels: true, sync_incremental: true, sync_full: true, sync_webhook: false, sync_idle: false,
       search_server_side: true, search_client_side: true, drafts: true, reply: true, forward: true,
       mark_read: true, archive: true, move: true, threads: true, attachments_download: true,
       attachments_upload: false, send: true,
@@ -154,6 +154,57 @@ export async function GET(request: Request) {
       oauth_client_secret: clientSecret,
       oauth_config_id: oauthConfig.id,
     }, masterKey);
+    // Register the watch during connection when the complete authenticated
+    // push configuration is present. The worker loop remains the retry/renewal
+    // fallback if Google or the database is temporarily unavailable.
+    const pubSubTopic = process.env.GMAIL_PUBSUB_TOPIC?.trim();
+    const pushAudience = process.env.GMAIL_PUBSUB_PUSH_AUDIENCE?.trim();
+    const pushServiceAccount = process.env.GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT?.trim();
+    if (pubSubTopic && pushAudience && pushServiceAccount
+      && /^projects\/[^/]+\/topics\/[^/]+$/.test(pubSubTopic)) {
+      try {
+        const watchResponse = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/watch", {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${tokens.access_token}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ topicName: pubSubTopic, labelIds: ["INBOX"], labelFilterBehavior: "INCLUDE" }),
+        });
+        if (!watchResponse.ok) throw new Error(`Gmail watch returned HTTP ${watchResponse.status}`);
+        const watch = await watchResponse.json() as { historyId?: string; expiration?: string | number };
+        if (typeof watch.historyId !== "string" || !/^\d+$/.test(watch.historyId)
+          || !/^\d+$/.test(String(watch.expiration ?? ""))) {
+          throw new Error("Gmail watch response was missing a valid history ID or expiration.");
+        }
+        await repository.updateConnection(account.id, {
+          emailAddress: profile.emailAddress,
+          displayName: profile.emailAddress,
+          connectionConfig: {
+            historyId: profile.historyId ?? null,
+            oauthScope: tokens.scope ?? null,
+            oauthConfigId: oauthConfig.id,
+            gmailWatchExpiresAt: new Date(Number(watch.expiration)).toISOString(),
+            gmailWatchHistoryId: watch.historyId,
+            gmailWatchRenewedAt: new Date().toISOString(),
+          },
+          status: "pending",
+          capabilities,
+        });
+      } catch (watchError) {
+        // Do not fail account connection solely because push registration failed;
+        // the worker will retry with bounded backoff.
+        console.warn(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level: "warn",
+          service: "oauth.gmail",
+          message: "Immediate Gmail watch registration failed; background renewal will retry",
+          account_id: account.id,
+          reason: watchError instanceof Error ? watchError.message.slice(0, 180) : "Watch registration failed",
+        }));
+      }
+    }
+
     await repository.updateStatus(account.id, "pending");
 
     await recordAuditEvent({
