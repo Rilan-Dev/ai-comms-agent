@@ -1,3 +1,11 @@
+### Provider real-time email sync — 2026-10-16
+
+- Branch: `feature/provider-realtime-email-sync`.
+- Added visibility-aware inbox API refresh every 5 seconds; it pauses while the tab is hidden and refreshes on visibility return. Search/account/unread/action filters are included in requests.
+- Added `docs/plans/PROVIDER-REALTIME-EMAIL-SYNC-PLAN.md` describing provider-specific push/IDLE mechanisms, recovery polling, security, tests, operational setup and acceptance criteria.
+- Not run after these changes: web/worker tests, typechecks, build, browser verification, provider-to-DB ingestion, or production latency measurement.
+- Provider event paths are not implemented by this UI change. Gmail Pub/Sub/watch renewal, IMAP IDLE listener, and validated Zoho webhook support remain planned; current automatic worker polling remains fallback.
+
 ### Gmail empty-inbox source fix — 2026-10-14
 
 - Branch: `feature/imap-smtp-mail-actions`, draft PR #18.
