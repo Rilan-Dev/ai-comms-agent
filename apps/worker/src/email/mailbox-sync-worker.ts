@@ -661,7 +661,8 @@ async function enqueueDueMailboxSyncs(limit = BATCH_SIZE): Promise<number> {
        AND (s.last_success_at IS NULL
          OR s.last_success_at < now()-interval '2 minutes'
          OR a.status IN ('pending','error')
-         OR s.sync_mode = 'initial')
+         OR s.sync_mode = 'initial'
+         OR (s.next_attempt_at IS NOT NULL AND s.next_attempt_at <= now()))
      ORDER BY CASE a.status WHEN 'pending' THEN 0 WHEN 'error' THEN 1 ELSE 2 END,
        COALESCE(s.last_success_at, a.created_at) ASC
      LIMIT $1`,
@@ -734,7 +735,8 @@ export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ att
          AND (s.last_success_at IS NULL
            OR s.last_success_at < now()-interval '2 minutes'
            OR a.status IN ('pending','error')
-           OR s.sync_mode = 'initial')
+           OR s.sync_mode = 'initial'
+         OR (s.next_attempt_at IS NOT NULL AND s.next_attempt_at <= now()))
        ORDER BY CASE a.status WHEN 'pending' THEN 0 WHEN 'error' THEN 1 ELSE 2 END,
          COALESCE(s.last_success_at, a.created_at) ASC
        LIMIT $1`,
