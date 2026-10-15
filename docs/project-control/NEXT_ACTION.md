@@ -1157,3 +1157,4 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - Not executed: dependency-equipped tests/typecheck and live Qdrant were not available in this work session. These are authored checks, not passing evidence.
 - Still blocked: do not bind the adapter/start the outbox loop or expose Chat/voice email retrieval until FIX-01 closes ISS-026 and execution-time account authorization is in place.
 - Next: continue contract review and targeted source corrections; run worker/Clara tests and typechecks when the dependency-equipped environment is available. OPS-01 owns live Qdrant setup, ingestion, isolation evidence, and latency/correctness acceptance.
+- Additional Clara review correction: deterministic point-ID and embedding-model hash inputs now use actual NUL separators rather than the two-character backslash-zero sequence, preventing ambiguous concatenation of identifier parts. This remains source-only and untested.
