@@ -90,3 +90,11 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 - Keep an opt-in integration test that uses a real Qdrant service for filter semantics; do not call it verified unless it was actually executed against a configured endpoint.
 - Clara request size limits must measure encoded bytes, not JS string length.
 - ISS-026 remains FIX-01-owned/open; adapter startup and retrieval exposure stay disabled until execution-time mailbox authorization is fixed.
+
+### 2026-10-16 — Shared hybrid retrieval implementation lessons
+
+- Keep shared retrieval in a workspace package that both web and worker can import; inject the semantic search dependency rather than coupling the core service to transport code.
+- Resolve `agent_email_accounts` grants fresh for every retrieval, exclude `send_only`, intersect requested account filters with the grant set, and fail closed for an explicitly empty account filter.
+- Qdrant returns candidates, not trusted message content. Re-fetch current message rows in SQL with the same organization/account/agent/date filters and return citations to authoritative message IDs.
+- Include the indexed message content hash in semantic hits and discard semantic-only candidates when the current PostgreSQL document hash differs or the source document is missing. Keep lexical fallback visibly marked degraded when Clara search fails.
+- ISS-026 remains FIX-01-owned/open; never wire this service to Chat/voice or activate vector sync until the authorization fix is closed and tested.
