@@ -631,3 +631,11 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - Added `apps/worker/src/knowledge/clara-email-vector-adapter.ts` plus request-contract tests. The adapter targets Clara draft PR #298 and passes deterministic source IDs and content/metadata/chunk hashes; it is not imported by worker startup and does not start the outbox loop.
 - The Clara API contract was updated to allow nullable received timestamps and a hash-aware metadata-only upsert path. Source is authored only; no executable checks or live vector calls are claimed.
 - ISS-026 remains FIX-01-owned/open. Do not wire adapter or expose user-facing retrieval before that closes. OPS-01 retains production credential/Qdrant/ingestion/latency work.
+
+### 2026-10-16 — email vector source review corrections
+
+- Focused review found stale payload metadata could survive source changes because absent sender/folder values were omitted from adapter upserts. Adapter now sends explicit null/empty values when source metadata includes those fields; Clara route/store types accept explicit clears.
+- Clara request-body size enforcement now uses UTF-8 byte length.
+- Added opt-in actual-Qdrant filter/deletion integration coverage in src/modules/email-vectors/core/qdrant-filter.integration.test.ts; requires QDRANT_INTEGRATION_URL and optionally QDRANT_INTEGRATION_API_KEY.
+- Source-authored only. No test/typecheck/live Qdrant result is claimed.
+- ISS-026 remains FIX-01-owned/open. Adapter remains unbound; vector-sync loop remains stopped; no user-facing email retrieval is exposed.
