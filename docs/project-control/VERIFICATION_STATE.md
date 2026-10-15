@@ -1369,3 +1369,12 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Status:** Adapter remains unbound; outbox loop remains unstarted; ISS-026 remains FIX-01-owned/open. No retrieval exposure.
 - **Verification:** Source inspection/docs only. Tests/typechecks/build/API/Qdrant/ingestion/latency not run.
 - **Next:** Establish authenticated Clara email-vector API; bind after ISS-026 closure. OPS-01 performs live runtime acceptance.
+
+
+
+### 2026-10-16 — Clara email-vector API draft
+- **Artifact:** Clara-AI-Platform draft PR #298, branch `feature/email-vector-api`.
+- **Source status:** API route, dedicated vector store, contract documentation, and basic route-boundary tests authored. No source claim implies tests have passed.
+- **Not run:** unit tests, typecheck, lint, build, live Qdrant or embedding calls, cross-account isolation runtime checks, ingestion, or latency benchmark.
+- **Security:** ISS-026 remains open/FIX-01-owned. API is not wired into the ai-comms-agent outbox or user-facing retrieval.
+- **Next:** Run focused executable checks and Qdrant integration coverage; only bind the adapter after ISS-026 closes. OPS-01 owns live environment and acceptance evidence.
