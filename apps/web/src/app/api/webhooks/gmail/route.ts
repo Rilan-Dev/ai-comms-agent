@@ -160,10 +160,10 @@ export async function POST(request: Request) {
     const account = matches.rows[0];
     await query(
       `INSERT INTO email_sync_states
-         (email_account_id, organization_id, status, next_attempt_at, updated_at)
-       VALUES ($1,$2,'idle',now(),now())
+         (email_account_id, organization_id, status, next_attempt_at, pending_push_at, updated_at)
+       VALUES ($1,$2,'idle',now(),now(),now())
        ON CONFLICT (email_account_id) DO UPDATE SET
-         next_attempt_at=now(), updated_at=now()
+         next_attempt_at=now(), pending_push_at=now(), updated_at=now()
        WHERE email_sync_states.status <> 'paused'`,
       [account.id, account.organization_id],
     );
