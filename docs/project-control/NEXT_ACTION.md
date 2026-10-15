@@ -1108,3 +1108,13 @@ Next: keep Gmail cloud setup and live push acceptance as an OPS prerequisite, th
 ### Main branch status correction — 2026-10-16
 
 GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f48751a`. Main now contains Gmail watch-on-connect/config hardening, signed webhook and history tests, focused test/typecheck workflow, the Pub/Sub setup helper, and the first IMAP IDLE watcher. The merge status does not mean tests or typechecks passed: the focused workflow result has not been inspected, and live GCP/IMAP delivery, migration application, and latency acceptance remain unverified. Continue development without polling CI, but do not label these runtime paths production-verified.
+
+
+## DEV-01 — Hybrid email RAG architecture review (2026-10-16)
+
+- **Review artifact:** `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md`, commit `4f95fcd122c146b41de099bc98aaeeb614a53d87`.
+- **Recommendation:** Hybrid PostgreSQL + Qdrant, not either store alone. PostgreSQL remains authoritative for exact filters/counts/time/latest/permissions; Qdrant provides semantically relevant chunk candidates; use PostgreSQL FTS + Qdrant and final authoritative SQL revalidation.
+- **Current source gap:** PostgreSQL email chunks exist; a durable vector-sync outbox and injected adapter processor exist in source, but no concrete supported Clara vector adapter is bound and the vector-sync loop is not started in `apps/worker/src/index.ts`. The local runtime retrieval path is SQL/tsvector/ILIKE, not verified Qdrant search.
+- **Security boundary:** ISS-026 remains open and FIX-01-owned. Do not expose vector retrieval or the existing broad Chat email-context loader beyond the current authorization contract; DEV-01 must not take over the substantial tenant-security fix.
+- **Next DEV-01 action:** Obtain architecture review/correction; confirm the supported Clara server-to-server vector/RAG adapter; coordinate with FIX-01 on the allowed-account contract; then bind adapter, start outbox loop, and implement shared retrieval for Chat + realtime voice. Do not claim 10x without measured baseline.
+- **Verification:** Review and docs only. Tests/typechecks/build/live vector/provider/latency checks NOT RUN. OPS-01 owns runtime/infrastructure acceptance after source work.
