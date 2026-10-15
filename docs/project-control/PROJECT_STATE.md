@@ -554,3 +554,12 @@ Additional source defects were found and corrected: migration 0030's PL/pgSQL bl
 - PR #15's email-tool/Gmail history changes are merged to main (merge commit d444cf1b35939008058532b0754b46daef7cc312).
 - Added docs/plans/EMAIL-INDEX-IDENTITY-AND-ACCOUNT-LIFECYCLE.md. Key source-level gap: message content updates do not visibly invalidate indexed_at, and account removal lacks an explicit, retryable vector-index purge contract.
 - No test/typecheck/build or live vector/index acceptance is claimed. The current execution environment has no local checkout and cannot resolve github.com.
+
+
+### 2026-10-16 — Provider realtime email sync, RT-02 source progress
+
+- PR #19: https://github.com/Rilan-Dev/ai-comms-agent/pull/19, branch `feature/provider-realtime-email-sync` stacked on PR #18 branch `feature/imap-smtp-mail-actions`.
+- Added Gmail adapter profile/watch/stop methods and `apps/worker/src/email/gmail-watch-worker.ts`; worker starts watch registration/renewal every 12 hours when configured and renews watches expiring within 24 hours. Watch expiry/history ID are stored in account `connection_config`.
+- Added `POST /api/webhooks/gmail`: Google certificate-backed RS256 verification, issuer/audience/configured service-account identity/expiry checks, bounded request body, Pub/Sub payload validation, mailbox resolution against trusted DB rows, and immediate durable sync scheduling. The worker due-query now allows a persisted `next_attempt_at` push trigger to bypass the ordinary two-minute polling delay.
+- Added a small web test for missing/malformed bearer token rejection.
+- **Not complete:** tests/typechecks/build were not run; valid signed push delivery, account matching, watch renewal, History API reconciliation after push, cloud Pub/Sub setup, and real-mail latency remain unverified. IMAP IDLE, Zoho verification, Outlook adapter, and end-to-end timing remain pending. Keep capability flags fail-closed until verified.
