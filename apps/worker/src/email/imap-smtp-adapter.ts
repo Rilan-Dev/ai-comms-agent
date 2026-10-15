@@ -30,6 +30,15 @@ function quote(value: string): string {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
+export function serverSupportsImapIdle(lines: string[]): boolean {
+  return serverSupportsImapIdle(lines);
+}
+
+export function isImapIdleChangeNotification(line: string): boolean {
+  return /^\\*\\s+\\d+\\s+(?:EXISTS|EXPUNGE|FETCH)\\b/i.test(line)
+    || /^\\*\\s+VANISHED\\b/i.test(line);
+}
+
 function isPrivateOrLocalAddress(address: string): boolean {
   if (address === "::1" || address.startsWith("fe80:") || address.startsWith("fc") || address.startsWith("fd")) return true;
   const parts = address.split(".").map(Number);
