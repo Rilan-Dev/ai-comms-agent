@@ -28,11 +28,13 @@ function stringField(metadata: Record<string, unknown>, ...keys: string[]): stri
 function labelsField(metadata: Record<string, unknown>): string[] | undefined {
   const value = metadata.labels;
   if (Array.isArray(value)) {
-    const labels = value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()));
-    return labels.length ? labels : undefined;
+    return value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()));
   }
   const folder = stringField(metadata, "folder_id", "folderId");
-  return folder ? [folder] : undefined;
+  if (folder) return [folder];
+  // An explicit null/empty folder means clear a previously indexed label.
+  if ("folder_id" in metadata || "folderId" in metadata) return [];
+  return undefined;
 }
 
 /**
@@ -104,9 +106,9 @@ export function createClaraEmailVectorAdapter(config: AdapterConfig = {}): Email
       const sender = stringField(snapshot.metadata, "from_address", "sender");
       const subject = stringField(snapshot.metadata, "subject");
       const labels = labelsField(snapshot.metadata);
-      if (sender) metadata.sender = sender;
-      if (subject) metadata.subject = subject;
-      if (labels) metadata.labels = labels;
+      if ("from_address" in snapshot.metadata || "sender" in snapshot.metadata) metadata.sender = sender ?? null;
+      if ("subject" in snapshot.metadata) metadata.subject = subject ?? null;
+      if (labels !== undefined) metadata.labels = labels;
 
       await send({
         action: "upsert",
