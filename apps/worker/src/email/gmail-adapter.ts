@@ -222,7 +222,7 @@ export class GmailAdapter implements EmailProvider {
    */
   async registerMailboxWatch(topicName: string): Promise<{ historyId: string; expiration: string }> {
     const topic = topicName.trim();
-    if (!/^projects\\/[^\\/]+\\/topics\\/[^\\/]+$/.test(topic)) {
+    if (!/^projects\/[^\/]+\/topics\/[^\/]+$/.test(topic)) {
       throw new Error("GMAIL_PUBSUB_TOPIC must be a fully-qualified projects/<project>/topics/<topic> name.");
     }
     const result = await this.request("/watch", {
@@ -230,7 +230,7 @@ export class GmailAdapter implements EmailProvider {
       body: JSON.stringify({ topicName: topic, labelIds: ["INBOX"], labelFilterBehavior: "INCLUDE" }),
     });
     if (typeof result.historyId !== "string" || !result.historyId.trim()
-      || !/^\\d+$/.test(String(result.expiration ?? ""))) {
+      || !/^\d+$/.test(String(result.expiration ?? ""))) {
       throw new Error("Gmail watch response is missing a valid historyId or expiration.");
     }
     return { historyId: result.historyId, expiration: new Date(Number(result.expiration)).toISOString() };
