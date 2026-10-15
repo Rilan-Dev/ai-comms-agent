@@ -91,7 +91,7 @@ test("an explicitly empty account filter fails closed instead of widening scope"
 test("semantic retrieval failure is reported as degraded lexical fallback", async () => {
   const queryMock = (async (_sql: string, _values: unknown[] = []) => {
     if (_sql.includes("SELECT a.id AS account_id")) return { rows: [{ account_id: account }] };
-    if (_sql.includes("WITH candidates")) return { rows: [] };
+    if (_sql.includes("WITH candidates")) return { rows: [row({ score: 1, matched_by: ["lexical"] })] };
     return { rows: [row({ score: 1, matched_by: ["lexical"] })] };
   }) as unknown as typeof query;
   const search = createEmailHybridRetriever({
