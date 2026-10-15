@@ -226,6 +226,7 @@ export function createEmailHybridRetriever(dependencies: {
       "a.status='connected'",
       "b.role IN ('primary','read_only')",
       "m.is_draft=false",
+      "(c.content_hash IS NULL OR 'lexical'=ANY(c.matched_by) OR COALESCE(d.sha256, d.metadata->>'content_hash')=c.content_hash)",
     ];
     const finalAdd = (condition: (index: number) => string, value: unknown) => {
       finalValues.push(value);
