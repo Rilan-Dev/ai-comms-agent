@@ -162,3 +162,11 @@ After explicit user authorization to modify the Clara source-of-truth repository
 Implemented in the draft: authenticated server-to-server POST endpoint, deterministic org/account/message/chunk point IDs, separate org/model-specific collections, upsert and stale-chunk cleanup, metadata-only updates, message/account/org deletion, semantic search requiring orgId plus an explicit allowedAccountIds list, and basic route-boundary tests. The API uses a dedicated secret `CLARA_EMAIL_VECTOR_API_KEY` (at least 32 characters) and is not connected to ai-comms-agent yet.
 
 This advances the API prerequisite but does not close it as a production dependency: PR #298 is draft, and no executable test/typecheck/lint/build, live Qdrant/embedding call, or isolation runtime check has been run. The global bearer secret authenticates the trusted worker only; ai-comms-agent must freshly authorize mailbox grants. ISS-026 remains FIX-01-owned and open. Keep the outbox unbound and user-facing retrieval unexposed until ISS-026 closes and the API receives executable verification. OPS-01 owns live infrastructure, ingestion, and latency acceptance.
+
+
+
+### Unbound worker adapter added — 2026-10-16
+
+The worker-side adapter has now been authored at `apps/worker/src/knowledge/clara-email-vector-adapter.ts`, with focused request-contract tests at `apps/worker/src/knowledge/clara-email-vector-adapter.test.ts`. It maps the existing `EmailKnowledgeVectorAdapter` interface to the documented Clara endpoint and passes organization/account/message identity, source IDs, timestamps, sender/labels, and content/metadata/chunk hashes. It rejects missing service configuration, requires HTTPS in production, uses bounded request timeouts, and throws on unsuccessful API responses so the existing outbox can retry.
+
+The adapter is deliberately **not imported by worker startup** and the outbox loop remains unstarted. It must not be wired until ISS-026 is closed by FIX-01 and the Clara draft API passes executable checks. The Clara API now accepts nullable received timestamps and can skip re-embedding when stored content hash, chunk indices, and per-chunk hashes match, updating payload metadata instead. Neither implementation has been executed through tests/typecheck/build in this environment.
