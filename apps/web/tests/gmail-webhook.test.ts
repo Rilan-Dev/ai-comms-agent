@@ -85,7 +85,7 @@ describe("Gmail Pub/Sub webhook", () => {
     { label: "expired token", claims: { exp: 1 } },
     { label: "wrong issuer", claims: { iss: "https://attacker.example/" } },
     { label: "future-issued token", claims: { iat: Math.floor(Date.now() / 1000) + 600 } },
-  ])("rejects a correctly signed token with $label", async ({ claims }) => {
+  ] as Array<{ label: string; claims: Record<string, unknown> }>)("rejects a correctly signed token with $label", async ({ claims }) => {
     const response = await POST(request(signToken(claims), "{}"));
     expect(response.status).toBe(401);
     expect(queryMock).not.toHaveBeenCalled();
