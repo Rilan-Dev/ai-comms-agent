@@ -35,6 +35,9 @@ test("Microsoft Graph uses v1.0 URLs and follows delta pagination before persist
   assert.equal(first.added[0]?.provider_message_id, "message-1");
   assert.equal(first.new_state.sync_mode, "initial");
   assert.match(first.new_state.cursor ?? "", /\$skiptoken=page2/);
+  const cached = await adapter.getMessage("message-1");
+  assert.equal(cached?.subject, "First");
+  assert.equal(deltaCalls, 1);
 
   const second = await adapter.sync({ ...first.new_state, last_sync_at: new Date(0).toISOString() });
   assert.equal(second.added[0]?.provider_message_id, "message-2");
