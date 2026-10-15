@@ -563,3 +563,6 @@ Additional source defects were found and corrected: migration 0030's PL/pgSQL bl
 - Added `POST /api/webhooks/gmail`: Google certificate-backed RS256 verification, issuer/audience/configured service-account identity/expiry checks, bounded request body, Pub/Sub payload validation, mailbox resolution against trusted DB rows, and immediate durable sync scheduling. The worker due-query now allows a persisted `next_attempt_at` push trigger to bypass the ordinary two-minute polling delay.
 - Added a small web test for missing/malformed bearer token rejection.
 - **Not complete:** tests/typechecks/build were not run; valid signed push delivery, account matching, watch renewal, History API reconciliation after push, cloud Pub/Sub setup, and real-mail latency remain unverified. IMAP IDLE, Zoho verification, Outlook adapter, and end-to-end timing remain pending. Keep capability flags fail-closed until verified.
+
+
+RT-02 follow-up: added migration `0049_email_sync_pending_push.sql` and changed webhook/worker checkpointing so push events arriving while an account is already syncing are not cleared by that sync's completion. The watch worker now checks every five minutes for newly connected accounts and watches expiring within 24 hours. Still source-only and unverified.
