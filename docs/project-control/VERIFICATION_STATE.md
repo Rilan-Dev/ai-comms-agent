@@ -1,3 +1,11 @@
+### Provider real-time email sync — 2026-10-16
+
+- Branch: `feature/provider-realtime-email-sync`.
+- Added visibility-aware inbox API refresh every 5 seconds; it pauses while the tab is hidden and refreshes on visibility return. Search/account/unread/action filters are included in requests.
+- Added `docs/plans/PROVIDER-REALTIME-EMAIL-SYNC-PLAN.md` describing provider-specific push/IDLE mechanisms, recovery polling, security, tests, operational setup and acceptance criteria.
+- Not run after these changes: web/worker tests, typechecks, build, browser verification, provider-to-DB ingestion, or production latency measurement.
+- Provider event paths are not implemented by this UI change. Gmail Pub/Sub/watch renewal, IMAP IDLE listener, and validated Zoho webhook support remain planned; current automatic worker polling remains fallback.
+
 ### Gmail empty-inbox source fix — 2026-10-14
 
 - Branch: `feature/imap-smtp-mail-actions`, draft PR #18.
@@ -1293,3 +1301,16 @@ User ran `npm test -- src/modules/integrations/oauth-app-validation.test.ts src/
 - Added docs/plans/EMAIL-INDEX-IDENTITY-AND-ACCOUNT-LIFECYCLE.md based on main-source inspection. The current indexer uses an account-scoped document path and body SHA-256, but its background worker only selects indexed_at IS NULL; existing message updates need a reliable dirty/version signal. Account-wide Qdrant/vector deletion and stale-job prevention require explicit lifecycle work.
 - Verification status: NOT RUN for provider-contract tests, worker-loop tests, executor tests, Clara/worker TypeScript checks, full build, DB integration, vector integration, and live mailbox sync. A local checkout was not available and outbound DNS to github.com failed. Do not claim runtime correctness or vector cleanup is verified.
 - Ownership: FIX-01 owns ISS-026. OPS-01 owns live infrastructure and ingestion verification.
+
+
+## 2026-10-16 — Gmail realtime source implementation (not verified)
+
+- Source changes on `feature/provider-realtime-email-sync`: Gmail watch adapter methods; 12-hour worker watch renewal (renew before 24-hour expiry); authenticated Pub/Sub webhook; mailbox account resolution; due-sync trigger; rejection tests for missing/malformed bearer tokens.
+- **Tests/typecheck/lint/build:** NOT RUN after these changes.
+- **Google Cloud setup / live push:** NOT RUN. Required environment: `GMAIL_PUBSUB_TOPIC`, `GMAIL_PUBSUB_PUSH_AUDIENCE`, `GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT`, Gmail API enabled, Pub/Sub topic publisher permission for Gmail, and a push subscription configured with OIDC authentication and the matching audience/service account.
+- **End-to-end mailbox behavior:** NOT VERIFIED. Do not claim instant mail delivery, successful renewal, or production readiness. Next: run focused web/worker tests and typechecks, add valid/invalid JWT and notification-path coverage, then OPS-01 performs an independent-account send and measures provider-to-DB-to-inbox latency. Continue with IMAP IDLE after Gmail reconciliation hardening.
+
+- Additional source added after initial note: migration `0049_email_sync_pending_push.sql`; worker preserves a newer `pending_push_at` that arrives during an active sync and schedules a follow-up pass. The watch loop checks every five minutes. Migration application and concurrency tests are NOT RUN.
+
+
+Gmail follow-up hardening: watch failures now use stored retry backoff (5 minutes with exponential growth capped at 6 hours); successful watch registration persists refreshed OAuth credentials and clears retry metadata. The webhook skips notifications already covered by the persisted Gmail history cursor and acknowledges intentionally paused sync accounts. These are source changes only; their tests and runtime behavior remain unverified.

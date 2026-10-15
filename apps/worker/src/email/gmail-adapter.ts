@@ -205,6 +205,41 @@ export class GmailAdapter implements EmailProvider {
     return response.status === 204 ? null : response.json();
   }
 
+  /** Return the authenticated mailbox identity and current history cursor. */
+  async getMailboxProfile(): Promise<{ emailAddress: string; historyId: string }> {
+    const profile = await this.request("/profile");
+    if (typeof profile.emailAddress !== "string" || !profile.emailAddress.trim()
+      || typeof profile.historyId !== "string" || !profile.historyId.trim()) {
+      throw new Error("Gmail profile response is missing emailAddress or historyId.");
+    }
+    return { emailAddress: profile.emailAddress.trim().toLowerCase(), historyId: profile.historyId };
+  }
+
+  /**
+   * Register Gmail push delivery. The caller must persist the returned
+   * expiration/historyId and renew before expiry; watch is not safe without
+   * an authenticated Pub/Sub receiver.
+   */
+  async registerMailboxWatch(topicName: string): Promise<{ historyId: string; expiration: string }> {
+    const topic = topicName.trim();
+    if (!/^projects\/[^\/]+\/topics\/[^\/]+$/.test(topic)) {
+      throw new Error("GMAIL_PUBSUB_TOPIC must be a fully-qualified projects/<project>/topics/<topic> name.");
+    }
+    const result = await this.request("/watch", {
+      method: "POST",
+      body: JSON.stringify({ topicName: topic, labelIds: ["INBOX"], labelFilterBehavior: "INCLUDE" }),
+    });
+    if (typeof result.historyId !== "string" || !result.historyId.trim()
+      || !/^\d+$/.test(String(result.expiration ?? ""))) {
+      throw new Error("Gmail watch response is missing a valid historyId or expiration.");
+    }
+    return { historyId: result.historyId, expiration: new Date(Number(result.expiration)).toISOString() };
+  }
+
+  async stopMailboxWatch(): Promise<void> {
+    await this.request("/stop", { method: "POST", body: "{}" });
+  }
+
   async listFolders(): Promise<EmailFolder[]> {
     const data = await this.request("/labels");
     return (data.labels ?? []).map((label: any) => ({
