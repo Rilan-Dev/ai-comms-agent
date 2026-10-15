@@ -50,7 +50,7 @@ async function renewDueWatches(): Promise<{ checked: number; renewed: number }> 
       if (!stored) throw new Error("Encrypted Gmail credentials are missing.");
       await adapter.connect(stored as EmailCredentials);
       const profile = await adapter.getMailboxProfile();
-      if (profile.emailAddress !== candidate.email_address.trim().toLowerCase()) {
+      if (profile.emailAddress.trim().toLowerCase() !== candidate.email_address.trim().toLowerCase()) {
         throw new Error("Authenticated Gmail mailbox does not match the connected account address.");
       }
       const watch = await adapter.registerMailboxWatch(topicName);
