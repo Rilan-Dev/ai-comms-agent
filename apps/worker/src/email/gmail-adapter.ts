@@ -449,10 +449,14 @@ export class GmailAdapter implements EmailProvider {
 
   /** Parse a multipart batch response and append to the result Map. */
   private parseBatchResponse(body: string, chunk: string[], result: Map<string, EmailMessage>): void {
-    // Split on the boundary marker. The exact boundary is in the response's
-    // Content-Type header; we read it from the first line of the body to
-    // avoid needing to parse headers separately.
-    const firstLine = body.split(/\r?\n/, 1)[0] ?? "";
+    // The Gmail batch API response starts with a optional leading \r\n
+    // before the first boundary line. Skip any leading empty lines/whitespace
+    // to find the actual boundary marker.
+    // The boundary is also available in the response's Content-Type header
+    // (e.g. "multipart/mixed; boundary=batch_XXX") but we read it from the
+    // body to avoid needing to pass headers into this method.
+    const trimmed = body.replace(/^[\r\n\s]+/, "");
+    const firstLine = trimmed.split(/\r?\n/, 1)[0] ?? "";
     const boundary = firstLine.replace(/^--/, "").trim();
     if (!boundary) return;
     const parts = body.split(`--${boundary}`);
@@ -467,10 +471,9 @@ export class GmailAdapter implements EmailProvider {
       const partHeaders = part.slice(0, headersEnd);
       const partBody = part.slice(headersEnd + 4).trim();
 
-      // Extract Content-ID
+      // Extract Content-ID (Gmail adds 'response-' prefix in the response)
       const cidMatch = partHeaders.match(/Content-ID:\s*<([^>]+)>/i);
-      const contentId = cidMatch ? `<${cidMatch[1]}>` : "";
-      const messageId = contentIdToMessageId.get(contentId) ?? contentId.replace(/[<>]/g, "").replace(/@.*$/, "");
+      const contentId = cidMatch ? cidMatch[1] : "";
 
       // The part body is itself an HTTP response: status line + headers + JSON.
       const statusMatch = partBody.match(/^HTTP\/[\d.]+\s+(\d+)/);
@@ -485,9 +488,11 @@ export class GmailAdapter implements EmailProvider {
       try {
         const raw = JSON.parse(jsonText);
         const message = toMessage(raw);
-        if (messageId) {
-          result.set(messageId, message);
-        } else if (raw.id) {
+        // ALWAYS use raw.id from the JSON body as the key — this is the
+        // Gmail message ID, which is what the caller looks up by.
+        // The Content-ID has a 'response-' prefix that doesn't match the
+        // request's Content-ID, so it can't be used for lookup.
+        if (raw.id) {
           result.set(String(raw.id), message);
         }
       } catch {
