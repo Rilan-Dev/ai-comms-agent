@@ -58,7 +58,7 @@ async function renewDueWatches(): Promise<{ checked: number; renewed: number }> 
         throw new Error("Authenticated Gmail mailbox does not match the connected account address.");
       }
       const watch = await adapter.registerMailboxWatch(topicName);
-      await accounts.saveCredentials(candidate.id, "oauth_token", adapter.getCredentialSnapshot(), key);
+      await accounts.saveCredentials(candidate.id, "oauth_token", { ...adapter.getCredentialSnapshot() }, key);
       const config = {
         gmailWatchExpiresAt: watch.expiration,
         gmailWatchHistoryId: watch.historyId,
