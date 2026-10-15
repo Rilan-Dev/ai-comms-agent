@@ -12,7 +12,7 @@ test("Clara vector search sends the resolved account allowlist and rejects out-o
     return new Response(JSON.stringify({
       ok: true,
       results: [
-        { orgId: "org-a", accountId: "account-a", messageId: "msg-a", sourceId: "point-a", score: 0.9 },
+        { orgId: "org-a", accountId: "account-a", messageId: "msg-a", sourceId: "point-a", contentHash: "a".repeat(64), score: 0.9 },
         { orgId: "org-a", accountId: "account-b", messageId: "msg-b", score: 0.99 },
         { orgId: "org-b", accountId: "account-a", messageId: "msg-c", score: 0.98 },
         { orgId: "org-a", accountId: "account-a", messageId: "bad-score", score: "high" },
@@ -45,6 +45,7 @@ test("Clara vector search sends the resolved account allowlist and rejects out-o
       accountId: "account-a",
       messageId: "msg-a",
       sourceId: "point-a",
+      contentHash: "a".repeat(64),
       score: 0.9,
     }]);
   } finally {
