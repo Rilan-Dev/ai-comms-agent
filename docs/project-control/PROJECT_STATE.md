@@ -616,3 +616,11 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - Follow-up source review confirmed Clara main has internal KB-scoped Qdrant upsert/delete functions and a KB-scoped search endpoint, but no supported server-to-server email-vector API. See the updated email RAG plan at commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`.
 - Do not call Clara internals cross-repo or use the KB search endpoint for email retrieval. The supported API must provide deterministic vector lifecycle operations and mandatory org + allowed-account filtering.
 - ISS-026 remains open/FIX-01-owned. Adapter/outbox startup and retrieval remain blocked until API and security contracts exist. No tests or live Qdrant checks were run.
+
+
+
+### 2026-10-16 — Clara email-vector API draft implementation
+- User explicitly authorized cross-repository changes in Clara-AI-Platform. DEV-01 opened draft PR #298: https://github.com/Rilan-Dev/Clara-AI-Platform/pull/298.
+- The API draft now has a documented server-to-server contract, deterministic vector IDs, separate org/model collections, upsert/stale cleanup, metadata-only update, message/account/org deletion, and semantic search requiring an organization and explicit allowed-account set.
+- This is not yet production-ready or executable-verified. No typecheck/tests/lint/build, live Qdrant/embedding, isolation runtime, ingestion, or latency evidence is claimed.
+- ISS-026 remains open/FIX-01-owned; keep ai-comms-agent's vector outbox unbound and user-facing retrieval disabled until it closes. OPS-01 owns live infra/ingestion/performance acceptance.
