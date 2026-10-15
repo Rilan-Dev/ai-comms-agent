@@ -43,7 +43,7 @@ A provider-neutral contract exposes *change signals*, not a promise that every p
 - The inbox server page reads persisted PostgreSQL messages; it does not directly connect to a mail provider.
 - The inbox client previously refreshed only after user actions/search changes. The current branch adds a 5-second, visibility-aware refresh of the inbox API so newly persisted mail can appear without clicking Sync.
 - The worker has a periodic mailbox loop and a two-minute stale-account eligibility threshold. This is fallback polling, not instant push.
-- Gmail adapter currently reports `sync_webhook: false`; the Gmail Pub/Sub receiver/watch registration and renewal lifecycle are not implemented.
+- Gmail adapter still reports `sync_webhook: false` until the new Pub/Sub receiver and watch lifecycle are verified. Source now includes watch/profile/stop methods, a worker renewal loop, authenticated webhook, and durable immediate-sync trigger; live notification delivery and History API end-to-end behavior remain unverified.
 - IMAP/SMTP adapter currently reports `sync_idle: false`; a persistent, reconnecting IDLE session is not implemented. Do not advertise IDLE until the socket lifecycle and recovery tests pass.
 - Zoho webhook support must be validated against the actual API/account capabilities; keep polling/IMAP fallback where a push integration is unavailable.
 - Provider sync and browser refresh are separate: provider signal -> DB persistence -> UI refresh. UI polling alone cannot fix provider ingestion failures.
@@ -58,7 +58,7 @@ A provider-neutral contract exposes *change signals*, not a promise that every p
 - Test filter preservation, visibility pause/resume, no overlapping requests, and fresh messages appearing in the first page.
 
 ### RT-02 — Gmail Pub/Sub push (highest-priority provider)
-- Add a webhook route with OIDC JWT verification using Google's published signing keys, issuer, audience and allowed service-account identity; fail closed if configuration is absent.
+- Source added: webhook route verifies RS256 JWT signatures using Google's published X.509 certificates, validates issuer/audience/expected service-account identity/time claims, and fails closed if configuration is absent. Add deeper JWT/notification tests and verify real Pub/Sub configuration before enabling the capability.
 - Decode Pub/Sub envelope and base64url payload; validate mailbox address/history ID.
 - Resolve the connected Gmail account from trusted DB records; do not accept account/organization IDs from webhook body.
 - Enqueue a stable idempotency key based on provider/account/history ID.
@@ -116,3 +116,8 @@ A provider-neutral contract exposes *change signals*, not a promise that every p
 ## Exit criteria
 
 The feature is accepted only when: automatic startup sync works on account connect; push/IDLE signal paths are authenticated; each account is reconciled idempotently; failed persistence never advances a cursor; periodic recovery is active; UI refreshes without user action; cross-tenant isolation tests pass; and measured delivery-to-inbox latency is documented per provider. CI status alone is not the acceptance criterion.
+
+
+### RT-02 implementation update — 2026-10-16
+
+Source has been started on `feature/provider-realtime-email-sync`: `GmailAdapter.getMailboxProfile/registerMailboxWatch/stopMailboxWatch`; `gmail-watch-worker.ts` registers watches and renews those expiring within 24 hours on a 12-hour loop; `POST /api/webhooks/gmail` verifies the Google-signed OIDC token and schedules account-scoped reconciliation by setting durable `next_attempt_at`; the sync worker prioritizes that trigger. The receiver intentionally does not trust Pub/Sub mailbox payloads for organization/account identity. This is **source progress, not acceptance**: test/typecheck/live setup have not run; the History API worker path uses the existing stored cursor and still needs explicit push-path regression coverage. Keep `sync_webhook: false` until verified.
