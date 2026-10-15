@@ -1,7 +1,7 @@
 > **Real-time email request (2026-10-16):** New branch `feature/provider-realtime-email-sync` adds visibility-aware 5-second inbox refresh and a provider-neutral implementation plan at `docs/plans/PROVIDER-REALTIME-EMAIL-SYNC-PLAN.md`. This updates the browser UI automatically after PostgreSQL persistence; it does NOT implement provider push by itself. Gmail Pub/Sub + History API and watch renewal, generic IMAP IDLE, and validated Zoho notifications remain open. See `docs/project-control/NEXT_ACTION.md`. User pasted a Gmail app password into chat; do not reuse it, and instruct the user to revoke/rotate it.
 
 
-> **Latest live inbox investigation — 2026-10-14:** Root cause identified in Gmail batch response parsing: Google returns response Content-ID values prefixed with `response-`, but the adapter mapped them without stripping that prefix. This caused successful Gmail fetches to be treated as missing and acknowledged without persistence. The current draft PR #18 fixes response mapping, preserves failed persistence IDs for retry, adds regression tests, and reduces fallback polling to 2 minutes. PR #18 remains draft; tests/typecheck/live deployment after these latest edits are NOT verified. Gmail push/watch is not implemented, so this is polling-based near-real-time behavior, not push-based real-time. See `docs/project-control/NEXT_ACTION.md` for the exact verification steps and the remaining OPS-01 environment checks.
+> **Latest live inbox investigation — 2026-10-14:** Root cause identified in Gmail batch response parsing: Google returns response Content-ID values prefixed with `response-`, but the adapter mapped them without stripping that prefix. This caused successful Gmail fetches to be treated as missing and acknowledged without persistence. PR #18 was merged into `main` on 2026-10-15. Its Gmail batch mapping/checkpoint fixes are present on `main`; later runtime/deployment verification remains separate. Gmail push/watch is not implemented, so this is polling-based near-real-time behavior, not push-based real-time. See `docs/project-control/NEXT_ACTION.md` for the exact verification steps and the remaining OPS-01 environment checks.
 
 
 ### Email index lifecycle branch — 2026-10-14
@@ -558,7 +558,8 @@ Additional source defects were found and corrected: migration 0030's PL/pgSQL bl
 
 ### 2026-10-16 — Provider realtime email sync, RT-02 source progress
 
-- PR #19: https://github.com/Rilan-Dev/ai-comms-agent/pull/19, branch `feature/provider-realtime-email-sync` stacked on PR #18 branch `feature/imap-smtp-mail-actions`.
+- PR #19: https://github.com/Rilan-Dev/ai-comms-agent/pull/19 — closed/merged; the original browser refresh/Gmail webhook foundation and sync-pending migration are present on `main`.
+- PR #21: https://github.com/Rilan-Dev/ai-comms-agent/pull/21 — open draft targeting `main`; adds watch-on-connect, fail-closed capability/config, watch retry hardening, expanded webhook/history tests, focused test/typecheck workflow, and updated project-control docs.
 - Added Gmail adapter profile/watch/stop methods and `apps/worker/src/email/gmail-watch-worker.ts`; worker starts watch registration/renewal every 12 hours when configured and renews watches expiring within 24 hours. Watch expiry/history ID are stored in account `connection_config`.
 - Added `POST /api/webhooks/gmail`: Google certificate-backed RS256 verification, issuer/audience/configured service-account identity/expiry checks, bounded request body, Pub/Sub payload validation, mailbox resolution against trusted DB rows, and immediate durable sync scheduling. The worker due-query now allows a persisted `next_attempt_at` push trigger to bypass the ordinary two-minute polling delay.
 - Added a small web test for missing/malformed bearer token rejection.
@@ -581,3 +582,8 @@ Gmail follow-up hardening: watch failures now use stored retry backoff (5 minute
 - Google Cloud configuration, database migration application, actual Pub/Sub delivery, and independent-account delivery timing remain external acceptance items. No GCP/secret-management connector is available in this session, so cloud settings were documented but not applied.
 
 Zoho research note: official Zoho Mail docs describe product-configured outgoing webhooks for incoming email events, but the public Zoho Mail REST API index does not expose a general mailbox event subscription endpoint. The separate Zoho Campaigns webhook API is not equivalent. Default to IMAP IDLE where credentials/protocol access permit, with API polling fallback.
+
+
+### PR tracking correction — 2026-10-16
+
+PR #18 and PR #19 are closed/merged. The initial realtime inbox refresh and Gmail push foundation are present on `main`. The follow-up hardening is tracked in [PR #21](https://github.com/Rilan-Dev/ai-comms-agent/pull/21), an open draft targeting `main`. Do not describe PR #19 as still draft. Focused workflow results remain uninspected; no claim of passing tests, live Pub/Sub, applied production migration, or end-to-end latency is made.
