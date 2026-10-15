@@ -1345,3 +1345,11 @@ PR #18 and PR #19 are closed/merged. The initial realtime inbox refresh and Gmai
 ### Main branch status correction — 2026-10-16
 
 GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f48751a`. Main now contains Gmail watch-on-connect/config hardening, signed webhook and history tests, focused test/typecheck workflow, the Pub/Sub setup helper, and the first IMAP IDLE watcher. The merge status does not mean tests or typechecks passed: the focused workflow result has not been inspected, and live GCP/IMAP delivery, migration application, and latency acceptance remain unverified. Continue development without polling CI, but do not label these runtime paths production-verified.
+
+### FIX-01 worker credential type correction — 2026-10-16
+
+- **Reported failure:** Docker worker image build stopped at `tsc` with TS2352 in `apps/worker/src/email/gmail-watch-worker.ts` and `apps/worker/src/email/imap-idle-worker.ts` because generic decrypted credential records were directly asserted as `EmailCredentials`.
+- **Source correction:** Both consumers now validate `credential_type` against `oauth_token`, `password`, and `app_password`; they pass a spread object with the narrowed discriminant and no longer use the unsafe direct cast.
+- **Regression protection:** Worker TypeScript compilation is the immediate regression check; targeted tests are queued in BKL-FIX01-WORKER-CREDENTIAL-TYPE-20261016. No new dedicated unit test was added because the defect is a compile-time boundary mismatch and the fix adds runtime discriminant rejection.
+- **Not verified:** Worker typecheck, worker test suite, Docker worker rebuild, and full compose startup have not been run by FIX-01 in this environment. Do not mark this correction PASS until the typecheck/build evidence is available.
+- **Source commits:** `185b729d`, `60fadabf`, `e3ba38c9`, `18948e08`; follow-up project-control records are committed on `main`.
