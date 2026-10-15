@@ -12,11 +12,15 @@ test("IMAP/SMTP adapter advertises the implemented secure connection capabilitie
   assert.equal(capabilities.search_server_side, false);
   assert.equal(capabilities.sync_incremental, true);
   assert.equal(capabilities.search_client_side, true);
-  assert.equal(capabilities.drafts, false);
-  assert.equal(capabilities.send, false);
+  assert.equal(capabilities.drafts, true);
+  assert.equal(capabilities.send, true);
+  assert.equal(capabilities.reply, true);
+  assert.equal(capabilities.forward, true);
+  assert.equal(capabilities.mark_read, true);
   assert.equal(capabilities.labels, false);
-  assert.equal(capabilities.archive, false);
+  assert.equal(capabilities.archive, true);
   assert.equal(capabilities.threads, true);
+  assert.equal(capabilities.move, true);
 });
 
 test("IMAP/SMTP adapter rejects plaintext transport before opening sockets", async () => {
@@ -142,4 +146,22 @@ test("IMAP response reader handles literal markers and payload split across sock
   assert.match(response, /hello\r\nworld/);
   assert.equal(reader.buffer.toString("utf8"), "A0007 OK fetch complete\r\n");
   socket.destroy();
+});
+
+
+test("IMAP/SMTP capability discovery reflects implemented write operations but not attachments or labels", () => {
+  const capabilities = new ImapSmtpAdapter().capabilities();
+  for (const capability of ["drafts", "send", "reply", "forward", "mark_read", "archive", "move"] as const) {
+    assert.equal(capabilities[capability], true, `${capability} should be available`);
+  }
+  assert.equal(capabilities.attachments_download, false);
+  assert.equal(capabilities.attachments_upload, false);
+  assert.equal(capabilities.labels, false);
+});
+
+test("IMAP/SMTP rejects unsafe recipient header values", () => {
+  const adapter = new ImapSmtpAdapter() as unknown as { validateAddresses: (addresses: string[]) => string[] };
+  assert.throws(() => adapter.validateAddresses(["victim@example.test\\r\\nBcc: attacker@example.test"]), /Invalid email recipient/);
+  assert.throws(() => adapter.validateAddresses([]), /At least one recipient/);
+  assert.deepEqual(adapter.validateAddresses(["alice@example.test"]), ["alice@example.test"]);
 });
