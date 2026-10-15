@@ -559,7 +559,7 @@ Additional source defects were found and corrected: migration 0030's PL/pgSQL bl
 ### 2026-10-16 — Provider realtime email sync, RT-02 source progress
 
 - PR #19: https://github.com/Rilan-Dev/ai-comms-agent/pull/19 — closed/merged; the original browser refresh/Gmail webhook foundation and sync-pending migration are present on `main`.
-- PR #21: https://github.com/Rilan-Dev/ai-comms-agent/pull/21 — open draft targeting `main`; adds watch-on-connect, fail-closed capability/config, watch retry hardening, expanded webhook/history tests, focused test/typecheck workflow, and updated project-control docs.
+- PR #21: https://github.com/Rilan-Dev/ai-comms-agent/pull/21 — merged into `main` on 2026-10-15; focused verification remains uninspected; adds watch-on-connect, fail-closed capability/config, watch retry hardening, expanded webhook/history tests, focused test/typecheck workflow, and updated project-control docs.
 - Added Gmail adapter profile/watch/stop methods and `apps/worker/src/email/gmail-watch-worker.ts`; worker starts watch registration/renewal every 12 hours when configured and renews watches expiring within 24 hours. Watch expiry/history ID are stored in account `connection_config`.
 - Added `POST /api/webhooks/gmail`: Google certificate-backed RS256 verification, issuer/audience/configured service-account identity/expiry checks, bounded request body, Pub/Sub payload validation, mailbox resolution against trusted DB rows, and immediate durable sync scheduling. The worker due-query now allows a persisted `next_attempt_at` push trigger to bypass the ordinary two-minute polling delay.
 - Added a small web test for missing/malformed bearer token rejection.
@@ -597,3 +597,8 @@ PR #18 and PR #19 are closed/merged. The initial realtime inbox refresh and Gmai
 - **Not verified:** IMAP IDLE socket integration, live provider behavior, tests/typechecks, database migration presence in deployed DB, reconnect behavior against real servers, and per-provider latency. Source has been committed but the focused workflow is not being polled.
 
 Zoho source research: official Zoho Mail docs describe product-configured outgoing webhooks for incoming emails, signed with `X-Hook-Signature` HMAC-SHA256 and an `X-Hook-Secret` revealed on the first request. This is not a general REST API subscription endpoint; do not accept an unauthenticated first request as trusted. IMAP IDLE is the fallback for Zoho accounts where IMAP access is enabled.
+
+
+### Main branch status correction — 2026-10-16
+
+GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f48751a`. Main now contains Gmail watch-on-connect/config hardening, signed webhook and history tests, focused test/typecheck workflow, the Pub/Sub setup helper, and the first IMAP IDLE watcher. The merge status does not mean tests or typechecks passed: the focused workflow result has not been inspected, and live GCP/IMAP delivery, migration application, and latency acceptance remain unverified. Continue development without polling CI, but do not label these runtime paths production-verified.
