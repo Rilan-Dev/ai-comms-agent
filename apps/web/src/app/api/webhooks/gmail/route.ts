@@ -112,13 +112,20 @@ export async function POST(request: Request) {
     return unauthorized();
   }
 
-  const contentLength = Number(request.headers.get("content-length") ?? 0);
-  if (contentLength > 1_000_000) return NextResponse.json({ error: "payload_too_large" }, { status: 413 });
+  let bodyText: string;
+  try {
+    bodyText = await request.text();
+  } catch {
+    return NextResponse.json({ error: "invalid_notification" }, { status: 400 });
+  }
+  if (Buffer.byteLength(bodyText, "utf8") > 1_000_000) {
+    return NextResponse.json({ error: "payload_too_large" }, { status: 413 });
+  }
 
   let payload: GmailPushPayload;
   let pubSubMessageId = "";
   try {
-    const envelope = await request.json() as PubSubEnvelope;
+    const envelope = JSON.parse(bodyText) as PubSubEnvelope;
     if (!envelope.message?.data || typeof envelope.message.messageId !== "string") {
       return NextResponse.json({ error: "invalid_pubsub_envelope" }, { status: 400 });
     }
