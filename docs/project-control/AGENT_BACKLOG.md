@@ -186,3 +186,11 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Blockers:** ISS-026 is open and FIX-01-owned; no supported concrete Clara server-to-server email vector adapter is bound; the outbox sync loop is not started in worker entrypoint; architecture approval/correction is needed before material retrieval/vector changes.
 - **Next:** Approve/correct the hybrid design, establish allowed-account retrieval contract with FIX-01, inspect the current Clara RAG adapter source-of-truth, then wire vector sync and shared retrieval behind that contract.
 - **Acceptance:** Exact date/count/latest queries use authoritative SQL; semantic queries use mandatory org + allowed-account vector filters plus final SQL revalidation; Chat and realtime voice share one authorized retrieval service; indexing is idempotent and deletion-safe; citations/freshness are explicit; regression coverage proves cross-account denial; measured p50/p95/recall/freshness benchmark before any 10x claim.
+
+
+### BKL-DEV01-EMAIL-RAG-ADAPTER-20261016 — Supported Clara email-vector API
+- **Owner:** DEV-01 / Forge for source integration; cross-repository API implementation must be authorized in the Clara source-of-truth repo.
+- **Status:** BLOCKED_ON_SUPPORTED_API_AND_ISS-026
+- **Finding:** Current Clara main has internal KB-scoped vector upsert/delete helpers and KB-scoped `/api/embed/search`, but no supported account-scoped email-vector server API. Do not call internals or reuse the KB search route for mail.
+- **Required contract:** Authenticated server-to-server requests; deterministic point IDs; content re-embedding and metadata-only update; surplus-chunk deletion; message/account purge; semantic search with mandatory organization + allowed-account filters; bounded results with source IDs; final PostgreSQL revalidation in ai-comms-agent.
+- **Next:** Establish and implement the API in Clara repo; then, once FIX-01 closes ISS-026, bind adapter + outbox loop and shared retrieval. OPS-01 handles live runtime/ingestion/latency acceptance.
