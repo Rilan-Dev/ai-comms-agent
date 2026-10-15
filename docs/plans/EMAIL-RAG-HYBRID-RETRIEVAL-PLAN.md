@@ -139,3 +139,16 @@ A “10x faster” claim requires a repeatable measured improvement on the same 
 - `supabase/migrations/0048_email_knowledge_sync_jobs.sql`
 - `docs/project-control/ISSUES.md`
 - Clara Core: `REFERENCE-MAP.md`, `AGENTS.md`, `IMPLEMENTATION-PLAYBOOK.md`
+
+
+## 11. Follow-up adapter-source investigation (2026-10-16)
+
+A follow-up source inspection of the current `Rilan-Dev/Clara-AI-Platform` main tree confirmed that a supported cross-repository email-vector API is **not currently established**:
+
+- `src/modules/admin/core/vector-store-kb.ts` exports internal application functions such as `upsertDocumentsKb(collectionName, textChunks, meta)` and `deleteDocumentChunks(collectionName, documentId)`. The upsert creates random point IDs and KB/document payload fields (`kbId`, `documentId`, title, original filename, chunk and chunk index). This is an internal module function, not a server-to-server contract suitable for the email outbox's deterministic account-scoped point IDs and lifecycle semantics.
+- `src/app/api/embed/search/route.ts` exposes KB-scoped retrieval through `searchKbEmbedded(kb.qdrantCollection, query, limit)`. It resolves a knowledge base and provider configuration, applies quota admission, and returns KB chunks/sources. It is not a general account-filtered email-vector search API and does not provide email-vector upsert/delete operations.
+- The document management routes are authenticated user/KB operations and couple deletion to a KB document ID. They are not a safe substitute for a machine-authenticated email account adapter.
+
+Therefore, do not call these internal functions from `ai-comms-agent`, do not place email content in a shared KB collection, and do not treat `/api/embed/search` as an email search endpoint. The correct next cross-repository dependency is to establish and implement an explicit authenticated Clara email-vector adapter contract, including deterministic point IDs, metadata-only updates, stale-chunk cleanup, account purge, semantic search with mandatory organization + allowed-account filters, and final PostgreSQL revalidation. Until that contract exists and ISS-026 is resolved, keep the vector outbox unbound and retrieval unexposed.
+
+This follow-up was source inspection only; no Clara repository or product code was modified and no endpoint was called.

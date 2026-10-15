@@ -610,3 +610,9 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - Current source gap: PostgreSQL chunks are persisted, but the concrete supported Clara vector adapter is unbound and the vector-sync loop is not started from worker startup. Existing local retrieval is SQL/FTS/ILIKE, not proven Qdrant search.
 - ISS-026 remains FIX-01-owned and open; no email vector retrieval should be exposed until active agent-account authorization is established. Tests/typechecks/build/live vector/latency checks were not run.
 - **Next action:** review/correct the proposal and establish the adapter/security contract before material implementation. OPS-01 owns live infrastructure and ingestion/performance acceptance.
+
+
+### 2026-10-16 — Clara email-vector API investigation
+- Follow-up source review confirmed Clara main has internal KB-scoped Qdrant upsert/delete functions and a KB-scoped search endpoint, but no supported server-to-server email-vector API. See the updated email RAG plan at commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`.
+- Do not call Clara internals cross-repo or use the KB search endpoint for email retrieval. The supported API must provide deterministic vector lifecycle operations and mandatory org + allowed-account filtering.
+- ISS-026 remains open/FIX-01-owned. Adapter/outbox startup and retrieval remain blocked until API and security contracts exist. No tests or live Qdrant checks were run.

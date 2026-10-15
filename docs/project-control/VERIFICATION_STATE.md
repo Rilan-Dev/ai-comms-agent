@@ -1361,3 +1361,11 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Artifact:** `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md`, commit `4f95fcd122c146b41de099bc98aaeeb614a53d87`.
 - **Verification:** Documentation/source inspection only. No tests, typecheck, build, DB migration, Qdrant request, provider sync, latency benchmark, or runtime isolation test executed. No PASS and no 10x performance claim.
 - **Next:** Architecture approval/correction and supported adapter/security contract before material code changes; FIX-01 owns ISS-026, OPS-01 owns live infrastructure/ingestion and latency evidence.
+
+
+### 2026-10-16 — Clara email-vector API investigation
+- **Finding:** Inspected Clara source `vector-store-kb.ts` and `/api/embed/search`. These are internal/KB-scoped paths, not a supported account-scoped email-vector API. No cross-repo API call was made.
+- **Artifact:** Updated `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md` at commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`.
+- **Status:** Adapter remains unbound; outbox loop remains unstarted; ISS-026 remains FIX-01-owned/open. No retrieval exposure.
+- **Verification:** Source inspection/docs only. Tests/typechecks/build/API/Qdrant/ingestion/latency not run.
+- **Next:** Establish authenticated Clara email-vector API; bind after ISS-026 closure. OPS-01 performs live runtime acceptance.
