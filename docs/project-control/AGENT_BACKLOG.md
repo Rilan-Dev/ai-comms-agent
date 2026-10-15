@@ -175,3 +175,14 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Authorization:** User-explicit FIX-01 root-cause and smallest corrective change request dated 2026-10-16.
 - **Suggested next action:** Execute worker typecheck/tests, then rebuild Docker worker. Route only environment/compose/deployment failures to OPS-01.
 - **Related session/event/handoff:** `FIX01-WORKER-CREDENTIAL-TYPE-20261016`, `EVT-FIX01-WORKER-CREDENTIAL-TYPE-20261016`
+
+
+### BKL-DEV01-EMAIL-RAG-HYBRID-20261016 — Email RAG hybrid retrieval
+- **Owner:** DEV-01 / Forge
+- **Status:** BLOCKED_ON_ARCHITECTURE_AND_SECURITY_CONTRACT
+- **Priority:** High
+- **Request:** Accurate, low-latency email search and summaries across Chat and realtime voice, supporting relative/absolute time ranges, exact sender/subject/business/topic queries, thread summaries, and source-backed answers.
+- **Current evidence:** Review plan `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md` (commit `4f95fcd122c146b41de099bc98aaeeb614a53d87`).
+- **Blockers:** ISS-026 is open and FIX-01-owned; no supported concrete Clara server-to-server email vector adapter is bound; the outbox sync loop is not started in worker entrypoint; architecture approval/correction is needed before material retrieval/vector changes.
+- **Next:** Approve/correct the hybrid design, establish allowed-account retrieval contract with FIX-01, inspect the current Clara RAG adapter source-of-truth, then wire vector sync and shared retrieval behind that contract.
+- **Acceptance:** Exact date/count/latest queries use authoritative SQL; semantic queries use mandatory org + allowed-account vector filters plus final SQL revalidation; Chat and realtime voice share one authorized retrieval service; indexing is idempotent and deletion-safe; citations/freshness are explicit; regression coverage proves cross-account denial; measured p50/p95/recall/freshness benchmark before any 10x claim.
