@@ -102,7 +102,15 @@ export async function POST(request: Request) {
     }
 
     const history = await listChatMessages(organizationId, conversation.id, 40);
-    const emailContext = await loadEmailContext(organizationId, content);
+    // Build combined search context from the current message + recent user
+    // messages. This ensures follow-up questions like "what is the 3 emails"
+    // or "show me the last email" can resolve the sender/topic from the
+    // previous turn. Without this, loadEmailContext() only sees the current
+    // message, extracts useless search terms, and returns 20 random recent
+    // emails — breaking conversation continuity.
+    const recentUserMessages = history.filter(m => m.role === "user").slice(-3).map(m => m.content);
+    const combinedSearchContext = [...recentUserMessages, content].join(" ");
+    const emailContext = await loadEmailContext(organizationId, combinedSearchContext);
     await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "user", content });
 
     const messages = [
