@@ -306,8 +306,7 @@ export class ImapSmtpAdapter implements EmailProvider {
           changed = true;
           break;
         }
-        if (/^\*\s+\d+\s+(?:EXISTS|EXPUNGE|FETCH)\b/i.test(line)
-          || /^\*\s+VANISHED\b/i.test(line)) {
+        if (isImapIdleChangeNotification(line)) {
           changed = true;
           break;
         }
