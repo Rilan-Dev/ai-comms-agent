@@ -58,6 +58,41 @@ export function InboxClient({ organizationId, initialMessages }: { organizationI
     finally { setLoadingMore(false); }
   }
   useEffect(() => { const timer = setTimeout(() => { void refresh(); }, 250); return () => clearTimeout(timer); }, [q, accountId, unread, action]);
+  useEffect(() => {
+    // Keep the inbox fresh without requiring the user to click Sync or Refresh.
+    // Provider events update PostgreSQL; this lightweight poll updates the open UI.
+    let inFlight = false;
+    const refreshVisibleInbox = async () => {
+      if (inFlight || document.visibilityState !== "visible") return;
+      inFlight = true;
+      try {
+        const params = new URLSearchParams({ organizationId, limit: String(PAGE_SIZE), offset: "0" });
+        if (q.trim()) params.set("q", q.trim());
+        if (accountId !== "all") params.set("accountId", accountId);
+        if (unread) params.set("unread", "true");
+        if (action) params.set("action", "true");
+        const response = await fetch("/api/mail/inbox?" + params.toString(), { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        setMessages(data.messages ?? []);
+        setHasMore((data.messages ?? []).length === PAGE_SIZE);
+      } catch {
+        // A temporary network failure must not interrupt inbox use; the next
+        // visible tick will retry. Explicit refresh still reports errors.
+      } finally {
+        inFlight = false;
+      }
+    };
+    const timer = window.setInterval(() => { void refreshVisibleInbox(); }, 5_000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void refreshVisibleInbox();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [organizationId, q, accountId, unread, action]);
   useEffect(() => { void (async()=>{ try { const params = new URLSearchParams({ organizationId }); if (accountId !== "all") params.set("accountId", accountId); const response = await fetch("/api/mail/messages/folder?" + params.toString(), { cache: "no-store" }); const data = await response.json(); if (response.ok) setFolders(data.folders ?? []); } catch {} })(); }, [organizationId, accountId]);
   async function folderAction(messageId: string, operation: "archive" | "move", folderId?: string) { setBusy(true); setNotice(null); try { const response = await fetch("/api/mail/messages/folder", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ organizationId, messageIds: [messageId], action: operation, folderId }) }); const data = await response.json(); if (!response.ok) throw new Error(data.message ?? "Could not update message folder."); await refresh(); } catch (error) { setNotice(error instanceof Error ? error.message : "Could not update message folder."); } finally { setBusy(false); } }
   const unreadCount = messages.filter(m => !m.is_read).length; const actionCount = messages.filter(m => m.action_required).length;
