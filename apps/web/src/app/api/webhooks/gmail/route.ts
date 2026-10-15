@@ -136,7 +136,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const matches = await query<{ id: string; organization_id: string }>(
+    const matches = await query<{ id: string; organization_id: string; history_id: string | null; sync_status: string | null }>(
       `SELECT id, organization_id
          FROM email_accounts
         WHERE provider='gmail' AND deleted_at IS NULL
@@ -158,6 +158,15 @@ export async function POST(request: Request) {
     }
 
     const account = matches.rows[0];
+    if (account.sync_status === "paused") {
+      return NextResponse.json({ received: true, skipped: "sync_paused" }, { status: 200 });
+    }
+    if (account.history_id && /^\\d+$/.test(account.history_id)
+      && BigInt(account.history_id) >= BigInt(payload.historyId)) {
+      // History IDs are monotonic. A checkpoint at or beyond this notification
+      // proves that a prior successful reconciliation already covered it.
+      return NextResponse.json({ received: true, already_reconciled: true }, { status: 200 });
+    }
     await query(
       `INSERT INTO email_sync_states
          (email_account_id, organization_id, status, next_attempt_at, pending_push_at, updated_at)
