@@ -321,3 +321,12 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Boundary:** Adapter is not imported in `apps/worker/src/index.ts`; outbox loop remains unstarted. ISS-026 remains FIX-01-owned/open; do not expose Chat/realtime-voice retrieval.
 - **Verification:** No tests/typecheck/build or live Qdrant/embedding/isolation/performance checks were run.
 - **Next:** Execute focused tests/typecheck when a dependency-equipped checkout is available; continue independent source work without waiting on CI; activate only after ISS-026 closes and Clara API verification is complete.
+
+### DEV01-EMAIL-VECTOR-REVIEW-CORRECTIONS-20261016
+
+- Task: Continue focused source review of Clara email-vector API and the ai-comms-agent adapter.
+- Changes: Fixed stale sender/folder metadata clearing in the worker adapter and Clara API contract; fixed UTF-8 request-body byte cap in Clara; added an opt-in Qdrant integration test for org/account filtering and scoped deletion.
+- Artifacts: Clara PR #298; ai-comms-agent PR #23. Both remain draft and unmerged.
+- Verification: GitHub source edits only. No tests/typechecks/lint/build or live Qdrant requests were run in this work session; do not mark PASS.
+- Security boundary: ISS-026 remains FIX-01-owned/open. Adapter remains unbound and outbox loop stopped.
+- Next: run targeted worker/Clara tests and typechecks in a dependency-equipped environment; execute Qdrant integration test only against an explicit test endpoint. After FIX-01 closes ISS-026, bind adapter/outbox and implement shared authorized SQL + Qdrant retrieval. OPS-01 owns live ingestion/isolation/performance acceptance.
