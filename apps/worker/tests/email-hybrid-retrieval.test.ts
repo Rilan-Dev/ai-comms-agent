@@ -62,7 +62,9 @@ test("hybrid retrieval resolves fresh bindings and revalidates semantic candidat
   assert.deepEqual(vectorScope, { orgId: org, allowedAccountIds: [account] });
   assert.match(calls[2]?.sql ?? "", /JOIN agent_email_accounts/);
   assert.match(calls[2]?.sql ?? "", /jsonb_to_recordset/);
+  assert.match(calls[2]?.sql ?? "", /COALESCE\(d\.sha256/);
   assert.deepEqual(calls[2]?.values[2], [account]);
+  assert.match(String(calls[2]?.values[3] ?? ""), /"content_hash":"a{64}"/);
 });
 
 test("an explicitly empty account filter fails closed instead of widening scope", async () => {
