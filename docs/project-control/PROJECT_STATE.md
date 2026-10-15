@@ -602,3 +602,11 @@ Zoho source research: official Zoho Mail docs describe product-configured outgoi
 ### Main branch status correction — 2026-10-16
 
 GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f48751a`. Main now contains Gmail watch-on-connect/config hardening, signed webhook and history tests, focused test/typecheck workflow, the Pub/Sub setup helper, and the first IMAP IDLE watcher. The merge status does not mean tests or typechecks passed: the focused workflow result has not been inspected, and live GCP/IMAP delivery, migration application, and latency acceptance remain unverified. Continue development without polling CI, but do not label these runtime paths production-verified.
+
+
+### 2026-10-16 — Email RAG architecture review
+- DEV-01 reviewed current email indexing/RAG before touching product code and added `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md` (commit `4f95fcd122c146b41de099bc98aaeeb614a53d87`).
+- Recommendation: hybrid PostgreSQL + Qdrant; PostgreSQL is authoritative for exact structured/time queries, Qdrant is a derived semantic candidate index, and final results are revalidated against current account bindings and PostgreSQL.
+- Current source gap: PostgreSQL chunks are persisted, but the concrete supported Clara vector adapter is unbound and the vector-sync loop is not started from worker startup. Existing local retrieval is SQL/FTS/ILIKE, not proven Qdrant search.
+- ISS-026 remains FIX-01-owned and open; no email vector retrieval should be exposed until active agent-account authorization is established. Tests/typechecks/build/live vector/latency checks were not run.
+- **Next action:** review/correct the proposal and establish the adapter/security contract before material implementation. OPS-01 owns live infrastructure and ingestion/performance acceptance.
