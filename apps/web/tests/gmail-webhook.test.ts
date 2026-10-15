@@ -1,5 +1,5 @@
 import { createSign } from "node:crypto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { queryMock } = vi.hoisted(() => ({ queryMock: vi.fn() }));
 vi.mock("@ai-comms-agent/db", () => ({ query: queryMock }));
@@ -10,6 +10,8 @@ const TEST_CERT = "-----BEGIN CERTIFICATE-----\nMIIDMzCCAhugAwIBAgIUQaDR6/IGUWRo
 const TEST_PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCQVeGT2t97ugZP\nDtpmPLTF5fXJFWbJ5srvwVCQkK9TKozIeFbUXucby6pobID0FwRO8R4RntlpsdBn\ngtAq8ZEuWgHW6ghGf80woVgmOVpK/NPWODnERlZDDVibFKf5l0tJXkDP9l92tPq9\n+7d4HQx0/K1P2g/eMZ9mhZnFQLyfqBq12dYwNI/otZfekIMAYZOo1wRVYDI2QAB3\nNUVU+3F7PlYXaIEG3xXO6J00cdXFK+GAj8IkwTJC580tXe5ZQdleF8ahwVA6dyEv\nHnHz9TaZINuFAdXuBIj1P6bQHOi9SDut8Rm2SLLKfdcglPLNd6tZ3KJicT3xUda/\nNtE+/cgVAgMBAAECggEAGJ2c+CNm4+oI82i8FJ2b0vhyH5Y3zo0+5P7aJ52VWSCz\nm+jyHgwFbDci2+ZNY9OdF32FvEmUGLOLsGud5wUF1prhH28QdD2NmBKcPwCfBpTx\n5+H08CVyxsK67s/qCeYkn+GkOhNxmoQpE0eftat2mWkSgcDV3fYmkkyMuhhdUvkN\n4GXg0bXU3Yxf+wgkNSr4PXA1DxuyZK3cd4wwRg+xAXvUDiTmmz7vBiYDLh4hO3Gp\n91ELfMEgwcfFXnpRyH0SX72dMLXaySKjKoF71ay3kHJ7udPNf6VmhOS9YjXQYd/j\nOcY1rvpgOUXV1lfdX2hCyaui0jnduAR6VbH4tiezLQKBgQDHieHjli2bOiwU5tY2\n2TobBlqUdP4t8vkDxd5gGmadQeLvIwXPfNaJMyewVQgMUiVtlWi84M0uI2pRAt2P\njVKbGZ8yxRnW5iGOaU5OLR6yl9tYHlU2YisUPn476kOuKYa1Sop3s15CPuXokA29\nwkAPNpKYhLURSaLGUEo8VPs9MwKBgQC5LTYDVMXfMGAck6I4PfxPd3Ba6XVh0ViY\n2BQKzxHoPQCql19mqX3KII0bxwk834wuUC64ioHCI18t624ziPdPA8RYn9HV1vJ1\nxdIxfiCgyrCWG061aNTNdfoB5/88dmL5Zd1VsLv2YegSMwpFe5fwv1k8U8R3jemB\n8UPKnxqVlwKBgCwCvn8LJb4CI6zsiT0JxqYlTZ9G+rU5zTDG2NiLmix/VsV2DRcJ\nquwSC2P6LU9CYxz7gmF+l+LgTtfVcPbzrc+l5BY3oQ5kLeyST4Iws3+ivO9/qT3Y\ngzXw3rjqX8kvQZYE/euO9XBZHS6hb1ZPmP18yIT7mV+y7zxOnGASjWUCgYATHIHa\n97zRi97Bw0dqvFQk/4L464uKNdEqxp6i/dGpqqJbfYD9/LkyfBW/Sgq5HBLNiFQ3\nLcaTPr7QlerkvXp5xCWHHG3SvO9iBnK10jHbepONUafU57cM7ZQw+vttAP8BY84w\nGqBCygp/WimyZJdgrI0BiHakk971ORhPGQ51/Q==\n-----END PRIVATE KEY-----";
 const TEST_AUDIENCE = "https://app.example.test/api/webhooks/gmail";
 const TEST_SERVICE_ACCOUNT = "push@example.iam.gserviceaccount.com";
+let previousAudience: string | undefined;
+let previousServiceAccount: string | undefined;
 
 function signToken(overrides: Record<string, unknown> = {}) {
   const now = Math.floor(Date.now() / 1000);
@@ -51,6 +53,8 @@ function pubSubBody(payload: unknown) {
 describe("Gmail Pub/Sub webhook", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    previousAudience = process.env.GMAIL_PUBSUB_PUSH_AUDIENCE;
+    previousServiceAccount = process.env.GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT;
     process.env.GMAIL_PUBSUB_PUSH_AUDIENCE = TEST_AUDIENCE;
     process.env.GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT = TEST_SERVICE_ACCOUNT;
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ "test-key": TEST_CERT }), {
@@ -103,6 +107,24 @@ describe("Gmail Pub/Sub webhook", () => {
   it("does not create sync state for an unknown mailbox", async () => {
     queryMock.mockResolvedValueOnce({ rows: [] });
     const response = await POST(request(signToken(), pubSubBody({ emailAddress: "unknown@example.com", historyId: "123" })));
+    expect(response.status).toBe(404);
+    expect(queryMock).toHaveBeenCalledTimes(1);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (previousAudience === undefined) delete process.env.GMAIL_PUBSUB_PUSH_AUDIENCE;
+    else process.env.GMAIL_PUBSUB_PUSH_AUDIENCE = previousAudience;
+    if (previousServiceAccount === undefined) delete process.env.GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT;
+    else process.env.GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT = previousServiceAccount;
+  });
+
+  it("does not create sync state for an ambiguous mailbox", async () => {
+    queryMock.mockResolvedValueOnce({ rows: [
+      { id: "account-1", organization_id: "org-1", history_id: "100", sync_status: "idle" },
+      { id: "account-2", organization_id: "org-2", history_id: "100", sync_status: "idle" },
+    ] });
+    const response = await POST(request(signToken(), pubSubBody({ emailAddress: "user@example.com", historyId: "123" })));
     expect(response.status).toBe(404);
     expect(queryMock).toHaveBeenCalledTimes(1);
   });
