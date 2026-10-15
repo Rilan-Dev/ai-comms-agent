@@ -174,6 +174,7 @@ async function smtpCommand(reader: SocketReader, command: string): Promise<strin
 export class ImapSmtpAdapter implements EmailProvider {
   readonly providerId = "imap_smtp" as const;
   private credentials?: EmailCredentials;
+  private idleSupported?: boolean;
   private imap?: ImapConnection & { reader: SocketReader };
   private smtp?: { socket: tls.TLSSocket; reader: SocketReader };
 
@@ -240,19 +241,22 @@ export class ImapSmtpAdapter implements EmailProvider {
     this.smtp = undefined;
     this.imap = undefined;
     this.credentials = undefined;
+    this.idleSupported = undefined;
   }
 
   async supportsIdle(): Promise<boolean> {
     const lines = await this.command("CAPABILITY");
-    return serverSupportsImapIdle(lines);
+    this.idleSupported = serverSupportsImapIdle(lines);
+    return this.idleSupported;
   }
 
   async discoverCapabilities(): Promise<CapabilitySet> {
-    let idle = false;
-    try { idle = await this.supportsIdle(); } catch { idle = false; }
-    return { ...CAPABILITIES, sync_idle: idle };
+    try { await this.supportsIdle(); } catch { this.idleSupported = false; }
+    return this.capabilities();
   }
-  capabilities(): CapabilitySet { return { ...CAPABILITIES }; }
+  capabilities(): CapabilitySet {
+    return { ...CAPABILITIES, sync_idle: this.idleSupported ?? false };
+  }
 
   /**
    * Wait for an Inbox change using RFC 2177 IDLE. Always leave IDLE with DONE
