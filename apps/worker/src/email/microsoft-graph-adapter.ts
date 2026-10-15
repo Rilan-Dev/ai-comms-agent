@@ -6,6 +6,7 @@ import type {
   DraftRef,
   EmailCredentials,
   EmailFolder,
+  EmailProviderCapability,
   EmailMessage,
   EmailProvider,
   ListOptions,
@@ -255,7 +256,7 @@ export class MicrosoftGraphAdapter implements EmailProvider {
   }
 
   async sync(state: SyncState): Promise<SyncResult> {
-    const isInitial = state.sync_mode === "initial" || !!state.cursor || !state.history_token;
+    const isInitial = !state.history_token;
     const startUrl = state.cursor
       ?? (isInitial
         ? `/me/mailFolders/inbox/messages/delta?$select=${encodeURIComponent(DELTA_SELECT)}`
@@ -337,7 +338,7 @@ export class MicrosoftGraphAdapter implements EmailProvider {
     return (page.value ?? []).map(toMessage);
   }
 
-  private unsupported(capability: Parameters<typeof CapabilityNotSupported>[1]): never {
+  private unsupported(capability: EmailProviderCapability): never {
     throw new CapabilityNotSupported(this.providerId, capability);
   }
 
