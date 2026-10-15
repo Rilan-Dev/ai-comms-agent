@@ -1311,3 +1311,6 @@ User ran `npm test -- src/modules/integrations/oauth-app-validation.test.ts src/
 - **End-to-end mailbox behavior:** NOT VERIFIED. Do not claim instant mail delivery, successful renewal, or production readiness. Next: run focused web/worker tests and typechecks, add valid/invalid JWT and notification-path coverage, then OPS-01 performs an independent-account send and measures provider-to-DB-to-inbox latency. Continue with IMAP IDLE after Gmail reconciliation hardening.
 
 - Additional source added after initial note: migration `0049_email_sync_pending_push.sql`; worker preserves a newer `pending_push_at` that arrives during an active sync and schedules a follow-up pass. The watch loop checks every five minutes. Migration application and concurrency tests are NOT RUN.
+
+
+Gmail follow-up hardening: watch failures now use stored retry backoff (5 minutes with exponential growth capped at 6 hours); successful watch registration persists refreshed OAuth credentials and clears retry metadata. The webhook skips notifications already covered by the persisted Gmail history cursor and acknowledges intentionally paused sync accounts. These are source changes only; their tests and runtime behavior remain unverified.
