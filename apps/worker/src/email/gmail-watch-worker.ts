@@ -14,7 +14,6 @@ type WatchCandidate = {
 };
 
 const WATCH_RENEWAL_INTERVAL_MS = 12 * 60 * 60 * 1000;
-const WATCH_RENEW_BEFORE_MS = 24 * 60 * 60 * 1000;
 let running = false;
 
 async function renewDueWatches(): Promise<{ checked: number; renewed: number }> {
