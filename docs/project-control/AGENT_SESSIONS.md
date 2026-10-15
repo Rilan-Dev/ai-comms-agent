@@ -508,3 +508,16 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Boundary:** repository has no supported Clara RAG/vector adapter; the outbox processor is not wired into startup. Do not invent direct Qdrant access or an undocumented API. Vector sync is not complete until adapter integration and runtime evidence exist.
 - **Verification:** tests, TypeScript checks, DB migration, vector integration, and live ingestion were not run because there is no local checkout in this execution environment.
 - **Next:** bind supported vector adapter, run provider/loop/executor/hash/policy/outbox/lifecycle tests and Clara/worker typechecks. FIX-01 owns ISS-026; OPS-01 owns live infrastructure/ingestion verification.
+
+
+### FIX01-WORKER-CREDENTIAL-TYPE-20261016 — 2026-10-16
+- **Agent:** FIX-01
+- **Invocation:** Correct worker Docker build TypeScript errors for Gmail watch and IMAP IDLE credential casts; record root cause and prevention.
+- **Started from:** `main` at user-reported source revision `390546c` (post-pull state; exact current remote head advanced during corrective commits).
+- **Scope:** Minimal typed-boundary correction plus project-control evidence.
+- **Status:** HANDOFF
+- **Completed:** Added runtime validation for supported `credential_type` values in both worker paths and removed direct unsafe casts; updated shared and FIX-01 memory.
+- **Pending:** Re-run worker typecheck/build and targeted tests; inspect whether next Docker build exposes additional issues.
+- **Blockers:** No local checkout/build runner available in this session; user log is the only failure evidence so far.
+- **Handoff:** OPS-01 only if subsequent failure is infrastructure/environment/deployment-related.
+- **Next action:** On host, run `pnpm --filter @ai-comms-agent/worker typecheck`, `pnpm --filter @ai-comms-agent/worker test`, then rebuild worker; do not infer pass from source edits alone.
