@@ -1127,3 +1127,14 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Security blocker:** ISS-026 remains open and FIX-01-owned. No adapter binding or email-vector retrieval exposure until account-level authorization is established.
 - **Next DEV-01 action:** Establish and implement an authenticated email-vector API in the Clara source-of-truth repository (explicit cross-repo work), then bind it to ai-comms-agent's existing durable outbox and shared retrieval after ISS-026 closes. The contract must cover deterministic upsert, metadata-only update, stale-chunk deletion, message/account purge, filtered search, and source references.
 - **Verification:** Source inspection/docs only; no tests, typechecks, builds, live API calls, Qdrant operations, or latency benchmarks. OPS-01 owns runtime/ingestion/performance acceptance.
+
+
+
+## Clara email-vector API — 2026-10-16 update
+
+- **Source API draft:** Clara-AI-Platform PR #298, branch `feature/email-vector-api`: https://github.com/Rilan-Dev/Clara-AI-Platform/pull/298
+- **Implemented in draft:** authenticated internal endpoint, dedicated org/model-scoped Qdrant email collections, deterministic point IDs, upsert/stale-chunk cleanup, metadata-only update, message/account/org deletion, and semantic search with mandatory organization + explicit allowed-account filters.
+- **Contract:** Clara repo file `docs/plans/EMAIL-VECTOR-API-CONTRACT.md`; required server-only credential is `CLARA_EMAIL_VECTOR_API_KEY` (random, at least 32 characters).
+- **Do not overstate status:** PR remains draft; no executable tests/typecheck/lint/build or live Qdrant/embedding/isolation evidence has been run. API is not yet wired to ai-comms-agent.
+- **Security gate:** ISS-026 remains open and FIX-01-owned. Do not bind the vector outbox or expose Chat/realtime-voice email retrieval until FIX-01 closes ISS-026 and account authorization is freshly resolved at execution time.
+- **Exact next DEV-01 action:** perform focused source corrections/tests for the Clara API PR, then update the ai-comms-agent adapter contract to target this API without enabling it. After ISS-026 closure, bind the existing durable outbox and shared PostgreSQL + Qdrant retrieval path. OPS-01 owns live infra, initial ingestion, isolation runtime evidence, and p50/p95/correctness/freshness acceptance. Do not wait on CI/deploy gates before independent source work.
