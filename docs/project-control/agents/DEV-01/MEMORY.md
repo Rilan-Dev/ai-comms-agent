@@ -83,3 +83,10 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 - The worker adapter now exists at `apps/worker/src/knowledge/clara-email-vector-adapter.ts`, with contract tests. It targets Clara PR #298 and uses `CLARA_EMAIL_VECTOR_API_URL` plus server-only `CLARA_EMAIL_VECTOR_API_KEY` (at least 32 characters). Production endpoint URL must use HTTPS.
 - Adapter is deliberately not wired into worker startup and the outbox loop remains stopped. ISS-026 must be closed by FIX-01 before retrieval is exposed or the adapter is activated.
 - Clara API accepts nullable source timestamps and hash fields for metadata-only updates without re-embedding when content/chunk hashes match. All executable checks and runtime acceptance remain pending; OPS-01 owns live infra/ingestion/performance.
+
+### 2026-10-16 — Email vector metadata lifecycle review
+
+- When adapting source metadata to a vector payload, distinguish field absent (do not modify) from field present but null/empty (clear stale payload). Otherwise removed sender/folder/labels can linger in Qdrant after metadata-only updates.
+- Keep an opt-in integration test that uses a real Qdrant service for filter semantics; do not call it verified unless it was actually executed against a configured endpoint.
+- Clara request size limits must measure encoded bytes, not JS string length.
+- ISS-026 remains FIX-01-owned/open; adapter startup and retrieval exposure stay disabled until execution-time mailbox authorization is fixed.
