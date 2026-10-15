@@ -559,3 +559,17 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** ISS-026 remains open/FIX-01-owned. Live Qdrant/embedding setup and ingestion/performance acceptance belong to OPS-01.
 - **Handoff:** Clara PR #298 and Clara docs/project-control/EMAIL_VECTOR_API_HANDOFF.md.
 - **Next action:** Continue independent API source verification; then prepare the ai-comms-agent adapter to call the documented contract, keeping it disabled until FIX-01 closes ISS-026.
+
+
+
+### DEV01-EMAIL-RAG-ADAPTER-20261016 — 2026-10-16 follow-up
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Continue the email-vector implementation after the Clara API contract was drafted.
+- **Started from:** `feature/email-rag-hybrid-retrieval` after the initial cross-repo API handoff.
+- **Scope:** Add the worker-side Clara adapter without activating it; update project control.
+- **Status:** HANDOFF
+- **Completed:** Added `apps/worker/src/knowledge/clara-email-vector-adapter.ts` and request-contract tests. Adapter sends source IDs and content/metadata/chunk hashes, uses server-only credentials, enforces HTTPS in production, and fails on non-2xx responses.
+- **Pending:** Execute focused tests/typecheck; verify Clara API source with executable checks and Qdrant integration tests.
+- **Blockers:** ISS-026 remains open/FIX-01-owned. Adapter is not imported in worker startup and vector outbox loop remains stopped. OPS-01 owns live Qdrant/ingestion/latency acceptance.
+- **Handoff:** Clara PR #298; ai-comms-agent PR #23.
+- **Next action:** Run focused adapter tests/typecheck when a dependency-equipped checkout is available; keep adapter unbound until ISS-026 closes.
