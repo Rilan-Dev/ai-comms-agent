@@ -21,6 +21,7 @@ on:
       - "pnpm-workspace.yaml"
   pull_request:
     branches:
+      - main
       - feature/imap-smtp-mail-actions
     paths:
       - "apps/web/src/app/api/webhooks/gmail/**"
