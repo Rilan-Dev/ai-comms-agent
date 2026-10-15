@@ -138,6 +138,7 @@ export class MicrosoftGraphAdapter implements EmailProvider {
   readonly providerId = "microsoft_graph" as const;
   private credentials?: EmailCredentials;
   private profile?: GraphProfile;
+  private readonly syncMessageCache = new Map<string, EmailMessage>();
 
   async connect(credentials: EmailCredentials): Promise<void> {
     if (!credentials.access_token) throw new Error("Microsoft Graph requires an OAuth access token.");
@@ -156,6 +157,7 @@ export class MicrosoftGraphAdapter implements EmailProvider {
   async disconnect(): Promise<void> {
     this.credentials = undefined;
     this.profile = undefined;
+    this.syncMessageCache.clear();
   }
 
   async discoverCapabilities(): Promise<CapabilitySet> {
@@ -312,10 +314,11 @@ export class MicrosoftGraphAdapter implements EmailProvider {
       if (!message.id) continue;
       if (message["@removed"]) {
         deleted.push(message.id);
-      } else if (isInitial) {
-        added.push({ message_id: message.id, provider_message_id: message.id });
+        this.syncMessageCache.delete(message.id);
       } else {
-        updated.push({ message_id: message.id, provider_message_id: message.id });
+        this.syncMessageCache.set(message.id, toMessage(message));
+        if (isInitial) added.push({ message_id: message.id, provider_message_id: message.id });
+        else updated.push({ message_id: message.id, provider_message_id: message.id });
       }
     }
 
@@ -345,6 +348,11 @@ export class MicrosoftGraphAdapter implements EmailProvider {
   }
 
   async getMessage(messageId: string): Promise<EmailMessage | null> {
+    const cached = this.syncMessageCache.get(messageId);
+    if (cached) {
+      this.syncMessageCache.delete(messageId);
+      return cached;
+    }
     try {
       const message = await this.request<GraphMessage>(
         `/me/messages/${encodeURIComponent(messageId)}?$select=${encodeURIComponent(DELTA_SELECT)}`,
