@@ -15,8 +15,8 @@ const snapshot: EmailKnowledgeVectorSnapshot = {
   provider: "gmail",
   providerMessageId: "message-1",
   sourceIdentityHash: "source-hash",
-  contentHash: "content-hash",
-  metadataHash: "metadata-hash",
+  contentHash: "c".repeat(64),
+  metadataHash: "d".repeat(64),
   metadata: {
     from_address: "sender@example.com",
     received_at: "2026-10-16T10:00:00.000Z",
@@ -26,7 +26,7 @@ const snapshot: EmailKnowledgeVectorSnapshot = {
     index: 0,
     pointId: "12345678-1234-8123-8123-123456789012",
     content: "Invoice content",
-    contentHash: "chunk-hash",
+    contentHash: "e".repeat(64),
     metadata: {},
   }],
 };
@@ -60,6 +60,8 @@ describe("Clara email-vector adapter", () => {
       accountId: "account-1",
       messageId: "message-1",
       sourceId: "source-hash",
+      contentHash: "c".repeat(64),
+      metadataHash: "d".repeat(64),
       sender: "sender@example.com",
       labels: ["INBOX"],
     });
@@ -67,6 +69,7 @@ describe("Clara email-vector adapter", () => {
       chunkIndex: 0,
       sourceId: "12345678-1234-8123-8123-123456789012",
       text: "Invoice content",
+      contentHash: "e".repeat(64),
     }]);
   });
 
