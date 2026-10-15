@@ -19,11 +19,11 @@ const SUBSCRIPTION_LIFETIME_MS = 48 * 60 * 60 * 1000;
 let running = false;
 
 function notificationUrl(): string | null {
-  const explicit = process.env.MICROSOFT_GRAPH_NOTIFICATION_URL?.trim();
-  const origin = process.env.APP_ORIGIN?.trim();
-  const candidate = explicit || (origin ? new URL("/api/webhooks/microsoft-graph", origin).toString() : "");
-  if (!candidate) return null;
   try {
+    const explicit = process.env.MICROSOFT_GRAPH_NOTIFICATION_URL?.trim();
+    const origin = process.env.APP_ORIGIN?.trim();
+    const candidate = explicit || (origin ? new URL("/api/webhooks/microsoft-graph", origin).toString() : "");
+    if (!candidate) return null;
     const url = new URL(candidate);
     return url.protocol === "https:" && url.pathname === "/api/webhooks/microsoft-graph" ? url.toString() : null;
   } catch {
