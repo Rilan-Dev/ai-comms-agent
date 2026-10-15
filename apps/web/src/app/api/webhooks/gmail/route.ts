@@ -54,14 +54,14 @@ async function verifyGooglePushJwt(token: string): Promise<GooglePushClaims> {
 
   const parts = token.split(".");
   if (parts.length !== 3) throw new Error("Malformed JWT");
-  const header = decodeSegment(parts[0]);
-  const claims = decodeSegment(parts[1]) as GooglePushClaims;
+  const header = decodeSegment(parts[0]!);
+  const claims = decodeSegment(parts[1]!) as GooglePushClaims;
   if (header.alg !== "RS256" || typeof header.kid !== "string") throw new Error("Unsupported JWT signature");
   const keys = await googleSigningCertificates();
   const certificate = keys[header.kid];
   if (!certificate) throw new Error("Unknown Google signing key");
   const publicKey = new X509Certificate(certificate).publicKey;
-  const signature = Buffer.from(parts[2], "base64url");
+  const signature = Buffer.from(parts[2]!, "base64url");
   const validSignature = verifySignature(
     "RSA-SHA256",
     Buffer.from(parts[0] + "." + parts[1]),
@@ -162,12 +162,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "mailbox_not_resolved" }, { status: 404 });
     }
 
-    const account = matches.rows[0];
+    const account = matches.rows[0]!;
     if (account.sync_status === "paused") {
       return NextResponse.json({ received: true, skipped: "sync_paused" }, { status: 200 });
     }
     if (account.history_id && /^\d+$/.test(account.history_id)
-      && BigInt(account.history_id) >= BigInt(payload.historyId)) {
+      && BigInt(account.history_id!) >= BigInt(payload.historyId!)) {
       // History IDs are monotonic. A checkpoint at or beyond this notification
       // proves that a prior successful reconciliation already covered it.
       return NextResponse.json({ received: true, already_reconciled: true }, { status: 200 });
