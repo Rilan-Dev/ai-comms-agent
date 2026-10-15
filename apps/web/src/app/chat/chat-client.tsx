@@ -1,7 +1,8 @@
 "use client";
+import type React from "react";
 
-import { useMemo, useState } from "react";
-import { AudioLines, Send, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AudioLines, Bot, Send, Sparkles, User } from "lucide-react";
 
 type Agent = { id: string; name: string; status: string };
 type Message = { id: string; conversationId: string; role: string; content: string; createdAt: string };
@@ -24,9 +25,14 @@ export function ChatClient({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
-  const [announcement, setAnnouncement] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   const activeAgent = useMemo(() => agents.find((agent) => agent.id === agentId) ?? agents[0], [agents, agentId]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length, busy]);
 
   async function switchAgent(nextAgentId: string) {
     if (busy || nextAgentId === agentId) return;
@@ -47,8 +53,6 @@ export function ChatClient({
     if (!content || busy || !activeAgent) return;
     setDraft("");
     setBusy(true);
-    setAnnouncement("Clara is thinking.");
-    let responseFailed = false;
 
     const optimisticId = "local-" + Date.now();
     setMessages((current) => [...current, { id: optimisticId, conversationId, role: "user", content, createdAt: new Date().toISOString() }]);
@@ -75,16 +79,16 @@ export function ChatClient({
         buffer = events.pop() ?? "";
 
         for (const event of events) {
-          const line = event.split("\n").find((item) => item.startsWith("data: "));
-          if (!line) {
-            const conversationLine = event.split("\n").find((item) => item.startsWith("data: "));
-            if (event.startsWith("event: conversation") && conversationLine) {
-              const payload = JSON.parse(conversationLine.slice(6)) as { conversationId?: string };
+          const lines = event.split("\n");
+          const dataLine = lines.find((item) => item.startsWith("data: "));
+          if (!dataLine) {
+            if (event.includes("event: conversation") && dataLine) {
+              const payload = JSON.parse(dataLine.slice(6)) as { conversationId?: string };
               if (payload.conversationId) setConversationId(payload.conversationId);
             }
             continue;
           }
-          const payload = JSON.parse(line.slice(6)) as { text?: string; conversationId?: string; message?: string };
+          const payload = JSON.parse(dataLine.slice(6)) as { text?: string; conversationId?: string; message?: string };
           if (payload.conversationId) setConversationId(payload.conversationId);
           if (payload.text) {
             assistant += payload.text;
@@ -99,69 +103,281 @@ export function ChatClient({
         }
       }
     } catch (error) {
-      responseFailed = true;
-      setAnnouncement("Clara could not complete the response.");
       setMessages((current) => [...current, { id: "error-" + Date.now(), conversationId, role: "system", content: error instanceof Error ? error.message : "Chat failed", createdAt: new Date().toISOString() }]);
     } finally {
       setBusy(false);
-      if (!responseFailed) setAnnouncement("Clara’s response is ready.");
     }
   }
 
   return (
     <main className="flex min-h-[calc(100vh-72px)] min-w-0 flex-col bg-background">
-      <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">{announcement}</p>
-      <header className="border-b bg-background/85 px-5 py-4 backdrop-blur sm:px-7">
-        <div className="mx-auto flex max-w-[1180px] items-start justify-between gap-3 sm:items-center sm:gap-4">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Clara workspace</p>
-            <h1 className="mt-1 font-display text-2xl font-medium tracking-tight">Chat with your agent<span className="text-tertiary">.</span></h1>
-            <p className="mt-1 text-sm text-muted-foreground">Grounded through Clara. Actions remain behind the host authorization boundary.</p>
+      <header className="border-b bg-background/85 px-5 py-3 backdrop-blur sm:px-7">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground"><Bot size={18} /></span>
+            <div>
+              <p className="text-sm font-semibold">{activeAgent?.name ?? "Clara"}</p>
+              <p className="text-[11px] text-muted-foreground">{busy ? "Thinking…" : "Ready"}</p>
+            </div>
           </div>
-          <label className="flex shrink-0 items-center gap-2 rounded-md border bg-background px-2 py-2 sm:px-3">
-            <span className="hidden text-xs text-muted-foreground sm:inline">Agent</span>
-            <select aria-label="Choose agent for chat" value={activeAgent?.id ?? ""} onChange={(event) => void switchAgent(event.target.value)} className="min-w-0 max-w-[38vw] bg-transparent text-xs font-semibold outline-none sm:max-w-none sm:text-sm">
+          <label className="flex shrink-0 items-center gap-2 rounded-lg border bg-background px-2.5 py-1.5">
+            <select aria-label="Choose agent" value={activeAgent?.id ?? ""} onChange={(e) => void switchAgent(e.target.value)} className="bg-transparent text-xs font-medium outline-none">
               {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
             </select>
           </label>
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col px-4 py-5 sm:px-7">
-        <div role="log" aria-label="Conversation messages" aria-live="polite" aria-relevant="additions" className="min-w-0 flex-1 space-y-4 overflow-y-auto pb-6">
+      <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
+        <div role="log" aria-live="polite" className="min-w-0 flex-1 space-y-6 overflow-y-auto py-6">
           {messages.length === 0 ? (
-            <div className="grid min-h-[45vh] place-items-center text-center">
+            <div className="grid min-h-[50vh] place-items-center text-center">
               <div className="max-w-md">
-                <div className="mx-auto grid size-14 place-items-center rounded-md bg-accent text-accent-foreground"><Sparkles aria-hidden="true" size={28} /></div>
-                <h2 className="mt-5 text-xl font-semibold">What should Clara help with?</h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">Ask for an inbox summary, important messages, action items, or anything your connected communication agent is allowed to handle.</p>
-                <div className="mt-5 flex flex-wrap justify-center gap-2">
-                  {["What needs my attention today?", "Summarize the last 24 hours", "Show important emails"].map((prompt) => <button key={prompt} onClick={() => setDraft(prompt)} className="rounded-md border bg-background px-3 py-2 text-xs font-medium transition hover:-translate-y-0.5 hover:bg-muted">{prompt}</button>)}
+                <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary text-primary-foreground"><Sparkles size={24} /></div>
+                <h2 className="mt-4 text-lg font-semibold">Ask Clara anything</h2>
+                <p className="mt-1.5 text-sm text-muted-foreground">Summarize your inbox, find important emails, or ask about recent messages.</p>
+                <div className="mt-5 grid gap-2">
+                  {["What needs my attention today?", "Summarize my recent emails", "Show emails from the last hour"].map((prompt) =>
+                    <button key={prompt} onClick={() => setDraft(prompt)} className="rounded-lg border bg-card px-3.5 py-2.5 text-left text-sm transition hover:border-primary/30 hover:bg-accent/5">{prompt}</button>
+                  )}
                 </div>
               </div>
             </div>
           ) : messages.map((message) => (
-            <div key={message.id} className={"flex " + (message.role === "user" ? "justify-end" : "justify-start")}>
-              <div className={"max-w-[min(760px,90%)] rounded-md px-4 py-3 text-sm leading-6 " + (message.role === "user" ? "rounded-br-md bg-foreground text-background" : message.role === "system" ? "border border-destructive/20 bg-destructive/5 text-destructive" : "rounded-bl-md border bg-background")}>
-                {message.role === "assistant" ? <p className="mb-1 text-[10px] font-semibold uppercase tracking-[.14em] text-primary">Clara</p> : null}
-                <p className="whitespace-pre-wrap">{message.content}</p>
-              </div>
-            </div>
+            <MessageBubble key={message.id} role={message.role} content={message.content} />
           ))}
-          {busy ? <div aria-hidden="true" className="flex items-center gap-2 px-2 text-xs text-muted-foreground"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />Clara is thinking…</div> : null}
+          {busy && <TypingIndicator />}
+          <div ref={bottomRef} />
         </div>
 
-        <div className="sticky bottom-0 rounded-md border border-border bg-card/95 p-2 backdrop-blur">
-          <div className="flex items-end gap-2">
-            <textarea aria-label="Message to Clara" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Ask Clara about your communications…" rows={2} className="min-h-12 flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground" />
-            <button type="button" disabled={busy || !draft.trim()} onClick={() => void sendMessage()} className="rounded-md bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-40"><Send size={14} className="mr-2 inline" />Send</button>
+        <div className="sticky bottom-0 bg-background pb-4 pt-2">
+          <div className="rounded-2xl border border-border bg-card shadow-sm focus-within:border-primary/30 focus-within:ring-2 focus-within:ring-primary/10">
+            <textarea
+              aria-label="Message"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }}
+              placeholder="Send a message…"
+              rows={1}
+              className="max-h-40 min-h-[44px] w-full resize-none bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
+              style={{ height: "auto" }}
+              onInput={(e) => {
+                const t = e.currentTarget;
+                t.style.height = "auto";
+                t.style.height = Math.min(t.scrollHeight, 160) + "px";
+              }}
+            />
+            <div className="flex items-center justify-between px-3 pb-2">
+              <a href="/ai-voice" className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-primary"><AudioLines size={13} /> Voice</a>
+              <button type="button" disabled={busy || !draft.trim()} onClick={() => void sendMessage()} className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground">
+                <Send size={15} />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center justify-between px-3 pb-1 pt-2 text-[11px] text-muted-foreground">
-            <span>Enter to send · Shift+Enter for a new line</span>
-            <a href="/ai-voice" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"><AudioLines size={13} /> Open voice workspace →</a>
-          </div>
+          <p className="mt-1.5 text-center text-[10px] text-muted-foreground">Clara can make mistakes. Verify important information.</p>
         </div>
       </section>
     </main>
   );
+}
+
+function MessageBubble({ role, content }: { role: string; content: string }) {
+  if (role === "system") {
+    return (
+      <div className="flex justify-center">
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-3.5 py-2 text-xs text-destructive">{content}</div>
+      </div>
+    );
+  }
+
+  if (role === "user") {
+    return (
+      <div className="flex justify-end">
+        <div className="flex max-w-[80%] items-start gap-2.5">
+          <div className="rounded-2xl rounded-br-sm bg-foreground px-4 py-2.5 text-sm text-background">
+            <p className="whitespace-pre-wrap">{content}</p>
+          </div>
+          <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground"><User size={15} /></span>
+        </div>
+      </div>
+    );
+  }
+
+  // Assistant (Clara) message
+  return (
+    <div className="flex justify-start">
+      <div className="flex max-w-[90%] items-start gap-2.5">
+        <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
+        <div className="flex-1 text-sm leading-7">
+          <MarkdownRenderer content={content} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TypingIndicator() {
+  return (
+    <div className="flex justify-start">
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
+        <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-card border px-4 py-3">
+          <span className="size-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "0ms" }} />
+          <span className="size-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "150ms" }} />
+          <span className="size-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "300ms" }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Lightweight Markdown renderer — handles the most common markdown features
+ * found in LLM responses: bold, italic, inline code, code blocks, headers,
+ * bullet lists, numbered lists, links, and paragraphs. No external deps.
+ */
+function MarkdownRenderer({ content }: { content: string }) {
+  const elements = parseMarkdown(content);
+  return <div className="space-y-2">{elements}</div>;
+}
+
+function parseMarkdown(text: string): React.ReactNode[] {
+  const lines = text.split("\n");
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+  let key = 0;
+
+  while (i < lines.length) {
+    const line = lines[i] ?? "";
+
+    // Code block
+    if (line.trim().startsWith("```")) {
+      const lang = line.trim().slice(3);
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !(lines[i] ?? "").trim().startsWith("```")) {
+        codeLines.push(lines[i] ?? "");
+        i++;
+      }
+      i++; // skip closing ```
+      elements.push(
+        <pre key={key++} className="overflow-x-auto rounded-lg border bg-muted/50 p-3 text-xs">
+          <code className="font-mono">{codeLines.join("\n")}</code>
+        </pre>
+      );
+      continue;
+    }
+
+    // Headers
+    const headerMatch = line.match(/^(#{1,4})\s+(.+)/);
+    if (headerMatch) {
+      const level = (headerMatch![1] ?? "").length;
+      const content = renderInline(headerMatch![2] ?? "");
+      const sizes = ["text-lg font-bold", "text-base font-bold", "text-sm font-bold", "text-sm font-semibold"];
+      elements.push(<p key={key++} className={sizes[level - 1]}>{content}</p>);
+      i++;
+      continue;
+    }
+
+    // Bullet list
+    if (line.match(/^\s*[-•]\s+/)) {
+      const items: string[] = [];
+      while (i < lines.length && (lines[i] ?? "").match(/^\s*[-•]\s+/)) {
+        items.push((lines[i] ?? "").replace(/^\s*[-•]\s+/, ""));
+        i++;
+      }
+      elements.push(
+        <ul key={key++} className="list-disc space-y-1 pl-5">
+          {items.map((item, idx) => <li key={idx}>{renderInline(item)}</li>)}
+        </ul>
+      );
+      continue;
+    }
+
+    // Numbered list
+    if (line.match(/^\s*\d+\.\s+/)) {
+      const items: string[] = [];
+      while (i < lines.length && (lines[i] ?? "").match(/^\s*\d+\.\s+/)) {
+        items.push((lines[i] ?? "").replace(/^\s*\d+\.\s+/, ""));
+        i++;
+      }
+      elements.push(
+        <ol key={key++} className="list-decimal space-y-1 pl-5">
+          {items.map((item, idx) => <li key={idx}>{renderInline(item)}</li>)}
+        </ol>
+      );
+      continue;
+    }
+
+    // Empty line — skip
+    if (line.trim() === "") {
+      i++;
+      continue;
+    }
+
+    // Regular paragraph — collect consecutive non-empty, non-special lines
+    const paraLines: string[] = [];
+    while (i < lines.length && (lines[i] ?? "").trim() !== "" && !(lines[i] ?? "").trim().startsWith("```") && !(lines[i] ?? "").match(/^(#{1,4})\s+/) && !(lines[i] ?? "").match(/^\s*[-•]\s+/) && !(lines[i] ?? "").match(/^\s*\d+\.\s+/)) {
+      paraLines.push(lines[i] ?? "");
+      i++;
+    }
+    if (paraLines.length > 0) {
+      elements.push(<p key={key++} className="leading-7">{renderInline(paraLines!.join("\n"))}</p>);
+    }
+  }
+
+  return elements;
+}
+
+/** Render inline markdown: bold, italic, inline code, links */
+function renderInline(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  let remaining = text;
+  let key = 0;
+
+  while (remaining.length > 0) {
+    // Bold **text**
+    const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+    // Inline code `code`
+    const codeMatch = remaining.match(/`([^`]+)`/);
+    // Link [text](url)
+    const linkMatch = remaining.match(/\[([^\]]+)\]\(([^)]+)\)/);
+    // Italic *text* (after bold, to avoid conflicting with **)
+    const italicMatch = remaining.match(/\*([^*]+?)\*/);
+
+    // Find the earliest match
+    const matches = [
+      { match: boldMatch, type: "bold" },
+      { match: codeMatch, type: "code" },
+      { match: linkMatch, type: "link" },
+      { match: italicMatch, type: "italic" },
+    ].filter(m => m.match);
+
+    if (matches.length === 0) {
+      // No more matches — push remaining text
+      if (remaining) parts.push(<span key={key++}>{remaining}</span>);
+      break;
+    }
+
+    // Sort by position
+    matches.sort((a, b) => (a.match!.index ?? 0) - (b.match!.index ?? 0));
+    const earliest = matches[0]!;
+    const match = earliest!.match!;
+    const before = remaining.slice(0, match!.index);
+    if (before) parts.push(<span key={key++}>{before}</span>);
+
+    if (earliest!.type === "bold") {
+      parts.push(<strong key={key++} className="font-semibold">{match![1]}</strong>);
+    } else if (earliest!.type === "code") {
+      parts.push(<code key={key++} className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{match![1]}</code>);
+    } else if (earliest!.type === "link") {
+      parts.push(<a key={key++} href={match![2]} target="_blank" rel="noreferrer" className="text-primary underline hover:opacity-80">{match![1]}</a>);
+    } else if (earliest!.type === "italic") {
+      parts.push(<em key={key++} className="italic">{match![1]}</em>);
+    }
+
+    remaining = remaining.slice((match!.index ?? 0) + match![0].length);
+  }
+
+  return parts;
 }

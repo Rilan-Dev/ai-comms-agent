@@ -100,3 +100,9 @@ The authentication loop was traced to session issuance preceding active organiza
 - **Diagnostic script:** Added `scripts/diagnose-email-accounts.sh` (commit `a529ffe43915495d099c17b353fb517d53fac10b`). It compares public/local liveness and account API responses, optionally runs non-persistent IMAP/SMTP tests through both paths, optionally explicitly saves after a successful test, snapshots per-account sync status/message counts from PostgreSQL, and gathers sanitized web/worker logs. It does not print the cookie/password in the report.
 - **Verification:** Script committed but has NOT been run against the user's server here. No root cause for the reported live 502 or OAuth import failure is claimed yet.
 - **Next action:** User runs the script from repo root and shares only the reviewed report (never cookie/password/OAuth tokens). Diagnose from public-vs-local HTTP/body, DB sync state/message counts, and worker logs before making runtime-specific code changes. Preserve local lockfile changes and do not wait for CI/Vercel.
+
+
+### FIX-01 / Sentinel — 2026-10-16 — Decrypted email credentials typed at runtime boundary
+- `loadCredentials()` returns a generic record; do not assert it directly as `EmailCredentials` because `credential_type` is required.
+- Validate the discriminant at each provider-worker boundary, reject unsupported/missing values, and pass a spread object with the narrowed discriminant. Avoid `as unknown as` casts.
+- Build evidence from user: worker TypeScript build failed at Gmail watch renewal and IMAP IDLE startup. Fix commits are on `main`; rerun worker typecheck/build to verify.

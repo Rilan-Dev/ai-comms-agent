@@ -153,6 +153,6 @@ describe("Gmail Pub/Sub webhook", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ received: true });
     expect(queryMock).toHaveBeenCalledTimes(2);
-    expect(queryMock.mock.calls[1][0]).toContain("pending_push_at");
+    expect(queryMock.mock.calls[1]![0]).toContain("pending_push_at");
   });
 });

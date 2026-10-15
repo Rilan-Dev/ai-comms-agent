@@ -165,3 +165,32 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Source:** `apps/web/src/app/api/chat/stream/route.ts` — `loadEmailContext` scopes by organization but not by active agent's `agent_email_accounts` bindings.
 - **Required work:** Pass the authenticated agent ID into the loader, restrict context rows to that agent's permitted account bindings/roles, and add cross-agent/cross-account regression tests. Preserve untrusted-email-content wrapping.
 - **DEV-01 boundary:** This is a substantial security bug and remains FIX-01-owned; do not duplicate its remediation in the email-tool feature branch.
+
+
+### BKL-FIX01-WORKER-CREDENTIAL-TYPE-20261016 — 2026-10-16
+- **Work:** Re-run worker typecheck/build and targeted Gmail History/IMAP IDLE tests after credential discriminant correction.
+- **Owner:** FIX-01
+- **State:** READY
+- **Dependency:** Access to the deployment checkout or CI runner for execution evidence; no dependency on DEV-01.
+- **Authorization:** User-explicit FIX-01 root-cause and smallest corrective change request dated 2026-10-16.
+- **Suggested next action:** Execute worker typecheck/tests, then rebuild Docker worker. Route only environment/compose/deployment failures to OPS-01.
+- **Related session/event/handoff:** `FIX01-WORKER-CREDENTIAL-TYPE-20261016`, `EVT-FIX01-WORKER-CREDENTIAL-TYPE-20261016`
+
+
+### BKL-DEV01-EMAIL-RAG-HYBRID-20261016 — Email RAG hybrid retrieval
+- **Owner:** DEV-01 / Forge
+- **Status:** BLOCKED_ON_ARCHITECTURE_AND_SECURITY_CONTRACT
+- **Priority:** High
+- **Request:** Accurate, low-latency email search and summaries across Chat and realtime voice, supporting relative/absolute time ranges, exact sender/subject/business/topic queries, thread summaries, and source-backed answers.
+- **Current evidence:** Review plan `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md` (commit `4f95fcd122c146b41de099bc98aaeeb614a53d87`).
+- **Blockers:** ISS-026 is open and FIX-01-owned; no supported concrete Clara server-to-server email vector adapter is bound; the outbox sync loop is not started in worker entrypoint; architecture approval/correction is needed before material retrieval/vector changes.
+- **Next:** Approve/correct the hybrid design, establish allowed-account retrieval contract with FIX-01, inspect the current Clara RAG adapter source-of-truth, then wire vector sync and shared retrieval behind that contract.
+- **Acceptance:** Exact date/count/latest queries use authoritative SQL; semantic queries use mandatory org + allowed-account vector filters plus final SQL revalidation; Chat and realtime voice share one authorized retrieval service; indexing is idempotent and deletion-safe; citations/freshness are explicit; regression coverage proves cross-account denial; measured p50/p95/recall/freshness benchmark before any 10x claim.
+
+
+### BKL-DEV01-EMAIL-RAG-ADAPTER-20261016 — Supported Clara email-vector API
+- **Owner:** DEV-01 / Forge for source integration; cross-repository API implementation must be authorized in the Clara source-of-truth repo.
+- **Status:** BLOCKED_ON_SUPPORTED_API_AND_ISS-026
+- **Finding:** Current Clara main has internal KB-scoped vector upsert/delete helpers and KB-scoped `/api/embed/search`, but no supported account-scoped email-vector server API. Do not call internals or reuse the KB search route for mail.
+- **Required contract:** Authenticated server-to-server requests; deterministic point IDs; content re-embedding and metadata-only update; surplus-chunk deletion; message/account purge; semantic search with mandatory organization + allowed-account filters; bounded results with source IDs; final PostgreSQL revalidation in ai-comms-agent.
+- **Next:** Establish and implement the API in Clara repo; then, once FIX-01 closes ISS-026, bind adapter + outbox loop and shared retrieval. OPS-01 handles live runtime/ingestion/latency acceptance.

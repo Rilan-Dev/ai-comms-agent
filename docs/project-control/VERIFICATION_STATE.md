@@ -1360,3 +1360,30 @@ PR #18 and PR #19 are closed/merged. The initial realtime inbox refresh and Gmai
 - Added Graph webhook validation-token response and notification handling that verifies subscription ID plus `clientState` before queueing durable reconciliation. Added adapter and webhook tests and wired them into the focused workflow.
 - Added Outlook connection/sync controls to the mail accounts UI and extended the worker's provider query/registry to include Microsoft Graph.
 - **Not verified:** web/worker typechecks, tests, live Entra OAuth, Graph subscription validation, actual notification delivery, full mailbox delta behavior against a real tenant, or latency. The `sync_webhook` capability remains false until live acceptance.
+### Main branch status correction — 2026-10-16
+
+GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f48751a`. Main now contains Gmail watch-on-connect/config hardening, signed webhook and history tests, focused test/typecheck workflow, the Pub/Sub setup helper, and the first IMAP IDLE watcher. The merge status does not mean tests or typechecks passed: the focused workflow result has not been inspected, and live GCP/IMAP delivery, migration application, and latency acceptance remain unverified. Continue development without polling CI, but do not label these runtime paths production-verified.
+
+### FIX-01 worker credential type correction — 2026-10-16
+
+- **Reported failure:** Docker worker image build stopped at `tsc` with TS2352 in `apps/worker/src/email/gmail-watch-worker.ts` and `apps/worker/src/email/imap-idle-worker.ts` because generic decrypted credential records were directly asserted as `EmailCredentials`.
+- **Source correction:** Both consumers now validate `credential_type` against `oauth_token`, `password`, and `app_password`; they pass a spread object with the narrowed discriminant and no longer use the unsafe direct cast.
+- **Regression protection:** Worker TypeScript compilation is the immediate regression check; targeted tests are queued in BKL-FIX01-WORKER-CREDENTIAL-TYPE-20261016. No new dedicated unit test was added because the defect is a compile-time boundary mismatch and the fix adds runtime discriminant rejection.
+- **Not verified:** Worker typecheck, worker test suite, Docker worker rebuild, and full compose startup have not been run by FIX-01 in this environment. Do not mark this correction PASS until the typecheck/build evidence is available.
+- **Source commits:** `185b729d`, `60fadabf`, `e3ba38c9`, `18948e08`; follow-up project-control records are committed on `main`.
+
+
+### 2026-10-16 — Email RAG architecture review
+- **Source review:** Inspected the PostgreSQL email chunk indexer, vector outbox/adapter contract, worker startup, local Clara retrieval, email read tools, Chat context loader, and Clara Core guidance.
+- **Finding:** Current source does not establish working Qdrant email retrieval. PostgreSQL chunks are written; the vector-sync loop is not started and no supported concrete Clara email vector adapter is bound. Local retrieval remains SQL/tsvector/ILIKE. Chat email context is a fixed up-to-20 organization-scoped sample and lacks active agent-account binding (ISS-026, FIX-01-owned).
+- **Artifact:** `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md`, commit `4f95fcd122c146b41de099bc98aaeeb614a53d87`.
+- **Verification:** Documentation/source inspection only. No tests, typecheck, build, DB migration, Qdrant request, provider sync, latency benchmark, or runtime isolation test executed. No PASS and no 10x performance claim.
+- **Next:** Architecture approval/correction and supported adapter/security contract before material code changes; FIX-01 owns ISS-026, OPS-01 owns live infrastructure/ingestion and latency evidence.
+
+
+### 2026-10-16 — Clara email-vector API investigation
+- **Finding:** Inspected Clara source `vector-store-kb.ts` and `/api/embed/search`. These are internal/KB-scoped paths, not a supported account-scoped email-vector API. No cross-repo API call was made.
+- **Artifact:** Updated `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md` at commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`.
+- **Status:** Adapter remains unbound; outbox loop remains unstarted; ISS-026 remains FIX-01-owned/open. No retrieval exposure.
+- **Verification:** Source inspection/docs only. Tests/typechecks/build/API/Qdrant/ingestion/latency not run.
+- **Next:** Establish authenticated Clara email-vector API; bind after ISS-026 closure. OPS-01 performs live runtime acceptance.
