@@ -312,3 +312,12 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Security:** API search requires org + non-empty explicit allowed-account IDs and rechecks returned payloads. The service token is not a mailbox authorization substitute. ISS-026 remains FIX-01-owned/open; no adapter binding or retrieval exposure.
 - **Verification:** No tests/typecheck/lint/build/live Qdrant/embedding/isolation/performance tests run.
 - **Exact next action:** Run focused executable checks and Qdrant integration coverage for the Clara API draft; prepare ai-comms-agent adapter contract but keep it disabled until ISS-026 closes. OPS-01 handles live infrastructure, ingestion, and latency acceptance.
+
+
+
+### 2026-10-16 — Unbound Clara vector adapter
+- **Added:** `apps/worker/src/knowledge/clara-email-vector-adapter.ts` implementing the existing injected adapter contract; `clara-email-vector-adapter.test.ts` covers upsert payload mapping, cleanup mapping, missing credentials, and HTTP failure handling.
+- **Contract:** Clara PR #298 now accepts nullable received timestamps and content/metadata/chunk hashes for a metadata-only fast path.
+- **Boundary:** Adapter is not imported in `apps/worker/src/index.ts`; outbox loop remains unstarted. ISS-026 remains FIX-01-owned/open; do not expose Chat/realtime-voice retrieval.
+- **Verification:** No tests/typecheck/build or live Qdrant/embedding/isolation/performance checks were run.
+- **Next:** Execute focused tests/typecheck when a dependency-equipped checkout is available; continue independent source work without waiting on CI; activate only after ISS-026 closes and Clara API verification is complete.
