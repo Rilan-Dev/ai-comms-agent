@@ -1083,3 +1083,13 @@ PR #18 and PR #19 are closed/merged. The initial realtime inbox refresh and Gmai
 
 
 Gmail Cloud setup helper added: `scripts/setup-gmail-pubsub.sh` validates required inputs, enables Gmail API/Pub/Sub APIs, creates the topic/subscription, grants Gmail publisher permission, and configures OIDC push identity. `.env.example` lists the three runtime variables as commented placeholders. **No GCP project/endpoint/service-account values were available and no cloud resource or deployment environment was changed.** Before claiming Gmail complete, an operator must run the script from an authenticated `gcloud` shell, configure the same three variables for web and worker, apply migration 0049 to the shared DB, and run an external-account delivery test.
+
+
+### IMAP IDLE source progress — 2026-10-16
+
+- Added RFC 2177 IDLE support to `ImapSmtpAdapter`: detect the server's advertised `IDLE` capability, select `INBOX`, wait for `EXISTS`/`EXPUNGE`/`FETCH`/`VANISHED`, send `DONE` before returning, and reissue at a 25-minute maximum wait.
+- Added `apps/worker/src/email/imap-idle-worker.ts`, started from the worker entrypoint. It maintains up to 20 connected-account watchers, reconnects with bounded backoff, backs off six hours for servers that do not advertise IDLE, and persists account-scoped change signals via `email_sync_states.pending_push_at` so the existing reconciliation worker performs the actual fetch/persist/checkpoint.
+- Added focused parser tests and included them in the focused GitHub workflow. Periodic mailbox polling remains the fallback.
+- **Not verified:** IMAP IDLE socket integration, live provider behavior, tests/typechecks, database migration presence in deployed DB, reconnect behavior against real servers, and per-provider latency. Source has been committed but the focused workflow is not being polled.
+
+Next: keep Gmail cloud setup and live push acceptance as an OPS prerequisite, then harden the IMAP watcher with integration tests; after that implement Zoho Mail's configurable outgoing webhook only with a secure account-scoped bootstrap/signature scheme, otherwise use this IMAP IDLE path or bounded Zoho API polling. Outlook Graph remains later in the order.
