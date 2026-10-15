@@ -726,3 +726,17 @@ describe("pnpm workspace lockfile integrity", () => {
     expect(lockfile).toMatch(/^  amqplib@2\.2\.0: \{\}$/m);
   });
 });
+
+
+describe("Migration static verification (0049_email_sync_pending_push.sql)", () => {
+  const pendingPushSql = readFileSync(
+    resolve(__dirname, "../../../supabase/migrations/0049_email_sync_pending_push.sql"),
+    "utf8",
+  );
+
+  it("adds an indexed durable marker for provider pushes that arrive during an active sync", () => {
+    expect(pendingPushSql).toContain("ADD COLUMN IF NOT EXISTS pending_push_at timestamptz");
+    expect(pendingPushSql).toContain("ON email_sync_states (pending_push_at)");
+    expect(pendingPushSql).toContain("WHERE pending_push_at IS NOT NULL");
+  });
+});

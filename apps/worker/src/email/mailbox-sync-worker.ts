@@ -225,6 +225,8 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     pending_cursor_token: string | null;
     pending_history_id: string | null;
     pending_sync_mode: string | null;
+    pending_push_at: string | null;
+    last_attempt_at: string | null;
   }>(
     `INSERT INTO email_sync_states
       (email_account_id, organization_id, status, last_attempt_at, updated_at)
@@ -233,8 +235,9 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
        SET status='running', last_attempt_at=now(), updated_at=now()
        WHERE email_sync_states.status <> 'running'
           OR email_sync_states.last_attempt_at < now()-interval '10 minutes'
-     RETURNING cursor_token AS cursor, history_id, last_success_at, sync_mode,
-       pending_message_ids, pending_cursor_token, pending_history_id, pending_sync_mode`,
+     RETURNING cursor_token AS cursor, history_id, last_success_at, sync_mode
+       pending_message_ids, pending_cursor_token, pending_history_id, pending_sync_mode,
+       pending_push_at, last_attempt_at`,
     [candidate.id, candidate.organization_id],
   );
   if (!claimed.rows[0]) return false;
@@ -490,10 +493,18 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       `UPDATE email_sync_states SET cursor_token=$1, history_id=$2, status='idle',
          pending_message_ids='[]'::jsonb, pending_cursor_token=NULL,
          pending_history_id=NULL, pending_sync_mode=NULL,
-         last_success_at=now(), last_attempt_at=now(), next_attempt_at=NULL,
+         pending_push_at=CASE
+           WHEN pending_push_at IS NOT NULL AND pending_push_at <= $4::timestamptz THEN NULL
+           ELSE pending_push_at
+         END,
+         last_success_at=now(), last_attempt_at=now(),
+         next_attempt_at=CASE
+           WHEN pending_push_at IS NOT NULL AND pending_push_at > $4::timestamptz THEN now()
+           ELSE NULL
+         END,
          error_count=0, last_error=NULL, updated_at=now()
        WHERE email_account_id=$3`,
-      [stagedCursor, stagedHistory, candidate.id],
+      [stagedCursor, stagedHistory, candidate.id, claimed.rows[0].last_attempt_at],
     );
     await accounts.updateSyncState(candidate.id, new Date().toISOString());
     console.log(JSON.stringify({
@@ -675,7 +686,9 @@ async function enqueueDueMailboxSyncs(limit = BATCH_SIZE): Promise<number> {
        AND (s.last_success_at IS NULL
          OR s.last_success_at < now()-interval '30 seconds'
          OR a.status IN ('pending','error')
-         OR s.sync_mode = 'initial')
+         OR s.sync_mode = 'initial'
+         OR (s.next_attempt_at IS NOT NULL AND s.next_attempt_at <= now())
+         OR s.pending_push_at IS NOT NULL)
      ORDER BY CASE a.status WHEN 'pending' THEN 0 WHEN 'error' THEN 1 ELSE 2 END,
        COALESCE(s.last_success_at, a.created_at) ASC
      LIMIT $1`,
@@ -748,7 +761,9 @@ export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ att
          AND (s.last_success_at IS NULL
            OR s.last_success_at < now()-interval '2 minutes'
            OR a.status IN ('pending','error')
-           OR s.sync_mode = 'initial')
+           OR s.sync_mode = 'initial'
+         OR (s.next_attempt_at IS NOT NULL AND s.next_attempt_at <= now())
+         OR s.pending_push_at IS NOT NULL)
        ORDER BY CASE a.status WHEN 'pending' THEN 0 WHEN 'error' THEN 1 ELSE 2 END,
          COALESCE(s.last_success_at, a.created_at) ASC
        LIMIT $1`,
