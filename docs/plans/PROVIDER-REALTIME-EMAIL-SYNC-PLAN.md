@@ -43,7 +43,7 @@ A provider-neutral contract exposes *change signals*, not a promise that every p
 - The inbox server page reads persisted PostgreSQL messages; it does not directly connect to a mail provider.
 - The inbox client previously refreshed only after user actions/search changes. The current branch adds a 5-second, visibility-aware refresh of the inbox API so newly persisted mail can appear without clicking Sync.
 - The worker has a periodic mailbox loop and a two-minute stale-account eligibility threshold. This is fallback polling, not instant push.
-- Gmail adapter still reports `sync_webhook: false` until the new Pub/Sub receiver and watch lifecycle are verified. Source now includes watch/profile/stop methods, a worker renewal loop, authenticated webhook, and durable immediate-sync trigger; live notification delivery and History API end-to-end behavior remain unverified.
+- Gmail adapter still reports `sync_webhook: false` until the new Pub/Sub receiver and watch lifecycle are verified. Source now includes watch/profile/stop methods, a worker renewal loop, authenticated webhook, and durable immediate-sync trigger (`pending_push_at` + `next_attempt_at`); live notification delivery and History API end-to-end behavior remain unverified.
 - IMAP/SMTP adapter currently reports `sync_idle: false`; a persistent, reconnecting IDLE session is not implemented. Do not advertise IDLE until the socket lifecycle and recovery tests pass.
 - Zoho webhook support must be validated against the actual API/account capabilities; keep polling/IMAP fallback where a push integration is unavailable.
 - Provider sync and browser refresh are separate: provider signal -> DB persistence -> UI refresh. UI polling alone cannot fix provider ingestion failures.
@@ -125,3 +125,6 @@ Source has been started on `feature/provider-realtime-email-sync`: `GmailAdapter
 
 
 Watch-worker behavior: it checks every five minutes for newly connected Gmail accounts with no watch and for watches expiring within 24 hours; this avoids waiting half a day to begin push delivery for accounts connected while the worker is already running.
+
+
+Push-during-sync durability: migration `0049_email_sync_pending_push.sql` adds `email_sync_states.pending_push_at`. The webhook updates it alongside `next_attempt_at`; successful sync clears only a push timestamp no newer than the sync claim's `last_attempt_at`. A notification received mid-sync remains pending and schedules a follow-up reconciliation. This design still requires DB/concurrency regression tests and migration execution before acceptance.
