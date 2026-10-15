@@ -624,3 +624,10 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - The API draft now has a documented server-to-server contract, deterministic vector IDs, separate org/model collections, upsert/stale cleanup, metadata-only update, message/account/org deletion, and semantic search requiring an organization and explicit allowed-account set.
 - This is not yet production-ready or executable-verified. No typecheck/tests/lint/build, live Qdrant/embedding, isolation runtime, ingestion, or latency evidence is claimed.
 - ISS-026 remains open/FIX-01-owned; keep ai-comms-agent's vector outbox unbound and user-facing retrieval disabled until it closes. OPS-01 owns live infra/ingestion/performance acceptance.
+
+
+
+### 2026-10-16 — Unbound Clara vector adapter added
+- Added `apps/worker/src/knowledge/clara-email-vector-adapter.ts` plus request-contract tests. The adapter targets Clara draft PR #298 and passes deterministic source IDs and content/metadata/chunk hashes; it is not imported by worker startup and does not start the outbox loop.
+- The Clara API contract was updated to allow nullable received timestamps and a hash-aware metadata-only upsert path. Source is authored only; no executable checks or live vector calls are claimed.
+- ISS-026 remains FIX-01-owned/open. Do not wire adapter or expose user-facing retrieval before that closes. OPS-01 retains production credential/Qdrant/ingestion/latency work.
