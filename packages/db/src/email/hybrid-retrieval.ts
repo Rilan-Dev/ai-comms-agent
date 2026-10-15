@@ -112,7 +112,9 @@ export function createEmailHybridRetriever(dependencies: {
       [organizationId, agentId],
     );
     const boundIds = [...new Set(bindings.rows.map((row) => String(row.account_id)).filter(Boolean))];
-    const requestedIds = input.accountIds?.length ? new Set(input.accountIds.map((id) => id.trim()).filter(Boolean)) : null;
+    const requestedIds = input.accountIds === undefined
+      ? null
+      : new Set(input.accountIds.map((id) => id.trim()).filter(Boolean));
     const allowedAccountIds = requestedIds
       ? boundIds.filter((id) => requestedIds.has(id))
       : boundIds;
@@ -159,15 +161,18 @@ export function createEmailHybridRetriever(dependencies: {
       values,
     );
 
-    let vectorHits: EmailVectorCandidate[] = [];
-    let vectorFailed = false;
-    try {
-      vectorHits = await dependencies.vectorSearch({ orgId: organizationId, allowedAccountIds, query: queryText, limit: Math.min(50, limit * 4) });
-    } catch {
-      // Keep lexical retrieval available, but make the degraded state explicit.
-      vectorFailed = true;
-    }
-    const lexical = await lexicalPromise;
+    const vectorPromise = dependencies.vectorSearch({
+      orgId: organizationId,
+      allowedAccountIds,
+      query: queryText,
+      limit: Math.min(50, limit * 4),
+    }).then(
+      (hits) => ({ hits, failed: false }),
+      () => ({ hits: [] as EmailVectorCandidate[], failed: true }),
+    );
+    const [lexical, vectorResult] = await Promise.all([lexicalPromise, vectorPromise]);
+    const vectorHits = vectorResult.hits;
+    const vectorFailed = vectorResult.failed;
 
     type Candidate = { accountId: string; providerMessageId: string; score: number; matchedBy: Set<"lexical" | "semantic"> };
     const candidates = new Map<string, Candidate>();
