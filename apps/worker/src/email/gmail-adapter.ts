@@ -450,10 +450,11 @@ export class GmailAdapter implements EmailProvider {
 
   /** Parse a multipart batch response and append to the result Map. */
   private parseBatchResponse(body: string, chunk: string[], result: Map<string, EmailMessage>): void {
-    // Split on the boundary marker. The exact boundary is in the response's
-    // Content-Type header; we read it from the first line of the body to
-    // avoid needing to parse headers separately.
-    const firstLine = body.split(/\r?\n/, 1)[0] ?? "";
+    // The Gmail batch API response starts with an optional leading \r\n
+    // before the first boundary line. Skip leading whitespace/newlines
+    // to find the actual boundary marker.
+    const trimmed = body.replace(/^[\r\n\s]+/, "");
+    const firstLine = trimmed.split(/\r?\n/, 1)[0] ?? "";
     const boundary = firstLine.replace(/^--/, "").trim();
     if (!boundary) return;
     const parts = body.split(`--${boundary}`);
@@ -492,9 +493,12 @@ export class GmailAdapter implements EmailProvider {
       try {
         const raw = JSON.parse(jsonText);
         const message = toMessage(raw);
-        if (messageId) {
-          result.set(messageId, message);
-        } else if (raw.id) {
+        // ALWAYS use raw.id from the parsed JSON as the Map key. The
+        // Content-ID matching (with response- prefix stripping) works
+        // in theory, but using raw.id is simpler and more reliable —
+        // Gmail always includes 'id' in the message JSON, and it's the
+        // exact same ID the caller looks up by.
+        if (raw.id) {
           result.set(String(raw.id), message);
         }
       } catch {
