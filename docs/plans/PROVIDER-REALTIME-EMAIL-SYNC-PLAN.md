@@ -128,3 +128,6 @@ Watch-worker behavior: it checks every five minutes for newly connected Gmail ac
 
 
 Push-during-sync durability: migration `0049_email_sync_pending_push.sql` adds `email_sync_states.pending_push_at`. The webhook updates it alongside `next_attempt_at`; successful sync clears only a push timestamp no newer than the sync claim's `last_attempt_at`. A notification received mid-sync remains pending and schedules a follow-up reconciliation. This design still requires DB/concurrency regression tests and migration execution before acceptance.
+
+
+Gmail follow-up hardening: watch failures now use stored retry backoff (5 minutes with exponential growth capped at 6 hours); successful watch registration persists refreshed OAuth credentials and clears retry metadata. The webhook skips notifications already covered by the persisted Gmail history cursor and acknowledges intentionally paused sync accounts. These are source changes only; their tests and runtime behavior remain unverified.
