@@ -230,6 +230,11 @@ export interface EmailCredentials {
   zoho_client_secret?: string;
   oauth_config_id?: string;
   zoho_config_id?: string;
+  microsoft_tenant_id?: string;
+  microsoft_client_id?: string;
+  microsoft_client_secret?: string;
+  microsoft_user_id?: string;
+  microsoft_graph_client_state?: string;
 }
 
 export class CapabilityNotSupported extends Error {
