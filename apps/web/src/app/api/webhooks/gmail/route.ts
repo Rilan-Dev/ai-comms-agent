@@ -161,7 +161,7 @@ export async function POST(request: Request) {
     if (account.sync_status === "paused") {
       return NextResponse.json({ received: true, skipped: "sync_paused" }, { status: 200 });
     }
-    if (account.history_id && /^\\d+$/.test(account.history_id)
+    if (account.history_id && /^\d+$/.test(account.history_id)
       && BigInt(account.history_id) >= BigInt(payload.historyId)) {
       // History IDs are monotonic. A checkpoint at or beyond this notification
       // proves that a prior successful reconciliation already covered it.
