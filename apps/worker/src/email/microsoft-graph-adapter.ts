@@ -238,6 +238,40 @@ export class MicrosoftGraphAdapter implements EmailProvider {
     return await response.json() as T;
   }
 
+  async createInboxSubscription(
+    notificationUrl: string,
+    clientState: string,
+    expirationDateTime: string,
+  ): Promise<{ id: string; expirationDateTime: string }> {
+    const url = new URL(notificationUrl);
+    if (url.protocol !== "https:") throw new Error("Microsoft Graph notification URL must use HTTPS.");
+    if (clientState.length < 16 || clientState.length > 128) throw new Error("Microsoft Graph clientState length is invalid.");
+    return this.request("/subscriptions", {
+      method: "POST",
+      body: JSON.stringify({
+        changeType: "created,updated,deleted",
+        notificationUrl: url.toString(),
+        resource: "me/mailFolders('inbox')/messages",
+        expirationDateTime,
+        clientState,
+      }),
+    });
+  }
+
+  async renewSubscription(
+    subscriptionId: string,
+    expirationDateTime: string,
+  ): Promise<{ id: string; expirationDateTime: string }> {
+    return this.request(`/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ expirationDateTime }),
+    });
+  }
+
+  async deleteSubscription(subscriptionId: string): Promise<void> {
+    await this.request(`/subscriptions/${encodeURIComponent(subscriptionId)}`, { method: "DELETE" });
+  }
+
   async listFolders(): Promise<EmailFolder[]> {
     const page = await this.request<GraphPage<{
       id: string; displayName?: string; unreadItemCount?: number; parentFolderId?: string;
