@@ -1105,3 +1105,15 @@ Next: keep Gmail cloud setup and live push acceptance as an OPS prerequisite, th
 - **Not verified:** tests/typechecks, live Zoho webhook handshake, signature behavior against a real Zoho account, actual provider delivery, or deployed latency. Polling remains the fallback.
 
 Next: continue with Outlook/Microsoft 365 Graph adapter work after the current provider-specific sync paths are hardened. For Gmail, Google Cloud configuration, migration application, and external-account timing remain OPS prerequisites; do not wait on unrelated CI, but do not claim live delivery verified.
+
+
+### Outlook / Microsoft 365 source progress — 2026-10-16
+
+- Added a Microsoft Graph adapter registered as `microsoft_graph`, with inbox folder listing, full/incremental inbox delta synchronization, `@odata.nextLink` pagination, persisted `@odata.deltaLink`, deleted-message handling, token refresh, and fail-closed Graph URL validation. Unsupported send/draft/write operations remain explicitly disabled in its capability set.
+- Added Microsoft OAuth PKCE start/callback using server-side `MICROSOFT_OAUTH_CLIENT_ID`, `MICROSOFT_OAUTH_CLIENT_SECRET`, and optional `MICROSOFT_OAUTH_TENANT_ID`; tokens and client secret are stored in encrypted account credentials.
+- Added Graph subscription create/renew worker with per-account encrypted `clientState`, 48-hour subscriptions, 24-hour renewal threshold, retry backoff, and an HTTPS notification endpoint.
+- Added Graph webhook validation-token response and notification handling that verifies subscription ID plus `clientState` before queueing durable reconciliation. Added adapter and webhook tests and wired them into the focused workflow.
+- Added Outlook connection/sync controls to the mail accounts UI and extended the worker's provider query/registry to include Microsoft Graph.
+- **Not verified:** web/worker typechecks, tests, live Entra OAuth, Graph subscription validation, actual notification delivery, full mailbox delta behavior against a real tenant, or latency. The `sync_webhook` capability remains false until live acceptance.
+
+Next: register the Microsoft Entra app, configure the three Microsoft OAuth env values and public `APP_ORIGIN`/notification URL, then perform a real Outlook connection and delivery test. Keep Gmail Cloud Pub/Sub setup/migration and Zoho webhook UI bootstrap as separate operator acceptance tasks. Do not wait on unrelated CI; continue implementation but don't mark any provider realtime path production-verified.
