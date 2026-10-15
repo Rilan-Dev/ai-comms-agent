@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { parseCredentialsMasterKey } from "@ai-comms-agent/db";
 import { authorize } from "@/lib/identity/authorization";
 import { getAuthenticatedAppContext, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
-import { assertOAuthRedirectUriSecure, getOAuthRedirectUri } from "@/lib/oauth/redirect-uri";
+import { assertOAuthRedirectUriSecure, getOAuthPublicOrigin, getOAuthRedirectUri } from "@/lib/oauth/redirect-uri";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,18 @@ function sign(value: string): string {
   const key = signingKey();
   if (!key) throw new Error("Platform credential-encryption key is not configured.");
   return createHmac("sha256", key).update(value).digest("base64url");
+}
+
+function configurationError(request: Request, message: string, status = 503) {
+  let origin: string;
+  try { origin = getOAuthPublicOrigin(request); }
+  catch { origin = new URL(request.url).origin; }
+  const response = NextResponse.redirect(
+    new URL(`/mail/accounts?providerError=${encodeURIComponent(message)}`, origin),
+    303,
+  );
+  response.headers.set("x-oauth-error-status", String(status));
+  return response;
 }
 
 export async function GET(request: Request) {
@@ -31,9 +43,9 @@ export async function GET(request: Request) {
   const tenantId = process.env.MICROSOFT_OAUTH_TENANT_ID?.trim() || "common";
   const key = signingKey();
   if (!clientId || !process.env.MICROSOFT_OAUTH_CLIENT_SECRET?.trim()) {
-    return NextResponse.json({ error: "oauth_configuration_required", message: "Configure MICROSOFT_OAUTH_CLIENT_ID and MICROSOFT_OAUTH_CLIENT_SECRET in server-side settings." }, { status: 503 });
+    return configurationError(request, "Configure MICROSOFT_OAUTH_CLIENT_ID and MICROSOFT_OAUTH_CLIENT_SECRET in server-side settings.");
   }
-  if (!key) return NextResponse.json({ error: "platform_encryption_key_required" }, { status: 503 });
+  if (!key) return configurationError(request, "The platform credential-encryption key is required before connecting Outlook.");
 
   const url = new URL(request.url);
   const accountId = url.searchParams.get("accountId")?.trim() || undefined;
