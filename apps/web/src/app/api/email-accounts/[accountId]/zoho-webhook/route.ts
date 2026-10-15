@@ -40,19 +40,19 @@ export async function POST(
     if (!account || account.organization_id !== organizationId || account.provider !== "zoho") {
       return NextResponse.json({ error: "not_found", message: "Zoho mailbox was not found in this organization." }, { status: 404 });
     }
-    if (account.status === "revoked" || account.status === "disconnected" || account.status === "deleted") {
+    if (account.status === "revoked" || account.status === "disconnected") {
       return NextResponse.json({ error: "reconnect_required", message: "Reconnect this Zoho mailbox before configuring its webhook." }, { status: 409 });
     }
+
+    let origin: string;
+    try { origin = getOAuthPublicOrigin(request); }
+    catch { return NextResponse.json({ error: "public_origin_not_configured", message: "Configure APP_ORIGIN before generating a Zoho webhook URL." }, { status: 503 }); }
 
     const masterKey = parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY);
     const credentials = await repository.loadCredentials(account.id, masterKey);
     if (!credentials) {
       return NextResponse.json({ error: "credentials_missing", message: "Reconnect the Zoho mailbox before configuring its webhook." }, { status: 409 });
     }
-
-    // Rotating the endpoint also resets the encrypted first-request HMAC secret.
-    const { zoho_webhook_secret: _oldWebhookSecret, ...credentialsWithoutWebhookSecret } = credentials;
-    await repository.saveCredentials(account.id, "oauth_token", { ...credentialsWithoutWebhookSecret }, masterKey);
 
     const token = randomBytes(32).toString("base64url");
     const tokenHash = createHash("sha256").update(token).digest("hex");
@@ -64,9 +64,10 @@ export async function POST(
       [JSON.stringify({ zohoWebhookTokenHash: tokenHash, zohoWebhookCreatedAt: new Date().toISOString() }), account.id, organizationId],
     );
 
-    let origin: string;
-    try { origin = getOAuthPublicOrigin(request); }
-    catch { return NextResponse.json({ error: "public_origin_not_configured", message: "Configure APP_ORIGIN before generating a Zoho webhook URL." }, { status: 503 }); }
+    // Clear any old HMAC secret only after the endpoint token has rotated in
+    // the database. If credential persistence fails, the old URL is already invalid.
+    const { zoho_webhook_secret: _oldWebhookSecret, ...credentialsWithoutWebhookSecret } = credentials;
+    await repository.saveCredentials(account.id, "oauth_token", { ...credentialsWithoutWebhookSecret }, masterKey);
     const webhookUrl = new URL(`/api/webhooks/zoho/${token}`, origin).toString();
 
     await recordAuditEvent({
