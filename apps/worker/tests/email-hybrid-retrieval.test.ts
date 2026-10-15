@@ -41,7 +41,7 @@ test("hybrid retrieval resolves fresh bindings and revalidates semantic candidat
   }) as unknown as typeof query;
 
   const hits: EmailVectorCandidate[] = [
-    { orgId: org, accountId: account, messageId: "provider-message-1", score: 0.8 },
+    { orgId: org, accountId: account, messageId: "provider-message-1", contentHash: "a".repeat(64), score: 0.8 },
     { orgId: org, accountId: otherAccount, messageId: "must-not-leak", score: 0.99 },
     { orgId: "00000000-0000-4000-8000-000000000099", accountId: account, messageId: "wrong-org", score: 0.98 },
   ];
