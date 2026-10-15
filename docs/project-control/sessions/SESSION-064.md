@@ -31,3 +31,4 @@ ISS-026 remains open and owned by FIX-01/Sentinel. The adapter is not imported i
 3. After ISS-026 closes and API verification is sufficient, bind the adapter to the durable outbox and start the sync loop.
 4. Implement shared PostgreSQL + Qdrant retrieval for Chat and realtime voice, with authoritative SQL revalidation and citations.
 5. OPS-01 owns live Qdrant setup, initial ingestion, runtime isolation evidence, and latency/correctness acceptance.
+- Additional Clara review correction: deterministic point-ID and embedding-model hash inputs now use actual NUL separators rather than the two-character backslash-zero sequence, preventing ambiguous concatenation of identifier parts. This remains source-only and untested.
