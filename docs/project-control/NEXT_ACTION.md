@@ -1138,3 +1138,13 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Do not overstate status:** PR remains draft; no executable tests/typecheck/lint/build or live Qdrant/embedding/isolation evidence has been run. API is not yet wired to ai-comms-agent.
 - **Security gate:** ISS-026 remains open and FIX-01-owned. Do not bind the vector outbox or expose Chat/realtime-voice email retrieval until FIX-01 closes ISS-026 and account authorization is freshly resolved at execution time.
 - **Exact next DEV-01 action:** perform focused source corrections/tests for the Clara API PR, then update the ai-comms-agent adapter contract to target this API without enabling it. After ISS-026 closure, bind the existing durable outbox and shared PostgreSQL + Qdrant retrieval path. OPS-01 owns live infra, initial ingestion, isolation runtime evidence, and p50/p95/correctness/freshness acceptance. Do not wait on CI/deploy gates before independent source work.
+
+
+
+## Email vector adapter draft — 2026-10-16 follow-up
+
+- **New source:** `apps/worker/src/knowledge/clara-email-vector-adapter.ts` implements the existing injected adapter interface against Clara PR #298. Request-contract tests are in `clara-email-vector-adapter.test.ts`.
+- **Important:** Adapter is authored but remains unbound. It is not imported by `apps/worker/src/index.ts`; the durable outbox loop is not started. Do not change this startup boundary while ISS-026 is open.
+- **Contract update:** Clara API now allows nullable received timestamps and accepts content/metadata/per-chunk hashes to skip re-embedding when content and chunk identities are unchanged.
+- **Next DEV-01 action:** Run focused worker adapter tests/typecheck and review the Clara endpoint contract against the adapter. Continue independent source corrections; do not wait for CI. After FIX-01 closes ISS-026 and Clara API executable checks are addressed, wire the adapter + outbox loop and implement one shared authorized PostgreSQL + Qdrant retrieval service for Chat and realtime voice.
+- **OPS-01:** Configure the production endpoint and server-only credential, validate Qdrant/embedding behavior, perform initial ingestion and cross-account runtime checks, then measure p50/p95 latency, freshness and correctness.
