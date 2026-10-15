@@ -1,3 +1,13 @@
+
+## FIX-01 immediate corrective action — 2026-10-16
+
+- **Symptom:** Clean Docker worker build failed TypeScript compilation with TS2352 in Gmail watch renewal and IMAP IDLE startup.
+- **Root cause:** Generic decrypted credential records were cast directly to `EmailCredentials`, whose required `credential_type` discriminant was not guaranteed.
+- **Source remedy committed:** Validate supported discriminant values (`oauth_token`, `password`, `app_password`), pass a narrowed spread object, and remove unsafe casts. See ISS-027 and FIX01-WORKER-CREDENTIAL-TYPE-20261016.
+- **Next action:** From the deployment checkout, run `pnpm --filter @ai-comms-agent/worker typecheck`, `pnpm --filter @ai-comms-agent/worker test`, then rebuild with `docker compose -f infra/docker-compose.manual.yml build --no-cache worker`. Re-run `docker compose --env-file .env.docker -f infra/docker-compose.manual.yml up -d` only after the worker image build succeeds.
+- **Verification state:** Source change committed; no typecheck/test/rebuild pass claimed. Keep ISS-027 open until evidence is recorded.
+- **Routing:** If the source build succeeds but compose, network, registry, host, or deployment operations fail, route that distinct failure to OPS-01. Do not wait for DEV-01.
+
 ## Provider-neutral real-time email sync — 2026-10-16
 
 - Owner request: new messages should appear automatically in the application inbox across supported providers without a manual Sync action.
