@@ -31,7 +31,7 @@ function quote(value: string): string {
 }
 
 export function serverSupportsImapIdle(lines: string[]): boolean {
-  return serverSupportsImapIdle(lines);
+  return lines.some((line) => /^\* CAPABILITY\b/i.test(line) && /(?:^|\s)IDLE(?:\s|$)/i.test(line));
 }
 
 export function isImapIdleChangeNotification(line: string): boolean {
@@ -244,7 +244,7 @@ export class ImapSmtpAdapter implements EmailProvider {
 
   async supportsIdle(): Promise<boolean> {
     const lines = await this.command("CAPABILITY");
-    return lines.some((line) => /^\* CAPABILITY\b/i.test(line) && /(?:^|\s)IDLE(?:\s|$)/i.test(line));
+    return serverSupportsImapIdle(lines);
   }
 
   async discoverCapabilities(): Promise<CapabilitySet> {
