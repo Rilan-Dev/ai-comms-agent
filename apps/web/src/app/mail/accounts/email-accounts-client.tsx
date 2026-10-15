@@ -354,7 +354,7 @@ export function EmailAccountsClient({
                     <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold">{statusLabel(account.status)}</span>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {account.provider.replace("_", " / ")} · {account.display_name ?? "Mailbox"}
+                    {account.provider === "microsoft_graph" ? "Outlook / Microsoft 365" : account.provider.replace("_", " / ")} · {account.display_name ?? "Mailbox"}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">{Object.entries(account.capabilities).filter(([,enabled])=>enabled).slice(0,5).map(([key])=><span key={key} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">{key.replaceAll("_"," ")}</span>)}</div>
                   <p className="mt-2 text-xs text-muted-foreground">
