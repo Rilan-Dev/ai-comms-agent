@@ -28,6 +28,10 @@ async function renewDueWatches(): Promise<{ checked: number; renewed: number }> 
        WHERE a.provider='gmail' AND a.deleted_at IS NULL
          AND a.status IN ('pending','connected','error')
          AND (
+           a.connection_config->>'gmailWatchRetryAt' IS NULL
+           OR (a.connection_config->>'gmailWatchRetryAt')::timestamptz <= now()
+         )
+         AND (
            a.connection_config->>'gmailWatchExpiresAt' IS NULL
            OR (a.connection_config->>'gmailWatchExpiresAt')::timestamptz
                 <= now() + interval '24 hours'
@@ -50,10 +54,14 @@ async function renewDueWatches(): Promise<{ checked: number; renewed: number }> 
         throw new Error("Authenticated Gmail mailbox does not match the connected account address.");
       }
       const watch = await adapter.registerMailboxWatch(topicName);
+      await accounts.saveCredentials(candidate.id, "oauth_token", adapter.getCredentialSnapshot(), key);
       const config = { ...(candidate.connection_config ?? {}) };
       config.gmailWatchExpiresAt = watch.expiration;
       config.gmailWatchHistoryId = watch.historyId;
       config.gmailWatchRenewedAt = new Date().toISOString();
+      delete config.gmailWatchRetryAt;
+      delete config.gmailWatchErrorCount;
+      delete config.gmailWatchLastError;
       await query(
         `UPDATE email_accounts
            SET connection_config=$1::jsonb, updated_at=now()
@@ -71,6 +79,18 @@ async function renewDueWatches(): Promise<{ checked: number; renewed: number }> 
         expires_at: watch.expiration,
       }));
     } catch (error) {
+      const config = { ...(candidate.connection_config ?? {}) };
+      const previousCount = Number(config.gmailWatchErrorCount ?? 0);
+      const errorCount = Number.isFinite(previousCount) ? Math.max(0, Math.min(10, Math.floor(previousCount))) : 0;
+      const retryDelaySeconds = Math.min(21_600, 300 * 2 ** Math.min(errorCount, 6));
+      config.gmailWatchErrorCount = errorCount + 1;
+      config.gmailWatchRetryAt = new Date(Date.now() + retryDelaySeconds * 1000).toISOString();
+      config.gmailWatchLastError = error instanceof Error ? error.message.slice(0, 200) : "Unknown error";
+      await query(
+        `UPDATE email_accounts SET connection_config=$1::jsonb, updated_at=now()
+           WHERE id=$2 AND provider='gmail' AND deleted_at IS NULL`,
+        [JSON.stringify(config), candidate.id],
+      ).catch(() => undefined);
       console.error(JSON.stringify({
         timestamp: new Date().toISOString(),
         level: "error",
