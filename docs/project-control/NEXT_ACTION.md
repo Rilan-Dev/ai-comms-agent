@@ -1,3 +1,16 @@
+## Provider-neutral real-time email sync — 2026-10-16
+
+- Owner request: new messages should appear automatically in the application inbox across supported providers without a manual Sync action.
+- Read the project-control entry points and email architecture/provider contract before changing code. Added implementation plan: `docs/plans/PROVIDER-REALTIME-EMAIL-SYNC-PLAN.md`.
+- **Implemented on this branch:** inbox client now refreshes the first page every 5 seconds while visible and refreshes immediately when the tab becomes visible; preserves search/account/unread/action filters and avoids overlapping poll requests. This only reflects messages after they are persisted in PostgreSQL.
+- **Not yet implemented:** Gmail Pub/Sub receiver + authenticated OIDC validation + watch registration/renewal + History API reconciliation; persistent IMAP IDLE listener; verified Zoho webhook path; browser push transport. Current 2-minute worker fallback is not equivalent to instant push.
+- **Next development order:** (1) run web/worker tests and typechecks for the inbox polling + prior Gmail parser/checkpoint fixes; (2) implement Gmail Pub/Sub securely and add history reconciliation/watch renewal; (3) implement a long-lived, leased, reconnecting IMAP IDLE listener; (4) validate Zoho push capabilities and retain polling fallback; (5) measure delivered-email-to-inbox latency on deployed services.
+- OPS-01 must configure Google Cloud Pub/Sub, webhook authentication/audience, production worker, RabbitMQ/Redis, and shared production DB. No app password pasted into chat should be reused; revoke it and rotate credentials.
+- Manual sync remains an optional recovery action. Normal sync must begin on account connect and run continuously while the worker is healthy.
+- Current branch: `feature/provider-realtime-email-sync`, based on `feature/imap-smtp-mail-actions`. Latest new UI changes and plan have not been locally tested or deployed.
+
+---
+
 ## Latest root-cause fix — Gmail OAuth connected but inbox remains empty (2026-10-14)
 
 - **Root cause found in source:** Gmail's batch API prefixes each response `Content-ID` with `response-`. `GmailAdapter.parseBatchResponse()` did not remove that prefix, so valid batch responses were stored in the map under the wrong message IDs. The mailbox worker then looked up the original IDs, treated every message as missing, acknowledged those IDs, and logged `imported_or_updated: 0`. This matches the observed empty inbox and repeated initial-import progress. Google documents the response prefix in the [Gmail batch request guide](https://developers.google.com/workspace/gmail/api/guides/batch).
@@ -1040,3 +1053,13 @@ Commits: migration `de8a79b2`; auth `0ab61969`; auth test `25d35236`; migration 
 The latest user-run command passed Clara AI Platform test paths to the `ai-comms-agent` monorepo root. Root `npm test` runs all workspace test scripts, so `apps/web` Vitest searched its own `tests/**/*.test.ts` and found no matching files; the worker process was killed with SIGKILL, without enough output to infer why. Do not rerun those Clara-specific paths in this repo.
 
 **Current actionable next step for the active email runtime issue:** run `bash scripts/diagnose-email-accounts.sh` from repository root and share only the reviewed sanitized report. For isolated repo-local regression checks, run one at a time: `pnpm --filter @ai-comms-agent/web exec vitest run tests/migration-verification.test.ts`, then `pnpm --filter @ai-comms-agent/worker exec node --import tsx --test tests/email-sync-rabbitmq.test.ts`. These commands have not yet been run. No test or live-sync PASS claimed.
+
+
+### Immediate next action — Gmail Pub/Sub receiver and watch lifecycle (2026-10-16)
+
+Active branch: `feature/provider-realtime-email-sync`, stacked on `feature/imap-smtp-mail-actions`; PR #19 remains draft. RT-02 source implementation has started: Gmail adapter watch/profile methods, a worker watch-renewal loop, authenticated Pub/Sub webhook with Google X.509 JWT signature/issuer/audience/service-account/time checks, mailbox-to-account resolution, durable immediate-sync scheduling via `email_sync_states.pending_push_at` plus `next_attempt_at`, and due-sync query support. A focused web test covers missing/malformed bearer tokens.
+
+**Do next:** inspect the new webhook/worker code and add coverage for valid/invalid JWT claims, malformed Pub/Sub payloads, unknown/ambiguous mailbox, paused account, duplicate notifications, watch renewal, and history-cursor recovery. Add operational setup docs for `GMAIL_PUBSUB_TOPIC`, `GMAIL_PUBSUB_PUSH_AUDIENCE`, `GMAIL_PUBSUB_PUSH_SERVICE_ACCOUNT`, Google topic publisher permission, and Pub/Sub authenticated push subscription. Then implement IMAP IDLE only after Gmail reconciliation is secure. Do not claim the Gmail path complete until worker/web tests and typechecks are run and OPS-01 validates a real external email end-to-end. No tests, typechecks, build, deployment, cloud configuration, or live mailbox delivery were run in this session.
+
+
+RT-02 checkpoint hardening: migration `0049_email_sync_pending_push.sql` adds `email_sync_states.pending_push_at`. The webhook marks the durable signal, and a successful sync clears only signals that existed by its claim timestamp; a push arriving mid-sync remains due for another pass. Migration application and concurrency behavior are not verified yet.

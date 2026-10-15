@@ -1,3 +1,6 @@
+> **Real-time email request (2026-10-16):** New branch `feature/provider-realtime-email-sync` adds visibility-aware 5-second inbox refresh and a provider-neutral implementation plan at `docs/plans/PROVIDER-REALTIME-EMAIL-SYNC-PLAN.md`. This updates the browser UI automatically after PostgreSQL persistence; it does NOT implement provider push by itself. Gmail Pub/Sub + History API and watch renewal, generic IMAP IDLE, and validated Zoho notifications remain open. See `docs/project-control/NEXT_ACTION.md`. User pasted a Gmail app password into chat; do not reuse it, and instruct the user to revoke/rotate it.
+
+
 > **Latest live inbox investigation — 2026-10-14:** Root cause identified in Gmail batch response parsing: Google returns response Content-ID values prefixed with `response-`, but the adapter mapped them without stripping that prefix. This caused successful Gmail fetches to be treated as missing and acknowledged without persistence. The current draft PR #18 fixes response mapping, preserves failed persistence IDs for retry, adds regression tests, and reduces fallback polling to 2 minutes. PR #18 remains draft; tests/typecheck/live deployment after these latest edits are NOT verified. Gmail push/watch is not implemented, so this is polling-based near-real-time behavior, not push-based real-time. See `docs/project-control/NEXT_ACTION.md` for the exact verification steps and the remaining OPS-01 environment checks.
 
 
@@ -551,3 +554,18 @@ Additional source defects were found and corrected: migration 0030's PL/pgSQL bl
 - PR #15's email-tool/Gmail history changes are merged to main (merge commit d444cf1b35939008058532b0754b46daef7cc312).
 - Added docs/plans/EMAIL-INDEX-IDENTITY-AND-ACCOUNT-LIFECYCLE.md. Key source-level gap: message content updates do not visibly invalidate indexed_at, and account removal lacks an explicit, retryable vector-index purge contract.
 - No test/typecheck/build or live vector/index acceptance is claimed. The current execution environment has no local checkout and cannot resolve github.com.
+
+
+### 2026-10-16 — Provider realtime email sync, RT-02 source progress
+
+- PR #19: https://github.com/Rilan-Dev/ai-comms-agent/pull/19, branch `feature/provider-realtime-email-sync` stacked on PR #18 branch `feature/imap-smtp-mail-actions`.
+- Added Gmail adapter profile/watch/stop methods and `apps/worker/src/email/gmail-watch-worker.ts`; worker starts watch registration/renewal every 12 hours when configured and renews watches expiring within 24 hours. Watch expiry/history ID are stored in account `connection_config`.
+- Added `POST /api/webhooks/gmail`: Google certificate-backed RS256 verification, issuer/audience/configured service-account identity/expiry checks, bounded request body, Pub/Sub payload validation, mailbox resolution against trusted DB rows, and immediate durable sync scheduling. The worker due-query now allows a persisted `next_attempt_at` push trigger to bypass the ordinary two-minute polling delay.
+- Added a small web test for missing/malformed bearer token rejection.
+- **Not complete:** tests/typechecks/build were not run; valid signed push delivery, account matching, watch renewal, History API reconciliation after push, cloud Pub/Sub setup, and real-mail latency remain unverified. IMAP IDLE, Zoho verification, Outlook adapter, and end-to-end timing remain pending. Keep capability flags fail-closed until verified.
+
+
+RT-02 follow-up: added migration `0049_email_sync_pending_push.sql` and changed webhook/worker checkpointing so push events arriving while an account is already syncing are not cleared by that sync's completion. The watch worker now checks every five minutes for newly connected accounts and watches expiring within 24 hours. Still source-only and unverified.
+
+
+Gmail follow-up hardening: watch failures now use stored retry backoff (5 minutes with exponential growth capped at 6 hours); successful watch registration persists refreshed OAuth credentials and clears retry metadata. The webhook skips notifications already covered by the persisted Gmail history cursor and acknowledges intentionally paused sync accounts. These are source changes only; their tests and runtime behavior remain unverified.
