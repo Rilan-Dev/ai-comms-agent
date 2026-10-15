@@ -486,3 +486,18 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Required next action:** After FIX-01 closes ISS-026 and confirms the retrieval authorization contract, expose/use an authenticated Clara RAG adapter that applies org + allowed-account scope. Wire `startEmailKnowledgeSyncLoop` into worker startup and test content re-embedding versus metadata-only payload update, stale chunk removal, message delete, account purge, retry/idempotency, and multi-account isolation.
 - **Verification:** No tests/typecheck/migration/live vector verification were run in this environment; no vector sync PASS is claimed. Do not merge PR #16 as fully working until the adapter is bound and checks are run.
 - **Boundaries:** FIX-01 retains ISS-026 ownership; OPS-01 owns live infrastructure and ingestion verification.
+
+
+## ISS-027 — Worker build rejects unchecked decrypted credential records
+
+- **Opened:** 2026-10-16
+- **Severity:** high (worker image build blocker)
+- **Owner:** FIX-01
+- **Status:** in_progress — source correction committed; verification pending
+- **Description:** Clean Docker build failed TypeScript compilation in `gmail-watch-worker.ts` and `imap-idle-worker.ts`: generic `Record<string, unknown>` credential data was asserted as `EmailCredentials` despite the required `credential_type` discriminant.
+- **Root cause:** Decrypted credential repository results are a generic record and the provider-worker consumers did not validate the credential discriminant before adapter use.
+- **Remedy:** Validate `credential_type` against `oauth_token`, `password`, and `app_password`; pass a spread object with the narrowed discriminant; remove unsafe assertions.
+- **Failed approaches:** Do not bypass the compiler with `as unknown as EmailCredentials`; it would suppress a meaningful trust-boundary check. No other attempted remedy is evidenced.
+- **Evidence:** User-provided Docker build log; source correction commits `185b729d`, `60fadabf`, `e3ba38c9`, `18948e08`. Typecheck, tests, and Docker rebuild have not yet been rerun.
+- **Prevention:** Validate decrypted/persisted JSON at the consumer boundary and use the worker TypeScript build as regression protection.
+- **Next action:** Run worker typecheck, targeted tests, and worker image rebuild. Route unrelated environment/deployment faults to OPS-01.
