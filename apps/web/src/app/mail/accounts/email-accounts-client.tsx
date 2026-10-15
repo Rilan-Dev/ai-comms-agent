@@ -6,6 +6,7 @@ import type { EmailAccount } from "@ai-comms-agent/shared";
 const providers = [
   { id: "gmail", name: "Gmail", description: "Google Workspace and Gmail", method: "OAuth 2.0", tone: "G" },
   { id: "zoho", name: "Zoho Mail", description: "Regional Zoho Mail endpoints", method: "OAuth 2.0", tone: "Z" },
+  { id: "microsoft_graph", name: "Outlook / Microsoft 365", description: "Outlook.com and Microsoft 365 mailboxes", method: "Microsoft OAuth 2.0", tone: "M" },
   { id: "imap_smtp", name: "IMAP / SMTP", description: "Any compatible mailbox", method: "TLS · OAuth or app password", tone: "M" },
 ] as const;
 
@@ -33,6 +34,7 @@ export function EmailAccountsClient({
   const [selectedZohoConfig, setSelectedZohoConfig] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [zohoWebhookUrls, setZohoWebhookUrls] = useState<Record<string, string>>({});
   const [showImapForm, setShowImapForm] = useState(false);
   const [imap, setImap] = useState({email:"",displayName:"",host:"",port:"993",username:"",password:"",smtpHost:"",smtpPort:"465",tls:true});
   const [savingImap, setSavingImap] = useState(false);
@@ -66,6 +68,7 @@ export function EmailAccountsClient({
     const params = new URLSearchParams(window.location.search);
     if (params.get("connected") === "gmail") setNotice("Gmail authorization completed. The account is pending worker verification and initial synchronization.");
     if (params.get("connected") === "zoho") setNotice("Zoho authorization completed. The account is pending worker verification and initial synchronization.");
+    if (params.get("connected") === "microsoft_graph") setNotice("Outlook authorization completed. The account is pending worker verification and initial synchronization.");
     if (params.get("providerError")) setNotice(params.get("providerError"));
     if (params.has("connected") || params.has("providerError")) {
       window.history.replaceState({}, "", "/mail/accounts");
@@ -110,6 +113,26 @@ export function EmailAccountsClient({
     }
   }
 
+  async function generateZohoWebhookUrl(account: EmailAccount) {
+    setBusy(account.id);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/email-accounts/${encodeURIComponent(account.id)}/zoho-webhook`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ organizationId }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message ?? "Could not generate the Zoho webhook URL.");
+      setZohoWebhookUrls((current) => ({ ...current, [account.id]: data.webhookUrl }));
+      setNotice("One-time Zoho webhook URL generated. Copy it now and configure it in Zoho Mail; it cannot be retrieved after leaving this page.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not generate the Zoho webhook URL.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function reconnect(account: EmailAccount) {
     if (account.provider === "gmail") {
       if (!selectedGmailConfig) { setNotice("Add and enable a Gmail OAuth client in Settings before connecting Gmail."); return; }
@@ -119,6 +142,10 @@ export function EmailAccountsClient({
     if (account.provider === "zoho") {
       if (!selectedZohoConfig) { setNotice("Add and enable a Zoho OAuth client in Settings before reconnecting Zoho Mail."); return; }
       window.location.assign(`/api/oauth/zoho/start?configId=${encodeURIComponent(selectedZohoConfig)}&accountId=${encodeURIComponent(account.id)}`);
+      return;
+    }
+    if (account.provider === "microsoft_graph") {
+      window.location.assign(`/api/oauth/microsoft/start?accountId=${encodeURIComponent(account.id)}`);
       return;
     }
     setBusy(account.id);
@@ -283,12 +310,13 @@ export function EmailAccountsClient({
               onClick={() => {
                 if (provider.id === "gmail") { if (!selectedGmailConfig) { setNotice("Add and enable a Gmail OAuth client in Settings before connecting Gmail."); return; } window.location.assign(`/api/oauth/gmail/start?configId=${encodeURIComponent(selectedGmailConfig)}`); }
                 if (provider.id === "zoho") { if (!selectedZohoConfig) { setNotice("Add and enable a Zoho OAuth client in Settings before connecting Zoho Mail."); return; } window.location.assign(`/api/oauth/zoho/start?configId=${encodeURIComponent(selectedZohoConfig)}`); }
+                if (provider.id === "microsoft_graph") window.location.assign("/api/oauth/microsoft/start");
                 if (provider.id === "imap_smtp") setShowImapForm(true);
               }}
               disabled={(provider.id === "gmail" && !selectedGmailConfig) || (provider.id === "zoho" && !selectedZohoConfig)}
               className="mt-5 h-10 w-full rounded-md border bg-muted/40 text-sm font-semibold transition hover:bg-muted disabled:opacity-50"
             >
-              {provider.id === "gmail" ? "Connect with Google" : provider.id === "zoho" ? "Connect with Zoho" : "Configure mailbox"}
+              {provider.id === "gmail" ? "Connect with Google" : provider.id === "zoho" ? "Connect with Zoho" : provider.id === "microsoft_graph" ? "Connect with Microsoft" : "Configure mailbox"}
             </button>
           </article>
         ))}
@@ -326,7 +354,7 @@ export function EmailAccountsClient({
                     <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold">{statusLabel(account.status)}</span>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {account.provider.replace("_", " / ")} · {account.display_name ?? "Mailbox"}
+                    {account.provider === "microsoft_graph" ? "Outlook / Microsoft 365" : account.provider.replace("_", " / ")} · {account.display_name ?? "Mailbox"}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">{Object.entries(account.capabilities).filter(([,enabled])=>enabled).slice(0,5).map(([key])=><span key={key} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">{key.replaceAll("_"," ")}</span>)}</div>
                   <p className="mt-2 text-xs text-muted-foreground">
@@ -365,7 +393,7 @@ export function EmailAccountsClient({
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {account.provider === "gmail" && account.status !== "revoked" && account.status !== "disconnected" && (
+                  {["gmail", "zoho", "imap_smtp", "microsoft_graph"].includes(account.provider) && account.status !== "revoked" && account.status !== "disconnected" && (
                     <button type="button" disabled={busy === account.id} onClick={() => syncNow(account)} className="h-10 rounded-md border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
                       {busy === account.id ? "Queueing…" : "Sync now"}
                     </button>
@@ -380,11 +408,31 @@ export function EmailAccountsClient({
                       {structureLoading === account.id ? "Loading…" : structure ? "Refresh folders" : "View folders"}
                     </button>
                   )}
+                  {account.status === "connected" && account.provider === "zoho" && (
+                    <button type="button" disabled={busy === account.id} onClick={() => generateZohoWebhookUrl(account)} className="h-10 rounded-md border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
+                      {busy === account.id ? "Generating…" : "Set up realtime webhook"}
+                    </button>
+                  )}
                   {account.status === "connected" && account.provider === "imap_smtp" && (
                     <button type="button" disabled={busy === account.id} onClick={() => reconnect(account)} className="h-10 rounded-md border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
                       {busy === account.id ? "Checking…" : "Test connection"}
                     </button>
                   )}
+                {zohoWebhookUrls[account.id] && (
+                  <div className="mt-3 w-full rounded-md border bg-muted/30 p-3 sm:max-w-xl">
+                    <p className="text-xs font-semibold">Zoho Mail webhook URL — shown once</p>
+                    <p className="mt-1 text-xs text-muted-foreground">In Zoho Mail, open Settings → Integrations → Developer Space → Outgoing Webhooks. Choose Mail, select incoming-mail events, and use Limited Data List. Treat this URL as a secret.</p>
+                    <input aria-label="Zoho webhook URL" readOnly value={zohoWebhookUrls[account.id]} className="mt-2 h-10 w-full rounded-md border bg-background px-3 font-mono text-xs" />
+                    <button type="button" onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(zohoWebhookUrls[account.id]);
+                        setNotice("Zoho webhook URL copied. Paste it into Zoho Mail now.");
+                      } catch {
+                        setNotice("Copy the URL from the field above and paste it into Zoho Mail.");
+                      }
+                    }} className="mt-2 h-9 rounded-md border px-3 text-xs font-semibold hover:bg-muted">Copy URL</button>
+                  </div>
+                )}
                   <button type="button" disabled={busy === account.id} onClick={() => deleteAccount(account)} className="h-10 rounded-md border border-destructive/30 px-4 text-sm font-semibold text-destructive transition hover:bg-destructive/5 disabled:opacity-50">
                     Remove
                   </button>
