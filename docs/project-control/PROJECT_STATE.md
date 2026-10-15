@@ -1,3 +1,5 @@
+> **Latest live inbox investigation — 2026-10-14:** Root cause identified in Gmail batch response parsing: Google returns response Content-ID values prefixed with `response-`, but the adapter mapped them without stripping that prefix. This caused successful Gmail fetches to be treated as missing and acknowledged without persistence. The current draft PR #18 fixes response mapping, preserves failed persistence IDs for retry, adds regression tests, and reduces fallback polling to 2 minutes. PR #18 remains draft; tests/typecheck/live deployment after these latest edits are NOT verified. Gmail push/watch is not implemented, so this is polling-based near-real-time behavior, not push-based real-time. See `docs/project-control/NEXT_ACTION.md` for the exact verification steps and the remaining OPS-01 environment checks.
+
 
 ### Email index lifecycle branch — 2026-10-14
 - DEV-01 source branch `feature/email-index-lifecycle-v1` adds identity/content/metadata hashes, deterministic vector point IDs, content/metadata requeueing, durable vector sync outbox and retryable adapter processor.

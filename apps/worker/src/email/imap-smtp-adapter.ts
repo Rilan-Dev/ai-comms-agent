@@ -1,4 +1,5 @@
 import * as tls from "node:tls";
+import { randomUUID } from "node:crypto";
 import { promises as dns } from "node:dns";
 import type {
   CapabilitySet, DraftParams, DraftRef, EmailCredentials, EmailFolder, EmailLabel,
@@ -8,9 +9,9 @@ import type {
 const CAPABILITIES: CapabilitySet = {
   folders: true, labels: false, sync_incremental: true, sync_full: true,
   sync_webhook: false, sync_idle: false, search_server_side: false,
-  search_client_side: true, drafts: false, reply: false, forward: false,
-  mark_read: false, archive: false, move: false, threads: true,
-  attachments_download: false, attachments_upload: false, send: false,
+  search_client_side: true, drafts: true, reply: true, forward: true,
+  mark_read: true, archive: true, move: true, threads: true,
+  attachments_download: false, attachments_upload: false, send: true,
 };
 
 type ImapConnection = {
@@ -455,16 +456,206 @@ export class ImapSmtpAdapter implements EmailProvider {
     return messages;
   }
 
-  async createDraft(_params: DraftParams): Promise<DraftRef> { throw new Error("IMAP draft persistence is implemented by the email-sync worker"); }
-  async updateDraft(_draftId: string, _params: Partial<DraftParams>): Promise<DraftRef> { throw new Error("IMAP draft persistence is implemented by the email-sync worker"); }
-  async deleteDraft(_draftId: string): Promise<void> { throw new Error("IMAP draft persistence is implemented by the email-sync worker"); }
-  async sendDraft(_draftId: string): Promise<SentMessageRef> { throw new Error("SMTP send requires persisted draft resolution"); }
-  async send(_draftId: string): Promise<SentMessageRef> { return this.sendDraft(_draftId); }
-  async reply(_messageId: string, _params: DraftParams): Promise<SentMessageRef> { throw new Error("SMTP reply requires persisted message resolution"); }
-  async forward(_messageId: string, _to: string[]): Promise<SentMessageRef> { throw new Error("SMTP forward requires persisted message resolution"); }
-  async markRead(_messageIds: string[], _isRead: boolean): Promise<void> { throw new Error("IMAP flag updates are implemented by the email-sync worker"); }
-  async markUnread(_messageIds: string[]): Promise<void> { throw new Error("IMAP flag updates are implemented by the email-sync worker"); }
-  async archive(_messageIds: string[]): Promise<void> { throw new Error("IMAP archive is implemented by the email-sync worker"); }
-  async move(_messageIds: string[], _targetFolderId: string): Promise<void> { throw new Error("IMAP move is implemented by the email-sync worker"); }
-  async downloadAttachment(_attachmentId: string): Promise<Buffer> { throw new Error("IMAP attachment retrieval is implemented by the email-sync worker"); }
+  private validateAddresses(addresses: string[]): string[] {
+    if (!Array.isArray(addresses) || addresses.length === 0) throw new Error("At least one recipient is required");
+    return addresses.map((address) => {
+      const value = address.trim();
+      if (!/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(value) || /[\r\n]/.test(value)) {
+        throw new Error("Invalid email recipient address");
+      }
+      return value;
+    });
+  }
+
+  private buildMime(params: DraftParams, messageId = `<${randomUUID()}@ai-comms-agent.local>`, extraHeaders: Record<string, string> = {}): string {
+    const cleanHeader = (value: string) => value.replace(/[\r\n]+/g, " ").trim();
+    const subject = cleanHeader(params.subject ?? "");
+    const subjectHeader = /^[\x20-\x7e]*$/.test(subject) ? subject : `=?UTF-8?B?${Buffer.from(subject, "utf8").toString("base64")}?=`;
+    const to = this.validateAddresses(params.to).join(", ");
+    const cc = params.cc?.length ? this.validateAddresses(params.cc).join(", ") : "";
+    const bcc = params.bcc?.length ? this.validateAddresses(params.bcc).join(", ") : "";
+    const headers = [
+      `From: ${cleanHeader(this.ensureConnected().credentials.username ?? "")}`,
+      `To: ${to}`,
+      ...(cc ? [`Cc: ${cc}`] : []),
+      ...(bcc ? [`Bcc: ${bcc}`] : []),
+      `Subject: ${subjectHeader}`,
+      `Date: ${new Date().toUTCString()}`,
+      `Message-ID: ${messageId}`,
+      ...Object.entries(extraHeaders).map(([key, value]) => `${key}: ${cleanHeader(value)}`),
+      `MIME-Version: 1.0`,
+      params.body_html
+        ? "Content-Type: text/html; charset=UTF-8"
+        : "Content-Type: text/plain; charset=UTF-8",
+      "Content-Transfer-Encoding: 8bit",
+      "",
+      params.body_html ?? params.body_text,
+    ];
+    return headers.join("\r\n");
+  }
+
+  private async appendDraft(raw: string): Promise<DraftRef> {
+    const { imap, credentials } = this.ensureConnected();
+    const folder = (await this.listFolders()).find((item) => item.role === "drafts" || /drafts/i.test(item.name));
+    if (!folder) throw new Error("The IMAP server does not expose a Drafts folder");
+    await this.command(`SELECT ${quote(folder.provider_folder_id)}`);
+    const tag = this.nextTag(imap);
+    const literal = Buffer.from(raw, "utf8");
+    imap.socket.write(`${tag} APPEND ${quote(folder.provider_folder_id)} (\\Draft) {${literal.length}}\r\n`);
+    const continuation = await readLine(imap.reader);
+    if (!continuation.startsWith("+")) throw new Error(`IMAP APPEND rejected: ${continuation}`);
+    imap.socket.write(Buffer.concat([literal, Buffer.from("\r\n", "utf8")]));
+    const result = await readUntilTag(imap.reader, tag, 30_000);
+    if (!result.startsWith(`${tag} OK`)) throw new Error(`IMAP draft save failed: ${result}`);
+    const appendedUid = result.match(/APPENDUID\s+\d+\s+(\d+)/i)?.[1];
+    let uid = appendedUid;
+    if (!uid) {
+      const messageId = raw.match(/^Message-ID:\s*(.+)$/im)?.[1]?.trim();
+      if (messageId) {
+        const found = await this.command(`UID SEARCH HEADER Message-ID ${quote(messageId)}`);
+        uid = found.join("\n").match(/\* SEARCH\s+(\d+)/i)?.[1];
+      }
+    }
+    if (!uid) throw new Error("Draft was appended but the server did not expose its UID; refusing to return an unstable draft reference");
+    return { draft_id: `${folder.provider_folder_id}:${uid}`, account_id: credentials.account_id ?? "imap_smtp" };
+  }
+
+  async createDraft(params: DraftParams): Promise<DraftRef> {
+    this.ensureConnected();
+    const messageId = `<${randomUUID()}@ai-comms-agent.local>`;
+    return this.appendDraft(this.buildMime(params, messageId, params.reply_to_message_id ? { "In-Reply-To": params.reply_to_message_id, References: params.reply_to_message_id } : {}));
+  }
+
+  async updateDraft(draftId: string, params: Partial<DraftParams>): Promise<DraftRef> {
+    const existing = await this.getMessage(draftId);
+    if (!existing || !existing.is_draft) throw new Error("Draft not found in the IMAP Drafts folder");
+    const updated: DraftParams = {
+      to: params.to ?? existing.to_addresses,
+      cc: params.cc ?? existing.cc_addresses,
+      bcc: params.bcc ?? existing.bcc_addresses,
+      subject: params.subject ?? existing.subject,
+      body_text: params.body_text ?? existing.text_body,
+      body_html: params.body_html,
+      reply_to_message_id: params.reply_to_message_id ?? existing.in_reply_to,
+    };
+    const replacement = await this.createDraft(updated);
+    await this.deleteDraft(draftId);
+    return replacement;
+  }
+
+  async deleteDraft(draftId: string): Promise<void> {
+    const split = draftId.lastIndexOf(":");
+    if (split < 1 || !/^\d+$/.test(draftId.slice(split + 1))) throw new Error("Invalid IMAP draft reference");
+    const folder = draftId.slice(0, split);
+    const uid = draftId.slice(split + 1);
+    await this.command(`SELECT ${quote(folder)}`);
+    await this.command(`UID STORE ${uid} +FLAGS.SILENT (\\Deleted)`);
+    await this.command("UID EXPUNGE " + uid).catch(async () => {
+      // Roll back the Deleted flag when UID EXPUNGE is unavailable; never fall back
+      // to EXPUNGE, which could remove unrelated messages already marked deleted.
+      await this.command(`UID STORE ${uid} -FLAGS.SILENT (\\\\Deleted)`).catch(() => undefined);
+      throw new Error("This IMAP server lacks UID EXPUNGE; draft deletion is not safe to complete");
+    });
+  }
+
+  private async smtpSend(params: DraftParams, extraHeaders: Record<string, string> = {}): Promise<SentMessageRef> {
+    const { smtp, credentials } = this.ensureConnected();
+    const sender = (credentials.username ?? "").trim();
+    if (!sender || !/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(sender)) throw new Error("A valid authenticated sender address is required");
+    const recipients = [...this.validateAddresses(params.to), ...(params.cc?.length ? this.validateAddresses(params.cc) : []), ...(params.bcc?.length ? this.validateAddresses(params.bcc) : [])];
+    const messageId = `<${randomUUID()}@ai-comms-agent.local>`;
+    // Bcc recipients belong in the SMTP envelope, never in the delivered headers.
+    const raw = this.buildMime(params, messageId, extraHeaders).replace(/^Bcc:.*\r?\n/im, "");
+    const mail = await smtpCommand(this.smtp!.reader, `MAIL FROM:<${sender}>`);
+    if (!/^250\b/.test(mail)) throw new Error("SMTP server rejected sender");
+    for (const recipient of recipients) {
+      const response = await smtpCommand(this.smtp!.reader, `RCPT TO:<${recipient}>`);
+      if (!/^(250|251)\b/.test(response)) throw new Error(`SMTP server rejected recipient ${recipient}`);
+    }
+    const ready = await smtpCommand(this.smtp!.reader, "DATA");
+    if (!/^354\b/.test(ready)) throw new Error("SMTP server did not accept message data");
+    const dotStuffed = raw.replace(/\r?\n\./g, (match) => match.replace(".", "..")).replace(/\r?\n/g, "\r\n");
+    smtp.write(dotStuffed + "\r\n.\r\n");
+    const accepted = await readLine(this.smtp!.reader, 30_000);
+    if (!/^250\b/.test(accepted)) throw new Error(`SMTP message submission failed: ${accepted}`);
+    return { message_id: messageId, provider_message_id: messageId };
+  }
+
+  async sendDraft(draftId: string): Promise<SentMessageRef> {
+    const message = await this.getMessage(draftId);
+    if (!message || !message.is_draft) throw new Error("Draft not found in the IMAP Drafts folder");
+    const result = await this.smtpSend({
+      to: message.to_addresses, cc: message.cc_addresses, bcc: message.bcc_addresses,
+      subject: message.subject, body_text: message.text_body,
+    }, message.in_reply_to ? { "In-Reply-To": message.in_reply_to, References: message.in_reply_to } : {});
+    await this.deleteDraft(draftId);
+    return result;
+  }
+
+  async send(draftId: string): Promise<SentMessageRef> { return this.sendDraft(draftId); }
+
+  async reply(messageId: string, params: DraftParams): Promise<SentMessageRef> {
+    const source = await this.getMessage(messageId);
+    if (!source) throw new Error("Source message not found");
+    const to = params.to.length ? params.to : [source.from_address];
+    const replyParams = { ...params, to, subject: params.subject || (/^re:/i.test(source.subject) ? source.subject : `Re: ${source.subject}`) };
+    const references = [...(source.references ?? []), source.message_id_header].filter(Boolean).join(" ");
+    return this.smtpSend(replyParams, {
+      ...(source.message_id_header ? { "In-Reply-To": source.message_id_header } : {}),
+      ...(references ? { References: references } : {}),
+    });
+  }
+
+  async forward(messageId: string, to: string[]): Promise<SentMessageRef> {
+    const source = await this.getMessage(messageId);
+    if (!source) throw new Error("Source message not found");
+    return this.smtpSend({
+      to, subject: /^fwd?:/i.test(source.subject) ? source.subject : `Fwd: ${source.subject}`,
+      body_text: `---------- Forwarded message ----------\nFrom: ${source.from_address}\nDate: ${source.received_at}\nSubject: ${source.subject}\nTo: ${source.to_addresses.join(", ")}\n\n${source.text_body}`,
+    });
+  }
+
+  async markRead(messageIds: string[], isRead: boolean): Promise<void> {
+    await this.updateFlags(messageIds, isRead ? "+FLAGS.SILENT (\\Seen)" : "-FLAGS.SILENT (\\Seen)");
+  }
+
+  async markUnread(messageIds: string[]): Promise<void> { return this.markRead(messageIds, false); }
+
+  private async updateFlags(messageIds: string[], operation: string): Promise<void> {
+    for (const messageId of messageIds) {
+      const split = messageId.lastIndexOf(":");
+      if (split < 1 || !/^\d+$/.test(messageId.slice(split + 1))) throw new Error("Invalid IMAP message reference");
+      await this.command(`SELECT ${quote(messageId.slice(0, split))}`);
+      await this.command(`UID STORE ${messageId.slice(split + 1)} ${operation}`);
+    }
+  }
+
+  async archive(messageIds: string[]): Promise<void> {
+    const folders = await this.listFolders();
+    const archive = folders.find((folder) => folder.role === "archive" || /^(all mail|archive)$/i.test(folder.name));
+    if (!archive) throw new Error("No Archive folder is available on this IMAP server");
+    await this.move(messageIds, archive.provider_folder_id);
+  }
+
+  async move(messageIds: string[], targetFolderId: string): Promise<void> {
+    const folders = await this.listFolders();
+    if (!folders.some((folder) => folder.provider_folder_id === targetFolderId)) throw new Error("Target IMAP folder does not exist");
+    for (const messageId of messageIds) {
+      const split = messageId.lastIndexOf(":");
+      if (split < 1 || !/^\d+$/.test(messageId.slice(split + 1))) throw new Error("Invalid IMAP message reference");
+      const sourceFolder = messageId.slice(0, split);
+      const uid = messageId.slice(split + 1);
+      if (sourceFolder === targetFolderId) continue;
+      await this.command(`SELECT ${quote(sourceFolder)}`);
+      try {
+        await this.command(`UID MOVE ${uid} ${quote(targetFolderId)}`);
+      } catch {
+        // Fallback is deliberately avoided: COPY + EXPUNGE can delete unrelated
+        // messages on servers without UIDPLUS. Report unsupported instead.
+        throw new Error("This IMAP server does not support safe UID MOVE");
+      }
+    }
+  }
+
+  async downloadAttachment(_attachmentId: string): Promise<Buffer> { throw new Error("IMAP attachment retrieval is not implemented"); }
 }
