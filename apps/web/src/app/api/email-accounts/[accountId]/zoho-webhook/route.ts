@@ -56,13 +56,17 @@ export async function POST(
 
     const token = randomBytes(32).toString("base64url");
     const tokenHash = createHash("sha256").update(token).digest("hex");
-    await query(
+    const tokenUpdate = await query<{ id: string }>(
       `UPDATE email_accounts
           SET connection_config=(COALESCE(connection_config,'{}'::jsonb) || $1::jsonb),
               updated_at=now()
-        WHERE id=$2 AND organization_id=$3 AND provider='zoho' AND deleted_at IS NULL`,
+        WHERE id=$2 AND organization_id=$3 AND provider='zoho' AND deleted_at IS NULL
+        RETURNING id`,
       [JSON.stringify({ zohoWebhookTokenHash: tokenHash, zohoWebhookCreatedAt: new Date().toISOString() }), account.id, organizationId],
     );
+    if (!tokenUpdate.rows[0]) {
+      return NextResponse.json({ error: "not_found", message: "Zoho mailbox was removed while generating the webhook URL." }, { status: 404 });
+    }
 
     // Clear any old HMAC secret only after the endpoint token has rotated in
     // the database. If credential persistence fails, the old URL is already invalid.
