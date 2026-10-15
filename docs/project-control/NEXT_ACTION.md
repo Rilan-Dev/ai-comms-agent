@@ -1118,3 +1118,12 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Security boundary:** ISS-026 remains open and FIX-01-owned. Do not expose vector retrieval or the existing broad Chat email-context loader beyond the current authorization contract; DEV-01 must not take over the substantial tenant-security fix.
 - **Next DEV-01 action:** Obtain architecture review/correction; confirm the supported Clara server-to-server vector/RAG adapter; coordinate with FIX-01 on the allowed-account contract; then bind adapter, start outbox loop, and implement shared retrieval for Chat + realtime voice. Do not claim 10x without measured baseline.
 - **Verification:** Review and docs only. Tests/typechecks/build/live vector/provider/latency checks NOT RUN. OPS-01 owns runtime/infrastructure acceptance after source work.
+
+
+### DEV-01 — Clara email-vector adapter contract investigation (2026-10-16)
+
+- **Evidence:** `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md`, updated at commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`.
+- **Confirmed blocker:** Clara main currently has internal KB-scoped Qdrant functions and a KB-scoped `/api/embed/search`, but no supported server-to-server email-vector API. Do not call internal functions cross-repo or treat the KB search route as an email endpoint.
+- **Security blocker:** ISS-026 remains open and FIX-01-owned. No adapter binding or email-vector retrieval exposure until account-level authorization is established.
+- **Next DEV-01 action:** Establish and implement an authenticated email-vector API in the Clara source-of-truth repository (explicit cross-repo work), then bind it to ai-comms-agent's existing durable outbox and shared retrieval after ISS-026 closes. The contract must cover deterministic upsert, metadata-only update, stale-chunk deletion, message/account purge, filtered search, and source references.
+- **Verification:** Source inspection/docs only; no tests, typechecks, builds, live API calls, Qdrant operations, or latency benchmarks. OPS-01 owns runtime/ingestion/performance acceptance.
