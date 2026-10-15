@@ -318,3 +318,13 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Summary:** Gmail history paging and deletion reconciliation now have source changes and regression coverage. Shared email tool descriptors and capability filtering are in place; descriptors are not executable handlers.
 - **Owner:** DEV-01 for host runtime/tool work; FIX-01 for substantial bugs; OPS-01 for runtime/deployment.
 - **Next:** Implement read-only host handlers with execution-time tenant authorization and audit before exposing catalogue entries.
+
+
+### EVT-FIX01-WORKER-CREDENTIAL-TYPE-20261016 — 2026-10-16
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** CORRECTION
+- **Summary:** User's clean Docker build failed worker TypeScript compilation because Gmail watch renewal and IMAP IDLE startup asserted generic decrypted credential records directly as `EmailCredentials`, which requires `credential_type`. Both paths now validate the supported discriminant and avoid unsafe assertions.
+- **Impact:** local
+- **Owner:** FIX-01
+- **Suggested next action:** Run worker typecheck/build and targeted tests on the deployment host; report any remaining Docker build or runtime issue to the correct owner.
+- **Related records:** `docs/project-control/agents/FIX-01/WORKLOG.md`, `docs/project-control/agents/FIX-01/MEMORY.md`, commits `185b729d`, `60fadabf`, `e3ba38c9`, `18948e08`
