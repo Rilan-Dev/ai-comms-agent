@@ -339,3 +339,11 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Routing:** ISS-026 remains FIX-01-owned. OPS-01 owns live infrastructure and ingestion/latency acceptance. DEV-01 did not modify product code or take over either role.
 - **Verification:** No tests/typechecks/build/live vector/provider/latency tests run. No 10x speed claim made.
 - **Next:** Obtain architecture review/correction, resolve the supported Clara adapter contract and FIX-01 security dependency, then implement the authorized retrieval path.
+
+
+### EVT-DEV01-EMAIL-RAG-ADAPTER-INVESTIGATION-20261016 — 2026-10-16
+- **Type:** adapter_contract_blocker
+- **Finding:** Current Clara source exposes internal KB-scoped Qdrant module functions and a KB-scoped search route, but no supported server-to-server email-vector API. The existing upsert's random point IDs/KB payload model does not satisfy deterministic account-scoped outbox lifecycle needs.
+- **Action:** Updated the email RAG plan with source evidence at commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`. No app code or Clara source was changed.
+- **Security:** ISS-026 remains open and FIX-01-owned; no vector retrieval exposed.
+- **Next:** Establish/implement an authenticated Clara email-vector API contract; after ISS-026 closure bind the adapter and worker loop. OPS-01 validates live infrastructure and latency.
