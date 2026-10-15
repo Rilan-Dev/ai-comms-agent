@@ -1386,3 +1386,10 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Source-only status:** Adapter maps upsert, delete-message, and purge-account operations; requires server-only credential, HTTPS in production, bounded request timeout, and throws on HTTP failure for outbox retry.
 - **Not run:** worker tests/typecheck, Clara tests/typecheck/lint/build, Qdrant/embedding calls, account-isolation runtime tests, ingestion or latency benchmarks. Do not mark passed.
 - **Security boundary:** Adapter remains unbound and worker sync loop is not started. ISS-026 remains FIX-01-owned/open.
+
+### 2026-10-16 — email vector metadata correction and Qdrant integration test authored
+
+- Source corrections: adapter now clears stale sender/folder metadata with explicit null/empty values; Clara API accepts explicit metadata clears; request body cap uses UTF-8 byte length.
+- Test authored: opt-in Qdrant integration test exercises org/account allowlist filtering and account-scoped deletion against a configured Qdrant service.
+- Not run: Clara tests/typecheck/lint/build, worker tests/typecheck, or Qdrant integration test. Dependency-equipped local execution and a configured Qdrant integration endpoint were not available during this work.
+- Security: ISS-026 remains open/FIX-01-owned. No adapter binding, outbox startup, or Chat/realtime-voice retrieval exposure.
