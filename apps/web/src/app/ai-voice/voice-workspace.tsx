@@ -501,7 +501,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       try { data = JSON.parse(String(event.data)) as Record<string, unknown>; } catch { return; }
       const type = String(data.type ?? data.message_type ?? "");
       if ((type === "status" && data.value === "connected") || type === "session_started") activate();
-      if (type === "transcript_partial" || type === "transcript_partial") {
+      if (type === "transcript_partial") {
         if (typeof data.text === "string" && data.text.trim()) setNotice(`Hearing: ${data.text.trim()}`);
       }
       if (type === "transcript_final") {
@@ -869,9 +869,9 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   function toggleMute() {
     const next = !micMuted;
     micMutedRef.current = next;
-    streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next; });
+    streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next && !ttsGenerationRef.current; });
     setMicMuted(next);
-    setNotice(next ? "Microphone muted. The realtime session remains connected." : "Microphone unmuted. Listening for speech.");
+    setNotice(next ? "Microphone muted. The realtime session remains connected." : ttsGenerationRef.current ? "Microphone will resume after Clara finishes speaking." : "Microphone unmuted. Listening for speech.");
   }
 
   function interrupt() {
@@ -1019,7 +1019,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                 <Row label="Model" value={session?.model ?? "Not resolved"} />
                 <Row label="Session" value={session?.id ? session.id.slice(0, 14) + "…" : "—"} />
                 <Row label="Microphone" value={connected ? micMuted ? "Muted" : "Live" : "Not connected"} />
-                <Row label="Transport" value={connected ? transport?.realtimeProvider === "gemini" ? "Gemini Live WebSocket" : transport?.realtimeProvider === "sarvam" ? "Sarvam STT/TTS pipeline" : transport?.realtimeProvider === "elevenlabs" ? "ElevenLabs STT/TTS pipeline" : "OpenAI WebRTC" : bridgeOnly ? "Authorized text bridge" : busy ? "Negotiating" : "Not connected"} />
+                <Row label="Transport" value={connected ? transport?.realtimeProvider === "gemini" ? "Gemini Live WebSocket" : transport?.realtimeProvider === "sarvam" ? transport.transportMode === "realtime" ? "Sarvam STT/TTS WebSocket" : "Sarvam STT/TTS pipeline" : transport?.realtimeProvider === "elevenlabs" ? transport.transportMode === "realtime" ? "ElevenLabs STT/TTS WebSocket" : "ElevenLabs STT/TTS pipeline" : "OpenAI WebRTC" : bridgeOnly ? "Authorized text bridge" : busy ? "Negotiating" : "Not connected"} />
                 <Row label="Provider key" value="Server-side only" />
               </dl>
             </div>
