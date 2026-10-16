@@ -7,7 +7,7 @@
 - Email operations currently registered: local draft create/update, reply/forward draft creation, plus send/reply/forward request tools that create `pending_approval` records. The provider action worker is the only path that sends after explicit approval; it now updates an existing provider draft with the latest approved contents before sending. Voice UI surfaces pending approval IDs and explicitly says they have not been sent.
 - Provider-backed mailbox mutations (mark read, archive, move, trash/bulk), attachment operations and other unimplemented catalogue tools remain unregistered/fail-closed; do not claim they are complete.
 - Verification state: GitHub source edits only. Tests, typecheck, build, browser microphone/transport, provider credentials, relay deployment, approval execution and deployment have NOT been run or verified. Do not wait/poll GitHub Actions or Vercel; continue source work and report evidence accurately.
-- Remaining: OPS-01 must deploy the relay and configure `AUTH_SECRET`, `AI_COMMS_WEB_URL`, `VOICE_RELAY_ALLOWED_ORIGINS`, and web `VOICE_RELAY_PUBLIC_URL`; then FIX-01 should complete provider lifecycle/error/reconnect tests and provider-backed mailbox mutation handlers. PR #27 and issue #26 remain open until scope and evidence are complete.
+- Remaining: OPS-01 must deploy the relay and configure `AUTH_SECRET`, `AI_COMMS_WEB_URL`, `VOICE_RELAY_ALLOWED_ORIGINS`, and web `VOICE_RELAY_PUBLIC_URL`; then FIX-01 should complete provider lifecycle/error/reconnect tests and provider-backed mailbox mutation handlers. PR #27 was merged at its earlier partial commit. PR #28 is the draft continuation for this source tranche; issue #26 remains open until scope and evidence are complete.
 
 ---
 
