@@ -63,6 +63,7 @@ test("hybrid retrieval resolves fresh bindings and revalidates semantic candidat
   assert.match(calls[2]?.sql ?? "", /JOIN agent_email_accounts/);
   assert.match(calls[2]?.sql ?? "", /jsonb_to_recordset/);
   assert.match(calls[2]?.sql ?? "", /COALESCE\(d\.sha256/);
+  assert.match(calls[2]?.sql ?? "", /array_remove\(c\.matched_by, 'semantic'\)/);
   assert.deepEqual(calls[2]?.values[2], [account]);
   assert.match(String(calls[2]?.values[3] ?? ""), /"content_hash":"a{64}"/);
 });

@@ -246,7 +246,13 @@ export function createEmailHybridRetriever(dependencies: {
        )
        SELECT m.id, m.provider_message_id, m.email_account_id, m.thread_id,
               m.from_email, m.to_recipients, m.subject, m.text_body, m.snippet,
-              m.received_at, a.email_address, a.provider, c.score, c.matched_by
+              m.received_at, a.email_address, a.provider, c.score,
+               CASE
+                 WHEN 'semantic'=ANY(c.matched_by)
+                   AND COALESCE(d.sha256, d.metadata->>'content_hash') IS DISTINCT FROM c.content_hash
+                 THEN array_remove(c.matched_by, 'semantic')
+                 ELSE c.matched_by
+               END AS matched_by
          FROM candidates c
          JOIN email_messages m ON m.email_account_id=c.account_id AND m.provider_message_id=c.provider_message_id
          LEFT JOIN knowledge_documents d ON d.organization_id=m.organization_id
