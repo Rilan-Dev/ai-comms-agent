@@ -9,6 +9,15 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'scheduled_job_runs_job_fire_uniq'
+  ) AND NOT EXISTS (
+    -- 0021_scheduled_run_idempotency already creates a UNIQUE INDEX with this
+    -- exact name; ADD CONSTRAINT would try to create its backing index with the
+    -- same name and fail with "relation already exists" (42P07). The unique
+    -- index alone already serves the ON CONFLICT arbiter, so the constraint is
+    -- only needed when neither object exists.
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = current_schema()
+      AND indexname = 'scheduled_job_runs_job_fire_uniq'
   ) THEN
     ALTER TABLE scheduled_job_runs
       ADD CONSTRAINT scheduled_job_runs_job_fire_uniq

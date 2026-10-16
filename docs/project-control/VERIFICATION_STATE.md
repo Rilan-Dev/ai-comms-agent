@@ -1429,3 +1429,25 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Not verified:** Static test execution, typecheck, migration execution against PostgreSQL, worker build/restart, cessation of SQLSTATE 22P02, Microsoft Graph subscription configuration, mailbox sync, and persisted-message counts.
 - **Status:** SOURCE_CORRECTED / RUNTIME_VERIFICATION_PENDING. No PASS claimed.
 - **Owner / next action:** OPS-01 applies migrations through the normal process, rebuilds/restarts the worker from matching source, inspects sanitized logs, and verifies sync timestamps and persisted messages. Keep the subscription-prerequisite warning separate from the enum defect.
+
+
+## ISS-029 reset convergence — 2026-10-16 (branch fix/reset-anytime-convergence, PR open, NOT merged)
+
+```yaml
+issue: ISS-029
+change_kind: infra-scripts (migrate.sh, reset-and-migrate.sh) + one migration guard (0043)
+local_embedded_postgres_18:
+  repro_owner_exact_error: pass          # 0002:71 + CONTEXT line, role postgres, poisoned public state
+  repro_unretryable_rerun: pass          # identical failure on immediate re-run (pre-fix)
+  repro_pr29_insufficiency_clean_db: pass  # 0002:36 "relation organizations does not exist", role postgres (pre-fix)
+  repro_baseline_chain_0043: fail_pre_fix  # role aca, clean db — chain blocker independent of the reset
+  fixed_reset_from_poison_role_postgres: pass  # 62/62 applied + verification line
+  fixed_reset_repeat_role_aca: pass            # 62/62
+  fixed_reset_repoisoned_role_postgres: pass   # 62/62
+  fixed_plain_migrate_skip_path: pass           # 62 SKIP / 0 APPLY / PASS
+  verify_migration_chain_sh: fail_pre_existing_on_main  # identical failure (byte-identical output) on pristine main and on this branch: "duplicate canonical table objects" from the parallel reconciliation migrations — unrelated to ISS-029, not modified here
+  final_state: { aca_tables: 55, ledger_rows: 62, stale_public_app_objects: 0 }
+production: not_run
+app_runtime_regression: not_run
+claims: source + local harness evidence only; no production PASS claimed
+```
