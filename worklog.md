@@ -1802,3 +1802,12 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 - Added `apps/web/tests/voice-realtime-transport.test.ts` and fixed lifecycle static assertion scoping in `voice-session-start-lifecycle.test.ts`.
 - Scope remains partial: OpenAI WebRTC only; other providers still use the clearly labeled transcript bridge. Full voice email mutation/tool execution is not claimed until the shared authorized email-tool runtime is wired.
 - Verification: source changes written through GitHub only. Tests, typecheck, build, browser microphone/WebRTC, real provider credentials and deployment have NOT been run. PR #27 remains open; issue #26 remains open.
+
+
+## 2026-10-16 — FIX-01 voice providers + email runtime integration
+
+- Gemini Live: constrained single-use ephemeral token minted server-side, then browser WebSocket transcription using 16 kHz PCM; final speech is routed through Clara's host-authorized turn endpoint.
+- Sarvam and ElevenLabs: browser VAD and PCM16/WAV utterance capture; server-side provider STT and provider TTS; language selection and playback controls. This is not yet a persistent provider WebSocket connection for either service.
+- Shared email runtime: created `packages/email-agent-runtime` and rewired worker wrappers to use it; web voice route calls `runEmailAgentTurn` with trusted identity/permissions and voice channel context.
+- Added safe draft/mailbox handlers and approval-gated send/reply/forward requests; the action worker executes only after explicit approval. Voice UI displays pending approval IDs and does not claim the message was sent.
+- Added static regression tests and updated project-control records. Verification remains unrun: tests, typecheck, build, browser/provider credentials, approval execution and deployment.
