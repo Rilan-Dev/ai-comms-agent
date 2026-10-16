@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import WebSocket, { WebSocketServer } from "ws";
 import { handleSarvamRealtimeConnection } from "./sarvam-relay.mjs";
 import { handleElevenLabsRealtimeStt, handleElevenLabsRealtimeTts } from "./elevenlabs-relay.mjs";
+import { handleSarvamTtsRealtimeConnection } from "./sarvam-tts-relay.mjs";
 
 const port = Number(process.env.VOICE_RELAY_PORT || 3301);
 const allowedOrigins = new Set(
@@ -40,6 +41,7 @@ const websocketServer = new WebSocketServer({
 
 const handlers = new Map([
   ["/api/voice/sarvam/realtime", handleSarvamRealtimeConnection],
+  ["/api/voice/sarvam/tts-realtime", handleSarvamTtsRealtimeConnection],
   ["/api/voice/elevenlabs/realtime", handleElevenLabsRealtimeStt],
   ["/api/voice/elevenlabs/tts-realtime", handleElevenLabsRealtimeTts],
 ]);
