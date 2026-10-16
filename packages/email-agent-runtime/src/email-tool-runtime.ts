@@ -7,6 +7,7 @@ import {
 import { EMAIL_TOOL_CATALOG, ToolRegistry } from "@ai-comms-agent/shared";
 import type { ToolContext } from "@ai-comms-agent/shared";
 import { registerEmailReadTools } from "./email-read-tools";
+import { registerEmailWriteTools } from "./email-write-tools";
 import { hasEmailToolCapabilities, isEmailToolAllowedByPolicy } from "./email-tool-policy";
 import { executeRegisteredTool } from "./tool-executor";
 import type { ToolAuthorizationDecision, ToolAuditWriter } from "./tool-executor";
@@ -28,6 +29,7 @@ export async function createEmailToolRuntime(organizationId: string, agentId: st
   const allowedTools = policy?.allowedTools ?? [];
   const registry = new ToolRegistry((requestedAgentId) => requestedAgentId === agentId ? allowedTools : null);
   registerEmailReadTools((tool) => registry.register(tool), { accounts: accountRepository, agents });
+  registerEmailWriteTools((tool) => registry.register(tool), { accounts: accountRepository });
 
   const authorize: EmailToolRuntime["authorize"] = async (tool, input, context) => {
     if (context.organization_id !== organizationId || context.agent_id !== agentId) {
@@ -56,7 +58,7 @@ export async function createEmailToolRuntime(organizationId: string, agentId: st
         [agentId, organizationId, accountId],
       );
       const role = binding.rows[0]?.role;
-      if (!role || role === "send_only") {
+      if (!role || (role === "send_only" && tool.required_permission === "email.read")) {
         return { allowed: false, code: "account_not_available", message: "This mailbox is not available for read access." };
       }
       const account = await accountRepository.getForAgent(organizationId, agentId, accountId);
