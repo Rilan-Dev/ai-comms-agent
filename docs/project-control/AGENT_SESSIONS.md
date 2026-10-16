@@ -624,3 +624,11 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Implemented on `fix/voice-transport-contract`: host-authorized OpenAI WebRTC SDP negotiation; organization-scoped encrypted realtime/chat key lookup with server env fallback; microphone/audio/data-channel UI, transcript-to-host-turn routing, spoken host-generated answer, greeting, mute/interrupt/end controls, explicit transport state and readiness timeout; added static transport tests.
 - Scope limit: native WebRTC currently OpenAI only. Other providers remain explicitly on transcript bridge. Full voice-triggered email mutations are not claimed; shared authorized email-tool runtime integration remains outstanding.
 - Verification: GitHub source edits only; tests, typecheck, build, browser/provider and deployment not run. PR #27 remains open; issue #26 remains open.
+
+
+### SESSION-070 — 2026-10-16
+- Agent: FIX-01 / Sentinel
+- Scope: continue issue #26 from Clara AI Platform reference implementation.
+- Implemented: Gemini Live constrained ephemeral token + WebSocket transcription; Sarvam/ElevenLabs provider-backed mic/STT/host-turn/TTS pipelines; extracted shared email runtime package and wired voice turns into it; registered safe draft/mailbox tools and approval-gated send/reply/forward request tools; pending approval IDs surfaced in voice UI.
+- Explicit limits: Sarvam and ElevenLabs still lack persistent native WebSocket relays; sensitive trash/bulk and attachment tools remain unregistered. Send/reply/forward are pending approval only, not sent.
+- Verification: source edits only; tests/typecheck/build/browser/provider/approval worker/deployment not run. PR #27 and issue #26 remain open.
