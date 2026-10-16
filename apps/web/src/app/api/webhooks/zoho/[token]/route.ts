@@ -63,6 +63,7 @@ export async function POST(
     );
     if (matches.rows.length !== 1) return unauthorized();
     const account = matches.rows[0];
+    if (!account) return unauthorized();
 
     const signature = request.headers.get("x-hook-signature") ?? "";
     const incomingSecret = request.headers.get("x-hook-secret") ?? "";

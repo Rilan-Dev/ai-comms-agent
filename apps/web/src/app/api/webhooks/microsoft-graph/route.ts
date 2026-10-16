@@ -91,6 +91,10 @@ export async function POST(request: Request) {
         continue;
       }
       const account = matches.rows[0];
+      if (!account) {
+        rejected += 1;
+        continue;
+      }
       const credentials = await repository.loadCredentials(account.id, masterKey);
       const expectedState = typeof credentials?.microsoft_graph_client_state === "string"
         ? credentials.microsoft_graph_client_state

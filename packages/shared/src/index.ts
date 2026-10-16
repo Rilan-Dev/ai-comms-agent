@@ -40,6 +40,7 @@ export type {
   SentMessageRef,
   SearchQuery,
   ListOptions,
+  AttachmentRef,
 } from "./email/provider";
 
 export { CapabilityNotSupported, CapabilityNotSupported as CapabilityNotSupportedError } from "./email/provider";

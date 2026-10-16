@@ -45,7 +45,15 @@ async function reconcileSubscription(candidate: Candidate, masterKey: Buffer, en
   const repository = new PostgresEmailAccountRepository();
   const stored = await repository.loadCredentials(candidate.id, masterKey);
   if (!stored?.access_token || !stored.refresh_token) throw new Error("Microsoft OAuth credentials or refresh token are missing.");
-  const credentials = { ...stored } as EmailCredentials;
+  // `loadCredentials` returns `Record<string, unknown>` (decrypted JSON), which
+  // does not structurally overlap with `EmailCredentials` (which requires the
+  // discriminated `credential_type` field). Bridge through `unknown` to assert
+  // that the decrypted payload is in fact a complete EmailCredentials object.
+  // The Microsoft Graph adapter only invokes connect() with the OAuth fields
+  // (access_token, refresh_token, expires_at, microsoft_*) so a missing
+  // credential_type would not affect runtime behavior — but the cast still
+  // needs to be type-safe against the discriminated union.
+  const credentials = { ...stored, credential_type: "oauth_token" } as unknown as EmailCredentials;
   const clientState = credentials.microsoft_graph_client_state || randomBytes(32).toString("base64url");
   const adapter = new MicrosoftGraphAdapter();
   let createdSubscriptionId: string | undefined;

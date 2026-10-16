@@ -5,7 +5,7 @@ import type { EmailMessage } from "@ai-comms-agent/shared";
 export type EmailKnowledgeSource = {
   organizationId: string;
   accountId: string;
-  provider: "gmail" | "zoho" | "imap_smtp";
+  provider: "gmail" | "zoho" | "imap_smtp" | "microsoft_graph";
   message: EmailMessage;
 };
 
