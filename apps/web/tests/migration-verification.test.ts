@@ -33,6 +33,8 @@ const auditHardeningPath = resolve(__dirname, "../../../supabase/migrations/0032
 const auditHardeningSql = readFileSync(auditHardeningPath, "utf8");
 const attachmentCompatibilityPath = resolve(__dirname, "../../../supabase/migrations/0033_email_attachment_message_id_compatibility.sql");
 const attachmentCompatibilitySql = readFileSync(attachmentCompatibilityPath, "utf8");
+const microsoftGraphProviderPath = resolve(__dirname, "../../../supabase/migrations/0034_email_provider_microsoft_graph.sql");
+const microsoftGraphProviderSql = readFileSync(microsoftGraphProviderPath, "utf8");
 
 describe("Disposable PostgreSQL bootstrap static verification", () => {
   it("uses valid dollar-quoted DO blocks", () => {
@@ -49,6 +51,15 @@ describe("Migration static verification (0033_email_attachment_message_id_compat
     expect(attachmentCompatibilitySql).toContain("UPDATE email_attachments SET message_id = email_message_id WHERE message_id IS NULL");
     expect(attachmentCompatibilitySql).toContain("ON email_attachments(message_id)");
     expect(attachmentCompatibilitySql).toContain("RAISE EXCEPTION '0033 attachment reconciliation found rows without message_id");
+  });
+});
+
+
+describe("Migration static verification (0034_email_provider_microsoft_graph.sql)", () => {
+  it("adds Microsoft Graph to the enum used by email_accounts.provider", () => {
+    expect(applicationDomainSql).toContain("CREATE TYPE email_provider AS ENUM ('gmail','imap_smtp','zoho')");
+    expect(microsoftGraphProviderSql).toMatch(/ALTER TYPE email_provider ADD VALUE IF NOT EXISTS 'microsoft_graph'/);
+    expect(microsoftGraphProviderSql).not.toContain("ALTER TYPE email_account_provider");
   });
 });
 
