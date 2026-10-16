@@ -85,6 +85,15 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       await patchSession({ action: "activate", providerSessionId: providerSessionIdRef.current });
       setConnected(true);
       setNotice("Realtime audio connected. Speak naturally; Clara routes recognized speech through the host-authorized turn pipeline.");
+      if (channel.readyState === "open") {
+        channel.send(JSON.stringify({
+          type: "response.create",
+          response: {
+            output_modalities: ["audio"],
+            instructions: "Say exactly: Hello, I'm Clara. How can I help you with your email and communication tasks today?",
+          },
+        }));
+      }
     } catch (e) {
       activationStartedRef.current = false;
       setError(e instanceof Error ? e.message : "Could not persist the connected voice state.");
