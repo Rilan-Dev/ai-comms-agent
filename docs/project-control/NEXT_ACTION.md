@@ -1,3 +1,15 @@
+## DEV-01 realtime voice recovery — 2026-10-16
+
+- User request: Fix Clara realtime voice so the browser connects and the user can ask Clara about email naturally.
+- Source finding on main: apps/web/src/app/ai-voice/voice-workspace.tsx requests microphone permission and calls the HTTP transcript bridge; it never instantiates a realtime adapter or opens a WebSocket. The UI says the browser transport adapter is still being negotiated while the session can appear active.
+- Contract defect: packages/clara-core/src/runtime.ts resolveVoice() returns sessionEndpoint: "/api/voice/turn"; this is the host HTTP transcript endpoint, not a provider realtime socket/session URL. packages/shared/src/voice/transport.ts defines an adapter contract, but the workspace does not use an implementation.
+- Role routing: substantial source bug assigned to FIX-01/Sentinel in issue #26. DEV-01 does not implement a competing provider transport. OPS-01 owns deployment/infrastructure only if a correctly implemented adapter fails in deployed runtime.
+- Security: Keep provider credentials server-side. Use Clara's pinned realtime client, provider-specific negotiation/relay, state machine, reconnect and interruption logic. Voice email operations must reuse chat's organization/agent/account authorization and approval/audit path; do not bypass ISS-026.
+- Verification: GitHub source inspection only. No tests, typecheck, build, browser, WebSocket/provider or deployment checks were run. No live connection claimed.
+- Exact next action: FIX-01 addresses issue #26: wire the supported Clara realtime client through real provider session negotiation; only label connected after transport readiness; bridge voice turns to the host-authorized agent pipeline; add regression tests for connection/error/reconnect/interruption/teardown. OPS-01 is engaged only for a distinct deployment/infrastructure failure after source correctness is established.
+
+---
+
 ## FIX-01 immediate corrective action — Microsoft Graph provider enum (2026-10-16)
 
 - **Symptom:** Worker mailbox poll, leased direct-sync fallback, and retry deliveries repeatedly fail with PostgreSQL 22P02: invalid input value for enum email_provider: "microsoft_graph".
