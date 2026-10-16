@@ -22,6 +22,7 @@ export interface EmailAgentTurnInput {
 export interface EmailAgentTurnResult {
   text: string;
   toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; durationMs: number }>;
+  pendingApprovals: Array<{ actionId: string; actionType: string; message: string }>;
   finishReason: "completed" | "round_limit" | "tool_limit" | "invalid_tool_call" | "invalid_tool_arguments";
 }
 
@@ -64,11 +65,13 @@ export async function runEmailAgentTurn(
     return {
       text: "Email tools are not enabled for this agent. Ask an administrator to enable the required tools and mailbox permissions.",
       toolCalls: [],
+      pendingApprovals: [],
       finishReason: "completed",
     };
   }
   const history: ToolChatMessage[] = input.messages.map((message) => ({ ...message }));
   const summaries: EmailAgentTurnResult["toolCalls"] = [];
+  const pendingApprovals: EmailAgentTurnResult["pendingApprovals"] = [];
   let totalCalls = 0;
 
   for (let round = 0; round < maxRounds; round += 1) {
@@ -84,7 +87,7 @@ export async function runEmailAgentTurn(
       const finalText = completion.text.trim()
         ? completion.text
         : "I couldn't complete the email request safely. Please try again or narrow the request.";
-      return { text: finalText, toolCalls: summaries, finishReason };
+      return { text: finalText, toolCalls: summaries, pendingApprovals, finishReason };
     }
 
     // Preserve the provider's assistant tool-call turn before appending results.
@@ -94,6 +97,7 @@ export async function runEmailAgentTurn(
         return {
           text: "I stopped before running more email operations because this turn reached its tool-call safety limit.",
           toolCalls: summaries,
+          pendingApprovals,
           finishReason: "tool_limit",
         };
       }
@@ -104,6 +108,16 @@ export async function runEmailAgentTurn(
       // Route even an unexpected provider-emitted name through the executor:
       // unknown-tool denials must be audited by the same durable audit sink.
       const result = await dependencies.invoke(runtime, call.name, call.arguments, input.toolContext);
+      const toolOutput = result.output && typeof result.output === "object" && !Array.isArray(result.output)
+        ? result.output as Record<string, unknown>
+        : null;
+      if (result.ok && toolOutput?.status === "pending_approval" && typeof toolOutput.action_id === "string") {
+        pendingApprovals.push({
+          actionId: toolOutput.action_id,
+          actionType: typeof toolOutput.action_type === "string" ? toolOutput.action_type : call.name,
+          message: typeof toolOutput.message === "string" ? toolOutput.message : "This email action is awaiting explicit approval and has not been executed.",
+        });
+      }
       summaries.push({
         name: call.name,
         ok: result.ok,
@@ -122,6 +136,7 @@ export async function runEmailAgentTurn(
   return {
     text: "I reached the maximum number of reasoning rounds for this turn. Please narrow the request or ask me to continue.",
     toolCalls: summaries,
+    pendingApprovals,
     finishReason: "round_limit",
   };
 }
