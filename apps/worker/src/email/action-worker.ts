@@ -55,7 +55,7 @@ export async function processApprovedEmailActions(limit = 10) {
             body_text: String(snapshot.bodyText ?? draft.text_body ?? ""),
           };
           const providerDraftId = draft.provider_draft_id
-            ? String(draft.provider_draft_id)
+            ? String((await connected.updateDraft(String(draft.provider_draft_id), params)).draft_id)
             : (await connected.createDraft(params)).draft_id;
           return { kind: "send", ref: await connected.sendDraft(providerDraftId) };
         }
