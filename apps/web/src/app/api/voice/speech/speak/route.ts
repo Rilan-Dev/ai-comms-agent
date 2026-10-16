@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
     if (provider === "sarvam") {
       const configuredVoice = text(session.voice_id, 100);
-      const speaker = configuredVoice && configuredVoice !== "alloy" ? configuredVoice : "anushka";
+      const speaker = configuredVoice && configuredVoice !== "alloy" ? configuredVoice : "shubh_enhi_ads";
       const upstream = await fetch("https://api.sarvam.ai/text-to-speech", {
         method: "POST",
         headers: { "content-type": "application/json", "api-subscription-key": apiKey },
