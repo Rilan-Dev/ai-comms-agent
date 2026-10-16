@@ -627,7 +627,7 @@ export const claraRuntime = {
     // without their own transport adapter stay explicitly on the text bridge.
     const credentialFor = async (providerId: string) => ctx.orgId && process.env.DATABASE_URL
       ? query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
-          "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider=$2 AND purpose IN ('realtime','chat') ORDER BY CASE WHEN purpose='realtime' THEN 0 ELSE 1 END LIMIT 1",
+          "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider=$2 AND purpose IN ('realtime','voice_chat','chat') ORDER BY CASE WHEN purpose='realtime' THEN 0 WHEN purpose='voice_chat' THEN 1 ELSE 2 END LIMIT 1",
           [ctx.orgId, providerId],
         )
       : { rows: [] as Array<{ encrypted_api_key: Buffer | null; enabled: boolean }> };
