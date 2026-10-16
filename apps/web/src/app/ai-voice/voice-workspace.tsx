@@ -15,6 +15,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   const [transport, setTransport] = useState<Transport | null>(null);
   const [transcript, setTranscript] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [pendingApprovals, setPendingApprovals] = useState<Array<{ actionId: string; actionType: string; message: string }>>([]);
   const [busy, setBusy] = useState(false);
   const [connected, setConnected] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -157,14 +158,16 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
         signal: controller.signal,
         body: JSON.stringify({ organizationId, agentId: agent.id, sessionId: current.id, transcript: text }),
       });
-      const payload = await response.json().catch(() => ({})) as { text?: string; message?: string; error?: string; toolCalls?: Array<{ name: string; ok: boolean; errorCode?: string }> };
+      const payload = await response.json().catch(() => ({})) as { text?: string; message?: string; error?: string; toolCalls?: Array<{ name: string; ok: boolean; errorCode?: string }>; pendingApprovals?: Array<{ actionId: string; actionType: string; message: string }> };
       if (!response.ok) throw new Error(payload.message ?? payload.error ?? "Voice turn failed.");
       if (!isCurrentVoiceSequence(turnSequenceRef.current, sequence) || controller.signal.aborted) return;
       const answer = payload.text?.trim() || "I couldn't produce a response for that turn.";
       setTurns((old) => old.map((turn) => turn.id === assistantTurn.id ? { ...turn, text: answer, state: "done" } : turn));
+      setPendingApprovals((old) => [...old, ...(payload.pendingApprovals ?? [])]);
       const succeeded = payload.toolCalls?.filter((call) => call.ok).length ?? 0;
       const denied = payload.toolCalls?.filter((call) => !call.ok).length ?? 0;
-      const toolSummary = payload.toolCalls?.length ? ` Email tools: ${succeeded} succeeded, ${denied} denied or failed.` : "";
+      const approvalSummary = payload.pendingApprovals?.length ? ` ${payload.pendingApprovals.length} email action(s) need explicit approval; none were sent yet.` : "";
+      const toolSummary = (payload.toolCalls?.length ? ` Email tools: ${succeeded} succeeded, ${denied} denied or failed.` : "") + approvalSummary;
       setNotice((speakAnswer ? "Answer received from Clara. Playing the spoken response." : "Response received.") + toolSummary);
       if (speakAnswer) {
         const channel = channelRef.current;
@@ -558,6 +561,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     setBusy(true);
     setError("");
     setTurns([]);
+    setPendingApprovals([]);
     finalizedItemsRef.current.clear();
     setNotice("Authorizing and initializing the voice session…");
     try {
@@ -708,6 +712,21 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                 <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">{bridgeOnly ? "Text fallback" : "Conversation transcript"}</p>
                 {connected ? <span className="flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 size={13} /> Audio transport ready</span> : null}
               </div>
+              {pendingApprovals.length ? (
+                <section className="mb-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 text-left" aria-live="polite">
+                  <p className="text-sm font-semibold">Email action approval required</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">These requests are queued for explicit approval. They have not sent, replied to, or forwarded any email.</p>
+                  <ul className="mt-3 space-y-3">
+                    {pendingApprovals.map((approval) => (
+                      <li key={approval.actionId} className="rounded-xl border bg-background px-3 py-3">
+                        <p className="text-sm font-medium">{approval.actionType.replaceAll("_", " ")}</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{approval.message}</p>
+                        <p className="mt-2 break-all font-mono text-[11px] text-muted-foreground">Approval ID: {approval.actionId}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
               {turns.length ? (
                 <div className="mb-4 max-h-64 space-y-3 overflow-y-auto pr-1">
                   {turns.map((turn) => (
