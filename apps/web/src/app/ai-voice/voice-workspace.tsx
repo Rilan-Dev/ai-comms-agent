@@ -398,7 +398,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
               ) : (
                 <p className="mb-4 rounded-xl border border-dashed px-4 py-5 text-center text-sm text-muted-foreground">{connected ? "Your conversation will appear here as you speak." : "Start a session to begin. Live audio is only enabled when a real provider transport is available."}</p>
               )}
-              {liveSession && (bridgeOnly || !connected) ? (
+              {liveSession && bridgeOnly ? (
                 <form onSubmit={(event) => { event.preventDefault(); void sendTextTurn(); }} className="flex flex-col gap-2 sm:flex-row">
                   <textarea value={transcript} onChange={(event) => setTranscript(event.target.value)} placeholder="Type a message to Clara…" rows={2} className="min-h-12 flex-1 resize-y rounded-xl border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
                   <button type="submit" disabled={!transcript.trim() || busy} className="self-stretch rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-background disabled:opacity-40">Send text</button>
