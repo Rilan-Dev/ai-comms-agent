@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     }
 
     const credentials = await query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
-      "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='gemini' AND purpose IN ('realtime','stt','tts','chat','general') ORDER BY CASE WHEN purpose='realtime' THEN 0 WHEN purpose='stt' THEN 1 WHEN purpose='tts' THEN 2 WHEN purpose='chat' THEN 3 ELSE 4 END LIMIT 1",
+      "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='gemini' AND purpose IN ('realtime','stt','tts','chat','general') AND enabled=true AND encrypted_api_key IS NOT NULL ORDER BY CASE WHEN purpose='realtime' THEN 0 WHEN purpose='stt' THEN 1 WHEN purpose='tts' THEN 2 WHEN purpose='chat' THEN 3 ELSE 4 END LIMIT 1",
       [organizationId],
     );
     let apiKey: string | undefined;
