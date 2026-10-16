@@ -17,6 +17,7 @@ describe("voice session start lifecycle", () => {
     const transportIndex = route.indexOf("await claraRuntime.startRealtimeSession");
     expect(createIndex).toBeGreaterThanOrEqual(0);
     expect(transportIndex).toBeGreaterThan(createIndex);
+    expect(route).toContain("voiceOverride: { provider: voiceProvider, model: voiceModel, voiceId }");
   });
 
   it("does not label the HTTP transcript bridge as a realtime session endpoint", () => {
