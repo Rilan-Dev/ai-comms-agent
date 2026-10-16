@@ -621,7 +621,10 @@ export const claraRuntime = {
     const provider = organizationConfig?.voice?.provider ?? env("REALTIME_VOICE_PROVIDER") ?? selectedProvider();
     return {
       realtimeProvider: provider,
-      sessionEndpoint: "/api/voice/turn",
+      // This is an authenticated HTTP transcript-turn endpoint, not a provider
+      // realtime transport descriptor. Never expose it as a WebSocket/session URL.
+      transportMode: "transcript_bridge" as const,
+      turnEndpoint: "/api/voice/turn",
       voiceId: organizationConfig?.voice?.voiceId || env("OPENAI_DEFAULT_VOICE") || env("ELEVENLABS_VOICE_ID") || "alloy",
       model: organizationConfig?.voice?.model || env("OPENAI_REALTIME_MODEL") || "gpt-realtime-2.1-mini",
     };
