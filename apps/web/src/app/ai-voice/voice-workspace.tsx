@@ -169,6 +169,45 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     }
   }, [patchSession, stopMedia]);
 
+  function streamProviderTts(text: string, generationId: string): boolean {
+    const socket = ttsSocketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+    ttsGenerationRef.current = generationId;
+    ttsFinalSeenRef.current = false;
+    ttsPendingFramesRef.current = 0;
+    ttsNextStartRef.current = ttsAudioContextRef.current?.currentTime ?? 0;
+    streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; });
+    setSpeaking(true);
+    setNotice(`${realtimeProviderRef.current} is streaming Clara's answer as audio.`);
+    socket.send(JSON.stringify({ type: "generation_start", generationId }));
+    socket.send(JSON.stringify({ type: "text", generationId, text }));
+    socket.send(JSON.stringify({ type: "flush", generationId }));
+    return true;
+  }
+
+  function speakGeminiWelcome(current: VoiceSession) {
+    if (!window.speechSynthesis) return;
+    const generationId = `${current.id}-welcome`;
+    const utterance = new SpeechSynthesisUtterance("Hello, I'm Clara. How can I help you with your email and communication tasks today?");
+    ttsGenerationRef.current = generationId;
+    utterance.onstart = () => {
+      setSpeaking(true);
+      streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; });
+    };
+    utterance.onend = () => {
+      ttsGenerationRef.current = null;
+      setSpeaking(false);
+      streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
+      setNotice("Connected and listening.");
+    };
+    utterance.onerror = () => {
+      ttsGenerationRef.current = null;
+      setSpeaking(false);
+      streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
+    };
+    window.speechSynthesis.speak(utterance);
+  }
+
   const submitHostTurn = useCallback(async (rawText: string, speakAnswer: boolean) => {
     const text = rawText.trim();
     const current = sessionRef.current;
@@ -203,21 +242,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
         const channel = channelRef.current;
         if (realtimeProviderRef.current === "sarvam" || realtimeProviderRef.current === "elevenlabs") {
           const provider = realtimeProviderRef.current;
-          const realtimeTtsSocket = ttsSocketRef.current;
-          if (realtimeTtsSocket?.readyState === WebSocket.OPEN) {
-            const generationId = `${current.id}-${sequence}`;
-            ttsGenerationRef.current = generationId;
-            ttsFinalSeenRef.current = false;
-            ttsPendingFramesRef.current = 0;
-            ttsNextStartRef.current = ttsAudioContextRef.current?.currentTime ?? 0;
-            streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; });
-            setSpeaking(true);
-            setNotice(`${provider} is streaming Clara's answer as audio.`);
-            realtimeTtsSocket.send(JSON.stringify({ type: "generation_start", generationId }));
-            realtimeTtsSocket.send(JSON.stringify({ type: "text", generationId, text: answer }));
-            realtimeTtsSocket.send(JSON.stringify({ type: "flush", generationId }));
-            return;
-          }
+          const generationId = `${current.id}-${sequence}`;
+          if (streamProviderTts(answer, generationId)) return;
           const response = await fetch("/api/voice/speech/speak", {
             method: "POST",
             headers: { "content-type": "application/json" },
