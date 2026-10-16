@@ -1,13 +1,16 @@
-## FIX-01 realtime voice implementation checkpoint — 2026-10-16
+## FIX-01 voice + email action runtime checkpoint — 2026-10-16
 
-- Reference reviewed: `Rilan-Dev/Clara-AI-Platform` branch `feature/ai-core-from-doable-source`; reusable patterns inspected in `useVoiceClient.ts`, `useOpenAIRealtime.ts`, `useGeminiLive.ts`, `useAudioVisualizer.ts`, and `/api/embed/session`.
-- Implemented on this branch: OpenAI-native WebRTC SDP negotiation behind `POST /api/voice/realtime`; server-side provider key; organization/user/agent/session ownership checks; realtime descriptor only when OpenAI is selected and server credential exists; screen-level live voice workspace with microphone audio, remote audio playback, data-channel events, final-transcript bridge to `/api/voice/turn`, spoken host-generated answer, mute/interrupt/end controls, conversation history and explicit connection states; static regression test file `apps/web/tests/voice-realtime-transport.test.ts`.
-- Connection truthfulness: session activation occurs only after the peer connection and data channel are open and the provider sends `session.created`; transport negotiation/configuration alone does not mark it active.
-- Known scope limit: this tranche implements the native OpenAI WebRTC transport only. Gemini, Sarvam and ElevenLabs remain on the explicitly labeled transcript bridge until their provider-specific Clara negotiation/relay paths are integrated. The current voice turn uses Clara's host-authorized chat turn path; do not claim full email mutation/tool execution from voice until the shared authorized email-tool harness is connected and covered.
-- Verification state: GitHub source edits only. Tests, typecheck, build, browser microphone/WebRTC, provider credentials and deployment have NOT been run or verified. Do not wait/poll CI/Vercel; continue source development and add deterministic lifecycle coverage.
-- PR #27 remains draft and issue #26 remains open until provider lifecycle/error/reconnect/interruption/teardown coverage and shared authorized email-tool execution are complete.
+- Reference reviewed: `Rilan-Dev/Clara-AI-Platform` branch `feature/ai-core-from-doable-source`, including the realtime hooks/session patterns. Official provider docs reviewed for Gemini Live ephemeral tokens and Sarvam/ElevenLabs speech interfaces.
+- Native transports: OpenAI WebRTC SDP negotiation at `POST /api/voice/realtime`; Gemini Live WebSocket using a server-minted single-use constrained ephemeral token at `POST /api/voice/gemini/session`. Gemini API keys remain server-side.
+- Sarvam/ElevenLabs voice path: added browser mic VAD/PCM→WAV utterance capture, provider-specific STT requests, Clara host-authorized turn processing, and provider-specific TTS output. This is a provider-backed utterance pipeline, **not yet a persistent Sarvam/ElevenLabs realtime WebSocket**. Do not label those two as native full-duplex connections.
+- Shared email runtime: extracted `@ai-comms-agent/email-agent-runtime` so web voice and worker use the same tool registry/executor, fresh policy allowlist checks, account/role/capability checks and durable audit. Voice turns now call `runEmailAgentTurn` with trusted authenticated `ToolContext`, channel `voice`, bounded tool rounds/calls and the organization's knowledge base.
+- Email actions registered: safe local draft create/update/delete, reply/forward draft creation, mark read, archive and move. Send/reply/forward are approval-request tools that create `email_actions` in `pending_approval`; the provider action worker remains the only execution path after explicit approval. The UI surfaces pending approval IDs and clearly says these actions have not been sent.
+- Authorization boundaries: tools are only exposed when enabled in the agent allowlist; every call re-reads policy, checks organization/agent/account binding, permissions and provider capabilities, and records audit. Unregistered actions remain unavailable/fail-closed.
+- Verification state: GitHub source edits only. Tests, typecheck, build, browser microphone/transport, live provider credentials and deployment have NOT been run or verified. Do not wait/poll GitHub Actions or Vercel; continue source work and report evidence accurately.
+- Remaining: implement persistent provider-specific Sarvam STT/TTS WebSocket and ElevenLabs Scribe realtime relay through a server-side relay/ephemeral authorization contract; complete lifecycle/error/reconnect tests; verify draft sync and approval handoff across providers; finish any missing safe email-tool handlers. PR #27 and issue #26 remain open until scope and evidence are complete.
 
 ---
+
 
 ## FIX-01 voice transport correction checkpoint — 2026-10-16
 
