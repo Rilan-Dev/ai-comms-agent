@@ -11,6 +11,7 @@ type Turn = { id: string; role: "user" | "assistant"; text: string; state?: "thi
 
 export function VoiceWorkspace({ organizationId, agents }: { organizationId: string; agents: Agent[] }) {
   const [agentId, setAgentId] = useState(agents[0]?.id ?? "");
+  const [languageCode, setLanguageCode] = useState("en-IN");
   const [session, setSession] = useState<VoiceSession | null>(null);
   const [transport, setTransport] = useState<Transport | null>(null);
   const [transcript, setTranscript] = useState("");
@@ -176,7 +177,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
           const response = await fetch("/api/voice/speech/speak", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ organizationId, agentId: agent.id, sessionId: current.id, text: answer, languageCode: "en-IN" }),
+            body: JSON.stringify({ organizationId, agentId: agent.id, sessionId: current.id, text: answer, languageCode }),
           });
           if (!response.ok) {
             const payload = await response.json().catch(() => ({})) as { message?: string; error?: string };
@@ -293,7 +294,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       form.append("organizationId", organizationId);
       form.append("agentId", agent?.id ?? "");
       form.append("sessionId", current.id);
-      form.append("languageCode", "en-IN");
+      form.append("languageCode", languageCode);
       form.append("audio", pcm16ToWav(merged), "voice-utterance.wav");
       const response = await fetch("/api/voice/speech/transcribe", { method: "POST", body: form });
       const payload = await response.json().catch(() => ({})) as { transcript?: string; message?: string; error?: string };
@@ -664,12 +665,26 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
             <h1 className="mt-2 font-display text-3xl font-medium tracking-tight sm:text-4xl">Talk to your communication agent<span className="text-tertiary">.</span></h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">A live conversation surface with explicit transport state, turn history, and host-authorized answers.</p>
           </div>
-          <label className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
-            <span className="mr-3 text-xs text-muted-foreground">Agent</span>
-            <select value={agentId} onChange={(e) => setAgentId(e.target.value)} disabled={liveSession} className="max-w-48 bg-transparent font-semibold outline-none">
-              {agents.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
-          </label>
+          <div className="flex flex-wrap gap-3">
+            <label className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
+              <span className="mr-3 text-xs text-muted-foreground">Agent</span>
+              <select value={agentId} onChange={(e) => setAgentId(e.target.value)} disabled={liveSession} className="max-w-48 bg-transparent font-semibold outline-none">
+                {agents.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </label>
+            <label className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
+              <span className="mr-3 text-xs text-muted-foreground">Speech language</span>
+              <select value={languageCode} onChange={(e) => setLanguageCode(e.target.value)} disabled={liveSession} className="bg-transparent font-semibold outline-none">
+                <option value="en-IN">English (India)</option>
+                <option value="ta-IN">Tamil</option>
+                <option value="hi-IN">Hindi</option>
+                <option value="bn-IN">Bengali</option>
+                <option value="te-IN">Telugu</option>
+                <option value="kn-IN">Kannada</option>
+                <option value="ml-IN">Malayalam</option>
+              </select>
+            </label>
+          </div>
         </header>
 
         <section className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,.6fr)]">
