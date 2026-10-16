@@ -54,6 +54,7 @@ export async function POST(request: Request) {
         kbId,
         userId: subject.user.id,
         sessionId: String(persisted.id),
+        voiceOverride: { provider: voiceProvider, model: voiceModel, voiceId },
       });
       const configured = await configureStartingVoiceSessionForOrganization({
         organizationId,
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
         provider: transport.realtimeProvider,
         model: transport.model,
         voiceId: transport.voiceId,
-        metadata: { sessionEndpoint: transport.sessionEndpoint },
+        metadata: { transportMode: transport.transportMode, sessionEndpoint: "sessionEndpoint" in transport ? transport.sessionEndpoint : null, turnEndpoint: transport.turnEndpoint },
       });
       if (!configured) {
         await endVoiceSessionForOrganization(organizationId, String(persisted.id), "error");
