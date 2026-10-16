@@ -1791,3 +1791,14 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 - **Verification:** Test/typecheck/build, database migration execution, worker restart, and live mailbox sync were not run here. No PASS claimed.
 - **Prevention:** Change the enum actually referenced by the persisted column; guard against similarly named parallel enums with regression tests.
 - **Next action:** OPS-01 applies migration 0034, rebuilds/restarts the matching worker, and confirms SQLSTATE 22P02 disappears and email messages persist. Separate Microsoft Graph subscription prerequisites remain environment/runtime work.
+
+
+## 2026-10-16 — FIX-01 Clara-style realtime voice implementation
+
+- Used `Rilan-Dev/Clara-AI-Platform` branch `feature/ai-core-from-doable-source` as the reference for provider routing, realtime hooks, session negotiation and screen-level voice interaction.
+- Added `apps/web/src/app/api/voice/realtime/route.ts`: host-authorized OpenAI WebRTC SDP negotiation with organization/user/agent/session checks; encrypted organization-scoped `realtime` key first, saved OpenAI `chat` key fallback, then server environment key. No long-lived provider key is returned to the browser.
+- Changed Clara runtime to return a real `sessionEndpoint` only for OpenAI when a usable server-side credential is configured; otherwise the explicit `transcript_bridge` mode remains.
+- Rebuilt `voice-workspace.tsx` with mic capture, remote audio playback, realtime data-channel events, final speech transcript forwarding to the host-authorized turn route, spoken host-generated response and greeting, connection status, mute, interrupt, teardown, history and connection readiness timeout.
+- Added `apps/web/tests/voice-realtime-transport.test.ts` and fixed lifecycle static assertion scoping in `voice-session-start-lifecycle.test.ts`.
+- Scope remains partial: OpenAI WebRTC only; other providers still use the clearly labeled transcript bridge. Full voice email mutation/tool execution is not claimed until the shared authorized email-tool runtime is wired.
+- Verification: source changes written through GitHub only. Tests, typecheck, build, browser microphone/WebRTC, real provider credentials and deployment have NOT been run. PR #27 remains open; issue #26 remains open.
