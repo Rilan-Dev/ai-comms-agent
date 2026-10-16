@@ -1,3 +1,13 @@
+
+
+### DEV-01 / Forge — 2026-10-16 — Clara realtime voice transport diagnosis
+- Request: User reports voice UI shows an active session and ready microphone, but no WebSocket starts; they cannot speak to Clara to enquire about emails.
+- Inspected: apps/web/src/app/ai-voice/voice-workspace.tsx, packages/clara-core/src/runtime.ts, packages/shared/src/voice/transport.ts, and voice architecture/control records.
+- Finding: Workspace only obtains mic permission and uses /api/voice/turn for manually entered transcript turns; it never instantiates a VoiceTransportAdapter. Clara resolveVoice() currently returns that HTTP endpoint as sessionEndpoint, which is not a provider realtime endpoint. Thus “session active”/“transport resolved” overstates actual connectivity.
+- Action: Opened FIX-01 issue #26 with evidence, acceptance criteria, role boundaries and verification limitations. Updated central NEXT_ACTION, AGENT_SESSIONS, AGENT_EVENTS and DEV-01 memory.
+- Role boundary: Did not implement a competing realtime transport or take FIX-01's substantial bug ownership. OPS-01 is not engaged unless a correctly implemented source path fails due to deployment/infrastructure.
+- Verification: GitHub source inspection only; no tests/typecheck/build/browser/WebSocket/provider/deployment checks. No PASS or live connectivity claimed.
+- Next: FIX-01 uses Clara's pinned realtime client/session negotiation, makes connected state depend on actual transport readiness, bridges voice to the existing authorized host turn pipeline, and adds lifecycle regression tests. DEV-01 continues other independent authorized product work without waiting for CI/Vercel.
 # DEV-01 Role-Local Worklog
 
 Append-only operational history for DEV-01. This is not the source of authorization.
