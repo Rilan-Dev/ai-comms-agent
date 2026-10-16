@@ -48,7 +48,6 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.srcObject = null;
-      audioRef.current = null;
     }
     sessionCreatedRef.current = false;
     activationStartedRef.current = false;
@@ -158,10 +157,10 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     streamRef.current = stream;
     stream.getAudioTracks().forEach((track) => pc.addTrack(track, stream));
-    const audio = document.createElement("audio");
+    const audio = audioRef.current;
+    if (!audio) throw new Error("Realtime audio output element is unavailable.");
     audio.autoplay = true;
     audio.playsInline = true;
-    audioRef.current = audio;
     pc.ontrack = (event) => {
       audio.srcObject = event.streams[0];
       void audio.play().catch(() => setNotice("Voice is connected; tap the page once if your browser blocks audio playback."));
@@ -331,6 +330,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
 
   return (
     <main className="min-h-[calc(100vh-72px)] bg-background px-4 py-5 sm:px-8 sm:py-8">
+      <audio ref={audioRef} autoPlay playsInline className="hidden" aria-hidden="true" />
       <div className="mx-auto max-w-6xl">
         <header className="flex flex-col gap-4 border-b pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
