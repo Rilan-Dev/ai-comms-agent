@@ -1,3 +1,10 @@
+
+
+## 2026-10-16 — DEV-01 Clara realtime voice transport diagnosis
+- User-reported failure: voice workspace appears active but no provider WebSocket starts, preventing spoken email enquiries.
+- Source inspection found voice-workspace.tsx only uses microphone permission + manual HTTP transcript bridge; no realtime adapter is instantiated. Clara resolveVoice() returns /api/voice/turn as sessionEndpoint, conflating an HTTP turn endpoint with a provider realtime session/socket endpoint.
+- Routed substantial source defect to FIX-01 via issue #26. Required correction: use Clara's provider-specific negotiation and realtime client; reflect connected only after actual open/ready; preserve authorized email tool execution and server-side secrets; test interruption/reconnect/error/teardown. OPS-01 owns only distinct deployment/infrastructure issues after source correction.
+- Updated project-control records and DEV-01 memory/worklog. Source inspection only; tests/typecheck/build/browser/provider/deployment checks not run; no live connection claimed.
 # worklog.md — Audit Trail
 
 Append-only audit trail. Every phase and every task records: phase, status, objective, architect, developer, start date, completion date, approved scope, implementation summary, files changed, tests, verification, commit, review result, issues found, corrections, remaining work, next phase, next Z.AI instruction.
