@@ -58,17 +58,31 @@ Used lookup terms `["mohammed", "rilan", "ksa"]` and textQuery `"mohammed | rila
 
 **Result:** ✅ PASS — all 6 scenarios behave correctly. The runtime RAG path is also agent-scoped.
 
-### ⚠️ Step 4 — Live `/api/chat/stream` on Vercel — DEFERRED (Vercel has not auto-deployed `99fd6793`)
+### ⚠️ Step 4 — Live `/api/chat/stream` on Vercel — DEFERRED (Vercel has not auto-deployed)
 
 Queried `https://ai-comms-agent.vercel.app/api/chat/stream` with the Sarvam Chat Agent (no email bindings in DB) and message "Show me my last 5 emails".
 
 **Expected post-fix behavior:** Response mentions agent-scoped empty state ("No locally synchronized emails or drafts were found for this agent's bound mailboxes").
 
-**Actual behavior (observed at 06:48, 06:53, 06:58 UTC — 10-20 minutes after push):** Response dumps 20 organization-scoped emails (Indeed alerts, OpenAI newsletter, Labelbox). This is the PRE-ISS-026 behavior.
+**Actual behavior (observed at 06:48, 06:53, 06:58, 09:51, 09:57 UTC — multiple checks across ~3 hours):** Response still dumps 20 organization-scoped emails (Indeed alerts, OpenAI newsletter, Labelbox). This is the PRE-ISS-026 behavior.
 
-**Conclusion:** Vercel has NOT auto-deployed commit `99fd6793`. The response still contains the OLD empty-result message ("Results may be incomplete as only 20 records are available.") instead of the NEW one ("for this agent's bound mailboxes"). Vercel's GitHub integration appears to require a manual deploy trigger for this project — this is consistent with what the user noted earlier in the conversation ("Vercel auto-deploy may be disabled").
+**Build blocker discovered (commit `d264682`, PR #27):** Between my ISS-026 fix (`99fd6793`) and the live verification, PR #27 (`fix/voice-transport-contract`) merged with a TypeScript build error:
 
-**Result:** ⚠️ DEFERRED — runtime SQL is verified correct (Steps 1-3), but live endpoint verification cannot PASS until Vercel deploys `99fd6793`. The user must trigger a manual Vercel deploy (or wait for the auto-deploy queue to drain) before this step can be re-run.
+```
+./src/app/ai-voice/voice-workspace.tsx:163:11
+Type error: Property 'playsInline' does not exist on type 'HTMLAudioElement'.
+```
+
+This blocked Vercel from building main — neither `99fd6793` nor `d264682` could deploy. I fixed the build blocker in commit `613a019d fix(voice): drop imperative audio.playsInline + guard event.streams[0]` — removed the redundant imperative `audio.playsInline = true;` (the JSX `<audio playsInline />` already sets the attribute declaratively) and added an `if (!remoteStream) return;` guard on `event.streams[0]` (noUncheckedIndexedAccess makes it `MediaStream | undefined`). tsc clean, 20/20 tests pass (5 voice-realtime + 13 chat-memory-regression + 2 chat-authorization).
+
+**Conclusion:** Vercel build is unblocked. Vercel's GitHub auto-deploy for this project appears to require a manual trigger (consistent with prior observations in this conversation). The user must:
+
+1. Open the Vercel project dashboard → Deployments → "Redeploy" or trigger a new deployment for the latest main commit (`613a019d`).
+2. Wait for the build to complete (typically 1-3 minutes).
+3. Re-run: `node scripts/verify-iss026-step4-live.mjs`
+4. Expected post-deploy: response says "No locally synchronized emails or drafts were found for this agent's bound mailboxes." instead of dumping 20 org-wide emails.
+
+**Result:** ⚠️ DEFERRED — runtime SQL is verified correct (Steps 1-3), build blocker is fixed (`613a019d`). Live endpoint verification cannot PASS until Vercel deploys `613a019d` to production. The user must trigger the deploy manually.
 
 ## Aggregate Verdict
 
@@ -77,7 +91,14 @@ Queried `https://ai-comms-agent.vercel.app/api/chat/stream` with the Sarvam Chat
 | 1. Schema check | ✅ PASS |
 | 2. `loadEmailContext` SQL scenarios | ✅ PASS (6/6) |
 | 3. `groundContext` SQL scenarios | ✅ PASS (6/6) |
-| 4. Live Vercel endpoint | ⚠️ DEFERRED — Vercel hasn't deployed `99fd6793` |
+| 4. Live Vercel endpoint | ⚠️ DEFERRED — Vercel auto-deploy pending; build blocker fixed in `613a019d` |
+
+**Build blocker chronology:**
+- `99fd6793` (ISS-026 fix) pushed at 06:38 UTC
+- `d264682` (PR #27 voice transport contract) merged after — introduced `audio.playsInline` TS error
+- Vercel build failed at `d264682` (user shared log: `F5kt5h3FTtfKZfQ4E3tavnvew2z1`)
+- `613a019d` (voice build blocker fix) pushed at 09:47 UTC — tsc clean, 20/20 tests pass
+- Vercel auto-deploy still pending at 09:57 UTC (10 minutes after `613a019d` push)
 
 **ISS-026 source remediation is verified correct at the SQL level against the live Supabase schema.** Cross-agent mailbox isolation holds for all role permutations (primary / read_only / send_only / no binding) on BOTH violation sites (web route + clara-core runtime). The live Vercel endpoint verification is pending the deployment of `99fd6793` to production — OPS-01 should re-run Step 4 once Vercel deploys the commit.
 
