@@ -6,7 +6,7 @@ import { AudioLines, Mic, PhoneOff, Send, ShieldCheck } from "lucide-react";
 
 type Agent = { id: string; name: string; status: string };
 type VoiceSession = { id: string; status: string; provider?: string | null; model?: string | null };
-type Transport = { sessionEndpoint?: string; provider?: string | null; model?: string | null; voiceId?: string | null };
+type Transport = { transportMode?: "transcript_bridge" | "realtime"; turnEndpoint?: string; provider?: string | null; model?: string | null; voiceId?: string | null };
 
 export function VoiceWorkspace({ organizationId, agents }: { organizationId: string; agents: Agent[] }) {
   const [agentId, setAgentId] = useState(agents[0]?.id ?? "");
@@ -51,8 +51,10 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     setBusy(true);
     setError("");
     try {
-      await requestMicrophone();
-      setNotice("Resolving Clara realtime session…");
+      // Do not request microphone permission until a real realtime adapter is
+      // available. The current host runtime exposes only the authorized HTTP
+      // transcript bridge; microphone readiness is not transport readiness.
+      setNotice("Initializing the authorized transcript bridge. Realtime audio is not connected.");
       const response = await fetch("/api/voice/session", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -66,15 +68,15 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       if (!response.ok) throw new Error(payload.message ?? "Voice session could not start.");
       setSession(payload.session ?? null);
       setTransport(payload.transport ?? null);
-      setNotice(payload.transport?.sessionEndpoint
-        ? "Clara resolved the provider transport. Use the transcript bridge below while the browser transport adapter is negotiated."
-        : "Voice session created.");
+      setNotice(payload.transport?.transportMode === "realtime"
+        ? "Realtime transport descriptor received; waiting for the provider adapter to confirm readiness."
+        : "Session initialized. Realtime audio is not connected; use the authorized text transcript bridge below.");
     } catch (e) {
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
       setMicState("idle");
       setError(e instanceof Error ? e.message : "Voice session failed.");
-      setNotice("No provider connectivity was fabricated. Configure Clara voice credentials to enable transport.");
+      setNotice("Session startup failed. No provider connection was established.");
     } finally {
       setBusy(false);
     }
@@ -181,7 +183,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
               <div className="w-full max-w-xl">
                 <div className="mx-auto grid h-24 w-24 place-items-center rounded-full border-8 border-primary/10 bg-primary/5 text-primary"><AudioLines size={38} aria-hidden="true" /></div>
                 <h2 className="mt-6 text-xl font-semibold">
-                  {session?.status === "active" ? "Voice session active" : session?.status === "ended" ? "Session ended" : "Ready to connect"}
+                  {session?.status === "active" ? "Session initialized" : session?.status === "ended" ? "Session ended" : "Ready to connect"}
                 </h2>
                 <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">{notice}</p>
                 {error ? <p className="mx-auto mt-3 max-w-md rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{error}</p> : null}
@@ -216,7 +218,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                           void sendTurn();
                         }
                       }}
-                      placeholder="Type or paste a transcript while the Clara browser transport is being negotiated…"
+                      placeholder="Type a message for Clara. Live microphone transcription is not connected yet…"
                       className="mt-3 min-h-24 w-full resize-y rounded-md border bg-background p-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                     />
                     <div className="mt-3 flex items-center justify-between gap-3">
@@ -246,7 +248,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                 <Row label="Session ID" value={session?.id ? session.id.slice(0, 12) + "…" : "—"} />
                 <Row label="Credentials" value="Server-side only" />
                 <Row label="Microphone" value={micState === "ready" ? "Ready" : micState === "requesting" ? "Requesting…" : micState === "denied" ? "Blocked" : "Off"} />
-                <Row label="Transport" value={transport?.sessionEndpoint ? "Resolved" : "Not resolved"} />
+                <Row label="Transport" value={transport?.transportMode === "realtime" ? "Awaiting adapter readiness" : transport?.turnEndpoint ? "HTTP transcript bridge only" : "Not connected"} />
               </dl>
             </div>
             <div className="rounded-md border bg-background p-5">
