@@ -17,7 +17,7 @@ import {
 } from "./ws-lifecycle.mjs";
 
 const PORT = process.env.PORT ?? 3000;
-const BASE = `http://127.0.0.1:${PORT}`;
+const BASE = process.env.AI_COMMS_WEB_URL?.replace(/\/+$/, "") || `http://127.0.0.1:${PORT}`;
 const TOKEN_VERSION = "v1";
 const RELAY_HEADER_PAYLOAD = "sarvam-relay-v1";
 
