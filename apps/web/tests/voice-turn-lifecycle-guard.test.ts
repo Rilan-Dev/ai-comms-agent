@@ -8,8 +8,10 @@ const source = readFileSync(
 );
 
 describe("voice turn lifecycle guard", () => {
-  it("rejects turns for every non-active lifecycle state", () => {
-    expect(source).toContain('session.status !== "active" || session.ended_at');
+  it("rejects non-active sessions except the explicitly initialized transcript bridge", () => {
+    expect(source).toContain('session.status !== "active" && !transcriptBridgeOnly');
+    expect(source).toContain('session.status === "starting"');
+    expect(source).toContain('transportMode')
     expect(source).toContain('error: "session_not_active"');
   });
 
