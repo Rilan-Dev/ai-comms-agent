@@ -228,13 +228,17 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
           ttsObjectUrlRef.current = URL.createObjectURL(await response.blob());
           audio.srcObject = null;
           audio.src = ttsObjectUrlRef.current;
+          const generationId = `${current.id}-${sequence}`;
+          ttsGenerationRef.current = generationId;
           audio.onended = () => {
+            ttsGenerationRef.current = null;
             pipelineBusyRef.current = false;
             setSpeaking(false);
             streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
             setNotice("Connected and listening.");
           };
           audio.onerror = () => {
+            ttsGenerationRef.current = null;
             pipelineBusyRef.current = false;
             setSpeaking(false);
             setError(`${provider} audio playback failed.`);
@@ -248,14 +252,18 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
         if (realtimeProviderRef.current === "gemini") {
           if (!("speechSynthesis" in window)) throw new Error("This browser does not support speech synthesis for Gemini Live responses.");
           const utterance = new SpeechSynthesisUtterance(answer);
-          utterance.onstart = () => setSpeaking(true);
-          utterance.onend = () => { setSpeaking(false); setNotice("Connected and listening."); };
-          utterance.onerror = () => { setSpeaking(false); setError("Browser speech playback failed."); };
+          const generationId = `${current.id}-${sequence}`;
+          ttsGenerationRef.current = generationId;
+          utterance.onstart = () => { setSpeaking(true); streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; }); };
+          utterance.onend = () => { ttsGenerationRef.current = null; setSpeaking(false); streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; }); setNotice("Connected and listening."); };
+          utterance.onerror = () => { ttsGenerationRef.current = null; setSpeaking(false); streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; }); setError("Browser speech playback failed."); };
           window.speechSynthesis.cancel();
           window.speechSynthesis.speak(utterance);
           return;
         }
         if (!channel || channel.readyState !== "open") throw new Error("The voice transport disconnected before the answer could be spoken.");
+        ttsGenerationRef.current = `${current.id}-${sequence}`;
+        streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; });
         channel.send(JSON.stringify({
           type: "response.create",
           response: {
@@ -606,7 +614,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     source.connect(processor);
     processor.connect(audioContext.destination);
     processor.onaudioprocess = (event) => {
-      if (micMuted || socket.readyState !== WebSocket.OPEN) return;
+      if (micMuted || ttsGenerationRef.current || socket.readyState !== WebSocket.OPEN) return;
       const pcm = downsampleTo16k(event.inputBuffer.getChannelData(0), audioContext.sampleRate);
       if (!pcm.length) return;
       socket.send(JSON.stringify({
@@ -722,6 +730,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
         setSpeaking(true);
         setNotice("Clara is speaking.");
       } else if (type === "response.done") {
+        ttsGenerationRef.current = null;
+        streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
         setSpeaking(false);
         setNotice("Connected and listening.");
       } else if (type === "conversation.item.input_audio_transcription.completed") {
@@ -795,6 +805,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       if (payload.transport.transportMode === "realtime") {
         if (payload.transport.realtimeProvider === "openai") await connectRealtime(payload.session, payload.transport);
         else if (payload.transport.realtimeProvider === "gemini") await connectGeminiRealtime(payload.session, payload.transport);
+        else if (payload.transport.realtimeProvider === "sarvam" || payload.transport.realtimeProvider === "elevenlabs") await connectProviderRealtime(payload.session, payload.transport, payload.transport.realtimeProvider);
         else throw new Error("This provider has not completed its native realtime transport integration.");
       } else if (payload.transport.transportMode === "pipeline" && (payload.transport.realtimeProvider === "sarvam" || payload.transport.realtimeProvider === "elevenlabs")) {
         await connectSpeechPipeline(payload.session, payload.transport.realtimeProvider);
