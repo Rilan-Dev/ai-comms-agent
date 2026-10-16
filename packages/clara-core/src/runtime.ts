@@ -663,6 +663,16 @@ export const claraRuntime = {
       const saved = await credentialFor(provider);
       const environmentKey = provider === "sarvam" ? env("SARVAM_API_KEY") : env("ELEVENLABS_API_KEY");
       const available = Boolean(environmentKey || (saved.rows[0]?.enabled && saved.rows[0]?.encrypted_api_key?.length));
+      if (available && env("VOICE_RELAY_PUBLIC_URL")) {
+        return {
+          realtimeProvider: provider,
+          transportMode: "realtime" as const,
+          sessionEndpoint: provider === "sarvam" ? "/api/voice/sarvam/session" : "/api/voice/elevenlabs/session",
+          turnEndpoint: "/api/voice/turn",
+          voiceId,
+          model: provider === "sarvam" ? "saaras:v3-realtime" : "scribe_v2_realtime",
+        };
+      }
       if (available) {
         return {
           realtimeProvider: provider,
