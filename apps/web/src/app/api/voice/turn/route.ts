@@ -45,8 +45,11 @@ export async function POST(request: Request) {
     if (!session || session.user_id !== subject.user.id || session.agent_id !== agentId) {
       return NextResponse.json({ error: "not_found", message: "Voice session was not found for this user and agent." }, { status: 404 });
     }
-    if (session.status !== "active" || session.ended_at) {
-      return NextResponse.json({ error: "session_not_active", message: "Voice turns require an active voice session." }, { status: 409 });
+    const transcriptBridgeOnly =
+      session.status === "starting" &&
+      (session.metadata as Record<string, unknown> | null)?.transportMode === "transcript_bridge";
+    if ((session.status !== "active" && !transcriptBridgeOnly) || session.ended_at) {
+      return NextResponse.json({ error: "session_not_active", message: "Voice turns require a connected session or an explicitly initialized transcript bridge." }, { status: 409 });
     }
 
     const runtimeSettings = await query<{ knowledge_base_id: string }>("SELECT knowledge_base_id FROM organization_ai_runtime_settings WHERE organization_id = $1", [organizationId]);
@@ -73,7 +76,7 @@ export async function POST(request: Request) {
     let output = "";
     for await (const chunk of turn.stream) output += chunk;
 
-    const turnRecorded = await incrementVoiceSessionTurnForOrganization(organizationId, sessionId);
+    const turnRecorded = await incrementVoiceSessionTurnForOrganization(organizationId, sessionId, transcriptBridgeOnly);
     if (!turnRecorded) {
       return NextResponse.json({ error: "session_not_active", message: "Voice session ended before the turn could be recorded." }, { status: 409 });
     }
