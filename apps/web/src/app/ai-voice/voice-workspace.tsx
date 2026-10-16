@@ -152,6 +152,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       setConnected(true);
       setNotice("Realtime audio connected. Speak naturally; Clara routes recognized speech through the host-authorized turn pipeline.");
       if (channel.readyState === "open") {
+        ttsGenerationRef.current = `${sessionRef.current?.id ?? "voice"}-welcome`;
+        streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; });
         channel.send(JSON.stringify({
           type: "response.create",
           response: {
