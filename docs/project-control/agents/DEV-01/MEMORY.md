@@ -1,3 +1,11 @@
+
+
+## 2026-10-16 — Clara realtime voice connection lesson
+- A host voice-session row, resolved provider/model, and microphone permission do not prove realtime connectivity. The browser must instantiate the pinned Clara realtime client and await its actual ready/open event before showing connected/active transport status.
+- Never treat an HTTP transcript bridge such as /api/voice/turn as a provider WebSocket/session URL. Resolver metadata and transport connection details are separate contracts.
+- Reuse Clara's provider-specific session negotiation/relay, state machine, interruption, and reconnect implementation; do not create a parallel host-owned provider protocol. Keep provider keys server-side.
+- Voice email turns must go through the same authorized agent/tool path as chat. ISS-026 remains FIX-01-owned; do not bypass account grants to make voice demos work.
+- Substantial realtime connection defect routed to FIX-01 in issue #26; OPS-01 only owns deployment/infrastructure symptoms after a correct source implementation.
 # DEV-01 Role-Local Memory
 
 This is durable memory for DEV-01. It supplements, but never overrides, shared APCP memory or repository authority.
