@@ -217,6 +217,20 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     const answerSdp = await response.text();
     await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
     setNotice("Negotiating secure realtime audio transport…");
+
+    // Do not leave the UI indefinitely in a connecting state when SDP
+    // negotiation succeeds but the provider channel never becomes ready.
+    const deadline = Date.now() + 20_000;
+    while (!(pc.connectionState === "connected" && channel.readyState === "open" && sessionCreatedRef.current)) {
+      if (pc.connectionState === "failed" || pc.connectionState === "closed") {
+        throw new Error("The provider closed the realtime connection before the session became ready.");
+      }
+      if (Date.now() >= deadline) {
+        throw new Error("Realtime session readiness timed out. Check provider access and network connectivity, then reconnect.");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    await maybeActivate();
   }
 
   async function start() {
