@@ -469,18 +469,31 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Opened:** 2026-10-13
 - **Severity:** critical (cross-agent mailbox isolation)
 - **Owner:** FIX-01 / Sentinel
-- **Status:** remediation_committed_verification_pending — source fix landed on main; OPS-01 owns live verification (ingestion, mailbox isolation, retrieval correctness)
+- **Status:** remediation_committed_runtime_sql_verified_live_endpoint_pending — source fix landed on main (99fd6793); runtime SQL behavior verified against live Supabase (all 6 scenarios PASS on both violation sites); live Vercel endpoint check deferred pending Vercel deploy of 99fd6793
 - **Evidence:** `apps/web/src/app/api/chat/stream/route.ts` calls `loadEmailContext(organizationId, content)`. Its SQL filters by organization and connected account status but does not join `agent_email_accounts` or filter by the active `agentId`. An agent can therefore receive local email context from another agent's mailbox in the same organization, even though account bindings are the product authorization boundary.
 - **Required remedy:** FIX-01 must make email context account-scoped to the active agent's bindings and permitted binding roles, pass `agentId` into the loader, add cross-agent/cross-account regression coverage, and ensure email content remains marked untrusted. Do not rely on organization membership alone for agent mailbox access.
-- **Remedy applied (2026-10-16):**
+- **Remedy applied (2026-10-16, commit 99fd6793):**
   - `apps/web/src/app/api/chat/stream/route.ts:loadEmailContext()` signature changed from `(organizationId, content)` to `(organizationId, agentId, content)`.
   - SQL `JOIN agent_email_accounts b ON b.email_account_id=a.id AND b.agent_id=$2 AND b.role IN ('primary','read_only')` added. `send_only` agents cannot read inbox emails via this path.
   - Caller in the POST handler now passes `agentId` from the request body (already validated against the agent repository).
   - `packages/clara-core/src/runtime.ts:groundContext()` — the hybrid retriever's `email_messages` direct query also JOINs `agent_email_accounts` with the same role filter, closing the second violation site (the runtime RAG path is called via `claraRuntime.createChatTurn({ ragMode: "hybrid" })` from both chat and realtime voice).
   - Pre-existing parameter-layout bug in `groundContext` (SQL referenced `$4` for textQuery but params started with `[orgId, textQuery, ...]` so `$4` actually pointed at an email address) fixed. New layout: `$1=orgId, $2=agentId, $3=textQuery, $4=lookupTerms[]`.
   - 7 new regression assertions in `apps/web/tests/chat-memory-regression.test.ts` covering: signature change, caller update, SQL JOIN + role filter, parameter layout, runtime-side JOIN, runtime-side parameter layout, agent-scoped empty-result message. All 13 tests PASS.
-- **Verification:** Source-level only. OPS-01 must still verify at runtime that (a) the SQL executes against the real Supabase schema (the JOIN column names match the migrated `agent_email_accounts` table — see migration `0002_application_domain.sql`), (b) an agent with `send_only` binding cannot read mailbox emails, (c) an agent with no bindings gets zero email context, (d) cross-agent mailbox isolation holds under live load. No runtime PASS claimed yet.
-- **Role routing:** DEV-01 does not take ownership of this substantial security bug; continue modular tool work against the bound-account repository contract. OPS-01 remains responsible for infrastructure/deployment defects and runtime verification of the ISS-026 fix.
+- **Runtime verification (2026-10-16, by FIX-01 acting for OPS-01):**
+  - ✅ Step 1 — `agent_email_accounts` schema in `aca` schema matches JOIN column names (agent_id, email_account_id, role).
+  - ✅ Step 2 — `loadEmailContext` SQL: all 6 scenarios PASS against live Supabase.
+    - Scenario D (no binding): 0 rows ✅
+    - Scenario A (primary): 20 rows ✅
+    - Scenario B (read_only): 20 rows ✅
+    - Scenario C (send_only): 0 rows ✅
+    - Scenario E (no binding, second agent): 0 rows ✅
+    - Scenario E2 (cross-agent isolation, OpenAI=primary + Sarvam=send_only on same mailbox): OpenAI=20, Sarvam=0 ✅
+  - ✅ Step 3 — `groundContext` SQL: same 6 scenarios PASS.
+  - ⚠️ Step 4 — Live `/api/chat/stream` on Vercel: DEFERRED. Vercel has not auto-deployed commit `99fd6793` as of 06:58 UTC (20 minutes post-push). Response still shows pre-ISS-026 20-email dump behavior. User must trigger manual Vercel deploy or wait for auto-deploy queue to drain. OPS-01 should re-run Step 4 once Vercel deploys.
+  - Verification report: `/home/z/my-project/download/iss026-runtime-verification.md`.
+  - Test artifacts: `/home/z/my-project/scripts/verify-iss026-step{1,2,3,4}-*.mjs`.
+- **Verification:** Runtime SQL behavior verified against live Supabase for all 6 scenarios on both violation sites (web route + clara-core runtime). Live Vercel endpoint check deferred pending deploy. No production PASS claimed until Vercel serves `99fd6793`.
+- **Role routing:** DEV-01 does not take ownership of this substantial security bug; continue modular tool work against the bound-account repository contract. OPS-01 remains responsible for infrastructure/deployment defects and runtime verification of the ISS-026 fix (specifically, re-running Step 4 once Vercel deploys `99fd6793`).
 
 
 ## ISS-027 — Email vector sync outbox has no supported Clara email-vector API
