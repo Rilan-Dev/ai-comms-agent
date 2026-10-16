@@ -528,6 +528,29 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
     //   3. Full-text search on the search_vector column
     // We also return structured data (subject, from, date, snippet, body preview)
     // so the AI can show exact email content to the user.
+    //
+    // ISS-026 closure: JOIN agent_email_accounts to scope this query to
+    // mailboxes the active agent has read access to. Without this JOIN, an
+    // agent could read another agent's mailbox in the same organization.
+    // Role filter: 'primary' and 'read_only' grant read; 'send_only' does NOT.
+    //
+    // Parameter layout (fixed and unambiguous):
+    //   $1 = ctx.orgId
+    //   $2 = ctx.agentId (used by agent_email_accounts JOIN)
+    //   $3 = textQuery (for to_tsquery on search_vector)
+    //   $4 = text[] of lookup terms (emailAddresses + nameFragments, deduped)
+    //        — used by EXISTS/unnest for ILIKE on from_email/from_name/subject
+    const lookupTerms = [...new Set([...emailAddresses, ...nameFragments])].slice(0, 8);
+    const hasLookupTerms = lookupTerms.length > 0;
+    // Build the OR-conditions inside the WHERE clause. If textQuery is empty,
+    // omit the search_vector branch. If lookupTerms is empty, omit the ILIKE branch.
+    // If both are empty, the WHERE evaluates to FALSE and we return no rows
+    // (consistent with the early-return guard above).
+    const conditions: string[] = [];
+    if (textQuery) conditions.push(`em.search_vector @@ to_tsquery('simple', $3)`);
+    if (hasLookupTerms) conditions.push(`EXISTS (SELECT 1 FROM unnest($4::text[]) AS term WHERE em.from_email ILIKE '%' || term || '%' OR em.from_name ILIKE '%' || term || '%' OR em.subject ILIKE '%' || term || '%')`);
+    const matchClause = conditions.length > 0 ? conditions.join(" OR ") : "FALSE";
+
     const recentResult = await query<{ id: string; content: string; metadata: Record<string, unknown> | null }>(
       `SELECT
          em.id AS id,
@@ -549,22 +572,17 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
            'snippet', em.snippet
          ) AS metadata
        FROM email_messages em
+       JOIN agent_email_accounts b
+         ON b.email_account_id = em.email_account_id
+        AND b.agent_id = $2
+        AND b.role IN ('primary', 'read_only')
        WHERE em.organization_id = $1
          AND em.is_draft = false
-         AND (
-           -- Search by email address (exact ILIKE on from_email)
-           ${emailAddresses.length > 0 ? emailAddresses.map((_, i) => `em.from_email ILIKE '%' || $${5 + i} || '%'`).join(' OR ') : 'FALSE'}
-           -- OR search by individual name fragments on from_email + from_name
-           ${nameFragments.length > 0 ? `OR em.from_email ILIKE '%' || $5 || '%' OR em.from_name ILIKE '%' || $5 || '%'` : ''}
-           -- OR full-text search on search_vector
-           ${textQuery ? `OR em.search_vector @@ to_tsquery('simple', $4)` : ''}
-           -- OR subject/snippet/body search with individual keywords
-           ${nameFragments.length > 0 ? `OR em.subject ILIKE '%' || $5 || '%' OR em.snippet ILIKE '%' || $5 || '%' OR em.text_body ILIKE '%' || $5 || '%'` : ''}
-         )
+         AND (${matchClause})
        ORDER BY
          em.received_at DESC
        LIMIT 20`,
-      [ctx.orgId, textQuery, ...(emailAddresses.length > 0 ? emailAddresses : [nameFragments[0] ?? '']), ...(emailAddresses.length > 0 ? emailAddresses : [])],
+      [ctx.orgId, ctx.agentId, textQuery, lookupTerms],
     );
 
     // Merge results — recent emails first (most relevant for user questions),

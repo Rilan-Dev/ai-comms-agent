@@ -469,11 +469,18 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Opened:** 2026-10-13
 - **Severity:** critical (cross-agent mailbox isolation)
 - **Owner:** FIX-01 / Sentinel
-- **Status:** open — source remediation required
+- **Status:** remediation_committed_verification_pending — source fix landed on main; OPS-01 owns live verification (ingestion, mailbox isolation, retrieval correctness)
 - **Evidence:** `apps/web/src/app/api/chat/stream/route.ts` calls `loadEmailContext(organizationId, content)`. Its SQL filters by organization and connected account status but does not join `agent_email_accounts` or filter by the active `agentId`. An agent can therefore receive local email context from another agent's mailbox in the same organization, even though account bindings are the product authorization boundary.
 - **Required remedy:** FIX-01 must make email context account-scoped to the active agent's bindings and permitted binding roles, pass `agentId` into the loader, add cross-agent/cross-account regression coverage, and ensure email content remains marked untrusted. Do not rely on organization membership alone for agent mailbox access.
-- **Verification:** Source inspection only; exploitability and remediation have not been runtime-tested. No PASS claimed.
-- **Role routing:** DEV-01 does not take ownership of this substantial security bug; continue modular tool work against the bound-account repository contract. OPS-01 remains responsible for infrastructure/deployment defects.
+- **Remedy applied (2026-10-16):**
+  - `apps/web/src/app/api/chat/stream/route.ts:loadEmailContext()` signature changed from `(organizationId, content)` to `(organizationId, agentId, content)`.
+  - SQL `JOIN agent_email_accounts b ON b.email_account_id=a.id AND b.agent_id=$2 AND b.role IN ('primary','read_only')` added. `send_only` agents cannot read inbox emails via this path.
+  - Caller in the POST handler now passes `agentId` from the request body (already validated against the agent repository).
+  - `packages/clara-core/src/runtime.ts:groundContext()` — the hybrid retriever's `email_messages` direct query also JOINs `agent_email_accounts` with the same role filter, closing the second violation site (the runtime RAG path is called via `claraRuntime.createChatTurn({ ragMode: "hybrid" })` from both chat and realtime voice).
+  - Pre-existing parameter-layout bug in `groundContext` (SQL referenced `$4` for textQuery but params started with `[orgId, textQuery, ...]` so `$4` actually pointed at an email address) fixed. New layout: `$1=orgId, $2=agentId, $3=textQuery, $4=lookupTerms[]`.
+  - 7 new regression assertions in `apps/web/tests/chat-memory-regression.test.ts` covering: signature change, caller update, SQL JOIN + role filter, parameter layout, runtime-side JOIN, runtime-side parameter layout, agent-scoped empty-result message. All 13 tests PASS.
+- **Verification:** Source-level only. OPS-01 must still verify at runtime that (a) the SQL executes against the real Supabase schema (the JOIN column names match the migrated `agent_email_accounts` table — see migration `0002_application_domain.sql`), (b) an agent with `send_only` binding cannot read mailbox emails, (c) an agent with no bindings gets zero email context, (d) cross-agent mailbox isolation holds under live load. No runtime PASS claimed yet.
+- **Role routing:** DEV-01 does not take ownership of this substantial security bug; continue modular tool work against the bound-account repository contract. OPS-01 remains responsible for infrastructure/deployment defects and runtime verification of the ISS-026 fix.
 
 
 ## ISS-027 — Email vector sync outbox has no supported Clara email-vector API

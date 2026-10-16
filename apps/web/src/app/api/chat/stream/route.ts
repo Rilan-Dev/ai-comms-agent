@@ -24,7 +24,7 @@ function asksAboutEmail(content: string): boolean {
   return /\b(email|emails|mail|mails|inbox|message|messages|draft|drafts|sender|recipient|unread)\b/i.test(content);
 }
 
-async function loadEmailContext(organizationId: string, content: string): Promise<string | null> {
+async function loadEmailContext(organizationId: string, agentId: string, content: string): Promise<string | null> {
   if (!asksAboutEmail(content)) return null;
   // Stop-word list covers common English verbs, question words, quantifiers,
   // time words, and connectors that pollute ILIKE matches against email body
@@ -78,6 +78,20 @@ async function loadEmailContext(organizationId: string, content: string): Promis
   // search to subject keywords.
   const searchTerms = [...emailAddresses, ...otherTerms].slice(0, 8);
 
+  // ISS-026 closure: scope email context to the active agent's mailbox
+  // bindings. JOIN agent_email_accounts and require the binding role to
+  // grant READ access ('primary' or 'read_only'). 'send_only' agents must
+  // NOT see inbox emails via this path — they have no read entitlement.
+  // Without this JOIN, an agent could receive local email context from
+  // another agent's mailbox in the same organization, which violates the
+  // product authorization boundary (account bindings are the boundary, not
+  // organization membership).
+  const agentScopeSql = `
+    JOIN agent_email_accounts b
+      ON b.email_account_id = a.id
+     AND b.agent_id = $agentId
+     AND b.role IN ('primary', 'read_only')`;
+
   // When search terms are extracted (e.g. sender address, subject keywords),
   // return ONLY emails matching at least one term. Do NOT fall back to
   // "all recent 7-day emails" because that dilutes the context with 20
@@ -101,8 +115,9 @@ async function loadEmailContext(organizationId: string, content: string): Promis
   // inbox" or "how many total emails"), fall back to recent 20 emails
   // ordered with drafts first.
   const hasTerms = searchTerms.length > 0;
+  // Parameter layout: $1 = organizationId, $2 = agentId, $3 = searchTerms (when hasTerms)
   const matchSql = hasTerms
-    ? `AND EXISTS (SELECT 1 FROM unnest($2::text[]) AS term
+    ? `AND EXISTS (SELECT 1 FROM unnest($3::text[]) AS term
         WHERE m.subject ILIKE '%' || term || '%'
            OR COALESCE(m.from_email, '') ILIKE '%' || term || '%')`
     : `AND (m.is_draft = true OR m.received_at >= now() - interval '7 days')`;
@@ -110,14 +125,15 @@ async function loadEmailContext(organizationId: string, content: string): Promis
     ? `ORDER BY m.received_at DESC` // Relevance-ordered; drafts not preferred when filtering by sender.
     : `ORDER BY m.is_draft DESC, m.received_at DESC`;
   const params: (string | string[])[] = hasTerms
-    ? [organizationId, searchTerms]
-    : [organizationId];
+    ? [organizationId, agentId, searchTerms]
+    : [organizationId, agentId];
 
   const result = await query<EmailContextRow>(
     `SELECT a.email_address, a.provider, m.from_email, m.to_recipients,
        m.subject, m.text_body, m.snippet, m.received_at, m.is_draft, m.is_read
      FROM email_messages m
      JOIN email_accounts a ON a.id = m.email_account_id
+     ${agentScopeSql.replace(/\$agentId/g, "$2")}
      WHERE m.organization_id = $1
        AND a.organization_id = $1
        AND a.deleted_at IS NULL
@@ -128,7 +144,7 @@ async function loadEmailContext(organizationId: string, content: string): Promis
     params,
   );
   if (result.rows.length === 0) {
-    return "No locally synchronized emails or drafts were found for this organization. Do not claim to have read mailbox contents that were not provided.";
+    return "No locally synchronized emails or drafts were found for this agent's bound mailboxes. Do not claim to have read mailbox contents that were not provided.";
   }
   const entries = result.rows.map((row, index) => {
     const recipients = Array.isArray(row.to_recipients) ? row.to_recipients.map(String).join(", ") : "";
@@ -199,7 +215,7 @@ export async function POST(request: Request) {
       .slice(-6)
       .map(m => m.content);
     const combinedSearchContext = [...recentMessages, content].join(" ");
-    const emailContext = await loadEmailContext(organizationId, combinedSearchContext);
+    const emailContext = await loadEmailContext(organizationId, agentId, combinedSearchContext);
     await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "user", content });
 
     // Message ordering for the LLM:
