@@ -189,8 +189,11 @@ If a task belongs to another agent, create or update a backlog entry and continu
 
 
 ### BKL-DEV01-EMAIL-RAG-ADAPTER-20261016 — Supported Clara email-vector API
-- **Owner:** DEV-01 / Forge for source integration; cross-repository API implementation must be authorized in the Clara source-of-truth repo.
-- **Status:** BLOCKED_ON_SUPPORTED_API_AND_ISS-026
-- **Finding:** Current Clara main has internal KB-scoped vector upsert/delete helpers and KB-scoped `/api/embed/search`, but no supported account-scoped email-vector server API. Do not call internals or reuse the KB search route for mail.
-- **Required contract:** Authenticated server-to-server requests; deterministic point IDs; content re-embedding and metadata-only update; surplus-chunk deletion; message/account purge; semantic search with mandatory organization + allowed-account filters; bounded results with source IDs; final PostgreSQL revalidation in ai-comms-agent.
-- **Next:** Establish and implement the API in Clara repo; then, once FIX-01 closes ISS-026, bind adapter + outbox loop and shared retrieval. OPS-01 handles live runtime/ingestion/latency acceptance.
+- **Owner:** DEV-01 / Forge for source integration; OPS-01 for live runtime/ingestion/performance.
+- **Status:** API_DRAFT_PR_OPEN; UNBOUND_ADAPTER_AUTHORED; BLOCKED_ON_ISS-026_AND_EXECUTABLE_VERIFICATION
+- **Finding:** Explicit user authorization received. Clara API draft is implemented on `feature/email-vector-api` and proposed in [PR #298](https://github.com/Rilan-Dev/Clara-AI-Platform/pull/298). It has not been merged or executable-verified.
+- **Contract:** Clara `docs/plans/EMAIL-VECTOR-API-CONTRACT.md`; authenticated POST `/api/internal/email-vectors`; deterministic IDs; upsert/reindex and stale cleanup; metadata-only update; message/account/org purge; semantic search with mandatory org + explicit allowed-account filters.
+- **Security:** API service credential does not replace mailbox grant checks. ISS-026 remains open/FIX-01-owned. Do not bind the outbox or expose Chat/voice retrieval until ISS-026 closes.
+- **Adapter:** `apps/worker/src/knowledge/clara-email-vector-adapter.ts` and request-contract tests are authored but unbound; worker startup does not import the adapter or start the outbox loop.
+- **Next:** Run focused worker adapter tests/typecheck and Clara typecheck/tests/lint/build plus Qdrant integration coverage when a dependency-equipped checkout is available. After ISS-026 closes, bind adapter + outbox loop and shared PostgreSQL/Qdrant retrieval. OPS-01 handles live runtime/ingestion/latency acceptance.
+- **Retrieval implementation update (2026-10-16):** shared service now authored at `packages/db/src/email/hybrid-retrieval.ts`; Clara search client at `packages/db/src/email/clara-vector-search.ts`; source tests added. It is not yet connected to Chat/voice and is not runtime-verified. ISS-026 remains a hard gate for transport wiring and outbox activation.

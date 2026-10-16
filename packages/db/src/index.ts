@@ -134,3 +134,5 @@ export {
   type AgentAiSettings,
   type UpsertAgentAiSettingsInput,
 } from "./ai-provider/repository";
+export { createEmailHybridRetriever, type EmailVectorCandidate, type EmailVectorSearch, type EmailHybridSearchInput, type EmailHybridSearchResult, type EmailHybridSource } from "./email/hybrid-retrieval";
+export { createClaraEmailVectorSearch } from "./email/clara-vector-search";

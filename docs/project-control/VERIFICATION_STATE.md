@@ -1387,3 +1387,35 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Status:** Adapter remains unbound; outbox loop remains unstarted; ISS-026 remains FIX-01-owned/open. No retrieval exposure.
 - **Verification:** Source inspection/docs only. Tests/typechecks/build/API/Qdrant/ingestion/latency not run.
 - **Next:** Establish authenticated Clara email-vector API; bind after ISS-026 closure. OPS-01 performs live runtime acceptance.
+
+
+
+### 2026-10-16 — Clara email-vector API draft
+- **Artifact:** Clara-AI-Platform draft PR #298, branch `feature/email-vector-api`.
+- **Source status:** API route, dedicated vector store, contract documentation, and basic route-boundary tests authored. No source claim implies tests have passed.
+- **Not run:** unit tests, typecheck, lint, build, live Qdrant or embedding calls, cross-account isolation runtime checks, ingestion, or latency benchmark.
+- **Security:** ISS-026 remains open/FIX-01-owned. API is not wired into the ai-comms-agent outbox or user-facing retrieval.
+- **Next:** Run focused executable checks and Qdrant integration coverage; only bind the adapter after ISS-026 closes. OPS-01 owns live environment and acceptance evidence.
+
+
+
+### 2026-10-16 — Unbound Clara email-vector adapter
+- **Artifacts:** `apps/worker/src/knowledge/clara-email-vector-adapter.ts` and `clara-email-vector-adapter.test.ts`; Clara draft PR #298 updated with nullable timestamps and content/metadata/chunk hashes.
+- **Source-only status:** Adapter maps upsert, delete-message, and purge-account operations; requires server-only credential, HTTPS in production, bounded request timeout, and throws on HTTP failure for outbox retry.
+- **Not run:** worker tests/typecheck, Clara tests/typecheck/lint/build, Qdrant/embedding calls, account-isolation runtime tests, ingestion or latency benchmarks. Do not mark passed.
+- **Security boundary:** Adapter remains unbound and worker sync loop is not started. ISS-026 remains FIX-01-owned/open.
+
+### 2026-10-16 — email vector metadata correction and Qdrant integration test authored
+
+- Source corrections: adapter now clears stale sender/folder metadata with explicit null/empty values; Clara API accepts explicit metadata clears; request body cap uses UTF-8 byte length.
+- Test authored: opt-in Qdrant integration test exercises org/account allowlist filtering and account-scoped deletion against a configured Qdrant service.
+- Not run: Clara tests/typecheck/lint/build, worker tests/typecheck, or Qdrant integration test. Dependency-equipped local execution and a configured Qdrant integration endpoint were not available during this work.
+- Security: ISS-026 remains open/FIX-01-owned. No adapter binding, outbox startup, or Chat/realtime-voice retrieval exposure.
+
+### 2026-10-16 — shared hybrid retrieval source added; not executed
+
+- Authored shared PostgreSQL + Clara semantic retrieval core with per-call account grant resolution, lexical/vector candidate fusion, SQL source revalidation, citations, stale semantic hash rejection, and explicit degraded fallback status.
+- Authored worker tests at `apps/worker/tests/email-hybrid-retrieval.test.ts` and `apps/worker/tests/clara-vector-search.test.ts`; neither test file has been run.
+- Clara search response now includes `contentHash`; host adapter rejects missing/invalid hashes. The SQL freshness comparison is source-authored only and still needs execution against the real schema and fixtures.
+- No typecheck, test, lint, build, live Clara API, Qdrant, ingestion, isolation or latency test was run. No PASS claimed.
+- ISS-026 remains open/FIX-01-owned. No Chat/voice wiring or worker outbox startup was enabled.

@@ -634,3 +634,35 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - Follow-up source review confirmed Clara main has internal KB-scoped Qdrant upsert/delete functions and a KB-scoped search endpoint, but no supported server-to-server email-vector API. See the updated email RAG plan at commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`.
 - Do not call Clara internals cross-repo or use the KB search endpoint for email retrieval. The supported API must provide deterministic vector lifecycle operations and mandatory org + allowed-account filtering.
 - ISS-026 remains open/FIX-01-owned. Adapter/outbox startup and retrieval remain blocked until API and security contracts exist. No tests or live Qdrant checks were run.
+
+
+
+### 2026-10-16 — Clara email-vector API draft implementation
+- User explicitly authorized cross-repository changes in Clara-AI-Platform. DEV-01 opened draft PR #298: https://github.com/Rilan-Dev/Clara-AI-Platform/pull/298.
+- The API draft now has a documented server-to-server contract, deterministic vector IDs, separate org/model collections, upsert/stale cleanup, metadata-only update, message/account/org deletion, and semantic search requiring an organization and explicit allowed-account set.
+- This is not yet production-ready or executable-verified. No typecheck/tests/lint/build, live Qdrant/embedding, isolation runtime, ingestion, or latency evidence is claimed.
+- ISS-026 remains open/FIX-01-owned; keep ai-comms-agent's vector outbox unbound and user-facing retrieval disabled until it closes. OPS-01 owns live infra/ingestion/performance acceptance.
+
+
+
+### 2026-10-16 — Unbound Clara vector adapter added
+- Added `apps/worker/src/knowledge/clara-email-vector-adapter.ts` plus request-contract tests. The adapter targets Clara draft PR #298 and passes deterministic source IDs and content/metadata/chunk hashes; it is not imported by worker startup and does not start the outbox loop.
+- The Clara API contract was updated to allow nullable received timestamps and a hash-aware metadata-only upsert path. Source is authored only; no executable checks or live vector calls are claimed.
+- ISS-026 remains FIX-01-owned/open. Do not wire adapter or expose user-facing retrieval before that closes. OPS-01 retains production credential/Qdrant/ingestion/latency work.
+
+### 2026-10-16 — email vector source review corrections
+
+- Focused review found stale payload metadata could survive source changes because absent sender/folder values were omitted from adapter upserts. Adapter now sends explicit null/empty values when source metadata includes those fields; Clara route/store types accept explicit clears.
+- Clara request-body size enforcement now uses UTF-8 byte length.
+- Added opt-in actual-Qdrant filter/deletion integration coverage in src/modules/email-vectors/core/qdrant-filter.integration.test.ts; requires QDRANT_INTEGRATION_URL and optionally QDRANT_INTEGRATION_API_KEY.
+- Source-authored only. No test/typecheck/live Qdrant result is claimed.
+- ISS-026 remains FIX-01-owned/open. Adapter remains unbound; vector-sync loop remains stopped; no user-facing email retrieval is exposed.
+
+### 2026-10-16 — shared email hybrid retrieval core authored (not transport-wired)
+
+- Added shared host retrieval core in `packages/db/src/email/hybrid-retrieval.ts` with fresh DB-resolved agent/account bindings, `primary`/`read_only` role checks, bounded PostgreSQL lexical retrieval, Clara vector candidate fusion, final authoritative SQL revalidation, and message citation tokens.
+- Added `packages/db/src/email/clara-vector-search.ts` to call the authenticated Clara search API, with timeout/HTTPS/credential checks and defensive org/account filtering. Exported both through `packages/db/src/index.ts`.
+- Semantic candidates now carry the indexed content hash. The shared service discards semantic-only candidates if the current PostgreSQL source hash is missing or differs; returned snippets/metadata always come from SQL.
+- Added worker test source for fresh binding resolution, out-of-scope candidate filtering, final SQL revalidation, degraded lexical fallback, and Clara adapter scope/credential handling.
+- Chat route, realtime voice runtime and worker startup were deliberately not wired; ISS-026 remains open and FIX-01-owned. The outbox loop remains stopped.
+- Source edits only. No tests/typecheck/lint/build/live service or Qdrant integration execution was performed.
