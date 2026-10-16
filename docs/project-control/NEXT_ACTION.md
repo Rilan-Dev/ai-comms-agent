@@ -1,3 +1,14 @@
+## FIX-01 immediate corrective action — Microsoft Graph provider enum (2026-10-16)
+
+- **Symptom:** Worker mailbox poll, leased direct-sync fallback, and retry deliveries repeatedly fail with PostgreSQL 22P02: invalid input value for enum email_provider: "microsoft_graph".
+- **Root cause:** 0002_application_domain.sql creates email_provider without microsoft_graph. 0003_email_domain.sql adds that value to a separate enum, email_account_provider; it does not change the enum used by email_accounts.provider.
+- **Source remedy:** Added forward-only migration 0034_email_provider_microsoft_graph.sql using ALTER TYPE email_provider ADD VALUE IF NOT EXISTS 'microsoft_graph'. Added static regression protection in apps/web/tests/migration-verification.test.ts.
+- **Verification:** GitHub source writes succeeded. Static tests, typechecks, migration execution, and live mailbox sync have NOT been run/verified here. No PASS claimed.
+- **Next action:** OPS-01 applies pending migrations through the normal migration process, rebuilds/restarts the worker from the matching source revision, and confirms the 22P02 errors stop. Then verify provider sync state and persisted messages; queue acceptance or worker health alone is insufficient.
+- **Role boundary:** FIX-01 source correction is complete at source level. Migration execution, Docker/restart, and live runtime verification belong to OPS-01. Do not repeatedly retry the same invalid enum query as a remedy.
+
+---
+
 
 ## FIX-01 immediate corrective action — 2026-10-16
 
