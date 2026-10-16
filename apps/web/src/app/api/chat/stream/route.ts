@@ -26,8 +26,57 @@ function asksAboutEmail(content: string): boolean {
 
 async function loadEmailContext(organizationId: string, content: string): Promise<string | null> {
   if (!asksAboutEmail(content)) return null;
-  const ignored = new Set(["what", "when", "where", "which", "show", "tell", "about", "email", "emails", "mail", "mails", "inbox", "messages", "message", "draft", "drafts", "today", "yesterday", "recent", "latest", "summarize", "summary", "please", "from", "with", "have", "has", "that", "this", "are", "the", "for", "and"]);
-  const searchTerms = [...new Set(content.toLocaleLowerCase().match(/[a-z0-9@._+-]{3,}/g) ?? [])].filter((term) => !ignored.has(term)).slice(0, 8);
+  // Stop-word list covers common English verbs, question words, quantifiers,
+  // time words, and connectors that pollute ILIKE matches against email body
+  // text. For example, the user query "Check how many email received from
+  // mohammed rilan ksa email on last 24 hours" produces raw tokens
+  // [check, how, many, received, mohammed, rilan, ksa, last, 24, hours] —
+  // without filtering, "check" matches "Check out these jobs" in Indeed
+  // alerts, "last" matches "Last chance to apply", "received" matches
+  // "received_at" column AND body text. Only proper nouns / sender name
+  // fragments / email addresses should be used as search terms.
+  const ignored = new Set([
+    // question words
+    "what", "when", "where", "which", "why", "who", "whom", "whose", "how",
+    // verbs (commands / queries)
+    "show", "tell", "find", "see", "look", "get", "list", "give", "want",
+    "need", "check", "checked", "checking", "received", "receive", "sent",
+    "send", "draft", "drafts", "summarize", "summary", "tell", "about",
+    // quantifiers
+    "many", "much", "few", "several", "all", "some", "any", "more",
+    // time words
+    "today", "yesterday", "tomorrow", "recent", "latest", "last", "next",
+    "past", "hour", "hours", "day", "days", "week", "weeks", "month",
+    "months", "year", "years", "time", "now", "date",
+    // email/mail nouns (handled by asksAboutEmail already)
+    "email", "emails", "mail", "mails", "inbox", "outbox", "messages",
+    "message", "draft", "drafts", "sender", "recipient", "unread", "read",
+    // connectors / articles
+    "from", "with", "have", "has", "had", "that", "this", "these", "those",
+    "are", "was", "were", "the", "for", "and", "of", "in", "on", "at", "by",
+    "to", "into", "onto", "upon", "over", "under", "between", "across",
+    // polite / filler
+    "please", "just", "let", "exact", "exactly", "here", "there",
+  ]);
+  // Email addresses are always good search terms; other tokens must be 4+
+  // chars and not in the stop list. The 4-char min filters out "how",
+  // "why", "who", "the", "and", etc. that slip past the ignored set
+  // when the user types a slightly different phrasing.
+  // Pure-digit tokens (e.g. "2026") are excluded because they match
+  // date-containing subjects ("Product Release Notes: Oct 13, 2026")
+  // and pollute the result set with low-relevance rows.
+  const allTokens = [...new Set(content.toLocaleLowerCase().match(/[a-z0-9@._+-]{3,}/g) ?? [])];
+  const emailAddresses = allTokens.filter((t) => t.includes("@"));
+  const otherTerms = allTokens
+    .filter((t) => !t.includes("@"))
+    .filter((t) => !/^\d+$/.test(t)) // skip pure-digit tokens (years, numbers)
+    .filter((t) => t.length >= 4)
+    .filter((t) => !ignored.has(t));
+  // Prioritize email addresses (highest precision) at the front of the
+  // search terms list, then add other terms up to the 8-term cap. Email
+  // addresses match from_email with precision; other terms broaden the
+  // search to subject keywords.
+  const searchTerms = [...emailAddresses, ...otherTerms].slice(0, 8);
 
   // When search terms are extracted (e.g. sender address, subject keywords),
   // return ONLY emails matching at least one term. Do NOT fall back to
@@ -36,6 +85,18 @@ async function loadEmailContext(organizationId: string, content: string): Promis
   // cannot connect a follow-up like "show me the exact emails" to the
   // previous turn's answer.
   //
+  // Match against from_email + subject ONLY. Do NOT match against
+  // snippet OR text_body because:
+  //   - text_body contains the recipient's email address in the
+  //     unsubscribe footer, so "rilan" matches EVERY email sent to
+  //     mohamedrilan.dev@gmail.com (the entire inbox).
+  //   - snippet contains personalized greetings like "Hi Mohammed Rilan"
+  //     in nearly every service email (Indeed, Labelbox, Innovations
+  //     Global, etc.) — so "mohammed" or "rilan" matches the user's
+  //     own name in the greeting, not the actual sender.
+  // from_email + subject are the only high-confidence columns for
+  // keyword search.
+  //
   // When NO search terms are extracted (general queries like "summarize my
   // inbox" or "how many total emails"), fall back to recent 20 emails
   // ordered with drafts first.
@@ -43,8 +104,6 @@ async function loadEmailContext(organizationId: string, content: string): Promis
   const matchSql = hasTerms
     ? `AND EXISTS (SELECT 1 FROM unnest($2::text[]) AS term
         WHERE m.subject ILIKE '%' || term || '%'
-           OR COALESCE(m.text_body, '') ILIKE '%' || term || '%'
-           OR COALESCE(m.snippet, '') ILIKE '%' || term || '%'
            OR COALESCE(m.from_email, '') ILIKE '%' || term || '%')`
     : `AND (m.is_draft = true OR m.received_at >= now() - interval '7 days')`;
   const orderSql = hasTerms
@@ -128,13 +187,18 @@ export async function POST(request: Request) {
 
     const history = await listChatMessages(organizationId, conversation.id, 40);
     // Build combined search context from the current message + recent user
-    // messages. This ensures follow-up questions like "what is the 3 emails"
-    // or "show me the last email" can resolve the sender/topic from the
-    // previous turn. Without this, loadEmailContext() only sees the current
-    // message, extracts useless search terms, and returns 20 random recent
-    // emails — breaking conversation continuity.
-    const recentUserMessages = history.filter(m => m.role === "user").slice(-3).map(m => m.content);
-    const combinedSearchContext = [...recentUserMessages, content].join(" ");
+    // AND assistant messages. Including the assistant's previous response is
+    // critical: when the user asks "show me the exact emails" as a follow-up,
+    // the previous AI response is the only place where the explicit sender
+    // email address (e.g. "mohammedrilan.ksa@gmail.com") appears — the user's
+    // original query said "mohammed rilan ksa" without the @ symbol. By
+    // including the assistant response, the email address gets extracted as
+    // a search term and matches from_email with high precision.
+    const recentMessages = history
+      .filter(m => m.role === "user" || m.role === "assistant")
+      .slice(-6)
+      .map(m => m.content);
+    const combinedSearchContext = [...recentMessages, content].join(" ");
     const emailContext = await loadEmailContext(organizationId, combinedSearchContext);
     await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "user", content });
 
