@@ -68,3 +68,33 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 - Follow-up inspection of Clara main confirmed no supported cross-repo email-vector API. `upsertDocumentsKb` and `deleteDocumentChunks` are internal KB/document functions; `/api/embed/search` is KB-scoped and does not expose email account filters or vector lifecycle operations.
 - Do not invent/call an endpoint or import Clara internals. An explicit authenticated email-vector API must be implemented in Clara before the ai-comms-agent adapter can be bound.
 - ISS-026 remains FIX-01-owned and open; no retrieval exposure or adapter startup until it closes. OPS-01 owns live infra acceptance.
+
+
+
+### 2026-10-16 — Clara email-vector API draft
+- With explicit user authorization, a supported API draft was implemented in Clara-AI-Platform PR #298 on `feature/email-vector-api`. Contract: Clara `docs/plans/EMAIL-VECTOR-API-CONTRACT.md`.
+- API supports deterministic org/account/message/chunk point IDs, upsert and stale cleanup, metadata-only update, message/account/org deletion, and semantic search with mandatory org + explicit allowed-account filters. Dedicated credential: `CLARA_EMAIL_VECTOR_API_KEY` (server-only, at least 32 random characters).
+- The API's bearer secret authenticates the trusted worker; it does not prove mailbox grants. ai-comms-agent must authorize active agent/account bindings on every retrieval. ISS-026 remains FIX-01-owned/open; do not bind the outbox or expose Chat/voice retrieval before closure.
+- Source edits and PR creation are not verification. Tests/typecheck/lint/build/Qdrant/isolation/performance remain pending; OPS-01 owns live acceptance.
+
+
+
+### 2026-10-16 — Unbound Clara email-vector adapter
+- The worker adapter now exists at `apps/worker/src/knowledge/clara-email-vector-adapter.ts`, with contract tests. It targets Clara PR #298 and uses `CLARA_EMAIL_VECTOR_API_URL` plus server-only `CLARA_EMAIL_VECTOR_API_KEY` (at least 32 characters). Production endpoint URL must use HTTPS.
+- Adapter is deliberately not wired into worker startup and the outbox loop remains stopped. ISS-026 must be closed by FIX-01 before retrieval is exposed or the adapter is activated.
+- Clara API accepts nullable source timestamps and hash fields for metadata-only updates without re-embedding when content/chunk hashes match. All executable checks and runtime acceptance remain pending; OPS-01 owns live infra/ingestion/performance.
+
+### 2026-10-16 — Email vector metadata lifecycle review
+
+- When adapting source metadata to a vector payload, distinguish field absent (do not modify) from field present but null/empty (clear stale payload). Otherwise removed sender/folder/labels can linger in Qdrant after metadata-only updates.
+- Keep an opt-in integration test that uses a real Qdrant service for filter semantics; do not call it verified unless it was actually executed against a configured endpoint.
+- Clara request size limits must measure encoded bytes, not JS string length.
+- ISS-026 remains FIX-01-owned/open; adapter startup and retrieval exposure stay disabled until execution-time mailbox authorization is fixed.
+
+### 2026-10-16 — Shared hybrid retrieval implementation lessons
+
+- Keep shared retrieval in a workspace package that both web and worker can import; inject the semantic search dependency rather than coupling the core service to transport code.
+- Resolve `agent_email_accounts` grants fresh for every retrieval, exclude `send_only`, intersect requested account filters with the grant set, and fail closed for an explicitly empty account filter.
+- Qdrant returns candidates, not trusted message content. Re-fetch current message rows in SQL with the same organization/account/agent/date filters and return citations to authoritative message IDs.
+- Include the indexed message content hash in semantic hits and discard semantic-only candidates when the current PostgreSQL document hash differs or the source document is missing. Keep lexical fallback visibly marked degraded when Clara search fails.
+- ISS-026 remains FIX-01-owned/open; never wire this service to Chat/voice or activate vector sync until the authorization fix is closed and tested.

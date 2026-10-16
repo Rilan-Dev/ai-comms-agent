@@ -545,3 +545,40 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Artifact:** Updated `docs/plans/EMAIL-RAG-HYBRID-RETRIEVAL-PLAN.md`, commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`.
 - **Verification:** Source inspection only; no endpoint calls, tests, typechecks, builds, DB/Qdrant operations, or performance tests.
 - **Exact next action:** Establish an explicit authenticated Clara email-vector API contract and implement it in the Clara source-of-truth repository, with deterministic point IDs, upsert/metadata-update/delete/purge operations, mandatory organization + allowed-account search filters, and citation-bearing results. After FIX-01 closes ISS-026, bind that supported contract in ai-comms-agent, wire the outbox worker, and implement shared retrieval. OPS-01 retains live runtime/ingestion/latency acceptance.
+
+
+
+### DEV01-EMAIL-RAG-API-20261016 — 2026-10-16
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Implement the supported authenticated Clara email-vector API after explicit user authorization.
+- **Started from:** ai-comms-agent main source review; Clara Vite-Converted at `58d3fd1fc0db11c8bd1e1bfd1a50812eb7e22e80`.
+- **Scope:** Clara API/store implementation, contract docs, boundary tests, project handoff, and update ai-comms-agent control records; do not cross into FIX-01 or OPS-01 responsibilities.
+- **Status:** HANDOFF
+- **Completed:** Opened Clara draft PR #298 with internal API/store, deterministic point IDs, org/model-scoped collections, upsert/update/search/delete/purge operations, and route validation tests. Updated hybrid retrieval plan and project-control records to reference the API draft.
+- **Pending:** Execute typecheck/tests/lint/build; add Qdrant integration tests; do not bind outbox or expose retrieval until ISS-026 closes.
+- **Blockers:** ISS-026 remains open/FIX-01-owned. Live Qdrant/embedding setup and ingestion/performance acceptance belong to OPS-01.
+- **Handoff:** Clara PR #298 and Clara docs/project-control/EMAIL_VECTOR_API_HANDOFF.md.
+- **Next action:** Continue independent API source verification; then prepare the ai-comms-agent adapter to call the documented contract, keeping it disabled until FIX-01 closes ISS-026.
+
+
+
+### DEV01-EMAIL-RAG-ADAPTER-20261016 — 2026-10-16 follow-up
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Continue the email-vector implementation after the Clara API contract was drafted.
+- **Started from:** `feature/email-rag-hybrid-retrieval` after the initial cross-repo API handoff.
+- **Scope:** Add the worker-side Clara adapter without activating it; update project control.
+- **Status:** HANDOFF
+- **Completed:** Added `apps/worker/src/knowledge/clara-email-vector-adapter.ts` and request-contract tests. Adapter sends source IDs and content/metadata/chunk hashes, uses server-only credentials, enforces HTTPS in production, and fails on non-2xx responses.
+- **Pending:** Execute focused tests/typecheck; verify Clara API source with executable checks and Qdrant integration tests.
+- **Blockers:** ISS-026 remains open/FIX-01-owned. Adapter is not imported in worker startup and vector outbox loop remains stopped. OPS-01 owns live Qdrant/ingestion/latency acceptance.
+- **Handoff:** Clara PR #298; ai-comms-agent PR #23.
+- **Next action:** Run focused adapter tests/typecheck when a dependency-equipped checkout is available; keep adapter unbound until ISS-026 closes.
+
+### SESSION-065 — Shared email hybrid retrieval core
+- **Role:** DEV-01 / Forge
+- **Status:** HANDOFF — source authored, not verified
+- **Scope:** Shared PostgreSQL + Clara/Qdrant candidate retrieval without enabling transports or worker vector sync.
+- **Completed:** Added `packages/db/src/email/hybrid-retrieval.ts`, `packages/db/src/email/clara-vector-search.ts`, DB package exports, and worker tests. Added Clara search `contentHash` metadata for stale semantic candidate checks.
+- **Security:** Service resolves active account bindings fresh per call and revalidates every candidate in SQL. Still do not wire transport or start vector sync until FIX-01 closes ISS-026.
+- **Verification:** Not run; no PASS claimed.
+- **Next:** source review and dependency-equipped tests/typecheck; after ISS-026 closure, connect one shared retrieval service to Chat and realtime voice, then bind/start vector sync. OPS-01 owns live Qdrant and acceptance evidence.

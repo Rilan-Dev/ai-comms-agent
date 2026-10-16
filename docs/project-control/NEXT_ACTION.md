@@ -1149,3 +1149,43 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Security blocker:** ISS-026 remains open and FIX-01-owned. No adapter binding or email-vector retrieval exposure until account-level authorization is established.
 - **Next DEV-01 action:** Establish and implement an authenticated email-vector API in the Clara source-of-truth repository (explicit cross-repo work), then bind it to ai-comms-agent's existing durable outbox and shared retrieval after ISS-026 closes. The contract must cover deterministic upsert, metadata-only update, stale-chunk deletion, message/account purge, filtered search, and source references.
 - **Verification:** Source inspection/docs only; no tests, typechecks, builds, live API calls, Qdrant operations, or latency benchmarks. OPS-01 owns runtime/ingestion/performance acceptance.
+
+
+
+## Clara email-vector API — 2026-10-16 update
+
+- **Source API draft:** Clara-AI-Platform PR #298, branch `feature/email-vector-api`: https://github.com/Rilan-Dev/Clara-AI-Platform/pull/298
+- **Implemented in draft:** authenticated internal endpoint, dedicated org/model-scoped Qdrant email collections, deterministic point IDs, upsert/stale-chunk cleanup, metadata-only update, message/account/org deletion, and semantic search with mandatory organization + explicit allowed-account filters.
+- **Contract:** Clara repo file `docs/plans/EMAIL-VECTOR-API-CONTRACT.md`; required server-only credential is `CLARA_EMAIL_VECTOR_API_KEY` (random, at least 32 characters).
+- **Do not overstate status:** PR remains draft; no executable tests/typecheck/lint/build or live Qdrant/embedding/isolation evidence has been run. API is not yet wired to ai-comms-agent.
+- **Security gate:** ISS-026 remains open and FIX-01-owned. Do not bind the vector outbox or expose Chat/realtime-voice email retrieval until FIX-01 closes ISS-026 and account authorization is freshly resolved at execution time.
+- **Exact next DEV-01 action:** perform focused source corrections/tests for the Clara API PR, then update the ai-comms-agent adapter contract to target this API without enabling it. After ISS-026 closure, bind the existing durable outbox and shared PostgreSQL + Qdrant retrieval path. OPS-01 owns live infra, initial ingestion, isolation runtime evidence, and p50/p95/correctness/freshness acceptance. Do not wait on CI/deploy gates before independent source work.
+
+
+
+## Email vector adapter draft — 2026-10-16 follow-up
+
+- **New source:** `apps/worker/src/knowledge/clara-email-vector-adapter.ts` implements the existing injected adapter interface against Clara PR #298. Request-contract tests are in `clara-email-vector-adapter.test.ts`.
+- **Important:** Adapter is authored but remains unbound. It is not imported by `apps/worker/src/index.ts`; the durable outbox loop is not started. Do not change this startup boundary while ISS-026 is open.
+- **Contract update:** Clara API now allows nullable received timestamps and accepts content/metadata/per-chunk hashes to skip re-embedding when content and chunk identities are unchanged.
+- **Next DEV-01 action:** Run focused worker adapter tests/typecheck and review the Clara endpoint contract against the adapter. Continue independent source corrections; do not wait for CI. After FIX-01 closes ISS-026 and Clara API executable checks are addressed, wire the adapter + outbox loop and implement one shared authorized PostgreSQL + Qdrant retrieval service for Chat and realtime voice.
+- **OPS-01:** Configure the production endpoint and server-only credential, validate Qdrant/embedding behavior, perform initial ingestion and cross-account runtime checks, then measure p50/p95 latency, freshness and correctness.
+
+### DEV-01 — focused source review follow-up (2026-10-16)
+
+- Corrected a metadata lifecycle bug: the adapter now transmits explicit null/empty sender and folder-label values when source metadata contains those keys, so Qdrant can clear stale values instead of preserving them indefinitely. Clara's upsert/metadata-update contract accepts these explicit clears.
+- Corrected Clara's request-body cap to measure UTF-8 bytes rather than JavaScript string characters.
+- Added an opt-in Qdrant integration test at src/modules/email-vectors/core/qdrant-filter.integration.test.ts that checks actual Qdrant org + explicit-account filtering and scoped deletion. It runs only when QDRANT_INTEGRATION_URL is configured (optional QDRANT_INTEGRATION_API_KEY).
+- Not executed: dependency-equipped tests/typecheck and live Qdrant were not available in this work session. These are authored checks, not passing evidence.
+- Still blocked: do not bind the adapter/start the outbox loop or expose Chat/voice email retrieval until FIX-01 closes ISS-026 and execution-time account authorization is in place.
+- Next: continue contract review and targeted source corrections; run worker/Clara tests and typechecks when the dependency-equipped environment is available. OPS-01 owns live Qdrant setup, ingestion, isolation evidence, and latency/correctness acceptance.
+- Additional Clara review correction: deterministic point-ID and embedding-model hash inputs now use actual NUL separators rather than the two-character backslash-zero sequence, preventing ambiguous concatenation of identifier parts. This remains source-only and untested.
+
+### DEV-01 — shared hybrid retrieval core authored (2026-10-16)
+
+- Added `packages/db/src/email/hybrid-retrieval.ts`: one injectable retrieval service for future Chat and realtime voice use. It resolves fresh `agent_email_accounts` grants on each call, excludes `send_only`, intersects any requested account filter with current grants, performs bounded PostgreSQL lexical search, combines Clara semantic candidates, then rechecks organization, active account, agent binding, date/sender/subject constraints and message existence in authoritative SQL before returning message-backed citation tokens.
+- Added `packages/db/src/email/clara-vector-search.ts`, exported the service from `packages/db/src/index.ts`, and added focused worker test files for binding isolation, final SQL revalidation, degraded lexical fallback, and Clara search scope/credential validation.
+- Added indexed `contentHash` to Clara search hits and made the host adapter reject vector hits without a valid SHA-256 content hash. Final SQL compares semantic-only candidates against the current PostgreSQL knowledge document hash; stale semantic candidates are discarded. Lexical matches still use current authoritative message rows.
+- **Not wired:** Chat route, voice runtime, worker startup, or vector outbox remain unchanged until FIX-01 closes ISS-026. Do not bypass this security gate.
+- **Not executed:** tests/typechecks/lint/build/live Clara/Qdrant checks are not run; all checks remain source-authored only.
+- **Next:** continue source review; when a dependency-equipped environment is available, run targeted tests and typechecks. After FIX-01 closes ISS-026, connect the same service through the trusted Chat and realtime voice tool path and activate the outbox adapter only after API verification. OPS-01 owns live Qdrant setup, ingestion, isolation evidence and latency/correctness acceptance.
