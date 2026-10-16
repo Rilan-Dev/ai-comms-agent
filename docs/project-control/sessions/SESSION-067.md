@@ -1,0 +1,13 @@
+# SESSION-067 — Clara realtime voice transport failure
+- **Date:** 2026-10-16
+- **Agent:** DEV-01 / Forge
+- **Status:** HANDOFF to FIX-01
+- **Started from:** main
+- **User outcome requested:** Browser realtime voice must actually connect so the user can speak naturally to Clara about emails.
+- **Diagnosis:** apps/web/src/app/ai-voice/voice-workspace.tsx asks for microphone access and posts manually entered text to /api/voice/turn, but never instantiates a realtime adapter or opens a WebSocket. packages/clara-core/src/runtime.ts resolveVoice() returns /api/voice/turn as sessionEndpoint even though it is an HTTP transcript bridge, not a provider realtime session/socket endpoint. The UI can imply a live session without an actual provider connection.
+- **Routing:** FIX-01 / Sentinel owns the substantial source bug: https://github.com/Rilan-Dev/ai-comms-agent/issues/26. OPS-01 / Shipwright only owns a distinct deployment/infrastructure failure after source correctness is established. DEV-01 did not implement a parallel provider transport.
+- **Required acceptance:** Use Clara's pinned realtime client and provider-specific session negotiation/relay; connect after host authorization; show connected only after real transport readiness; bridge final user transcripts and assistant response/audio through the host-authorized turn/tool pipeline; preserve interruption/reconnect and teardown; keep provider keys server-side; add deterministic lifecycle tests. Voice email access must preserve organization/agent/account authorization and approval/audit; do not bypass ISS-026.
+- **Completed:** Source inspection; opened issue #26; updated NEXT_ACTION.md, AGENT_SESSIONS.md, AGENT_EVENTS.md, DEV-01 MEMORY.md, DEV-01 WORKLOG.md and root worklog.
+- **Verification:** GitHub source inspection and successful source/control-file writes only. No tests, typecheck, build, browser, WebSocket/provider or deployment verification. No live connectivity claimed.
+- **Blockers:** No actual browser realtime adapter/session negotiation in the inspected workspace. Provider credentials/relay and live connectivity have not been established.
+- **Exact next action:** FIX-01 resolves issue #26 using Clara's supported transport. DEV-01 continues independent authorized product work without waiting for CI/Vercel.
