@@ -29,6 +29,12 @@ describe("voice session start lifecycle", () => {
     expect(runtime).not.toContain('sessionEndpoint: "/api/voice/turn"');
   });
 
+  it("does not mark a session connected merely because a descriptor was resolved", () => {
+    expect(repository).toContain("SET provider = $1, model = $2, voice_id = $3, metadata = $4::jsonb");
+    expect(repository).not.toContain("status = 'active', connected_at = COALESCE(connected_at, now())");
+    expect(repository).toContain("metadata->>'transportMode' = 'transcript_bridge'");
+  });
+
   it("marks failed transport/configuration starts as terminal errors", () => {
     expect(route).toContain('endVoiceSessionForOrganization(organizationId, String(persisted.id), "error")');
     expect(route).toContain("configureStartingVoiceSessionForOrganization");
