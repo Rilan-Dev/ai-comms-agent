@@ -12,7 +12,7 @@ function text(value: unknown, max = 200): string {
 
 async function providerKey(organizationId: string, provider: "sarvam" | "elevenlabs"): Promise<string | null> {
   const result = await query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
-    "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider=$2 AND purpose IN ('voice_chat','realtime','chat') ORDER BY CASE WHEN purpose='voice_chat' THEN 0 WHEN purpose='realtime' THEN 1 ELSE 2 END LIMIT 1",
+    "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider=$2 AND purpose IN ('stt','realtime','tts','chat','general') ORDER BY CASE WHEN purpose='stt' THEN 0 WHEN purpose='realtime' THEN 1 WHEN purpose='tts' THEN 2 WHEN purpose='chat' THEN 3 ELSE 4 END LIMIT 1",
     [organizationId, provider],
   );
   const saved = result.rows[0];
