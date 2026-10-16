@@ -31,7 +31,12 @@ describe("voice session start lifecycle", () => {
 
   it("does not mark a session connected merely because a descriptor was resolved", () => {
     expect(repository).toContain("SET provider = $1, model = $2, voice_id = $3, metadata = $4::jsonb");
-    expect(repository).not.toContain("status = 'active', connected_at = COALESCE(connected_at, now())");
+    const configureStart = repository.slice(
+      repository.indexOf("export async function configureStartingVoiceSessionForOrganization"),
+      repository.indexOf("export async function activateVoiceSessionForOrganization"),
+    );
+    expect(configureStart).not.toContain("status = 'active'");
+    expect(configureStart).not.toContain("connected_at = COALESCE");
     expect(repository).toContain("metadata->>'transportMode' = 'transcript_bridge'");
   });
 
