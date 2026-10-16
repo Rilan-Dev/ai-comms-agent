@@ -615,3 +615,12 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Changed session persistence to remain `starting` until actual transport activation, and allowed transcript turns while starting only when explicit bridge metadata is present and all host authorization checks pass.
 - Removed microphone-permission/readiness claims from the UI. Added lifecycle contract assertions and adjusted the turn-lifecycle regression assertion.
 - Status: PARTIAL SOURCE FIX. Real provider transport/session negotiation, natural spoken enquiries, reconnect/interruption, and audio teardown are still missing. No tests/typecheck/build/browser/provider/deployment verification was run. Keep issue #26 open.
+
+
+### SESSION-069 — 2026-10-16
+- Agent: FIX-01 / Sentinel
+- Invocation: Continue issue #26 by using the existing Clara AI Platform realtime implementation as the reference for screen-level voice UX and transport.
+- Reference: `Rilan-Dev/Clara-AI-Platform`, branch `feature/ai-core-from-doable-source`; reviewed `useVoiceClient.ts`, `useOpenAIRealtime.ts`, `useGeminiLive.ts`, `useAudioVisualizer.ts`, and `/api/embed/session`.
+- Implemented on `fix/voice-transport-contract`: host-authorized OpenAI WebRTC SDP negotiation; organization-scoped encrypted realtime/chat key lookup with server env fallback; microphone/audio/data-channel UI, transcript-to-host-turn routing, spoken host-generated answer, greeting, mute/interrupt/end controls, explicit transport state and readiness timeout; added static transport tests.
+- Scope limit: native WebRTC currently OpenAI only. Other providers remain explicitly on transcript bridge. Full voice-triggered email mutations are not claimed; shared authorized email-tool runtime integration remains outstanding.
+- Verification: GitHub source edits only; tests, typecheck, build, browser/provider and deployment not run. PR #27 remains open; issue #26 remains open.
