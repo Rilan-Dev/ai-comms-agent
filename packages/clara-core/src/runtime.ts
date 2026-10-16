@@ -625,7 +625,18 @@ export const claraRuntime = {
     // The first native browser transport is the OpenAI WebRTC path. Other
     // provider choices stay explicitly on the host transcript bridge until
     // their own Clara provider negotiation/relay has been integrated.
-    if (provider === "openai" && env("OPENAI_API_KEY")) {
+    const savedRealtimeCredential = ctx.orgId && process.env.DATABASE_URL
+      ? await query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
+          "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='openai' AND purpose IN ('realtime','chat') ORDER BY CASE WHEN purpose='realtime' THEN 0 ELSE 1 END LIMIT 1",
+          [ctx.orgId],
+        )
+      : { rows: [] as Array<{ encrypted_api_key: Buffer | null; enabled: boolean }> };
+    const hasOpenAIRealtimeCredential = Boolean(
+      env("OPENAI_API_KEY") ||
+      (savedRealtimeCredential.rows[0]?.enabled && savedRealtimeCredential.rows[0]?.encrypted_api_key?.length) ||
+      (provider === "openai" && organizationConfig?.providerConfig.apiKey)
+    );
+    if (provider === "openai" && hasOpenAIRealtimeCredential) {
       return {
         realtimeProvider: provider,
         transportMode: "realtime" as const,
