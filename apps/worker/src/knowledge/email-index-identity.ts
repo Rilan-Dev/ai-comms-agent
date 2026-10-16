@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 export type EmailIndexIdentity = {
   organizationId: string;
-  provider: "gmail" | "zoho" | "imap_smtp";
+  provider: "gmail" | "zoho" | "imap_smtp" | "microsoft_graph";
   accountId: string;
   providerMessageId: string;
 };

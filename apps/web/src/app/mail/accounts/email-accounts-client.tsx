@@ -425,7 +425,12 @@ export function EmailAccountsClient({
                     <input aria-label="Zoho webhook URL" readOnly value={zohoWebhookUrls[account.id]} className="mt-2 h-10 w-full rounded-md border bg-background px-3 font-mono text-xs" />
                     <button type="button" onClick={async () => {
                       try {
-                        await navigator.clipboard.writeText(zohoWebhookUrls[account.id]);
+                        const webhookUrl = zohoWebhookUrls[account.id];
+                        if (!webhookUrl) {
+                          setNotice("Webhook URL is no longer available. Reload the page.");
+                          return;
+                        }
+                        await navigator.clipboard.writeText(webhookUrl);
                         setNotice("Zoho webhook URL copied. Paste it into Zoho Mail now.");
                       } catch {
                         setNotice("Copy the URL from the field above and paste it into Zoho Mail.");

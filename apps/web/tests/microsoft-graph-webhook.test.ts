@@ -60,7 +60,7 @@ describe("Microsoft Graph notification endpoint", () => {
     expect(response.status).toBe(202);
     await expect(response.json()).resolves.toMatchObject({ accepted: 1, rejected: 0 });
     expect(queryMock).toHaveBeenCalledTimes(2);
-    expect(queryMock.mock.calls[1][0]).toContain("pending_push_at");
+    expect(queryMock.mock.calls[1]![0]).toContain("pending_push_at");
   });
 
   it("ignores notifications with an invalid clientState", async () => {

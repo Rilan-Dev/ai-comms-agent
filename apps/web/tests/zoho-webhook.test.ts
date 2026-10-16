@@ -72,14 +72,14 @@ describe("Zoho Mail outgoing webhook", () => {
     const response = await POST(request(rawBody), context);
     expect(response.status).toBe(200);
     expect(queryMock).toHaveBeenCalledTimes(2);
-    expect(queryMock.mock.calls[0][1]).toEqual([createHash("sha256").update(TOKEN).digest("hex")]);
+    expect(queryMock.mock.calls[0]![1]).toEqual([createHash("sha256").update(TOKEN).digest("hex")]);
     expect(saveCredentialsMock).toHaveBeenCalledWith(
       ACCOUNT.id,
       "oauth_token",
       expect.objectContaining({ access_token: "oauth-access-token", zoho_webhook_secret: SECRET }),
       expect.any(Buffer),
     );
-    expect(queryMock.mock.calls[1][0]).toContain("pending_push_at");
+    expect(queryMock.mock.calls[1]![0]).toContain("pending_push_at");
   });
 
   it("rejects a signature mismatch without storing the bootstrap secret or queuing a sync", async () => {
