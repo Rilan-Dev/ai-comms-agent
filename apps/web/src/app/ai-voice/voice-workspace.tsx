@@ -22,6 +22,12 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("Your voice session will connect through Clara's authorized runtime.");
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const geminiSocketRef = useRef<WebSocket | null>(null);
+  const geminiAudioContextRef = useRef<AudioContext | null>(null);
+  const geminiProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const geminiSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const geminiTranscriptRef = useRef("");
+  const realtimeProviderRef = useRef<string | null>(null);
   const channelRef = useRef<RTCDataChannel | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -40,6 +46,17 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
 
   const stopMedia = useCallback(() => {
     try { channelRef.current?.close(); } catch {}
+    try { geminiSocketRef.current?.close(); } catch {}
+    geminiSocketRef.current = null;
+    geminiProcessorRef.current?.disconnect();
+    geminiSourceRef.current?.disconnect();
+    geminiProcessorRef.current = null;
+    geminiSourceRef.current = null;
+    if (geminiAudioContextRef.current) void geminiAudioContextRef.current.close().catch(() => undefined);
+    geminiAudioContextRef.current = null;
+    geminiTranscriptRef.current = "";
+    realtimeProviderRef.current = null;
+    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
     channelRef.current = null;
     try { pcRef.current?.close(); } catch {}
     pcRef.current = null;
@@ -127,6 +144,16 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       setNotice(speakAnswer ? "Answer received from Clara. Playing the spoken response." : "Response received.");
       if (speakAnswer) {
         const channel = channelRef.current;
+        if (realtimeProviderRef.current === "gemini") {
+          if (!("speechSynthesis" in window)) throw new Error("This browser does not support speech synthesis for Gemini Live responses.");
+          const utterance = new SpeechSynthesisUtterance(answer);
+          utterance.onstart = () => setSpeaking(true);
+          utterance.onend = () => { setSpeaking(false); setNotice("Connected and listening."); };
+          utterance.onerror = () => { setSpeaking(false); setError("Browser speech playback failed."); };
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(utterance);
+          return;
+        }
         if (!channel || channel.readyState !== "open") throw new Error("The voice transport disconnected before the answer could be spoken.");
         channel.send(JSON.stringify({
           type: "response.create",
@@ -144,6 +171,135 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       setNotice("This turn failed. No external action is claimed as completed.");
     }
   }, [agent, organizationId]);
+
+  function pcm16ToBase64(samples: Int16Array): string {
+    const bytes = new Uint8Array(samples.buffer, samples.byteOffset, samples.byteLength);
+    let binary = "";
+    for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
+    }
+    return btoa(binary);
+  }
+
+  function downsampleTo16k(input: Float32Array, inputRate: number): Int16Array {
+    if (inputRate === 16000) {
+      const sameRate = new Int16Array(input.length);
+      for (let i = 0; i < input.length; i++) sameRate[i] = Math.max(-1, Math.min(1, input[i])) * 0x7fff;
+      return sameRate;
+    }
+    const ratio = inputRate / 16000;
+    const outputLength = Math.floor(input.length / ratio);
+    const output = new Int16Array(outputLength);
+    for (let i = 0; i < outputLength; i++) {
+      const start = Math.floor(i * ratio);
+      const end = Math.min(Math.floor((i + 1) * ratio), input.length);
+      let sum = 0;
+      for (let j = start; j < end; j++) sum += input[j];
+      const sample = end > start ? sum / (end - start) : 0;
+      output[i] = Math.max(-1, Math.min(1, sample)) * (sample < 0 ? 0x8000 : 0x7fff);
+    }
+    return output;
+  }
+
+  async function connectGeminiRealtime(current: VoiceSession, descriptor: Transport) {
+    if (!descriptor.sessionEndpoint) throw new Error("Gemini Live session endpoint is not configured.");
+    if (!navigator.mediaDevices?.getUserMedia || typeof WebSocket === "undefined") {
+      throw new Error("This browser does not support live microphone/WebSocket audio. Open the app over HTTPS in a supported browser.");
+    }
+    realtimeProviderRef.current = "gemini";
+    const tokenResponse = await fetch(descriptor.sessionEndpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ organizationId, agentId: agent?.id, sessionId: current.id }),
+    });
+    const tokenPayload = await tokenResponse.json().catch(() => ({})) as { ephemeralToken?: string; websocketUrl?: string; model?: string; message?: string; error?: string };
+    if (!tokenResponse.ok || !tokenPayload.ephemeralToken || !tokenPayload.websocketUrl || !tokenPayload.model) {
+      throw new Error(tokenPayload.message ?? tokenPayload.error ?? "Gemini Live could not issue a short-lived session token.");
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    streamRef.current = stream;
+    const socketUrl = new URL(tokenPayload.websocketUrl);
+    socketUrl.searchParams.set("access_token", tokenPayload.ephemeralToken);
+    const socket = new WebSocket(socketUrl.toString());
+    geminiSocketRef.current = socket;
+
+    const audioContext = new AudioContext();
+    geminiAudioContextRef.current = audioContext;
+    const source = audioContext.createMediaStreamSource(stream);
+    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+    geminiSourceRef.current = source;
+    geminiProcessorRef.current = processor;
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+    processor.onaudioprocess = (event) => {
+      if (micMuted || socket.readyState !== WebSocket.OPEN) return;
+      const pcm = downsampleTo16k(event.inputBuffer.getChannelData(0), audioContext.sampleRate);
+      if (!pcm.length) return;
+      socket.send(JSON.stringify({
+        realtimeInput: { audio: { mimeType: "audio/pcm;rate=16000", data: pcm16ToBase64(pcm) } },
+      }));
+    };
+
+    socket.onopen = () => {
+      socket.send(JSON.stringify({
+        setup: {
+          model: tokenPayload.model,
+          generationConfig: { responseModalities: ["TEXT"] },
+          inputAudioTranscription: {},
+        },
+      }));
+      setNotice("Gemini Live WebSocket opened. Waiting for the provider's setup acknowledgement…");
+    };
+    socket.onmessage = (event) => {
+      let data: Record<string, unknown>;
+      try { data = JSON.parse(String(event.data)) as Record<string, unknown>; } catch { return; }
+      if (data.setupComplete) {
+        void patchSession({ action: "activate" }).then(() => {
+          setConnected(true);
+          setNotice("Gemini Live transcription is connected. Clara processes each recognized utterance through the authorized email/chat runtime.");
+        }).catch((e) => {
+          setError(e instanceof Error ? e.message : "Could not persist the connected Gemini session.");
+          stopMedia();
+        });
+        return;
+      }
+      const serverContent = data.serverContent && typeof data.serverContent === "object" ? data.serverContent as Record<string, unknown> : null;
+      const inputTranscription = serverContent?.inputTranscription && typeof serverContent.inputTranscription === "object"
+        ? serverContent.inputTranscription as Record<string, unknown>
+        : null;
+      const recognized = typeof inputTranscription?.text === "string" ? inputTranscription.text : "";
+      if (recognized) {
+        geminiTranscriptRef.current += recognized;
+        setNotice("Listening and transcribing with Gemini Live…");
+      }
+      if (serverContent?.turnComplete) {
+        const finalText = geminiTranscriptRef.current.trim();
+        geminiTranscriptRef.current = "";
+        if (finalText) void submitHostTurn(finalText, true);
+      }
+      if (data.error) {
+        const detail = data.error && typeof data.error === "object" ? (data.error as Record<string, unknown>).message : null;
+        setError(typeof detail === "string" ? detail : "Gemini Live reported a realtime error.");
+      }
+    };
+    socket.onerror = () => setError("Gemini Live WebSocket failed. Check provider access and reconnect.");
+    socket.onclose = () => {
+      if (sessionRef.current?.status === "active" || sessionRef.current?.status === "starting") {
+        setConnected(false);
+        setNotice("Gemini Live connection closed.");
+      }
+    };
+
+    const deadline = Date.now() + 20_000;
+    while (!connected && socket.readyState !== WebSocket.CLOSED && Date.now() < deadline) {
+      // setupComplete drives the persisted active state; the socket's readyState
+      // alone is not treated as a connected voice session.
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      if (sessionRef.current?.status === "active") return;
+    }
+    if (sessionRef.current?.status !== "active") throw new Error("Gemini Live setup timed out before the session became ready.");
+  }
 
   async function connectRealtime(current: VoiceSession, descriptor: Transport) {
     if (!descriptor.sessionEndpoint || descriptor.realtimeProvider !== "openai") {
@@ -260,7 +416,9 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       sessionRef.current = payload.session;
       setTransport(payload.transport);
       if (payload.transport.transportMode === "realtime") {
-        await connectRealtime(payload.session, payload.transport);
+        if (payload.transport.realtimeProvider === "openai") await connectRealtime(payload.session, payload.transport);
+        else if (payload.transport.realtimeProvider === "gemini") await connectGeminiRealtime(payload.session, payload.transport);
+        else throw new Error("This provider has not completed its native realtime transport integration.");
       } else {
         setNotice("This provider is configured for the authorized text bridge, not live microphone audio. The session is not marked connected.");
       }
@@ -318,6 +476,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   }
 
   function interrupt() {
+    if (realtimeProviderRef.current === "gemini") window.speechSynthesis?.cancel();
     if (channelRef.current?.readyState === "open") {
       channelRef.current.send(JSON.stringify({ type: "response.cancel" }));
     }
@@ -415,7 +574,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                 <Row label="Model" value={session?.model ?? "Not resolved"} />
                 <Row label="Session" value={session?.id ? session.id.slice(0, 14) + "…" : "—"} />
                 <Row label="Microphone" value={connected ? micMuted ? "Muted" : "Live" : "Not connected"} />
-                <Row label="Transport" value={connected ? "WebRTC ready" : bridgeOnly ? "Authorized text bridge" : busy ? "Negotiating" : "Not connected"} />
+                <Row label="Transport" value={connected ? transport?.realtimeProvider === "gemini" ? "Gemini Live WebSocket" : "OpenAI WebRTC" : bridgeOnly ? "Authorized text bridge" : busy ? "Negotiating" : "Not connected"} />
                 <Row label="Provider key" value="Server-side only" />
               </dl>
             </div>
