@@ -6,7 +6,7 @@ import { AudioLines, CheckCircle2, CircleStop, Mic, MicOff, Radio, ShieldCheck, 
 
 type Agent = { id: string; name: string; status: string };
 type VoiceSession = { id: string; status: string; provider?: string | null; model?: string | null; voice_id?: string | null };
-type Transport = { transportMode?: "transcript_bridge" | "realtime"; sessionEndpoint?: string; turnEndpoint?: string; provider?: string | null; realtimeProvider?: string | null; model?: string | null; voiceId?: string | null };
+type Transport = { transportMode?: "transcript_bridge" | "realtime" | "pipeline"; sessionEndpoint?: string; turnEndpoint?: string; provider?: string | null; realtimeProvider?: string | null; model?: string | null; voiceId?: string | null };
 type Turn = { id: string; role: "user" | "assistant"; text: string; state?: "thinking" | "done" };
 
 export function VoiceWorkspace({ organizationId, agents }: { organizationId: string; agents: Agent[] }) {
@@ -27,6 +27,12 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   const geminiProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const geminiSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const geminiTranscriptRef = useRef("");
+  const pipelineSamplesRef = useRef<Int16Array[]>([]);
+  const pipelinePreRollRef = useRef<Int16Array[]>([]);
+  const pipelineSpeechStartedRef = useRef(false);
+  const pipelineLastVoiceAtRef = useRef(0);
+  const ttsObjectUrlRef = useRef<string | null>(null);
+  const micMutedRef = useRef(false);
   const realtimeProviderRef = useRef<string | null>(null);
   const channelRef = useRef<RTCDataChannel | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -55,6 +61,13 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     if (geminiAudioContextRef.current) void geminiAudioContextRef.current.close().catch(() => undefined);
     geminiAudioContextRef.current = null;
     geminiTranscriptRef.current = "";
+    pipelineSamplesRef.current = [];
+    pipelinePreRollRef.current = [];
+    pipelineSpeechStartedRef.current = false;
+    pipelineLastVoiceAtRef.current = 0;
+    if (ttsObjectUrlRef.current) URL.revokeObjectURL(ttsObjectUrlRef.current);
+    ttsObjectUrlRef.current = null;
+    micMutedRef.current = false;
     realtimeProviderRef.current = null;
     if (typeof window !== "undefined") window.speechSynthesis?.cancel();
     channelRef.current = null;
@@ -65,6 +78,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.srcObject = null;
+      audioRef.current.removeAttribute("src");
+      audioRef.current.load();
     }
     sessionCreatedRef.current = false;
     activationStartedRef.current = false;
@@ -148,6 +163,38 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       setNotice(speakAnswer ? "Answer received from Clara. Playing the spoken response." : "Response received.");
       if (speakAnswer) {
         const channel = channelRef.current;
+        if (realtimeProviderRef.current === "sarvam" || realtimeProviderRef.current === "elevenlabs") {
+          const provider = realtimeProviderRef.current;
+          const response = await fetch("/api/voice/speech/speak", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ organizationId, agentId: agent.id, sessionId: current.id, text: answer, languageCode: "en-IN" }),
+          });
+          if (!response.ok) {
+            const payload = await response.json().catch(() => ({})) as { message?: string; error?: string };
+            throw new Error(payload.message ?? payload.error ?? `${provider} speech synthesis failed.`);
+          }
+          const audio = audioRef.current;
+          if (!audio) throw new Error("Speech playback element is unavailable.");
+          if (ttsObjectUrlRef.current) URL.revokeObjectURL(ttsObjectUrlRef.current);
+          ttsObjectUrlRef.current = URL.createObjectURL(await response.blob());
+          audio.srcObject = null;
+          audio.src = ttsObjectUrlRef.current;
+          audio.onended = () => {
+            setSpeaking(false);
+            streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
+            setNotice("Connected and listening.");
+          };
+          audio.onerror = () => {
+            setSpeaking(false);
+            setError(`${provider} audio playback failed.`);
+            streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
+          };
+          streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; });
+          setSpeaking(true);
+          await audio.play();
+          return;
+        }
         if (realtimeProviderRef.current === "gemini") {
           if (!("speechSynthesis" in window)) throw new Error("This browser does not support speech synthesis for Gemini Live responses.");
           const utterance = new SpeechSynthesisUtterance(answer);
@@ -203,6 +250,100 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       output[i] = Math.max(-1, Math.min(1, sample)) * (sample < 0 ? 0x8000 : 0x7fff);
     }
     return output;
+  }
+
+  function pcm16ToWav(samples: Int16Array, sampleRate = 16000): Blob {
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+    const write = (offset: number, value: string) => { for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i)); };
+    write(0, "RIFF");
+    view.setUint32(4, 36 + samples.length * 2, true);
+    write(8, "WAVE");
+    write(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    write(36, "data");
+    view.setUint32(40, samples.length * 2, true);
+    for (let i = 0; i < samples.length; i++) view.setInt16(44 + i * 2, samples[i], true);
+    return new Blob([buffer], { type: "audio/wav" });
+  }
+
+  async function submitPipelineUtterance(samples: Int16Array[], current: VoiceSession, provider: "sarvam" | "elevenlabs") {
+    const length = samples.reduce((total, part) => total + part.length, 0);
+    if (!length) return;
+    const merged = new Int16Array(length);
+    let offset = 0;
+    for (const part of samples) { merged.set(part, offset); offset += part.length; }
+    try {
+      const form = new FormData();
+      form.append("organizationId", organizationId);
+      form.append("agentId", agent?.id ?? "");
+      form.append("sessionId", current.id);
+      form.append("languageCode", "en-IN");
+      form.append("audio", pcm16ToWav(merged), "voice-utterance.wav");
+      const response = await fetch("/api/voice/speech/transcribe", { method: "POST", body: form });
+      const payload = await response.json().catch(() => ({})) as { transcript?: string; message?: string; error?: string };
+      if (!response.ok) throw new Error(payload.message ?? payload.error ?? `${provider} speech recognition failed.`);
+      const transcript = payload.transcript?.trim();
+      if (transcript) await submitHostTurn(transcript, true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : `${provider} speech recognition failed.`);
+      setNotice("Speech turn failed; no email action is claimed as completed.");
+    }
+  }
+
+  async function connectSpeechPipeline(current: VoiceSession, provider: "sarvam" | "elevenlabs") {
+    if (!navigator.mediaDevices?.getUserMedia || typeof AudioContext === "undefined") {
+      throw new Error("This browser does not support live microphone capture. Open the app over HTTPS in a supported browser.");
+    }
+    realtimeProviderRef.current = provider;
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    streamRef.current = stream;
+    const audioContext = new AudioContext();
+    geminiAudioContextRef.current = audioContext;
+    const source = audioContext.createMediaStreamSource(stream);
+    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+    geminiSourceRef.current = source;
+    geminiProcessorRef.current = processor;
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+    processor.onaudioprocess = (event) => {
+      const input = event.inputBuffer.getChannelData(0);
+      const pcm = downsampleTo16k(input, audioContext.sampleRate);
+      if (!pcm.length) return;
+      let energy = 0;
+      for (let i = 0; i < input.length; i++) energy += input[i] * input[i];
+      const rms = Math.sqrt(energy / Math.max(1, input.length));
+      const now = Date.now();
+      if (!pipelineSpeechStartedRef.current) {
+        pipelinePreRollRef.current.push(pcm);
+        if (pipelinePreRollRef.current.length > 3) pipelinePreRollRef.current.shift();
+        if (rms >= 0.025) {
+          pipelineSpeechStartedRef.current = true;
+          pipelineLastVoiceAtRef.current = now;
+          pipelineSamplesRef.current = [...pipelinePreRollRef.current];
+          pipelinePreRollRef.current = [];
+        }
+      } else {
+        pipelineSamplesRef.current.push(pcm);
+        if (rms >= 0.025) pipelineLastVoiceAtRef.current = now;
+        if (now - pipelineLastVoiceAtRef.current >= 750) {
+          const utterance = pipelineSamplesRef.current;
+          pipelineSamplesRef.current = [];
+          pipelineSpeechStartedRef.current = false;
+          pipelinePreRollRef.current = [];
+          void submitPipelineUtterance(utterance, current, provider);
+        }
+      }
+    };
+    await patchSession({ action: "activate" });
+    setConnected(true);
+    setNotice(`${provider === "sarvam" ? "Sarvam Saaras" : "ElevenLabs Scribe"} microphone pipeline is ready. Speech is transcribed, processed by Clara's authorized runtime, then spoken using the selected provider.`);
   }
 
   async function connectGeminiRealtime(current: VoiceSession, descriptor: Transport) {
@@ -423,6 +564,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
         if (payload.transport.realtimeProvider === "openai") await connectRealtime(payload.session, payload.transport);
         else if (payload.transport.realtimeProvider === "gemini") await connectGeminiRealtime(payload.session, payload.transport);
         else throw new Error("This provider has not completed its native realtime transport integration.");
+      } else if (payload.transport.transportMode === "pipeline" && (payload.transport.realtimeProvider === "sarvam" || payload.transport.realtimeProvider === "elevenlabs")) {
+        await connectSpeechPipeline(payload.session, payload.transport.realtimeProvider);
       } else {
         setNotice("This provider is configured for the authorized text bridge, not live microphone audio. The session is not marked connected.");
       }
@@ -474,6 +617,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
 
   function toggleMute() {
     const next = !micMuted;
+    micMutedRef.current = next;
     streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next; });
     setMicMuted(next);
     setNotice(next ? "Microphone muted. The realtime session remains connected." : "Microphone unmuted. Listening for speech.");
@@ -481,6 +625,10 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
 
   function interrupt() {
     if (realtimeProviderRef.current === "gemini") window.speechSynthesis?.cancel();
+    if (realtimeProviderRef.current === "sarvam" || realtimeProviderRef.current === "elevenlabs") {
+      audioRef.current?.pause();
+      streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
+    }
     if (channelRef.current?.readyState === "open") {
       channelRef.current.send(JSON.stringify({ type: "response.cancel" }));
     }
@@ -578,7 +726,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                 <Row label="Model" value={session?.model ?? "Not resolved"} />
                 <Row label="Session" value={session?.id ? session.id.slice(0, 14) + "…" : "—"} />
                 <Row label="Microphone" value={connected ? micMuted ? "Muted" : "Live" : "Not connected"} />
-                <Row label="Transport" value={connected ? transport?.realtimeProvider === "gemini" ? "Gemini Live WebSocket" : "OpenAI WebRTC" : bridgeOnly ? "Authorized text bridge" : busy ? "Negotiating" : "Not connected"} />
+                <Row label="Transport" value={connected ? transport?.realtimeProvider === "gemini" ? "Gemini Live WebSocket" : transport?.realtimeProvider === "sarvam" ? "Sarvam STT/TTS pipeline" : transport?.realtimeProvider === "elevenlabs" ? "ElevenLabs STT/TTS pipeline" : "OpenAI WebRTC" : bridgeOnly ? "Authorized text bridge" : busy ? "Negotiating" : "Not connected"} />
                 <Row label="Provider key" value="Server-side only" />
               </dl>
             </div>
