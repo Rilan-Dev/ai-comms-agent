@@ -901,10 +901,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     pipelineBusyRef.current = false;
     if (ttsIdleTimerRef.current) clearTimeout(ttsIdleTimerRef.current);
     ttsIdleTimerRef.current = null;
-    if (realtimeProviderRef.current === "sarvam" || realtimeProviderRef.current === "elevenlabs") {
-      audioRef.current?.pause();
-      streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
-    }
+    if (realtimeProviderRef.current === "sarvam" || realtimeProviderRef.current === "elevenlabs") audioRef.current?.pause();
+    streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
     if (channelRef.current?.readyState === "open") {
       channelRef.current.send(JSON.stringify({ type: "response.cancel" }));
     }
