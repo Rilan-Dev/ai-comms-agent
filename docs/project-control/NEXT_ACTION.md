@@ -1,3 +1,12 @@
+## FIX-01 voice transport correction checkpoint — 2026-10-16
+
+- Draft PR #27: https://github.com/Rilan-Dev/ai-comms-agent/pull/27
+- Completed source correction tranche: HTTP transcript endpoint is no longer called a realtime session endpoint; session stays starting until transport activation; transcript bridge is explicitly tagged and can run only through host-authorized routes; UI no longer requests microphone permission or reports microphone readiness when no audio adapter exists.
+- Not complete: provider-specific realtime browser transport/session negotiation, final spoken transcript bridge into host authorized email tools, open/error/reconnect/interruption/teardown tests. Issue #26 remains open.
+- Verification: source-only GitHub edits; tests, typecheck, build, browser and provider connection not run. Continue with Clara's supported realtime client/session negotiation; do not invent a socket endpoint or mark this deliverable complete.
+
+---
+
 ## FIX-01 — voice session readiness safety tranche (2026-10-16)
 
 - PR: https://github.com/Rilan-Dev/ai-comms-agent/pull/27 (draft, not merged).
