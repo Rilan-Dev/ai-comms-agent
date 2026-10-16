@@ -663,7 +663,7 @@ export const claraRuntime = {
       const saved = await credentialFor(provider);
       const environmentKey = provider === "sarvam" ? env("SARVAM_API_KEY") : env("ELEVENLABS_API_KEY");
       const available = Boolean(environmentKey || (saved.rows[0]?.enabled && saved.rows[0]?.encrypted_api_key?.length));
-      if (available && env("VOICE_RELAY_PUBLIC_URL")) {
+      if (available && env("VOICE_RELAY_PUBLIC_URL") && (env("AUTH_SECRET")?.length ?? 0) >= 32) {
         return {
           realtimeProvider: provider,
           transportMode: "realtime" as const,
