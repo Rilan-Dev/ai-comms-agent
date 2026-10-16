@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository, getVoiceSessionForOrganization } from "@ai-comms-agent/db";
+import { decryptCredential, parseCredentialsMasterKey, PostgresAgentRepository, getVoiceSessionForOrganization, query } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -20,11 +20,6 @@ export async function POST(request: Request) {
     if (!process.env.DATABASE_URL) {
       return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
     }
-    const apiKey = process.env.OPENAI_API_KEY?.trim();
-    if (!apiKey) {
-      return NextResponse.json({ error: "realtime_not_configured", message: "OpenAI Realtime is not configured on the server." }, { status: 503 });
-    }
-
     await ensureDevSeed();
     const body = await request.json().catch(() => null);
     const organizationId = boundedText(body?.organizationId, 100);
@@ -53,6 +48,36 @@ export async function POST(request: Request) {
     }
     if (String(session.provider ?? "").toLowerCase() !== "openai") {
       return NextResponse.json({ error: "provider_transport_unsupported", message: "The native WebRTC transport is currently available for OpenAI only. This provider has not been connected." }, { status: 409 });
+    }
+
+    // Prefer the organization's dedicated realtime credential, then its saved
+    // OpenAI chat credential, then the server environment fallback.
+    const savedCredential = await query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
+      "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='openai' AND purpose='realtime' LIMIT 1",
+      [organizationId],
+    );
+    let apiKey: string | undefined;
+    const realtimeCredential = savedCredential.rows[0];
+    if (realtimeCredential?.enabled && realtimeCredential.encrypted_api_key?.length) {
+      const masterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
+      if (!masterKey) throw new Error("CREDENTIALS_MASTER_KEY is required to decrypt the organization's realtime credential.");
+      apiKey = decryptCredential(Buffer.from(realtimeCredential.encrypted_api_key), parseCredentialsMasterKey(masterKey)).toString("utf8");
+    }
+    if (!apiKey) {
+      const chatCredential = await query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
+        "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='openai' AND purpose='chat' LIMIT 1",
+        [organizationId],
+      );
+      const row = chatCredential.rows[0];
+      if (row?.enabled && row.encrypted_api_key?.length) {
+        const masterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
+        if (!masterKey) throw new Error("CREDENTIALS_MASTER_KEY is required to decrypt the organization's OpenAI credential.");
+        apiKey = decryptCredential(Buffer.from(row.encrypted_api_key), parseCredentialsMasterKey(masterKey)).toString("utf8");
+      }
+    }
+    apiKey ||= process.env.OPENAI_API_KEY?.trim();
+    if (!apiKey) {
+      return NextResponse.json({ error: "realtime_not_configured", message: "OpenAI Realtime is not configured for this organization or on the server." }, { status: 503 });
     }
 
     const model = boundedText(session.model, 160) || process.env.OPENAI_REALTIME_MODEL?.trim() || "gpt-realtime-2.1-mini";
