@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const turnRoute = readFileSync(resolve(__dirname, "../src/app/api/voice/turn/route.ts"), "utf8");
-const runtime = readFileSync(resolve(__dirname, "../../..", "../../packages/email-agent-runtime/src/email-tool-runtime.ts"), "utf8");
-const writeTools = readFileSync(resolve(__dirname, "../../..", "../../packages/email-agent-runtime/src/email-write-tools.ts"), "utf8");
-const loop = readFileSync(resolve(__dirname, "../../..", "../../packages/email-agent-runtime/src/email-agent-loop.ts"), "utf8");
+const runtime = readFileSync(resolve(__dirname, "../../../packages/email-agent-runtime/src/email-tool-runtime.ts"), "utf8");
+const writeTools = readFileSync(resolve(__dirname, "../../../packages/email-agent-runtime/src/email-write-tools.ts"), "utf8");
+const loop = readFileSync(resolve(__dirname, "../../../packages/email-agent-runtime/src/email-agent-loop.ts"), "utf8");
 
 describe("voice email tool runtime boundary", () => {
   it("constructs tool context from the authenticated subject, never model-supplied identity", () => {
