@@ -56,7 +56,7 @@ describe("Clara realtime voice transport", () => {
   });
 
   it("negotiates Gemini Live and only enables Sarvam/ElevenLabs WebSockets behind the configured relay", () => {
-    expect(sessionRoute).toContain("claraRuntime.resolveVoice");
+    expect(sessionRoute).toContain("await claraRuntime.startRealtimeSession");
     expect(workspace).toContain("connectGeminiRealtime");
     expect(workspace).toContain("connectProviderRealtime");
     expect(workspace).toContain("connectSpeechPipeline");
