@@ -61,7 +61,7 @@ export async function POST(request: Request) {
         provider: transport.realtimeProvider,
         model: transport.model,
         voiceId: transport.voiceId,
-        metadata: { sessionEndpoint: transport.sessionEndpoint },
+        metadata: { transportMode: transport.transportMode, turnEndpoint: transport.turnEndpoint },
       });
       if (!configured) {
         await endVoiceSessionForOrganization(organizationId, String(persisted.id), "error");
