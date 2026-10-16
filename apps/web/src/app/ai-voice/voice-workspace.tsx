@@ -692,6 +692,10 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                 <option value="te-IN">Telugu</option>
                 <option value="kn-IN">Kannada</option>
                 <option value="ml-IN">Malayalam</option>
+                <option value="mr-IN">Marathi</option>
+                <option value="gu-IN">Gujarati</option>
+                <option value="pa-IN">Punjabi</option>
+                <option value="od-IN">Odia</option>
               </select>
             </label>
           </div>
