@@ -618,9 +618,9 @@ export const claraRuntime = {
 
   async resolveVoice(ctx: ClaraRuntimeContext) {
     const organizationConfig = await organizationAIConfig(ctx.orgId, ctx.agentId);
-    const provider = organizationConfig?.voice?.provider ?? env("REALTIME_VOICE_PROVIDER") ?? selectedProvider();
-    const model = organizationConfig?.voice?.model || env("OPENAI_REALTIME_MODEL") || "gpt-realtime-2.1-mini";
-    const voiceId = organizationConfig?.voice?.voiceId || env("OPENAI_DEFAULT_VOICE") || "alloy";
+    const provider = ctx.voiceOverride?.provider ?? organizationConfig?.voice?.provider ?? env("REALTIME_VOICE_PROVIDER") ?? selectedProvider();
+    const model = ctx.voiceOverride?.model || organizationConfig?.voice?.model || env("OPENAI_REALTIME_MODEL") || "gpt-realtime-2.1-mini";
+    const voiceId = ctx.voiceOverride?.voiceId || organizationConfig?.voice?.voiceId || env("OPENAI_DEFAULT_VOICE") || "alloy";
 
     // The first native browser transport is the OpenAI WebRTC path. Other
     // provider choices stay explicitly on the host transcript bridge until
