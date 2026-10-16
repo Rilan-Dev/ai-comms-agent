@@ -1,3 +1,13 @@
+## FIX-01 clean voice replacement — 2026-10-16
+
+- Branch: `feature/voice-transport-clean`, based on current `main`.
+- PR #28: keep open/unmerged; its 639-file diff comes from a divergent branch.
+- Source diff reviewed at path level: 49 files, 33 added, 16 modified, 0 removed; the list is scoped to voice workspace/transports, provider relay, shared email runtime, relevant tests, dependency lock importers and project-control records.
+- Not verified: tests, typecheck, build, frozen-lockfile install, browser microphone/WebRTC/WebSocket, provider credentials, relay container/deployment, approval execution and production behavior.
+- No PASS is claimed. Continue source review independently; do not wait/poll CI or Vercel.
+
+---
+
 ### Provider real-time email sync — 2026-10-16
 
 - Branch: `feature/provider-realtime-email-sync`.
