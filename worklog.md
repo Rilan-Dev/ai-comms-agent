@@ -1802,3 +1802,8 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 - Added `apps/web/tests/voice-realtime-transport.test.ts` and fixed lifecycle static assertion scoping in `voice-session-start-lifecycle.test.ts`.
 - Scope remains partial: OpenAI WebRTC only; other providers still use the clearly labeled transcript bridge. Full voice email mutation/tool execution is not claimed until the shared authorized email-tool runtime is wired.
 - Verification: source changes written through GitHub only. Tests, typecheck, build, browser microphone/WebRTC, real provider credentials and deployment have NOT been run. PR #27 remains open; issue #26 remains open.
+
+## 2026-10-16 — Clean voice transport branch
+- Created `feature/voice-transport-clean` from current `main` to avoid carrying the divergent 639-file PR #28 diff.
+- Transferred targeted voice workspace/provider adapters, Gemini and Sarvam/ElevenLabs routes, secure relay service source, shared email runtime package, focused regression tests, dependency/lock importers and project-control records.
+- Preserved current main OpenAI realtime-purpose credential restriction and voice route session checks. No tests/typecheck/build/browser/provider/relay/approval/deployment verification performed. PR #28 remains open and unmerged.
