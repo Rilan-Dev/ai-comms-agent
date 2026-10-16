@@ -641,3 +641,9 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Shared email runtime is now used by voice; local draft create/update and reply/forward drafts are available. Send/reply/forward create explicit pending-approval records; the approved-action worker performs the provider action. Provider-backed mark-read/archive/move/trash/attachment tools remain unavailable and fail-closed.
 - Relay service is source-only and has not been built, deployed or live-tested. OPS-01 deployment/configuration handoff is documented in `infra/voice-relay/README.md`.
 - Tests/typecheck/build/browser/provider/approval execution not run; PR #27 and issue #26 remain open.
+
+
+### SESSION-072 — 2026-10-16
+- PR #27 was merged at its earlier partial commit; subsequent source work is carried by draft PR #28: https://github.com/Rilan-Dev/ai-comms-agent/pull/28.
+- Current source includes OpenAI/Gemini voice paths, Clara-derived Sarvam/ElevenLabs WebSocket relay source, shared email tool runtime and approval-gated send/reply/forward requests.
+- OPS-01 relay deployment remains outstanding. Provider-backed mark-read/archive/move/trash/attachment handlers are intentionally unregistered. No tests/typecheck/build/browser/provider/approval/deployment verification has been run. Issue #26 remains open.
