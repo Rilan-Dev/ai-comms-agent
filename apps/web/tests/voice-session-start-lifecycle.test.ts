@@ -19,6 +19,16 @@ describe("voice session start lifecycle", () => {
     expect(transportIndex).toBeGreaterThan(createIndex);
   });
 
+  it("does not label the HTTP transcript bridge as a realtime session endpoint", () => {
+    const runtime = readFileSync(
+      resolve(__dirname, "../../../packages/clara-core/src/runtime.ts"),
+      "utf8",
+    );
+    expect(runtime).toContain('transportMode: "transcript_bridge" as const');
+    expect(runtime).toContain('turnEndpoint: "/api/voice/turn"');
+    expect(runtime).not.toContain('sessionEndpoint: "/api/voice/turn"');
+  });
+
   it("marks failed transport/configuration starts as terminal errors", () => {
     expect(route).toContain('endVoiceSessionForOrganization(organizationId, String(persisted.id), "error")');
     expect(route).toContain("configureStartingVoiceSessionForOrganization");
