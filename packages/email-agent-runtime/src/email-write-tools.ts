@@ -1,16 +1,11 @@
 import {
   PostgresEmailAccountRepository,
-  archiveMailMessagesForOrganization,
   createEmailAction,
   createLocalDraft,
-  deleteLocalDraftForOrganization,
   getLocalDraftForOrganization,
   getMailMessageForOrganization,
-  listMailFoldersForOrganization,
-  moveMailMessagesForOrganization,
   query,
   updateLocalDraftForOrganization,
-  updateMailReadStateForOrganization,
 } from "@ai-comms-agent/db";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
@@ -153,15 +148,6 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     return { status: "draft_updated", draft_id: draftId, account_id: account.id, subject: updated.subject ?? "" };
   });
 
-  const draftDelete = makeTool("email.draft.delete", async (input, context) => {
-    const account = await resolveAccount(text(input.account_id), context);
-    const draftId = text(input.draft_id, 100);
-    const existing = await getLocalDraftForOrganization(context.organization_id, draftId);
-    if (!existing || String(existing.email_account_id) !== account.id) throw new EmailWriteFailure("draft_not_found", "The draft was not found in the selected mailbox.");
-    if (!await deleteLocalDraftForOrganization(context.organization_id, draftId)) throw new EmailWriteFailure("draft_delete_failed", "The draft could not be deleted.");
-    return { status: "draft_deleted", draft_id: draftId, account_id: account.id };
-  });
-
   const replyDraft = makeTool("email.draft_reply", async (input, context) => {
     const account = await resolveAccount(text(input.account_id), context);
     const source = await checkMessage(account.id, text(input.message_id, 100), context);
@@ -197,43 +183,6 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       bodyText: `${text(input.body_text, 10000)}\n\n---------- Forwarded message ----------\n${originalBody}`.trim(),
     });
     return { status: "forward_draft_created", draft_id: String(draft.id), account_id: account.id, subject };
-  });
-
-  const markRead = makeTool("email.message.mark_read", async (input, context) => {
-    const account = await resolveAccount(text(input.account_id), context);
-    if (typeof input.is_read !== "boolean") throw new EmailWriteFailure("invalid_input", "is_read must be a boolean.");
-    const ids = list(input.message_ids);
-    if (!ids.length) throw new EmailWriteFailure("invalid_input", "At least one message ID is required.");
-    for (const id of ids) await checkMessage(account.id, id, context);
-    const updated = await updateMailReadStateForOrganization(context.organization_id, ids, input.is_read);
-    if (updated !== ids.length) throw new EmailWriteFailure("partial_update", "Not all selected messages were updated.");
-    return { status: "messages_updated", count: updated, is_read: input.is_read };
-  });
-
-  const archive = makeTool("email.message.archive", async (input, context) => {
-    const account = await resolveAccount(text(input.account_id), context);
-    if (!account.capabilities.archive) throw new EmailWriteFailure("capability_not_supported", "This mailbox does not support archiving.");
-    const ids = list(input.message_ids);
-    if (!ids.length) throw new EmailWriteFailure("invalid_input", "At least one message ID is required.");
-    for (const id of ids) await checkMessage(account.id, id, context);
-    const updated = await archiveMailMessagesForOrganization(context.organization_id, ids);
-    if (updated !== ids.length) throw new EmailWriteFailure("partial_update", "Not all selected messages were archived.");
-    return { status: "messages_archived", count: updated };
-  });
-
-  const move = makeTool("email.message.move", async (input, context) => {
-    const account = await resolveAccount(text(input.account_id), context);
-    if (!account.capabilities.move) throw new EmailWriteFailure("capability_not_supported", "This mailbox does not support moving messages.");
-    const ids = list(input.message_ids);
-    const target = text(input.target_folder_id, 300);
-    if (!ids.length || !target) throw new EmailWriteFailure("invalid_input", "Message IDs and a target folder are required.");
-    const folders = await listMailFoldersForOrganization(context.organization_id, account.id);
-    const folder = folders.find((item) => [item.id, item.provider_folder_id, item.name].some((candidate) => typeof candidate === "string" && candidate.toLowerCase() === target.toLowerCase()));
-    if (!folder) throw new EmailWriteFailure("folder_not_found", "The target folder does not belong to the selected mailbox.");
-    for (const id of ids) await checkMessage(account.id, id, context);
-    const updated = await moveMailMessagesForOrganization(context.organization_id, ids, String(folder.id));
-    if (updated !== ids.length) throw new EmailWriteFailure("partial_update", "Not all selected messages were moved.");
-    return { status: "messages_moved", count: updated, folder_id: String(folder.id), folder_name: text(folder.name, 200) };
   });
 
   const requestSend = makeTool("email.send.request", async (input, context) => {
@@ -301,7 +250,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     return { status: "pending_approval", action_id: action.id, action_type: action.actionType, message: "The forward request is awaiting explicit user approval. The message has not been forwarded." };
   });
 
-  return [draftCreate, draftUpdate, draftDelete, replyDraft, forwardDraft, markRead, archive, move, requestSend, requestReply, requestForward];
+  return [draftCreate, draftUpdate, replyDraft, forwardDraft, requestSend, requestReply, requestForward];
 }
 
 export function registerEmailWriteTools(register: (tool: Tool) => void, deps: EmailWriteToolDependencies = {}): number {
