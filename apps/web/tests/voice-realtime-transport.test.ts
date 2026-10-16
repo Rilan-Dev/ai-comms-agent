@@ -45,7 +45,18 @@ describe("Clara realtime voice transport", () => {
     expect(workspace).toContain('type: "response.create"');
     expect(turnRoute).toContain("await authorize(");
     expect(turnRoute).toContain("session.user_id !== subject.user.id || session.agent_id !== agentId");
-    expect(turnRoute).toContain("claraRuntime.createChatTurn");
+    expect(turnRoute).toContain("runEmailAgentTurn");
+    expect(turnRoute).toContain('channel: "voice"');
+    expect(turnRoute).toContain("permissions,");
+    expect(turnRoute).not.toContain("claraRuntime.createChatTurn");
+  });
+
+  it("uses the same shared authorized email runtime for spoken and typed turns", () => {
+    expect(turnRoute).toContain('import { runEmailAgentTurn } from "@ai-comms-agent/email-agent-runtime"');
+    expect(turnRoute).toContain("subject.membership.role");
+    expect(turnRoute).toContain("[...subject.permissions]");
+    expect(turnRoute).toContain("maxRounds: 4");
+    expect(turnRoute).toContain("maxToolCalls: 8");
   });
 
   it("keeps non-OpenAI providers explicit instead of pretending they have a WebRTC transport", () => {
