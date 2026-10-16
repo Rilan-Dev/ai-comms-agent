@@ -1,3 +1,14 @@
+## FIX-01 realtime voice implementation checkpoint — 2026-10-16
+
+- Reference reviewed: `Rilan-Dev/Clara-AI-Platform` branch `feature/ai-core-from-doable-source`; reusable patterns inspected in `useVoiceClient.ts`, `useOpenAIRealtime.ts`, `useGeminiLive.ts`, `useAudioVisualizer.ts`, and `/api/embed/session`.
+- Implemented on this branch: OpenAI-native WebRTC SDP negotiation behind `POST /api/voice/realtime`; server-side provider key; organization/user/agent/session ownership checks; realtime descriptor only when OpenAI is selected and server credential exists; screen-level live voice workspace with microphone audio, remote audio playback, data-channel events, final-transcript bridge to `/api/voice/turn`, spoken host-generated answer, mute/interrupt/end controls, conversation history and explicit connection states; static regression test file `apps/web/tests/voice-realtime-transport.test.ts`.
+- Connection truthfulness: session activation occurs only after the peer connection and data channel are open and the provider sends `session.created`; transport negotiation/configuration alone does not mark it active.
+- Known scope limit: this tranche implements the native OpenAI WebRTC transport only. Gemini, Sarvam and ElevenLabs remain on the explicitly labeled transcript bridge until their provider-specific Clara negotiation/relay paths are integrated. The current voice turn uses Clara's host-authorized chat turn path; do not claim full email mutation/tool execution from voice until the shared authorized email-tool harness is connected and covered.
+- Verification state: GitHub source edits only. Tests, typecheck, build, browser microphone/WebRTC, provider credentials and deployment have NOT been run or verified. Do not wait/poll CI/Vercel; continue source development and add deterministic lifecycle coverage.
+- PR #27 remains draft and issue #26 remains open until provider lifecycle/error/reconnect/interruption/teardown coverage and shared authorized email-tool execution are complete.
+
+---
+
 ## FIX-01 voice transport correction checkpoint — 2026-10-16
 
 - Draft PR #27: https://github.com/Rilan-Dev/ai-comms-agent/pull/27
