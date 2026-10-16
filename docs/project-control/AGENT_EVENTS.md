@@ -367,3 +367,5 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Impact:** Source correction committed; runtime remains unverified.
 - **Evidence:** Migration commit 83d512d5815bf7626a6b0d824a5ce92fedfa2189; regression test commit 988d78effcfa65fc9521eeb17a3c371d89173d69.
 - **Next:** OPS-01 applies migration and verifies worker poll/retry errors stop and mailbox rows persist.
+
+- EVT-FIX01-VOICE-WEBRTC-20261016: Implemented host-authorized OpenAI WebRTC negotiation and Clara-style voice workspace on `fix/voice-transport-contract`; added organization-scoped credential resolution, microphone/audio/data-channel lifecycle, final transcript bridge through the host turn route, spoken response, mute/interrupt/end and readiness timeout. Native WebRTC for Gemini/Sarvam/ElevenLabs and full authorized email action/tool integration remain outstanding. Tests/typecheck/build/browser/provider/deployment not run; PR #27 open and issue #26 remains open.
