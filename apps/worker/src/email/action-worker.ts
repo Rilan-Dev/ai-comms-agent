@@ -54,9 +54,15 @@ export async function processApprovedEmailActions(limit = 10) {
             subject: String(snapshot.subject ?? draft.subject ?? ""),
             body_text: String(snapshot.bodyText ?? draft.text_body ?? ""),
           };
-          const providerDraftId = draft.provider_draft_id
-            ? String(draft.provider_draft_id)
-            : (await connected.createDraft(params)).draft_id;
+          let providerDraftId: string;
+          if (draft.provider_draft_id) {
+            providerDraftId = String(draft.provider_draft_id);
+            // Approval may happen after the draft changed. Persist the approved
+            // snapshot to the provider draft before sending it.
+            await connected.updateDraft(providerDraftId, params);
+          } else {
+            providerDraftId = (await connected.createDraft(params)).draft_id;
+          }
           return { kind: "send", ref: await connected.sendDraft(providerDraftId) };
         }
         if (action.actionType === "reply_email") {
