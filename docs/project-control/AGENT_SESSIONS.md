@@ -632,3 +632,12 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Implemented: Gemini Live constrained ephemeral token + WebSocket transcription; Sarvam/ElevenLabs provider-backed mic/STT/host-turn/TTS pipelines; extracted shared email runtime package and wired voice turns into it; registered safe draft/mailbox tools and approval-gated send/reply/forward request tools; pending approval IDs surfaced in voice UI.
 - Explicit limits: Sarvam and ElevenLabs still lack persistent native WebSocket relays; sensitive trash/bulk and attachment tools remain unregistered. Send/reply/forward are pending approval only, not sent.
 - Verification: source edits only; tests/typecheck/build/browser/provider/approval worker/deployment not run. PR #27 and issue #26 remain open.
+
+
+### SESSION-071 — 2026-10-16
+- Agent: FIX-01 / Sentinel
+- Added provider relay source under `infra/voice-relay/` adapted from Clara AI Platform: Sarvam realtime STT + streaming TTS and ElevenLabs Scribe realtime STT + streaming TTS. Added short-lived signed session tokens, HMAC-protected bootstrap, origin allowlisting and metering endpoints.
+- Connected voice workspace provider-specific WebSocket adapters; REST utterance pipeline remains fallback when `VOICE_RELAY_PUBLIC_URL` is absent.
+- Shared email runtime is now used by voice; local draft create/update and reply/forward drafts are available. Send/reply/forward create explicit pending-approval records; the approved-action worker performs the provider action. Provider-backed mark-read/archive/move/trash/attachment tools remain unavailable and fail-closed.
+- Relay service is source-only and has not been built, deployed or live-tested. OPS-01 deployment/configuration handoff is documented in `infra/voice-relay/README.md`.
+- Tests/typecheck/build/browser/provider/approval execution not run; PR #27 and issue #26 remain open.
