@@ -741,42 +741,83 @@ export const claraRuntime = {
     const model = ctx.voiceOverride?.model || organizationConfig?.voice?.model || env("OPENAI_REALTIME_MODEL") || "gpt-realtime-2.1-mini";
     const voiceId = ctx.voiceOverride?.voiceId || organizationConfig?.voice?.voiceId || env("OPENAI_DEFAULT_VOICE") || "alloy";
 
-    // The first native browser transport is the OpenAI WebRTC path. Other
-    // provider choices stay explicitly on the host transcript bridge until
-    // their own Clara provider negotiation/relay has been integrated.
-    //
-    // SECURITY: only a dedicated REALTIME-purpose OpenAI credential is
-    // sufficient for realtime mode. Earlier code accepted chat-purpose keys
-    // via `purpose IN ('realtime','chat')` and used them to call the OpenAI
-    // Realtime API — but chat-purpose keys lack realtime API scope, so
-    // https://api.openai.com/v1/realtime/calls returned 401. That made
-    // /ai-voice unusable for any org that had only chat-purpose OpenAI keys
-    // configured (which is the common case for orgs using Sarvam for chat
-    // while leaving realtime_voice_provider defaulted to "openai").
-    //
-    // The env fallback (process.env.OPENAI_API_KEY) is retained for dev
-    // environments where a single key is reused across surfaces.
-    const savedRealtimeCredential = ctx.orgId && process.env.DATABASE_URL
-      ? await query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
-          "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='openai' AND purpose='realtime' LIMIT 1",
+    const savedCredential = async (providerId: string, purposes: readonly string[]) => {
+      if (!ctx.orgId || !process.env.DATABASE_URL) return { rows: [] as Array<{ encrypted_api_key: Buffer | null; enabled: boolean }> };
+      if (providerId === "openai") {
+        // OpenAI Realtime requires a dedicated realtime-purpose credential.
+        return query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
+          "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='openai' AND purpose='realtime' AND enabled=true AND encrypted_api_key IS NOT NULL LIMIT 1",
           [ctx.orgId],
-        )
-      : { rows: [] as Array<{ encrypted_api_key: Buffer | null; enabled: boolean }> };
-    const hasOpenAIRealtimeCredential = Boolean(
-      env("OPENAI_API_KEY") ||
-      (savedRealtimeCredential.rows[0]?.enabled && savedRealtimeCredential.rows[0]?.encrypted_api_key?.length) ||
-      (provider === "openai" && organizationConfig?.providerConfig.apiKey)
-    );
-    if (provider === "openai" && hasOpenAIRealtimeCredential) {
-      return {
-        realtimeProvider: provider,
-        transportMode: "realtime" as const,
-        sessionEndpoint: "/api/voice/realtime",
-        turnEndpoint: "/api/voice/turn",
-        voiceId,
-        model,
-      };
+        );
+      }
+      return query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
+        "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider=$2 AND purpose = ANY($3::text[]) AND enabled=true AND encrypted_api_key IS NOT NULL ORDER BY CASE WHEN purpose='realtime' THEN 0 WHEN purpose='stt' THEN 1 WHEN purpose='tts' THEN 2 WHEN purpose='voice_chat' THEN 3 WHEN purpose='chat' THEN 4 ELSE 5 END LIMIT 1",
+        [ctx.orgId, providerId, purposes],
+      );
+    };
+
+    if (provider === "openai") {
+      const saved = await savedCredential("openai", ["realtime"]);
+      const available = Boolean(
+        env("OPENAI_API_KEY") ||
+        (saved.rows[0]?.enabled && saved.rows[0]?.encrypted_api_key?.length) ||
+        organizationConfig?.providerConfig.apiKey
+      );
+      if (available) {
+        return {
+          realtimeProvider: provider,
+          transportMode: "realtime" as const,
+          sessionEndpoint: "/api/voice/realtime",
+          turnEndpoint: "/api/voice/turn",
+          voiceId,
+          model,
+        };
+      }
     }
+
+    if (provider === "gemini") {
+      const saved = await savedCredential("gemini", ["realtime", "voice_chat", "stt", "chat", "general"]);
+      const available = Boolean(env("GEMINI_API_KEY") || (saved.rows[0]?.enabled && saved.rows[0]?.encrypted_api_key?.length));
+      if (available) {
+        return {
+          realtimeProvider: provider,
+          transportMode: "realtime" as const,
+          sessionEndpoint: "/api/voice/gemini/session",
+          turnEndpoint: "/api/voice/turn",
+          voiceId,
+          model: "gemini-3.5-transcribe-live",
+        };
+      }
+    }
+
+    if (provider === "sarvam" || provider === "elevenlabs") {
+      const purposes = provider === "sarvam"
+        ? ["realtime", "stt", "tts", "voice_chat", "chat", "general"]
+        : ["realtime", "stt", "tts", "voice_chat", "chat", "general"];
+      const saved = await savedCredential(provider, purposes);
+      const environmentKey = provider === "sarvam" ? env("SARVAM_API_KEY") : env("ELEVENLABS_API_KEY");
+      const available = Boolean(environmentKey || (saved.rows[0]?.enabled && saved.rows[0]?.encrypted_api_key?.length));
+      if (available && env("VOICE_RELAY_PUBLIC_URL") && (env("AUTH_SECRET")?.length ?? 0) >= 32) {
+        return {
+          realtimeProvider: provider,
+          transportMode: "realtime" as const,
+          sessionEndpoint: provider === "sarvam" ? "/api/voice/sarvam/session" : "/api/voice/elevenlabs/session",
+          turnEndpoint: "/api/voice/turn",
+          voiceId,
+          model: provider === "sarvam" ? "saaras:v3-realtime" : "scribe_v2_realtime",
+        };
+      }
+      if (available) {
+        return {
+          realtimeProvider: provider,
+          transportMode: "pipeline" as const,
+          turnEndpoint: "/api/voice/turn",
+          voiceId,
+          model: provider === "sarvam" ? "saaras:v4" : "scribe_v2",
+        };
+      }
+    }
+
     return {
       realtimeProvider: provider,
       transportMode: "transcript_bridge" as const,
