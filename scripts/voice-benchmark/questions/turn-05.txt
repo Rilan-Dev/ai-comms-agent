@@ -1,0 +1,1 @@
+Summarize what I should do next based only on the emails you found. Tell me the sender, subject, and date for each important detail, and do not guess anything that the emails do not say.
