@@ -47,7 +47,8 @@ describe("voice email tool runtime boundary", () => {
   });
 
   it("updates provider drafts with the latest approved content before sending", () => {
-    expect(actionWorker).toContain("connected.updateDraft(String(draft.provider_draft_id), params)");
+    expect(actionWorker).toContain("await connected.updateDraft(providerDraftId, params)");
+    expect(actionWorker).toContain("providerDraftId = String(draft.provider_draft_id)");
     expect(dbRepository).toContain("provider_draft_sync_status = 'pending'");
   
   });
