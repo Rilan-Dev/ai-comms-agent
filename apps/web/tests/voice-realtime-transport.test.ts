@@ -45,11 +45,21 @@ describe("Clara realtime voice transport", () => {
     expect(workspace).toContain('type: "response.create"');
     expect(turnRoute).toContain("await authorize(");
     expect(turnRoute).toContain("session.user_id !== subject.user.id || session.agent_id !== agentId");
-    expect(turnRoute).toContain("claraRuntime.createChatTurn");
+    expect(turnRoute).toContain("runEmailAgentTurn");
+    expect(turnRoute).toContain('channel: "voice"');
+    expect(turnRoute).toContain("pendingApprovals: turn.pendingApprovals");
   });
 
   it("keeps non-OpenAI providers explicit instead of pretending they have a WebRTC transport", () => {
     expect(realtimeRoute).toContain("provider_transport_unsupported");
-    expect(workspace).toContain("does not have a native realtime transport configured");
+    expect(workspace).toContain("This provider has not completed its native realtime transport integration.");
+  });
+
+  it("negotiates Gemini Live and only enables Sarvam/ElevenLabs WebSockets behind the configured relay", () => {
+    expect(sessionRoute).toContain("claraRuntime.resolveVoice");
+    expect(workspace).toContain("connectGeminiRealtime");
+    expect(workspace).toContain("connectProviderRealtime");
+    expect(workspace).toContain("connectSpeechPipeline");
+    expect(realtimeRoute).toContain("purpose='realtime'");
   });
 });
