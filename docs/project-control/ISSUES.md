@@ -501,3 +501,18 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Evidence:** User-provided Docker build log; source correction commits `185b729d`, `60fadabf`, `e3ba38c9`, `18948e08`. Typecheck, tests, and Docker rebuild have not yet been rerun.
 - **Prevention:** Validate decrypted/persisted JSON at the consumer boundary and use the worker TypeScript build as regression protection.
 - **Next action:** Run worker typecheck, targeted tests, and worker image rebuild. Route unrelated environment/deployment faults to OPS-01.
+
+
+## ISS-028 — Worker queries Microsoft Graph value missing from email_provider enum
+
+- **Opened:** 2026-10-16
+- **Severity:** high (mailbox sync poll and queue retry paths fail repeatedly)
+- **Owner:** FIX-01 / Sentinel for source/schema correction; OPS-01 for migration execution, worker rollout, and runtime verification.
+- **Status:** source_corrected_verification_pending
+- **Symptom:** User-provided worker logs repeatedly show SQLSTATE 22P02, invalid input value for enum email_provider: "microsoft_graph", from both due-mailbox polling and single-account lookup. Queue attempts advance through retry and dead-letter queues while the same provider filter fails. Microsoft Graph subscription worker also logs that subscriptions are disabled because DB/credential encryption/HTTPS prerequisites are missing; that warning is a separate prerequisite and does not explain the enum error.
+- **Root cause:** 0002_application_domain.sql defines email_provider with gmail, imap_smtp, and zoho. 0003_email_domain.sql defines a separate email_account_provider enum containing microsoft_graph, but that does not extend email_provider, which is used by email_accounts.provider and the failing worker query. Application code was advanced to use microsoft_graph without a forward migration updating the actual enum.
+- **Failed approaches:** Queue retry and leased direct-sync fallback execute the same invalid query. The separate email_account_provider enum is not a substitute. Removing Microsoft Graph from the query would mask the schema defect and suppress intended provider support.
+- **Remedy:** Added supabase/migrations/0034_email_provider_microsoft_graph.sql with ALTER TYPE email_provider ADD VALUE IF NOT EXISTS 'microsoft_graph'; added static regression assertions in apps/web/tests/migration-verification.test.ts.
+- **Evidence:** User-provided logs show SQLSTATE 22P02; source inspection confirmed enum mismatch; migration and test commits are recorded in GitHub history. Migration execution, tests, typechecks, and runtime sync remain unverified.
+- **Prevention lesson:** When a provider is added, update the exact enum used by the persisted column, not a similarly named parallel enum; add a forward-only migration and regression assertion alongside application support.
+- **Next action:** OPS-01 applies migrations with the normal migration runner, rebuilds/restarts the matching worker, confirms the enum error is gone, then checks account sync timestamps and persisted message counts. Keep runtime verification pending until observed.
