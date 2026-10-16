@@ -68,10 +68,11 @@ export async function POST(request: Request) {
         signal: AbortSignal.timeout(25_000),
       });
       const payload = await upstream.json().catch(() => ({})) as { audios?: string[] };
-      if (!upstream.ok || typeof payload.audios?.[0] !== "string") {
+      const encodedAudio = payload.audios?.[0];
+      if (!upstream.ok || typeof encodedAudio !== "string") {
         return NextResponse.json({ error: "synthesis_failed", message: `Sarvam could not synthesize this answer (HTTP ${upstream.status}).` }, { status: 502 });
       }
-      const audio = Buffer.from(payload.audios[0], "base64");
+      const audio = Buffer.from(encodedAudio, "base64");
       return new Response(audio, { headers: { "content-type": "audio/wav", "cache-control": "no-store" } });
     }
 
