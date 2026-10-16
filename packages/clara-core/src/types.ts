@@ -86,6 +86,8 @@ export interface ClaraRuntimeContext {
   kbId: string;
   userId?: string | null;
   sessionId?: string | null;
+  /** Optional host-resolved agent/org voice settings; provider credentials remain server-side. */
+  voiceOverride?: { provider?: string | null; model?: string | null; voiceId?: string | null };
 }
 
 export interface ClaraAgentTurnRequest extends ClaraRuntimeContext {

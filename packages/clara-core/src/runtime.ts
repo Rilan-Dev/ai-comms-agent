@@ -618,12 +618,40 @@ export const claraRuntime = {
 
   async resolveVoice(ctx: ClaraRuntimeContext) {
     const organizationConfig = await organizationAIConfig(ctx.orgId, ctx.agentId);
-    const provider = organizationConfig?.voice?.provider ?? env("REALTIME_VOICE_PROVIDER") ?? selectedProvider();
+    const provider = ctx.voiceOverride?.provider ?? organizationConfig?.voice?.provider ?? env("REALTIME_VOICE_PROVIDER") ?? selectedProvider();
+    const model = ctx.voiceOverride?.model || organizationConfig?.voice?.model || env("OPENAI_REALTIME_MODEL") || "gpt-realtime-2.1-mini";
+    const voiceId = ctx.voiceOverride?.voiceId || organizationConfig?.voice?.voiceId || env("OPENAI_DEFAULT_VOICE") || "alloy";
+
+    // The first native browser transport is the OpenAI WebRTC path. Other
+    // provider choices stay explicitly on the host transcript bridge until
+    // their own Clara provider negotiation/relay has been integrated.
+    const savedRealtimeCredential = ctx.orgId && process.env.DATABASE_URL
+      ? await query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
+          "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='openai' AND purpose IN ('realtime','chat') ORDER BY CASE WHEN purpose='realtime' THEN 0 ELSE 1 END LIMIT 1",
+          [ctx.orgId],
+        )
+      : { rows: [] as Array<{ encrypted_api_key: Buffer | null; enabled: boolean }> };
+    const hasOpenAIRealtimeCredential = Boolean(
+      env("OPENAI_API_KEY") ||
+      (savedRealtimeCredential.rows[0]?.enabled && savedRealtimeCredential.rows[0]?.encrypted_api_key?.length) ||
+      (provider === "openai" && organizationConfig?.providerConfig.apiKey)
+    );
+    if (provider === "openai" && hasOpenAIRealtimeCredential) {
+      return {
+        realtimeProvider: provider,
+        transportMode: "realtime" as const,
+        sessionEndpoint: "/api/voice/realtime",
+        turnEndpoint: "/api/voice/turn",
+        voiceId,
+        model,
+      };
+    }
     return {
       realtimeProvider: provider,
-      sessionEndpoint: "/api/voice/turn",
-      voiceId: organizationConfig?.voice?.voiceId || env("OPENAI_DEFAULT_VOICE") || env("ELEVENLABS_VOICE_ID") || "alloy",
-      model: organizationConfig?.voice?.model || env("OPENAI_REALTIME_MODEL") || "gpt-realtime-2.1-mini",
+      transportMode: "transcript_bridge" as const,
+      turnEndpoint: "/api/voice/turn",
+      voiceId,
+      model,
     };
   },
 

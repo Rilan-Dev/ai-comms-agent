@@ -17,6 +17,28 @@ describe("voice session start lifecycle", () => {
     const transportIndex = route.indexOf("await claraRuntime.startRealtimeSession");
     expect(createIndex).toBeGreaterThanOrEqual(0);
     expect(transportIndex).toBeGreaterThan(createIndex);
+    expect(route).toContain("voiceOverride: { provider: voiceProvider, model: voiceModel, voiceId }");
+  });
+
+  it("does not label the HTTP transcript bridge as a realtime session endpoint", () => {
+    const runtime = readFileSync(
+      resolve(__dirname, "../../../packages/clara-core/src/runtime.ts"),
+      "utf8",
+    );
+    expect(runtime).toContain('transportMode: "transcript_bridge" as const');
+    expect(runtime).toContain('turnEndpoint: "/api/voice/turn"');
+    expect(runtime).not.toContain('sessionEndpoint: "/api/voice/turn"');
+  });
+
+  it("does not mark a session connected merely because a descriptor was resolved", () => {
+    expect(repository).toContain("SET provider = $1, model = $2, voice_id = $3, metadata = $4::jsonb");
+    const configureStart = repository.slice(
+      repository.indexOf("export async function configureStartingVoiceSessionForOrganization"),
+      repository.indexOf("export async function activateVoiceSessionForOrganization"),
+    );
+    expect(configureStart).not.toContain("status = 'active'");
+    expect(configureStart).not.toContain("connected_at = COALESCE");
+    expect(repository).toContain("metadata->>'transportMode' = 'transcript_bridge'");
   });
 
   it("marks failed transport/configuration starts as terminal errors", () => {
