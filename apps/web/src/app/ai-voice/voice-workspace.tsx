@@ -155,12 +155,15 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
         signal: controller.signal,
         body: JSON.stringify({ organizationId, agentId: agent.id, sessionId: current.id, transcript: text }),
       });
-      const payload = await response.json().catch(() => ({})) as { text?: string; message?: string; error?: string };
+      const payload = await response.json().catch(() => ({})) as { text?: string; message?: string; error?: string; toolCalls?: Array<{ name: string; ok: boolean; errorCode?: string }> };
       if (!response.ok) throw new Error(payload.message ?? payload.error ?? "Voice turn failed.");
       if (!isCurrentVoiceSequence(turnSequenceRef.current, sequence) || controller.signal.aborted) return;
       const answer = payload.text?.trim() || "I couldn't produce a response for that turn.";
       setTurns((old) => old.map((turn) => turn.id === assistantTurn.id ? { ...turn, text: answer, state: "done" } : turn));
-      setNotice(speakAnswer ? "Answer received from Clara. Playing the spoken response." : "Response received.");
+      const succeeded = payload.toolCalls?.filter((call) => call.ok).length ?? 0;
+      const denied = payload.toolCalls?.filter((call) => !call.ok).length ?? 0;
+      const toolSummary = payload.toolCalls?.length ? ` Email tools: ${succeeded} succeeded, ${denied} denied or failed.` : "";
+      setNotice((speakAnswer ? "Answer received from Clara. Playing the spoken response." : "Response received.") + toolSummary);
       if (speakAnswer) {
         const channel = channelRef.current;
         if (realtimeProviderRef.current === "sarvam" || realtimeProviderRef.current === "elevenlabs") {
@@ -216,6 +219,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       }
     } catch (e) {
       if (controller.signal.aborted) return;
+      streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
       const message = e instanceof Error ? e.message : "Voice turn failed.";
       setError(message);
       setTurns((old) => old.map((turn) => turn.id === assistantTurn.id ? { ...turn, text: message, state: "done" } : turn));
