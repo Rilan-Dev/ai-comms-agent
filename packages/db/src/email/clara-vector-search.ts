@@ -51,7 +51,6 @@ export function createClaraEmailVectorSearch(config: {
           limit: Math.max(1, Math.min(20, Math.floor(input.limit))),
         }),
         signal: AbortSignal.timeout(timeoutMs),
-        cache: "no-store",
       });
     } catch (error) {
       const reason = error instanceof Error && error.name === "TimeoutError" ? "request timed out" : "network request failed";
