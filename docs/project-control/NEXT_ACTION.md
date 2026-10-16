@@ -1,3 +1,5 @@
+> **FIX-01 clean replacement — 2026-10-16:** PR #28 shows 639 changed files because its source branch diverged from current `main`; do not merge it. A clean branch `feature/voice-transport-clean` was created from current `main` and now contains only the targeted multi-provider voice transport, relay source, shared email runtime, relevant tests, and this project's control records. See `docs/project-control/sessions/SESSION-073.md`. PR #28 remains open/unmerged. Current clean replacement is source-only and not yet tested, typechecked, built, browser-verified or deployed. Next: review the clean branch diff, finish any necessary lock/runtime integration fixes, open a draft replacement PR, and keep it unmerged until the scope is clean and verification evidence is recorded. Do not wait/poll GitHub Actions or Vercel; continue source development independently.
+ 
 ## FIX-01 realtime voice implementation checkpoint — 2026-10-16
 
 - Reference reviewed: `Rilan-Dev/Clara-AI-Platform` branch `feature/ai-core-from-doable-source`; reusable patterns inspected in `useVoiceClient.ts`, `useOpenAIRealtime.ts`, `useGeminiLive.ts`, `useAudioVisualizer.ts`, and `/api/embed/session`.
