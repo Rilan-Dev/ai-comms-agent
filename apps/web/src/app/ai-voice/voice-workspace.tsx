@@ -160,9 +160,16 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     const audio = audioRef.current;
     if (!audio) throw new Error("Realtime audio output element is unavailable.");
     audio.autoplay = true;
-    audio.playsInline = true;
+    // NOTE: `playsInline` is set declaratively on the <audio> JSX element
+    // below (see the `playsInline` attribute on `<audio ref={audioRef} ...>`).
+    // The DOM `HTMLAudioElement` interface does NOT expose `playsInline` as a
+    // property in TypeScript's lib.dom.d.ts — it is an HTML attribute, not a
+    // JS property. Setting `audio.playsInline = true` imperatively is both
+    // redundant (JSX already sets it) and a TypeScript error.
     pc.ontrack = (event) => {
-      audio.srcObject = event.streams[0];
+      const remoteStream = event.streams[0];
+      if (!remoteStream) return; // no stream to attach — RTCPeerConnection will retry
+      audio.srcObject = remoteStream;
       void audio.play().catch(() => setNotice("Voice is connected; tap the page once if your browser blocks audio playback."));
     };
     pc.onconnectionstatechange = () => {
