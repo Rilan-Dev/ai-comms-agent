@@ -32,6 +32,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   const pipelineSamplesRef = useRef<Int16Array[]>([]);
   const pipelinePreRollRef = useRef<Int16Array[]>([]);
   const pipelineSpeechStartedRef = useRef(false);
+  const pipelineBusyRef = useRef(false);
   const pipelineLastVoiceAtRef = useRef(0);
   const ttsObjectUrlRef = useRef<string | null>(null);
   const micMutedRef = useRef(false);
@@ -68,6 +69,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     pipelineSamplesRef.current = [];
     pipelinePreRollRef.current = [];
     pipelineSpeechStartedRef.current = false;
+    pipelineBusyRef.current = false;
     pipelineLastVoiceAtRef.current = 0;
     if (ttsObjectUrlRef.current) URL.revokeObjectURL(ttsObjectUrlRef.current);
     ttsObjectUrlRef.current = null;
@@ -190,11 +192,13 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
           audio.srcObject = null;
           audio.src = ttsObjectUrlRef.current;
           audio.onended = () => {
+            pipelineBusyRef.current = false;
             setSpeaking(false);
             streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
             setNotice("Connected and listening.");
           };
           audio.onerror = () => {
+            pipelineBusyRef.current = false;
             setSpeaking(false);
             setError(`${provider} audio playback failed.`);
             streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
@@ -226,6 +230,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     } catch (e) {
       if (controller.signal.aborted) return;
       streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
+      pipelineBusyRef.current = false;
       const message = e instanceof Error ? e.message : "Voice turn failed.";
       setError(message);
       setTurns((old) => old.map((turn) => turn.id === assistantTurn.id ? { ...turn, text: message, state: "done" } : turn));
@@ -284,8 +289,10 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   }
 
   async function submitPipelineUtterance(samples: Int16Array[], current: VoiceSession, provider: "sarvam" | "elevenlabs") {
+    if (pipelineBusyRef.current) return;
+    pipelineBusyRef.current = true;
     const length = samples.reduce((total, part) => total + part.length, 0);
-    if (!length) return;
+    if (!length) { pipelineBusyRef.current = false; return; }
     const merged = new Int16Array(length);
     let offset = 0;
     for (const part of samples) { merged.set(part, offset); offset += part.length; }
@@ -301,7 +308,9 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       if (!response.ok) throw new Error(payload.message ?? payload.error ?? `${provider} speech recognition failed.`);
       const transcript = payload.transcript?.trim();
       if (transcript) await submitHostTurn(transcript, true);
+      else pipelineBusyRef.current = false;
     } catch (e) {
+      pipelineBusyRef.current = false;
       setError(e instanceof Error ? e.message : `${provider} speech recognition failed.`);
       setNotice("Speech turn failed; no email action is claimed as completed.");
     }
@@ -324,6 +333,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     source.connect(processor);
     processor.connect(audioContext.destination);
     processor.onaudioprocess = (event) => {
+      if (pipelineBusyRef.current) return;
       const input = event.inputBuffer.getChannelData(0);
       const pcm = downsampleTo16k(input, audioContext.sampleRate);
       if (!pcm.length) return;
