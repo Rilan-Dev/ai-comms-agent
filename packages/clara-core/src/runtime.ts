@@ -622,29 +622,42 @@ export const claraRuntime = {
     const model = ctx.voiceOverride?.model || organizationConfig?.voice?.model || env("OPENAI_REALTIME_MODEL") || "gpt-realtime-2.1-mini";
     const voiceId = ctx.voiceOverride?.voiceId || organizationConfig?.voice?.voiceId || env("OPENAI_DEFAULT_VOICE") || "alloy";
 
-    // The first native browser transport is the OpenAI WebRTC path. Other
-    // provider choices stay explicitly on the host transcript bridge until
-    // their own Clara provider negotiation/relay has been integrated.
-    const savedRealtimeCredential = ctx.orgId && process.env.DATABASE_URL
-      ? await query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
-          "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='openai' AND purpose IN ('realtime','chat') ORDER BY CASE WHEN purpose='realtime' THEN 0 ELSE 1 END LIMIT 1",
-          [ctx.orgId],
+    // Provider-specific session negotiation: OpenAI uses server-side SDP
+    // exchange; Gemini uses a single-use constrained Live API token. Providers
+    // without their own transport adapter stay explicitly on the text bridge.
+    const credentialFor = async (providerId: string) => ctx.orgId && process.env.DATABASE_URL
+      ? query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
+          "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider=$2 AND purpose IN ('realtime','chat') ORDER BY CASE WHEN purpose='realtime' THEN 0 ELSE 1 END LIMIT 1",
+          [ctx.orgId, providerId],
         )
       : { rows: [] as Array<{ encrypted_api_key: Buffer | null; enabled: boolean }> };
-    const hasOpenAIRealtimeCredential = Boolean(
-      env("OPENAI_API_KEY") ||
-      (savedRealtimeCredential.rows[0]?.enabled && savedRealtimeCredential.rows[0]?.encrypted_api_key?.length) ||
-      (provider === "openai" && organizationConfig?.providerConfig.apiKey)
-    );
-    if (provider === "openai" && hasOpenAIRealtimeCredential) {
-      return {
-        realtimeProvider: provider,
-        transportMode: "realtime" as const,
-        sessionEndpoint: "/api/voice/realtime",
-        turnEndpoint: "/api/voice/turn",
-        voiceId,
-        model,
-      };
+    if (provider === "openai") {
+      const saved = await credentialFor("openai");
+      const available = Boolean(env("OPENAI_API_KEY") || (saved.rows[0]?.enabled && saved.rows[0]?.encrypted_api_key?.length) || organizationConfig?.providerConfig.apiKey);
+      if (available) {
+        return {
+          realtimeProvider: provider,
+          transportMode: "realtime" as const,
+          sessionEndpoint: "/api/voice/realtime",
+          turnEndpoint: "/api/voice/turn",
+          voiceId,
+          model,
+        };
+      }
+    }
+    if (provider === "gemini") {
+      const saved = await credentialFor("gemini");
+      const available = Boolean(env("GEMINI_API_KEY") || (saved.rows[0]?.enabled && saved.rows[0]?.encrypted_api_key?.length));
+      if (available) {
+        return {
+          realtimeProvider: provider,
+          transportMode: "realtime" as const,
+          sessionEndpoint: "/api/voice/gemini/session",
+          turnEndpoint: "/api/voice/turn",
+          voiceId,
+          model: "gemini-3.5-transcribe-live",
+        };
+      }
     }
     return {
       realtimeProvider: provider,
