@@ -24,3 +24,7 @@
 
 ## Verification
 GitHub source edits only. Tests, typecheck, build, browser microphone, provider credentials, relay deployment, full approval execution and production behavior have **not** been run or verified.
+
+
+## Continuation status correction — 2026-10-16
+PR #27 was merged at its earlier partial commit and does not contain the later multi-provider relay/shared email runtime work. Draft PR #28 carries this continuation. Issue #26 remains open. The relay still requires OPS-01 deployment/configuration; tests, typecheck, build and live browser/provider verification remain unrun.
