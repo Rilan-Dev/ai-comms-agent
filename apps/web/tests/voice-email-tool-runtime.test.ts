@@ -6,6 +6,8 @@ const turnRoute = readFileSync(resolve(__dirname, "../src/app/api/voice/turn/rou
 const runtime = readFileSync(resolve(__dirname, "../../../packages/email-agent-runtime/src/email-tool-runtime.ts"), "utf8");
 const writeTools = readFileSync(resolve(__dirname, "../../../packages/email-agent-runtime/src/email-write-tools.ts"), "utf8");
 const loop = readFileSync(resolve(__dirname, "../../../packages/email-agent-runtime/src/email-agent-loop.ts"), "utf8");
+const actionWorker = readFileSync(resolve(__dirname, "../../../apps/worker/src/email/action-worker.ts"), "utf8");
+const dbRepository = readFileSync(resolve(__dirname, "../../../packages/db/src/email/repository.ts"), "utf8");
 
 describe("voice email tool runtime boundary", () => {
   it("constructs tool context from the authenticated subject, never model-supplied identity", () => {
@@ -38,6 +40,16 @@ describe("voice email tool runtime boundary", () => {
     expect(writeTools).not.toContain(".sendDraft(");
     expect(writeTools).not.toContain(".reply(");
     expect(writeTools).not.toContain(".forward(");
+    expect(writeTools).not.toContain("const markRead =");
+    expect(writeTools).not.toContain("const archive =");
+    expect(writeTools).not.toContain("const move =");
+    expect(writeTools).not.toContain("const draftDelete =");
+  });
+
+  it("updates provider drafts with the latest approved content before sending", () => {
+    expect(actionWorker).toContain("connected.updateDraft(String(draft.provider_draft_id), params)");
+    expect(dbRepository).toContain("provider_draft_sync_status = 'pending'");
+  
   });
 
   it("bounds tool rounds and calls and treats tool output as untrusted data", () => {
