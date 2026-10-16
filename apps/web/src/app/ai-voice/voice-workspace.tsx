@@ -428,6 +428,9 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     const socket = new WebSocket(payload.relayUrl);
     providerSocketRef.current = socket;
     if (payload.ttsRelayUrl) {
+      const outputContext = new AudioContext();
+      ttsAudioContextRef.current = outputContext;
+      await outputContext.resume().catch(() => undefined);
       const ttsSocket = new WebSocket(payload.ttsRelayUrl);
       ttsSocketRef.current = ttsSocket;
       ttsSocket.onmessage = (event) => {
@@ -449,6 +452,11 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
           }
         } else if (type === "error") {
           setError(typeof data.message === "string" ? data.message : `${provider} speech synthesis reported an error.`);
+          const generationId = typeof data.generationId === "string" ? data.generationId : "";
+          if (generationId && ttsGenerationRef.current === generationId) {
+            ttsFinalSeenRef.current = true;
+            finishProviderTts(generationId);
+          }
         }
       };
       ttsSocket.onerror = () => setError(`${provider} streaming speech output is unavailable; the host will try the provider's speech endpoint instead.`);
