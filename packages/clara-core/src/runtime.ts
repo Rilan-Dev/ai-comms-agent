@@ -476,6 +476,125 @@ async function embedBatchOnce(
   return (payload.data ?? []).map((item) => item.embedding ?? []);
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Sarvam voice helpers — TTS synthesis + STT transcription (batch REST).
+// Used by the host transcript bridge path to give Sarvam-configured agents
+// a working voice experience without porting the full Sarvam realtime
+// WebSocket relay from vendor/clara. The bridge flow is:
+//   1. (optional) Browser uploads audio → /api/voice/turn → sarvamStt
+//   2. /api/voice/turn → claraRuntime.createChatTurn (Sarvam chat) → text
+//   3. /api/voice/turn → sarvamTts → audio bytes (returned as base64 in JSON)
+//   4. Browser plays the audio via the <audio> element
+// This is "voice messaging" mode (not true realtime conversation), but it
+// gives the user a working voice experience with Sarvam today.
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function resolveSarvamVoiceCredential(orgId: string): Promise<{ apiKey: string; baseUrl: string } | null> {
+  if (!orgId || !process.env.DATABASE_URL) return null;
+  const result = await query<{ encrypted_api_key: Buffer | null; enabled: boolean; config: Record<string, unknown> | null }>(
+    "SELECT encrypted_api_key, enabled, config FROM ai_provider_configs WHERE organization_id=$1 AND provider='sarvam' AND purpose='chat' LIMIT 1",
+    [orgId],
+  );
+  const row = result.rows[0];
+  if (!row?.enabled || !row.encrypted_api_key?.length) return null;
+  const masterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
+  if (!masterKey) throw new Error("CREDENTIALS_MASTER_KEY is required to decrypt Sarvam credential.");
+  const apiKey = decryptCredential(Buffer.from(row.encrypted_api_key), parseCredentialsMasterKey(masterKey)).toString("utf8");
+  const baseUrl = (typeof row.config?.baseUrl === "string" && row.config.baseUrl) ? row.config.baseUrl.replace(/\/$/, "") : "https://api.sarvam.ai";
+  return { apiKey, baseUrl };
+}
+
+/** Synthesize speech via Sarvam Bulbul TTS (REST /text-to-speech).
+ *  Returns base64-encoded WAV audio suitable for inline <audio> playback.
+ *  Throws on auth failure or non-2xx response. */
+export async function sarvamTts(params: {
+  orgId: string;
+  text: string;
+  model?: string;       // default: bulbul:v3
+  speaker?: string;      // default: shubh
+  languageCode?: string; // default: en-IN
+}): Promise<{ audioBase64: string; format: "wav"; sampleRate: number }> {
+  const trimmed = params.text.trim();
+  if (!trimmed) throw new Error("Sarvam TTS requires non-empty text.");
+  const cred = await resolveSarvamVoiceCredential(params.orgId);
+  if (!cred) throw new Error("Sarvam chat credential is not configured for this organization.");
+  const sampleRate = 16_000;
+  const body = {
+    text: trimmed,
+    model: params.model ?? "bulbul:v3",
+    speaker: params.speaker ?? "shubh",
+    speech_sample_rate: sampleRate,
+    ...(params.languageCode ? { language_code: params.languageCode } : {}),
+  };
+  const response = await fetch(`${cred.baseUrl}/text-to-speech`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-subscription-key": cred.apiKey,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => "");
+    throw new Error(`Sarvam TTS failed (${response.status}): ${errorBody.slice(0, 500)}`);
+  }
+  // Sarvam returns JSON envelope { audio: <base64 wav> } per the wire contract
+  // (see vendor/clara/.../providers/sarvam.ts). Some payloads return raw WAV
+  // bytes — handle both.
+  const contentType = response.headers.get("content-type") ?? "";
+  let wavBytes: Buffer;
+  if (contentType.includes("application/json")) {
+    const payload = await response.json() as { audio?: string; audios?: string[] };
+    const audio = payload.audio ?? (Array.isArray(payload.audios) ? payload.audios[0] : undefined);
+    if (typeof audio !== "string" || !audio) throw new Error("Sarvam TTS returned no audio in JSON envelope.");
+    wavBytes = Buffer.from(audio, "base64");
+  } else {
+    const arrayBuf = await response.arrayBuffer();
+    wavBytes = Buffer.from(new Uint8Array(arrayBuf));
+  }
+  if (wavBytes.length === 0) throw new Error("Sarvam TTS returned empty audio.");
+  return { audioBase64: wavBytes.toString("base64"), format: "wav", sampleRate };
+}
+
+/** Transcribe speech via Sarvam Saaras STT (REST /speech-to-text).
+ *  Accepts an audio buffer (WAV or raw PCM) and returns the recognized text.
+ *  Throws on auth failure or non-2xx response. */
+export async function sarvamStt(params: {
+  orgId: string;
+  audio: Buffer;
+  contentType?: string;   // default: audio/wav
+  model?: string;          // default: saaras:v3
+  languageCode?: string;   // default: unknown (auto-detect)
+}): Promise<{ transcript: string; languageCode: string | null }> {
+  if (!params.audio || params.audio.length === 0) throw new Error("Sarvam STT requires non-empty audio.");
+  const cred = await resolveSarvamVoiceCredential(params.orgId);
+  if (!cred) throw new Error("Sarvam chat credential is not configured for this organization.");
+  const model = params.model ?? "saaras:v3";
+  const languageCode = params.languageCode ?? "unknown";
+  // Build multipart form per Sarvam STT API:
+  //   file=<audio bytes>, model=saaras:v3, language_code=unknown
+  const formData = new FormData();
+  formData.append("model", model);
+  formData.append("language_code", languageCode);
+  const blob = new Blob([new Uint8Array(params.audio)], { type: params.contentType ?? "audio/wav" });
+  formData.append("file", blob, "audio.wav");
+  const response = await fetch(`${cred.baseUrl}/speech-to-text`, {
+    method: "POST",
+    headers: { "api-subscription-key": cred.apiKey },
+    body: formData,
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => "");
+    throw new Error(`Sarvam STT failed (${response.status}): ${errorBody.slice(0, 500)}`);
+  }
+  const payload = await response.json() as { transcript?: string; text?: string; language_code?: string };
+  const transcript = (payload.transcript ?? payload.text ?? "").trim();
+  if (!transcript) throw new Error("Sarvam STT returned empty transcript.");
+  return { transcript, languageCode: payload.language_code ?? null };
+}
+
 async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: number): Promise<GroundedContext> {
   if (!ctx.orgId || !process.env.DATABASE_URL) {
     return { ok: false, result: { sources: [] }, error: "PostgreSQL is not configured for local knowledge retrieval." };

@@ -113,28 +113,74 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     setTurns((old) => [...old, userTurn, assistantTurn]);
     setNotice("Clara is processing your request through the authorized host runtime.");
     try {
+      // ISS-VOICE-BRIDGE: include `speak: true` so the route synthesizes
+      // Sarvam Bulbul TTS audio for the response and returns it as
+      // base64 in the JSON. The voice workspace then plays the audio
+      // via the <audio> element. This works in BOTH transport modes:
+      //   - realtime (OpenAI WebRTC): the audio is a fallback if the
+      //     data channel isn't open yet
+      //   - transcript_bridge (Sarvam): the audio is the primary playback
+      //     path (no OpenAI data channel exists in this mode)
       const response = await fetch("/api/voice/turn", {
         method: "POST",
         headers: { "content-type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({ organizationId, agentId: agent.id, sessionId: current.id, transcript: text }),
+        body: JSON.stringify({ organizationId, agentId: agent.id, sessionId: current.id, transcript: text, speak: speakAnswer }),
       });
-      const payload = await response.json().catch(() => ({})) as { text?: string; message?: string; error?: string };
+      const payload = await response.json().catch(() => ({})) as { text?: string; message?: string; error?: string; audioBase64?: string; audioFormat?: string; ttsError?: string };
       if (!response.ok) throw new Error(payload.message ?? payload.error ?? "Voice turn failed.");
       if (!isCurrentVoiceSequence(turnSequenceRef.current, sequence) || controller.signal.aborted) return;
       const answer = payload.text?.trim() || "I couldn't produce a response for that turn.";
       setTurns((old) => old.map((turn) => turn.id === assistantTurn.id ? { ...turn, text: answer, state: "done" } : turn));
       setNotice(speakAnswer ? "Answer received from Clara. Playing the spoken response." : "Response received.");
       if (speakAnswer) {
+        // Prefer the OpenAI Realtime data channel when available (low-latency
+        // streaming). Fall back to playing the Sarvam Bulbul TTS audio blob
+        // returned by /api/voice/turn (transcript_bridge mode, or when the
+        // data channel isn't open).
         const channel = channelRef.current;
-        if (!channel || channel.readyState !== "open") throw new Error("The voice transport disconnected before the answer could be spoken.");
-        channel.send(JSON.stringify({
-          type: "response.create",
-          response: {
-            output_modalities: ["audio"],
-            instructions: `Speak the following answer exactly and naturally. Do not add facts, email details, or actions beyond this answer:\n\n${answer}`,
-          },
-        }));
+        if (channel && channel.readyState === "open") {
+          channel.send(JSON.stringify({
+            type: "response.create",
+            response: {
+              output_modalities: ["audio"],
+              instructions: `Speak the following answer exactly and naturally. Do not add facts, email details, or actions beyond this answer:\n\n${answer}`,
+            },
+          }));
+        } else if (payload.audioBase64) {
+          // Play the base64-encoded WAV audio returned by Sarvam Bulbul TTS.
+          // This is the primary playback path for transcript_bridge mode.
+          const audio = audioRef.current;
+          if (audio) {
+            try {
+              const byteString = atob(payload.audioBase64);
+              const bytes = new Uint8Array(byteString.length);
+              for (let i = 0; i < byteString.length; i++) bytes[i] = byteString.charCodeAt(i);
+              const blob = new Blob([bytes], { type: payload.audioFormat === "wav" ? "audio/wav" : "audio/mpeg" });
+              const url = URL.createObjectURL(blob);
+              audio.srcObject = null;
+              audio.src = url;
+              setSpeaking(true);
+              void audio.play().then(() => {
+                setNotice("Clara finished speaking.");
+              }).catch(() => {
+                setNotice("Voice is connected; tap the page once if your browser blocks audio playback.");
+              }).finally(() => {
+                setSpeaking(false);
+                URL.revokeObjectURL(url);
+              });
+            } catch (playbackError) {
+              console.error("[voice-workspace] TTS audio playback failed:", playbackError);
+              setNotice("Response received (TTS playback failed — see text answer).");
+            }
+          }
+        } else if (payload.ttsError) {
+          setNotice(`Response received (TTS unavailable: ${payload.ttsError.slice(0, 100)}).`);
+        } else {
+          // Neither the data channel nor TTS audio is available — show
+          // the text answer only.
+          setNotice("Response received (text only).");
+        }
       }
     } catch (e) {
       if (controller.signal.aborted) return;
@@ -294,7 +340,139 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     const text = transcript.trim();
     if (!text || busy) return;
     setTranscript("");
-    await submitHostTurn(text, false);
+    // ISS-VOICE-BRIDGE: pass speakAnswer=true so /api/voice/turn synthesizes
+    // Sarvam Bulbul TTS audio for the response. In transcript_bridge mode,
+    // this is the primary voice playback path. In realtime mode, the OpenAI
+    // data channel is preferred (when open) and TTS audio is the fallback.
+    await submitHostTurn(text, true);
+  }
+
+  // ─── Push-to-talk audio input (transcript_bridge mode only) ─────────────
+  // Captures microphone audio via MediaRecorder, uploads the blob to
+  // /api/voice/turn as multipart/form-data. The server transcribes via
+  // Sarvam Saaras STT, generates a response via Sarvam chat, and synthesizes
+  // spoken audio via Sarvam Bulbul TTS. The response audio plays through
+  // the <audio> element. This gives Sarvam-configured agents a working
+  // voice experience without porting the full Sarvam realtime WebSocket
+  // relay from vendor/clara.
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const [recording, setRecording] = useState(false);
+
+  async function startRecording() {
+    if (busy || recording) return;
+    if (!sessionRef.current || !agent) return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setError("This browser does not support microphone recording. Use the text input instead.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      streamRef.current = stream;
+      // Pick a mime type the browser supports; prefer audio/webm;codecs=opus
+      // for compactness, fall back to audio/webm, then audio/ogg.
+      const mimeCandidates = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/ogg"];
+      const mimeType = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m)) ?? "";
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      recordedChunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordedChunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        recordedChunksRef.current = [];
+        // Stop the microphone stream now that we have the recording.
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        void uploadRecording(blob);
+      };
+      recorder.start();
+      setRecording(true);
+      setNotice("Recording… click Stop when you're done speaking.");
+    } catch (e) {
+      setRecording(false);
+      setError(e instanceof Error ? e.message : "Could not access the microphone.");
+    }
+  }
+
+  function stopRecording() {
+    const recorder = recorderRef.current;
+    if (!recorder || recorder.state === "inactive") return;
+    recorder.stop();
+    setRecording(false);
+    setNotice("Recording stopped. Transcribing your speech via Sarvam Saaras STT…");
+  }
+
+  async function uploadRecording(blob: Blob) {
+    const current = sessionRef.current;
+    if (!current || !agent) return;
+    const sequence = ++turnSequenceRef.current;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const userTurn: Turn = { id: `user-${sequence}`, role: "user", text: "(spoken audio)", state: "done" };
+    const assistantTurn: Turn = { id: `assistant-${sequence}`, role: "assistant", text: "", state: "thinking" };
+    setTurns((old) => [...old, userTurn, assistantTurn]);
+    setNotice("Clara is transcribing your speech and generating a response.");
+    try {
+      const form = new FormData();
+      form.append("organizationId", organizationId);
+      form.append("agentId", agent.id);
+      form.append("sessionId", current.id);
+      form.append("audio", blob, "recording.webm");
+      form.append("speak", "1");
+      const response = await fetch("/api/voice/turn", {
+        method: "POST",
+        signal: controller.signal,
+        body: form,
+      });
+      const payload = await response.json().catch(() => ({})) as { text?: string; message?: string; error?: string; recognizedTranscript?: string; audioBase64?: string; audioFormat?: string; ttsError?: string };
+      if (!response.ok) throw new Error(payload.message ?? payload.error ?? "Voice turn failed.");
+      if (!isCurrentVoiceSequence(turnSequenceRef.current, sequence) || controller.signal.aborted) return;
+      // Replace the user turn placeholder with the actual recognized transcript.
+      const recognized = payload.recognizedTranscript?.trim() || "(unrecognized speech)";
+      setTurns((old) => old.map((turn) => turn.id === userTurn.id ? { ...turn, text: recognized } : turn));
+      const answer = payload.text?.trim() || "I couldn't produce a response for that turn.";
+      setTurns((old) => old.map((turn) => turn.id === assistantTurn.id ? { ...turn, text: answer, state: "done" } : turn));
+      setNotice("Answer received from Clara. Playing the spoken response.");
+      if (payload.audioBase64) {
+        const audio = audioRef.current;
+        if (audio) {
+          try {
+            const byteString = atob(payload.audioBase64);
+            const bytes = new Uint8Array(byteString.length);
+            for (let i = 0; i < byteString.length; i++) bytes[i] = byteString.charCodeAt(i);
+            const audioBlob = new Blob([bytes], { type: payload.audioFormat === "wav" ? "audio/wav" : "audio/mpeg" });
+            const url = URL.createObjectURL(audioBlob);
+            audio.srcObject = null;
+            audio.src = url;
+            setSpeaking(true);
+            void audio.play().then(() => {
+              setNotice("Clara finished speaking.");
+            }).catch(() => {
+              setNotice("Voice is connected; tap the page once if your browser blocks audio playback.");
+            }).finally(() => {
+              setSpeaking(false);
+              URL.revokeObjectURL(url);
+            });
+          } catch (playbackError) {
+            console.error("[voice-workspace] TTS audio playback failed:", playbackError);
+            setNotice("Response received (TTS playback failed — see text answer).");
+          }
+        }
+      } else if (payload.ttsError) {
+        setNotice(`Response received (TTS unavailable: ${payload.ttsError.slice(0, 100)}).`);
+      } else {
+        setNotice("Response received (text only).");
+      }
+    } catch (e) {
+      if (controller.signal.aborted) return;
+      const message = e instanceof Error ? e.message : "Voice turn failed.";
+      setError(message);
+      setTurns((old) => old.map((turn) => turn.id === assistantTurn.id ? { ...turn, text: message, state: "done" } : turn));
+      setNotice("This turn failed. No external action is claimed as completed.");
+    }
   }
 
   async function endSession() {
@@ -406,10 +584,32 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                 <p className="mb-4 rounded-xl border border-dashed px-4 py-5 text-center text-sm text-muted-foreground">{connected ? "Your conversation will appear here as you speak." : "Start a session to begin. Live audio is only enabled when a real provider transport is available."}</p>
               )}
               {liveSession && bridgeOnly ? (
-                <form onSubmit={(event) => { event.preventDefault(); void sendTextTurn(); }} className="flex flex-col gap-2 sm:flex-row">
-                  <textarea value={transcript} onChange={(event) => setTranscript(event.target.value)} placeholder="Type a message to Clara…" rows={2} className="min-h-12 flex-1 resize-y rounded-xl border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-                  <button type="submit" disabled={!transcript.trim() || busy} className="self-stretch rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-background disabled:opacity-40">Send text</button>
-                </form>
+                <div className="space-y-3">
+                  {/* Push-to-talk voice input — Sarvam Saaras STT transcribes the
+                      recording, Sarvam chat generates the response, Sarvam Bulbul
+                      TTS synthesizes spoken audio for the reply. The response
+                      audio plays through the <audio> element below. */}
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    {!recording ? (
+                      <button type="button" onClick={() => void startRecording()} disabled={busy} className="inline-flex items-center justify-center gap-2 self-stretch rounded-xl border border-primary/40 bg-primary/10 px-5 py-3 text-sm font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-40">
+                        <Mic size={16} /> Record voice
+                      </button>
+                    ) : (
+                      <button type="button" onClick={() => stopRecording()} className="inline-flex items-center justify-center gap-2 self-stretch rounded-xl border border-destructive/40 bg-destructive/10 px-5 py-3 text-sm font-semibold text-destructive transition hover:bg-destructive/20">
+                        <CircleStop size={16} /> Stop & send
+                      </button>
+                    )}
+                    <p className="self-center text-xs text-muted-foreground">
+                      {recording ? "Recording — click Stop & send when you're done." : "Push to talk: Sarvam transcribes your speech and speaks the answer."}
+                    </p>
+                  </div>
+                  {/* Text input fallback — for users who prefer typing or whose
+                      browser does not support MediaRecorder. */}
+                  <form onSubmit={(event) => { event.preventDefault(); void sendTextTurn(); }} className="flex flex-col gap-2 sm:flex-row">
+                    <textarea value={transcript} onChange={(event) => setTranscript(event.target.value)} placeholder="Or type a message to Clara — she'll speak the answer…" rows={2} className="min-h-12 flex-1 resize-y rounded-xl border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                    <button type="submit" disabled={!transcript.trim() || busy} className="self-stretch rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-background disabled:opacity-40">Send text</button>
+                  </form>
+                </div>
               ) : null}
             </div>
           </div>

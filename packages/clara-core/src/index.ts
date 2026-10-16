@@ -7,6 +7,8 @@
 export {
   claraRuntime,
   createProvider,
+  sarvamStt,
+  sarvamTts,
   type ClaraRuntimeContext,
   type ClaraAgentTurnRequest,
   type ClaraAgentTurn,
