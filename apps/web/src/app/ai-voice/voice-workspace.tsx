@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isCurrentVoiceSequence } from "@ai-comms-agent/shared";
-import { AudioLines, Mic, PhoneOff, Send, ShieldCheck } from "lucide-react";
+import { AudioLines, ShieldCheck } from "lucide-react";
 
 type Agent = { id: string; name: string; status: string };
 type VoiceSession = { id: string; status: string; provider?: string | null; model?: string | null };
@@ -17,7 +17,6 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   const [busy, setBusy] = useState(false);
   const [turnBusy, setTurnBusy] = useState(false);
   const [error, setError] = useState("");
-  const [micState, setMicState] = useState<"idle" | "requesting" | "ready" | "denied">("idle");
   const [notice, setNotice] = useState("Voice transport is Clara-owned. Provider credentials remain server-side.");
   const streamRef = useRef<MediaStream | null>(null);
   const turnAbortRef = useRef<AbortController | null>(null);
@@ -29,22 +28,6 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     turnAbortRef.current?.abort();
     streamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
-
-  async function requestMicrophone() {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setMicState("denied");
-      throw new Error("This browser does not expose microphone access.");
-    }
-    setMicState("requesting");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      setMicState("ready");
-    } catch {
-      setMicState("denied");
-      throw new Error("Microphone access was denied. Allow microphone access and try again.");
-    }
-  }
 
   async function start() {
     if (!agent || busy) return;
@@ -74,7 +57,6 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     } catch (e) {
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
-      setMicState("idle");
       setError(e instanceof Error ? e.message : "Voice session failed.");
       setNotice("Session startup failed. No provider connection was established.");
     } finally {
@@ -84,7 +66,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
 
   async function sendTurn() {
     const text = transcript.trim();
-    if (!session || session.status === "ended" || !text || turnBusy) return;
+    if (!session || (session.status !== "active" && !(session.status === "starting" && transport?.transportMode === "transcript_bridge")) || !text || turnBusy) return;
 
     turnAbortRef.current?.abort();
     const controller = new AbortController();
@@ -183,13 +165,13 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
               <div className="w-full max-w-xl">
                 <div className="mx-auto grid h-24 w-24 place-items-center rounded-full border-8 border-primary/10 bg-primary/5 text-primary"><AudioLines size={38} aria-hidden="true" /></div>
                 <h2 className="mt-6 text-xl font-semibold">
-                  {session?.status === "active" ? "Session initialized" : session?.status === "ended" ? "Session ended" : "Ready to connect"}
+                  {session?.status === "active" ? "Session active" : session?.status === "starting" ? "Session initialized — realtime not connected" : session?.status === "ended" ? "Session ended" : "Ready to connect"}
                 </h2>
                 <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">{notice}</p>
                 {error ? <p className="mx-auto mt-3 max-w-md rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{error}</p> : null}
 
                 <div className="mt-6 flex justify-center gap-3">
-                  {session?.status === "active" ? (
+                  {session && (session.status === "active" || session.status === "starting") ? (
                     <button onClick={() => void stop()} disabled={busy} className="rounded-md border px-5 py-3 text-sm font-semibold hover:bg-muted disabled:opacity-50">
                       End session
                     </button>
@@ -206,7 +188,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                       <label htmlFor="voice-transcript" className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">
                         Transcript bridge
                       </label>
-                      <span className="text-xs text-muted-foreground">Mic: {micState === "ready" ? "ready" : micState}</span>
+                      <span className="text-xs text-muted-foreground">Microphone audio: not connected</span>
                     </div>
                     <textarea
                       id="voice-transcript"
@@ -223,7 +205,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                     />
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <span className="text-xs text-muted-foreground">Enter sends · Shift+Enter adds a line</span>
-                      <button onClick={() => void sendTurn()} disabled={turnBusy || !transcript.trim()} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+                      <button onClick={() => void sendTurn()} disabled={busy || turnBusy || !transcript.trim()} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
                         {turnBusy ? "Thinking…" : "Send turn"}
                       </button>
                     </div>
@@ -247,7 +229,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                 <Row label="Model" value={session?.model ?? "Not resolved"} />
                 <Row label="Session ID" value={session?.id ? session.id.slice(0, 12) + "…" : "—"} />
                 <Row label="Credentials" value="Server-side only" />
-                <Row label="Microphone" value={micState === "ready" ? "Ready" : micState === "requesting" ? "Requesting…" : micState === "denied" ? "Blocked" : "Off"} />
+                <Row label="Microphone" value="Not connected" />
                 <Row label="Transport" value={transport?.transportMode === "realtime" ? "Awaiting adapter readiness" : transport?.turnEndpoint ? "HTTP transcript bridge only" : "Not connected"} />
               </dl>
             </div>
