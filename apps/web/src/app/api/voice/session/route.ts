@@ -54,6 +54,7 @@ export async function POST(request: Request) {
         kbId,
         userId: subject.user.id,
         sessionId: String(persisted.id),
+        voiceOverride: { provider: voiceProvider, model: voiceModel, voiceId },
       });
       const configured = await configureStartingVoiceSessionForOrganization({
         organizationId,
