@@ -38,7 +38,7 @@ describe("Clara realtime voice transport", () => {
 
   it("does not expose the long-lived provider credential to the browser", () => {
     expect(realtimeRoute).toContain("process.env.OPENAI_API_KEY");
-    expect(realtimeRoute).toContain("purpose='realtime'");
+    expect(realtimeRoute).toContain("purpose IN ('realtime'");
     expect(realtimeRoute).toContain("decryptCredential");
     expect(realtimeRoute).not.toContain("return NextResponse.json({ apiKey");
     expect(workspace).not.toContain("OPENAI_API_KEY");
