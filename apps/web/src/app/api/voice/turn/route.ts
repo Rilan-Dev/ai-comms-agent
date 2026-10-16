@@ -90,6 +90,7 @@ export async function POST(request: Request) {
       executionId,
       text: turn.text,
       toolCalls: turn.toolCalls,
+      pendingApprovals: turn.pendingApprovals,
       finishReason: turn.finishReason,
       actions: turn.toolCalls,
     });
