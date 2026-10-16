@@ -12,6 +12,7 @@ export interface EmailAgentTurnInput {
   organizationId: string;
   agentId: string;
   messages: ChatMessage[];
+  kbId?: string;
   /** Constructed from authenticated server state, never from model arguments. */
   toolContext: ToolContext;
   maxRounds?: number;
@@ -72,7 +73,7 @@ export async function runEmailAgentTurn(
 
   for (let round = 0; round < maxRounds; round += 1) {
     const completion = await dependencies.completeWithTools(
-      { orgId: input.organizationId, agentId: input.agentId, kbId: "" },
+      { orgId: input.organizationId, agentId: input.agentId, kbId: input.kbId ?? "" },
       history,
       definitions,
     );
