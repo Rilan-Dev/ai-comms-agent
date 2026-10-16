@@ -72,7 +72,6 @@ export function createClaraEmailVectorAdapter(config: AdapterConfig = {}): Email
         },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(timeoutMs),
-        cache: "no-store",
       });
     } catch (error) {
       // Do not include URL, credential, message content, or response body in errors.
