@@ -132,7 +132,6 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       });
       setSession((current) => current ? { ...current, status: "ended" } : null);
       setTransport(null);
-      setMicState("idle");
       setNotice("Voice session ended and persisted.");
     } finally {
       setBusy(false);
@@ -182,7 +181,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                   )}
                 </div>
 
-                {session?.status === "active" ? (
+                {session && (session.status === "active" || session.status === "starting") ? (
                   <div className="mt-8 rounded-md border border-border bg-secondary/50 p-4 text-left">
                     <div className="flex items-center justify-between gap-3">
                       <label htmlFor="voice-transcript" className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">
