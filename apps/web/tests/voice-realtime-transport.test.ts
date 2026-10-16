@@ -20,6 +20,8 @@ describe("Clara realtime voice transport", () => {
 
   it("does not expose the long-lived provider credential to the browser", () => {
     expect(realtimeRoute).toContain("process.env.OPENAI_API_KEY");
+    expect(realtimeRoute).toContain("purpose='realtime'");
+    expect(realtimeRoute).toContain("decryptCredential");
     expect(realtimeRoute).not.toContain("return NextResponse.json({ apiKey");
     expect(workspace).not.toContain("OPENAI_API_KEY");
     expect(workspace).toContain('body: JSON.stringify({ organizationId, agentId: agent?.id, sessionId: current.id, sdp })');
@@ -28,6 +30,7 @@ describe("Clara realtime voice transport", () => {
   it("uses real microphone, peer connection and data channel lifecycle events", () => {
     expect(workspace).toContain("navigator.mediaDevices.getUserMedia");
     expect(workspace).toContain("new RTCPeerConnection()");
+    expect(workspace).toContain("Realtime session readiness timed out");
     expect(workspace).toContain('pc.createDataChannel("oai-events")');
     expect(workspace).toContain("pc.ontrack");
     expect(workspace).toContain('type === "session.created"');
