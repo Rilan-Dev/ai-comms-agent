@@ -14,6 +14,12 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "citext";
 
+-- All application tables, enums, and policies in this migration belong to aca.
+-- Without an explicit search_path, CREATE TABLE IF NOT EXISTS can resolve a
+-- legacy public table and then fail on indexes expecting the current schema.
+CREATE SCHEMA IF NOT EXISTS aca;
+SET search_path = aca, public;
+
 -- Application database roles are supplied by Supabase or the deployment role.
 -- No database roles are created by this migration; this keeps the migration
 -- portable and avoids mutating cluster-level role configuration.
