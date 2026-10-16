@@ -63,6 +63,7 @@ export async function POST(request: Request) {
       organizationId,
       agentId,
       messages: [{ role: "user", content: transcript }],
+      kbId,
       toolContext: {
         organization_id: organizationId,
         agent_id: agentId,
