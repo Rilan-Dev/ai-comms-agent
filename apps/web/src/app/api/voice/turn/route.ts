@@ -56,6 +56,11 @@ export async function POST(request: Request) {
     // KB ID is OPTIONAL for voice turns. RAG features are skipped when no KB is configured.
     const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim() || "default";
 
+    const turnRecorded = await incrementVoiceSessionTurnForOrganization(organizationId, sessionId, transcriptBridgeOnly);
+    if (!turnRecorded) {
+      return NextResponse.json({ error: "session_not_active", message: "Voice session ended before the turn could be recorded." }, { status: 409 });
+    }
+
     const executionId = crypto.randomUUID();
     const role = subject.membership.role;
     const permissions = [...subject.permissions];
@@ -82,10 +87,6 @@ export async function POST(request: Request) {
       maxToolCalls: 8,
     });
 
-    const turnRecorded = await incrementVoiceSessionTurnForOrganization(organizationId, sessionId, transcriptBridgeOnly);
-    if (!turnRecorded) {
-      return NextResponse.json({ error: "session_not_active", message: "Voice session ended before the turn could be recorded." }, { status: 409 });
-    }
     return NextResponse.json({
       executionId,
       text: turn.text,
