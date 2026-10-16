@@ -25,6 +25,15 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   const [notice, setNotice] = useState("Your voice session will connect through Clara's authorized runtime.");
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const geminiSocketRef = useRef<WebSocket | null>(null);
+  const providerSocketRef = useRef<WebSocket | null>(null);
+  const ttsSocketRef = useRef<WebSocket | null>(null);
+  const ttsAudioContextRef = useRef<AudioContext | null>(null);
+  const ttsNextStartRef = useRef(0);
+  const ttsSourcesRef = useRef(new Set<AudioBufferSourceNode>());
+  const ttsGenerationRef = useRef<string | null>(null);
+  const ttsFinalSeenRef = useRef(false);
+  const ttsPendingFramesRef = useRef(0);
+  const lastProviderFinalRef = useRef<{ text: string; at: number } | null>(null);
   const geminiAudioContextRef = useRef<AudioContext | null>(null);
   const geminiProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const geminiSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -58,7 +67,20 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     expectedDisconnectRef.current = true;
     try { channelRef.current?.close(); } catch {}
     try { geminiSocketRef.current?.close(); } catch {}
+    try { providerSocketRef.current?.close(); } catch {}
+    try { ttsSocketRef.current?.close(); } catch {}
     geminiSocketRef.current = null;
+    providerSocketRef.current = null;
+    ttsSocketRef.current = null;
+    for (const source of ttsSourcesRef.current) { try { source.stop(); } catch {} }
+    ttsSourcesRef.current.clear();
+    if (ttsAudioContextRef.current) void ttsAudioContextRef.current.close().catch(() => undefined);
+    ttsAudioContextRef.current = null;
+    ttsNextStartRef.current = 0;
+    ttsGenerationRef.current = null;
+    ttsFinalSeenRef.current = false;
+    ttsPendingFramesRef.current = 0;
+    lastProviderFinalRef.current = null;
     geminiProcessorRef.current?.disconnect();
     geminiSourceRef.current?.disconnect();
     geminiProcessorRef.current = null;
