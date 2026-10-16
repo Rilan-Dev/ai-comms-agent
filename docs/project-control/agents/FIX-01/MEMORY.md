@@ -106,3 +106,10 @@ The authentication loop was traced to session issuance preceding active organiza
 - `loadCredentials()` returns a generic record; do not assert it directly as `EmailCredentials` because `credential_type` is required.
 - Validate the discriminant at each provider-worker boundary, reject unsupported/missing values, and pass a spread object with the narrowed discriminant. Avoid `as unknown as` casts.
 - Build evidence from user: worker TypeScript build failed at Gmail watch renewal and IMAP IDLE startup. Fix commits are on `main`; rerun worker typecheck/build to verify.
+
+
+### FIX-01 / Sentinel — 2026-10-16 — Provider enum/schema mismatch
+- When worker SQL rejects a provider label with PostgreSQL 22P02, compare the exact enum bound to the persisted column against every migration and the current application provider union.
+- A similarly named enum such as email_account_provider does not update email_provider; change the exact type referenced by the failing column.
+- Prefer a forward-only migration and a source regression assertion. Do not remove supported provider values from polling queries to silence the error.
+- Distinguish deterministic source/schema errors from separate subscription prerequisites and deployment/runtime evidence. Migration execution and live sync remain OPS-01 verification.
