@@ -43,8 +43,8 @@ export async function POST(request: Request) {
     if (!session || session.user_id !== subject.user.id || session.agent_id !== agentId || session.ended_at) {
       return NextResponse.json({ error: "not_found", message: "Voice session was not found for this user and agent." }, { status: 404 });
     }
-    if (session.status !== "starting" && session.status !== "active") {
-      return NextResponse.json({ error: "session_not_starting", message: "This voice session cannot establish a transport." }, { status: 409 });
+    if (session.status !== "starting") {
+      return NextResponse.json({ error: "session_not_starting", message: "A realtime transport can only be negotiated once while the host session is starting." }, { status: 409 });
     }
     if (String(session.provider ?? "").toLowerCase() !== "openai") {
       return NextResponse.json({ error: "provider_transport_unsupported", message: "The native WebRTC transport is currently available for OpenAI only. This provider has not been connected." }, { status: 409 });
