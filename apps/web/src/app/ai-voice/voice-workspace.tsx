@@ -89,7 +89,11 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.message ?? payload.error ?? "Voice session state could not be updated.");
-    if (payload.session) setSession(payload.session as VoiceSession);
+    if (payload.session) {
+      const updated = payload.session as VoiceSession;
+      sessionRef.current = updated;
+      setSession(updated);
+    }
   }, [organizationId]);
 
   const maybeActivate = useCallback(async () => {
