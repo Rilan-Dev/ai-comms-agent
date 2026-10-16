@@ -659,6 +659,20 @@ export const claraRuntime = {
         };
       }
     }
+    if (provider === "sarvam" || provider === "elevenlabs") {
+      const saved = await credentialFor(provider);
+      const environmentKey = provider === "sarvam" ? env("SARVAM_API_KEY") : env("ELEVENLABS_API_KEY");
+      const available = Boolean(environmentKey || (saved.rows[0]?.enabled && saved.rows[0]?.encrypted_api_key?.length));
+      if (available) {
+        return {
+          realtimeProvider: provider,
+          transportMode: "pipeline" as const,
+          turnEndpoint: "/api/voice/turn",
+          voiceId,
+          model: provider === "sarvam" ? "saaras:v4" : "scribe_v2",
+        };
+      }
+    }
     return {
       realtimeProvider: provider,
       transportMode: "transcript_bridge" as const,
