@@ -606,3 +606,12 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Evidence:** User logs + source inspection; commits 83d512d5815bf7626a6b0d824a5ce92fedfa2189 and 988d78effcfa65fc9521eeb17a3c371d89173d69.
 - **Verification:** Tests, typechecks, migration execution, build and runtime sync not run; no PASS claimed.
 - **Next:** OPS-01 apply migration and rebuild/restart worker, then verify error cessation and persisted email messages.
+
+
+### SESSION-068 — 2026-10-16
+- Agent: FIX-01 / Sentinel (source correction tranche requested by user).
+- Branch: `fix/voice-transport-contract`; draft PR #27.
+- Changed runtime transport contract to identify `/api/voice/turn` as an HTTP transcript bridge, not a provider session endpoint.
+- Changed session persistence to remain `starting` until actual transport activation, and allowed transcript turns while starting only when explicit bridge metadata is present and all host authorization checks pass.
+- Removed microphone-permission/readiness claims from the UI. Added lifecycle contract assertions and adjusted the turn-lifecycle regression assertion.
+- Status: PARTIAL SOURCE FIX. Real provider transport/session negotiation, natural spoken enquiries, reconnect/interruption, and audio teardown are still missing. No tests/typecheck/build/browser/provider/deployment verification was run. Keep issue #26 open.
