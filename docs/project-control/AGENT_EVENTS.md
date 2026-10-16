@@ -347,3 +347,12 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Action:** Updated the email RAG plan with source evidence at commit `0994cdd0a9388ee10b57ebc759d05a2eb4117f20`. No app code or Clara source was changed.
 - **Security:** ISS-026 remains open and FIX-01-owned; no vector retrieval exposed.
 - **Next:** Establish/implement an authenticated Clara email-vector API contract; after ISS-026 closure bind the adapter and worker loop. OPS-01 validates live infrastructure and latency.
+
+
+### EVT-FIX01-MICROSOFT-GRAPH-ENUM-20261016
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** CORRECTION / SCHEMA_COMPATIBILITY
+- **Summary:** Added migration 0034 to extend the actual email_provider enum with microsoft_graph; added static regression protection. Root cause was the provider label existing only in a separate email_account_provider enum.
+- **Impact:** Source correction committed; runtime remains unverified.
+- **Evidence:** Migration commit 83d512d5815bf7626a6b0d824a5ce92fedfa2189; regression test commit 988d78effcfa65fc9521eeb17a3c371d89173d69.
+- **Next:** OPS-01 applies migration and verifies worker poll/retry errors stop and mailbox rows persist.
