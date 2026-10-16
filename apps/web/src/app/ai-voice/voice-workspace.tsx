@@ -33,6 +33,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   const pipelineLastVoiceAtRef = useRef(0);
   const ttsObjectUrlRef = useRef<string | null>(null);
   const micMutedRef = useRef(false);
+  const expectedDisconnectRef = useRef(false);
   const realtimeProviderRef = useRef<string | null>(null);
   const channelRef = useRef<RTCDataChannel | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -51,6 +52,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   }, [session]);
 
   const stopMedia = useCallback(() => {
+    expectedDisconnectRef.current = true;
     try { channelRef.current?.close(); } catch {}
     try { geminiSocketRef.current?.close(); } catch {}
     geminiSocketRef.current = null;
@@ -305,6 +307,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     if (!navigator.mediaDevices?.getUserMedia || typeof AudioContext === "undefined") {
       throw new Error("This browser does not support live microphone capture. Open the app over HTTPS in a supported browser.");
     }
+    expectedDisconnectRef.current = false;
     realtimeProviderRef.current = provider;
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     streamRef.current = stream;
@@ -355,6 +358,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     if (!navigator.mediaDevices?.getUserMedia || typeof WebSocket === "undefined") {
       throw new Error("This browser does not support live microphone/WebSocket audio. Open the app over HTTPS in a supported browser.");
     }
+    expectedDisconnectRef.current = false;
     realtimeProviderRef.current = "gemini";
     const tokenResponse = await fetch(descriptor.sessionEndpoint, {
       method: "POST",
@@ -434,9 +438,10 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     };
     socket.onerror = () => setError("Gemini Live WebSocket failed. Check provider access and reconnect.");
     socket.onclose = () => {
-      if (sessionRef.current?.status === "active" || sessionRef.current?.status === "starting") {
+      if (!expectedDisconnectRef.current) {
         setConnected(false);
-        setNotice("Gemini Live connection closed.");
+        setError("Gemini Live connection closed unexpectedly. Reconnect to continue.");
+        stopMedia();
       }
     };
 
@@ -451,6 +456,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   }
 
   async function connectRealtime(current: VoiceSession, descriptor: Transport) {
+    expectedDisconnectRef.current = false;
+    realtimeProviderRef.current = "openai";
     if (!descriptor.sessionEndpoint || descriptor.realtimeProvider !== "openai") {
       throw new Error("This provider does not have a native realtime transport configured. No live connection was started.");
     }
