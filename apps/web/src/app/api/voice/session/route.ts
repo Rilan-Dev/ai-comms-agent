@@ -54,6 +54,9 @@ export async function POST(request: Request) {
       voiceProvider === "elevenlabs" ? process.env.ELEVENLABS_VOICE_ID?.trim() || "" :
       process.env.OPENAI_DEFAULT_VOICE?.trim() || "alloy"
     );
+    if (voiceProvider === "elevenlabs" && !voiceId) {
+      return NextResponse.json({ error: "voice_not_configured", message: "Choose an ElevenLabs voice ID in the agent voice settings before starting a voice session." }, { status: 503 });
+    }
 
     // Persist the lifecycle record before requesting realtime transport details,
     // so failures cannot leave an untracked session that the UI believes started.
