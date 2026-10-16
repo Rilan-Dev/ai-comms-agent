@@ -70,10 +70,29 @@ describe("chat email context — memory / context pollution regression", () => {
     expect(currentUserPos).toBeGreaterThan(emailContextPos);
   });
 
-  it("combined search context includes recent user messages for follow-up resolution", () => {
-    // The fix (commit 09922bf1) builds combinedSearchContext from the
-    // last 3 user messages + current message. This must remain.
-    expect(routeSource).toContain('history.filter(m => m.role === "user").slice(-3)');
+  it("combined search context includes recent user AND assistant messages for follow-up resolution", () => {
+    // The fix (commit 09922bf1) built combinedSearchContext from the last
+    // 3 user messages + current message. Commit (0b8449e6) extended this
+    // to include the last 6 user+assistant messages, because the previous
+    // AI response is the only place where the explicit sender email
+    // address (e.g. "mohammedrilan.ksa@gmail.com") appears — the user's
+    // original query said "mohammed rilan ksa" without the @ symbol.
+    expect(routeSource).toContain('m.role === "user" || m.role === "assistant"');
+    expect(routeSource).toContain("recentMessages");
     expect(routeSource).toContain("combinedSearchContext");
+  });
+
+  it("loadEmailContext prioritizes email addresses as search terms", () => {
+    // Email addresses are the highest-precision search signal. The fix
+    // separates email-address tokens from other tokens and places them
+    // at the front of the search terms array.
+    expect(routeSource).toContain('const emailAddresses = allTokens.filter((t) => t.includes("@"))');
+    expect(routeSource).toContain('const searchTerms = [...emailAddresses, ...otherTerms].slice(0, 8)');
+  });
+
+  it("loadEmailContext excludes pure-digit tokens (years) from search terms", () => {
+    // Pure 4-digit tokens like "2026" match date-containing subjects
+    // (e.g. "Product Release Notes: Oct 13, 2026") and pollute results.
+    expect(routeSource).toContain('/^\\d+$/.test(t)');
   });
 });
