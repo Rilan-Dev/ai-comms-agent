@@ -86,6 +86,11 @@ export async function meterVoiceRelay(request: Request, provider: RelayProvider)
     return NextResponse.json({ error: "invalid_meter_payload" }, { status: 400 });
   }
   try {
+    const session = await getVoiceSessionForOrganization(organizationId, claims.sessionId);
+    if (!session || session.agent_id !== claims.agentId || session.user_id !== claims.userId ||
+        session.ended_at || String(session.provider ?? "").toLowerCase() !== provider) {
+      return NextResponse.json({ error: "session_not_authorized" }, { status: 403 });
+    }
     await recordVoiceTelemetry({
       organizationId,
       voiceSessionId: claims.sessionId,
