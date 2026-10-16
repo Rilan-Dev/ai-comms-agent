@@ -677,7 +677,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
             <div className="flex items-center justify-between border-b px-5 py-4">
               <div className="flex items-center gap-2 text-sm font-semibold"><Radio size={16} className={connected ? "text-emerald-500" : "text-muted-foreground"} /> Live conversation</div>
               <span className={`rounded-full border px-3 py-1 text-xs font-medium ${connected ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600" : "border-border text-muted-foreground"}`}>
-                {connected ? "Connected" : busy ? "Connecting" : session?.status === "ended" || session?.status === "error" ? "Ended" : "Not connected"}
+                {connected ? transport?.transportMode === "pipeline" ? "Voice ready" : "Connected" : busy ? "Connecting" : session?.status === "ended" || session?.status === "error" ? "Ended" : "Not connected"}
               </span>
             </div>
 
@@ -768,7 +768,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
               <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Session checklist</p>
               <ul className="mt-4 space-y-3 text-sm">
                 <Checklist label="Host session authorized" checked={Boolean(session)} />
-                <Checklist label="Realtime transport connected" checked={connected} />
+                <Checklist label="Voice input/output path ready" checked={connected} />
                 <Checklist label="Microphone audio enabled" checked={connected && !micMuted} />
                 <Checklist label="Session teardown available" checked={Boolean(liveSession)} />
               </ul>
