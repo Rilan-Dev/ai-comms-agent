@@ -178,6 +178,9 @@ importers:
       '@ai-comms-agent/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@ai-comms-agent/email-agent-runtime':
+        specifier: workspace:*
+        version: link:../../packages/email-agent-runtime
       '@ai-comms-agent/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -236,6 +239,9 @@ importers:
       '@ai-comms-agent/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@ai-comms-agent/email-agent-runtime':
+        specifier: workspace:*
+        version: link:../../packages/email-agent-runtime
       '@ai-comms-agent/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -281,6 +287,25 @@ importers:
       '@types/pg':
         specifier: ^8.11.10
         version: 8.23.1
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
+  packages/email-agent-runtime:
+    dependencies:
+      '@ai-comms-agent/clara-core':
+        specifier: workspace:*
+        version: link:../clara-core
+      '@ai-comms-agent/db':
+        specifier: workspace:*
+        version: link:../db
+      '@ai-comms-agent/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.5
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
