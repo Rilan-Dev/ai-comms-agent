@@ -1,3 +1,15 @@
+## FIX-01 — voice session readiness safety tranche (2026-10-16)
+
+- PR: https://github.com/Rilan-Dev/ai-comms-agent/pull/27 (draft, not merged).
+- Corrected contract: `/api/voice/turn` is explicitly `turnEndpoint` + `transportMode: transcript_bridge`, never a realtime `sessionEndpoint`.
+- Session config no longer changes lifecycle state to active or stamps `connected_at` merely because settings resolved. The manual transcript bridge can still run while a session is starting only when persisted metadata explicitly identifies that bridge; organization/user/agent authorization and ended-session checks remain in place.
+- Removed the misleading microphone permission prompt/readiness claim. UI states that microphone audio/realtime is not connected and keeps the manual text bridge labeled as such.
+- Added/updated static lifecycle assertions, including the older voice-turn guard test.
+- **Not the full fix:** no provider realtime adapter/session negotiation has been wired yet; spoken email enquiries, actual socket/WebRTC readiness, reconnect/interruption and audio teardown remain incomplete. Issue #26 stays open. Do not claim realtime working.
+- **Verification:** GitHub source writes only. Tests, typecheck, build, browser, provider connection and deployment were not run. Continue by integrating Clara's existing provider-specific realtime client/session negotiation without recreating provider protocols; bridge final transcripts through the host-authorized turn/tool pipeline, then add lifecycle tests. Do not wait for CI/Vercel polling.
+
+---
+
 ## DEV-01 realtime voice recovery — 2026-10-16
 
 - User request: Fix Clara realtime voice so the browser connects and the user can ask Clara about email naturally.
