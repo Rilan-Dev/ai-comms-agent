@@ -1,3 +1,14 @@
+
+
+### EVT-DEV01-CLARA-REALTIME-VOICE-20261016
+- Agent/session: DEV-01 / Forge — SESSION-066
+- Type: SOURCE_DIAGNOSIS / ROLE_HANDOFF
+- Finding: The voice workspace requests microphone permission and calls the host transcript HTTP API, but never creates a realtime transport. Clara resolveVoice() exposes /api/voice/turn as sessionEndpoint, although that is not a provider WebSocket endpoint.
+- Impact: UI can imply an active session without a live provider connection; natural spoken turns and spoken email enquiries are unavailable.
+- Owner: FIX-01 / Sentinel for the substantial source bug, issue #26. OPS-01 owns any separate deployment/infrastructure failure after source transport correctness.
+- Security: Keep provider keys server-side and retain the same authorization/approval/audit boundary for voice email actions; ISS-026 remains FIX-01-owned.
+- Verification: Source inspection only; no tests, typecheck, browser, socket/provider, build or deployment verification.
+- Next: Implement Clara-supported transport negotiation/client and only mark connected after actual transport readiness; test error, reconnect, interruption and teardown.
 # APCP Central Agent Events
 
 Append-only central event log for material cross-agent events. This is not a replacement for WORKLOG.md or project-control state.
