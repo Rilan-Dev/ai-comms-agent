@@ -53,13 +53,13 @@ export async function POST(request: Request) {
 
     if (provider === "sarvam") {
       const configuredVoice = text(session.voice_id, 100);
-      const speaker = configuredVoice && configuredVoice !== "alloy" ? configuredVoice : "shubh_enhi_ads";
+      const speaker = configuredVoice && configuredVoice !== "alloy" ? configuredVoice : "shubh";
       const upstream = await fetch("https://api.sarvam.ai/text-to-speech", {
         method: "POST",
         headers: { "content-type": "application/json", "api-subscription-key": apiKey },
         body: JSON.stringify({
           text: answer,
-          model: "bulbul:v4-flash",
+          model: "bulbul:v3",
           language_code: languageCode,
           speaker,
           speech_sample_rate: 22050,
