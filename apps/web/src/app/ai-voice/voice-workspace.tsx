@@ -529,6 +529,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       void patchSession({ action: "activate" }).then(() => {
         setConnected(true);
         setNotice(`${provider === "sarvam" ? "Sarvam Saaras" : "ElevenLabs Scribe"} realtime STT is connected. Spoken turns use Clara's authorized email runtime; answers stream through provider TTS when available.`);
+        streamProviderTts("Hello, I'm Clara. How can I help you with your email and communication tasks today?", `${current.id}-welcome`);
       }).catch((e) => {
         activationStartedRef.current = false;
         setError(e instanceof Error ? e.message : "Could not persist the connected provider session.");
@@ -687,6 +688,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
         void patchSession({ action: "activate" }).then(() => {
           setConnected(true);
           setNotice("Gemini Live transcription is connected. Clara processes each recognized utterance through the authorized email/chat runtime.");
+          speakGeminiWelcome(current);
         }).catch((e) => {
           setError(e instanceof Error ? e.message : "Could not persist the connected Gemini session.");
           stopMedia();
