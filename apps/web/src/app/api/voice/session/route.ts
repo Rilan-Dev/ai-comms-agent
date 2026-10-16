@@ -43,7 +43,12 @@ export async function POST(request: Request) {
     const voiceProvider = agentVoiceRow?.voice_provider?.trim() || orgSettings?.realtime_voice_provider?.trim() || process.env.REALTIME_VOICE_PROVIDER || "openai";
     const voiceModel = agentVoiceRow?.voice_model?.trim() || orgSettings?.realtime_voice_model?.trim() || process.env.OPENAI_REALTIME_MODEL || "gpt-realtime-2.1-mini";
     const rawConfiguredVoiceId = agentVoiceRow?.voice_id?.trim() || orgSettings?.voice_id?.trim();
-    const configuredVoiceId = rawConfiguredVoiceId && !(voiceProvider !== "openai" && rawConfiguredVoiceId === "alloy") ? rawConfiguredVoiceId : undefined;
+    const sarvamV3Speakers = new Set(["shubh","aditya","ritu","priya","neha","rahul","pooja","rohan","simran","kavya","amit","dev","ishita","shreya","ratan","varun","manan","sumit","roopa","kabir","aayan","ashutosh","advait","anand","tanya","tarun","sunny","mani","gokul","vijay","shruti","suhani","mohit","kavitha","rehan","soham","rupali"]);
+    const configuredVoiceId = rawConfiguredVoiceId
+      && !(voiceProvider !== "openai" && rawConfiguredVoiceId === "alloy")
+      && (voiceProvider !== "sarvam" || sarvamV3Speakers.has(rawConfiguredVoiceId))
+      ? rawConfiguredVoiceId
+      : undefined;
     const voiceId = configuredVoiceId || (
       voiceProvider === "sarvam" ? process.env.SARVAM_DEFAULT_VOICE?.trim() || "shubh" :
       voiceProvider === "elevenlabs" ? process.env.ELEVENLABS_VOICE_ID?.trim() || "" :
