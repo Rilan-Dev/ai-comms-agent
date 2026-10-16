@@ -619,14 +619,28 @@ export const claraRuntime = {
   async resolveVoice(ctx: ClaraRuntimeContext) {
     const organizationConfig = await organizationAIConfig(ctx.orgId, ctx.agentId);
     const provider = organizationConfig?.voice?.provider ?? env("REALTIME_VOICE_PROVIDER") ?? selectedProvider();
+    const model = organizationConfig?.voice?.model || env("OPENAI_REALTIME_MODEL") || "gpt-realtime-2.1-mini";
+    const voiceId = organizationConfig?.voice?.voiceId || env("OPENAI_DEFAULT_VOICE") || "alloy";
+
+    // The first native browser transport is the OpenAI WebRTC path. Other
+    // provider choices stay explicitly on the host transcript bridge until
+    // their own Clara provider negotiation/relay has been integrated.
+    if (provider === "openai" && env("OPENAI_API_KEY")) {
+      return {
+        realtimeProvider: provider,
+        transportMode: "realtime" as const,
+        sessionEndpoint: "/api/voice/realtime",
+        turnEndpoint: "/api/voice/turn",
+        voiceId,
+        model,
+      };
+    }
     return {
       realtimeProvider: provider,
-      // This is an authenticated HTTP transcript-turn endpoint, not a provider
-      // realtime transport descriptor. Never expose it as a WebSocket/session URL.
       transportMode: "transcript_bridge" as const,
       turnEndpoint: "/api/voice/turn",
-      voiceId: organizationConfig?.voice?.voiceId || env("OPENAI_DEFAULT_VOICE") || env("ELEVENLABS_VOICE_ID") || "alloy",
-      model: organizationConfig?.voice?.model || env("OPENAI_REALTIME_MODEL") || "gpt-realtime-2.1-mini",
+      voiceId,
+      model,
     };
   },
 
