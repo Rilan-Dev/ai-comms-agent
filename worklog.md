@@ -1819,3 +1819,8 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 - Added deployment contract in `infra/voice-relay/README.md`. OPS-01 must build/deploy the relay and set the shared secret, web base URL, allowed browser origins and public WSS URL.
 - Voice turns now use the shared email tool runtime; safe local draft tools are available and send/reply/forward are queued for explicit approval. Provider-backed mailbox mutations and attachment actions remain unregistered.
 - Source only; no tests/typecheck/build/browser/provider/relay/approval/deployment verification performed.
+
+## 2026-10-16 — PR continuation status
+
+- PR #27 merged at its earlier partial commit; continued provider relay and shared email runtime work is tracked in draft PR #28.
+- Issue #26 remains open. No tests/typecheck/build/browser/provider/approval/deployment verification is claimed.
