@@ -53,7 +53,8 @@ export async function POST(request: Request) {
 
     if (provider === "sarvam") {
       const configuredVoice = text(session.voice_id, 100);
-      const speaker = configuredVoice && configuredVoice !== "alloy" ? configuredVoice : "shubh";
+      const sarvamV3Speakers = new Set(["shubh","aditya","ritu","priya","neha","rahul","pooja","rohan","simran","kavya","amit","dev","ishita","shreya","ratan","varun","manan","sumit","roopa","kabir","aayan","ashutosh","advait","anand","tanya","tarun","sunny","mani","gokul","vijay","shruti","suhani","mohit","kavitha","rehan","soham","rupali"]);
+      const speaker = sarvamV3Speakers.has(configuredVoice) ? configuredVoice : "shubh";
       const upstream = await fetch("https://api.sarvam.ai/text-to-speech", {
         method: "POST",
         headers: { "content-type": "application/json", "api-subscription-key": apiKey },
