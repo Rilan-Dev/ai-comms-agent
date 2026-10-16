@@ -27,6 +27,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const sessionCreatedRef = useRef(false);
   const activationStartedRef = useRef(false);
+  const providerSessionIdRef = useRef<string | null>(null);
   const finalizedItemsRef = useRef(new Set<string>());
   const turnSequenceRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
@@ -51,6 +52,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     }
     sessionCreatedRef.current = false;
     activationStartedRef.current = false;
+    providerSessionIdRef.current = null;
     setConnected(false);
     setSpeaking(false);
     setMicMuted(false);
@@ -80,7 +82,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     if (!pc || !channel || pc.connectionState !== "connected" || channel.readyState !== "open" || !sessionCreatedRef.current || activationStartedRef.current) return;
     activationStartedRef.current = true;
     try {
-      await patchSession({ action: "activate", providerSessionId: sessionRef.current?.id });
+      await patchSession({ action: "activate", providerSessionId: providerSessionIdRef.current });
       setConnected(true);
       setNotice("Realtime audio connected. Speak naturally; Clara routes recognized speech through the host-authorized turn pipeline.");
     } catch (e) {
@@ -170,6 +172,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       try { data = JSON.parse(String(event.data)) as Record<string, unknown>; } catch { return; }
       const type = String(data.type ?? "");
       if (type === "session.created" || type === "session.updated") {
+        const providerSession = data.session && typeof data.session === "object" ? data.session as Record<string, unknown> : null;
+        if (typeof providerSession?.id === "string") providerSessionIdRef.current = providerSession.id;
         sessionCreatedRef.current = true;
         void maybeActivate();
       } else if (type === "input_audio_buffer.speech_started") {
