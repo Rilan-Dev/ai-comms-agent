@@ -37,8 +37,7 @@ export async function configureStartingVoiceSessionForOrganization(input: {
 }): Promise<Row | null> {
   const result = await query<Row>(
     `UPDATE voice_sessions
-     SET provider = $1, model = $2, voice_id = $3, metadata = $4::jsonb,
-         status = 'active', connected_at = COALESCE(connected_at, now())
+     SET provider = $1, model = $2, voice_id = $3, metadata = $4::jsonb
      WHERE id = $5 AND organization_id = $6 AND status = 'starting' AND ended_at IS NULL
      RETURNING id, organization_id, agent_id, user_id, conversation_id, provider, model, voice_id, status, started_at, connected_at, ended_at, duration_seconds, turn_count, metadata`,
     [input.provider, input.model, input.voiceId, JSON.stringify(input.metadata ?? {}), input.sessionId, input.organizationId],
@@ -64,12 +63,15 @@ export async function activateVoiceSessionForOrganization(
 export async function incrementVoiceSessionTurnForOrganization(
   organizationId: string,
   sessionId: string,
+  allowTranscriptBridgeWhileStarting = false,
 ): Promise<boolean> {
   const result = await query(
     `UPDATE voice_sessions SET turn_count = turn_count + 1
-     WHERE id = $1 AND organization_id = $2 AND status = 'active' AND ended_at IS NULL
+     WHERE id = $1 AND organization_id = $2 AND ended_at IS NULL
+       AND (status = 'active' OR ($3::boolean AND status = 'starting'
+         AND metadata->>'transportMode' = 'transcript_bridge'))
      RETURNING id`,
-    [sessionId, organizationId],
+    [sessionId, organizationId, allowTranscriptBridgeWhileStarting],
   );
   return result.rows.length === 1;
 }
