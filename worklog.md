@@ -1771,3 +1771,16 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 - Added source regression tests for paginated history and capability filtering.
 - Verification: GitHub source writes only. No tests, typecheck, build, provider, database, browser, CI or deployment verification executed.
 - Exact next action: implement the executable host registry and read-only tenant-scoped email handlers with execution-time authorization, capability checks, bounded/redacted outputs and audit. OPS-01 owns live runtime; FIX-01 owns substantial bug/regression remediation.
+
+
+### 2026-10-16 — FIX-01 Sentinel — Microsoft Graph email_provider enum mismatch
+- **Task:** Fix repeated worker failures querying microsoft_graph.
+- **Authorization:** User explicitly requested FIX-01 root-cause diagnosis, smallest authorized correction, regression protection, and durable records.
+- **Symptom:** Mailbox producer polling, leased direct-sync fallback, and queue retries fail with PostgreSQL SQLSTATE 22P02: invalid input value for enum email_provider: "microsoft_graph".
+- **Root cause:** Migration 0002 defines email_provider without microsoft_graph. Migration 0003 defines a distinct email_account_provider enum that includes it, but the worker's email_accounts.provider column uses email_provider.
+- **Failed approaches:** Retrying the same SQL through RabbitMQ retry/DLQ or direct-sync fallback cannot recover; removing Microsoft Graph from the query would disable intended provider support and conceal the schema defect.
+- **Remedy:** Added forward-only migration 0034_email_provider_microsoft_graph.sql to extend email_provider and a static regression assertion in apps/web/tests/migration-verification.test.ts.
+- **Evidence:** Migration commit 83d512d5815bf7626a6b0d824a5ce92fedfa2189; test commit 988d78effcfa65fc9521eeb17a3c371d89173d69; user logs and source inspection.
+- **Verification:** Test/typecheck/build, database migration execution, worker restart, and live mailbox sync were not run here. No PASS claimed.
+- **Prevention:** Change the enum actually referenced by the persisted column; guard against similarly named parallel enums with regression tests.
+- **Next action:** OPS-01 applies migration 0034, rebuilds/restarts the matching worker, and confirms SQLSTATE 22P02 disappears and email messages persist. Separate Microsoft Graph subscription prerequisites remain environment/runtime work.
