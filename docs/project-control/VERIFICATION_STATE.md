@@ -1419,3 +1419,13 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - Clara search response now includes `contentHash`; host adapter rejects missing/invalid hashes. The SQL freshness comparison is source-authored only and still needs execution against the real schema and fixtures.
 - No typecheck, test, lint, build, live Clara API, Qdrant, ingestion, isolation or latency test was run. No PASS claimed.
 - ISS-026 remains open/FIX-01-owned. No Chat/voice wiring or worker outbox startup was enabled.
+
+
+## FIX01-MICROSOFT-GRAPH-ENUM-20261016 — verification status
+
+- **Source evidence:** User-provided worker logs repeatedly show PostgreSQL SQLSTATE 22P02 for microsoft_graph in email_provider. Source review found email_provider lacks that label while a separate email_account_provider enum includes it.
+- **Source changes:** Migration 0034_email_provider_microsoft_graph.sql adds microsoft_graph to the correct enum; apps/web/tests/migration-verification.test.ts asserts that the correct type is altered.
+- **Source write evidence:** Migration commit 83d512d5815bf7626a6b0d824a5ce92fedfa2189; regression test commit 988d78effcfa65fc9521eeb17a3c371d89173d69.
+- **Not verified:** Static test execution, typecheck, migration execution against PostgreSQL, worker build/restart, cessation of SQLSTATE 22P02, Microsoft Graph subscription configuration, mailbox sync, and persisted-message counts.
+- **Status:** SOURCE_CORRECTED / RUNTIME_VERIFICATION_PENDING. No PASS claimed.
+- **Owner / next action:** OPS-01 applies migrations through the normal process, rebuilds/restarts the worker from matching source, inspects sanitized logs, and verifies sync timestamps and persisted messages. Keep the subscription-prerequisite warning separate from the enum defect.
