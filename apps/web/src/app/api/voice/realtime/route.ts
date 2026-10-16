@@ -50,8 +50,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "provider_transport_unsupported", message: "The native WebRTC transport is currently available for OpenAI only. This provider has not been connected." }, { status: 409 });
     }
 
-    // Prefer the organization's dedicated realtime credential, then its saved
-    // OpenAI chat credential, then the server environment fallback.
+    // SECURITY: only a dedicated REALTIME-purpose OpenAI credential may be
+    // used to call https://api.openai.com/v1/realtime/calls. Chat-purpose
+    // keys lack realtime API scope and the OpenAI Realtime endpoint
+    // rejects them with HTTP 401. The previous code had a chat-purpose
+    // fallback that was the root cause of "OpenAI Realtime negotiation
+    // failed (401)" for orgs that had only chat-purpose OpenAI keys
+    // configured (e.g. orgs using Sarvam for chat while leaving
+    // realtime_voice_provider defaulted to "openai"). Without a dedicated
+    // realtime-purpose key, the resolver (claraRuntime.resolveVoice) must
+    // have already chosen transcript_bridge transportMode — so reaching
+    // this route at all is a guard failure upstream. We surface a clear
+    // 503 here so the misconfiguration is visible.
     const savedCredential = await query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
       "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='openai' AND purpose='realtime' LIMIT 1",
       [organizationId],
@@ -63,21 +73,13 @@ export async function POST(request: Request) {
       if (!masterKey) throw new Error("CREDENTIALS_MASTER_KEY is required to decrypt the organization's realtime credential.");
       apiKey = decryptCredential(Buffer.from(realtimeCredential.encrypted_api_key), parseCredentialsMasterKey(masterKey)).toString("utf8");
     }
-    if (!apiKey) {
-      const chatCredential = await query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
-        "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='openai' AND purpose='chat' LIMIT 1",
-        [organizationId],
-      );
-      const row = chatCredential.rows[0];
-      if (row?.enabled && row.encrypted_api_key?.length) {
-        const masterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
-        if (!masterKey) throw new Error("CREDENTIALS_MASTER_KEY is required to decrypt the organization's OpenAI credential.");
-        apiKey = decryptCredential(Buffer.from(row.encrypted_api_key), parseCredentialsMasterKey(masterKey)).toString("utf8");
-      }
-    }
+    // The env fallback (process.env.OPENAI_API_KEY) is retained for dev
+    // environments where a single key is reused across surfaces. In
+    // production, orgs that want OpenAI Realtime must add a dedicated
+    // realtime-purpose credential in the AI Provider Setup menu.
     apiKey ||= process.env.OPENAI_API_KEY?.trim();
     if (!apiKey) {
-      return NextResponse.json({ error: "realtime_not_configured", message: "OpenAI Realtime is not configured for this organization or on the server." }, { status: 503 });
+      return NextResponse.json({ error: "realtime_not_configured", message: "OpenAI Realtime is not configured for this organization. Add a dedicated 'realtime'-purpose OpenAI key in the AI Provider Setup menu, or switch the org's realtime voice provider to a non-OpenAI option (which uses the host transcript bridge instead)." }, { status: 503 });
     }
 
     const model = boundedText(session.model, 160) || process.env.OPENAI_REALTIME_MODEL?.trim() || "gpt-realtime-2.1-mini";

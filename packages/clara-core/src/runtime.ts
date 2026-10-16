@@ -625,9 +625,21 @@ export const claraRuntime = {
     // The first native browser transport is the OpenAI WebRTC path. Other
     // provider choices stay explicitly on the host transcript bridge until
     // their own Clara provider negotiation/relay has been integrated.
+    //
+    // SECURITY: only a dedicated REALTIME-purpose OpenAI credential is
+    // sufficient for realtime mode. Earlier code accepted chat-purpose keys
+    // via `purpose IN ('realtime','chat')` and used them to call the OpenAI
+    // Realtime API — but chat-purpose keys lack realtime API scope, so
+    // https://api.openai.com/v1/realtime/calls returned 401. That made
+    // /ai-voice unusable for any org that had only chat-purpose OpenAI keys
+    // configured (which is the common case for orgs using Sarvam for chat
+    // while leaving realtime_voice_provider defaulted to "openai").
+    //
+    // The env fallback (process.env.OPENAI_API_KEY) is retained for dev
+    // environments where a single key is reused across surfaces.
     const savedRealtimeCredential = ctx.orgId && process.env.DATABASE_URL
       ? await query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
-          "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='openai' AND purpose IN ('realtime','chat') ORDER BY CASE WHEN purpose='realtime' THEN 0 ELSE 1 END LIMIT 1",
+          "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='openai' AND purpose='realtime' LIMIT 1",
           [ctx.orgId],
         )
       : { rows: [] as Array<{ encrypted_api_key: Buffer | null; enabled: boolean }> };
