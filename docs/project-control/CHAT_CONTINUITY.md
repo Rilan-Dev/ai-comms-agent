@@ -1,3 +1,11 @@
+## FIX-01 continuity update — 2026-10-16
+
+PR #28 is intentionally not to be merged: its 639-file diff comes from a divergent source branch, not from a focused voice-only change. Clean continuation branch: `feature/voice-transport-clean`, created from current `main`. Only targeted voice UI/transport, provider relay, shared email runtime, tests and project-control records have been transferred. See `docs/project-control/sessions/SESSION-073.md`.
+
+Current source includes OpenAI WebRTC, Gemini Live, and Sarvam/ElevenLabs relay adapters; the shared email runtime is called from the host-authorized voice turn route. Send/reply/forward requests remain explicit approval requests, not automatic sends. Relay deployment and all tests/typecheck/build/browser/provider/approval verification remain outstanding. Keep both PR #28 and any replacement unmerged until the clean diff is reviewed and evidence is available.
+
+---
+
 # CHAT_CONTINUITY.md — Fresh-Conversation Recovery Protocol
 
 This file is the canonical procedure a fresh ChatGPT (or Z.AI) conversation must follow to recover full project state from the repository alone. **No conversation history is required.** If the procedure fails, Phase 1 is not complete and `ISSUES.md` must be updated.
