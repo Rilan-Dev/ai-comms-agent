@@ -62,8 +62,23 @@ export async function runEmailAgentTurn(
     parameters: tool.input_schema,
   }));
   if (definitions.length === 0) {
+    // Keep normal Clara conversation available when this agent has no email
+    // tools enabled. Tool absence must not turn the voice/chat surface into a
+    // dead end or expose unregistered catalogue entries.
+    const chatTurn = await claraRuntime.createChatTurn({
+      orgId: input.organizationId,
+      agentId: input.agentId,
+      kbId: input.kbId || process.env.CLARA_KB_ID?.trim() || "default",
+      userId: input.toolContext.user_id,
+      sessionId: input.toolContext.conversation_id,
+      surface: "chat",
+      ragMode: "hybrid",
+      messages: input.messages,
+    });
+    let text = "";
+    for await (const chunk of chatTurn.stream) text += chunk;
     return {
-      text: "Email tools are not enabled for this agent. Ask an administrator to enable the required tools and mailbox permissions.",
+      text,
       toolCalls: [],
       pendingApprovals: [],
       finishReason: "completed",
