@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const realtimeRoute = readFileSync(resolve(__dirname, "../src/app/api/voice/realtime/route.ts"), "utf8");
+const geminiSessionRoute = readFileSync(resolve(__dirname, "../src/app/api/voice/gemini/session/route.ts"), "utf8");
 const sessionRoute = readFileSync(resolve(__dirname, "../src/app/api/voice/session/route.ts"), "utf8");
 const workspace = readFileSync(resolve(__dirname, "../src/app/ai-voice/voice-workspace.tsx"), "utf8");
 const turnRoute = readFileSync(resolve(__dirname, "../src/app/api/voice/turn/route.ts"), "utf8");
@@ -17,6 +18,20 @@ describe("Clara realtime voice transport", () => {
     expect(realtimeRoute).toContain("https://api.openai.com/v1/realtime/calls");
     expect(realtimeRoute).toContain('headers: { authorization: `Bearer ${apiKey}` }');
     expect(realtimeRoute).toContain('content-type": "application/sdp');
+  });
+
+  it("mints a constrained single-use Gemini Live token only for an authorized starting session", () => {
+    expect(geminiSessionRoute).toContain("await authorize(");
+    expect(geminiSessionRoute).toContain("session.user_id !== subject.user.id");
+    expect(geminiSessionRoute).toContain('session.status !== "starting"');
+    expect(geminiSessionRoute).toContain('uses: 1');
+    expect(geminiSessionRoute).toContain("liveConnectConstraints");
+    expect(geminiSessionRoute).toContain("inputAudioTranscription");
+    expect(geminiSessionRoute).toContain("x-goog-api-key");
+    expect(geminiSessionRoute).not.toContain("return NextResponse.json({ apiKey");
+    expect(workspace).toContain("connectGeminiRealtime");
+    expect(workspace).toContain("audio/pcm;rate=16000");
+    expect(workspace).toContain("Gemini Live WebSocket");
   });
 
   it("does not expose the long-lived provider credential to the browser", () => {
@@ -46,6 +61,7 @@ describe("Clara realtime voice transport", () => {
     expect(turnRoute).toContain("await authorize(");
     expect(turnRoute).toContain("session.user_id !== subject.user.id || session.agent_id !== agentId");
     expect(turnRoute).toContain("runEmailAgentTurn");
+    expect(turnRoute).toContain("toolContext: {");
     expect(turnRoute).toContain('channel: "voice"');
     expect(turnRoute).toContain("permissions,");
     expect(turnRoute).not.toContain("claraRuntime.createChatTurn");
