@@ -252,3 +252,17 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Lesson:** Validate decrypted generic records at the typed provider boundary. Required discriminants should be checked, not asserted.
 - **Blockers/dependencies:** Verification requires running commands in the deployment checkout; no DEV-01 dependency. Route only subsequent environment/compose/deployment failures to OPS-01.
 - **Next action:** Run worker typecheck and targeted tests, then rebuild worker image. Keep ISS-027 open until evidence is recorded.
+
+
+### FIX01-MICROSOFT-GRAPH-ENUM-20261016 / 2026-10-16
+- **Task:** Correct repeated worker SQLSTATE 22P02 for email_provider: microsoft_graph.
+- **Authorization:** User explicitly invoked FIX-01 / Sentinel and requested root-cause-first diagnosis, minimal corrective change, regression protection, and durable records. Main branch is the user-provided repository target. No DEV-01 dependency; deployment/runtime actions route to OPS-01.
+- **Started from:** main; user-provided worker logs from 2026-10-16.
+- **Symptom:** Mailbox polling, leased direct-sync fallback, and queue retry deliveries repeatedly fail when querying email_accounts.provider IN (..., 'microsoft_graph').
+- **Root cause:** Base migration 0002_application_domain.sql defines email_provider without microsoft_graph. Migration 0003_email_domain.sql adds the label to a different enum, email_account_provider, leaving the column's actual enum unchanged.
+- **Failed approaches:** Repeating queue retries/direct-sync fallback executes the same invalid query. Treating email_account_provider as equivalent is incorrect. Removing Microsoft Graph from the query would mask the schema defect and suppress intended provider support.
+- **Remedy/files:** Added supabase/migrations/0034_email_provider_microsoft_graph.sql with idempotent ALTER TYPE email_provider ADD VALUE IF NOT EXISTS 'microsoft_graph'; added a static regression test in apps/web/tests/migration-verification.test.ts.
+- **Evidence:** Source inspection plus user logs; migration commit 83d512d5815bf7626a6b0d824a5ce92fedfa2189; test commit 988d78effcfa65fc9521eeb17a3c371d89173d69. No test, typecheck, migration execution, build, or live runtime verification was performed here.
+- **Blockers/dependencies:** OPS-01 must apply migrations and rebuild/restart the worker, then verify error cessation and actual mailbox persistence. The Microsoft Graph subscription-disabled warning also requires separate prerequisite/configuration review by OPS-01 if Graph push subscriptions are expected.
+- **Lesson:** Extend the enum actually referenced by the DB column; similarly named provider enums are not interchangeable. Queue retries cannot recover from deterministic SQL/schema incompatibility.
+- **Next action:** OPS-01 apply migration 0034 through the normal migration workflow, restart the matching worker image, inspect sanitized logs, and confirm account sync state and stored message counts advance.
