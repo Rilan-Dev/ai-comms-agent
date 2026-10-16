@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     const rawConfiguredVoiceId = agentVoiceRow?.voice_id?.trim() || orgSettings?.voice_id?.trim();
     const configuredVoiceId = rawConfiguredVoiceId && !(voiceProvider !== "openai" && rawConfiguredVoiceId === "alloy") ? rawConfiguredVoiceId : undefined;
     const voiceId = configuredVoiceId || (
-      voiceProvider === "sarvam" ? process.env.SARVAM_DEFAULT_VOICE?.trim() || "shubh_enhi_ads" :
+      voiceProvider === "sarvam" ? process.env.SARVAM_DEFAULT_VOICE?.trim() || "shubh" :
       voiceProvider === "elevenlabs" ? process.env.ELEVENLABS_VOICE_ID?.trim() || "" :
       process.env.OPENAI_DEFAULT_VOICE?.trim() || "alloy"
     );
