@@ -582,3 +582,14 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Security:** Service resolves active account bindings fresh per call and revalidates every candidate in SQL. Still do not wire transport or start vector sync until FIX-01 closes ISS-026.
 - **Verification:** Not run; no PASS claimed.
 - **Next:** source review and dependency-equipped tests/typecheck; after ISS-026 closure, connect one shared retrieval service to Chat and realtime voice, then bind/start vector sync. OPS-01 owns live Qdrant and acceptance evidence.
+
+
+### FIX01-MICROSOFT-GRAPH-ENUM-20261016 — 2026-10-16
+- **Role:** FIX-01 / Sentinel
+- **Status:** SOURCE_CORRECTED / RUNTIME_VERIFICATION_PENDING
+- **Scope:** Root-cause and minimally correct the repeated email_provider: microsoft_graph SQL error.
+- **Root cause:** email_provider defined in 0002 omits Microsoft Graph; 0003 adds it only to the distinct email_account_provider enum.
+- **Changes:** Added migration 0034 and static migration regression assertion. No worker query workaround was introduced.
+- **Evidence:** User logs + source inspection; commits 83d512d5815bf7626a6b0d824a5ce92fedfa2189 and 988d78effcfa65fc9521eeb17a3c371d89173d69.
+- **Verification:** Tests, typechecks, migration execution, build and runtime sync not run; no PASS claimed.
+- **Next:** OPS-01 apply migration and rebuild/restart worker, then verify error cessation and persisted email messages.
