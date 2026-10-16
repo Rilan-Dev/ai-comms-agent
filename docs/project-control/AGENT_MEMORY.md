@@ -315,3 +315,10 @@ If shared memory conflicts with current repository state or current requirements
 - Do not import/call Clara internals cross-repo, reuse KB routes for mail, or mix email chunks into a shared KB. Define and implement an explicit authenticated API with deterministic point IDs, update/delete/purge lifecycle, allowed-account filters, and source references.
 - ISS-026 remains FIX-01-owned/open. Do not bind/expose the vector retrieval path until the security contract is closed.
 - Current session is source inspection/docs only; no tests/runtime/latency verification or 10x claim.
+
+
+### 2026-10-16 — FIX-01 — Microsoft Graph enum mismatch
+- **Lesson:** Provider support can exist in application code and a parallel enum while the enum actually attached to the persisted column remains stale. Trace the failing SQL column to its exact PostgreSQL type before changing worker logic.
+- **Remedy pattern:** Add a forward-only migration for the exact type and a regression assertion that guards against altering a similarly named but unrelated enum.
+- **Avoid:** Retrying deterministic SQLSTATE 22P02 through RabbitMQ/direct-sync fallback or removing the provider from the query; neither repairs schema compatibility.
+- **Role boundary:** FIX-01 corrects source; OPS-01 applies migrations/restarts services and verifies live sync.
