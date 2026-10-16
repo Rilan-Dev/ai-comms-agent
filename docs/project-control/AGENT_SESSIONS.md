@@ -1,3 +1,16 @@
+
+
+### SESSION-066 — 2026-10-16
+- Agent: DEV-01 / Forge
+- Invocation: Recover current main state and investigate Clara realtime voice failure: UI appears active but provider WebSocket never starts; natural-language email enquiries cannot be spoken.
+- Started from: main; inspected apps/web/src/app/ai-voice/voice-workspace.tsx, packages/clara-core/src/runtime.ts, and packages/shared/src/voice/transport.ts.
+- Scope: Source diagnosis, role-correct routing, project-control/session/memory/worklog recording. Do not replace Clara transport or assume FIX-01/OPS-01 ownership.
+- Status: HANDOFF — substantial source bug routed to FIX-01, issue #26.
+- Completed: Confirmed workspace has no realtime adapter instantiation/WebSocket; resolver labels /api/voice/turn (HTTP transcript endpoint) as sessionEndpoint; microphone permission and host session persistence are not proof of provider connectivity. Opened https://github.com/Rilan-Dev/ai-comms-agent/issues/26.
+- Pending: FIX-01 implements Clara-supported provider negotiation + realtime browser client, truthful connection states, transcript/assistant bridge and regression tests. Keep credentials server-side and email authorization unchanged.
+- Blockers: No actual provider socket/session negotiation in current workspace; live provider credentials/relay and runtime verification are not established. ISS-026 remains FIX-01-owned for account-scoped email retrieval.
+- Handoff: FIX-01 issue #26. OPS-01 only if source-correct transport fails due to deployment/infrastructure.
+- Next action: FIX-01 resolves #26; independently, DEV-01 continues other authorized product development without waiting for CI/Vercel.
 # APCP Central Agent Sessions
 
 Central index of autonomous agent sessions. Each agent also maintains its own role-local WORKLOG.md and MEMORY.md.
