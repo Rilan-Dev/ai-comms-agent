@@ -85,7 +85,7 @@ describe("Clara realtime voice transport", () => {
     expect(speechTranscribeRoute).toContain("scribe_v2");
     expect(speechTranscribeRoute).toContain("saaras:v4");
     expect(speechSpeakRoute).toContain("await authorize(");
-    expect(speechSpeakRoute).toContain("bulbul:v4-flash");
+    expect(speechSpeakRoute).toContain("bulbul:v3");
     expect(speechSpeakRoute).toContain("eleven_turbo_v2_5");
     expect(workspace).toContain("connectSpeechPipeline");
     expect(workspace).toContain("submitPipelineUtterance");
