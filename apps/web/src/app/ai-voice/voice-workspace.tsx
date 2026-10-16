@@ -198,6 +198,21 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
         const channel = channelRef.current;
         if (realtimeProviderRef.current === "sarvam" || realtimeProviderRef.current === "elevenlabs") {
           const provider = realtimeProviderRef.current;
+          const realtimeTtsSocket = ttsSocketRef.current;
+          if (realtimeTtsSocket?.readyState === WebSocket.OPEN) {
+            const generationId = `${current.id}-${sequence}`;
+            ttsGenerationRef.current = generationId;
+            ttsFinalSeenRef.current = false;
+            ttsPendingFramesRef.current = 0;
+            ttsNextStartRef.current = ttsAudioContextRef.current?.currentTime ?? 0;
+            streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; });
+            setSpeaking(true);
+            setNotice(`${provider} is streaming Clara's answer as audio.`);
+            realtimeTtsSocket.send(JSON.stringify({ type: "generation_start", generationId }));
+            realtimeTtsSocket.send(JSON.stringify({ type: "text", generationId, text: answer }));
+            realtimeTtsSocket.send(JSON.stringify({ type: "flush", generationId }));
+            return;
+          }
           const response = await fetch("/api/voice/speech/speak", {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -253,6 +268,9 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       if (controller.signal.aborted) return;
       streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
       pipelineBusyRef.current = false;
+      ttsGenerationRef.current = null;
+      ttsFinalSeenRef.current = false;
+      ttsPendingFramesRef.current = 0;
       const message = e instanceof Error ? e.message : "Voice turn failed.";
       setError(message);
       setTurns((old) => old.map((turn) => turn.id === assistantTurn.id ? { ...turn, text: message, state: "done" } : turn));
@@ -414,7 +432,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
           queueProviderPcmAudio(data.audio, rate, generationId, data.isFinal === true);
         } else if (type === "tts_event") {
           const eventType = String(data.eventType ?? "").toLowerCase();
-          if (eventType.includes("complete") || eventType.includes("end")) {
+          if (eventType.includes("complete") || eventType.includes("end") || eventType.includes("final")) {
             const generationId = typeof data.generationId === "string" ? data.generationId : "";
             if (generationId && ttsGenerationRef.current === generationId) {
               ttsFinalSeenRef.current = true;
@@ -839,6 +857,15 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
 
   function interrupt() {
     if (realtimeProviderRef.current === "gemini") window.speechSynthesis?.cancel();
+    if (ttsSocketRef.current?.readyState === WebSocket.OPEN && ttsGenerationRef.current) {
+      ttsSocketRef.current.send(JSON.stringify({ type: "interrupt", generationId: ttsGenerationRef.current }));
+    }
+    for (const source of ttsSourcesRef.current) { try { source.stop(); } catch {} }
+    ttsSourcesRef.current.clear();
+    ttsPendingFramesRef.current = 0;
+    ttsFinalSeenRef.current = false;
+    ttsGenerationRef.current = null;
+    pipelineBusyRef.current = false;
     if (realtimeProviderRef.current === "sarvam" || realtimeProviderRef.current === "elevenlabs") {
       audioRef.current?.pause();
       streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
