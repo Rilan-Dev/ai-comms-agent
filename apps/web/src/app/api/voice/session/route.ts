@@ -42,7 +42,12 @@ export async function POST(request: Request) {
     // Otherwise fall back to org-level realtime_voice_provider/model/voice_id.
     const voiceProvider = agentVoiceRow?.voice_provider?.trim() || orgSettings?.realtime_voice_provider?.trim() || process.env.REALTIME_VOICE_PROVIDER || "openai";
     const voiceModel = agentVoiceRow?.voice_model?.trim() || orgSettings?.realtime_voice_model?.trim() || process.env.OPENAI_REALTIME_MODEL || "gpt-realtime-2.1-mini";
-    const voiceId = agentVoiceRow?.voice_id?.trim() || orgSettings?.voice_id?.trim() || process.env.OPENAI_DEFAULT_VOICE || "alloy";
+    const configuredVoiceId = agentVoiceRow?.voice_id?.trim() || orgSettings?.voice_id?.trim();
+    const voiceId = configuredVoiceId || (
+      voiceProvider === "sarvam" ? process.env.SARVAM_DEFAULT_VOICE?.trim() || "anushka" :
+      voiceProvider === "elevenlabs" ? process.env.ELEVENLABS_VOICE_ID?.trim() || "" :
+      process.env.OPENAI_DEFAULT_VOICE?.trim() || "alloy"
+    );
 
     // Persist the lifecycle record before requesting realtime transport details,
     // so failures cannot leave an untracked session that the UI believes started.
