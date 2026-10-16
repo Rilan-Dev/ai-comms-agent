@@ -13,6 +13,7 @@ describe("Clara realtime voice transport", () => {
     expect(realtimeRoute).toContain("new PostgresAgentRepository().get(organizationId, agentId)");
     expect(realtimeRoute).toContain("session.user_id !== subject.user.id");
     expect(realtimeRoute).toContain("session.agent_id !== agentId");
+    expect(realtimeRoute).toContain('session.status !== "starting"');
     expect(realtimeRoute).toContain("https://api.openai.com/v1/realtime/calls");
     expect(realtimeRoute).toContain('headers: { authorization: `Bearer ${apiKey}` }');
     expect(realtimeRoute).toContain('content-type": "application/sdp');
