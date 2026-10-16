@@ -33,6 +33,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   const ttsGenerationRef = useRef<string | null>(null);
   const ttsFinalSeenRef = useRef(false);
   const ttsPendingFramesRef = useRef(0);
+  const ttsIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastProviderFinalRef = useRef<{ text: string; at: number } | null>(null);
   const geminiAudioContextRef = useRef<AudioContext | null>(null);
   const geminiProcessorRef = useRef<ScriptProcessorNode | null>(null);
@@ -80,6 +81,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     ttsGenerationRef.current = null;
     ttsFinalSeenRef.current = false;
     ttsPendingFramesRef.current = 0;
+    if (ttsIdleTimerRef.current) clearTimeout(ttsIdleTimerRef.current);
+    ttsIdleTimerRef.current = null;
     lastProviderFinalRef.current = null;
     geminiProcessorRef.current?.disconnect();
     geminiSourceRef.current?.disconnect();
@@ -368,6 +371,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     if (ttsGenerationRef.current !== generationId || !ttsFinalSeenRef.current || ttsPendingFramesRef.current > 0) return;
     ttsGenerationRef.current = null;
     pipelineBusyRef.current = false;
+    if (ttsIdleTimerRef.current) clearTimeout(ttsIdleTimerRef.current);
+    ttsIdleTimerRef.current = null;
     setSpeaking(false);
     streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
     setNotice("Connected and listening.");
@@ -376,6 +381,13 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   function queueProviderPcmAudio(encodedAudio: string, sampleRate: number, generationId: string, isFinal: boolean) {
     if (ttsGenerationRef.current !== generationId) return;
     if (isFinal) ttsFinalSeenRef.current = true;
+    if (ttsIdleTimerRef.current) clearTimeout(ttsIdleTimerRef.current);
+    ttsIdleTimerRef.current = setTimeout(() => {
+      if (ttsGenerationRef.current === generationId) {
+        ttsFinalSeenRef.current = true;
+        finishProviderTts(generationId);
+      }
+    }, 650);
     if (encodedAudio) {
       try {
         const binary = atob(encodedAudio);
@@ -885,6 +897,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     ttsFinalSeenRef.current = false;
     ttsGenerationRef.current = null;
     pipelineBusyRef.current = false;
+    if (ttsIdleTimerRef.current) clearTimeout(ttsIdleTimerRef.current);
+    ttsIdleTimerRef.current = null;
     if (realtimeProviderRef.current === "sarvam" || realtimeProviderRef.current === "elevenlabs") {
       audioRef.current?.pause();
       streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
