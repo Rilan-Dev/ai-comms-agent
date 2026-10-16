@@ -338,6 +338,172 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     }
   }
 
+  function finishProviderTts(generationId: string) {
+    if (ttsGenerationRef.current !== generationId || !ttsFinalSeenRef.current || ttsPendingFramesRef.current > 0) return;
+    ttsGenerationRef.current = null;
+    pipelineBusyRef.current = false;
+    setSpeaking(false);
+    streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
+    setNotice("Connected and listening.");
+  }
+
+  function queueProviderPcmAudio(encodedAudio: string, sampleRate: number, generationId: string, isFinal: boolean) {
+    if (ttsGenerationRef.current !== generationId) return;
+    if (isFinal) ttsFinalSeenRef.current = true;
+    if (encodedAudio) {
+      try {
+        const binary = atob(encodedAudio);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const samples = new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2));
+        if (samples.length) {
+          const context = ttsAudioContextRef.current ?? new AudioContext();
+          ttsAudioContextRef.current = context;
+          const buffer = context.createBuffer(1, samples.length, sampleRate);
+          const channel = buffer.getChannelData(0);
+          for (let i = 0; i < samples.length; i++) channel[i] = samples[i] / 32768;
+          const source = context.createBufferSource();
+          source.buffer = buffer;
+          source.connect(context.destination);
+          const startAt = Math.max(context.currentTime + 0.015, ttsNextStartRef.current);
+          ttsNextStartRef.current = startAt + buffer.duration;
+          ttsSourcesRef.current.add(source);
+          ttsPendingFramesRef.current += 1;
+          source.onended = () => {
+            ttsSourcesRef.current.delete(source);
+            ttsPendingFramesRef.current = Math.max(0, ttsPendingFramesRef.current - 1);
+            finishProviderTts(generationId);
+          };
+          source.start(startAt);
+        }
+      } catch {
+        setError("Provider audio chunk could not be decoded.");
+      }
+    }
+    finishProviderTts(generationId);
+  }
+
+  async function connectProviderRealtime(current: VoiceSession, descriptor: Transport, provider: "sarvam" | "elevenlabs") {
+    if (!descriptor.sessionEndpoint) throw new Error(`${provider} realtime session endpoint is not configured.`);
+    if (!navigator.mediaDevices?.getUserMedia || typeof WebSocket === "undefined") {
+      throw new Error("This browser does not support realtime microphone/WebSocket audio. Open the app over HTTPS in a supported browser.");
+    }
+    expectedDisconnectRef.current = false;
+    activationStartedRef.current = false;
+    realtimeProviderRef.current = provider;
+    const response = await fetch(descriptor.sessionEndpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ organizationId, agentId: agent?.id, sessionId: current.id, languageCode }),
+    });
+    const payload = await response.json().catch(() => ({})) as { relayUrl?: string; ttsRelayUrl?: string; message?: string; error?: string };
+    if (!response.ok || !payload.relayUrl) throw new Error(payload.message ?? payload.error ?? `${provider} realtime relay could not be initialized.`);
+
+    const socket = new WebSocket(payload.relayUrl);
+    providerSocketRef.current = socket;
+    if (payload.ttsRelayUrl) {
+      const ttsSocket = new WebSocket(payload.ttsRelayUrl);
+      ttsSocketRef.current = ttsSocket;
+      ttsSocket.onmessage = (event) => {
+        let data: Record<string, unknown>;
+        try { data = JSON.parse(String(event.data)) as Record<string, unknown>; } catch { return; }
+        const type = String(data.type ?? "");
+        if (type === "audio" && typeof data.audio === "string") {
+          const generationId = typeof data.generationId === "string" ? data.generationId : "";
+          const rate = Number(data.sampleRate) || (provider === "sarvam" ? 24000 : 16000);
+          queueProviderPcmAudio(data.audio, rate, generationId, data.isFinal === true);
+        } else if (type === "tts_event") {
+          const eventType = String(data.eventType ?? "").toLowerCase();
+          if (eventType.includes("complete") || eventType.includes("end")) {
+            const generationId = typeof data.generationId === "string" ? data.generationId : "";
+            if (generationId && ttsGenerationRef.current === generationId) {
+              ttsFinalSeenRef.current = true;
+              finishProviderTts(generationId);
+            }
+          }
+        } else if (type === "error") {
+          setError(typeof data.message === "string" ? data.message : `${provider} speech synthesis reported an error.`);
+        }
+      };
+      ttsSocket.onerror = () => setError(`${provider} streaming speech output is unavailable; the host will try the provider's speech endpoint instead.`);
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    streamRef.current = stream;
+    const audioContext = new AudioContext();
+    geminiAudioContextRef.current = audioContext;
+    const source = audioContext.createMediaStreamSource(stream);
+    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+    geminiSourceRef.current = source;
+    geminiProcessorRef.current = processor;
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+    processor.onaudioprocess = (event) => {
+      if (micMutedRef.current || ttsGenerationRef.current || socket.readyState !== WebSocket.OPEN) return;
+      const pcm = downsampleTo16k(event.inputBuffer.getChannelData(0), audioContext.sampleRate);
+      if (!pcm.length) return;
+      const audio = pcm16ToBase64(pcm);
+      const frame = provider === "sarvam"
+        ? { event: "audio_input", audio }
+        : { message_type: "input_audio_chunk", audio_base_64: audio, sample_rate: 16000 };
+      try { socket.send(JSON.stringify(frame)); } catch {}
+    };
+
+    const activate = () => {
+      if (activationStartedRef.current) return;
+      activationStartedRef.current = true;
+      void patchSession({ action: "activate" }).then(() => {
+        setConnected(true);
+        setNotice(`${provider === "sarvam" ? "Sarvam Saaras" : "ElevenLabs Scribe"} realtime STT is connected. Spoken turns use Clara's authorized email runtime; answers stream through provider TTS when available.`);
+      }).catch((e) => {
+        activationStartedRef.current = false;
+        setError(e instanceof Error ? e.message : "Could not persist the connected provider session.");
+        stopMedia();
+      });
+    };
+
+    socket.onmessage = (event) => {
+      let data: Record<string, unknown>;
+      try { data = JSON.parse(String(event.data)) as Record<string, unknown>; } catch { return; }
+      const type = String(data.type ?? data.message_type ?? "");
+      if ((type === "status" && data.value === "connected") || type === "session_started") activate();
+      if (type === "transcript_partial" || type === "transcript_partial") {
+        if (typeof data.text === "string" && data.text.trim()) setNotice(`Hearing: ${data.text.trim()}`);
+      }
+      if (type === "transcript_final") {
+        const transcript = typeof data.text === "string" ? data.text.trim() : "";
+        const now = Date.now();
+        const previous = lastProviderFinalRef.current;
+        if (transcript && !(previous?.text === transcript && now - previous.at < 1800)) {
+          lastProviderFinalRef.current = { text: transcript, at: now };
+          void submitHostTurn(transcript, true);
+        }
+      }
+      if (type === "error") {
+        const message = typeof data.message === "string" ? data.message : `${provider} realtime speech recognition failed.`;
+        setError(message);
+        if (data.fatal === true) {
+          setConnected(false);
+          stopMedia();
+        }
+      }
+    };
+    socket.onerror = () => setError(`${provider} realtime WebSocket failed. Check relay/provider configuration and reconnect.`);
+    socket.onclose = () => {
+      if (!expectedDisconnectRef.current) {
+        setConnected(false);
+        setError(`${provider} realtime connection closed unexpectedly.`);
+        stopMedia();
+      }
+    };
+
+    const deadline = Date.now() + 20_000;
+    while (sessionRef.current?.status !== "active" && socket.readyState !== WebSocket.CLOSED && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    if (sessionRef.current?.status !== "active") throw new Error(`${provider} realtime session did not become ready before timeout.`);
+  }
+
   async function connectSpeechPipeline(current: VoiceSession, provider: "sarvam" | "elevenlabs") {
     if (!navigator.mediaDevices?.getUserMedia || typeof AudioContext === "undefined") {
       throw new Error("This browser does not support live microphone capture. Open the app over HTTPS in a supported browser.");
