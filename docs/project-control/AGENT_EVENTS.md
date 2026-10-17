@@ -538,3 +538,10 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - DEV-01 found and corrected cross-organization stale secret/config UI state in both AI provider setup screens, late fulfilled model-catalog request leak and missing-org spinner persistence. Source + regression code committed directly to main.
 - Executed existing module tests 15/15, standalone 3-module TS compile, GitHub source assertions 12/12; no new repo Vitest/web/worker/browser/live provider/deployment acceptance.
 - Continue on main only. OPS-01 owns environment; FIX-01 retains substantial unrelated defects. Source/session: `DEV01-ORG-CREDENTIAL-ISOLATION-20261018`.
+
+### EVT-DEV01-CLARA-VECTOR-BOUNDARY-20261018
+- **Agent / session:** DEV-01 / `DEV01-CLARA-VECTOR-BOUNDARY-20261018`.
+- **Change:** Protected Clara email vector read/write internal server-to-server credential requests from invalid organization/account scope, malformed endpoint URLs and redirects. Security bounds applied without enabling unverified vector sync pipeline.
+- **Tests:** 5/5 new exact committed-module Node tests PASS; 20/20 combined isolated Node tests PASS; type-only isolated TS adapter check PASS. Full pnpm, real Clara/Qdrant/browser/migration/deployment not run.
+- **Upstream:** Clara API PR #298 merged into Vite-Converted but not demonstrated live. ISS-026 and OPS runtime acceptance remain gates.
+- **Next:** Run worker/full builds and tenant-isolated Qdrant integration on latest `main`, then bind retrieval behind confirmed account grants.
