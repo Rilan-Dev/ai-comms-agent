@@ -9,6 +9,7 @@ const whatsappRuntime = readFileSync(resolve(__dirname, "../../worker/src/agent/
 const templatesRoute = readFileSync(resolve(__dirname, "../src/app/api/whatsapp/templates/route.ts"), "utf8");
 const whatsappWorker = readFileSync(resolve(__dirname, "../../worker/src/messaging/whatsapp-worker.ts"), "utf8");
 const templateMigration = readFileSync(resolve(__dirname, "../../../supabase/migrations/0036_whatsapp_templates.sql"), "utf8");
+const whatsappClient = readFileSync(resolve(__dirname, "../src/app/whatsapp/whatsapp-client.tsx"), "utf8");
 
 describe("WhatsApp send approval safety boundary", () => {
   it("persists outbound requests as pending approvals instead of queueing them", () => {
@@ -33,6 +34,7 @@ describe("WhatsApp send approval safety boundary", () => {
     expect(decisionRoute).toContain("status='requires_template'");
     expect(decisionRoute).toContain("template_required");
     expect(decisionRoute).toContain("no free-form text was queued");
+    expect(whatsappWorker).toContain("no inbound customer message within Meta");
   });
 
   it("persists expiry, idempotency, organization scoping, and audit correlation", () => {
@@ -57,6 +59,16 @@ describe("WhatsApp send approval safety boundary", () => {
     expect(whatsappWorker).toContain('message.message_type !== "template"');
     expect(whatsappWorker).toContain('type: "template"');
     expect(whatsappWorker).toContain("Approved WhatsApp template payload is invalid");
+    expect(whatsappWorker).toContain('item.status === "APPROVED"');
+  });
+
+  it("exposes approval decisions and approved-template submission in the WhatsApp workspace", () => {
+    expect(whatsappClient).toContain("/api/whatsapp/send-actions");
+    expect(whatsappClient).toContain('decideApproval(action.id,"approve")');
+    expect(whatsappClient).toContain('decideApproval(action.id,"reject")');
+    expect(whatsappClient).toContain("/api/whatsapp/templates");
+    expect(whatsappClient).toContain("Request approval");
+    expect(whatsappClient).toContain("This message has not been sent");
   });
 
   it("keeps whatsapp.send unregistered until the complete host approval path is integrated", () => {
