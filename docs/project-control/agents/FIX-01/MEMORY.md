@@ -149,3 +149,11 @@ The authentication loop was traced to session issuance preceding active organiza
 - **Fix/test:** Reuse the existing identifier; regression assertion checks a single declaration in the provider branch. Commits `f6efffdb42dbd75df38841fab43b985eb565ee3f` and `05519965adae7ebab837a03e4d7a0d2306e3f0c1`.
 - **Verification:** Post-fix build/test pending; no green claim.
 - **Next:** Pull main, rebuild, run focused voice transport test, update records with actual output.
+
+
+
+### FIX01-VOICE-RESAMPLING-INDEX-20261018 — 2026-10-18
+- **Symptom:** Next.js compile succeeded; strict typecheck failed at voice workspace audio resampling because indexed Float32Array reads can be undefined.
+- **Fix/test:** Guarded both direct sample conversion and averaging-loop sample reads with `?? 0`; added source-contract regression assertions. Commits `baa9746142297322c5bf796e7c6fb94060bbc9cf`, `ff8ab0faa72a1a235c47be6d773c16738d2cd79a`.
+- **Verification:** Post-fix Docker build and focused test remain unverified.
+- **Next:** Pull main and rerun manual build; continue source-error remediation without claiming unobserved success.
