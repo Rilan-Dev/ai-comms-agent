@@ -102,6 +102,15 @@ describe("Clara realtime voice transport", () => {
     expect(providerSpeechBranch).toContain("ttsGenerationRef.current = generationId;");
   });
 
+  it("guards missing indexed audio samples during PCM16 resampling", () => {
+    const resampler = workspace.slice(
+      workspace.indexOf("function downsampleTo16k("),
+      workspace.indexOf("function pcm16ToWav("),
+    );
+    expect(resampler).toContain("const sample = input[i] ?? 0;");
+    expect(resampler).toContain("sum += input[j] ?? 0;");
+  });
+
   it("keeps the OpenAI SDP endpoint provider-specific and refuses unsupported negotiation", () => {
     expect(realtimeRoute).toContain("provider_transport_unsupported");
     expect(workspace).toContain("This provider has not completed its native realtime transport integration");
