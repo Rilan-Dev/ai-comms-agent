@@ -37,7 +37,7 @@ export async function GET(request: Request) {
       const bodyComponent = components.find((item) => item && typeof item === "object" && (item as Record<string, unknown>).type === "BODY") as Record<string, unknown> | undefined;
       let templatePreview = typeof bodyComponent?.text === "string" ? bodyComponent.text : "";
       parameters.forEach((value, index) => {
-        templatePreview = templatePreview.replaceAll("{{" + (index + 1) + "}}", typeof value === "string" ? value : "");
+        templatePreview = templatePreview.replaceAll("{{" + (index + 1) + "}}", () => typeof value === "string" ? value : "");
       });
       return {
         ...action,
