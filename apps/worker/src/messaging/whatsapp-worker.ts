@@ -102,6 +102,20 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
     try {
       const account = await getWhatsAppAccountForOrganization(String(message.organization_id), String(message.whatsapp_account_id));
       if (!account) throw new Error("WhatsApp account is unavailable");
+      if (account.status !== "connected") throw new Error("WhatsApp account is no longer connected; outbound was blocked");
+      const actionBinding = await query<{ agent_id: string | null; agent_binding_required: boolean }>(
+        "SELECT agent_id,agent_binding_required FROM whatsapp_send_actions WHERE organization_id=$1 AND correlation_id=$2 LIMIT 1",
+        [String(message.organization_id), String(message.correlation_id ?? "")],
+      );
+      if (actionBinding.rows[0]?.agent_binding_required) {
+        const agentId = actionBinding.rows[0].agent_id;
+        if (!agentId) throw new Error("WhatsApp agent binding no longer exists; outbound was blocked");
+        const currentBinding = await query<{ id: string }>(
+          "SELECT b.agent_id AS id FROM agent_whatsapp_accounts b JOIN agents a ON a.id=b.agent_id AND a.organization_id=$1 WHERE b.agent_id=$2 AND b.whatsapp_account_id=$3 LIMIT 1",
+          [String(message.organization_id), agentId, String(message.whatsapp_account_id)],
+        );
+        if (!currentBinding.rows.length) throw new Error("WhatsApp agent binding was revoked; outbound was blocked");
+      }
       const credential = await loadWhatsAppCredential(account.id, account.organization_id, masterKey);
       const token = typeof credential?.access_token === "string" ? credential.access_token : "";
       if (!token) throw new Error("WhatsApp access token is unavailable");
@@ -168,7 +182,7 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
         });
         continue;
       }
-      await query("UPDATE whatsapp_send_actions SET status='sent', updated_at=now() WHERE queued_message_id=$1 AND organization_id=$2 AND status='queued'", [String(message.id), String(message.organization_id)]);
+      await query("UPDATE whatsapp_send_actions SET status='sent', queued_message_id=COALESCE(queued_message_id,$3), updated_at=now() WHERE organization_id=$1 AND correlation_id=$2 AND status IN ('approved','queued')", [String(message.organization_id), String(message.correlation_id ?? ""), String(message.id)]);
       await emitProviderEvent({ type: "whatsapp.message.sent", organizationId: String(message.organization_id), messageId: String(message.id), accountId: String(message.whatsapp_account_id), correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { providerMessageId, retryAttempts } });
       await recordAuditEvent({ organizationId: String(message.organization_id), actorUserId: null, eventType: "whatsapp.message.sent", targetType: "whatsapp_message", targetId: String(message.id), action: "send", decision: "allowed", correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { providerMessageId } });
     } catch (error) {
@@ -178,7 +192,7 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
         const nextActionStatus = messageText.includes("free-form text blocked") || messageText.includes("template is not currently approved")
           ? "requires_template"
           : "failed";
-        await query("UPDATE whatsapp_send_actions SET status=$3, updated_at=now() WHERE queued_message_id=$1 AND organization_id=$2 AND status='queued'", [String(message.id), String(message.organization_id), nextActionStatus]);
+        await query("UPDATE whatsapp_send_actions SET status=$3, queued_message_id=COALESCE(queued_message_id,$4), updated_at=now() WHERE organization_id=$1 AND correlation_id=$2 AND status IN ('approved','queued')", [String(message.organization_id), String(message.correlation_id ?? ""), nextActionStatus, String(message.id)]);
       }
       await markWhatsAppOutboundFailed(String(message.id), messageText);
       await emitProviderEvent({ type: "whatsapp.message.failed", organizationId: String(message.organization_id), messageId: String(message.id), accountId: String(message.whatsapp_account_id), correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { error: messageText, retryAttempts, retryable } });
