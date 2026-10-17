@@ -1258,3 +1258,9 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **OPS-01 next:** Confirm the actual post-fix production revision. Trace the specific Meta failed webhook: HTTP status/body + accepted count, organization/account-scoped message row (provider_message_id/status/provider_error/updated_at), then API response and UI. Last observed production revision before the source fix was `0e355bc75df6ab6c41ac619050be561faeb7c3e7` on deployment `dpl_5zjzPd6V3uBGuMK2LppXqsRTkirK`.
 - **Evidence limitation:** Vercel runtime logs for the historic window are outside the available Hobby retention; grouped errors only show older Oct 10–11 account-save DB constraint errors. No direct live DB row was available. Exact cause of the `sent`/ `failed` discrepancy remains OPEN; do not speculate or patch status logic without runtime evidence.
 - **Record:** `docs/project-control/sessions/FIX01-WHATSAPP-DISPLAY-STATUS-20261017.md`; handoff `HOF-FIX01-OPS-WHATSAPP-DISPLAY-STATUS-20261017`.
+
+### Display-name correction scope update (2026-10-17)
+- Both overwrite paths are corrected: immediate verification in `apps/web/src/app/api/whatsapp/accounts/route.ts` and background verification in `apps/worker/src/messaging/whatsapp-worker.ts`.
+- Regression coverage now checks both call sites: `apps/web/tests/whatsapp-account-display-name.test.ts`.
+- Latest source/test commits: `7d785b36f2bae90d9d137805e1390fe9ab467550`, `f9bc5ec1cc793fb69c3b2a5a7d26e8d1cf00d5fb`. Tests remain unexecuted and deployment remains unconfirmed.
+- OPS-01 must continue the separate live status trace; do not close it based on source inspection.
