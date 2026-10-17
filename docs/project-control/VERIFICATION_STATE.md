@@ -1,3 +1,13 @@
+## 2026-10-18 — DEV-01 Clara email-vector boundary / exact-source limited verification
+
+- **Committed directly to main:** Search adapter security input/account scoping and `redirect: "error"` + safe URL requirements; mirrored redirect/URL safety in worker upsert/delete adapter; portable Node and worker Vitest regression source.
+- **PASS — actually executed:** New Clara search portable `node --experimental-strip-types --test` 5/5, search exact Git blob `12ac7aad720f2d71b0a184eb4ac53d9cd7ea06df`, test blob `6a5142048d5cf76d8916daf49539733c9942cad7`, both match local git hash-object. Previous portable catalog 6/6, runtime form hydration 4/4, provider status 5/5 rerun together with new tests: 20/20 PASS. Exact search adapter `tsc --noEmit` PASS using local type-only declarations for Node and the import contract. Authenticated GitHub source-level inspection verified worker redirect/URL checks.
+- **NOT EXECUTED:** New worker Vitest assertions, full monorepo web/worker typecheck or build, dependency installation, actual Qdrant/provider API, server credentials, cross-org production calls, browser, deployment/migration. Do not infer CI/production readiness from isolated tests.
+- **Known dependency:** Clara PR #298 merged to Vite-Converted, but target deployment/version and Qdrant not verified. ISS-026 live endpoint acceptance and secure mail-account grants remain a gate; outbox not activated. OPS-01 owns Vercel/build/deploy toolchain.
+- **Session:** `docs/project-control/sessions/DEV01-CLARA-VECTOR-BOUNDARY-20261018.md`.
+
+---
+
 ## 2026-10-18 — DEV-01 organization-scoped provider UI correction (partial verification only)
 
 - Source commits to `main`: `0fe7ce37` (provider setup), `f5407bf1` (chat provider), `a28bf2d5` (live-model select), plus portable tests `c7ac01fb`/`74a2fcca`/`e0931386` and Vitest `a94705cf`. No branch/PR.
