@@ -3,6 +3,13 @@ import type React from "react";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AudioLines, Bot, Send, Sparkles, User } from "lucide-react";
+import dynamic from "next/dynamic";
+
+// Defer microphone and vendor transport code until the user requests voice.
+const VoiceWorkspace = dynamic(
+  () => import("../ai-voice/voice-workspace").then((module) => module.VoiceWorkspace),
+  { ssr: false, loading: () => <p role="status" className="p-6 text-sm text-muted-foreground">Opening secure voice workspace…</p> },
+);
 
 type Agent = { id: string; name: string; status: string };
 type Message = { id: string; conversationId: string; role: string; content: string; createdAt: string };
@@ -25,6 +32,7 @@ export function ChatClient({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const activeAgent = useMemo(() => agents.find((agent) => agent.id === agentId) ?? agents[0], [agents, agentId]);
@@ -120,14 +128,25 @@ export function ChatClient({
               <p className="text-[11px] text-muted-foreground">{busy ? "Thinking…" : "Ready"}</p>
             </div>
           </div>
-          <label className="flex shrink-0 items-center gap-2 rounded-lg border bg-background px-2.5 py-1.5">
-            <select aria-label="Choose agent" value={activeAgent?.id ?? ""} onChange={(e) => void switchAgent(e.target.value)} className="bg-transparent text-xs font-medium outline-none">
+          <div className="flex min-w-0 items-center gap-2">
+            <button type="button" onClick={() => setVoiceOpen((open) => !open)} disabled={busy && !voiceOpen}
+              aria-pressed={voiceOpen} aria-label={voiceOpen ? "Return to text chat" : "Open live realtime voice conversation"}
+              className="inline-flex shrink-0 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium transition hover:bg-secondary disabled:opacity-50">
+              <AudioLines size={15} /> {voiceOpen ? "Text chat" : "Live voice"}
+            </button>
+            <label className="flex min-w-0 items-center gap-2 rounded-lg border bg-background px-2.5 py-1.5">
+            <select aria-label="Choose agent" value={activeAgent?.id ?? ""} disabled={voiceOpen || busy} onChange={(e) => void switchAgent(e.target.value)} className="max-w-36 bg-transparent text-xs font-medium outline-none sm:max-w-48">
               {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
             </select>
-          </label>
+            </label>
+          </div>
         </div>
       </header>
 
+      {voiceOpen ? (
+        <VoiceWorkspace organizationId={organizationId} agents={agents} initialAgentId={agentId}
+          embedded onReturnToChat={() => setVoiceOpen(false)} />
+      ) : (
       <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
         <div role="log" aria-live="polite" className="min-w-0 flex-1 space-y-6 overflow-y-auto py-6">
           {messages.length === 0 ? (
@@ -168,7 +187,9 @@ export function ChatClient({
               }}
             />
             <div className="flex items-center justify-between px-3 pb-2">
-              <a href="/ai-voice" className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-primary"><AudioLines size={13} /> Voice</a>
+              <button type="button" onClick={() => setVoiceOpen(true)}
+                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-primary"
+                aria-label="Start a realtime AI voice conversation"><AudioLines size={13} /> Live voice conversation</button>
               <button type="button" disabled={busy || !draft.trim()} onClick={() => void sendMessage()} className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground">
                 <Send size={15} />
               </button>
@@ -177,6 +198,7 @@ export function ChatClient({
           <p className="mt-1.5 text-center text-[10px] text-muted-foreground">Clara can make mistakes. Verify important information.</p>
         </div>
       </section>
+      )}
     </main>
   );
 }
