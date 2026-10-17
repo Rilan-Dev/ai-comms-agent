@@ -7,7 +7,7 @@
  */
 import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fetchLiveModelCatalog, supportsLiveCatalog } from '../src/lib/ai/live-model-catalog.ts';
+import { documentedRealtimeModels, fetchLiveModelCatalog, hasDocumentedRealtimeModels, supportsLiveCatalog } from '../src/lib/ai/live-model-catalog.ts';
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
@@ -77,4 +77,24 @@ test('ElevenLabs TTS and Scribe STT lists remain distinct', async () => {
 test('vendor HTTP errors reject without static-model fallback', async () => {
   globalThis.fetch = async () => ({ ok: false, status: 503 });
   await assert.rejects(fetchLiveModelCatalog('openai', 'chat', 'test-key'), /HTTP 503/);
+});
+
+test('Sarvam realtime STT documents only model IDs accepted by our websocket relay', () => {
+  assert.equal(hasDocumentedRealtimeModels('sarvam', 'realtime'), true);
+  assert.deepEqual(documentedRealtimeModels('sarvam', 'realtime').map((m) => m.id), ['saaras:v3-realtime', 'saaras:v4']);
+  assert.equal(supportsLiveCatalog('sarvam', 'realtime'), false);
+});
+
+test('ElevenLabs realtime STT is a Scribe model, not the unrelated Conversational AI agent', () => {
+  assert.equal(hasDocumentedRealtimeModels('elevenlabs', 'realtime'), true);
+  assert.deepEqual(documentedRealtimeModels('elevenlabs', 'realtime').map((m) => m.id), ['scribe_v2_realtime']);
+  assert.equal(documentedRealtimeModels('elevenlabs', 'realtime').some((m) => m.id === 'elevenlabs-conversational'), false);
+  assert.equal(supportsLiveCatalog('elevenlabs', 'realtime'), false);
+});
+
+test('documented choices are never falsely advertised for live or unrelated capabilities', () => {
+  assert.deepEqual(documentedRealtimeModels('openai', 'realtime'), []);
+  assert.deepEqual(documentedRealtimeModels('sarvam', 'chat'), []);
+  assert.deepEqual(documentedRealtimeModels('elevenlabs', 'tts'), []);
+  assert.equal(hasDocumentedRealtimeModels('tei', 'embedding'), false);
 });
