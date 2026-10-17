@@ -1485,3 +1485,11 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Root cause/correction:** The existing array length check did not narrow indexed access. Commits `90fac5e0774b695446e1e0c3ab51072639ba5f06` and `41734923651b1173a703d747f0ac0aa93317a5b9` bind/guard the returned template row and add a regression source assertion.
 - **Verification status:** Post-fix build and focused test NOT RUN / NOT VERIFIED. User log establishes only pre-fix failure and worker build success.
 - **Next action:** Pull latest main and rerun `bash scripts/update-and-up.sh`; if build passes, run `pnpm --filter @ai-comms-agent/web exec vitest run tests/whatsapp-send-approval.test.ts` in an environment with pnpm. Do not mark green without actual output.
+
+
+### 2026-10-18 — FIX-01 duplicate voice generation identifier
+
+- **User evidence:** `bash scripts/update-and-up.sh` fast-forwarded main to `5413468f`; worker build succeeded/exported, but web compilation failed in `apps/web/src/app/ai-voice/voice-workspace.tsx` with duplicate `generationId` declaration at the Sarvam/ElevenLabs fallback speech path.
+- **Root cause/fix:** The same provider branch declared `generationId` twice in the same block. Commit `f6efffdb42dbd75df38841fab43b985eb565ee3f` reuses the original identifier; `05519965adae7ebab837a03e4d7a0d2306e3f0c1` adds a regression assertion.
+- **Verification status:** Post-fix Docker build and focused test NOT RUN / NOT VERIFIED. Do not infer a successful build from the source commit.
+- **Next:** Pull latest main and rerun `bash scripts/update-and-up.sh`; then run `pnpm --filter @ai-comms-agent/web exec vitest run tests/voice-realtime-transport.test.ts` if build passes and pnpm is available.
