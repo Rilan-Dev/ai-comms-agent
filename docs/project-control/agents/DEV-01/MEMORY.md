@@ -132,3 +132,9 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 - `fetch` resolves for 4xx/5xx. Saving/deleting credentials must inspect `response.ok` and GET reload status before claiming success. Removing credentials must invalidate any fetched model list (refresh key).
 - Voice chat requires separate TTS and STT keys/config rows; a first-match badge falsely reports active if only one exists. Use `providerConfigStatus` helper to require both; use `incomplete` and `saved (disabled)` honestly.
 - Actual limited tests: mocked adapter 6/6, hydration 4/4, provider helper 5/5, three isolated module TypeScript checks and 5 GitHub source assertions PASS. No full pnpm/UI/live provider/build acceptance. Session `DEV01-PROVIDER-SETUP-HARDENING-20261018`.
+
+### 2026-10-18 — Organization switching safeguards in AI configuration
+- User continues to require direct commits to `main`, **no new branches**.
+- Both `AIProviderSetupShared` and legacy `AIProviderSettings` must clear unsaved API keys, invalidate old org config, abort previous GET, ignore old fulfillment, and gate all writes on `loadedOrganizationId === organizationId` after loading. A provider switch and an organization switch are independent credential-isolation events.
+- `LiveModelSelect` catches errors on an aborted fetch but must ALSO check `signal.aborted` before `setModels` on successful JSON; otherwise old tenant model IDs can render after new tenant selection. Clear `loading` in no-org branch.
+- Evidence recorded: 15 old Node tests, 3 isolated TS modules, 12 source-contract assertions PASS; *new* Node/Vitest, full web/worker/browser/provider/live verification not run. Session `docs/project-control/sessions/DEV01-ORG-CREDENTIAL-ISOLATION-20261018.md`. OPS-01 owns environment and deployment, FIX-01 voice/WhatsApp source bugs.
