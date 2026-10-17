@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "invalid_action_state", status: action.status, message: "This approval can no longer be decided." }, { status: 409 });
     }
     if (Date.parse(action.expires_at) <= Date.now()) {
-      await query("UPDATE whatsapp_send_actions SET status='expired', updated_at=now() WHERE id=$1 AND organization_id=$2 AND status='pending'", [actionId, organizationId]);
+      await query("UPDATE whatsapp_send_actions SET status='expired', updated_at=now() WHERE id=$1 AND organization_id=$2 AND status IN ('pending','approved')", [actionId, organizationId]);
       await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.expired", targetType: "whatsapp_send_action", targetId: actionId, action: "decide", decision: "expired" });
       return NextResponse.json({ error: "approval_expired", status: "expired" }, { status: 409 });
     }
