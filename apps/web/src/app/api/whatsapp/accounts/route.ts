@@ -69,11 +69,13 @@ export async function POST(request: Request) {
         await updateWhatsAppAccountStatus(
           organizationId, account.id, "connected", null,
           typeof payload.display_phone_number === "string" ? payload.display_phone_number : null,
-          typeof payload.verified_name === "string" ? payload.verified_name : null,
+          // The user-editable display name is the app's label. Meta's verified_name
+          // is only a fallback when no custom label was supplied.
+          account.display_name ?? (typeof payload.verified_name === "string" ? payload.verified_name : null),
         );
         verifiedAccount = { ...verifiedAccount, status: "connected", last_error: null,
           phone_number: typeof payload.display_phone_number === "string" ? payload.display_phone_number : account.phone_number,
-          display_name: typeof payload.verified_name === "string" ? payload.verified_name : account.display_name };
+          display_name: account.display_name ?? (typeof payload.verified_name === "string" ? payload.verified_name : null) };
       }
     } catch (verificationError) {
       const providerMessage = verificationError instanceof Error ? verificationError.message : "Meta verification request failed.";
