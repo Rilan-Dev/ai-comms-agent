@@ -27,7 +27,8 @@ export function LiveModelSelect({
   useEffect(() => {
     if (!organizationId || !provider) {
       setModels([]);
-      setMessage("Select a provider first.");
+      setLoading(false);
+      setMessage(!organizationId ? "Select an organization first." : "Select a provider first.");
       return;
     }
     const controller = new AbortController();
@@ -39,6 +40,9 @@ export function LiveModelSelect({
       cache: "no-store", signal: controller.signal,
     }).then(async (response) => {
       const body = await response.json() as { models?: ModelOption[]; message?: string; source?: string };
+      // A previous organization's fulfilled response may arrive after its request was aborted.
+      // Never display its model IDs in the newly selected organization's form.
+      if (controller.signal.aborted) return;
       if (!response.ok) throw new Error(body.message || "Live models could not be fetched.");
       if (body.source !== "live") throw new Error("The provider did not return a live catalogue.");
       setModels(body.models ?? []);
