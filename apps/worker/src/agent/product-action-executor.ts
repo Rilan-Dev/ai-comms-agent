@@ -57,7 +57,7 @@ export async function executeProductActions(context: Context, params: Record<str
         }
       }
       await recordAuditEvent({ organizationId: context.organizationId, actorUserId: null, agentId: context.agentId, eventType: "whatsapp.send_approval.requested", targetType: "whatsapp_send_action", targetId: approval.id, action: "send_whatsapp", decision: "pending_approval", correlationId, metadata: { executionId: context.executionId, recipientSuffix: to.slice(-4), accountId: account.id } });
-      results.push({ type, status: "pending_approval", actionId: String(approval.id), message: "Human approval is required; no WhatsApp message has been queued or sent." });
+      results.push({ type, status: "pending_approval", actionId: String(approval.id), reason: "Human approval is required; no WhatsApp message has been queued or sent." });
       continue;
     }
 
