@@ -52,6 +52,7 @@ describe("Clara email-vector adapter", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://clara.example/api/internal/email-vectors");
+    expect(init.redirect).toBe("error");
     expect(new Headers(init.headers).get("authorization")).toBe("Bearer test-service-secret-that-is-long-enough-123");
     const body = JSON.parse(String(init.body));
     expect(body.action).toBe("upsert");
@@ -126,6 +127,21 @@ describe("Clara email-vector adapter", () => {
 
   it("fails closed when service credentials are absent or too short", () => {
     expect(() => createClaraEmailVectorAdapter({ baseUrl: "https://clara.example", apiKey: "" })).toThrow(/CLARA_EMAIL_VECTOR_API_KEY/);
+  });
+
+  it("rejects credential-bearing URLs, URL fragments, and non-HTTP schemes", () => {
+    const unsafeUrls = [
+      "https://user:secret@clara.example",
+      "https://clara.example?token=secret",
+      "https://clara.example#fragment",
+      "file:///tmp/private",
+    ];
+    for (const baseUrl of unsafeUrls) {
+      expect(() => createClaraEmailVectorAdapter({
+        baseUrl,
+        apiKey: "test-service-secret-that-is-long-enough-123",
+      })).toThrow(/HTTP or HTTPS|credentials, query, or fragment/);
+    }
   });
 
   it("does not mark an HTTP failure as successful", async () => {
