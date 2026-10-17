@@ -56,8 +56,14 @@ export function createClaraEmailVectorAdapter(config: AdapterConfig = {}): Email
     ? baseUrl
     : `${baseUrl}/api/internal/email-vectors`;
   const parsed = new URL(endpoint);
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("CLARA_EMAIL_VECTOR_API_URL must use HTTP or HTTPS.");
+  }
   if (process.env.NODE_ENV === "production" && parsed.protocol !== "https:") {
     throw new Error("CLARA_EMAIL_VECTOR_API_URL must use HTTPS in production.");
+  }
+  if (parsed.username || parsed.password || parsed.search || parsed.hash) {
+    throw new Error("CLARA_EMAIL_VECTOR_API_URL must not contain credentials, query, or fragment.");
   }
 
   async function send(payload: Record<string, unknown>): Promise<void> {
@@ -65,6 +71,7 @@ export function createClaraEmailVectorAdapter(config: AdapterConfig = {}): Email
     try {
       response = await fetch(endpoint, {
         method: "POST",
+        redirect: "error",
         headers: {
           authorization: `Bearer ${apiKey}`,
           "content-type": "application/json",
