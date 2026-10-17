@@ -93,6 +93,15 @@ describe("Clara realtime voice transport", () => {
     expect(workspace).toContain("ElevenLabs STT/TTS pipeline");
   });
 
+  it("reuses one generation identifier for provider TTS fallback playback", () => {
+    const providerSpeechBranch = workspace.slice(
+      workspace.indexOf('if (realtimeProviderRef.current === "sarvam" || realtimeProviderRef.current === "elevenlabs")'),
+      workspace.indexOf('if (realtimeProviderRef.current === "gemini")'),
+    );
+    expect(providerSpeechBranch.match(/const generationId =/g)).toHaveLength(1);
+    expect(providerSpeechBranch).toContain("ttsGenerationRef.current = generationId;");
+  });
+
   it("keeps the OpenAI SDP endpoint provider-specific and refuses unsupported negotiation", () => {
     expect(realtimeRoute).toContain("provider_transport_unsupported");
     expect(workspace).toContain("This provider has not completed its native realtime transport integration");
