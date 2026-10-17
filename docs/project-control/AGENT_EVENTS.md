@@ -431,3 +431,15 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Evidence limit:** The source branch is confirmed; the exact live database condition is not. OPS-01 must check whether the organization-default row exists and confirm deployed revision/config rows. Tests/build/deployment not verified.
 - **Owner next:** OPS-01 for container/deployment/database/runtime verification; FIX-01 resumes if a source defect remains after the patched revision is serving.
 - **Session:** `docs/project-control/sessions/FIX01-CHAT-PROVIDER-OVERRIDE-20261017.md`.
+
+
+### EVT-FIX01-CHAT-MEMBERSHIP-NULL-20261018
+- **Agent/session:** FIX-01 / Sentinel; `FIX01-CHAT-MEMBERSHIP-NULL-20261018`
+- **Type:** SOURCE DEFECT / TYPECHECK FAILURE
+- **Symptom:** Docker web build failed after successful Next.js compilation at `apps/web/src/app/api/chat/stream/route.ts:384`, TS nullable access `subject.membership.role`.
+- **Root cause:** Shared `AuthSubject` exposes nullable membership although the successful `authorize()` path guarantees active membership. Call-site type was not narrowed.
+- **Remedy:** Explicit fail-closed 403 guard immediately after `authorize()`; regression source assertion verifies the guard precedes trusted tool-context creation. Commits: `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9`, `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`.
+- **Failed approaches avoided:** No default role, null assertion, auth weakening, or broad type redesign. Source issue is not an OPS-01 infrastructure defect.
+- **Verification:** User log shows worker image built; web compilation succeeded but typecheck failed before the patch. Post-patch build/test pending.
+- **Separate environment note:** Native host shell returned `pnpm: command not found`; Docker build environment has Corepack/pnpm and built the worker. Route host toolchain availability to OPS-01 if native commands are required.
+- **Next:** Pull latest main and rebuild Docker web/worker. Keep runtime PASS unclaimed until build and focused regression test are actually run.
