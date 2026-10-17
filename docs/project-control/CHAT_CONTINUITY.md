@@ -203,3 +203,12 @@ The user's Docker build evidence showed worker image success but web type valida
 - **Prevention:** Narrow array elements directly after database writes/RETURNING operations; keep an explicit absent-row response even when a length check is present.
 - **Evidence:** Source commit `90fac5e0774b695446e1e0c3ab51072639ba5f06`; regression test commit `41734923651b1173a703d747f0ac0aa93317a5b9`. User log shows worker image built/exported and web compile succeeded before type validation failed. No post-fix test or build has been run/observed.
 - **Next action:** Pull latest `main` and rerun `bash scripts/update-and-up.sh` (or the documented Docker Compose build). If the build passes, run the focused `whatsapp-send-approval.test.ts` suite. Record actual results; do not infer success from source commits.
+
+
+## 2026-10-18 — Voice resampling TypeScript build error
+- User reran `bash scripts/update-and-up.sh` after the duplicate `generationId` fix. The web bundle compiled successfully, then TypeScript failed at `voice-workspace.tsx:331` because a typed-array indexed read was possibly undefined.
+- FIX-01 committed a narrow guard for potentially missing samples in both the same-rate PCM16 path and downsampling accumulation: `baa9746142297322c5bf796e7c6fb94060bbc9cf`.
+- Added source-contract regression assertions in `voice-realtime-transport.test.ts`: `ff8ab0faa72a1a235c47be6d773c16738d2cd79a`.
+- Issue/control: ISS-033; session `sessions/FIX01-VOICE-RESAMPLING-INDEX-20261018.md`.
+- **Verification boundary:** The latest user log predates this fix. No post-fix build or test pass is claimed.
+- **Next:** Pull latest main and rerun `bash scripts/update-and-up.sh`; if the build passes, run focused `voice-realtime-transport.test.ts`. Continue narrow source fixes for subsequent compiler failures.
