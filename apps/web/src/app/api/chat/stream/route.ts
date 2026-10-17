@@ -390,7 +390,14 @@ export async function POST(request: Request) {
       channel: "chat",
       auth_subject: { user_id: subject.user.id, role: subject.membership.role, permissions: [...subject.permissions] },
     };
-    const toolTurn = await runInteractiveHostToolLoop({ organizationId, agentId, kbId, messages, toolContext: trustedToolContext });
+    let toolTurn: HostToolTurnResult | null = null;
+    try {
+      toolTurn = await runInteractiveHostToolLoop({ organizationId, agentId, kbId, messages, toolContext: trustedToolContext });
+    } catch (error) {
+      // Providers whose tool-call adapter is explicitly unsupported retain the
+      // ordinary chat path; no tool is executed on that fallback.
+      if (!(error instanceof Error) || !/unsupported/i.test(error.message)) throw error;
+    }
     const turn = toolTurn ? null : await claraRuntime.createChatTurn({
       orgId: organizationId, agentId, kbId, userId: subject.user.id, sessionId: conversation.id,
       surface: "chat", ragMode: "hybrid", messages,
