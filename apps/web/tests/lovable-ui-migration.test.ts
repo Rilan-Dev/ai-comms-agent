@@ -22,6 +22,7 @@ const accounts = readFileSync(resolve(__dirname, "../src/app/mail/accounts/email
 const approvals = readFileSync(resolve(__dirname, "../src/app/mail/approvals/approvals-client.tsx"), "utf8");
 const whatsappPage = readFileSync(resolve(__dirname, "../src/app/whatsapp/page.tsx"), "utf8");
 const whatsapp = readFileSync(resolve(__dirname, "../src/app/whatsapp/whatsapp-client.tsx"), "utf8");
+const whatsappAccountsApi = readFileSync(resolve(__dirname, "../src/app/api/whatsapp/accounts/route.ts"), "utf8");
 const automations = readFileSync(resolve(__dirname, "../src/app/automations/automations-client.tsx"), "utf8");
 const schedules = readFileSync(resolve(__dirname, "../src/app/schedules/schedules-client.tsx"), "utf8");
 const chat = readFileSync(resolve(__dirname, "../src/app/chat/chat-client.tsx"), "utf8");
@@ -211,6 +212,10 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(whatsapp).toContain('type={secret ? "password" : "text"}');
     expect(whatsapp).toContain("Credentials are encrypted server-side.");
     expect(whatsapp).toContain("Verify now");
+    expect(whatsappAccountsApi).toContain("https://graph.facebook.com/");
+    expect(whatsappAccountsApi).toContain("updateWhatsAppAccountStatus");
+    expect(whatsappAccountsApi).toContain("Meta phone access verified");
+    expect(whatsappAccountsApi).toContain("Meta verification failed");
     expect(whatsapp).toContain("No persisted messages yet.");
   });
 
