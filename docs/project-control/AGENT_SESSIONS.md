@@ -642,3 +642,12 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Regression test:** `apps/web/tests/clara-agent-provider-resolution.test.ts`; authored, not run.
 - **OPS-01 handoff:** `HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017` OPEN.
 - **Session evidence:** `docs/project-control/sessions/FIX01-CHAT-PROVIDER-OVERRIDE-20261017.md`.
+
+
+### SESSION-DEV01-CHAT-WHATSAPP-TOOL-APPROVAL-20261017
+- **Agent:** DEV-01 / Forge
+- **Scope:** Interactive chat host-authorized tool loop; WhatsApp send approval, Meta templates, RBAC, and scheduled action bypass closure.
+- **Source status:** Implemented on main; whatsapp.send creates pending approval only.
+- **Verification:** Tests/typecheck/build/migrations/browser/Meta/deployment not run. No PASS claimed.
+- **Session evidence:** docs/project-control/sessions/DEV01-CHAT-WHATSAPP-TOOL-APPROVAL-20261017.md
+- **Next:** Focused tests/typechecks, migration application, Next.js worker-import boundary review, and live Meta verification. Do not wait on CI/Vercel polling to continue independent development.
