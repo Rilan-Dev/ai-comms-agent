@@ -651,3 +651,17 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Verification:** Tests/typecheck/build/migrations/browser/Meta/deployment not run. No PASS claimed.
 - **Session evidence:** docs/project-control/sessions/DEV01-CHAT-WHATSAPP-TOOL-APPROVAL-20261017.md
 - **Next:** Focused tests/typechecks, migration application, Next.js worker-import boundary review, and live Meta verification. Do not wait on CI/Vercel polling to continue independent development.
+
+
+### SESSION-FIX01-CHAT-MEMBERSHIP-NULL-20261018
+- **Agent:** FIX-01 / Sentinel
+- **Invocation:** Recover current main, shared/role-local memory, authorization, issues and verification; trace recent commits and fix the web production-build membership nullability error.
+- **Started from:** `main`, after worker fixes `acc0745e` / `de44d06c` and verification note `e0b0d02c`.
+- **Scope:** Small source correction, regression protection, governance/evidence records. No unrelated implementation.
+- **Status:** HANDOFF — source fix committed; post-fix build/test pending.
+- **Completed:** Traced TS failure to nullable `AuthSubject.membership`; added fail-closed 403 guard before constructing trusted chat tool context; added static regression assertion.
+- **Commits:** `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9`; `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`.
+- **Pending:** Pull latest main; rerun Docker Compose build; run focused `chat-host-tool-loop.test.ts` with the repo test command if available; update verification from actual output.
+- **Blockers:** No post-fix build/test output yet. Native host shell lacks pnpm; Docker build environment has it.
+- **Handoff:** OPS-01 only for host pnpm/toolchain availability, not the source type error.
+- **Next action:** Rebuild from latest main and report exact result; continue fixing source if new compiler errors appear.
