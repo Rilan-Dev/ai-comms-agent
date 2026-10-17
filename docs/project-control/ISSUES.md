@@ -638,3 +638,15 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Correction:** Source commit `a93176b3cbba730c30a016b4e47a9dd3dd46039c` adds a compatibility fallback that first checks host `DATABASE_URL`, then reads the key from the script's `.env` interpolation file; unresolved interpolation and missing values fail closed. It does not print the DSN. Regression source-contract test commit: `0386f03fa9534ff2d53db84b7ffbd2b5fe864154`.
 - **Verification:** User's log verifies image builds only. Compatibility test execution, migrations, container startup, health, and runtime behavior remain pending.
 - **Next action:** Pull latest `main`; run `node --test scripts/tests/manual-up-compose-env.test.mjs`, then `bash scripts/update-and-up.sh`. Capture whether migration execution and `docker compose up -d` complete. Do not share the database URL or other secrets.
+
+## ISS-036 — Manual Compose references missing parent env file
+
+- Opened: 2026-10-18
+- Severity: high (blocks application startup)
+- Owner: OPS-01
+- Status: in_progress
+- Evidence: User log shows image builds succeeded and migration chain completed, then Compose failed because `/home/techadmin/docker/.env` was missing.
+- Root cause: `docker-compose.manual.yml` referenced `../.env`, but `scripts/manual-up.sh` uses repository-root `.env`. Compose resolves `env_file` paths relative to the Compose file.
+- Correction: Both service paths changed to `.env` in commit `5072621a66eab0016bf8c29e76df8683070baa14`. Regression assertion added in commit `2649466dd53f5a545bfaa2dd52ecaa9df959ba00`.
+- Verification: Source only. Focused test, Compose startup and health remain pending.
+- Next: Pull latest main, run `node --test scripts/tests/manual-up-compose-env.test.mjs`, then rerun `bash scripts/update-and-up.sh`. Share sanitized output only.
