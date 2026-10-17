@@ -1822,3 +1822,10 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 - Added `apps/web/tests/whatsapp-chat-context.test.ts` for source-level assertions covering account binding, status, organization isolation and untrusted/read-only prompt boundary.
 - Source commits: `7b58e075368b6a125d6c30cdb14e9fd6731aaed8`, `3f6f568f0a774410926d20c3181b6495c860dc5a`, `878890da6e095c1485a3d977f96aecbb3edf026e`. Project-control next action updated in `86ac8ccbb3825050d124d87b360c4deb5fb67488`.
 - Verification limitation: source was read back from GitHub, but tests/typecheck/build/browser/live database/Meta/deployment were not run. This is not full WhatsApp tool enablement: outbound AI-initiated send and shared `whatsapp.send`/`whatsapp.history` executable handlers remain outstanding and must go through authorization, allowlist, policy/approval, template compliance and audit.
+
+## 2026-10-17 — WhatsApp history tool runtime
+
+- Added `apps/worker/src/agent/whatsapp-tool-runtime.ts` with a safe `whatsapp.history` tool, account binding and organization checks, connected/non-deleted account filtering, input limits, fresh policy/allowlist recheck, actor permission enforcement and durable audit writes.
+- Added `apps/worker/tests/whatsapp-tool-runtime.test.ts` with static contract assertions. Source commits: `637bb72ce0d5c988468f418ef6e36d24251e712b`, `de8fc4c8f1603e4e8f68b449a35c25ab841e35a0`, `ebd57c7cf947d7f9726bb98ac4c04b74151af42b`.
+- Important boundary: this runtime is not yet wired into the interactive chat route/model loop. Outbound `whatsapp.send` is intentionally not registered until WhatsApp-specific approval and Meta template compliance exist. No tests/typecheck/build/database/browser/Meta/deployment checks were run.
+- `docs/project-control/NEXT_ACTION.md` updated at `580d85f5a424c7690a204b2e1a62bab5f5c5bd0d` with the next authorized action.
