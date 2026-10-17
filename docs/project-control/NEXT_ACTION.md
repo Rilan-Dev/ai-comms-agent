@@ -1,3 +1,13 @@
+## DEV-01 — Direct-main AI provider setup hardening checkpoint — 2026-10-18
+
+- **Direction:** Owner explicitly requires direct writes to `main` only, no branches or PRs. Work is ongoing; do not claim complete.
+- **Source completed:** Provider switching clears the unsaved API key (both card/dropdown controls); DELETE checks HTTP failures before success; config reload failures cannot appear as successful save; deleted provider keys trigger live-catalog refresh; voice-chat status correctly requires both TTS and STT configuration before showing active. New pure helper and focused standalone/Vitest regression source committed on main. Session: `docs/project-control/sessions/DEV01-PROVIDER-SETUP-HARDENING-20261018.md`.
+- **EXECUTED:** Provider-catalog mocked Node tests 6/6 PASS; runtime normalization Node tests 4/4 PASS; provider-status Node tests 5/5 PASS; isolated TypeScript of all three pure modules PASS; GitHub source contract checks for provider switch/delete/reload 5/5 PASS. This is NOT end-to-end verification.
+- **EXACT NEXT_ACTION:** In an equipped checkout of **current main**, run `pnpm --filter @ai-comms-agent/web exec vitest run tests/live-model-catalog.test.ts tests/ai-runtime-settings.test.ts`, `pnpm --filter @ai-comms-agent/web typecheck`, `pnpm --filter @ai-comms-agent/web build`, and `node --experimental-strip-types --test apps/web/tests/ai-provider-setup-safety.test.mjs apps/web/tests/provider-config-status.test.mjs`. Verify browser switching key isolation, failed DELETE, partial TTS/STT status and saved model selection. OPS-01 separately checks migrations, worker builds, live provider APIs/cross-org denial/deployment and Vercel limit; FIX-01 retains substantial unrelated bugs. Then continue approved email capability/RAG source work behind mailbox isolation/Clara API gates.
+- **NOT VERIFIED:** Whole app build, Vitest suite, browser, real vendor/provider credentials, voice/WhatsApp/Gmail delivery, migrations or production.
+
+---
+
 ## DEV-01 — DIRECT MAIN requirement, live model verification + runtime hydration repair — 2026-10-18
 
 - **User instruction:** Continue work directly on `main`; **do not create new branches**. This supersedes historical draft-PR language below. PR #34 AND PR #35 already merged; no new PR/branch created in the latest invocation.
