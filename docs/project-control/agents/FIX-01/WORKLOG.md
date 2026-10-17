@@ -318,3 +318,15 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Remedy:** Commit `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9` adds an explicit fail-closed 403 membership guard after authorization. Commit `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9` adds a static regression assertion that the guard precedes trusted tool context construction.
 - **Evidence:** User-supplied log: Next.js compilation succeeded; type validation failed at `route.ts:384`; worker Docker target built/exported successfully. Source correction and test were committed; no post-fix test/build is claimed.
 - **Next:** User pulls latest main and reruns `docker compose -f infra/docker-compose.manual.yml up -d --build`. If web build passes, continue with focused chat host-tool-loop test and runtime checks. OPS-01 separately handles host shell's missing pnpm if native pnpm commands are needed.
+
+
+### FIX01-WHATSAPP-TEMPLATE-ROW-20261018 / 2026-10-18
+- **Task:** Correct strict TypeScript error in WhatsApp template approval route.
+- **Authorization:** User-supplied build error and explicit FIX-01 role instructions.
+- **Started from:** main; previous chat membership source fix had been committed but build remained pending.
+- **Actions:** Traced direct `synced.rows[0].components` access. Kept the existing fail-closed 409 behavior, narrowed the returned row into `syncedTemplate`, added explicit missing-row guard, and added static regression assertion.
+- **Files/code:** `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts`; `apps/web/tests/whatsapp-send-approval.test.ts`.
+- **Evidence:** Source commit `90fac5e0774b695446e1e0c3ab51072639ba5f06`; test commit `41734923651b1173a703d747f0ac0aa93317a5b9`. User's log shows worker image exported and web compile passed before TS error. Post-fix test/build not run.
+- **Blockers/dependencies:** User/deployment checkout must pull latest main for Docker rebuild. Native pnpm absence remains separately routed to OPS-01.
+- **Lesson:** Array length checks do not necessarily narrow indexed reads; bind and guard the element itself.
+- **Next:** Rebuild using `bash scripts/update-and-up.sh`, run focused WhatsApp approval test, record actual output.
