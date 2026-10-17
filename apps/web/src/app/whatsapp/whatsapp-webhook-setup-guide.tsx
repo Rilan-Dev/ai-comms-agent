@@ -28,7 +28,7 @@ export function WhatsAppWebhookSetupGuide({ organizationId, children, onVerifyTo
       if (d.verifyToken) { setVerifyToken(d.verifyToken); onVerifyTokenChange?.(d.verifyToken); }
       setAppSecretConfigured(Boolean(d.appSecretConfigured));
       if (d.saved) setVerifyStatus("ok");
-      else if (!verifyToken) { const token = generateToken(32); setVerifyToken(token); onVerifyTokenChange?.(token); }
+      else { const token = generateToken(32); setVerifyToken(token); onVerifyTokenChange?.(token); }
     } catch {
       setSavedMsg("Could not load saved settings. Check your connection and try again.");
     }
