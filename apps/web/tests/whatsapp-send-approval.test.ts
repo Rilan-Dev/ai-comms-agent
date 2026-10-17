@@ -32,7 +32,7 @@ describe("WhatsApp send approval safety boundary", () => {
     expect(decisionRoute).toContain("now() - interval '24 hours'");
     expect(decisionRoute).toContain("status='requires_template'");
     expect(decisionRoute).toContain("template_required");
-    expect(decisionRoute).toContain("did not queue a message");
+    expect(decisionRoute).toContain("no free-form text was queued");
   });
 
   it("persists expiry, idempotency, organization scoping, and audit correlation", () => {
