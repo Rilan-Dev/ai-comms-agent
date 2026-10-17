@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     const organizationId = new URL(request.url).searchParams.get("organizationId") ?? "";
     if (!organizationId) return NextResponse.json({ error: "validation_error", message: "organizationId is required." }, { status: 422 });
     await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
-    return NextResponse.json({ accounts: await listWhatsAppAccountsForOrganization(organizationId) });
+    return NextResponse.json({ accounts: (await listWhatsAppAccountsForOrganization(organizationId)).filter((account) => account.phone_number_id !== "__webhook_config__") });
   } catch (error) {
     return authorizationErrorToResponse(error);
   }
