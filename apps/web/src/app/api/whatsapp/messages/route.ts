@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const organizationId = url.searchParams.get("organizationId") ?? "";
     const accountId = url.searchParams.get("accountId") ?? "";
     if (!organizationId || !accountId) return NextResponse.json({ error: "validation_error", message: "organizationId and accountId are required." }, { status: 422 });
-    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "whatsapp.read" }, getIdentityAdapter(), getIdentityRepository());
     return NextResponse.json({ messages: await listWhatsAppMessagesForOrganization(organizationId, accountId) });
   } catch (error) { return authorizationErrorToResponse(error); }
 }
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       || (payloadType === "text" && (typeof body?.body !== "string" || !body.body.trim() || body.body.trim().length > 4096))) {
       return NextResponse.json({ error: "validation_error", message: "Organization, account, E.164 recipient and valid text or template parameters are required." }, { status: 422 });
     }
-    const actor = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.update" }, getIdentityAdapter(), getIdentityRepository());
+    const actor = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "whatsapp.send" }, getIdentityAdapter(), getIdentityRepository());
     const account = await getWhatsAppAccountForOrganization(organizationId, accountId);
     if (!account) return NextResponse.json({ error: "not_found", message: "WhatsApp account was not found." }, { status: 404 });
     if (account.status !== "connected") return NextResponse.json({ error: "provider_not_connected", message: "WhatsApp account must be verified and connected before outbound messages can be queued." }, { status: 409 });
