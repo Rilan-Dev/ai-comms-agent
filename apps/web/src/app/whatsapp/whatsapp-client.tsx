@@ -37,7 +37,6 @@ export default function WhatsAppClient({ organizationId }: { organizationId: str
     ["displayName", "Display name", false],
     ["accessToken", "Access token *", true],
     ["verifyToken", "Webhook Verify Token *", true],
-    ["appSecret", "Webhook App Secret", true],
   ] as const;
 
   async function save() {
@@ -82,7 +81,7 @@ export default function WhatsAppClient({ organizationId }: { organizationId: str
           <button type="button" autoFocus aria-label="Close WhatsApp webhook setup" onClick={() => setShowWebhookSetupModal(false)} className="rounded-lg border p-2 hover:bg-muted"><X className="size-4" /></button>
         </div>
         <div className="overflow-y-auto p-4 sm:p-6">
-          <WhatsAppWebhookSetupGuide organizationId={organizationId}>
+          <WhatsAppWebhookSetupGuide organizationId={organizationId} onVerifyTokenChange={token => setForm(v => ({ ...v, verifyToken: token }))}>
       {/* The connect form — rendered inside step 5 of the setup guide */}
       <div className="mt-4 rounded-md border bg-background p-5 shadow-sm">
         <div className="flex items-start gap-3">
