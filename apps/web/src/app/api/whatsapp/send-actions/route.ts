@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const organizationId = url.searchParams.get("organizationId") ?? "";
     if (!organizationId) return NextResponse.json({ error: "validation_error", message: "organizationId is required." }, { status: 422 });
-    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "whatsapp.read" }, getIdentityAdapter(), getIdentityRepository());
     const actions = await query<{
       id: string; whatsapp_account_id: string; recipient_phone: string; message_body: string;
       payload_type: string; status: string; requested_by: string | null; correlation_id: string;
