@@ -34,3 +34,14 @@ Append-only operational history for OPS-01. This is not the source of authorizat
 - **Action required on host:** Correct `RABBITMQ_URL` in the deployed `.env.docker` to the real broker endpoint/credentials/actual vhost and correct `REDIS_URL` to the active Redis ACL/auth/TLS/database settings. Do not share the URLs or secrets. Recreate/restart the worker so it receives updated environment variables.
 - **Recovery:** Confirm sanitized logs no longer show either error; trigger Gmail sync; verify account sync timestamps/state and actual persisted message count. 202/queued and health 200 do not prove ingestion. If the sync advances but messages still remain zero, route back to FIX-01 with the new sanitized worker/provider error.
 - **Status:** Root cause for the observed no-fetch is identified as worker infrastructure configuration; actual mailbox ingestion is not yet verified. Never bypass the Redis lease.
+
+### OPS01-COMPOSE-ENV-FALLBACK-20261018 / 2026-10-18
+- **Task:** Repair manual deployment stopping after successful image builds because the installed Docker Compose does not support `config --environment`.
+- **Authorization:** User-provided deployment failure; safe operational compatibility correction.
+- **Started from:** `main`, user log after the web and worker images built successfully.
+- **Actions:** Updated `scripts/manual-up.sh` to retain the modern Compose path and fall back to host `DATABASE_URL` or a concrete `.env` value; missing or unresolved values still stop deployment. Added a Node source-contract regression test.
+- **Files/code:** `scripts/manual-up.sh`; `scripts/tests/manual-up-compose-env.test.mjs`.
+- **Evidence:** User log establishes image build success and the unsupported flag. Commits: source `a93176b3cbba730c30a016b4e47a9dd3dd46039c`; test `0386f03fa9534ff2d53db84b7ffbd2b5fe864154`. Test and post-fix migration/startup are not yet executed.
+- **Blockers/dependencies:** User must pull current main and rerun manual deployment; database connectivity/migration success remains unknown.
+- **Lesson:** Do not require a recently added Compose CLI option without a fallback; keep migration configuration fail-closed and never print DSNs.
+- **Next action:** Run `node --test scripts/tests/manual-up-compose-env.test.mjs`, then `bash scripts/update-and-up.sh`; record migration and startup outcomes.
