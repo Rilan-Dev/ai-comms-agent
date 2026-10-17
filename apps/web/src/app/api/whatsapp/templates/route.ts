@@ -62,7 +62,7 @@ export async function GET(request: Request) {
     const organizationId = url.searchParams.get("organizationId") ?? "";
     const accountId = url.searchParams.get("accountId") ?? "";
     if (!organizationId || !accountId) return NextResponse.json({ error: "validation_error", message: "organizationId and accountId are required." }, { status: 422 });
-    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "whatsapp.read" }, getIdentityAdapter(), getIdentityRepository());
     const context = await getMetaContext(organizationId, accountId);
     if ("error" in context) return NextResponse.json({ error: "whatsapp_not_ready", message: context.error }, { status: 409 });
     await syncMetaTemplates(organizationId, accountId, context.token, context.endpoint);
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
       || components.some((item: unknown) => !item || typeof item !== "object" || !["HEADER","BODY","FOOTER","BUTTONS"].includes(String((item as Record<string, unknown>).type)))) {
       return NextResponse.json({ error: "validation_error", message: "Valid account, template name, language, category and 1–10 Meta template components are required." }, { status: 422 });
     }
-    const actor = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.update" }, getIdentityAdapter(), getIdentityRepository());
+    const actor = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "whatsapp.send" }, getIdentityAdapter(), getIdentityRepository());
     const context = await getMetaContext(organizationId, accountId);
     if ("error" in context) return NextResponse.json({ error: "whatsapp_not_ready", message: context.error }, { status: 409 });
     const response = await fetch(context.endpoint, {
