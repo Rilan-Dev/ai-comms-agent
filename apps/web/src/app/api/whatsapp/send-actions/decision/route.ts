@@ -19,6 +19,7 @@ type SendAction = {
   correlation_id: string;
   expires_at: string;
   approved_by: string | null;
+  queued_message_id: string | null;
   payload_type: string;
   template_name: string | null;
   template_language: string | null;
@@ -38,13 +39,14 @@ export async function POST(request: Request) {
     }
     const actor = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "whatsapp.send" }, getIdentityAdapter(), getIdentityRepository());
     const found = await query<SendAction>(
-      "SELECT id, organization_id, whatsapp_account_id, agent_id, agent_binding_required, recipient_phone, message_body, status, idempotency_key, correlation_id, expires_at, approved_by, payload_type, template_name, template_language, template_parameters FROM whatsapp_send_actions WHERE id=$1 AND organization_id=$2 LIMIT 1",
+      "SELECT id, organization_id, whatsapp_account_id, agent_id, agent_binding_required, recipient_phone, message_body, status, idempotency_key, correlation_id, expires_at, approved_by, queued_message_id, payload_type, template_name, template_language, template_parameters FROM whatsapp_send_actions WHERE id=$1 AND organization_id=$2 LIMIT 1",
       [actionId, organizationId],
     );
     const action = found.rows[0];
     if (!action) return NextResponse.json({ error: "not_found", message: "WhatsApp send approval was not found in this organization." }, { status: 404 });
-    if (action.status === "queued") return NextResponse.json({ approved: true, queued: true, status: "queued", messageId: null });
-    if (action.status === "rejected" || action.status === "requires_template" || action.status === "expired") {
+    if (action.status === "queued") return NextResponse.json({ approved: true, queued: true, status: "queued", messageId: action.queued_message_id ?? null, message: "Already queued; provider delivery is not yet confirmed." });
+    if (action.status === "sent") return NextResponse.json({ approved: true, queued: true, status: "sent", messageId: action.queued_message_id ?? null, message: "Meta accepted this message; recipient delivery is not yet confirmed." });
+    if (action.status === "rejected" || action.status === "requires_template" || action.status === "expired" || action.status === "failed") {
       return NextResponse.json({ error: "invalid_action_state", status: action.status, message: "This approval can no longer be decided." }, { status: 409 });
     }
     if (Date.parse(action.expires_at) <= Date.now()) {
