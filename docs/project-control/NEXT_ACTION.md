@@ -1,3 +1,14 @@
+## DEV-01 — DIRECT MAIN requirement, live model verification + runtime hydration repair — 2026-10-18
+
+- **User instruction:** Continue work directly on `main`; **do not create new branches**. This supersedes historical draft-PR language below. PR #34 AND PR #35 already merged; no new PR/branch created in the latest invocation.
+- **New source work on main:** Added `src/lib/ai/runtime-settings-state.ts` mapping all eight persisted camelCase AI runtime fields to snake_case form/PUT fields. Fixes a confirmed risk of silently overwriting saved knowledge-base ID, default model provider, voice ID, numeric limits and system prompt during model selection. New organization realtime default no longer injects a hard-coded provider model ID. Added standalone Node and Vitest regression tests.
+- **EXECUTED evidence:** Exact committed catalog/module hashes validated; 6/6 live-catalog mocked Node tests PASS, 4/4 runtime hydration Node tests PASS, standalone `tsc --noEmit` both pure modules PASS. Tests are mocked and module-only — NOT monorepo, browser, live provider, or deployment acceptance. Session `docs/project-control/sessions/DEV01-MAIN-RUNTIME-MODEL-20261018.md`.
+- **EXACT NEXT_ACTION:** In a dependency-equipped checkout of current **main** run `pnpm --filter @ai-comms-agent/web test -- tests/live-model-catalog.test.ts tests/ai-runtime-settings.test.ts`, `pnpm --filter @ai-comms-agent/web typecheck`, `pnpm --filter @ai-comms-agent/web build`, and `node --experimental-strip-types --test apps/web/tests/runtime-settings-state.test.mjs`; capture full output and resolve feature-specific failures on main. OPS-01 verifies tenant-specific live provider credentials/HTTP, model dropdown select/save/reload, cross-organization rejection, and Vercel build-rate-limit/host environment. Architect acceptance only after full evidence. Do not create a branch absent new owner direction.
+- **Ownership:** DEV-01 source/model UX; FIX-01 unrelated bugs; OPS-01 infrastructure/build/deployment/live integration. No claim of production-ready.
+
+
+---
+
 ## DEV-01 — live model catalog verification continuation (2026-10-18)
 
 - **Current repo truth:** PR #34 was merged on October 18 (IST) at `5413468fc1ff0ae0088796b25d01b680126e521c`. Previous draft/unmerged wording below is HISTORICAL, no longer current.
