@@ -1,3 +1,11 @@
+## 2026-10-18 — DEV-01 email-vector RAG safety continuation (main)
+
+- **Source committed:** Read-side Clara email-vector adapter validates nonempty unique allowed accounts, trusted organization, bounded query/limit before using the server credential; rejects unsafe URLs/redirects. Worker-side upsert/delete/purge adapter now rejects unsafe URLs/redirects as well. Standalone and worker Vitest regression source committed directly on `main`. No feature branch/PR.
+- **Actually executed:** 5/5 new Node tests against exact committed search TS; combined exact-source standalone Node set 20/20 PASS; isolated TS check of search module PASS with type-only stubs. Full pnpm web/worker/Next build, provider HTTP, live Qdrant, browser, production and Clara deployment NOT VERIFIED. Phase 4 remains implementation in progress.
+- **Dependency correction:** Clara API PR #298 is merged into its `Vite-Converted` base, not proof of deployed endpoint. Agent-to-account cross-tenant live negative checks (ISS-026) still gate activation of outbox and shared retrieval. See `docs/project-control/NEXT_ACTION.md` and `docs/project-control/sessions/DEV01-CLARA-VECTOR-BOUNDARY-20261018.md`.
+
+---
+
 ## DEV-01 — Main-only provider organization isolation repair (2026-10-18)
 
 - Client-side organization switching and stale-response risks in both AI provider forms and the live model selector have source fixes on `main`; no new branch or PR. Credential editor clears an unsaved key, gates writes until org settings load, and ignores late previous-org results.
