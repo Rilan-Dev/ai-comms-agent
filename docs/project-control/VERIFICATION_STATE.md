@@ -1,3 +1,13 @@
+## 2026-10-18 — DEV-01 live provider model catalogues (NOT VERIFIED)
+
+- Branch: `feature/dev01-live-provider-model-catalog-20261018` from `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`; session `DEV01-LIVE-MODEL-CATALOG-20261018`.
+- Evidence available: GitHub accepted source updates and mocked provider test source; reviewed Clara-AI-Platform `ai-governance/core/live-catalog.ts` reference.
+- **NOT EXECUTED:** `apps/web/tests/live-model-catalog.test.ts`, `apps/web/tests/ai-runtime-settings.test.ts`, pnpm/web typecheck, Next build, live vendor model listing, browser form selection/persistence, cross-org negative check, deployment or production provider invocation.
+- Provider coverage is source-proposed only. Unsupported catalogue purposes intentionally fail visibly; no static selection presented as live.
+- Owner: DEV-01 for focused code verification and correctness; OPS-01 for dependency-equipped/live/deployment verification; architect for PR approval. No phase/release acceptance.
+
+---
+
 ### Provider real-time email sync — 2026-10-16
 
 - Branch: `feature/provider-realtime-email-sync`.
@@ -1458,3 +1468,12 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Reported by local checkout after pulling `d74a083c`:** worker TypeScript build still failed in `product-action-executor.ts` because the WhatsApp approval result used unsupported `message` instead of the shared `ProductActionResult.reason` field; `whatsapp-worker.ts` had a second template-payload narrowing site not covered by the earlier correction.
 - **Source corrections committed to main:** `acc0745e399e907eb479d95b4d80f53543ac462e` uses the shared `reason` field; `de44d06ce1496c8f1a5e985cea03b24b149e0d1b` explicitly narrows the second media/template payload to `Record<string, unknown>`.
 - **Verification:** source changes committed; worker build has not been rerun here. Pull latest `main` and rerun `pnpm --filter @ai-comms-agent/worker build`. If further errors appear, continue fixing the compiler output; do not infer a passing build from source readback.
+
+
+### 2026-10-18 — FIX-01 chat membership nullability build failure
+
+- **User-provided evidence:** `docker compose -f infra/docker-compose.manual.yml up -d --build` built the worker image successfully. The web image's Next.js 15.5.27 compilation succeeded, then type validation failed at `apps/web/src/app/api/chat/stream/route.ts:384`: `subject.membership` is possibly null. Separately, native shell `pnpm --filter ...` returned `pnpm: command not found`; this does not explain the Docker build failure because the Docker build uses Corepack/pnpm.
+- **Root cause:** `authorize()` rejects missing/inactive memberships at runtime, but the shared `AuthSubject` type permits nullable membership; chat route accessed `subject.membership.role` without narrowing.
+- **Correction:** Commit `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9` adds an explicit 403 fail-closed guard after authorization. Commit `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9` adds a regression source assertion requiring the guard before trusted `ToolContext` construction.
+- **Verification status:** Source readback confirms the commits; post-fix web build, focused test execution, migrations, browser, and deployed runtime are NOT VERIFIED. Do not mark the build green based on the patch alone.
+- **Next action:** Pull latest `main`, rerun `docker compose -f infra/docker-compose.manual.yml up -d --build`, then run the focused web regression test when pnpm is available. Route only the missing native-host pnpm/toolchain to OPS-01.
