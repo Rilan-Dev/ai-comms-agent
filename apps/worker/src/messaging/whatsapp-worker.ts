@@ -103,12 +103,16 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
       const account = await getWhatsAppAccountForOrganization(String(message.organization_id), String(message.whatsapp_account_id));
       if (!account) throw new Error("WhatsApp account is unavailable");
       if (account.status !== "connected") throw new Error("WhatsApp account is no longer connected; outbound was blocked");
-      const actionBinding = await query<{ agent_id: string | null; agent_binding_required: boolean }>(
-        "SELECT agent_id,agent_binding_required FROM whatsapp_send_actions WHERE organization_id=$1 AND correlation_id=$2 LIMIT 1",
+      const actionBinding = await query<{ id: string; agent_id: string | null; agent_binding_required: boolean; status: string }>(
+        "SELECT id,agent_id,agent_binding_required,status FROM whatsapp_send_actions WHERE organization_id=$1 AND correlation_id=$2 LIMIT 1",
         [String(message.organization_id), String(message.correlation_id ?? "")],
       );
-      if (actionBinding.rows[0]?.agent_binding_required) {
-        const agentId = actionBinding.rows[0].agent_id;
+      const approvalAction = actionBinding.rows[0];
+      if (!approvalAction || !["approved", "queued"].includes(approvalAction.status)) {
+        throw new Error("No active human-approved WhatsApp action is associated with this outbound message; outbound was blocked");
+      }
+      if (approvalAction.agent_binding_required) {
+        const agentId = approvalAction.agent_id;
         if (!agentId) throw new Error("WhatsApp agent binding no longer exists; outbound was blocked");
         const currentBinding = await query<{ id: string }>(
           "SELECT b.agent_id AS id FROM agent_whatsapp_accounts b JOIN agents a ON a.id=b.agent_id AND a.organization_id=$1 WHERE b.agent_id=$2 AND b.whatsapp_account_id=$3 LIMIT 1",
