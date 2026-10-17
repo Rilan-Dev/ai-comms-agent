@@ -47,6 +47,19 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Security/reliability:** Preserve organization authorization, connected-account guard, and idempotency semantics. If the partial unique index is absent in production, the SQL correction alone is insufficient; OPS-01 must inspect the exact DB schema.
 - **Next:** OPS-01 deploys matching source, confirms the index exists in the web container's DB, then verifies queueing, worker processing, provider result and duplicate-key behavior. Do not claim live send success from container health or HTTP 202 alone.
 
+
+
+### EVT-FIX01-VOICE-RESAMPLING-20261018 — 2026-10-18
+- **Agent/session:** FIX-01 / Sentinel — FIX01-VOICE-RESAMPLING-INDEX-20261018
+- **Type:** ERROR / CORRECTION
+- **Summary:** User's manual Docker build passed Next.js compilation then failed TypeScript checking on a potentially undefined Float32Array sample in voice resampling. Guarded missing samples in both direct conversion and downsampling accumulation; added a focused regression assertion.
+- **Impact:** Local web image build blocked at type validation.
+- **Owner:** FIX-01 for source/test; OPS-01 only for any separate environment issue.
+- **Evidence:** Source commit `baa9746142297322c5bf796e7c6fb94060bbc9cf`; regression commit `ff8ab0faa72a1a235c47be6d773c16738d2cd79a`.
+- **Verification:** Post-fix Docker build/test pending.
+- **Suggested next action:** Pull latest main, rerun `bash scripts/update-and-up.sh`, then run focused voice transport test; capture actual output.
+- **Related records:** ISS-033; `docs/project-control/sessions/FIX01-VOICE-RESAMPLING-INDEX-20261018.md`.
+
 <!-- Append new events above this marker. -->
 
 ### EVT-FIX01-AUTH-20261009 — 2026-10-09
