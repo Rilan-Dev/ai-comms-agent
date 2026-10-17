@@ -113,3 +113,9 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 - A dropdown must never invent compatibility. The current Sarvam chat runtime calls v1, so V2-only live models must not be offered until runtime changes are authorized. Vendor TTS/STT model-list absence must be stated plainly; do not create static 'live' choices.
 - Models used for TTS and STT require two separate saved values. Preserve legacy selections visibly as unavailable rather than silently resetting them.
 - Do not mark GitHub source writes as Vitest/typecheck/build/browser/live-credential verification. Session: `DEV01-LIVE-MODEL-CATALOG-20261018`.
+
+### 2026-10-18 — Offline verification reproducibility
+- When a merged feature's source is accessible via GitHub connector but private clone/npm DNS is unavailable, reconstruct the small standalone module and check `git hash-object` against the actual GitHub blob before executing tests. This proves exact source identity, not entire repo readiness.
+- Node 22.16+ `--experimental-strip-types --test` runs no-dependency provider-adapter mock tests. Record the tested code's SHA and results; keep Vitest/Next/React, live HTTP, credentials and browser as separate unverified gates.
+- PR merge status can advance concurrently; a stale `NEXT_ACTION` calling it "draft/unmerged" must be superseded with fresh GitHub truth. Vercel `build-rate-limit` routes to OPS-01, not DEV-01 source.
+- Session `DEV01-LIVE-MODEL-VERIFY-20261018`; 6/6 mocked adapter and 13/13 source checks PASS, module-only typecheck PASS.
