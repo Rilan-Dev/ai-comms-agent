@@ -3,7 +3,7 @@ import { PostgresAgentRepository, getVoiceSessionForOrganization, incrementVoice
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
-import { claraRuntime } from "@ai-comms-agent/clara-core";
+import { runEmailAgentTurn } from "@ai-comms-agent/email-agent-runtime";
 
 export const dynamic = "force-dynamic";
 
@@ -56,36 +56,44 @@ export async function POST(request: Request) {
     // KB ID is OPTIONAL for voice turns. RAG features are skipped when no KB is configured.
     const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim() || "default";
 
-    const executionId = crypto.randomUUID();
-    const turn = await claraRuntime.createChatTurn({
-      orgId: organizationId,
-      agentId,
-      kbId,
-      userId: subject.user.id,
-      sessionId,
-      surface: "chat",
-      ragMode: "hybrid",
-      messages: [
-        {
-          role: "user",
-          content: transcript,
-        },
-      ],
-    });
-
-    let output = "";
-    for await (const chunk of turn.stream) output += chunk;
-
     const turnRecorded = await incrementVoiceSessionTurnForOrganization(organizationId, sessionId, transcriptBridgeOnly);
     if (!turnRecorded) {
       return NextResponse.json({ error: "session_not_active", message: "Voice session ended before the turn could be recorded." }, { status: 409 });
     }
+
+    const executionId = crypto.randomUUID();
+    const role = subject.membership.role;
+    const permissions = [...subject.permissions];
+    const turn = await runEmailAgentTurn({
+      organizationId,
+      agentId,
+      messages: [{ role: "user", content: transcript }],
+      kbId,
+      toolContext: {
+        organization_id: organizationId,
+        agent_id: agentId,
+        user_id: subject.user.id,
+        conversation_id: session.conversation_id ?? sessionId,
+        turn_id: executionId,
+        correlation_id: executionId,
+        channel: "voice",
+        auth_subject: {
+          user_id: subject.user.id,
+          role,
+          permissions,
+        },
+      },
+      maxRounds: 4,
+      maxToolCalls: 8,
+    });
+
     return NextResponse.json({
       executionId,
-      text: output,
-      provider: turn.providerName,
-      model: turn.model,
-      actions: [],
+      text: turn.text,
+      toolCalls: turn.toolCalls,
+      pendingApprovals: turn.pendingApprovals,
+      finishReason: turn.finishReason,
+      actions: turn.toolCalls,
     });
   } catch (error) {
     return authorizationErrorToResponse(error);

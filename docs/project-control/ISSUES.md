@@ -574,3 +574,18 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Prevention:** Explicitly narrow shared auth types at security-sensitive call sites even when a helper enforces a stronger runtime invariant. Keep source errors separate from environment toolchain failures.
 - **Evidence/verification:** Patch and regression source are committed; no post-patch web build or test execution is yet evidenced.
 - **Next action:** Pull latest main and rerun Docker Compose build; then run focused test. Host-native `pnpm: command not found` is routed separately to OPS-01.
+
+
+## ISS-031 — WhatsApp template row strict nullability blocks web build
+
+- **Opened:** 2026-10-18
+- **Severity:** high (web production build blocker)
+- **Owner:** FIX-01 / Sentinel
+- **Status:** in_progress — source corrected; post-fix build/test evidence pending
+- **Symptom:** User's Docker build failed type validation at `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts:119`, TS18048: `synced.rows[0]` may be undefined. Next.js compilation succeeded and worker image was exported.
+- **Root cause:** A `rows.length` check did not narrow direct indexed access to `synced.rows[0].components`.
+- **Failed approaches rejected:** Non-null assertion, cast, compiler relaxation, or changing template approval policy.
+- **Remedy:** Explicitly bind and guard `syncedTemplate`, preserving the existing 409 `template_not_synced` fail-closed response; add a regression source assertion. Commits `90fac5e0774b695446e1e0c3ab51072639ba5f06` and `41734923651b1173a703d747f0ac0aa93317a5b9`.
+- **Prevention:** Narrow the actual database-returned row before reading fields.
+- **Evidence/verification:** Source/test committed; no post-fix build or test execution is evidenced.
+- **Next action:** Pull latest main, rerun manual Docker deployment build, then run focused `whatsapp-send-approval.test.ts`. Keep build status pending until output is observed.

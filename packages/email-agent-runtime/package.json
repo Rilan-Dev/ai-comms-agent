@@ -1,0 +1,30 @@
+{
+  "name": "@ai-comms-agent/email-agent-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./email-agent-loop": "./src/email-agent-loop.ts",
+    "./email-read-tools": "./src/email-read-tools.ts",
+    "./email-tool-runtime": "./src/email-tool-runtime.ts",
+    "./email-tool-policy": "./src/email-tool-policy.ts",
+    "./tool-executor": "./src/tool-executor.ts",
+    "./email-write-tools": "./src/email-write-tools.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@ai-comms-agent/clara-core": "workspace:*",
+    "@ai-comms-agent/db": "workspace:*",
+    "@ai-comms-agent/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

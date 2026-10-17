@@ -356,3 +356,12 @@ If shared memory conflicts with current repository state or current requirements
 - **Failed approach to avoid:** Calling an env-global provider list or silently returning curated static IDs when the vendor is unreachable; passing TTS ID into STT purpose; showing new V2 models that the current chat runtime cannot invoke.
 - **Remedy:** Require org read authorization before tenant credential lookup; use fixed official vendor endpoints and capability classifications; preserve explicit unavailable and stale-selection states and separate TTS/STT.
 - **Prevention:** Add mocked vendor catalog/pagination/error and auth-order tests; run them plus real credential/browser checks before acceptance. Missing vendor catalog API must be disclosed, not fabricated. Session `DEV01-LIVE-MODEL-CATALOG-20261018`. Evidence remains source-only.
+### FIX-01 / Sentinel — 2026-10-18 — WhatsApp synced template row nullability
+
+- **Symptom:** User's Docker deployment build reports Next.js compilation success, then TS18048 at `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts:119`: `synced.rows[0]` may be undefined when reading `.components`.
+- **Root cause:** The existing `if (!synced.rows.length)` guard does not narrow TypeScript's indexed array access under strict checking. The later direct access `synced.rows[0].components` remains unsafe to the type checker.
+- **Failed approach:** Treating a nonzero `rows.length` check as proof that `rows[0]` is narrowed. Do not use a non-null assertion or relax compiler settings.
+- **Remedy:** Bind `synced.rows[0]` to `syncedTemplate`, return the existing fail-closed 409 `template_not_synced` response if absent, then access `syncedTemplate.components`. Added a regression source assertion for the explicit row guard and safe access.
+- **Prevention:** Narrow array elements directly after database writes/RETURNING operations; keep an explicit absent-row response even when a length check is present.
+- **Evidence:** Source commit `90fac5e0774b695446e1e0c3ab51072639ba5f06`; regression test commit `41734923651b1173a703d747f0ac0aa93317a5b9`. User log shows worker image built/exported and web compile succeeded before type validation failed. No post-fix test or build has been run/observed.
+- **Next action:** Pull latest `main` and rerun `bash scripts/update-and-up.sh` (or the documented Docker Compose build). If the build passes, run the focused `whatsapp-send-approval.test.ts` suite. Record actual results; do not infer success from source commits.

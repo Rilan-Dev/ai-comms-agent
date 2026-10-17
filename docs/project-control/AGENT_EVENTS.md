@@ -380,6 +380,11 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 
 - EVT-FIX01-VOICE-WEBRTC-20261016: Implemented host-authorized OpenAI WebRTC negotiation and Clara-style voice workspace on `fix/voice-transport-contract`; added organization-scoped credential resolution, microphone/audio/data-channel lifecycle, final transcript bridge through the host turn route, spoken response, mute/interrupt/end and readiness timeout. Native WebRTC for Gemini/Sarvam/ElevenLabs and full authorized email action/tool integration remain outstanding. Tests/typecheck/build/browser/provider/deployment not run; PR #27 open and issue #26 remains open.
 
+- EVT-FIX01-VOICE-EMAIL-RUNTIME-20261016: Added Gemini Live ephemeral-token transport and provider-backed Sarvam/ElevenLabs utterance pipelines; extracted `@ai-comms-agent/email-agent-runtime` for web/worker reuse; voice now uses the same bounded, allowlisted, audited email tool loop; safe draft/mailbox handlers plus pending-approval requests for send/reply/forward; voice UI shows approval IDs. Persistent Sarvam/ElevenLabs WebSocket relays and runtime verification remain outstanding.
+
+- EVT-FIX01-VOICE-RELAY-SOURCE-20261016: Added isolated provider WebSocket relay source and client adapters for Sarvam STT/TTS and ElevenLabs Scribe/TTS, with HMAC bootstrap, short-lived session token, origin allowlist and usage telemetry. Shared email runtime is wired into voice; send/reply/forward remain explicit approval requests. Relay deployment and runtime verification remain outstanding.
+
+- EVT-FIX01-VOICE-PR-CONTINUATION-20261016: PR #27 merged only its earlier partial commit; the subsequent multi-provider relay and shared email runtime work is in draft PR #28. Issue #26 remains open pending deployment, provider-backed missing actions and runtime evidence.
 
 ### EVT-FIX01-WHATSAPP-PENDING-20261017 — 2026-10-17
 - **Agent/session:** FIX-01 / Sentinel
@@ -452,3 +457,13 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Verification:** Source and test files authored, not run. No production/deployment claim. User owner directly authorized this development.
 - **Other agents:** Keep ISS-026/ISS-030 and source bug remediation with FIX-01; Docker/build/deployment and live environment with OPS-01.
 - **Next:** Run focused model tests/typecheck and credentials-backed browser checks, architect review, then OPS-01 deploy only after accepted.
+
+### EVT-FIX01-WHATSAPP-TEMPLATE-ROW-20261018
+- **Agent/session:** FIX-01 / Sentinel; `FIX01-WHATSAPP-TEMPLATE-ROW-20261018`
+- **Type:** SOURCE DEFECT / TYPECHECK FAILURE
+- **Symptom:** Docker web build's Next.js compile passed, then TS18048 failed at `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts:119` because `synced.rows[0]` may be undefined.
+- **Root cause:** The `rows.length` check does not narrow indexed array access.
+- **Remedy:** Local row binding + explicit fail-closed 409 guard, then safe component access. Added source regression assertion. Commits `90fac5e0774b695446e1e0c3ab51072639ba5f06`, `41734923651b1173a703d747f0ac0aa93317a5b9`.
+- **Failed approaches avoided:** No non-null assertion, cast, compiler relaxation, or template policy change.
+- **Verification:** Source committed; post-fix build/test pending. Worker build and pre-fix web failure are user-provided evidence.
+- **Next:** Rebuild latest main and run the focused WhatsApp approval test; update state from actual output.

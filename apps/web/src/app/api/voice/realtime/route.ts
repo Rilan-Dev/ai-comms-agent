@@ -53,27 +53,15 @@ export async function POST(request: Request) {
     // Prefer the organization's dedicated realtime credential, then its saved
     // OpenAI chat credential, then the server environment fallback.
     const savedCredential = await query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
-      "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='openai' AND purpose='realtime' LIMIT 1",
+      "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='openai' AND purpose IN ('realtime','stt','tts','chat','general') AND enabled=true AND encrypted_api_key IS NOT NULL ORDER BY CASE WHEN purpose='realtime' THEN 0 WHEN purpose='chat' THEN 1 ELSE 2 END LIMIT 1",
       [organizationId],
     );
     let apiKey: string | undefined;
     const realtimeCredential = savedCredential.rows[0];
-    if (realtimeCredential?.enabled && realtimeCredential.encrypted_api_key?.length) {
+    if (realtimeCredential?.encrypted_api_key?.length) {
       const masterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
-      if (!masterKey) throw new Error("CREDENTIALS_MASTER_KEY is required to decrypt the organization's realtime credential.");
+      if (!masterKey) throw new Error("CREDENTIALS_MASTER_KEY is required to decrypt the organization's OpenAI credential.");
       apiKey = decryptCredential(Buffer.from(realtimeCredential.encrypted_api_key), parseCredentialsMasterKey(masterKey)).toString("utf8");
-    }
-    if (!apiKey) {
-      const chatCredential = await query<{ encrypted_api_key: Buffer | null; enabled: boolean }>(
-        "SELECT encrypted_api_key, enabled FROM ai_provider_configs WHERE organization_id=$1 AND provider='openai' AND purpose='chat' LIMIT 1",
-        [organizationId],
-      );
-      const row = chatCredential.rows[0];
-      if (row?.enabled && row.encrypted_api_key?.length) {
-        const masterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
-        if (!masterKey) throw new Error("CREDENTIALS_MASTER_KEY is required to decrypt the organization's OpenAI credential.");
-        apiKey = decryptCredential(Buffer.from(row.encrypted_api_key), parseCredentialsMasterKey(masterKey)).toString("utf8");
-      }
     }
     apiKey ||= process.env.OPENAI_API_KEY?.trim();
     if (!apiKey) {

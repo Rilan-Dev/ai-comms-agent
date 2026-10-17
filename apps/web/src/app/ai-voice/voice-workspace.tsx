@@ -6,15 +6,17 @@ import { AudioLines, CheckCircle2, CircleStop, Mic, MicOff, Radio, ShieldCheck, 
 
 type Agent = { id: string; name: string; status: string };
 type VoiceSession = { id: string; status: string; provider?: string | null; model?: string | null; voice_id?: string | null };
-type Transport = { transportMode?: "transcript_bridge" | "realtime"; sessionEndpoint?: string; turnEndpoint?: string; provider?: string | null; realtimeProvider?: string | null; model?: string | null; voiceId?: string | null };
+type Transport = { transportMode?: "transcript_bridge" | "realtime" | "pipeline"; sessionEndpoint?: string; turnEndpoint?: string; provider?: string | null; realtimeProvider?: string | null; model?: string | null; voiceId?: string | null };
 type Turn = { id: string; role: "user" | "assistant"; text: string; state?: "thinking" | "done" };
 
 export function VoiceWorkspace({ organizationId, agents }: { organizationId: string; agents: Agent[] }) {
   const [agentId, setAgentId] = useState(agents[0]?.id ?? "");
+  const [languageCode, setLanguageCode] = useState("en-IN");
   const [session, setSession] = useState<VoiceSession | null>(null);
   const [transport, setTransport] = useState<Transport | null>(null);
   const [transcript, setTranscript] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [pendingApprovals, setPendingApprovals] = useState<Array<{ actionId: string; actionType: string; message: string }>>([]);
   const [busy, setBusy] = useState(false);
   const [connected, setConnected] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -22,6 +24,30 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("Your voice session will connect through Clara's authorized runtime.");
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const geminiSocketRef = useRef<WebSocket | null>(null);
+  const providerSocketRef = useRef<WebSocket | null>(null);
+  const ttsSocketRef = useRef<WebSocket | null>(null);
+  const ttsAudioContextRef = useRef<AudioContext | null>(null);
+  const ttsNextStartRef = useRef(0);
+  const ttsSourcesRef = useRef(new Set<AudioBufferSourceNode>());
+  const ttsGenerationRef = useRef<string | null>(null);
+  const ttsFinalSeenRef = useRef(false);
+  const ttsPendingFramesRef = useRef(0);
+  const ttsIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastProviderFinalRef = useRef<{ text: string; at: number } | null>(null);
+  const geminiAudioContextRef = useRef<AudioContext | null>(null);
+  const geminiProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const geminiSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const geminiTranscriptRef = useRef("");
+  const pipelineSamplesRef = useRef<Int16Array[]>([]);
+  const pipelinePreRollRef = useRef<Int16Array[]>([]);
+  const pipelineSpeechStartedRef = useRef(false);
+  const pipelineBusyRef = useRef(false);
+  const pipelineLastVoiceAtRef = useRef(0);
+  const ttsObjectUrlRef = useRef<string | null>(null);
+  const micMutedRef = useRef(false);
+  const expectedDisconnectRef = useRef(false);
+  const realtimeProviderRef = useRef<string | null>(null);
   const channelRef = useRef<RTCDataChannel | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -39,7 +65,42 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   }, [session]);
 
   const stopMedia = useCallback(() => {
+    expectedDisconnectRef.current = true;
     try { channelRef.current?.close(); } catch {}
+    try { geminiSocketRef.current?.close(); } catch {}
+    try { providerSocketRef.current?.close(); } catch {}
+    try { ttsSocketRef.current?.close(); } catch {}
+    geminiSocketRef.current = null;
+    providerSocketRef.current = null;
+    ttsSocketRef.current = null;
+    for (const source of ttsSourcesRef.current) { try { source.stop(); } catch {} }
+    ttsSourcesRef.current.clear();
+    if (ttsAudioContextRef.current) void ttsAudioContextRef.current.close().catch(() => undefined);
+    ttsAudioContextRef.current = null;
+    ttsNextStartRef.current = 0;
+    ttsGenerationRef.current = null;
+    ttsFinalSeenRef.current = false;
+    ttsPendingFramesRef.current = 0;
+    if (ttsIdleTimerRef.current) clearTimeout(ttsIdleTimerRef.current);
+    ttsIdleTimerRef.current = null;
+    lastProviderFinalRef.current = null;
+    geminiProcessorRef.current?.disconnect();
+    geminiSourceRef.current?.disconnect();
+    geminiProcessorRef.current = null;
+    geminiSourceRef.current = null;
+    if (geminiAudioContextRef.current) void geminiAudioContextRef.current.close().catch(() => undefined);
+    geminiAudioContextRef.current = null;
+    geminiTranscriptRef.current = "";
+    pipelineSamplesRef.current = [];
+    pipelinePreRollRef.current = [];
+    pipelineSpeechStartedRef.current = false;
+    pipelineBusyRef.current = false;
+    pipelineLastVoiceAtRef.current = 0;
+    if (ttsObjectUrlRef.current) URL.revokeObjectURL(ttsObjectUrlRef.current);
+    ttsObjectUrlRef.current = null;
+    micMutedRef.current = false;
+    realtimeProviderRef.current = null;
+    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
     channelRef.current = null;
     try { pcRef.current?.close(); } catch {}
     pcRef.current = null;
@@ -48,6 +109,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.srcObject = null;
+      audioRef.current.removeAttribute("src");
+      audioRef.current.load();
     }
     sessionCreatedRef.current = false;
     activationStartedRef.current = false;
@@ -72,7 +135,11 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.message ?? payload.error ?? "Voice session state could not be updated.");
-    if (payload.session) setSession(payload.session as VoiceSession);
+    if (payload.session) {
+      const updated = payload.session as VoiceSession;
+      sessionRef.current = updated;
+      setSession(updated);
+    }
   }, [organizationId]);
 
   const maybeActivate = useCallback(async () => {
@@ -85,6 +152,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       setConnected(true);
       setNotice("Realtime audio connected. Speak naturally; Clara routes recognized speech through the host-authorized turn pipeline.");
       if (channel.readyState === "open") {
+        ttsGenerationRef.current = `${sessionRef.current?.id ?? "voice"}-welcome`;
+        streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; });
         channel.send(JSON.stringify({
           type: "response.create",
           response: {
@@ -99,6 +168,45 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       stopMedia();
     }
   }, [patchSession, stopMedia]);
+
+  function streamProviderTts(text: string, generationId: string): boolean {
+    const socket = ttsSocketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+    ttsGenerationRef.current = generationId;
+    ttsFinalSeenRef.current = false;
+    ttsPendingFramesRef.current = 0;
+    ttsNextStartRef.current = ttsAudioContextRef.current?.currentTime ?? 0;
+    streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; });
+    setSpeaking(true);
+    setNotice(`${realtimeProviderRef.current} is streaming Clara's answer as audio.`);
+    socket.send(JSON.stringify({ type: "generation_start", generationId }));
+    socket.send(JSON.stringify({ type: "text", generationId, text }));
+    socket.send(JSON.stringify({ type: "flush", generationId }));
+    return true;
+  }
+
+  function speakGeminiWelcome(current: VoiceSession) {
+    if (!window.speechSynthesis) return;
+    const generationId = `${current.id}-welcome`;
+    const utterance = new SpeechSynthesisUtterance("Hello, I'm Clara. How can I help you with your email and communication tasks today?");
+    ttsGenerationRef.current = generationId;
+    utterance.onstart = () => {
+      setSpeaking(true);
+      streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; });
+    };
+    utterance.onend = () => {
+      ttsGenerationRef.current = null;
+      setSpeaking(false);
+      streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
+      setNotice("Connected and listening.");
+    };
+    utterance.onerror = () => {
+      ttsGenerationRef.current = null;
+      setSpeaking(false);
+      streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
+    };
+    window.speechSynthesis.speak(utterance);
+  }
 
   const submitHostTurn = useCallback(async (rawText: string, speakAnswer: boolean) => {
     const text = rawText.trim();
@@ -119,15 +227,74 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
         signal: controller.signal,
         body: JSON.stringify({ organizationId, agentId: agent.id, sessionId: current.id, transcript: text }),
       });
-      const payload = await response.json().catch(() => ({})) as { text?: string; message?: string; error?: string };
+      const payload = await response.json().catch(() => ({})) as { text?: string; message?: string; error?: string; toolCalls?: Array<{ name: string; ok: boolean; errorCode?: string }>; pendingApprovals?: Array<{ actionId: string; actionType: string; message: string }> };
       if (!response.ok) throw new Error(payload.message ?? payload.error ?? "Voice turn failed.");
       if (!isCurrentVoiceSequence(turnSequenceRef.current, sequence) || controller.signal.aborted) return;
       const answer = payload.text?.trim() || "I couldn't produce a response for that turn.";
       setTurns((old) => old.map((turn) => turn.id === assistantTurn.id ? { ...turn, text: answer, state: "done" } : turn));
-      setNotice(speakAnswer ? "Answer received from Clara. Playing the spoken response." : "Response received.");
+      setPendingApprovals((old) => [...old, ...(payload.pendingApprovals ?? [])]);
+      const succeeded = payload.toolCalls?.filter((call) => call.ok).length ?? 0;
+      const denied = payload.toolCalls?.filter((call) => !call.ok).length ?? 0;
+      const approvalSummary = payload.pendingApprovals?.length ? ` ${payload.pendingApprovals.length} email action(s) need explicit approval; none were sent yet.` : "";
+      const toolSummary = (payload.toolCalls?.length ? ` Email tools: ${succeeded} succeeded, ${denied} denied or failed.` : "") + approvalSummary;
+      setNotice((speakAnswer ? "Answer received from Clara. Playing the spoken response." : "Response received.") + toolSummary);
       if (speakAnswer) {
         const channel = channelRef.current;
+        if (realtimeProviderRef.current === "sarvam" || realtimeProviderRef.current === "elevenlabs") {
+          const provider = realtimeProviderRef.current;
+          const generationId = `${current.id}-${sequence}`;
+          if (streamProviderTts(answer, generationId)) return;
+          const response = await fetch("/api/voice/speech/speak", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ organizationId, agentId: agent.id, sessionId: current.id, text: answer, languageCode }),
+          });
+          if (!response.ok) {
+            const payload = await response.json().catch(() => ({})) as { message?: string; error?: string };
+            throw new Error(payload.message ?? payload.error ?? `${provider} speech synthesis failed.`);
+          }
+          const audio = audioRef.current;
+          if (!audio) throw new Error("Speech playback element is unavailable.");
+          if (ttsObjectUrlRef.current) URL.revokeObjectURL(ttsObjectUrlRef.current);
+          ttsObjectUrlRef.current = URL.createObjectURL(await response.blob());
+          audio.srcObject = null;
+          audio.src = ttsObjectUrlRef.current;
+          const generationId = `${current.id}-${sequence}`;
+          ttsGenerationRef.current = generationId;
+          audio.onended = () => {
+            ttsGenerationRef.current = null;
+            pipelineBusyRef.current = false;
+            setSpeaking(false);
+            streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
+            setNotice("Connected and listening.");
+          };
+          audio.onerror = () => {
+            ttsGenerationRef.current = null;
+            pipelineBusyRef.current = false;
+            setSpeaking(false);
+            setError(`${provider} audio playback failed.`);
+            streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
+          };
+          streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; });
+          setSpeaking(true);
+          await audio.play();
+          return;
+        }
+        if (realtimeProviderRef.current === "gemini") {
+          if (!("speechSynthesis" in window)) throw new Error("This browser does not support speech synthesis for Gemini Live responses.");
+          const utterance = new SpeechSynthesisUtterance(answer);
+          const generationId = `${current.id}-${sequence}`;
+          ttsGenerationRef.current = generationId;
+          utterance.onstart = () => { setSpeaking(true); streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; }); };
+          utterance.onend = () => { ttsGenerationRef.current = null; setSpeaking(false); streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; }); setNotice("Connected and listening."); };
+          utterance.onerror = () => { ttsGenerationRef.current = null; setSpeaking(false); streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; }); setError("Browser speech playback failed."); };
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(utterance);
+          return;
+        }
         if (!channel || channel.readyState !== "open") throw new Error("The voice transport disconnected before the answer could be spoken.");
+        ttsGenerationRef.current = `${current.id}-${sequence}`;
+        streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; });
         channel.send(JSON.stringify({
           type: "response.create",
           response: {
@@ -138,6 +305,11 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       }
     } catch (e) {
       if (controller.signal.aborted) return;
+      streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
+      pipelineBusyRef.current = false;
+      ttsGenerationRef.current = null;
+      ttsFinalSeenRef.current = false;
+      ttsPendingFramesRef.current = 0;
       const message = e instanceof Error ? e.message : "Voice turn failed.";
       setError(message);
       setTurns((old) => old.map((turn) => turn.id === assistantTurn.id ? { ...turn, text: message, state: "done" } : turn));
@@ -145,7 +317,425 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     }
   }, [agent, organizationId]);
 
+  function pcm16ToBase64(samples: Int16Array): string {
+    const bytes = new Uint8Array(samples.buffer, samples.byteOffset, samples.byteLength);
+    let binary = "";
+    for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
+    }
+    return btoa(binary);
+  }
+
+  function downsampleTo16k(input: Float32Array, inputRate: number): Int16Array {
+    if (inputRate === 16000) {
+      const sameRate = new Int16Array(input.length);
+      for (let i = 0; i < input.length; i++) sameRate[i] = Math.max(-1, Math.min(1, input[i])) * 0x7fff;
+      return sameRate;
+    }
+    const ratio = inputRate / 16000;
+    const outputLength = Math.floor(input.length / ratio);
+    const output = new Int16Array(outputLength);
+    for (let i = 0; i < outputLength; i++) {
+      const start = Math.floor(i * ratio);
+      const end = Math.min(Math.floor((i + 1) * ratio), input.length);
+      let sum = 0;
+      for (let j = start; j < end; j++) sum += input[j];
+      const sample = end > start ? sum / (end - start) : 0;
+      output[i] = Math.max(-1, Math.min(1, sample)) * (sample < 0 ? 0x8000 : 0x7fff);
+    }
+    return output;
+  }
+
+  function pcm16ToWav(samples: Int16Array, sampleRate = 16000): Blob {
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+    const write = (offset: number, value: string) => { for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i)); };
+    write(0, "RIFF");
+    view.setUint32(4, 36 + samples.length * 2, true);
+    write(8, "WAVE");
+    write(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    write(36, "data");
+    view.setUint32(40, samples.length * 2, true);
+    for (let i = 0; i < samples.length; i++) view.setInt16(44 + i * 2, samples[i], true);
+    return new Blob([buffer], { type: "audio/wav" });
+  }
+
+  async function submitPipelineUtterance(samples: Int16Array[], current: VoiceSession, provider: "sarvam" | "elevenlabs") {
+    if (pipelineBusyRef.current) return;
+    pipelineBusyRef.current = true;
+    const length = samples.reduce((total, part) => total + part.length, 0);
+    if (!length) { pipelineBusyRef.current = false; return; }
+    const merged = new Int16Array(length);
+    let offset = 0;
+    for (const part of samples) { merged.set(part, offset); offset += part.length; }
+    try {
+      const form = new FormData();
+      form.append("organizationId", organizationId);
+      form.append("agentId", agent?.id ?? "");
+      form.append("sessionId", current.id);
+      form.append("languageCode", languageCode);
+      form.append("audio", pcm16ToWav(merged), "voice-utterance.wav");
+      const response = await fetch("/api/voice/speech/transcribe", { method: "POST", body: form });
+      const payload = await response.json().catch(() => ({})) as { transcript?: string; message?: string; error?: string };
+      if (!response.ok) throw new Error(payload.message ?? payload.error ?? `${provider} speech recognition failed.`);
+      const transcript = payload.transcript?.trim();
+      if (transcript) await submitHostTurn(transcript, true);
+      else pipelineBusyRef.current = false;
+    } catch (e) {
+      pipelineBusyRef.current = false;
+      setError(e instanceof Error ? e.message : `${provider} speech recognition failed.`);
+      setNotice("Speech turn failed; no email action is claimed as completed.");
+    }
+  }
+
+  function finishProviderTts(generationId: string) {
+    if (ttsGenerationRef.current !== generationId || !ttsFinalSeenRef.current || ttsPendingFramesRef.current > 0) return;
+    ttsGenerationRef.current = null;
+    pipelineBusyRef.current = false;
+    if (ttsIdleTimerRef.current) clearTimeout(ttsIdleTimerRef.current);
+    ttsIdleTimerRef.current = null;
+    setSpeaking(false);
+    streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
+    setNotice("Connected and listening.");
+  }
+
+  function queueProviderPcmAudio(encodedAudio: string, sampleRate: number, generationId: string, isFinal: boolean) {
+    if (ttsGenerationRef.current !== generationId) return;
+    if (isFinal) ttsFinalSeenRef.current = true;
+    if (ttsIdleTimerRef.current) clearTimeout(ttsIdleTimerRef.current);
+    ttsIdleTimerRef.current = setTimeout(() => {
+      if (ttsGenerationRef.current === generationId) {
+        ttsFinalSeenRef.current = true;
+        finishProviderTts(generationId);
+      }
+    }, 650);
+    if (encodedAudio) {
+      try {
+        const binary = atob(encodedAudio);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const samples = new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2));
+        if (samples.length) {
+          const context = ttsAudioContextRef.current ?? new AudioContext();
+          ttsAudioContextRef.current = context;
+          const buffer = context.createBuffer(1, samples.length, sampleRate);
+          const channel = buffer.getChannelData(0);
+          for (let i = 0; i < samples.length; i++) channel[i] = samples[i] / 32768;
+          const source = context.createBufferSource();
+          source.buffer = buffer;
+          source.connect(context.destination);
+          const startAt = Math.max(context.currentTime + 0.015, ttsNextStartRef.current);
+          ttsNextStartRef.current = startAt + buffer.duration;
+          ttsSourcesRef.current.add(source);
+          ttsPendingFramesRef.current += 1;
+          source.onended = () => {
+            ttsSourcesRef.current.delete(source);
+            ttsPendingFramesRef.current = Math.max(0, ttsPendingFramesRef.current - 1);
+            finishProviderTts(generationId);
+          };
+          source.start(startAt);
+        }
+      } catch {
+        setError("Provider audio chunk could not be decoded.");
+      }
+    }
+    finishProviderTts(generationId);
+  }
+
+  async function connectProviderRealtime(current: VoiceSession, descriptor: Transport, provider: "sarvam" | "elevenlabs") {
+    if (!descriptor.sessionEndpoint) throw new Error(`${provider} realtime session endpoint is not configured.`);
+    if (!navigator.mediaDevices?.getUserMedia || typeof WebSocket === "undefined") {
+      throw new Error("This browser does not support realtime microphone/WebSocket audio. Open the app over HTTPS in a supported browser.");
+    }
+    expectedDisconnectRef.current = false;
+    activationStartedRef.current = false;
+    realtimeProviderRef.current = provider;
+    const response = await fetch(descriptor.sessionEndpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ organizationId, agentId: agent?.id, sessionId: current.id, languageCode }),
+    });
+    const payload = await response.json().catch(() => ({})) as { relayUrl?: string; ttsRelayUrl?: string; message?: string; error?: string };
+    if (!response.ok || !payload.relayUrl) throw new Error(payload.message ?? payload.error ?? `${provider} realtime relay could not be initialized.`);
+
+    const socket = new WebSocket(payload.relayUrl);
+    providerSocketRef.current = socket;
+    if (payload.ttsRelayUrl) {
+      const outputContext = new AudioContext();
+      ttsAudioContextRef.current = outputContext;
+      await outputContext.resume().catch(() => undefined);
+      const ttsSocket = new WebSocket(payload.ttsRelayUrl);
+      ttsSocketRef.current = ttsSocket;
+      ttsSocket.onmessage = (event) => {
+        let data: Record<string, unknown>;
+        try { data = JSON.parse(String(event.data)) as Record<string, unknown>; } catch { return; }
+        const type = String(data.type ?? "");
+        if (type === "audio" && typeof data.audio === "string") {
+          const generationId = typeof data.generationId === "string" ? data.generationId : "";
+          const rate = Number(data.sampleRate) || (provider === "sarvam" ? 24000 : 16000);
+          queueProviderPcmAudio(data.audio, rate, generationId, data.isFinal === true);
+        } else if (type === "tts_event") {
+          const eventType = String(data.eventType ?? "").toLowerCase();
+          if (eventType.includes("complete") || eventType.includes("end") || eventType.includes("final")) {
+            const generationId = typeof data.generationId === "string" ? data.generationId : "";
+            if (generationId && ttsGenerationRef.current === generationId) {
+              ttsFinalSeenRef.current = true;
+              finishProviderTts(generationId);
+            }
+          }
+        } else if (type === "error") {
+          setError(typeof data.message === "string" ? data.message : `${provider} speech synthesis reported an error.`);
+          const generationId = typeof data.generationId === "string" ? data.generationId : "";
+          if (generationId && ttsGenerationRef.current === generationId) {
+            ttsFinalSeenRef.current = true;
+            finishProviderTts(generationId);
+          }
+        }
+      };
+      ttsSocket.onerror = () => setError(`${provider} streaming speech output is unavailable; the host will try the provider's speech endpoint instead.`);
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    streamRef.current = stream;
+    const audioContext = new AudioContext();
+    geminiAudioContextRef.current = audioContext;
+    const source = audioContext.createMediaStreamSource(stream);
+    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+    geminiSourceRef.current = source;
+    geminiProcessorRef.current = processor;
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+    processor.onaudioprocess = (event) => {
+      if (micMutedRef.current || ttsGenerationRef.current || socket.readyState !== WebSocket.OPEN) return;
+      const pcm = downsampleTo16k(event.inputBuffer.getChannelData(0), audioContext.sampleRate);
+      if (!pcm.length) return;
+      const audio = pcm16ToBase64(pcm);
+      const frame = provider === "sarvam"
+        ? { event: "audio_input", audio }
+        : { message_type: "input_audio_chunk", audio_base_64: audio, sample_rate: 16000 };
+      try { socket.send(JSON.stringify(frame)); } catch {}
+    };
+
+    const activate = () => {
+      if (activationStartedRef.current) return;
+      activationStartedRef.current = true;
+      void patchSession({ action: "activate" }).then(() => {
+        setConnected(true);
+        setNotice(`${provider === "sarvam" ? "Sarvam Saaras" : "ElevenLabs Scribe"} realtime STT is connected. Spoken turns use Clara's authorized email runtime; answers stream through provider TTS when available.`);
+        streamProviderTts("Hello, I'm Clara. How can I help you with your email and communication tasks today?", `${current.id}-welcome`);
+      }).catch((e) => {
+        activationStartedRef.current = false;
+        setError(e instanceof Error ? e.message : "Could not persist the connected provider session.");
+        stopMedia();
+      });
+    };
+
+    socket.onmessage = (event) => {
+      let data: Record<string, unknown>;
+      try { data = JSON.parse(String(event.data)) as Record<string, unknown>; } catch { return; }
+      const type = String(data.type ?? data.message_type ?? "");
+      if ((type === "status" && data.value === "connected") || type === "session_started") activate();
+      if (type === "transcript_partial") {
+        if (typeof data.text === "string" && data.text.trim()) setNotice(`Hearing: ${data.text.trim()}`);
+      }
+      if (type === "transcript_final") {
+        const transcript = typeof data.text === "string" ? data.text.trim() : "";
+        const now = Date.now();
+        const previous = lastProviderFinalRef.current;
+        if (transcript && !(previous?.text === transcript && now - previous.at < 1800)) {
+          lastProviderFinalRef.current = { text: transcript, at: now };
+          void submitHostTurn(transcript, true);
+        }
+      }
+      if (type === "error") {
+        const message = typeof data.message === "string" ? data.message : `${provider} realtime speech recognition failed.`;
+        setError(message);
+        if (data.fatal === true) {
+          setConnected(false);
+          stopMedia();
+        }
+      }
+    };
+    socket.onerror = () => setError(`${provider} realtime WebSocket failed. Check relay/provider configuration and reconnect.`);
+    socket.onclose = () => {
+      if (!expectedDisconnectRef.current) {
+        setConnected(false);
+        setError(`${provider} realtime connection closed unexpectedly.`);
+        stopMedia();
+      }
+    };
+
+    const deadline = Date.now() + 20_000;
+    while (sessionRef.current?.status !== "active" && socket.readyState !== WebSocket.CLOSED && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    if (sessionRef.current?.status !== "active") throw new Error(`${provider} realtime session did not become ready before timeout.`);
+  }
+
+  async function connectSpeechPipeline(current: VoiceSession, provider: "sarvam" | "elevenlabs") {
+    if (!navigator.mediaDevices?.getUserMedia || typeof AudioContext === "undefined") {
+      throw new Error("This browser does not support live microphone capture. Open the app over HTTPS in a supported browser.");
+    }
+    expectedDisconnectRef.current = false;
+    realtimeProviderRef.current = provider;
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    streamRef.current = stream;
+    const audioContext = new AudioContext();
+    geminiAudioContextRef.current = audioContext;
+    const source = audioContext.createMediaStreamSource(stream);
+    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+    geminiSourceRef.current = source;
+    geminiProcessorRef.current = processor;
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+    processor.onaudioprocess = (event) => {
+      if (pipelineBusyRef.current) return;
+      const input = event.inputBuffer.getChannelData(0);
+      const pcm = downsampleTo16k(input, audioContext.sampleRate);
+      if (!pcm.length) return;
+      let energy = 0;
+      for (let i = 0; i < input.length; i++) energy += input[i] * input[i];
+      const rms = Math.sqrt(energy / Math.max(1, input.length));
+      const now = Date.now();
+      if (!pipelineSpeechStartedRef.current) {
+        pipelinePreRollRef.current.push(pcm);
+        if (pipelinePreRollRef.current.length > 3) pipelinePreRollRef.current.shift();
+        if (rms >= 0.025) {
+          pipelineSpeechStartedRef.current = true;
+          pipelineLastVoiceAtRef.current = now;
+          pipelineSamplesRef.current = [...pipelinePreRollRef.current];
+          pipelinePreRollRef.current = [];
+        }
+      } else {
+        pipelineSamplesRef.current.push(pcm);
+        if (rms >= 0.025) pipelineLastVoiceAtRef.current = now;
+        if (now - pipelineLastVoiceAtRef.current >= 750) {
+          const utterance = pipelineSamplesRef.current;
+          pipelineSamplesRef.current = [];
+          pipelineSpeechStartedRef.current = false;
+          pipelinePreRollRef.current = [];
+          void submitPipelineUtterance(utterance, current, provider);
+        }
+      }
+    };
+    await patchSession({ action: "activate" });
+    setConnected(true);
+    setNotice(`${provider === "sarvam" ? "Sarvam Saaras" : "ElevenLabs Scribe"} microphone pipeline is ready. Speech is transcribed, processed by Clara's authorized runtime, then spoken using the selected provider.`);
+  }
+
+  async function connectGeminiRealtime(current: VoiceSession, descriptor: Transport) {
+    if (!descriptor.sessionEndpoint) throw new Error("Gemini Live session endpoint is not configured.");
+    if (!navigator.mediaDevices?.getUserMedia || typeof WebSocket === "undefined") {
+      throw new Error("This browser does not support live microphone/WebSocket audio. Open the app over HTTPS in a supported browser.");
+    }
+    expectedDisconnectRef.current = false;
+    realtimeProviderRef.current = "gemini";
+    const tokenResponse = await fetch(descriptor.sessionEndpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ organizationId, agentId: agent?.id, sessionId: current.id }),
+    });
+    const tokenPayload = await tokenResponse.json().catch(() => ({})) as { ephemeralToken?: string; websocketUrl?: string; model?: string; message?: string; error?: string };
+    if (!tokenResponse.ok || !tokenPayload.ephemeralToken || !tokenPayload.websocketUrl || !tokenPayload.model) {
+      throw new Error(tokenPayload.message ?? tokenPayload.error ?? "Gemini Live could not issue a short-lived session token.");
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    streamRef.current = stream;
+    const socketUrl = new URL(tokenPayload.websocketUrl);
+    socketUrl.searchParams.set("access_token", tokenPayload.ephemeralToken);
+    const socket = new WebSocket(socketUrl.toString());
+    geminiSocketRef.current = socket;
+
+    const audioContext = new AudioContext();
+    geminiAudioContextRef.current = audioContext;
+    const source = audioContext.createMediaStreamSource(stream);
+    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+    geminiSourceRef.current = source;
+    geminiProcessorRef.current = processor;
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+    processor.onaudioprocess = (event) => {
+      if (micMuted || ttsGenerationRef.current || socket.readyState !== WebSocket.OPEN) return;
+      const pcm = downsampleTo16k(event.inputBuffer.getChannelData(0), audioContext.sampleRate);
+      if (!pcm.length) return;
+      socket.send(JSON.stringify({
+        realtimeInput: { audio: { mimeType: "audio/pcm;rate=16000", data: pcm16ToBase64(pcm) } },
+      }));
+    };
+
+    socket.onopen = () => {
+      socket.send(JSON.stringify({
+        setup: {
+          model: tokenPayload.model,
+          generationConfig: { responseModalities: ["TEXT"] },
+          inputAudioTranscription: {},
+        },
+      }));
+      setNotice("Gemini Live WebSocket opened. Waiting for the provider's setup acknowledgement…");
+    };
+    socket.onmessage = (event) => {
+      let data: Record<string, unknown>;
+      try { data = JSON.parse(String(event.data)) as Record<string, unknown>; } catch { return; }
+      if (data.setupComplete) {
+        void patchSession({ action: "activate" }).then(() => {
+          setConnected(true);
+          setNotice("Gemini Live transcription is connected. Clara processes each recognized utterance through the authorized email/chat runtime.");
+          speakGeminiWelcome(current);
+        }).catch((e) => {
+          setError(e instanceof Error ? e.message : "Could not persist the connected Gemini session.");
+          stopMedia();
+        });
+        return;
+      }
+      const serverContent = data.serverContent && typeof data.serverContent === "object" ? data.serverContent as Record<string, unknown> : null;
+      const inputTranscription = serverContent?.inputTranscription && typeof serverContent.inputTranscription === "object"
+        ? serverContent.inputTranscription as Record<string, unknown>
+        : null;
+      const recognized = typeof inputTranscription?.text === "string" ? inputTranscription.text : "";
+      if (recognized) {
+        geminiTranscriptRef.current += recognized;
+        setNotice("Listening and transcribing with Gemini Live…");
+      }
+      if (serverContent?.turnComplete) {
+        const finalText = geminiTranscriptRef.current.trim();
+        geminiTranscriptRef.current = "";
+        if (finalText) void submitHostTurn(finalText, true);
+      }
+      if (data.error) {
+        const detail = data.error && typeof data.error === "object" ? (data.error as Record<string, unknown>).message : null;
+        setError(typeof detail === "string" ? detail : "Gemini Live reported a realtime error.");
+      }
+    };
+    socket.onerror = () => setError("Gemini Live WebSocket failed. Check provider access and reconnect.");
+    socket.onclose = () => {
+      if (!expectedDisconnectRef.current) {
+        setConnected(false);
+        setError("Gemini Live connection closed unexpectedly. Reconnect to continue.");
+        stopMedia();
+      }
+    };
+
+    const deadline = Date.now() + 20_000;
+    while (!connected && socket.readyState !== WebSocket.CLOSED && Date.now() < deadline) {
+      // setupComplete drives the persisted active state; the socket's readyState
+      // alone is not treated as a connected voice session.
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      if (sessionRef.current?.status === "active") return;
+    }
+    if (sessionRef.current?.status !== "active") throw new Error("Gemini Live setup timed out before the session became ready.");
+  }
+
   async function connectRealtime(current: VoiceSession, descriptor: Transport) {
+    expectedDisconnectRef.current = false;
+    realtimeProviderRef.current = "openai";
     if (!descriptor.sessionEndpoint || descriptor.realtimeProvider !== "openai") {
       throw new Error("This provider does not have a native realtime transport configured. No live connection was started.");
     }
@@ -197,6 +787,8 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
         setSpeaking(true);
         setNotice("Clara is speaking.");
       } else if (type === "response.done") {
+        ttsGenerationRef.current = null;
+        streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
         setSpeaking(false);
         setNotice("Connected and listening.");
       } else if (type === "conversation.item.input_audio_transcription.completed") {
@@ -253,6 +845,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     setBusy(true);
     setError("");
     setTurns([]);
+    setPendingApprovals([]);
     finalizedItemsRef.current.clear();
     setNotice("Authorizing and initializing the voice session…");
     try {
@@ -267,7 +860,12 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       sessionRef.current = payload.session;
       setTransport(payload.transport);
       if (payload.transport.transportMode === "realtime") {
-        await connectRealtime(payload.session, payload.transport);
+        if (payload.transport.realtimeProvider === "openai") await connectRealtime(payload.session, payload.transport);
+        else if (payload.transport.realtimeProvider === "gemini") await connectGeminiRealtime(payload.session, payload.transport);
+        else if (payload.transport.realtimeProvider === "sarvam" || payload.transport.realtimeProvider === "elevenlabs") await connectProviderRealtime(payload.session, payload.transport, payload.transport.realtimeProvider);
+        else throw new Error("This provider has not completed its native realtime transport integration.");
+      } else if (payload.transport.transportMode === "pipeline" && (payload.transport.realtimeProvider === "sarvam" || payload.transport.realtimeProvider === "elevenlabs")) {
+        await connectSpeechPipeline(payload.session, payload.transport.realtimeProvider);
       } else {
         setNotice("This provider is configured for the authorized text bridge, not live microphone audio. The session is not marked connected.");
       }
@@ -319,12 +917,27 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
 
   function toggleMute() {
     const next = !micMuted;
-    streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next; });
+    micMutedRef.current = next;
+    streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next && !ttsGenerationRef.current; });
     setMicMuted(next);
-    setNotice(next ? "Microphone muted. The realtime session remains connected." : "Microphone unmuted. Listening for speech.");
+    setNotice(next ? "Microphone muted. The realtime session remains connected." : ttsGenerationRef.current ? "Microphone will resume after Clara finishes speaking." : "Microphone unmuted. Listening for speech.");
   }
 
   function interrupt() {
+    if (realtimeProviderRef.current === "gemini") window.speechSynthesis?.cancel();
+    if (ttsSocketRef.current?.readyState === WebSocket.OPEN && ttsGenerationRef.current) {
+      ttsSocketRef.current.send(JSON.stringify({ type: "interrupt", generationId: ttsGenerationRef.current }));
+    }
+    for (const source of ttsSourcesRef.current) { try { source.stop(); } catch {} }
+    ttsSourcesRef.current.clear();
+    ttsPendingFramesRef.current = 0;
+    ttsFinalSeenRef.current = false;
+    ttsGenerationRef.current = null;
+    pipelineBusyRef.current = false;
+    if (ttsIdleTimerRef.current) clearTimeout(ttsIdleTimerRef.current);
+    ttsIdleTimerRef.current = null;
+    if (realtimeProviderRef.current === "sarvam" || realtimeProviderRef.current === "elevenlabs") audioRef.current?.pause();
+    streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
     if (channelRef.current?.readyState === "open") {
       channelRef.current.send(JSON.stringify({ type: "response.cancel" }));
     }
@@ -345,12 +958,30 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
             <h1 className="mt-2 font-display text-3xl font-medium tracking-tight sm:text-4xl">Talk to your communication agent<span className="text-tertiary">.</span></h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">A live conversation surface with explicit transport state, turn history, and host-authorized answers.</p>
           </div>
-          <label className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
-            <span className="mr-3 text-xs text-muted-foreground">Agent</span>
-            <select value={agentId} onChange={(e) => setAgentId(e.target.value)} disabled={liveSession} className="max-w-48 bg-transparent font-semibold outline-none">
-              {agents.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
-          </label>
+          <div className="flex flex-wrap gap-3">
+            <label className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
+              <span className="mr-3 text-xs text-muted-foreground">Agent</span>
+              <select value={agentId} onChange={(e) => setAgentId(e.target.value)} disabled={liveSession} className="max-w-48 bg-transparent font-semibold outline-none">
+                {agents.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </label>
+            <label className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
+              <span className="mr-3 text-xs text-muted-foreground">Speech language</span>
+              <select value={languageCode} onChange={(e) => setLanguageCode(e.target.value)} disabled={liveSession} className="bg-transparent font-semibold outline-none">
+                <option value="en-IN">English (India)</option>
+                <option value="ta-IN">Tamil</option>
+                <option value="hi-IN">Hindi</option>
+                <option value="bn-IN">Bengali</option>
+                <option value="te-IN">Telugu</option>
+                <option value="kn-IN">Kannada</option>
+                <option value="ml-IN">Malayalam</option>
+                <option value="mr-IN">Marathi</option>
+                <option value="gu-IN">Gujarati</option>
+                <option value="pa-IN">Punjabi</option>
+                <option value="od-IN">Odia</option>
+              </select>
+            </label>
+          </div>
         </header>
 
         <section className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,.6fr)]">
@@ -358,7 +989,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
             <div className="flex items-center justify-between border-b px-5 py-4">
               <div className="flex items-center gap-2 text-sm font-semibold"><Radio size={16} className={connected ? "text-emerald-500" : "text-muted-foreground"} /> Live conversation</div>
               <span className={`rounded-full border px-3 py-1 text-xs font-medium ${connected ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600" : "border-border text-muted-foreground"}`}>
-                {connected ? "Connected" : busy ? "Connecting" : session?.status === "ended" || session?.status === "error" ? "Ended" : "Not connected"}
+                {connected ? transport?.transportMode === "pipeline" ? "Voice ready" : "Connected" : busy ? "Connecting" : session?.status === "ended" || session?.status === "error" ? "Ended" : "Not connected"}
               </span>
             </div>
 
@@ -393,6 +1024,21 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                 <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">{bridgeOnly ? "Text fallback" : "Conversation transcript"}</p>
                 {connected ? <span className="flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 size={13} /> Audio transport ready</span> : null}
               </div>
+              {pendingApprovals.length ? (
+                <section className="mb-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 text-left" aria-live="polite">
+                  <p className="text-sm font-semibold">Email action approval required</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">These requests are queued for explicit approval. They have not sent, replied to, or forwarded any email.</p>
+                  <ul className="mt-3 space-y-3">
+                    {pendingApprovals.map((approval) => (
+                      <li key={approval.actionId} className="rounded-xl border bg-background px-3 py-3">
+                        <p className="text-sm font-medium">{approval.actionType.replaceAll("_", " ")}</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{approval.message}</p>
+                        <p className="mt-2 break-all font-mono text-[11px] text-muted-foreground">Approval ID: {approval.actionId}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
               {turns.length ? (
                 <div className="mb-4 max-h-64 space-y-3 overflow-y-auto pr-1">
                   {turns.map((turn) => (
@@ -422,7 +1068,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
                 <Row label="Model" value={session?.model ?? "Not resolved"} />
                 <Row label="Session" value={session?.id ? session.id.slice(0, 14) + "…" : "—"} />
                 <Row label="Microphone" value={connected ? micMuted ? "Muted" : "Live" : "Not connected"} />
-                <Row label="Transport" value={connected ? "WebRTC ready" : bridgeOnly ? "Authorized text bridge" : busy ? "Negotiating" : "Not connected"} />
+                <Row label="Transport" value={connected ? transport?.realtimeProvider === "gemini" ? "Gemini Live WebSocket" : transport?.realtimeProvider === "sarvam" ? transport.transportMode === "realtime" ? "Sarvam STT/TTS WebSocket" : "Sarvam STT/TTS pipeline" : transport?.realtimeProvider === "elevenlabs" ? transport.transportMode === "realtime" ? "ElevenLabs STT/TTS WebSocket" : "ElevenLabs STT/TTS pipeline" : "OpenAI WebRTC" : bridgeOnly ? "Authorized text bridge" : busy ? "Negotiating" : "Not connected"} />
                 <Row label="Provider key" value="Server-side only" />
               </dl>
             </div>
@@ -434,7 +1080,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
               <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Session checklist</p>
               <ul className="mt-4 space-y-3 text-sm">
                 <Checklist label="Host session authorized" checked={Boolean(session)} />
-                <Checklist label="Realtime transport connected" checked={connected} />
+                <Checklist label="Voice input/output path ready" checked={connected} />
                 <Checklist label="Microphone audio enabled" checked={connected && !micMuted} />
                 <Checklist label="Session teardown available" checked={Boolean(liveSession)} />
               </ul>

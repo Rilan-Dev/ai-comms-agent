@@ -626,6 +626,27 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Verification: GitHub source edits only; tests, typecheck, build, browser/provider and deployment not run. PR #27 remains open; issue #26 remains open.
 
 
+### SESSION-070 — 2026-10-16
+- Agent: FIX-01 / Sentinel
+- Scope: continue issue #26 from Clara AI Platform reference implementation.
+- Implemented: Gemini Live constrained ephemeral token + WebSocket transcription; Sarvam/ElevenLabs provider-backed mic/STT/host-turn/TTS pipelines; extracted shared email runtime package and wired voice turns into it; registered safe draft/mailbox tools and approval-gated send/reply/forward request tools; pending approval IDs surfaced in voice UI.
+- Explicit limits: Sarvam and ElevenLabs still lack persistent native WebSocket relays; sensitive trash/bulk and attachment tools remain unregistered. Send/reply/forward are pending approval only, not sent.
+- Verification: source edits only; tests/typecheck/build/browser/provider/approval worker/deployment not run. PR #27 and issue #26 remain open.
+
+
+### SESSION-071 — 2026-10-16
+- Agent: FIX-01 / Sentinel
+- Added provider relay source under `infra/voice-relay/` adapted from Clara AI Platform: Sarvam realtime STT + streaming TTS and ElevenLabs Scribe realtime STT + streaming TTS. Added short-lived signed session tokens, HMAC-protected bootstrap, origin allowlisting and metering endpoints.
+- Connected voice workspace provider-specific WebSocket adapters; REST utterance pipeline remains fallback when `VOICE_RELAY_PUBLIC_URL` is absent.
+- Shared email runtime is now used by voice; local draft create/update and reply/forward drafts are available. Send/reply/forward create explicit pending-approval records; the approved-action worker performs the provider action. Provider-backed mark-read/archive/move/trash/attachment tools remain unavailable and fail-closed.
+- Relay service is source-only and has not been built, deployed or live-tested. OPS-01 deployment/configuration handoff is documented in `infra/voice-relay/README.md`.
+- Tests/typecheck/build/browser/provider/approval execution not run; PR #27 and issue #26 remain open.
+
+
+### SESSION-072 — 2026-10-16
+- PR #27 was merged at its earlier partial commit; subsequent source work is carried by draft PR #28: https://github.com/Rilan-Dev/ai-comms-agent/pull/28.
+- Current source includes OpenAI/Gemini voice paths, Clara-derived Sarvam/ElevenLabs WebSocket relay source, shared email tool runtime and approval-gated send/reply/forward requests.
+- OPS-01 relay deployment remains outstanding. Provider-backed mark-read/archive/move/trash/attachment handlers are intentionally unregistered. No tests/typecheck/build/browser/provider/approval/deployment verification has been run. Issue #26 remains open.
 ### SESSION-070 — 2026-10-17
 - Agent: FIX-01 / Sentinel
 - Task: Investigate WhatsApp queued-but-not-delivered message after Meta webhook reports error 131047.
@@ -677,3 +698,13 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** No live credentials/toolchain verification; no confirmed Sarvam voice/TEI/ElevenLabs realtime catalog endpoints. FIX-01's separate chat/voice bugs and OPS-01's deployment/toolchain checks remain separately owned.
 - **Handoff:** See `docs/project-control/sessions/DEV01-LIVE-MODEL-CATALOG-20261018.md`; no role takeover.
 - **Next action:** Validate `apps/web/tests/live-model-catalog.test.ts` and `ai-runtime-settings.test.ts` + web typecheck in full checkout; then credential-backed browser tests and architect review.
+
+### FIX01-WHATSAPP-TEMPLATE-ROW-20261018 — 2026-10-18
+- Agent: FIX-01 / Sentinel
+- Invocation: Fix the next web production-build strict nullability error in WhatsApp template approval after tracing the reported failure.
+- Started from: main after chat membership source correction.
+- Scope: Minimal route correction, regression protection, and project-control records.
+- Status: SOURCE FIX COMMITTED; post-fix build/test pending.
+- Finding: `synced.rows.length` does not narrow `synced.rows[0]` for strict indexed access.
+- Commits: `90fac5e0774b695446e1e0c3ab51072639ba5f06`; `41734923651b1173a703d747f0ac0aa93317a5b9`.
+- Next: Pull latest main, rebuild, run `whatsapp-send-approval.test.ts`, and update verification with real output.
