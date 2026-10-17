@@ -266,3 +266,16 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Blockers/dependencies:** OPS-01 must apply migrations and rebuild/restart the worker, then verify error cessation and actual mailbox persistence. The Microsoft Graph subscription-disabled warning also requires separate prerequisite/configuration review by OPS-01 if Graph push subscriptions are expected.
 - **Lesson:** Extend the enum actually referenced by the DB column; similarly named provider enums are not interchangeable. Queue retries cannot recover from deterministic SQL/schema incompatibility.
 - **Next action:** OPS-01 apply migration 0034 through the normal migration workflow, restart the matching worker image, inspect sanitized logs, and confirm account sync state and stored message counts advance.
+
+
+### FIX01-WHATSAPP-131047-20261017 / 2026-10-17
+- **Task:** Diagnose WhatsApp queued-but-not-delivered report.
+- **Authorization:** Explicit user request for FIX-01 root-cause investigation, smallest authorized correction, regression protection, and records.
+- **Started from:** `main` at `44a7fbf2b9796a651040e9c2be078928ab6ed983`.
+- **Actions:** Traced recent idempotency commits and reviewed the outbound worker, provider-status webhook, and organization/account-scoped status repository. Identified Meta error 131047 as expired 24-hour customer-service window. No unrelated code changed.
+- **Evidence:** User-supplied Meta payload reports `status=failed`, `code=131047`, and explicitly explains the expired window. API `queued=true` is not delivery confirmation. Prior 42P10 correction commits are separate.
+- **Files/code:** `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`; central event record. No runtime source change justified by the provider error itself.
+- **Verification:** GitHub source inspection only; no test execution or live DB/webhook/deployment access.
+- **Blockers/dependencies:** OPS-01 runtime evidence needed to explain why UI still showed “sent” despite the supplied failed status event.
+- **Lesson:** Distinguish queued, provider accepted, sent, delivered, read, and failed; never infer delivery from queue acknowledgement.
+- **Next action:** Use an approved template out of window. OPS-01 trace deployed webhook/status persistence/UI; FIX-01 add focused regression once the status mismatch is isolated.
