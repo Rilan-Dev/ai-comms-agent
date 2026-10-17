@@ -191,10 +191,14 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(whatsapp).toContain('aria-modal="true"');
     expect(whatsapp).toContain("setShowWebhookSetupModal(true)");
     expect(whatsapp).toContain("WhatsApp Webhook Setup");
-    expect(whatsapp).toContain("Save and connect");
+    expect(whatsapp).toContain("Save and verify phone");
+    expect(whatsapp).toContain("Edit WhatsApp phone");
+    expect(whatsapp).toContain("Add Meta test phone");
+    expect(whatsapp).toContain("Save changes and verify");
+    expect(whatsapp).not.toContain("Webhook Verify Token *");
     expect(whatsapp).toContain("Daily briefing");
     expect(whatsapp).toContain('href="/schedules"');
-    expect(whatsapp).toContain("webhook verification are not yet confirmed");
+    expect(whatsapp).toContain("Meta verification failed or the account needs attention");
     expect(whatsapp).toContain("a.last_error");
   });
 
@@ -205,7 +209,7 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(whatsapp).toContain('"/api/whatsapp/messages"');
     expect(whatsapp).toContain('"Idempotency-Key": idempotencyKey');
     expect(whatsapp).toContain('type={secret ? "password" : "text"}');
-    expect(whatsapp).toContain("credentials were encrypted and stored");
+    expect(whatsapp).toContain("Credentials stay encrypted on the server");
     expect(whatsapp).toContain("No persisted messages yet.");
   });
 
