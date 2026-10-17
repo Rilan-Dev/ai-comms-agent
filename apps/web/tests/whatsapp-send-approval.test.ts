@@ -6,6 +6,9 @@ const messagesRoute = readFileSync(resolve(__dirname, "../src/app/api/whatsapp/m
 const decisionRoute = readFileSync(resolve(__dirname, "../src/app/api/whatsapp/send-actions/decision/route.ts"), "utf8");
 const migration = readFileSync(resolve(__dirname, "../../../supabase/migrations/0035_whatsapp_send_approvals.sql"), "utf8");
 const whatsappRuntime = readFileSync(resolve(__dirname, "../../worker/src/agent/whatsapp-tool-runtime.ts"), "utf8");
+const templatesRoute = readFileSync(resolve(__dirname, "../src/app/api/whatsapp/templates/route.ts"), "utf8");
+const whatsappWorker = readFileSync(resolve(__dirname, "../../worker/src/messaging/whatsapp-worker.ts"), "utf8");
+const templateMigration = readFileSync(resolve(__dirname, "../../../supabase/migrations/0036_whatsapp_templates.sql"), "utf8");
 
 describe("WhatsApp send approval safety boundary", () => {
   it("persists outbound requests as pending approvals instead of queueing them", () => {
@@ -40,7 +43,23 @@ describe("WhatsApp send approval safety boundary", () => {
     expect(decisionRoute).toContain("action.correlation_id");
   });
 
-  it("keeps whatsapp.send unregistered until the secure template-aware path exists", () => {
+  it("requires templates to be submitted to and status-synced from Meta", () => {
+    expect(templatesRoute).toContain("/message_templates");
+    expect(templatesRoute).toContain("templateStatus(payload.status)");
+    expect(templatesRoute).toContain('permission: "organization.update"');
+    expect(templateMigration).toContain("whatsapp_templates");
+    expect(templateMigration).toContain("status text NOT NULL DEFAULT 'pending'");
+  });
+
+  it("supports only approved text-body template payloads and rejects unsupported components", () => {
+    expect(decisionRoute).toContain("Meta does not currently report this template as approved");
+    expect(decisionRoute).toContain("unsupported_template_components");
+    expect(whatsappWorker).toContain('message.message_type !== "template"');
+    expect(whatsappWorker).toContain('type: "template"');
+    expect(whatsappWorker).toContain("Approved WhatsApp template payload is invalid");
+  });
+
+  it("keeps whatsapp.send unregistered until the complete host approval path is integrated", () => {
     expect(whatsappRuntime).toContain("registry.register(createWhatsAppHistoryTool())");
     expect(whatsappRuntime).not.toContain('name: "whatsapp.send"');
     expect(whatsappRuntime).toContain("approval and template compliance exist");
