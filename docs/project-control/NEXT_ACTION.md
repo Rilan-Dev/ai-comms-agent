@@ -1281,3 +1281,6 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Important limit:** this enables read/context access in interactive chat; it does NOT yet register `whatsapp.send`/`whatsapp.history` in the shared executable tool runtime. Interactive AI-initiated outbound messages still require a shared authorized tool/approval path. Existing inbound worker auto-response and outbound queue are separate.
 - **Verification:** GitHub source readback only. Tests, typecheck, build, browser/chat behavior, database state, Meta webhook delivery, outbound send and deployment have NOT been run or verified. Do not claim end-to-end enablement until those are completed.
 - **Next:** continue shared tool runtime integration using fresh persisted agent/account binding and connected-status checks; implement history + outbound tool behind current allowlist, permission, approval/template compliance and audit path. Do not wait for CI/Vercel; report runtime/deployment validation as pending to OPS-01.
+
+
+- **Follow-up source corrections:** route template literal/interpolation corrections are in `200447d3c1e53c6778b0eee29bb7e35e90fd4354` and `eb5228770df377edd99ed9b902637fe7ad3331c0`; the final route blob read back as `5e70c07803fa2f2f2495dc454cf5b256034907cb`. These are source readback checks only, not executable verification.
