@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { fetchLiveModelCatalog, supportsLiveCatalog } from "../src/lib/ai/live-model-catalog";
+import { documentedRealtimeModels, fetchLiveModelCatalog, hasDocumentedRealtimeModels, supportsLiveCatalog } from "../src/lib/ai/live-model-catalog";
 import { providerConfigStatus } from "../src/lib/ai/provider-config-status";
 
 function mockApi(handler: (url: string) => unknown) {
@@ -63,6 +63,20 @@ describe("Clara-style live vendor model discovery", () => {
     expect((await fetchLiveModelCatalog("elevenlabs", "stt", "secret")).map((m) => m.id)).toEqual(["scribe_v2"]);
   });
 
+  it("offers documented Sarvam streaming STT models without claiming a live vendor catalogue", () => {
+    expect(supportsLiveCatalog("sarvam", "realtime")).toBe(false);
+    expect(hasDocumentedRealtimeModels("sarvam", "realtime")).toBe(true);
+    expect(documentedRealtimeModels("sarvam", "realtime").map((model) => model.id))
+      .toEqual(["saaras:v3-realtime", "saaras:v4"]);
+  });
+
+  it("maps ElevenLabs streaming STT to Scribe, not a Conversational AI agent", () => {
+    expect(hasDocumentedRealtimeModels("elevenlabs", "realtime")).toBe(true);
+    expect(documentedRealtimeModels("elevenlabs", "realtime").map((model) => model.id))
+      .toEqual(["scribe_v2_realtime"]);
+    expect(documentedRealtimeModels("elevenlabs", "realtime").some((model) => model.id === "elevenlabs-conversational")).toBe(false);
+  });
+
   it("rejects unsupported catalogues and never falls back after vendor errors", async () => {
     expect(supportsLiveCatalog("sarvam", "tts")).toBe(false);
     expect(supportsLiveCatalog("tei", "embedding")).toBe(false);
@@ -113,6 +127,44 @@ describe("model catalog boundary contracts", () => {
     expect(selector).toContain("/api/settings/ai-models?");
     expect(selector).toContain("source !== \"live\"");
     expect(selector).not.toContain("static_");
+  });
+});
+
+describe("realtime voice selection and relay integration", () => {
+  it("authorizes org credentials before returning documented options", () => {
+    const route = readFileSync(resolve(__dirname, "../src/app/api/settings/ai-models/route.ts"), "utf8");
+    expect(route.indexOf("await authorize")).toBeLessThan(route.indexOf("await getDecryptedProviderConfig"));
+    expect(route.indexOf("await getDecryptedProviderConfig")).toBeLessThan(route.indexOf("hasDocumentedRealtimeModels(provider, purpose)) {"));
+    expect(route).toContain('source: "documented"');
+    expect(route).toContain('capability: "streaming_stt"');
+    expect(route).toContain("Cache-Control");
+  });
+
+  it("does not accept legacy conversational markers on realtime provider saves", () => {
+    const route = readFileSync(resolve(__dirname, "../src/app/api/settings/ai-provider-configs/route.ts"), "utf8");
+    expect(route).toContain("unsupported_realtime_model");
+    expect(route).toContain("documentedRealtimeModels(provider, purpose).some");
+  });
+
+  it("uses the configured model through the authenticated session and relay", () => {
+    const session = readFileSync(resolve(__dirname, "../src/app/api/voice/session/route.ts"), "utf8");
+    const resolver = readFileSync(resolve(__dirname, "../../../packages/clara-core/src/runtime.ts"), "utf8");
+    const relay = readFileSync(resolve(__dirname, "../src/lib/voice/provider-relay-init.ts"), "utf8");
+    expect(session).toContain("purpose='realtime' AND enabled=true");
+    expect(session).toContain("providerModelResult.rows[0]?.model");
+    expect(resolver).toContain('model === "saaras:v4" || model === "saaras:v3-realtime"');
+    expect(relay).toContain('selectedModel === "saaras:v4" || selectedModel === "saaras:v3-realtime"');
+    expect(relay).toContain('sttModel: "scribe_v2_realtime"');
+  });
+
+  it("differentiates documented STT modes from actual live provider catalogue UI", () => {
+    const selector = readFileSync(resolve(__dirname, "../src/components/live-model-select.tsx"), "utf8");
+    const setup = readFileSync(resolve(__dirname, "../src/app/settings/ai-provider-setup/ai-provider-setup-shared.tsx"), "utf8");
+    expect(selector).toContain('body.source !== "live" && body.source !== "documented"');
+    expect(selector).toContain('catalogSource === "documented"');
+    expect(selector).toContain("Previously saved model");
+    expect(setup).toContain("Realtime speech-recognition model");
+    expect(setup).toContain("ElevenLabs Conversational AI agents are a separate integration");
   });
 });
 
