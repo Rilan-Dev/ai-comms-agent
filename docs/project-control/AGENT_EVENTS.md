@@ -545,3 +545,10 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Tests:** 5/5 new exact committed-module Node tests PASS; 20/20 combined isolated Node tests PASS; type-only isolated TS adapter check PASS. Full pnpm, real Clara/Qdrant/browser/migration/deployment not run.
 - **Upstream:** Clara API PR #298 merged into Vite-Converted but not demonstrated live. ISS-026 and OPS runtime acceptance remain gates.
 - **Next:** Run worker/full builds and tenant-isolated Qdrant integration on latest `main`, then bind retrieval behind confirmed account grants.
+
+### EVT-DEV01-REALTIME-STT-CATALOG-20261018
+- **Source issue:** Realtime Sarvam/ElevenLabs model picker was disabled despite saved keys because generic live REST model catalogue lacked that capability; old ElevenLabs Conversational AI entry was a non-socket model marker.
+- **Correction:** Added honest, vendor-documented streaming STT catalog with separate provenance and organization credential gate; explicit legacy migration; voice session and relay now use selected supported Sarvam model; status badge names credential readiness rather than connected model readiness.
+- **Verification:** 23/23 exact local Node test suite, exact catalog isolated tsc, 13/13 source contract checks PASS. Full Next/worker/Vitest/browser/vendor WebSocket/E2E/deploy NOT VERIFIED.
+- **Owner:** DEV-01 directly on main without branch; OPS-01 deployment/build/runtime; FIX-01 unrelated voice/WhatsApp.
+- **Next:** Run full application tests/build/migrations and authenticated browser/voice relay validation before declaring deployed fix.
