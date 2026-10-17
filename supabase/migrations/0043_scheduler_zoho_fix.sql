@@ -3,32 +3,31 @@
 --    for the ON CONFLICT clause in claimDueScheduledJobs.
 -- 2. No schema change needed for Zoho — the domain validation is in code.
 -- Idempotent. Forward-only.
+--
+-- NOTE: migration 0021 already created a partial UNIQUE INDEX with the
+-- same name (scheduled_job_runs_job_fire_uniq) via
+--   CREATE UNIQUE INDEX IF NOT EXISTS scheduled_job_runs_job_fire_uniq
+--     ON scheduled_job_runs(scheduled_job_id, fire_at)
+--     WHERE fire_at IS NOT NULL;
+-- If that index exists, adding a CONSTRAINT with the same name fails with
+-- "relation already exists" (42P07). The fix: check pg_class (covers both
+-- indexes and constraints) instead of pg_constraint (constraints only),
+-- and catch duplicate_table as a fallback.
 
--- Unique constraint for ON CONFLICT (scheduled_job_id, fire_at)
+-- If a unique INDEX with the same name already exists (from migration 0021),
+-- skip adding the constraint — the index is sufficient for ON CONFLICT.
+-- If neither exists, add the constraint.
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'scheduled_job_runs_job_fire_uniq'
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relname = 'scheduled_job_runs_job_fire_uniq'
+      AND n.nspname = current_schema()
   ) THEN
     ALTER TABLE scheduled_job_runs
       ADD CONSTRAINT scheduled_job_runs_job_fire_uniq
       UNIQUE (scheduled_job_id, fire_at);
   END IF;
-END $$;
-
--- Drop and recreate the constraint if it exists but is not unique
--- (in case a previous migration created a non-unique index)
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes
-    WHERE schemaname = current_schema()
-      AND tablename = 'scheduled_job_runs'
-      AND indexdef ILIKE '%UNIQUE%scheduled_job_id%fire_at%'
-  ) THEN
-    ALTER TABLE scheduled_job_runs
-      ADD CONSTRAINT scheduled_job_runs_job_fire_uniq
-      UNIQUE (scheduled_job_id, fire_at);
-  END IF;
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
