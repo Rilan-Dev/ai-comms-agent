@@ -708,3 +708,13 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Finding: `synced.rows.length` does not narrow `synced.rows[0]` for strict indexed access.
 - Commits: `90fac5e0774b695446e1e0c3ab51072639ba5f06`; `41734923651b1173a703d747f0ac0aa93317a5b9`.
 - Next: Pull latest main, rebuild, run `whatsapp-send-approval.test.ts`, and update verification with real output.
+
+
+### FIX01-VOICE-GENERATION-ID-20261018 — 2026-10-18
+- Agent: FIX-01 / Sentinel
+- Invocation: Correct duplicate generation identifier reported by Docker production build.
+- Finding: Two `const generationId` declarations shared one provider TTS branch scope.
+- Change: Reuse existing ID; add focused regression assertion.
+- Commits: `f6efffdb42dbd75df38841fab43b985eb565ee3f`; `05519965adae7ebab837a03e4d7a0d2306e3f0c1`.
+- Status: source/test committed; post-fix verification pending.
+- Session record: `sessions/FIX01-VOICE-GENERATION-ID-20261018.md`.
