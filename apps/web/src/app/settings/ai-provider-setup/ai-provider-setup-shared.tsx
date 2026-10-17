@@ -2,18 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, Loader2, Trash2 } from "lucide-react";
+import { LiveModelSelect, type ModelPurpose } from "@/components/live-model-select";
 
 
 
 type Tab = "chat" | "voice-chat" | "realtime" | "embedding";
-
-type Catalog = {
-  chat: Array<{ id: string; provider: string; label?: string }>;
-  tts: Array<{ id: string; provider: string; name: string }>;
-  stt: Array<{ id: string; provider: string; name: string }>;
-  realtime: Array<{ id: string; provider: string; name: string }>;
-  embedding: Array<{ id: string; provider: string; dimension: number }>;
-};
 
 type Config = {
   id: string;
@@ -55,26 +48,6 @@ const ALLOWED_PROVIDERS: Record<Tab, string[]> = {
   embedding: ["openai", "gemini", "tei"],
 };
 
-function defaultModelFor(tab: Tab, provider: string, catalog: Catalog): string {
-  if (tab === "chat") {
-    const found = catalog.chat.find((m) => m.provider === provider);
-    return found?.id ?? "gpt-4o-mini";
-  }
-  if (tab === "voice-chat") {
-    const found = catalog.tts.find((m) => m.provider === provider);
-    return found?.id ?? "eleven_flash_v2_5";
-  }
-  if (tab === "realtime") {
-    const found = catalog.realtime.find((m) => m.provider === provider);
-    return found?.id ?? "gpt-realtime-2.1-mini";
-  }
-  if (tab === "embedding") {
-    const found = catalog.embedding.find((m) => m.provider === provider);
-    return found?.id ?? "text-embedding-3-small";
-  }
-  return "";
-}
-
 export function AIProviderSetupShared({
   organizationId,
   tab,
@@ -82,7 +55,7 @@ export function AIProviderSetupShared({
   organizationId: string;
   tab: Tab;
 }) {
-  const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [catalogVersion, setCatalogVersion] = useState(0);
   const [configs, setConfigs] = useState<Config[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -90,6 +63,7 @@ export function AIProviderSetupShared({
   const [error, setError] = useState("");
   const [provider, setProvider] = useState<string>(ALLOWED_PROVIDERS[tab][0] ?? "");
   const [model, setModel] = useState("");
+  const [sttModel, setSttModel] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [enabled, setEnabled] = useState(true);
@@ -98,27 +72,13 @@ export function AIProviderSetupShared({
   useEffect(() => {
     setProvider(ALLOWED_PROVIDERS[tab][0] ?? "");
     setModel("");
+    setSttModel("");
     setApiKey("");
     setBaseUrl("");
     setEnabled(true);
     setNotice("");
     setError("");
   }, [tab]);
-
-  // Load static catalog once
-  useEffect(() => {
-    void fetch("/api/settings/ai-provider-configs", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: "catalog" }),
-    })
-      .then(async (r) => {
-        if (!r.ok) throw new Error("Catalog fetch failed");
-        return r.json() as Promise<Catalog>;
-      })
-      .then((c) => setCatalog(c))
-      .catch(() => setCatalog({ chat: [], tts: [], stt: [], realtime: [], embedding: [] }));
-  }, []);
 
   // Load configs when tab changes
   useEffect(() => {
@@ -140,24 +100,23 @@ export function AIProviderSetupShared({
       .finally(() => setLoading(false));
   }, [organizationId, tab]);
 
-  // Update model + baseUrl when provider changes
+  // Restore the provider's own saved values, never choose a static default.
   useEffect(() => {
-    if (!catalog) return;
-    const current = configs.find((c) => c.provider === provider);
-    const next = current?.model || defaultModelFor(tab, provider, catalog);
-    setModel(next);
+    const purpose = PURPOSE_FOR_TAB[tab];
+    const current = configs.find((c) => c.provider === provider && c.purpose === purpose);
+    setModel(current?.model || "");
+    setSttModel(configs.find((c) => c.provider === provider && c.purpose === "stt")?.model || "");
     setBaseUrl(current?.baseUrl || PROVIDER_BASE_URLS[provider] || "");
     setEnabled(current?.enabled ?? true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provider, catalog]);
+  }, [provider, tab, configs]);
 
   async function saveProvider() {
     setSaving(true); setNotice(""); setError("");
     try {
-      const existing = configs.find((c) => c.provider === provider);
-      // For voice-chat tab, save under both tts + stt purpose (same key).
+      // Voice Chat stores distinct TTS/STT choices, not one model in two slots.
       const purposes = tab === "voice-chat" ? ["tts", "stt"] : [PURPOSE_FOR_TAB[tab]];
       for (const purpose of purposes) {
+        const existing = configs.find((c) => c.provider === provider && c.purpose === purpose);
         const response = await fetch("/api/settings/ai-provider-configs", {
           method: "PUT",
           headers: { "content-type": "application/json" },
@@ -165,7 +124,7 @@ export function AIProviderSetupShared({
             organizationId,
             purpose,
             provider,
-            model,
+            model: purpose === "stt" ? sttModel : model,
             apiKey: apiKey || undefined,
             baseUrl: baseUrl || undefined,
             enabled,
@@ -185,6 +144,7 @@ export function AIProviderSetupShared({
         ),
       );
       setConfigs(refreshed.flat());
+      setCatalogVersion((n) => n + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Provider settings could not save.");
     } finally {
@@ -218,19 +178,9 @@ export function AIProviderSetupShared({
     }
   }
 
-  const current = configs.find((c) => c.provider === provider);
+  const current = configs.find((c) => c.provider === provider && c.purpose === PURPOSE_FOR_TAB[tab]);
   const inputCls = "mt-1 w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm";
   const labelCls = "block text-sm font-medium";
-
-  // Build the model dropdown options for the active provider
-  const modelOptions = (() => {
-    if (!catalog) return [];
-    if (tab === "chat") return catalog.chat.filter((m) => m.provider === provider);
-    if (tab === "voice-chat") return [...catalog.tts, ...catalog.stt].filter((m) => m.provider === provider);
-    if (tab === "realtime") return catalog.realtime.filter((m) => m.provider === provider);
-    if (tab === "embedding") return catalog.embedding.filter((m) => m.provider === provider);
-    return [];
-  })();
 
   return (
     <section className="space-y-5 rounded-xl border border-border bg-card p-5 sm:p-6">
@@ -272,7 +222,7 @@ export function AIProviderSetupShared({
         <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>
       ) : null}
 
-      {loading || !catalog ? (
+      {loading ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading provider configuration…
         </p>
@@ -316,29 +266,24 @@ export function AIProviderSetupShared({
           </div>
 
           <div className="space-y-4">
-            <label className={labelCls}>
-              {tab === "voice-chat" ? "TTS / STT model" : "Model"}
-              <select className={inputCls} value={model} onChange={(e) => setModel(e.target.value)}>
-                {modelOptions.length === 0 ? (
-                  <option value={model}>{model}</option>
-                ) : (
-                  modelOptions.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.id}{" "}
-                      {"dimension" in m && m.dimension ? `(${m.dimension}d)` : ""}
-                      {"name" in m && m.name ? `— ${m.name}` : ""}
-                      {"label" in m && m.label ? `— ${m.label}` : ""}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
-            {tab === "embedding" && catalog ? (
-              <p className="text-xs text-muted-foreground">
-                Embedding dimension:{" "}
-                {catalog.embedding.find((m) => m.id === model)?.dimension ?? "—"}
-              </p>
+            <div className={labelCls}>
+              {tab === "voice-chat" ? "Text-to-speech model" : "Model"}
+              <LiveModelSelect organizationId={organizationId} provider={provider}
+                purpose={PURPOSE_FOR_TAB[tab] as ModelPurpose} value={model || null}
+                onChange={(next) => setModel(next || "")} refreshKey={catalogVersion} className={inputCls} />
+            </div>
+            {tab === "voice-chat" ? (
+              <div className={labelCls}>
+                Speech-to-text model
+                <LiveModelSelect organizationId={organizationId} provider={provider}
+                  purpose="stt" value={sttModel || null} onChange={(next) => setSttModel(next || "")}
+                  refreshKey={catalogVersion} className={inputCls} />
+              </div>
             ) : null}
+            <p className="text-xs text-muted-foreground">
+              Models come only from the provider's live API using the saved, organization-scoped key.
+              Save the key first, then select a model and save again. Providers without a listing API cannot show a fabricated list.
+            </p>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
               Enable this provider
