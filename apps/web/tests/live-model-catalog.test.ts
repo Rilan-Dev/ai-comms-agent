@@ -73,6 +73,25 @@ describe("Clara-style live vendor model discovery", () => {
 });
 
 describe("model catalog boundary contracts", () => {
+  it("drops stale organization model responses and requires fresh provider configuration", () => {
+    const select = read("../src/components/live-model-select.tsx");
+    const json = select.indexOf("const body = await response.json()");
+    const aborted = select.indexOf("if (controller.signal.aborted) return;", json);
+    const apply = select.indexOf("setModels(body.models ?? [])", json);
+    expect(json).toBeGreaterThanOrEqual(0);
+    expect(aborted).toBeGreaterThan(json);
+    expect(apply).toBeGreaterThan(aborted);
+    const setup = read("../src/app/settings/ai-provider-setup/ai-provider-setup-shared.tsx");
+    const chatProviders = read("../src/app/settings/ai-provider-settings.tsx");
+    for (const source of [setup, chatProviders]) {
+      expect(source).toContain('setLoadedOrganizationId("");');
+      expect(source).toContain('setApiKey("");');
+      expect(source).toContain("currentOrganizationId.current !== organizationId");
+      expect(source).toContain("return () => controller.abort()");
+      expect(source).toContain("if (!organizationReady)");
+    }
+  });
+
   const read = (path: string) => readFileSync(resolve(__dirname, path), "utf8");
 
   it("authorizes organization before reading decrypted credentials and never serves static fallback", () => {
