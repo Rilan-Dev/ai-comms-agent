@@ -13,6 +13,15 @@ describe("interactive chat host-authorized tool loop", () => {
     expect(route).toContain("toolContext: trustedToolContext");
   });
 
+  it("fails closed and narrows nullable membership before creating trusted tool context", () => {
+    const membershipGuard = route.indexOf("if (!subject.membership)");
+    const trustedContext = route.indexOf("const trustedToolContext: ToolContext");
+    expect(membershipGuard).toBeGreaterThanOrEqual(0);
+    expect(route).toContain('message: "An active organization membership is required."');
+    expect(route).toContain("{ status: 403 }");
+    expect(trustedContext).toBeGreaterThan(membershipGuard);
+  });
+
   it("uses only registered and allowlisted email and WhatsApp tools", () => {
     expect(route).toContain("emailRuntime.registry.listForAgent(args.agentId)");
     expect(route).toContain("whatsappRuntime.registry.listForAgent(args.agentId)");
