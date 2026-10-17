@@ -46,8 +46,7 @@ export async function createOrUpdateWhatsAppAccount(input: { organizationId: str
     }
   }
   if (existing) {
-    const updates: string[] = [];
-    const values: unknown[] = [input.businessAccountId ?? null, input.phoneNumberId, input.phoneNumber ?? null, input.displayName ?? null, JSON.stringify(input.capabilities ?? { send_text: true, receive_text: true }), input.status ?? "pending", input.accountId, input.organizationId];
+    const values: unknown[] = [input.businessAccountId ?? null, input.phoneNumberId, input.phoneNumber ?? null, input.displayName ?? null, JSON.stringify(input.capabilities ?? { send_text: true, receive_text: true }), input.status ?? "pending"];
     let setClause = "business_account_id = $1, phone_number_id = $2, phone_number = $3, display_name = $4, capabilities = $5::jsonb, status = $6, last_error = NULL, deleted_at = NULL, connected_at = CASE WHEN $6 = 'connected' THEN now() ELSE connected_at END";
     if (input.verifyToken) {
       values.push(input.verifyToken);
