@@ -1,3 +1,10 @@
+## DEV-01 — Worker Clara vector-test integration checkpoint (2026-10-18)
+
+- On direct `main` (no branch/PR), migrated a previously undiscovered Vitest worker vector adapter test to standard Node test glob, and implemented fail-closed source identity/hash checks before credentialed vector API operations.
+- Executed 20/20 pre-existing exact-source portable Node tests and 12/12 GitHub source/test-runner assertions; newly committed worker test, full web/worker builds, live Clara/Qdrant, browser and deployment **not executed**. Phase 4 remains implementation in progress; no production acceptance. Details in `docs/project-control/sessions/DEV01-WORKER-VECTOR-TEST-COVERAGE-20261018.md`.
+
+---
+
 ## 2026-10-18 — DEV-01 email-vector RAG safety continuation (main)
 
 - **Source committed:** Read-side Clara email-vector adapter validates nonempty unique allowed accounts, trusted organization, bounded query/limit before using the server credential; rejects unsafe URLs/redirects. Worker-side upsert/delete/purge adapter now rejects unsafe URLs/redirects as well. Standalone and worker Vitest regression source committed directly on `main`. No feature branch/PR.
