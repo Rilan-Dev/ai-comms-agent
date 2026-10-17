@@ -373,3 +373,11 @@ If shared memory conflicts with current repository state or current requirements
 - **Fix/test:** Reuse the existing identifier; regression assertion checks a single declaration in the provider branch. Commits `f6efffdb42dbd75df38841fab43b985eb565ee3f` and `05519965adae7ebab837a03e4d7a0d2306e3f0c1`.
 - **Verification:** Post-fix build/test pending; no green claim.
 - **Next:** Pull main, rebuild, run focused voice transport test, update records with actual output.
+
+
+
+### FIX01-VOICE-RESAMPLING-INDEX-20261018 — 2026-10-18
+- **Symptom:** Next.js compilation passed but web TypeScript checking failed because Float32Array indexed access is `number | undefined` in the 16 kHz audio conversion loop.
+- **Fix/test:** Explicitly default a missing sample to zero in both same-rate conversion and averaging accumulation; added focused source-contract assertions. Commits `baa9746142297322c5bf796e7c6fb94060bbc9cf` and `ff8ab0faa72a1a235c47be6d773c16738d2cd79a`.
+- **Verification:** Post-fix build/test pending. Do not equate source commits with a successful build.
+- **Next:** Pull main, rebuild with the manual script, run focused voice transport test, and record actual evidence.
