@@ -41,7 +41,22 @@ export async function POST(request: Request) {
     // If the agent has voice_provider/voice_model/voice_id set, use those.
     // Otherwise fall back to org-level realtime_voice_provider/model/voice_id.
     const voiceProvider = agentVoiceRow?.voice_provider?.trim() || orgSettings?.realtime_voice_provider?.trim() || process.env.REALTIME_VOICE_PROVIDER || "openai";
-    const voiceModel = agentVoiceRow?.voice_model?.trim() || orgSettings?.realtime_voice_model?.trim() || process.env.OPENAI_REALTIME_MODEL || "gpt-realtime-2.1-mini";
+    // Provider Setup saves the selected realtime model per organization,
+    // provider and capability. Resolve it only after the trusted provider is
+    // known, so a Sarvam choice never leaks into an OpenAI/Gemini session.
+    const providerModelResult = await query<{ model: string | null }>(
+      "SELECT model FROM ai_provider_configs WHERE organization_id=$1 AND provider=$2 AND purpose='realtime' AND enabled=true LIMIT 1",
+      [organizationId, voiceProvider],
+    );
+    const providerModel = providerModelResult.rows[0]?.model?.trim() || "";
+    const organizationModel = orgSettings?.realtime_voice_model?.trim() || "";
+    const voiceModel = agentVoiceRow?.voice_model?.trim()
+      || ((voiceProvider === "sarvam" || voiceProvider === "elevenlabs") ? providerModel : organizationModel)
+      || organizationModel
+      || (voiceProvider === "sarvam" ? "saaras:v3-realtime"
+        : voiceProvider === "elevenlabs" ? "scribe_v2_realtime"
+        : voiceProvider === "gemini" ? "gemini-3.5-transcribe-live"
+        : process.env.OPENAI_REALTIME_MODEL || "gpt-realtime-2.1-mini");
     const rawConfiguredVoiceId = agentVoiceRow?.voice_id?.trim() || orgSettings?.voice_id?.trim();
     const sarvamV3Speakers = new Set(["shubh","aditya","ritu","priya","neha","rahul","pooja","rohan","simran","kavya","amit","dev","ishita","shreya","ratan","varun","manan","sumit","roopa","kabir","aayan","ashutosh","advait","anand","tanya","tarun","sunny","mani","gokul","vijay","shruti","suhani","mohit","kavitha","rehan","soham","rupali"]);
     const configuredVoiceId = rawConfiguredVoiceId
