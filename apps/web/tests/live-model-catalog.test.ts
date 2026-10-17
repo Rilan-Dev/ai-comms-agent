@@ -77,7 +77,7 @@ describe("model catalog boundary contracts", () => {
   it("authorizes organization before reading decrypted credentials and never serves static fallback", () => {
     const route = read("../src/app/api/settings/ai-models/route.ts");
     expect(route).toContain('permission: "organization.read"');
-    expect(route.indexOf("await authorize")).toBeLessThan(route.indexOf("getDecryptedProviderConfig"));
+    expect(route.indexOf("await authorize")).toBeLessThan(route.indexOf("await getDecryptedProviderConfig"));
     expect(route).toContain('source: "live"');
     expect(route).not.toContain("getStaticModels");
     expect(route).not.toContain("process.env.OPENAI_API_KEY");
