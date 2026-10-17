@@ -71,9 +71,13 @@ describe("WhatsApp send approval safety boundary", () => {
     expect(whatsappClient).toContain("This message has not been sent");
   });
 
-  it("keeps whatsapp.send unregistered until the complete host approval path is integrated", () => {
+  it("registers whatsapp.send only as an approval-request tool", () => {
     expect(whatsappRuntime).toContain("registry.register(createWhatsAppHistoryTool())");
-    expect(whatsappRuntime).not.toContain('name: "whatsapp.send"');
-    expect(whatsappRuntime).toContain("approval and template compliance exist");
+    expect(whatsappRuntime).toContain("registry.register(createWhatsAppSendApprovalTool())");
+    expect(whatsappRuntime).toContain('name: "whatsapp.send"');
+    expect(whatsappRuntime).toContain("INSERT INTO whatsapp_send_actions");
+    expect(whatsappRuntime).toContain("approval_required: true");
+    expect(whatsappRuntime).not.toContain("queueWhatsAppOutboundMessage");
+    expect(whatsappRuntime).toContain("whatsapp.send_approval.requested");
   });
 });
