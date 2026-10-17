@@ -59,6 +59,7 @@ describe("RBAC and permissions", () => {
     expect(subject.permissions.has("audit.read")).toBe(true);
     expect(subject.permissions.has("users.read")).toBe(true);
     expect(subject.permissions.has("users.manage")).toBe(true);
+    expect(subject.permissions.has("email.read")).toBe(true);
     expect(subject.permissions.has("whatsapp.read")).toBe(true);
     expect(subject.permissions.has("whatsapp.send")).toBe(true);
   });
@@ -116,6 +117,7 @@ describe("RBAC and permissions", () => {
     expect(subject.membership?.role).toBe("viewer");
     expect(subject.permissions.has("organization.read")).toBe(true);
     expect(subject.permissions.size).toBe(1); // ONLY organization.read
+    expect(subject.permissions.has("email.read")).toBe(false);
     expect(subject.permissions.has("whatsapp.read")).toBe(false);
     expect(subject.permissions.has("whatsapp.send")).toBe(false);
     expect(subject.permissions.has("users.read")).toBe(false);
