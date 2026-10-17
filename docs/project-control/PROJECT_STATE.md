@@ -1,3 +1,11 @@
+## 2026-10-18 — DEV-01 direct-main provider settings safety and UX continuation
+
+- Owner requirement: continue directly on `main`, **no new branch**.
+- Live-model provider setup now discards unsaved API keys on provider switch, rejects deletion and reload failures rather than showing false success, refreshes fetched options after key removal, and aggregates TTS + STT credential status truthfully. Tests: Node mocked adapters 6/6, runtime form state 4/4, provider completeness helper 5/5, three isolated module TS checks, 5/5 source-contract checks PASS. No full web/worker/build/browser/live-provider/deploy verification; Phase 4 implementation remains in progress, not accepted.
+- **Exact continuation:** `docs/project-control/NEXT_ACTION.md`; session `docs/project-control/sessions/DEV01-PROVIDER-SETUP-HARDENING-20261018.md`. FIX-01 retains runtime defects, OPS-01 deployment/credentials/toolchain.
+
+---
+
 ## DEV-01 — Clara-style live provider model catalogues — 2026-10-18
 
 - Owner-authorized product change underway on `feature/dev01-live-provider-model-catalog-20261018`, started at main `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`. Phase 4 remains `implementation_in_progress`; no change to phase acceptance, deployment or existing FIX-01/OPS-01 ownership.
