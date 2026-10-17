@@ -10,6 +10,7 @@ import {
 } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { getAuthenticatedAppContext, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
+import { documentedRealtimeModels, hasDocumentedRealtimeModels } from "@/lib/ai/live-model-catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,15 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "validation_error", message: `Provider "${provider}" is not allowed for purpose "${purpose}".` }, { status: 422 });
     }
     const model = typeof body.model === "string" ? body.model.trim().slice(0, 200) : "";
+    // Never persist a legacy conversational-agent marker as a streaming STT
+    // model. The dropdown now exposes exactly the documented relay models.
+    if (model && hasDocumentedRealtimeModels(provider, purpose) &&
+        !documentedRealtimeModels(provider, purpose).some((item) => item.id === model)) {
+      return NextResponse.json({
+        error: "unsupported_realtime_model",
+        message: "Choose a supported realtime speech-recognition model for this provider. Legacy conversational agent markers are not WebSocket model IDs.",
+      }, { status: 422 });
+    }
     const suppliedKey = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
     let baseUrl = typeof body.baseUrl === "string" ? body.baseUrl.trim() : "";
     if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
