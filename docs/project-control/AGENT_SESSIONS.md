@@ -760,3 +760,13 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Commits:** 1fb04529, 9a9e09ee, 5946168a, 57618396, fee2a239, plus project-control commits.
 - **Status:** HANDOFF — source corrected; post-fix typecheck/tests/build pending.
 - **Next:** User pulls main, runs pnpm typecheck, focused voice/WhatsApp tests and bash scripts/update-and-up.sh. Fix further source failures based on actual output.
+
+### OPS01-COMPOSE-ENV-FALLBACK-20261018 — 2026-10-18
+- **Agent:** OPS-01
+- **Invocation:** Diagnose manual deployment failure after successful worker/web image builds.
+- **Started from:** Current main; user log reported `unknown flag: --environment` at Compose environment resolution.
+- **Scope:** Minimal deployment-script compatibility correction, regression contract, control records.
+- **Completed:** Updated `scripts/manual-up.sh` with a host/.env fallback and fail-closed validation; added `scripts/tests/manual-up-compose-env.test.mjs`.
+- **Commits:** `a93176b3cbba730c30a016b4e47a9dd3dd46039c`; `0386f03fa9534ff2d53db84b7ffbd2b5fe864154`.
+- **Status:** HANDOFF — source corrected, post-fix verification pending.
+- **Next:** Pull main; run `node --test scripts/tests/manual-up-compose-env.test.mjs`; rerun `bash scripts/update-and-up.sh`; verify migrations and stack startup from actual output.
