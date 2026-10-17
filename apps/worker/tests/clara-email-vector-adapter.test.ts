@@ -141,3 +141,30 @@ test("malformed successful HTTP response cannot silently complete a job", async 
   mockRequests(new Response("not-json", { status: 200 }));
   await assert.rejects(adapter().upsertMessageVectors(snapshot), /invalid response/);
 });
+
+test("malformed cross-scope or partial identities never trigger privileged Clara requests", async () => {
+  const calls = mockRequests();
+  const vectors = adapter();
+  for (const invalid of [
+    { organizationId: "" }, { organizationId: " org-1" },
+    { accountId: "" }, { accountId: "account-1 " },
+    { providerMessageId: "" }, { providerMessageId: "m".repeat(513) },
+    { sourceIdentityHash: "" },
+    { contentHash: "invalid" }, { metadataHash: "" },
+  ]) {
+    await assert.rejects(vectors.upsertMessageVectors({ ...snapshot, ...invalid }), /requires valid|requires a valid/);
+  }
+  await assert.rejects(vectors.deleteMessageVectors({
+    organizationId: "org-1",
+    accountId: "other-account ",
+    provider: "gmail",
+    providerMessageId: "message-1",
+    sourceIdentityHash: "hash",
+  }), /requires a valid account ID/);
+  await assert.rejects(vectors.deleteAccountVectors({
+    organizationId: "",
+    accountId: "account-1",
+    provider: "gmail",
+  }), /requires a valid organization ID/);
+  assert.equal(calls.length, 0, "invalid or empty scope must never reach the service API");
+});
