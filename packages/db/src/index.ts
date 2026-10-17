@@ -79,6 +79,7 @@ export {
   disconnectWhatsAppAccount,
   listWhatsAppMessagesForOrganization,
   getWhatsAppAccountByPhoneNumberId,
+  findWhatsAppAccountByVerifyToken,
   recordWhatsAppWebhookEvent,
   upsertWhatsAppContact,
   insertWhatsAppInboundMessage,

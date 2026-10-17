@@ -38,9 +38,16 @@ export async function POST(request: Request) {
     const actor = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.update" }, getIdentityAdapter(), getIdentityRepository());
     const masterKey = process.env.CREDENTIALS_MASTER_KEY ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY) : null;
     if (!masterKey) return NextResponse.json({ error: "provider_configuration_required", message: "Credential encryption is not configured on the server." }, { status: 503 });
-    const account = await createOrUpdateWhatsAppAccount({ organizationId, accountId: typeof body?.accountId === "string" ? body.accountId : undefined, businessAccountId: typeof body?.businessAccountId === "string" ? body.businessAccountId : null, phoneNumberId, phoneNumber: typeof body?.phoneNumber === "string" ? body.phoneNumber : null, displayName: typeof body?.displayName === "string" ? body.displayName : null, status: "pending", createdBy: actor.user.id });
+    const account = await createOrUpdateWhatsAppAccount({ organizationId, accountId: typeof body?.accountId === "string" ? body.accountId : undefined, businessAccountId: typeof body?.businessAccountId === "string" ? body.businessAccountId : null, phoneNumberId, phoneNumber: typeof body?.phoneNumber === "string" ? body.phoneNumber : null, displayName: typeof body?.displayName === "string" ? body.displayName : null, verifyToken: typeof body?.verifyToken === "string" ? body.verifyToken.trim() : undefined, status: "pending", createdBy: actor.user.id });
     if (!account) return NextResponse.json({ error: "not_found", message: "WhatsApp account could not be saved." }, { status: 404 });
-    await saveWhatsAppCredential(account.id, organizationId, { credential_type: "oauth_token", access_token: accessToken }, masterKey);
+    // Store access_token + app_secret in the encrypted credential envelope.
+    // The app_secret is used by the webhook POST route to verify Meta's
+    // x-hub-signature-256 HMAC — no longer requires WHATSAPP_APP_SECRET env var.
+    const credentialPayload: Record<string, unknown> = { credential_type: "oauth_token", access_token: accessToken };
+    if (typeof body?.appSecret === "string" && body.appSecret.trim()) {
+      credentialPayload.app_secret = body.appSecret.trim();
+    }
+    await saveWhatsAppCredential(account.id, organizationId, credentialPayload, masterKey);
     await recordAuditEvent({ organizationId, actorUserId: actor.user.id, eventType: "whatsapp.account.saved", targetType: "whatsapp_account", targetId: account.id, action: "save", decision: "allowed" });
     return NextResponse.json({ account: { ...account, status: "pending" }, message: "Credentials stored encrypted. Provider verification is still required before this account is marked connected." }, { status: 201 });
   } catch (error) {

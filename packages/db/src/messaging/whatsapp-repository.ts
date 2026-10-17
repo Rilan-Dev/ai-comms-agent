@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { query, withTransaction } from "../client";
 import { decryptCredential, encryptCredential } from "../security";
 
@@ -24,13 +25,23 @@ export async function getWhatsAppAccountForOrganization(organizationId: string, 
   return r.rows[0] ? mapAccount(r.rows[0]) : null;
 }
 
-export async function createOrUpdateWhatsAppAccount(input: { organizationId: string; accountId?: string; businessAccountId?: string | null; phoneNumberId: string; phoneNumber?: string | null; displayName?: string | null; capabilities?: Record<string, boolean>; status?: "pending" | "connected" | "error" | "disconnected" | "revoked"; createdBy: string; }) {
+export async function createOrUpdateWhatsAppAccount(input: { organizationId: string; accountId?: string; businessAccountId?: string | null; phoneNumberId: string; phoneNumber?: string | null; displayName?: string | null; capabilities?: Record<string, boolean>; status?: "pending" | "connected" | "error" | "disconnected" | "revoked"; createdBy: string; verifyToken?: string; }) {
   const existing = input.accountId ? await getWhatsAppAccountForOrganization(input.organizationId, input.accountId) : null;
   if (existing) {
-    const r = await query<Row>("UPDATE whatsapp_accounts SET business_account_id = $1, phone_number_id = $2, phone_number = $3, display_name = $4, capabilities = $5::jsonb, status = $6, last_error = NULL, connected_at = CASE WHEN $6 = 'connected' THEN now() ELSE connected_at END WHERE id = $7 AND organization_id = $8 AND deleted_at IS NULL RETURNING *", [input.businessAccountId ?? null, input.phoneNumberId, input.phoneNumber ?? null, input.displayName ?? null, JSON.stringify(input.capabilities ?? { send_text: true, receive_text: true }), input.status ?? "pending", input.accountId, input.organizationId]);
+    const updates: string[] = [];
+    const values: unknown[] = [input.businessAccountId ?? null, input.phoneNumberId, input.phoneNumber ?? null, input.displayName ?? null, JSON.stringify(input.capabilities ?? { send_text: true, receive_text: true }), input.status ?? "pending", input.accountId, input.organizationId];
+    let setClause = "business_account_id = $1, phone_number_id = $2, phone_number = $3, display_name = $4, capabilities = $5::jsonb, status = $6, last_error = NULL, connected_at = CASE WHEN $6 = 'connected' THEN now() ELSE connected_at END";
+    if (input.verifyToken) {
+      values.push(input.verifyToken);
+      setClause += `, verify_token = $${values.length}`;
+    }
+    values.push(input.accountId!, input.organizationId);
+    const r = await query<Row>(`UPDATE whatsapp_accounts SET ${setClause} WHERE id = $${values.length - 1} AND organization_id = $${values.length} AND deleted_at IS NULL RETURNING *`, values);
     return r.rows[0] ? mapAccount(r.rows[0]) : null;
   }
-  const r = await query<Row>("INSERT INTO whatsapp_accounts (organization_id, business_account_id, phone_number_id, phone_number, display_name, capabilities, status, created_by) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8) RETURNING *", [input.organizationId, input.businessAccountId ?? null, input.phoneNumberId, input.phoneNumber ?? null, input.displayName ?? null, JSON.stringify(input.capabilities ?? { send_text: true, receive_text: true }), input.status ?? "pending", input.createdBy]);
+  // Generate a verify_token if not provided — use a random UUID-based token
+  const verifyToken = input.verifyToken || randomUUID().replace(/-/g, "");
+  const r = await query<Row>("INSERT INTO whatsapp_accounts (organization_id, business_account_id, phone_number_id, phone_number, display_name, capabilities, status, verify_token, created_by) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9) RETURNING *", [input.organizationId, input.businessAccountId ?? null, input.phoneNumberId, input.phoneNumber ?? null, input.displayName ?? null, JSON.stringify(input.capabilities ?? { send_text: true, receive_text: true }), input.status ?? "pending", verifyToken, input.createdBy]);
   return r.rows[0] ? mapAccount(r.rows[0]) : null;
 }
 
@@ -61,6 +72,20 @@ export async function listWhatsAppMessagesForOrganization(organizationId: string
 export async function getWhatsAppAccountByPhoneNumberId(phoneNumberId: string) {
   const r = await query<Row>("SELECT * FROM whatsapp_accounts WHERE phone_number_id = $1 AND deleted_at IS NULL LIMIT 1", [phoneNumberId]);
   return r.rows[0] ? mapAccount(r.rows[0]) : null;
+}
+
+// Check a webhook verify token against ALL whatsapp_accounts in the DB.
+// Returns the matching account if found, null otherwise.
+// Used by the webhook GET route to verify Meta's subscription ping
+// WITHOUT requiring WHATSAPP_VERIFY_TOKEN env var — the token is stored
+// per-account in the whatsapp_accounts.verify_token column.
+export async function findWhatsAppAccountByVerifyToken(token: string) {
+  if (!token) return null;
+  const r = await query<Row>(
+    "SELECT id, organization_id, phone_number_id, verify_token FROM whatsapp_accounts WHERE verify_token = $1 AND deleted_at IS NULL LIMIT 1",
+    [token],
+  );
+  return r.rows[0] ? { id: String(r.rows[0].id), organization_id: String(r.rows[0].organization_id), phone_number_id: String(r.rows[0].phone_number_id) } : null;
 }
 
 export async function recordWhatsAppWebhookEvent(input: { organizationId: string; accountId: string; providerEventId?: string | null; eventType: string; payloadHash: string; payload: Record<string, unknown> }) {
