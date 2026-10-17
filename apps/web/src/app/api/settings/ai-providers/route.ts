@@ -3,6 +3,7 @@ import { decryptCredential, encryptCredential, parseCredentialsMasterKey, query 
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { getAuthenticatedAppContext, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
+import { fetchLiveModelCatalog } from "@/lib/ai/live-model-catalog";
 
 export const dynamic = "force-dynamic";
 const allowed = ["openai", "gemini", "sarvam"];
@@ -39,7 +40,7 @@ export async function PUT(request: Request) {
     const suppliedKey = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
     let baseUrl = typeof body.baseUrl === "string" ? body.baseUrl.trim() : "";
     if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-    if (!allowed.includes(provider) || !model) return NextResponse.json({ error: "validation_error", message: "A supported provider and model are required." }, { status: 422 });
+    if (!allowed.includes(provider)) return NextResponse.json({ error: "validation_error", message: "A supported provider is required." }, { status: 422 });
     const officialBaseUrl = provider === "gemini" ? "https://generativelanguage.googleapis.com" : provider === "sarvam" ? "https://api.sarvam.ai" : "https://api.openai.com";
     if (baseUrl && baseUrl !== officialBaseUrl) return NextResponse.json({ error: "validation_error", message: "Only the official HTTPS API origin for this provider is allowed in this configuration screen." }, { status: 422 });
     let encrypted: Buffer | null = null;
@@ -50,7 +51,7 @@ export async function PUT(request: Request) {
     } else if (body.keepExistingKey !== true) {
       return NextResponse.json({ error: "validation_error", message: "Enter an API key or explicitly keep the existing saved key." }, { status: 422 });
     }
-    await query("INSERT INTO ai_provider_configs (organization_id,provider,purpose,model,encrypted_api_key,config,enabled) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7) ON CONFLICT (organization_id,provider,purpose) DO UPDATE SET model=EXCLUDED.model,encrypted_api_key=COALESCE(EXCLUDED.encrypted_api_key,ai_provider_configs.encrypted_api_key),config=EXCLUDED.config,enabled=EXCLUDED.enabled,updated_at=now()", [organizationId, provider, "chat", model, encrypted, JSON.stringify({ baseUrl }), body.enabled !== false]);
+    await query("INSERT INTO ai_provider_configs (organization_id,provider,purpose,model,encrypted_api_key,config,enabled) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7) ON CONFLICT (organization_id,provider,purpose) DO UPDATE SET model=EXCLUDED.model,encrypted_api_key=COALESCE(EXCLUDED.encrypted_api_key,ai_provider_configs.encrypted_api_key),config=EXCLUDED.config,enabled=EXCLUDED.enabled,updated_at=now()", [organizationId, provider, "chat", model || null, encrypted, JSON.stringify({ baseUrl }), body.enabled !== false]);
     return NextResponse.json({ ok: true, message: "Provider settings saved. Secret values are never returned to the browser." });
   } catch (error) {
     if (error instanceof Error && error.message === "An organization context is required.") return NextResponse.json({ error: "configuration_required", message: error.message }, { status: 422 });
@@ -72,23 +73,15 @@ export async function POST(request: Request) {
     const rawKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
     if (!rawKey) return NextResponse.json({ error: "provider_configuration_required", message: "Credential encryption is not configured on the server." }, { status: 503 });
     const apiKey = decryptCredential(Buffer.from(saved.encrypted_api_key), parseCredentialsMasterKey(rawKey)).toString("utf8");
-    const defaultBase = provider === "gemini" ? "https://generativelanguage.googleapis.com" : provider === "sarvam" ? "https://api.sarvam.ai" : "https://api.openai.com";
-    const baseUrl = typeof saved.config?.baseUrl === "string" && saved.config.baseUrl ? saved.config.baseUrl : defaultBase;
-    let models: Array<{ id: string; name: string }>;
-    if (provider === "openai") {
-      const response = await fetch(baseUrl + "/v1/models", { headers: { authorization: "Bearer " + apiKey }, signal: AbortSignal.timeout(12000) });
-      if (!response.ok) return NextResponse.json({ error: "model_catalog_unavailable", message: "OpenAI model catalog fetch failed. Check the saved key and base URL." }, { status: 502 });
-      const payload = await response.json() as { data?: Array<{ id?: string }> };
-      models = (payload.data ?? []).filter((item) => typeof item.id === "string" && /^(gpt-|o[0-9]|chatgpt-)/i.test(item.id)).map((item) => ({ id: item.id!, name: item.id! })).sort((a,b) => a.id.localeCompare(b.id));
-    } else if (provider === "gemini") {
-      const response = await fetch(baseUrl + "/v1beta/models?key=" + encodeURIComponent(apiKey), { signal: AbortSignal.timeout(12000) });
-      if (!response.ok) return NextResponse.json({ error: "model_catalog_unavailable", message: "Gemini model catalog fetch failed. Check the saved key and base URL." }, { status: 502 });
-      const payload = await response.json() as { models?: Array<{ name?: string; displayName?: string; supportedGenerationMethods?: string[] }> };
-      models = (payload.models ?? []).filter((item) => item.name && item.supportedGenerationMethods?.includes("generateContent")).map((item) => ({ id: item.name!.replace(/^models\//, ""), name: item.displayName || item.name!.replace(/^models\//, "") })).sort((a,b) => a.id.localeCompare(b.id));
-    } else {
-      models = [{ id: "sarvam-105b-conversations", name: "Sarvam 105B Conversations" }];
+    // Compatibility endpoint: the newer GET /api/settings/ai-models uses the
+    // same provider adapter. Never return static or bootstrap model IDs.
+    try {
+      const models = await fetchLiveModelCatalog(provider as "openai" | "gemini" | "sarvam", "chat", apiKey);
+      return NextResponse.json({ models, source: "live" }, { headers: { "Cache-Control": "private, no-store" } });
+    } catch {
+      return NextResponse.json({ error: "model_catalog_unavailable", message: "The provider catalogue could not be fetched. No static models are available.", models: [] }, { status: 502 });
     }
-    return NextResponse.json({ models });
+
   } catch (error) {
     if (error instanceof Error && error.message === "An organization context is required.") return NextResponse.json({ error: "configuration_required", message: error.message }, { status: 422 });
     if (error instanceof TypeError || (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError"))) return NextResponse.json({ error: "model_catalog_unavailable", message: "The provider model catalog could not be reached. Check network access and provider settings." }, { status: 502 });
