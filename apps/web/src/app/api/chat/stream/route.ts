@@ -314,6 +314,16 @@ export async function POST(request: Request) {
       permission: "organization.read",
     }, getIdentityAdapter(), getIdentityRepository());
 
+    // AuthSubject permits a nullable membership in its shared type. authorize()
+    // guarantees an active membership here, but keep this boundary fail-closed
+    // and narrow the type before constructing trusted tool authorization context.
+    if (!subject.membership) {
+      return NextResponse.json(
+        { error: "forbidden", message: "An active organization membership is required." },
+        { status: 403 },
+      );
+    }
+
     const agent = await new PostgresAgentRepository().get(organizationId, agentId);
     if (!agent) {
       return NextResponse.json({ error: "not_found", message: "Agent was not found in this organization." }, { status: 404 });
