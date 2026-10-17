@@ -282,7 +282,7 @@ export function AIProviderSetupShared({
               <Icon className={"h-3.5 w-3.5 " + color} />
               <span className="font-medium">{PROVIDER_LABELS[p] || p}</span>
               <span className="text-muted-foreground">
-                {status}
+                {status === "active" ? "key enabled" : status}
               </span>
               <button
                 type="button"
@@ -325,7 +325,7 @@ export function AIProviderSetupShared({
             </label>
             <div className="rounded-md border border-border p-3 text-sm">
               <span className="font-medium">{PROVIDER_LABELS[provider] || provider} status: </span>
-              {current?.hasApiKey ? (current?.enabled ? "API key saved (active)" : "API key saved (disabled)") : "Not configured"}
+              {current?.hasApiKey ? (current?.enabled ? "API key saved (enabled; model not yet verified)" : "API key saved (disabled)") : "Not configured"}
             </div>
             <label className={labelCls}>
               API key
