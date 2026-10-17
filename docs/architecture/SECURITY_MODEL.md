@@ -264,6 +264,7 @@ Per Phase 3 correction Finding C: Phase 3 implements the identity and organizati
 **Feature-domain permissions (deferred to feature phases):**
 - `agent.read`, `agent.write`, `agent.deploy` — introduced in Phase 11 (Agent runtime)
 - `email_account.read`, `email_account.write`, `email_account.delete` — introduced in Phase 5/9
+- `email.read` — agent tool access to connected mailbox content, added with the shared interactive tool loop
 - `email.send`, `email.delete`, `email.modify_bulk` — introduced in Phase 12 (Approval system)
 - `whatsapp.read`, `whatsapp.send` — introduced in Phase 13 (WhatsApp; send permission authorizes only a proposal, with provider delivery gated by human approval)
 - `schedule.read`, `schedule.write` — introduced in Phase 14 (Scheduling)
