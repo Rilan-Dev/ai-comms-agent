@@ -1,4 +1,4 @@
-import { loadWhatsAppCredential, claimQueuedWhatsAppOutbound, recoverStaleWhatsAppOutbound, markWhatsAppOutboundFailed, markWhatsAppOutboundSent, parseCredentialsMasterKey, recordAuditEvent } from "@ai-comms-agent/db";
+import { loadWhatsAppCredential, claimQueuedWhatsAppOutbound, recoverStaleWhatsAppOutbound, markWhatsAppOutboundFailed, markWhatsAppOutboundSent, parseCredentialsMasterKey, query, recordAuditEvent } from "@ai-comms-agent/db";
 import { getWhatsAppAccountForOrganization, listPendingWhatsAppAccounts, updateWhatsAppAccountStatus } from "@ai-comms-agent/db";
 import { emitProviderEvent } from "../events/provider-events";
 import { isRetryableProviderError } from "../email/retry";
@@ -106,6 +106,31 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
       const token = typeof credential?.access_token === "string" ? credential.access_token : "";
       if (!token) throw new Error("WhatsApp access token is unavailable");
       const version = process.env.WHATSAPP_GRAPH_API_VERSION || "v23.0";
+      if (message.message_type === "template") {
+        const media = message.media && typeof message.media === "object" && !Array.isArray(message.media) ? message.media : {};
+        const template = media.template && typeof media.template === "object" && !Array.isArray(media.template) ? media.template : null;
+        const templateName = typeof template?.name === "string" ? template.name : "";
+        const templateLanguage = typeof template?.language === "string" ? template.language : "";
+        if (!account.business_account_id || !templateName || !templateLanguage) throw new Error("WhatsApp template payload cannot be verified");
+        const templateUrl = new URL(version + "/" + encodeURIComponent(account.business_account_id) + "/message_templates", GRAPH_HOST + "/");
+        templateUrl.searchParams.set("name", templateName);
+        templateUrl.searchParams.set("fields", "id,name,language,status");
+        const templateResponse = await fetch(templateUrl, { headers: { authorization: "Bearer " + token } });
+        const templatePayload = await templateResponse.json().catch(() => ({})) as { error?: { message?: unknown }; data?: Array<{ id?: unknown; name?: unknown; language?: unknown; status?: unknown }> };
+        const approved = templateResponse.ok && (Array.isArray(templatePayload.data) ? templatePayload.data : []).some((item) => item.name === templateName && item.language === templateLanguage && item.status === "APPROVED");
+        if (!approved) throw new Error("WhatsApp template is not currently approved by Meta; outbound was blocked");
+      } else {
+        const windowCheck = await query<{ id: string }>(
+          `SELECT m.id FROM whatsapp_messages m
+           JOIN whatsapp_contacts c ON c.id=m.contact_id
+           WHERE m.organization_id=$1 AND m.whatsapp_account_id=$2
+             AND c.phone_number=$3 AND m.direction='inbound'
+             AND COALESCE(m.provider_timestamp,m.created_at) >= now() - interval '24 hours'
+           ORDER BY COALESCE(m.provider_timestamp,m.created_at) DESC LIMIT 1`,
+          [String(message.organization_id), String(message.whatsapp_account_id), String(message.phone_number)],
+        );
+        if (!windowCheck.rows.length) throw new Error("WhatsApp free-form text blocked: no inbound customer message within Meta's 24-hour window");
+      }
       const url = new URL(version + "/" + encodeURIComponent(account.phone_number_id) + "/messages", GRAPH_HOST + "/");
       const response = await fetch(url, {
         method: "POST",
@@ -147,6 +172,9 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
     } catch (error) {
       const messageText = error instanceof Error ? error.message : "WhatsApp send failed";
       const retryable = isRetryableProviderError(error);
+      if (messageText.includes("free-form text blocked") && message.id) {
+        await query("UPDATE whatsapp_send_actions SET status='requires_template', updated_at=now() WHERE queued_message_id=$1 AND organization_id=$2 AND status='queued'", [String(message.id), String(message.organization_id)]);
+      }
       await markWhatsAppOutboundFailed(String(message.id), messageText);
       await emitProviderEvent({ type: "whatsapp.message.failed", organizationId: String(message.organization_id), messageId: String(message.id), accountId: String(message.whatsapp_account_id), correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { error: messageText, retryAttempts, retryable } });
       await recordAuditEvent({ organizationId: String(message.organization_id), actorUserId: null, eventType: "whatsapp.message.failed", targetType: "whatsapp_message", targetId: String(message.id), action: "send", decision: "denied", correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { error: messageText } });
