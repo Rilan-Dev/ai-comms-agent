@@ -59,6 +59,8 @@ describe("RBAC and permissions", () => {
     expect(subject.permissions.has("audit.read")).toBe(true);
     expect(subject.permissions.has("users.read")).toBe(true);
     expect(subject.permissions.has("users.manage")).toBe(true);
+    expect(subject.permissions.has("whatsapp.read")).toBe(true);
+    expect(subject.permissions.has("whatsapp.send")).toBe(true);
   });
 
   it("ADMIN has read + settings.manage but NOT members.manage or organization.update", async () => {
@@ -81,6 +83,8 @@ describe("RBAC and permissions", () => {
     expect(subject.permissions.has("audit.read")).toBe(true);
     expect(subject.permissions.has("organization.members.manage")).toBe(false);
     expect(subject.permissions.has("organization.update")).toBe(false);
+    expect(subject.permissions.has("whatsapp.read")).toBe(true);
+    expect(subject.permissions.has("whatsapp.send")).toBe(true);
   });
 
   it("MEMBER has organization.read and users.read but NOT members.read or settings.manage", async () => {
@@ -97,6 +101,8 @@ describe("RBAC and permissions", () => {
     expect(subject.permissions.has("organization.members.read")).toBe(false);
     expect(subject.permissions.has("settings.manage")).toBe(false);
     expect(subject.permissions.has("audit.read")).toBe(false);
+    expect(subject.permissions.has("whatsapp.read")).toBe(true);
+    expect(subject.permissions.has("whatsapp.send")).toBe(false);
   });
 
   it("VIEWER has only organization.read (least privilege)", async () => {
@@ -110,6 +116,8 @@ describe("RBAC and permissions", () => {
     expect(subject.membership?.role).toBe("viewer");
     expect(subject.permissions.has("organization.read")).toBe(true);
     expect(subject.permissions.size).toBe(1); // ONLY organization.read
+    expect(subject.permissions.has("whatsapp.read")).toBe(false);
+    expect(subject.permissions.has("whatsapp.send")).toBe(false);
     expect(subject.permissions.has("users.read")).toBe(false);
     expect(subject.permissions.has("organization.members.read")).toBe(false);
     expect(subject.permissions.has("audit.read")).toBe(false);
