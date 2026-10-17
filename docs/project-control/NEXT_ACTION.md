@@ -1,3 +1,4 @@
+## FIX-01 voice + email action runtime checkpoint — 2026-10-16
 ## FIX-01 — Chat membership nullability build correction — 2026-10-18
 
 - User Docker log: worker image built; Next.js web compilation succeeded but type validation failed at `apps/web/src/app/api/chat/stream/route.ts:384` because `subject.membership` may be null.
@@ -20,14 +21,18 @@
 
 ## FIX-01 realtime voice implementation checkpoint — 2026-10-16
 
-- Reference reviewed: `Rilan-Dev/Clara-AI-Platform` branch `feature/ai-core-from-doable-source`; reusable patterns inspected in `useVoiceClient.ts`, `useOpenAIRealtime.ts`, `useGeminiLive.ts`, `useAudioVisualizer.ts`, and `/api/embed/session`.
-- Implemented on this branch: OpenAI-native WebRTC SDP negotiation behind `POST /api/voice/realtime`; server-side provider key; organization/user/agent/session ownership checks; realtime descriptor only when OpenAI is selected and server credential exists; screen-level live voice workspace with microphone audio, remote audio playback, data-channel events, final-transcript bridge to `/api/voice/turn`, spoken host-generated answer, mute/interrupt/end controls, conversation history and explicit connection states; static regression test file `apps/web/tests/voice-realtime-transport.test.ts`.
-- Connection truthfulness: session activation occurs only after the peer connection and data channel are open and the provider sends `session.created`; transport negotiation/configuration alone does not mark it active.
-- Known scope limit: this tranche implements the native OpenAI WebRTC transport only. Gemini, Sarvam and ElevenLabs remain on the explicitly labeled transcript bridge until their provider-specific Clara negotiation/relay paths are integrated. The current voice turn uses Clara's host-authorized chat turn path; do not claim full email mutation/tool execution from voice until the shared authorized email-tool harness is connected and covered.
-- Verification state: GitHub source edits only. Tests, typecheck, build, browser microphone/WebRTC, provider credentials and deployment have NOT been run or verified. Do not wait/poll CI/Vercel; continue source development and add deterministic lifecycle coverage.
-- PR #27 remains draft and issue #26 remains open until provider lifecycle/error/reconnect/interruption/teardown coverage and shared authorized email-tool execution are complete.
+- Reference reviewed: `Rilan-Dev/Clara-AI-Platform` branch `feature/ai-core-from-doable-source`, including realtime hooks, provider relays and session negotiation.
+- Native voice source now covers OpenAI WebRTC, Gemini Live WebSocket with a constrained ephemeral token, and provider-specific Sarvam/ElevenLabs realtime STT/TTS WebSocket client adapters.
+- Added isolated relay service source under `infra/voice-relay/`, reusing Clara's `sarvam-relay`, `sarvam-tts-relay`, `elevenlabs-relay`, `sarvam-wire` and `ws-lifecycle` implementations. It has origin allowlisting, HMAC relay bootstrap, session ownership rechecks, and metering routes. Deployment/configuration is an OPS-01 handoff; no relay container has been built/deployed/live-tested. If `VOICE_RELAY_PUBLIC_URL` is not set, Sarvam/ElevenLabs intentionally use the provider-backed utterance pipeline fallback rather than claim a native socket is connected.
+- Shared email runtime: extracted `@ai-comms-agent/email-agent-runtime` so web voice and worker use the same tool registry/executor, fresh policy allowlist checks, account/role/capability checks and durable audit. Voice turns call `runEmailAgentTurn` with trusted authenticated `ToolContext`, channel `voice`, bounded tool rounds/calls and the organization's KB.
+- Email operations currently registered: local draft create/update, reply/forward draft creation, plus send/reply/forward request tools that create `pending_approval` records. The provider action worker is the only path that sends after explicit approval; it now updates an existing provider draft with the latest approved contents before sending. Voice UI surfaces pending approval IDs and explicitly says they have not been sent.
+- Provider-backed mailbox mutations (mark read, archive, move, trash/bulk), attachment operations and other unimplemented catalogue tools remain unregistered/fail-closed; do not claim they are complete.
+- Verification state: GitHub source edits only. Tests, typecheck, build, browser microphone/transport, provider credentials, relay deployment, approval execution and deployment have NOT been run or verified. Do not wait/poll GitHub Actions or Vercel; continue source work and report evidence accurately.
+- Remaining: OPS-01 must deploy the relay and configure `AUTH_SECRET`, `AI_COMMS_WEB_URL`, `VOICE_RELAY_ALLOWED_ORIGINS`, and web `VOICE_RELAY_PUBLIC_URL`; then FIX-01 should complete provider lifecycle/error/reconnect tests and provider-backed mailbox mutation handlers. PR #27 was merged at its earlier partial commit. PR #28 is the draft continuation for this source tranche; issue #26 remains open until scope and evidence are complete.
 
 ---
+
+
 
 ## FIX-01 voice transport correction checkpoint — 2026-10-16
 

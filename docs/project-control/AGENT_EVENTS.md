@@ -380,6 +380,11 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 
 - EVT-FIX01-VOICE-WEBRTC-20261016: Implemented host-authorized OpenAI WebRTC negotiation and Clara-style voice workspace on `fix/voice-transport-contract`; added organization-scoped credential resolution, microphone/audio/data-channel lifecycle, final transcript bridge through the host turn route, spoken response, mute/interrupt/end and readiness timeout. Native WebRTC for Gemini/Sarvam/ElevenLabs and full authorized email action/tool integration remain outstanding. Tests/typecheck/build/browser/provider/deployment not run; PR #27 open and issue #26 remains open.
 
+- EVT-FIX01-VOICE-EMAIL-RUNTIME-20261016: Added Gemini Live ephemeral-token transport and provider-backed Sarvam/ElevenLabs utterance pipelines; extracted `@ai-comms-agent/email-agent-runtime` for web/worker reuse; voice now uses the same bounded, allowlisted, audited email tool loop; safe draft/mailbox handlers plus pending-approval requests for send/reply/forward; voice UI shows approval IDs. Persistent Sarvam/ElevenLabs WebSocket relays and runtime verification remain outstanding.
+
+- EVT-FIX01-VOICE-RELAY-SOURCE-20261016: Added isolated provider WebSocket relay source and client adapters for Sarvam STT/TTS and ElevenLabs Scribe/TTS, with HMAC bootstrap, short-lived session token, origin allowlist and usage telemetry. Shared email runtime is wired into voice; send/reply/forward remain explicit approval requests. Relay deployment and runtime verification remain outstanding.
+
+- EVT-FIX01-VOICE-PR-CONTINUATION-20261016: PR #27 merged only its earlier partial commit; the subsequent multi-provider relay and shared email runtime work is in draft PR #28. Issue #26 remains open pending deployment, provider-backed missing actions and runtime evidence.
 
 ### EVT-FIX01-WHATSAPP-PENDING-20261017 — 2026-10-17
 - **Agent/session:** FIX-01 / Sentinel

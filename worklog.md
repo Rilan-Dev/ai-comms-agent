@@ -1804,6 +1804,26 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 - Verification: source changes written through GitHub only. Tests, typecheck, build, browser microphone/WebRTC, real provider credentials and deployment have NOT been run. PR #27 remains open; issue #26 remains open.
 
 
+## 2026-10-16 — FIX-01 voice providers + email runtime integration
+
+- Gemini Live: constrained single-use ephemeral token minted server-side, then browser WebSocket transcription using 16 kHz PCM; final speech is routed through Clara's host-authorized turn endpoint.
+- Sarvam and ElevenLabs: browser VAD and PCM16/WAV utterance capture; server-side provider STT and provider TTS; language selection and playback controls. This is not yet a persistent provider WebSocket connection for either service.
+- Shared email runtime: created `packages/email-agent-runtime` and rewired worker wrappers to use it; web voice route calls `runEmailAgentTurn` with trusted identity/permissions and voice channel context.
+- Added safe draft/mailbox handlers and approval-gated send/reply/forward requests; the action worker executes only after explicit approval. Voice UI displays pending approval IDs and does not claim the message was sent.
+- Added static regression tests and updated project-control records. Verification remains unrun: tests, typecheck, build, browser/provider credentials, approval execution and deployment.
+
+## 2026-10-16 — FIX-01 native provider relay source
+
+- Adapted Clara AI Platform relay code into `infra/voice-relay/` for Sarvam realtime STT + streaming TTS and ElevenLabs Scribe realtime STT + streaming TTS. Added a WebSocket server, exact-origin allowlist, short-lived HMAC-signed browser token, server-to-server HMAC bootstrap, session revalidation and telemetry endpoints.
+- Connected provider-specific STT/TTS WebSocket client adapters in the voice workspace; Sarvam/ElevenLabs REST utterance pipeline remains fallback when `VOICE_RELAY_PUBLIC_URL` is unset.
+- Added deployment contract in `infra/voice-relay/README.md`. OPS-01 must build/deploy the relay and set the shared secret, web base URL, allowed browser origins and public WSS URL.
+- Voice turns now use the shared email tool runtime; safe local draft tools are available and send/reply/forward are queued for explicit approval. Provider-backed mailbox mutations and attachment actions remain unregistered.
+- Source only; no tests/typecheck/build/browser/provider/relay/approval/deployment verification performed.
+
+## 2026-10-16 — PR continuation status
+
+- PR #27 merged at its earlier partial commit; continued provider relay and shared email runtime work is tracked in draft PR #28.
+- Issue #26 remains open. No tests/typecheck/build/browser/provider/approval/deployment verification is claimed.
 ## 2026-10-17 — WhatsApp pending-account and test-phone flow correction
 
 - **Owner:** ChatGPT / DEV-01 source implementation.
