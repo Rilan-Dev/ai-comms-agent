@@ -322,3 +322,10 @@ If shared memory conflicts with current repository state or current requirements
 - **Remedy pattern:** Add a forward-only migration for the exact type and a regression assertion that guards against altering a similarly named but unrelated enum.
 - **Avoid:** Retrying deterministic SQLSTATE 22P02 through RabbitMQ/direct-sync fallback or removing the provider from the query; neither repairs schema compatibility.
 - **Role boundary:** FIX-01 corrects source; OPS-01 applies migrations/restarts services and verifies live sync.
+
+
+### FIX-01 / Sentinel — 2026-10-17 — WhatsApp 131047
+- Meta error 131047 with an explicit expired-24-hour-window detail means free-form text was rejected by provider policy. Use an eligible approved template outside the window; do not bypass the rule or retry the same text.
+- Queue acknowledgement is not delivery confirmation. Preserve distinct queued, provider-accepted/sent, delivered, read and failed states.
+- When webhook evidence says failed but UI says sent, trace provider message ID through signed webhook acceptance, organization/account-scoped persistence and UI refresh before modifying code. Route live deployment/database/webhook-delivery diagnosis to OPS-01.
+- Session: `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`; source inspection only, no runtime PASS.
