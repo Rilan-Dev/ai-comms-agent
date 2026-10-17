@@ -1361,3 +1361,12 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Correction:** Reuse the already-computed generation identifier. Regression test asserts one declaration within that branch. Commits: `f6efffdb42dbd75df38841fab43b985eb565ee3f`, `05519965adae7ebab837a03e4d7a0d2306e3f0c1`.
 - **Verification:** Post-fix build/test pending; no PASS claim.
 - **Next action:** Pull latest main, run `bash scripts/update-and-up.sh`, then focused `voice-realtime-transport.test.ts`; address the next source error if any. Keep unrelated feature work untouched.
+
+
+
+## FIX-01 — Voice audio resampling indexed sample nullability — 2026-10-18
+
+- **Observed failure:** User's Docker build compiles Next.js successfully, then type validation fails at `voice-workspace.tsx:331` because `input[i]` is `number | undefined`.
+- **Correction:** Same-rate conversion defaults a missing sample to zero; downsampling accumulation also guards indexed reads. Commits: source `baa9746142297322c5bf796e7c6fb94060bbc9cf`, regression `ff8ab0faa72a1a235c47be6d773c16738d2cd79a`.
+- **Verification:** Post-fix Docker build and focused voice test pending; no PASS claim.
+- **Next:** Pull latest main, rerun `bash scripts/update-and-up.sh`; if build succeeds, run focused `voice-realtime-transport.test.ts`. Keep fixing subsequent source compiler errors narrowly, without waiting on unrelated CI gates.
