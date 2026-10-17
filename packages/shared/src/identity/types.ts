@@ -111,6 +111,7 @@ export const PERMISSION_CATALOGUE = [
   { name: "settings.read", description: "View organization settings" },
   { name: "settings.manage", description: "Manage organization settings" },
   // WhatsApp feature permissions (added with the messaging feature phase).
+  { name: "email.read", description: "Read connected email accounts and messages through agent tools" },
   { name: "whatsapp.read", description: "Read connected WhatsApp conversations and approval requests" },
   { name: "whatsapp.send", description: "Request WhatsApp outbound messages through human approval" },
 ] as const;
@@ -132,6 +133,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission
     "audit.read",
     "settings.read",
     "settings.manage",
+    "email.read",
     "whatsapp.read",
     "whatsapp.send",
   ],
@@ -142,12 +144,14 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission
     "audit.read",
     "settings.read",
     "settings.manage",
+    "email.read",
     "whatsapp.read",
     "whatsapp.send",
   ],
   member: [
     "organization.read",
     "users.read",
+    "email.read",
     "whatsapp.read",
   ],
   viewer: [
