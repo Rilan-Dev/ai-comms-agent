@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageCircle, Send, ShieldCheck, Smartphone, Unplug } from "lucide-react";
+import { MessageCircle, Send, ShieldCheck, Smartphone, Unplug, X } from "lucide-react";
 import { WhatsAppWebhookSetupGuide } from "./whatsapp-webhook-setup-guide";
 
 type Account = { id: string; phone_number_id: string; phone_number?: string | null; display_name?: string | null; business_account_id?: string | null; status: string; last_error?: string | null };
@@ -10,7 +10,7 @@ export default function WhatsAppClient({ organizationId }: { organizationId: str
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [form, setForm] = useState({ phoneNumberId: "", businessAccountId: "", phoneNumber: "", displayName: "", accessToken: "", verifyToken: "", appSecret: "" });
   const [busy, setBusy] = useState(false);
-  const [showConnectForm, setShowConnectForm] = useState(false);
+  const [showWebhookSetupModal, setShowWebhookSetupModal] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [messages, setMessages] = useState<Array<{ id: string; direction: string; body?: string | null; status: string; phone_number?: string | null; display_name?: string | null; created_at: string }>>([]);
@@ -75,11 +75,14 @@ export default function WhatsAppClient({ organizationId }: { organizationId: str
   }
 
   return <main className="min-h-full bg-background p-5 sm:p-7 lg:p-10"><div className="mx-auto max-w-[1200px]">
-    {/* Unified WhatsApp setup guide — webhook config + connect form merged
-        into one step-by-step guide. The connect form is rendered inline
-        as children inside step 5 of the guide, so the user sees everything
-        in one logical flow. */}
-    <WhatsAppWebhookSetupGuide organizationId={organizationId}>
+    {showWebhookSetupModal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-3 backdrop-blur-sm sm:p-6" onClick={() => setShowWebhookSetupModal(false)}>
+      <section role="dialog" aria-modal="true" aria-labelledby="whatsapp-webhook-modal-title" className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-4 border-b px-5 py-4 sm:px-6">
+          <div><p className="text-[11px] font-semibold uppercase tracking-[.14em] text-primary">Guided connection</p><h2 id="whatsapp-webhook-modal-title" className="mt-1 text-lg font-semibold">WhatsApp Webhook Setup</h2><p className="mt-1 text-sm text-muted-foreground">Configure Meta and connect another phone in one place.</p></div>
+          <button type="button" autoFocus aria-label="Close WhatsApp webhook setup" onClick={() => setShowWebhookSetupModal(false)} className="rounded-lg border p-2 hover:bg-muted"><X className="size-4" /></button>
+        </div>
+        <div className="overflow-y-auto p-4 sm:p-6">
+          <WhatsAppWebhookSetupGuide organizationId={organizationId}>
       {/* The connect form — rendered inside step 5 of the setup guide */}
       <div className="mt-4 rounded-md border bg-background p-5 shadow-sm">
         <div className="flex items-start gap-3">
@@ -92,8 +95,11 @@ export default function WhatsAppClient({ organizationId }: { organizationId: str
         <div className="mt-4 grid gap-4 sm:grid-cols-2">{credentialFields.map(([key,label,secret])=><label key={key} className="block"><span className="text-xs font-medium">{label}</span><input type={secret ? "password" : "text"} value={form[key]} onChange={e=>setForm(v=>({...v,[key]:e.target.value}))} required={key === "phoneNumberId" || key === "accessToken" || key === "verifyToken"} aria-label={label} className="mt-1 h-11 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20" autoComplete={secret ? "new-password" : "off"} /></label>)}</div>
         <div className="mt-4 flex justify-end"><button type="button" disabled={busy || !form.phoneNumberId.trim() || !form.accessToken.trim() || !form.verifyToken.trim()} onClick={() => void save()} className="h-10 rounded-md bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-50">{busy ? "Saving securely…" : "Save and connect"}</button></div>
       </div>
-    </WhatsAppWebhookSetupGuide>
-    <header className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Messaging</p><h1 className="mt-2 font-display text-3xl font-medium tracking-tight">WhatsApp Business</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Connect one WhatsApp Business phone to each agent. Credentials stay encrypted on the server; the account remains pending until Meta connectivity and webhook verification are confirmed.</p></div><button type="button" onClick={() => setShowConnectForm(v => !v)} aria-expanded={showConnectForm} aria-controls="whatsapp-connect-form" className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90"><Smartphone size={16} />{showConnectForm ? "Close connection form" : accounts.length ? "Connect another phone" : "Connect WhatsApp Business"}</button></header>
+          </WhatsAppWebhookSetupGuide>
+        </div>
+      </section>
+    </div>}
+    <header className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Messaging</p><h1 className="mt-2 font-display text-3xl font-medium tracking-tight">WhatsApp Business</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Connect one WhatsApp Business phone to each agent. Credentials stay encrypted on the server; the account remains pending until Meta connectivity and webhook verification are confirmed.</p></div><button type="button" onClick={() => setShowWebhookSetupModal(true)} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90"><Smartphone size={16} />{accounts.length ? "Connect another phone" : "Connect WhatsApp Business"}</button></header>
     {notice && <div role="status" className="mt-5 rounded-md border bg-background px-4 py-3 text-sm">{notice}</div>}
     <div className="mt-7 grid gap-6 lg:grid-cols-[1.05fr_.95fr]">
       <section className="rounded-md border bg-background p-5  sm:p-7 lg:col-span-2"><div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="flex items-center gap-2 font-display text-lg font-medium"><MessageCircle size={17} /> Conversation channel</h2><p className="mt-1 text-xs text-muted-foreground">Inbound webhook messages and worker-queued outbound text. No fake messages are inserted.</p></div><select value={selectedAccountId} onChange={e=>setSelectedAccountId(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm">{accounts.map(a=><option key={a.id} value={a.id}>{a.display_name || a.phone_number || a.phone_number_id}</option>)}</select></div><div className="mt-5 max-h-[360px] space-y-2 overflow-y-auto rounded-md bg-muted/30 p-4">{messages.length ? messages.slice().reverse().map(m=><div key={m.id} className={"flex " + (m.direction === "outbound" ? "justify-end" : "justify-start")}><div className={"max-w-[80%] rounded-md border px-4 py-3 text-sm " + (m.direction === "outbound" ? "bg-foreground text-background" : "bg-background")}><p className="whitespace-pre-wrap">{m.body || "[" + m.status + "]"}</p><p className="mt-1 text-[10px] opacity-60">{m.phone_number || "WhatsApp"} · {m.status}</p></div></div>) : <p className="py-12 text-center text-sm text-muted-foreground">No persisted messages yet.</p>}</div><div className="mt-4 grid gap-3 sm:grid-cols-[180px_1fr_auto]"><input value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder="+919876543210" className="h-11 rounded-md border bg-background px-3 text-sm"/><input value={messageBody} onChange={e=>setMessageBody(e.target.value)} placeholder="Write a WhatsApp message…" className="h-11 rounded-md border bg-background px-3 text-sm"/><button type="button" disabled={busy || !selectedAccountId || !recipient || !messageBody} onClick={()=>void sendMessage()} className="h-11 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50"><><Send size={14} className="mr-2 inline" />{busy ? "Queueing…" : "Queue message"}</></button></div></section>
