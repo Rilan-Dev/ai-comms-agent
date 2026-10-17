@@ -1270,3 +1270,14 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Regression test:** `apps/web/tests/clara-agent-provider-resolution.test.ts` (commits `d9e6c619320390c5290c04d29d30187a6838736f`, `c0e0a31e788ecd24e6af89f42e4f67f5100b7c73`); not executed.
 - **OPS-01 next:** Confirm serving revision for the public domain and self-hosted web container. Inspect org runtime-default row presence, agent chat override, and Sarvam chat provider-config metadata in the correct org scope. Rebuild/restart through the normal manual procedure and test one chat turn. No credentials may be printed.
 - **Status:** Source correction committed; runtime root branch remains conditional on live DB state. Test/build/deployment not verified. Handoff `HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017` OPEN.
+
+
+## DEV-01 — expose bound WhatsApp history to interactive chat (2026-10-17)
+
+- **Source change:** `apps/web/src/app/api/chat/stream/route.ts` now loads up to 20 recent WhatsApp messages only when the current/recent chat context asks about WhatsApp, and only from a non-deleted, connected account explicitly bound to the active agent and organization.
+- **Prompt safety:** message bodies are marked as untrusted data; the context explicitly says it is read-only and must not be represented as a successful send/reply.
+- **Regression coverage authored:** `apps/web/tests/whatsapp-chat-context.test.ts` asserts the explicit binding, connected-account and organization filters, untrusted-content boundary, and prompt injection point.
+- **Source commits:** `7b58e075368b6a125d6c30cdb14e9fd6731aaed8` (initial route integration), `3f6f568f0a774410926d20c3181b6495c860dc5a` (newline formatting correction), `878890da6e095c1485a3d977f96aecbb3edf026e` (static regression test).
+- **Important limit:** this enables read/context access in interactive chat; it does NOT yet register `whatsapp.send`/`whatsapp.history` in the shared executable tool runtime. Interactive AI-initiated outbound messages still require a shared authorized tool/approval path. Existing inbound worker auto-response and outbound queue are separate.
+- **Verification:** GitHub source readback only. Tests, typecheck, build, browser/chat behavior, database state, Meta webhook delivery, outbound send and deployment have NOT been run or verified. Do not claim end-to-end enablement until those are completed.
+- **Next:** continue shared tool runtime integration using fresh persisted agent/account binding and connected-status checks; implement history + outbound tool behind current allowlist, permission, approval/template compliance and audit path. Do not wait for CI/Vercel; report runtime/deployment validation as pending to OPS-01.
