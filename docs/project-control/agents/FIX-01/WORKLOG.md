@@ -340,3 +340,16 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Commits:** `f6efffdb42dbd75df38841fab43b985eb565ee3f`; `05519965adae7ebab837a03e4d7a0d2306e3f0c1`.
 - **Evidence:** User log confirms worker image built/exported and web parser failure before fix. Post-fix build/test not run.
 - **Next:** Pull latest main, rerun manual Docker build, run focused voice realtime transport test, record actual results.
+
+
+
+### FIX01-VOICE-RESAMPLING-INDEX-20261018 / 2026-10-18
+- **Task:** Correct the next TypeScript build failure reported after the duplicate generation identifier fix.
+- **Authorization:** User supplied current Docker build output; narrow FIX-01 source correction and regression/control records.
+- **Started from:** `main` with prior voice workspace correction committed.
+- **Actions:** Guarded potentially undefined indexed samples in the same-rate PCM16 conversion and the downsampling averaging loop. Added a focused regression assertion to the existing voice realtime transport test.
+- **Files/code:** `apps/web/src/app/ai-voice/voice-workspace.tsx`; `apps/web/tests/voice-realtime-transport.test.ts`.
+- **Evidence:** Source commit `baa9746142297322c5bf796e7c6fb94060bbc9cf`; regression commit `ff8ab0faa72a1a235c47be6d773c16738d2cd79a`. No post-fix build or test execution performed here.
+- **Blockers/dependencies:** Need user's dependency-equipped checkout/Docker build output for runtime verification.
+- **Lesson:** Strict indexed-access checking applies to typed-array reads; guard every indexed read in the resampling path rather than fixing only the first compiler-reported access.
+- **Next:** Pull latest main, rerun manual deployment build, then run focused voice transport test and record actual output.
