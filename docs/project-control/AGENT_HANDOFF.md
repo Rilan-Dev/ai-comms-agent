@@ -1,18 +1,3 @@
-
-
-## HOF-FIX01-OPS01-MIGRATION-NETWORK-20261018 — Migration runner must use Compose DNS
-- **From / to:** FIX-01 / Sentinel → OPS-01 / Shipwright
-- **Started from:** `main` `2cf9a52266af0fd69df809b40f482bb0eb95fb5c`
-- **Authorization:** Owner explicitly requested diagnosis, minimal correction, regression protection and records. APCP role registry assigns Docker, deployment scripts and environment to OPS-01.
-- **Symptom:** `scripts/update-and-up.sh` built images, then migration failed with `getaddrinfo ENOTFOUND postgres`. The script proceeded to container startup.
-- **Root cause:** `scripts/manual-up.sh` executes the migration runner on the host; `postgres` is only resolvable through Docker Compose network DNS. Existing substitution handles `host.docker.internal`, not `postgres`.
-- **Relevant source:** `scripts/manual-up.sh`; `Dockerfile`; `packages/db/migrate.js`; `docker-compose.yml`; `scripts/tests/manual-up-compose-env.test.mjs`. Recent main commit `2cf9a522` changes published Postgres port only; OPS compatibility commits `a93176b3` / `0386f03f` fixed an earlier CLI flag issue.
-- **Implementation caution:** Current Dockerfile does not copy `supabase/`; migration runner auto-detects `/workspace/supabase/migrations`. Recommended smallest execution fix: run a one-off Compose container and mount `$PROJECT_ROOT/supabase` read-only at `/workspace/supabase`; alternatively add migration files to the image with explicit review. Preserve `postgres:5432` for application containers.
-- **Do not:** Route app database connections through `host.docker.internal:5433`; silently change the target database; claim migration or deployment success from image build alone.
-- **Database target check:** User URL used database `postgres`, whereas Compose declares `POSTGRES_DB=aca`. Confirm which DB is intended before running migrations.
-- **Evidence/status:** Source inspection and user logs only; no fix, regression test execution, migration rerun or health verification performed by FIX-01.
-- **Required OPS-01 actions:** Update migration execution; add regression assertion for in-container command and migration files being available; run focused test; confirm intended DB target; have operator rerun deployment; record migration output and service health.
-- **Stop condition:** Handoff is complete when OPS-01 owns the code change. FIX-01 does not edit deployment source absent a new role/authorization decision.
 # APCP Central Agent Handoffs
 
 Cross-agent handoff register. A handoff transfers context, not authority.
@@ -121,3 +106,18 @@ Cross-agent handoff register. A handoff transfers context, not authority.
 - **Source commits:** 1fb04529, 9a9e09ee, 5946168a; tests 57618396 and fee2a239.
 - **Next:** Pull current main, run pnpm typecheck and focused voice/WhatsApp Vitest suites, then bash scripts/update-and-up.sh. Share full new compiler output if errors remain.
 - **Evidence limit:** The provided typecheck/build logs predate this correction; no post-fix pass or live deployment claim is made.
+
+
+## HOF-FIX01-OPS01-MIGRATION-NETWORK-20261018 — Migration runner must use Compose DNS
+- **From / to:** FIX-01 / Sentinel → OPS-01 / Shipwright
+- **Started from:** `main` `2cf9a52266af0fd69df809b40f482bb0eb95fb5c`
+- **Authorization:** Owner explicitly requested diagnosis, minimal correction, regression protection and records. APCP role registry assigns Docker, deployment scripts and environment to OPS-01.
+- **Symptom:** `scripts/update-and-up.sh` built images, then migration failed with `getaddrinfo ENOTFOUND postgres`. The script proceeded to container startup.
+- **Root cause:** `scripts/manual-up.sh` executes the migration runner on the host; `postgres` is only resolvable through Docker Compose network DNS. Existing substitution handles `host.docker.internal`, not `postgres`.
+- **Relevant source:** `scripts/manual-up.sh`; `Dockerfile`; `packages/db/migrate.js`; `docker-compose.yml`; `scripts/tests/manual-up-compose-env.test.mjs`. Recent main commit `2cf9a522` changes published Postgres port only; OPS compatibility commits `a93176b3` / `0386f03f` fixed an earlier CLI flag issue.
+- **Implementation caution:** Current Dockerfile does not copy `supabase/`; migration runner auto-detects `/workspace/supabase/migrations`. Recommended smallest execution fix: run a one-off Compose container and mount `$PROJECT_ROOT/supabase` read-only at `/workspace/supabase`; alternatively add migration files to the image with explicit review. Preserve `postgres:5432` for application containers.
+- **Do not:** Route app database connections through `host.docker.internal:5433`; silently change the target database; claim migration or deployment success from image build alone.
+- **Database target check:** User URL used database `postgres`, whereas Compose declares `POSTGRES_DB=aca`. Confirm which DB is intended before running migrations.
+- **Evidence/status:** Source inspection and user logs only; no fix, regression test execution, migration rerun or health verification performed by FIX-01.
+- **Required OPS-01 actions:** Update migration execution; add regression assertion for in-container command and migration files being available; run focused test; confirm intended DB target; have operator rerun deployment; record migration output and service health.
+- **Stop condition:** Handoff is complete when OPS-01 owns the code change. FIX-01 does not edit deployment source absent a new role/authorization decision.
