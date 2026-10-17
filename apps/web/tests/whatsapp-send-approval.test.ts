@@ -29,6 +29,9 @@ describe("WhatsApp send approval safety boundary", () => {
     expect(decisionRoute).toContain("WHERE id=$1 AND organization_id=$2");
     expect(decisionRoute).toContain("whatsapp.send_approval.approved");
     expect(decisionRoute).toContain("whatsapp.send_approval.rejected");
+    expect(decisionRoute).toContain("agent_binding_required");
+    expect(whatsappWorker).toContain("agent_binding_required");
+    expect(whatsappWorker).toContain("account.status !== \"connected\"");
   });
 
   it("rechecks the 24-hour customer-service window from an inbound message", () => {
