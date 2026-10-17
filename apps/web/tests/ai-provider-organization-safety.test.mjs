@@ -7,7 +7,10 @@ const chat = readFileSync(new URL("../src/app/settings/ai-provider-settings.tsx"
 
 test("both credential forms clear plaintext keys on organization switch", () => {
   for (const source of [setup, chat]) {
-    const effect = source.slice(source.indexOf("// Never"), source.indexOf("}, [organizationId]"));
+    const invalidate = source.indexOf('setLoadedOrganizationId("");');
+    assert.ok(invalidate >= 0);
+    const start = source.lastIndexOf("useEffect(() => {", invalidate);
+    const effect = source.slice(start, invalidate + 40);
     assert.ok(effect.includes('setApiKey("");'), "org switch must clear unsaved key");
     assert.ok(effect.includes("setConfigs([]);"), "org switch must clear previous tenant records");
     assert.ok(effect.includes('setLoadedOrganizationId("");'), "org switch must invalidate readiness");
