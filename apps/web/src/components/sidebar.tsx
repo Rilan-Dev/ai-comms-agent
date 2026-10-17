@@ -4,16 +4,16 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 const NAV_ITEMS = [
-  { label: "Overview", href: "/", icon: "grid" },
+  { label: "Chat", href: "/", icon: "sparkles" },
+  { label: "Overview", href: "/overview", icon: "grid" },
   { label: "Agents", href: "/agents", icon: "bot" },
-  { label: "Mail", href: "/mail/accounts", icon: "mail", children: [
-    { label: "Accounts", href: "/mail/accounts" }, { label: "Inbox", href: "/mail/inbox" }, { label: "Threads", href: "/mail/threads" }, { label: "Drafts", href: "/mail/drafts" },
+  { label: "Mail", href: "/mail/inbox", icon: "mail", children: [
+    { label: "Inbox", href: "/mail/inbox" }, { label: "Drafts", href: "/mail/drafts" },
+    { label: "Threads", href: "/mail/threads" }, { label: "Accounts", href: "/mail/accounts" },
   ]},
   { label: "WhatsApp", href: "/whatsapp", icon: "message" },
   { label: "Automations", href: "/automations", icon: "zap" },
   { label: "Schedules", href: "/schedules", icon: "clock" },
-  { label: "Chat", href: "/chat", icon: "sparkles" },
-  { label: "AI & Voice", href: "/ai-voice", icon: "audio" },
   { label: "Knowledge", href: "/knowledge", icon: "book" },
   { label: "Activity", href: "/activity", icon: "activity" },
   { label: "Audit", href: "/audit", icon: "shield" },
@@ -46,6 +46,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mailExpanded, setMailExpanded] = useState(true);
   const sidebarRef = useRef<HTMLElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const closeMobileButtonRef = useRef<HTMLButtonElement>(null);
@@ -113,12 +114,19 @@ export function Sidebar() {
         <p className="px-3 pb-3 text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">Workspace</p>
         <ul className="space-y-0.5">
           {NAV_ITEMS.map((item) => {
-            const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href)) || ("children" in item && item.children?.some((child) => pathname === child.href || pathname.startsWith(child.href + "/")));
+            const active = pathname === item.href || (item.href === "/" && pathname === "/chat") || (item.href !== "/" && pathname.startsWith(item.href + "/")) || ("children" in item && item.children?.some((child) => pathname === child.href || pathname.startsWith(child.href + "/")));
             return <li key={item.href}>
-              <a href={item.href} aria-current={active ? "page" : undefined} onClick={() => setMobileOpen(false)} className={`flex h-10 items-center gap-3 rounded-md px-3 text-[13px] font-medium transition-colors ${active ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
-                <NavIcon name={item.icon} /><span>{item.label}</span>
-              </a>
-              {"children" in item && item.children && active && <ul className="ml-[21px] mt-1 space-y-0.5 border-l border-border pl-3">{item.children.map((child) => {
+              <div className="flex min-w-0 items-center gap-1">
+                <a href={item.href} aria-current={active ? "page" : undefined} onClick={() => setMobileOpen(false)} className={`flex h-10 min-w-0 flex-1 items-center gap-3 rounded-md px-3 text-[13px] font-medium transition-colors ${active ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
+                  <NavIcon name={item.icon} /><span>{item.label}</span>
+                </a>
+                {"children" in item && item.children ? (
+                  <button type="button" aria-expanded={mailExpanded} aria-controls="mail-navigation" aria-label={mailExpanded ? "Collapse Mail folders" : "Expand Mail folders"} onClick={() => setMailExpanded((open) => !open)} className="grid size-9 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring">
+                    <span aria-hidden="true" className={`transition-transform ${mailExpanded ? "rotate-180" : ""}`}>⌄</span>
+                  </button>
+                ) : null}
+              </div>
+              {"children" in item && item.children && mailExpanded && <ul id="mail-navigation" className="ml-[21px] mt-1 space-y-0.5 border-l border-border pl-3">{item.children.map((child) => {
                 const childActive = pathname === child.href;
                 return <li key={child.href}><a href={child.href} aria-current={childActive ? "page" : undefined} onClick={() => setMobileOpen(false)} className={`block rounded-md px-3 py-2 text-xs transition-colors ${childActive ? "bg-accent/60 font-semibold text-accent-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>{child.label}</a></li>;
               })}</ul>}
