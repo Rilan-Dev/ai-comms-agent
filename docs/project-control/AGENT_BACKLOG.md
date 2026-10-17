@@ -246,3 +246,11 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Do not:** Change app DATABASE_URL to host-published routing; do not change DB name blindly; do not claim success from build-only output.
 - **Next:** Implement the one-off container migration invocation and regression assertion in `scripts/tests/manual-up-compose-env.test.mjs`; run focused test, then deployment/migration and health verification. Preserve the user's existing intended startup-on-migration-failure policy unless explicitly changed.
 - **Related:** ISS-037; `FIX01-MIGRATION-NETWORK-20261018`; `HOF-FIX01-OPS01-MIGRATION-NETWORK-20261018`.
+
+
+### BKL-OPS01-MIGRATION-IN-CONTAINER-20261018 — implementation update
+- **State:** SOURCE + REGRESSION TEST COMMITTED; runtime verification pending.
+- **Source commit:** `65a215151ecd14900fac3c9ba9a421fb7a777a77`.
+- **Regression test:** `6cd93638bffa0e2f6a9e8d6ce2f3f2664b13341b` (final test assertion correction).
+- **Verification evidence:** Bash syntax PASS; isolated Node focused test 4/4 PASS. This was not a complete checkout or live Docker/database test.
+- **Remaining:** Operator confirms `/postgres` versus `/aca`, runs focused test in the actual checkout, reruns deployment, and records migration and health outcomes. No deployment PASS claimed.
