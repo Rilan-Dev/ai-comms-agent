@@ -212,3 +212,10 @@ The user's Docker build evidence showed worker image success but web type valida
 - Issue/control: ISS-033; session `sessions/FIX01-VOICE-RESAMPLING-INDEX-20261018.md`.
 - **Verification boundary:** The latest user log predates this fix. No post-fix build or test pass is claimed.
 - **Next:** Pull latest main and rerun `bash scripts/update-and-up.sh`; if the build passes, run focused `voice-realtime-transport.test.ts`. Continue narrow source fixes for subsequent compiler failures.
+
+## 2026-10-18 — Strict indexed-access and voice context typecheck follow-up
+- User's latest local run reports three more strict typed-array index errors in voice workspace, nullable membership and conversation ID typing in /api/voice/turn/route.ts, and undefined split results in WhatsApp template selection.
+- FIX-01 committed explicit audio sample fallbacks, a fail-closed 403 membership guard, a validated string conversation ID fallback, and safe template selection defaults; tests extended for voice and WhatsApp contracts.
+- Issue ISS-034. Source commits: 1fb04529, 9a9e09ee, 5946168a; tests: 57618396, fee2a239.
+- **Verification boundary:** Current user logs are pre-fix. Post-fix typecheck, focused tests, Docker build and deployment are not yet verified.
+- Next: pull main, run pnpm typecheck, focused voice and WhatsApp tests, then manual Docker build. Continue resolving source errors; do not claim green from commits alone.
