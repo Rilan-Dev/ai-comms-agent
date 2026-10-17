@@ -322,3 +322,40 @@ If shared memory conflicts with current repository state or current requirements
 - **Remedy pattern:** Add a forward-only migration for the exact type and a regression assertion that guards against altering a similarly named but unrelated enum.
 - **Avoid:** Retrying deterministic SQLSTATE 22P02 through RabbitMQ/direct-sync fallback or removing the provider from the query; neither repairs schema compatibility.
 - **Role boundary:** FIX-01 corrects source; OPS-01 applies migrations/restarts services and verifies live sync.
+
+
+### FIX-01 / Sentinel — 2026-10-17 — WhatsApp 131047
+- Meta error 131047 with an explicit expired-24-hour-window detail means free-form text was rejected by provider policy. Use an eligible approved template outside the window; do not bypass the rule or retry the same text.
+- Queue acknowledgement is not delivery confirmation. Preserve distinct queued, provider-accepted/sent, delivered, read and failed states.
+- When webhook evidence says failed but UI says sent, trace provider message ID through signed webhook acceptance, organization/account-scoped persistence and UI refresh before modifying code. Route live deployment/database/webhook-delivery diagnosis to OPS-01.
+- Session: `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`; source inspection only, no runtime PASS.
+
+### FIX-01 lesson — WhatsApp display labels (2026-10-17)
+- Treat a user's editable account label as app-owned metadata. Provider verified names are only a fallback; both synchronous API verification and asynchronous worker verification must preserve a non-empty custom label.
+- When a webhook reports `failed` but the UI says `sent`, keep the status incident open until OPS-01 correlates provider webhook HTTP outcome/accepted count with the exact organization/account-scoped row and UI/API response. Do not infer a race or deploy claim without evidence.
+- Source/test commits for label correction: `fd1fda7429363091098825dbf37bba0f30be3d0f`, `7d785b36f2bae90d9d137805e1390fe9ab467550`, `f9bc5ec1cc793fb69c3b2a5a7d26e8d1cf00d5fb`. Tests and deployment have not been verified.
+
+### 2026-10-17 — FIX-01 — Chat provider override fallback
+- A saved per-agent provider override must still be resolved when `organization_ai_runtime_settings` has no row. Organization defaults are inherited values, not a prerequisite for reading `agent_ai_settings` and saved provider credentials.
+- The source correction at `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0` supplies safe defaults and continues provider resolution. A missing-org-row branch was a concrete source defect, but the live database condition remains unconfirmed; OPS-01 must verify actual row/config state and the serving revision.
+- Never add an OpenAI key to mask a provider-selection error when the agent explicitly selects Sarvam/Gemini. Queue/build/container health is not evidence of a successful model request. Test/deployment remain unverified.
+
+
+### FIX-01 / Sentinel — 2026-10-18 — Nullable membership at chat tool-context boundary
+- **Issue/symptom:** Next.js production build compiled JavaScript successfully but failed type validation at `apps/web/src/app/api/chat/stream/route.ts:384`: `subject.membership` may be null while building the trusted `ToolContext`.
+- **Root cause:** The shared `AuthSubject` contract allows a nullable membership. The `authorize()` implementation guarantees active membership on success, but TypeScript cannot infer that stronger invariant through the shared return type.
+- **Failed approaches:** Do not default a missing role to `member`/another role, cast away nullability, or weaken `authorize()`. Those approaches can conceal an authorization invariant and weaken fail-closed behavior. Do not route this source type error to OPS-01.
+- **Remedy:** Add an explicit 403 fail-closed membership guard immediately after `authorize()`, narrowing `subject.membership` before trusted tool context is constructed. Add a regression assertion that the guard precedes `ToolContext` construction.
+- **Prevention:** When a shared auth type is broader than a helper's runtime invariant, narrow at the call site explicitly; don't use a role fallback or unsafe assertion. Keep tenant and role checks intact.
+- **Evidence/status:** Source commits `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9` and `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`. User log confirms worker Docker build succeeded and web build failed only during type checking; the corrected web build and test have not been rerun.
+- **Related record:** ISS-030; `FIX01-CHAT-MEMBERSHIP-NULL-20261018`.
+
+### FIX-01 / Sentinel — 2026-10-18 — WhatsApp synced template row nullability
+
+- **Symptom:** User's Docker deployment build reports Next.js compilation success, then TS18048 at `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts:119`: `synced.rows[0]` may be undefined when reading `.components`.
+- **Root cause:** The existing `if (!synced.rows.length)` guard does not narrow TypeScript's indexed array access under strict checking. The later direct access `synced.rows[0].components` remains unsafe to the type checker.
+- **Failed approach:** Treating a nonzero `rows.length` check as proof that `rows[0]` is narrowed. Do not use a non-null assertion or relax compiler settings.
+- **Remedy:** Bind `synced.rows[0]` to `syncedTemplate`, return the existing fail-closed 409 `template_not_synced` response if absent, then access `syncedTemplate.components`. Added a regression source assertion for the explicit row guard and safe access.
+- **Prevention:** Narrow array elements directly after database writes/RETURNING operations; keep an explicit absent-row response even when a length check is present.
+- **Evidence:** Source commit `90fac5e0774b695446e1e0c3ab51072639ba5f06`; regression test commit `41734923651b1173a703d747f0ac0aa93317a5b9`. User log shows worker image built/exported and web compile succeeded before type validation failed. No post-fix test or build has been run/observed.
+- **Next action:** Pull latest `main` and rerun `bash scripts/update-and-up.sh` (or the documented Docker Compose build). If the build passes, run the focused `whatsapp-send-approval.test.ts` suite. Record actual results; do not infer success from source commits.

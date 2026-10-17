@@ -1,4 +1,4 @@
-import { loadWhatsAppCredential, claimQueuedWhatsAppOutbound, recoverStaleWhatsAppOutbound, markWhatsAppOutboundFailed, markWhatsAppOutboundSent, parseCredentialsMasterKey, recordAuditEvent } from "@ai-comms-agent/db";
+import { loadWhatsAppCredential, claimQueuedWhatsAppOutbound, recoverStaleWhatsAppOutbound, markWhatsAppOutboundFailed, markWhatsAppOutboundSent, parseCredentialsMasterKey, query, recordAuditEvent } from "@ai-comms-agent/db";
 import { getWhatsAppAccountForOrganization, listPendingWhatsAppAccounts, updateWhatsAppAccountStatus } from "@ai-comms-agent/db";
 import { emitProviderEvent } from "../events/provider-events";
 import { isRetryableProviderError } from "../email/retry";
@@ -31,7 +31,7 @@ export async function verifyPendingWhatsAppAccounts(limit = 10) {
       const response = await fetch(url, { headers: { authorization: "Bearer " + token } });
       const payload = (await response.json().catch(() => ({}))) as WhatsAppGraphPayload;
       if (!response.ok) throw new Error(typeof payload?.error?.message === "string" ? payload.error.message : "Meta WhatsApp account verification failed");
-      await updateWhatsAppAccountStatus(account.organization_id, account.id, "connected", null, typeof payload?.display_phone_number === "string" ? payload.display_phone_number : null, typeof payload?.verified_name === "string" ? payload.verified_name : null);
+      await updateWhatsAppAccountStatus(account.organization_id, account.id, "connected", null, typeof payload?.display_phone_number === "string" ? payload.display_phone_number : null, account.display_name ?? (typeof payload?.verified_name === "string" ? payload.verified_name : null));
       await recordAuditEvent({ organizationId: account.organization_id, actorUserId: null, eventType: "whatsapp.account.verified", targetType: "whatsapp_account", targetId: account.id, action: "verify", decision: "allowed" });
     } catch (error) {
       const message = error instanceof Error ? error.message : "WhatsApp verification failed";
@@ -40,6 +40,34 @@ export async function verifyPendingWhatsAppAccounts(limit = 10) {
     }
   }
   return { processed };
+}
+
+function buildWhatsAppOutboundPayload(message: Record<string, any>) {
+  const to = String(message.phone_number ?? "");
+  if (message.message_type !== "template") {
+    const body = String(message.body ?? "");
+    if (!body.trim() || body.length > 4096) throw new Error("WhatsApp text body is empty or exceeds the supported limit");
+    return { messaging_product: "whatsapp", to, type: "text", text: { body } };
+  }
+
+  const media: Record<string, unknown> = message.media && typeof message.media === "object" && !Array.isArray(message.media) ? message.media as Record<string, unknown> : {};
+  const rawTemplate = media.template;
+  const template: Record<string, unknown> | null = rawTemplate && typeof rawTemplate === "object" && !Array.isArray(rawTemplate) ? rawTemplate as Record<string, unknown> : null;
+  const name = typeof template?.name === "string" ? template.name : "";
+  const language = typeof template?.language === "string" ? template.language : "";
+  const parameters = Array.isArray(template?.parameters) ? template.parameters : [];
+  if (!/^[a-z0-9_]{1,512}$/.test(name) || !language || parameters.some((value: unknown) => typeof value !== "string" || value.length > 1024)) {
+    throw new Error("Approved WhatsApp template payload is invalid");
+  }
+  const components = parameters.length
+    ? [{ type: "body", parameters: parameters.map((text: string) => ({ type: "text", text })) }]
+    : undefined;
+  return {
+    messaging_product: "whatsapp",
+    to,
+    type: "template",
+    template: { name, language: { code: language }, ...(components ? { components } : {}) },
+  };
 }
 
 export async function processQueuedWhatsAppMessages(limit = 10) {
@@ -75,15 +103,66 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
     try {
       const account = await getWhatsAppAccountForOrganization(String(message.organization_id), String(message.whatsapp_account_id));
       if (!account) throw new Error("WhatsApp account is unavailable");
+      if (account.status !== "connected") throw new Error("WhatsApp account is no longer connected; outbound was blocked");
+      const actionBinding = await query<{ id: string; agent_id: string | null; agent_binding_required: boolean; status: string }>(
+        "SELECT id,agent_id,agent_binding_required,status FROM whatsapp_send_actions WHERE organization_id=$1 AND correlation_id=$2 LIMIT 1",
+        [String(message.organization_id), String(message.correlation_id ?? "")],
+      );
+      const approvalAction = actionBinding.rows[0];
+      if (!approvalAction || !["approved", "queued"].includes(approvalAction.status)) {
+        throw new Error("No active human-approved WhatsApp action is associated with this outbound message; outbound was blocked");
+      }
+      if (approvalAction.agent_binding_required) {
+        const agentId = approvalAction.agent_id;
+        if (!agentId) throw new Error("WhatsApp agent binding no longer exists; outbound was blocked");
+        const currentBinding = await query<{ id: string }>(
+          "SELECT b.agent_id AS id FROM agent_whatsapp_accounts b JOIN agents a ON a.id=b.agent_id AND a.organization_id=$1 WHERE b.agent_id=$2 AND b.whatsapp_account_id=$3 LIMIT 1",
+          [String(message.organization_id), agentId, String(message.whatsapp_account_id)],
+        );
+        if (!currentBinding.rows.length) throw new Error("WhatsApp agent binding was revoked; outbound was blocked");
+      }
       const credential = await loadWhatsAppCredential(account.id, account.organization_id, masterKey);
       const token = typeof credential?.access_token === "string" ? credential.access_token : "";
       if (!token) throw new Error("WhatsApp access token is unavailable");
       const version = process.env.WHATSAPP_GRAPH_API_VERSION || "v23.0";
+      if (message.message_type === "template") {
+        const media: Record<string, unknown> =
+          message.media && typeof message.media === "object" && !Array.isArray(message.media)
+            ? message.media as Record<string, unknown>
+            : {};
+        const rawTemplate = media.template;
+        const template: Record<string, unknown> | null =
+          rawTemplate && typeof rawTemplate === "object" && !Array.isArray(rawTemplate)
+            ? rawTemplate as Record<string, unknown>
+            : null;
+        const templateName = typeof template?.name === "string" ? template.name : "";
+        const templateLanguage = typeof template?.language === "string" ? template.language : "";
+        if (!account.business_account_id || !templateName || !templateLanguage) throw new Error("WhatsApp template payload cannot be verified");
+        const templateUrl = new URL(version + "/" + encodeURIComponent(account.business_account_id) + "/message_templates", GRAPH_HOST + "/");
+        templateUrl.searchParams.set("name", templateName);
+        templateUrl.searchParams.set("fields", "id,name,language,status");
+        const templateResponse = await fetch(templateUrl, { headers: { authorization: "Bearer " + token } });
+        const templatePayload = await templateResponse.json().catch(() => ({})) as { error?: { message?: unknown }; data?: Array<{ id?: unknown; name?: unknown; language?: unknown; status?: unknown }> };
+        const approved = templateResponse.ok && (Array.isArray(templatePayload.data) ? templatePayload.data : []).some((item) => item.name === templateName && item.language === templateLanguage && item.status === "APPROVED");
+        if (!approved) throw new Error("WhatsApp template is not currently approved by Meta; outbound was blocked");
+      } else {
+        const windowCheck = await query<{ id: string }>(
+          `SELECT m.id FROM whatsapp_messages m
+           JOIN whatsapp_contacts c ON c.id=m.contact_id
+           WHERE m.organization_id=$1 AND m.whatsapp_account_id=$2
+             AND c.phone_number=$3 AND m.direction='inbound'
+             AND COALESCE(m.provider_timestamp,m.created_at) >= now() - interval '24 hours'
+           AND COALESCE(m.provider_timestamp,m.created_at) <= now()
+           ORDER BY COALESCE(m.provider_timestamp,m.created_at) DESC LIMIT 1`,
+          [String(message.organization_id), String(message.whatsapp_account_id), String(message.phone_number)],
+        );
+        if (!windowCheck.rows.length) throw new Error("WhatsApp free-form text blocked: no inbound customer message within Meta's 24-hour window");
+      }
       const url = new URL(version + "/" + encodeURIComponent(account.phone_number_id) + "/messages", GRAPH_HOST + "/");
       const response = await fetch(url, {
         method: "POST",
         headers: { authorization: "Bearer " + token, "content-type": "application/json" },
-        body: JSON.stringify({ messaging_product: "whatsapp", to: String(message.phone_number), type: "text", text: { body: String(message.body ?? "") } }),
+        body: JSON.stringify(buildWhatsAppOutboundPayload(message)),
       });
       const payload = (await response.json().catch(() => ({}))) as WhatsAppGraphPayload;
       if (!response.ok) throw new Error(typeof payload?.error?.message === "string" ? payload.error.message : "Meta WhatsApp API request failed");
@@ -115,11 +194,18 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
         });
         continue;
       }
+      await query("UPDATE whatsapp_send_actions SET status='sent', queued_message_id=COALESCE(queued_message_id,$3), updated_at=now() WHERE organization_id=$1 AND correlation_id=$2 AND status IN ('approved','queued')", [String(message.organization_id), String(message.correlation_id ?? ""), String(message.id)]);
       await emitProviderEvent({ type: "whatsapp.message.sent", organizationId: String(message.organization_id), messageId: String(message.id), accountId: String(message.whatsapp_account_id), correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { providerMessageId, retryAttempts } });
       await recordAuditEvent({ organizationId: String(message.organization_id), actorUserId: null, eventType: "whatsapp.message.sent", targetType: "whatsapp_message", targetId: String(message.id), action: "send", decision: "allowed", correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { providerMessageId } });
     } catch (error) {
       const messageText = error instanceof Error ? error.message : "WhatsApp send failed";
       const retryable = isRetryableProviderError(error);
+      if (message.id) {
+        const nextActionStatus = messageText.includes("free-form text blocked") || messageText.includes("template is not currently approved")
+          ? "requires_template"
+          : "failed";
+        await query("UPDATE whatsapp_send_actions SET status=$3, queued_message_id=COALESCE(queued_message_id,$4), updated_at=now() WHERE organization_id=$1 AND correlation_id=$2 AND status IN ('approved','queued')", [String(message.organization_id), String(message.correlation_id ?? ""), nextActionStatus, String(message.id)]);
+      }
       await markWhatsAppOutboundFailed(String(message.id), messageText);
       await emitProviderEvent({ type: "whatsapp.message.failed", organizationId: String(message.organization_id), messageId: String(message.id), accountId: String(message.whatsapp_account_id), correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { error: messageText, retryAttempts, retryable } });
       await recordAuditEvent({ organizationId: String(message.organization_id), actorUserId: null, eventType: "whatsapp.message.failed", targetType: "whatsapp_message", targetId: String(message.id), action: "send", decision: "denied", correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { error: messageText } });

@@ -1,280 +1,169 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Clipboard, ExternalLink, KeyRound, Loader2, AlertCircle, Webhook } from "lucide-react";
+import { CheckCircle2, Clipboard, ExternalLink, KeyRound, Loader2, AlertCircle, Webhook, Save, RefreshCw } from "lucide-react";
 
-/**
- * Self-contained WhatsApp webhook setup guide.
- * - Detects the current deployment URL (works on Vercel aliases AND custom
- *   domains like aca.ostechnologies.in — the user's production domain).
- * - Generates random verify_token + app_secret values via Web Crypto.
- * - Copy-to-clipboard buttons for every value the user needs to paste into
- *   Meta Business Suite OR into Vercel env vars.
- * - Live verify check: pings the webhook with hub.mode=subscribe to see
- *   whether WHATSAPP_VERIFY_TOKEN is configured on Vercel.
- */
-export function WhatsAppWebhookSetupGuide() {
-  const [origin, setOrigin] = useState<string>("");
-  const [verifyToken, setVerifyToken] = useState<string>("");
-  const [appSecret, setAppSecret] = useState<string>("");
-  const [copied, setCopied] = useState<string>("");
-  const [verifyStatus, setVerifyStatus] = useState<"unknown" | "checking" | "ok" | "missing_token" | "fail">("unknown");
+export function WhatsAppWebhookSetupGuide({ organizationId, children, onVerifyTokenChange }: { organizationId: string; children?: React.ReactNode; onVerifyTokenChange?: (token: string) => void }) {
+  const [origin, setOrigin] = useState("");
+  const [verifyToken, setVerifyToken] = useState("");
+  const [appSecret, setAppSecret] = useState("");
+  const [appSecretConfigured, setAppSecretConfigured] = useState(false);
+  const [copied, setCopied] = useState("");
+  const [verifyStatus, setVerifyStatus] = useState<"unknown" | "checking" | "ok" | "fail">("unknown");
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setOrigin(window.location.origin);
-      // Pre-seed with random values once on mount so the user has something
-      // to copy immediately.
-      if (!verifyToken) setVerifyToken(generateToken(32));
-      if (!appSecret) setAppSecret(generateToken(24));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setOrigin(window.location.origin);
+    void loadConfig();
+  }, [organizationId]);
 
-  const webhookUrl = useMemo(() => `${origin}/api/whatsapp/webhook`, [origin]);
+  const webhookUrl = useMemo(() => origin ? `${origin}/api/whatsapp/webhook` : "", [origin]);
+
+  async function loadConfig() {
+    try {
+      const r = await fetch(`/api/whatsapp/webhook-config?organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.message ?? "Could not load saved webhook settings.");
+      if (d.verifyToken) { setVerifyToken(d.verifyToken); onVerifyTokenChange?.(d.verifyToken); }
+      setAppSecretConfigured(Boolean(d.appSecretConfigured));
+      if (d.saved) setVerifyStatus("ok");
+      else { const token = generateToken(32); setVerifyToken(token); onVerifyTokenChange?.(token); }
+    } catch {
+      setSavedMsg("Could not load saved settings. Check your connection and try again.");
+    }
+  }
+
+  async function saveConfig() {
+    setSaving(true); setSavedMsg(null);
+    try {
+      const r = await fetch("/api/whatsapp/webhook-config", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ organizationId, verifyToken, appSecret }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.message ?? "Could not save webhook settings.");
+      setAppSecret("");
+      setAppSecretConfigured(true);
+      setSavedMsg("Saved securely. Next, paste the callback URL and verify token into Meta.");
+      setVerifyStatus("ok");
+    } catch (e) {
+      setSavedMsg(e instanceof Error ? e.message : "Could not save webhook settings.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function copyToClipboard(label: string, value: string) {
+    if (!value) return;
     try {
       await navigator.clipboard.writeText(value);
       setCopied(label);
-      setTimeout(() => setCopied(""), 2000);
+      window.setTimeout(() => setCopied(""), 1800);
     } catch {
-      // Fallback: select-and-prompt
-      window.prompt(`Copy this value (${label}):`, value);
+      window.prompt(`Copy ${label}:`, value);
     }
   }
 
   async function checkWebhookConfigured() {
     setVerifyStatus("checking");
     try {
-      // Probe the webhook with a known-wrong token. The route now
-      // distinguishes failure modes:
-      //   503 → WHATSAPP_VERIFY_TOKEN env var is NOT set on the deployment
-      //   401 → env var IS set, but our probe token doesn't match (correct!)
-      //   200 → shouldn't happen with our probe token — indicates route
-      //         logic issue or env var unset and route falling back
-      //   404 → endpoint doesn't exist (deployment issue)
-      //   400 → missing hub.mode=subscribe or hub.challenge (test bug)
-      const probeToken = "PROBE_" + Math.random().toString(36).slice(2);
-      const url = `${webhookUrl}?hub.mode=subscribe&hub.verify_token=${encodeURIComponent(probeToken)}&hub.challenge=test`;
-      const res = await fetch(url, { method: "GET" });
-      if (res.status === 503) {
-        setVerifyStatus("missing_token");
-        return;
-      }
-      if (res.status === 401) {
-        setVerifyStatus("ok");
-        return;
-      }
-      if (res.status === 200) {
-        // The route returned 200 despite a wrong token — means env var is
-        // unset AND route logic is misbehaving. Treat as missing.
-        setVerifyStatus("missing_token");
-        return;
-      }
-      if (res.status === 400 || res.status === 404) {
-        setVerifyStatus("fail");
-        return;
-      }
-      // Any other code → treat as configured (defensive)
-      setVerifyStatus("ok");
+      const url = `${webhookUrl}?hub.mode=subscribe&hub.verify_token=${encodeURIComponent(verifyToken)}&hub.challenge=setup-check`;
+      const res = await fetch(url, { method: "GET", cache: "no-store" });
+      setVerifyStatus(res.status === 200 && (await res.text()) === "setup-check" ? "ok" : "fail");
     } catch {
       setVerifyStatus("fail");
     }
   }
 
-  function regenerateToken() { setVerifyToken(generateToken(32)); }
-  function regenerateSecret() { setAppSecret(generateToken(24)); }
+  function regenerateToken() {
+    const token = generateToken(32);
+    setVerifyToken(token);
+    onVerifyTokenChange?.(token);
+    setVerifyStatus("unknown");
+    setSavedMsg("Token changed. Save the settings and update the token in Meta again.");
+  }
 
   return (
-    <section className="space-y-5 rounded-xl border border-border bg-card p-5 sm:p-6">
-      <div className="flex items-center gap-3">
-        <span className="grid size-9 place-items-center rounded-lg bg-primary text-primary-foreground">
-          <Webhook className="h-4.5 w-4.5" />
-        </span>
+    <section className="space-y-4">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Webhook className="size-5" /></span>
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold tracking-tight">WhatsApp Webhook Setup</h2>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">Three short steps. Copy the values here, save them, then paste them into your Meta app.</p>
+        </div>
+      </div>
+
+      <StepBlock step={1} title="Copy the callback URL">
+        <p className="text-sm leading-5 text-muted-foreground">This is where Meta sends incoming messages. It is filled in automatically for this deployment.</p>
+        <CopyField label="Callback URL" value={webhookUrl} copied={copied} onCopy={copyToClipboard} />
+      </StepBlock>
+
+      <StepBlock step={2} title="Set your verification details">
         <div>
-          <h2 className="text-lg font-semibold">WhatsApp Webhook Setup</h2>
-          <p className="text-sm text-muted-foreground">
-            Configure Meta Business Suite to push inbound WhatsApp messages to your deployment. Follow the steps below in order.
-          </p>
+          <label className="mb-1 block text-xs font-semibold text-muted-foreground">VERIFY TOKEN</label>
+          <div className="flex gap-2">
+            <input aria-label="Webhook verify token" value={verifyToken} onChange={e => { setVerifyToken(e.target.value); onVerifyTokenChange?.(e.target.value); setVerifyStatus("unknown"); }} className="h-10 min-w-0 flex-1 rounded-lg border bg-background px-3 font-mono text-xs" autoComplete="off" />
+            <button type="button" onClick={() => copyToClipboard("Verify token", verifyToken)} className="inline-flex items-center gap-1.5 rounded-lg border px-3 text-xs font-medium"><Clipboard className="size-3.5" />{copied === "Verify token" ? "Copied" : "Copy"}</button>
+            <button type="button" onClick={regenerateToken} title="Generate a new verify token" className="rounded-lg border p-2"><RefreshCw className="size-4" /></button>
+          </div>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">Use the exact same token in this setup and in Meta's Verify Token field.</p>
         </div>
-      </div>
-
-      {/* Status banner */}
-      <div className={`flex items-center gap-2 rounded-md border p-3 text-sm ${verifyStatus === "ok" ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-700" : verifyStatus === "missing_token" || verifyStatus === "fail" ? "border-amber-500/40 bg-amber-500/5 text-amber-700" : "border-border bg-muted/40"}`}>
-        {verifyStatus === "checking" ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : verifyStatus === "ok" ? (
-          <CheckCircle2 className="h-4 w-4" />
-        ) : verifyStatus === "missing_token" || verifyStatus === "fail" ? (
-          <AlertCircle className="h-4 w-4" />
-        ) : (
-          <KeyRound className="h-4 w-4" />
-        )}
-        <span className="flex-1">
-          {verifyStatus === "checking" && "Checking webhook configuration…"}
-          {verifyStatus === "ok" && "WHATSAPP_VERIFY_TOKEN env var is set on the deployment."}
-          {verifyStatus === "missing_token" && "WHATSAPP_VERIFY_TOKEN env var is NOT set on the deployment. Run step 4 below."}
-          {verifyStatus === "fail" && "Could not reach the webhook endpoint. Check the deployment URL."}
-          {verifyStatus === "unknown" && "Click 'Check webhook status' to verify the env vars are set."}
-        </span>
-        <button
-          type="button"
-          onClick={() => void checkWebhookConfigured()}
-          className="rounded-md border border-border bg-background px-3 py-1 text-xs font-medium hover:bg-secondary"
-        >
-          Check webhook status
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-muted-foreground">META APP SECRET</label>
+          <input aria-label="Meta App Secret" type="password" value={appSecret} onChange={e => setAppSecret(e.target.value)} placeholder={appSecretConfigured ? "Saved securely — leave blank to keep current secret" : "Paste from Meta App Dashboard → App settings → Basic"} autoComplete="new-password" className="h-10 w-full rounded-lg border bg-background px-3 font-mono text-xs" />
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{appSecretConfigured ? "A secret is already saved. Enter a new one only if you rotated it." : "Required for signature verification. It is encrypted before storage."}</p>
+        </div>
+        <button type="button" disabled={saving || !verifyToken.trim() || (!appSecret.trim() && !appSecretConfigured)} onClick={() => void saveConfig()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">
+          {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}{saving ? "Saving securely…" : "Save webhook settings"}
         </button>
+        {savedMsg && <p role="status" className={`text-sm leading-5 ${savedMsg.toLowerCase().includes("saved") ? "text-emerald-700" : "text-muted-foreground"}`}>{savedMsg}</p>}
+      </StepBlock>
+
+      <StepBlock step={3} title="Finish setup in Meta, then connect your phone">
+        <ol className="list-decimal space-y-2 pl-5 text-sm leading-5 text-muted-foreground">
+          <li>Open <a href="https://developers.facebook.com/apps/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">Meta for Developers <ExternalLink className="size-3" /></a> and select the app connected to your WhatsApp Business account.</li>
+          <li>Open WhatsApp → Configuration (or Webhooks), paste the Callback URL and Verify Token above, then choose <strong className="text-foreground">Verify and Save</strong>.</li>
+          <li>Subscribe the app to the <code className="rounded bg-muted px-1">messages</code> webhook field. Meta's dashboard labels can vary by app setup.</li>
+          <li>Return here and add the phone details below. The phone remains pending until provider verification succeeds.</li>
+        </ol>
+        <div className="rounded-lg border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">Keep your App Secret and access token private. Do not paste them into support messages or public logs.</div>
+        {children}
+      </StepBlock>
+      <div className={`flex items-start gap-2 rounded-xl border p-3 text-sm ${verifyStatus === "ok" ? "border-emerald-500/30 bg-emerald-500/5" : verifyStatus === "fail" ? "border-amber-500/30 bg-amber-500/5" : "bg-muted/30"}`}>
+        {verifyStatus === "checking" ? <Loader2 className="mt-0.5 size-4 animate-spin" /> : verifyStatus === "ok" ? <CheckCircle2 className="mt-0.5 size-4 text-emerald-600" /> : verifyStatus === "fail" ? <AlertCircle className="mt-0.5 size-4 text-amber-600" /> : <KeyRound className="mt-0.5 size-4 text-muted-foreground" />}
+        <div className="min-w-0 flex-1">
+          <p className="font-medium">{verifyStatus === "checking" ? "Checking your saved token…" : verifyStatus === "ok" ? "Your server accepts the saved verify token" : verifyStatus === "fail" ? "Token check failed" : "Start with the generated values below"}</p>
+          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{verifyStatus === "ok" ? "This confirms the app can answer Meta's verification challenge. It does not confirm that Meta subscriptions are complete." : verifyStatus === "fail" ? "Save the settings first, and confirm this deployment URL is publicly reachable over HTTPS." : "The App Secret is never shown again after saving. You can leave it blank to keep the saved secret."}</p>
+        </div>
+        <button type="button" onClick={() => void checkWebhookConfigured()} disabled={!webhookUrl || !verifyToken || verifyStatus === "checking"} className="shrink-0 rounded-lg border bg-background px-3 py-2 text-xs font-medium disabled:opacity-50">Test token</button>
       </div>
 
-      {/* Step 1: Webhook URL */}
-      <StepBlock step={1} title="Copy your webhook URL">
-        <p className="text-sm text-muted-foreground">
-          This URL receives POST requests from Meta when a customer messages your WhatsApp Business number. It's already live on your deployment — no setup needed on this side.
-        </p>
-        <CopyField label="Webhook URL" value={webhookUrl} copied={copied} onCopy={copyToClipboard} />
-      </StepBlock>
-
-      {/* Step 2: Generate verify token + app secret */}
-      <StepBlock step={2} title="Generate your Verify Token and App Secret">
-        <p className="text-sm text-muted-foreground">
-          Generate two random strings. The <strong>Verify Token</strong> is a shared secret you'll paste into BOTH Meta Business Suite AND the WHATSAPP_VERIFY_TOKEN env var. The <strong>App Secret</strong> comes from your Meta App's dashboard (don't generate it here — see step 3).
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <CopyField
-            label="Verify Token"
-            value={verifyToken}
-            copied={copied}
-            onCopy={copyToClipboard}
-            action={<button type="button" onClick={regenerateToken} className="ml-2 rounded border px-2 py-0.5 text-xs hover:bg-secondary">regenerate</button>}
-          />
-          <CopyField
-            label="App Secret (placeholder)"
-            value={appSecret}
-            copied={copied}
-            onCopy={copyToClipboard}
-            action={<button type="button" onClick={regenerateSecret} className="ml-2 rounded border px-2 py-0.5 text-xs hover:bg-secondary">regenerate</button>}
-            help="Use the App Secret from Meta Business Suite (step 3) — this placeholder is just for completeness."
-          />
-        </div>
-      </StepBlock>
-
-      {/* Step 3: Meta Business Suite navigation */}
-      <StepBlock step={3} title="Configure the webhook in Meta Business Suite">
-        <ol className="space-y-2 text-sm text-muted-foreground">
-          <li>
-            <strong>1.</strong> Open{" "}
-            <a href="https://business.facebook.com/wa/manage/phone" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
-              Meta Business Suite → WhatsApp Manager <ExternalLink className="h-3 w-3" />
-            </a>
-          </li>
-          <li><strong>2.</strong> On the left sidebar: <code className="rounded bg-muted px-1.5 py-0.5">WhatsApp Manager → Configuration → Webhooks</code> (or: <code className="rounded bg-muted px-1.5 py-0.5">Apps → your WhatsApp Business app → Webhooks</code>).</li>
-          <li><strong>3.</strong> Click <strong>Edit</strong> next to the Webhook field.</li>
-          <li><strong>4.</strong> Paste your <strong>Callback URL</strong> (step 1) into the <em>Callback URL</em> field.</li>
-          <li><strong>5.</strong> Paste your <strong>Verify Token</strong> (step 2) into the <em>Verify Token</em> field.</li>
-          <li><strong>6.</strong> Click <strong>Verify and Save</strong>. Meta will send a GET to your webhook with <code>hub.mode=subscribe&hub.verify_token=…</code> — your deployment must respond with 200 + the <code>hub.challenge</code> value. This works automatically once step 4 below is done.</li>
-          <li><strong>7.</strong> After verifying, click <strong>Manage</strong> next to the Webhook field and subscribe to these fields: <code className="rounded bg-muted px-1.5 py-0.5">messages</code>, <code className="rounded bg-muted px-1.5 py-0.5">message_template_status_change</code>, <code className="rounded bg-muted px-1.5 py-0.5">phone_number_quality_update</code>, <code className="rounded bg-muted px-1.5 py-0.5">account_update</code>. (Add <code>message_deliveries</code> + <code>message_reads</code> if you want delivery/read receipts.)</li>
-        </ol>
-        <p className="text-xs text-muted-foreground">
-          💡 Also retrieve your <strong>App Secret</strong> from <code className="rounded bg-muted px-1.5 py-0.5">App settings → Basic → App Secret</code> in the Meta App Dashboard — you'll need it for step 4.
-        </p>
-      </StepBlock>
-
-      {/* Step 4: Vercel env vars */}
-      <StepBlock step={4} title="Set WHATSAPP_VERIFY_TOKEN + WHATSAPP_APP_SECRET on Vercel">
-        <p className="text-sm text-muted-foreground">
-          Meta signs every webhook POST with an HMAC-SHA256 signature using your App Secret. Your deployment verifies that signature to reject spoofed requests. Set both env vars on Vercel:
-        </p>
-        <ol className="space-y-2 text-sm text-muted-foreground">
-          <li><strong>1.</strong> Open{" "}
-            <a href="https://vercel.com/ai-comms-agent/settings/environment-variables" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
-              Vercel → Project Settings → Environment Variables <ExternalLink className="h-3 w-3" />
-            </a>
-          </li>
-          <li><strong>2.</strong> Add two new variables:</li>
-        </ol>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <CopyField label="Key 1" value="WHATSAPP_VERIFY_TOKEN" copied={copied} onCopy={copyToClipboard} help="Set Value to the Verify Token from step 2. Environment = Production + Preview." />
-          <CopyField label="Key 2" value="WHATSAPP_APP_SECRET" copied={copied} onCopy={copyToClipboard} help="Set Value to the App Secret from Meta App Dashboard. Environment = Production + Preview." />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          💡 After saving both env vars, Vercel will auto-redeploy. Wait ~1 min, then click "Check webhook status" above — it should turn green.
-        </p>
-      </StepBlock>
-
-      {/* Step 5: Connect a WhatsApp number */}
-      <StepBlock step={5} title="Connect a WhatsApp Business number">
-        <p className="text-sm text-muted-foreground">
-          Once the webhook is verified by Meta (step 3) and env vars are set (step 4), connect a WhatsApp Business number to your account above. Inbound messages will start flowing into the messages list automatically.
-        </p>
-      </StepBlock>
     </section>
   );
 }
 
 function StepBlock({ step, title, children }: { step: number; title: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-3 rounded-md border border-border bg-background p-4">
-      <div className="flex items-center gap-2">
-        <span className="grid size-6 place-items-center rounded-full bg-foreground text-[11px] font-bold text-background">{step}</span>
-        <h3 className="text-sm font-semibold">{title}</h3>
-      </div>
-      {children}
-    </div>
-  );
+  return <div className="space-y-3 rounded-xl border p-4 sm:p-5">
+    <div className="flex items-center gap-2"><span className="grid size-7 shrink-0 place-items-center rounded-full bg-foreground text-xs font-bold text-background">{step}</span><h3 className="text-sm font-semibold">{title}</h3></div>
+    {children}
+  </div>;
 }
 
-function CopyField({
-  label,
-  value,
-  copied,
-  onCopy,
-  action,
-  help,
-}: {
-  label: string;
-  value: string;
-  copied: string;
-  onCopy: (label: string, value: string) => void;
-  action?: React.ReactNode;
-  help?: string;
-}) {
-  const isCopied = copied === label;
-  return (
-    <div>
-      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>
-      <div className="mt-1 flex items-stretch gap-2">
-        <input
-          readOnly
-          value={value}
-          className="flex-1 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs font-mono"
-          onFocus={(e) => e.currentTarget.select()}
-        />
-        <button
-          type="button"
-          onClick={() => onCopy(label, value)}
-          className={`flex items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition ${
-            isCopied ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-700" : "border-border bg-background hover:bg-secondary"
-          }`}
-        >
-          {isCopied ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Clipboard className="h-3.5 w-3.5" />}
-          {isCopied ? "Copied" : "Copy"}
-        </button>
-        {action}
-      </div>
-      {help ? <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{help}</p> : null}
+function CopyField({ label, value, copied, onCopy }: { label: string; value: string; copied: string; onCopy: (label: string, value: string) => void }) {
+  return <div>
+    <label className="mb-1 block text-xs font-semibold text-muted-foreground">{label.toUpperCase()}</label>
+    <div className="flex gap-2">
+      <input readOnly aria-label={label} value={value} onFocus={e => e.currentTarget.select()} className="h-10 min-w-0 flex-1 rounded-lg border bg-muted/30 px-3 font-mono text-xs" />
+      <button type="button" onClick={() => onCopy(label, value)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium">{copied === label ? <CheckCircle2 className="size-3.5" /> : <Clipboard className="size-3.5" />}{copied === label ? "Copied" : "Copy"}</button>
     </div>
-  );
+  </div>;
 }
 
 function generateToken(bytes: number): string {
   const arr = new Uint8Array(bytes);
-  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-    crypto.getRandomValues(arr);
-  } else {
-    for (let i = 0; i < bytes; i++) arr[i] = Math.floor(Math.random() * 256);
-  }
-  // Base64url — safe for URLs and env vars
+  crypto.getRandomValues(arr);
   let bin = "";
   for (const b of arr) bin += String.fromCharCode(b);
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");

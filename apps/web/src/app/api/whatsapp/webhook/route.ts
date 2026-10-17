@@ -1,5 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { applyWhatsAppProviderStatus, getWhatsAppAccountByPhoneNumberId, insertWhatsAppInboundMessage, listAgentsForWhatsAppAccount, recordWhatsAppWebhookEvent, upsertWhatsAppContact } from "@ai-comms-agent/db";
+import { applyWhatsAppProviderStatus, findWhatsAppAccountByVerifyToken, getWhatsAppAccountByPhoneNumberId, listWhatsAppAccountsForOrganization, insertWhatsAppInboundMessage, listAgentsForWhatsAppAccount, loadWhatsAppCredential, parseCredentialsMasterKey, recordWhatsAppWebhookEvent, upsertWhatsAppContact } from "@ai-comms-agent/db";
 
 export const dynamic = "force-dynamic";
 
@@ -7,8 +7,9 @@ function signatureValid(raw: string, signature: string | null, secret: string) {
   if (!signature?.startsWith("sha256=")) return false;
   const expected = createHmac("sha256", secret).update(raw).digest("hex");
   const actual = signature.slice("sha256=".length);
+  if (!/^[a-f0-9]{64}$/i.test(actual)) return false;
   if (actual.length !== expected.length) return false;
-  return timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
+  return timingSafeEqual(Buffer.from(actual, "hex"), Buffer.from(expected, "hex"));
 }
 
 export async function GET(request: Request) {
@@ -16,28 +17,85 @@ export async function GET(request: Request) {
   const mode = url.searchParams.get("hub.mode");
   const token = url.searchParams.get("hub.verify_token");
   const challenge = url.searchParams.get("hub.challenge");
-  // Distinguish failure modes so the in-app setup guide can tell the user
-  // whether they need to set env vars on Vercel vs. fix their Meta App config.
   if (mode !== "subscribe" || !challenge) {
     return new Response("Bad Request — missing hub.mode=subscribe or hub.challenge", { status: 400 });
   }
-  if (!process.env.WHATSAPP_VERIFY_TOKEN) {
-    return new Response("Service Unavailable — WHATSAPP_VERIFY_TOKEN env var is not set on the deployment.", { status: 503 });
+  // DB-backed verify token: check against whatsapp_accounts.verify_token.
+  // This eliminates the need for WHATSAPP_VERIFY_TOKEN env var — the token
+  // is set per-account from the WhatsApp settings page when connecting.
+  // Falls back to env var for backwards compatibility (if no DB account
+  // has a matching verify_token).
+  if (token) {
+    const account = await findWhatsAppAccountByVerifyToken(token);
+    if (account) {
+      return new Response(challenge, { status: 200, headers: { "content-type": "text/plain" } });
+    }
   }
-  if (token !== process.env.WHATSAPP_VERIFY_TOKEN) {
-    return new Response("Unauthorized — verify_token does not match WHATSAPP_VERIFY_TOKEN env var.", { status: 401 });
+  // Backwards-compat fallback: env var (for deployments that haven't migrated
+  // to DB-stored verify tokens yet).
+  if (process.env.WHATSAPP_VERIFY_TOKEN && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+    return new Response(challenge, { status: 200, headers: { "content-type": "text/plain" } });
   }
-  return new Response(challenge, { status: 200, headers: { "content-type": "text/plain" } });
+  return new Response("Unauthorized — verify_token not found. Set the Verify Token in the WhatsApp settings page when connecting your phone.", { status: 401 });
 }
 
 export async function POST(request: Request) {
   const raw = await request.text();
-  const appSecret = process.env.WHATSAPP_APP_SECRET;
-  if (!appSecret || !signatureValid(raw, request.headers.get("x-hub-signature-256"), appSecret)) {
+  let payload: any;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    return new Response("Bad Request", { status: 400 });
+  }
+
+  // Always verify Meta's signature before processing events. If an environment
+  // secret is not configured, load the encrypted organization webhook secret.
+  // Parsing JSON above has no side effects; event writes happen only after HMAC
+  // verification succeeds.
+  let appSecret = process.env.WHATSAPP_APP_SECRET ?? "";
+  if (!appSecret) {
+    const masterKeyRaw = process.env.CREDENTIALS_MASTER_KEY;
+    if (masterKeyRaw) {
+      try {
+        const masterKey = parseCredentialsMasterKey(masterKeyRaw);
+        // Resolve the real phone number first, then load the webhook secret from
+        // that same organization. The pseudo-account is not a real phone and
+        // must never be selected globally across tenants.
+        let organizationId: string | null = null;
+        let resolvedAccount: { id: string; organization_id: string } | null = null;
+        for (const entry of Array.isArray(payload?.entry) ? payload.entry : []) {
+          for (const change of Array.isArray(entry?.changes) ? entry.changes : []) {
+            const phoneNumberId = typeof change?.value?.metadata?.phone_number_id === "string" ? change.value.metadata.phone_number_id : "";
+            if (!phoneNumberId) continue;
+            const account = await getWhatsAppAccountByPhoneNumberId(phoneNumberId);
+            if (account) { organizationId = account.organization_id; resolvedAccount = account; break; }
+          }
+          if (organizationId) break;
+        }
+        if (organizationId) {
+          const configAccount = (await listWhatsAppAccountsForOrganization(organizationId)).find((account) => account.phone_number_id === "__webhook_config__");
+          if (configAccount) {
+            const credential = await loadWhatsAppCredential(configAccount.id, organizationId, masterKey);
+            appSecret = typeof credential?.app_secret === "string" ? credential.app_secret : "";
+          }
+        }
+        // Backward compatibility: older setups may have saved the App Secret
+        // with the phone's encrypted credential instead of webhook settings.
+        if (!appSecret && resolvedAccount) {
+          const credential = await loadWhatsAppCredential(resolvedAccount.id, resolvedAccount.organization_id, masterKey);
+          appSecret = typeof credential?.app_secret === "string" ? credential.app_secret : "";
+        }
+      } catch (error) {
+        console.error("[whatsapp/webhook] Could not load saved signature secret:", error instanceof Error ? error.message : "unknown error");
+      }
+    }
+  }
+  if (!appSecret) {
+    return new Response("Webhook signature verification is not configured", { status: 503 });
+  }
+  if (!signatureValid(raw, request.headers.get("x-hub-signature-256"), appSecret)) {
     return new Response("Forbidden", { status: 403 });
   }
-  let payload: any;
-  try { payload = JSON.parse(raw); } catch { return new Response("Bad Request", { status: 400 }); }
   const payloadHash = createHash("sha256").update(raw).digest("hex");
   const entries = Array.isArray(payload?.entry) ? payload.entry : [];
   let accepted = 0;

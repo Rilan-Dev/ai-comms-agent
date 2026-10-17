@@ -72,7 +72,7 @@ function evaluatePolicy(
 | `forward_email` | `always_ask` |
 | `delete_email` | `never_allow` |
 | `bulk_modify` | `always_ask` (when count > 10) / `auto_approve` (when count <= 10) |
-| `send_whatsapp_message` | `always_ask` for new contacts / `auto_approve` for known contacts (within 24h window) |
+| `send_whatsapp_message` | `always_ask` for every outbound request; free-form text only within the 24-hour window, approved Meta template otherwise |
 | All safe intents | `auto_approve` |
 
 ### 2.2 Per-organization overrides
@@ -85,7 +85,7 @@ Stored in `organizations.policy_jsonb`:
     "email.send": "always_ask",
     "email.forward": "always_ask",
     "email.delete": "never_allow",
-    "whatsapp.send": "auto_approve_for_known_contacts"
+    "whatsapp.send": "always_ask"
   },
   "conditions": {
     "email.send": {
@@ -99,6 +99,8 @@ Stored in `organizations.policy_jsonb`:
 ```
 
 If an organization's policy is not set, defaults apply.
+
+WhatsApp sends cannot be auto-approved by contact familiarity. The agent tool only creates a pending approval action. Approval rechecks the connected account and agent binding; free-form text requires a recent inbound customer message, and sends outside that window require a template currently reported as approved by Meta. The worker repeats the time-window/template-status and binding checks immediately before provider submission.
 
 ### 2.3 Per-agent overrides
 

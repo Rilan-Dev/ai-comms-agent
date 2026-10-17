@@ -113,3 +113,31 @@ The authentication loop was traced to session issuance preceding active organiza
 - A similarly named enum such as email_account_provider does not update email_provider; change the exact type referenced by the failing column.
 - Prefer a forward-only migration and a source regression assertion. Do not remove supported provider values from polling queries to silence the error.
 - Distinguish deterministic source/schema errors from separate subscription prerequisites and deployment/runtime evidence. Migration execution and live sync remain OPS-01 verification.
+
+
+### FIX-01 / Sentinel — 2026-10-17 — WhatsApp error 131047
+- Meta error 131047 with the explicit 24-hour-window explanation means free-form text was rejected as an out-of-window re-engagement message. Use an eligible approved template or wait for a customer reply; never bypass Meta policy.
+- Queue acknowledgement is not delivery confirmation. Treat queued/provider-accepted/sent/delivered/read/failed as distinct states.
+- If the UI contradicts a supplied failed webhook event, trace the exact provider message ID through webhook response, tenant/account-scoped persistence, and UI refresh before changing code. Route live deployment/database/webhook-delivery issues to OPS-01.
+
+### FIX-01 / Sentinel — 2026-10-17 — Chat provider override fallback
+- The per-agent AI configuration feature must not require an `organization_ai_runtime_settings` row before reading `agent_ai_settings` and `ai_provider_configs`. A missing org-default row previously caused `organizationAIConfig` to return null and silently use the environment default (OpenAI), bypassing a saved Sarvam/Gemini override.
+- Preserve the distinction between source cause and runtime confirmation: verify the live org row and serving revision before claiming this explains a particular deployment.
+- Do not add a default OpenAI key to mask incorrect provider selection. Regression source test: `apps/web/tests/clara-agent-provider-resolution.test.ts`; source fix `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0`. Tests/deployment remain unverified.
+
+
+### FIX-01 / Sentinel — 2026-10-18 — Nullable membership at chat tool-context boundary
+- `AuthSubject.membership` is nullable in the shared type even though `authorize()` only returns after `requireOrganizationMember()` has found an active membership. TypeScript still requires narrowing at the caller.
+- Small safe fix: immediately after `authorize()`, explicitly return 403 if membership is absent; then construct `ToolContext.auth_subject.role` from the narrowed membership. Never default the role or cast away nullability.
+- Add regression protection for guard-before-context ordering. Static test source is not test execution; keep build/test status pending until rerun evidence arrives.
+- Commits: `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9`, `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`.
+
+### FIX-01 / Sentinel — 2026-10-18 — WhatsApp synced template row nullability
+
+- **Symptom:** User's Docker deployment build reports Next.js compilation success, then TS18048 at `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts:119`: `synced.rows[0]` may be undefined when reading `.components`.
+- **Root cause:** The existing `if (!synced.rows.length)` guard does not narrow TypeScript's indexed array access under strict checking. The later direct access `synced.rows[0].components` remains unsafe to the type checker.
+- **Failed approach:** Treating a nonzero `rows.length` check as proof that `rows[0]` is narrowed. Do not use a non-null assertion or relax compiler settings.
+- **Remedy:** Bind `synced.rows[0]` to `syncedTemplate`, return the existing fail-closed 409 `template_not_synced` response if absent, then access `syncedTemplate.components`. Added a regression source assertion for the explicit row guard and safe access.
+- **Prevention:** Narrow array elements directly after database writes/RETURNING operations; keep an explicit absent-row response even when a length check is present.
+- **Evidence:** Source commit `90fac5e0774b695446e1e0c3ab51072639ba5f06`; regression test commit `41734923651b1173a703d747f0ac0aa93317a5b9`. User log shows worker image built/exported and web compile succeeded before type validation failed. No post-fix test or build has been run/observed.
+- **Next action:** Pull latest `main` and rerun `bash scripts/update-and-up.sh` (or the documented Docker Compose build). If the build passes, run the focused `whatsapp-send-approval.test.ts` suite. Record actual results; do not infer success from source commits.

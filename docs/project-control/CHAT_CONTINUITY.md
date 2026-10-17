@@ -177,3 +177,29 @@ User-run output: email action contract 8/8 passed; migration verification 85/86 
 
 ## 2026-10-10 follow-up
 User reran focused tests: scheduling idempotency passes; IMAP multiple-literal test failed because regex `/BODY\[\] {5}/` interprets `{5}` as quantifier rather than literal marker. Corrected both marker regexes in commit b87d5bc804331470a280bf54ee020b463a186d5f. User's local lockfile inspection found duplicate headers at lines 2 and 159, and `git status` shows tracked `pnpm-lock.yaml` modified plus four untracked backup artifacts. GitHub branch lockfile has a single header pair. Next: pull latest, run focused IMAP test; inspect `git diff -- pnpm-lock.yaml`, preserve backups, restore tracked lockfile to HEAD if it is only the accidental duplicate document, then rerun migration verification. No claim of full suite or deployment success.
+
+
+## 2026-10-17 continuation — host tool loop and WhatsApp approval path
+
+Interactive chat now calls the host-authorized tool loop with server-derived organization/user/role/permissions. Tool definitions are limited by the current agent allowlist and the authenticated actor's permissions. The loop is bounded and keeps host-supplied mailbox context explicitly untrusted.
+
+WhatsApp outbound paths (manual API/UI, the agent whatsapp.send tool, and scheduled/product actions) now create pending approval records. The whatsapp.send tool never queues directly. The approval UI supports approve/reject, Meta template submission/status refresh, and template preview. Free-form text requires a recent inbound customer message within the 24-hour window; approved text-body templates are rechecked live at approval and worker send time. The worker also requires an active approved action, a connected account, and a current agent/account binding for agent-originated requests. Unsupported template components fail closed.
+
+Feature RBAC additions: email.read, whatsapp.read, whatsapp.send. Migrations added: 0035–0040 (approval records, templates, outcomes, feature permissions, agent-binding recheck). Regression tests were authored, including a behavioral test for the proposal-only tool.
+
+Verification remains pending: no tests/typecheck/build/migrations/browser/Meta/live-send/deployment checks were run. The web route currently imports worker runtime modules directly; review this boundary in the next dependency-equipped checkout. Continue from docs/project-control/NEXT_ACTION.md and VERIFICATION_STATE.md; do not claim provider delivery from an approval or queue response.
+
+
+## 2026-10-18 — FIX-01 chat membership nullability
+
+The user's Docker build evidence showed worker image success but web type validation failure at `route.ts:384` because `subject.membership` is nullable in the shared auth type. `authorize()` guarantees active membership in its implementation, but TypeScript requires local narrowing. FIX-01 committed an explicit fail-closed 403 guard before trusted tool context creation and a static regression assertion: `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9`, `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`. Post-fix build/test are pending. Native shell pnpm absence is separate and routed to OPS-01; Docker already had pnpm.
+
+### FIX-01 / Sentinel — 2026-10-18 — WhatsApp synced template row nullability
+
+- **Symptom:** User's Docker deployment build reports Next.js compilation success, then TS18048 at `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts:119`: `synced.rows[0]` may be undefined when reading `.components`.
+- **Root cause:** The existing `if (!synced.rows.length)` guard does not narrow TypeScript's indexed array access under strict checking. The later direct access `synced.rows[0].components` remains unsafe to the type checker.
+- **Failed approach:** Treating a nonzero `rows.length` check as proof that `rows[0]` is narrowed. Do not use a non-null assertion or relax compiler settings.
+- **Remedy:** Bind `synced.rows[0]` to `syncedTemplate`, return the existing fail-closed 409 `template_not_synced` response if absent, then access `syncedTemplate.components`. Added a regression source assertion for the explicit row guard and safe access.
+- **Prevention:** Narrow array elements directly after database writes/RETURNING operations; keep an explicit absent-row response even when a length check is present.
+- **Evidence:** Source commit `90fac5e0774b695446e1e0c3ab51072639ba5f06`; regression test commit `41734923651b1173a703d747f0ac0aa93317a5b9`. User log shows worker image built/exported and web compile succeeded before type validation failed. No post-fix test or build has been run/observed.
+- **Next action:** Pull latest `main` and rerun `bash scripts/update-and-up.sh` (or the documented Docker Compose build). If the build passes, run the focused `whatsapp-send-approval.test.ts` suite. Record actual results; do not infer success from source commits.

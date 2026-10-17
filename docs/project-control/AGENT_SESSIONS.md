@@ -647,3 +647,53 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - PR #27 was merged at its earlier partial commit; subsequent source work is carried by draft PR #28: https://github.com/Rilan-Dev/ai-comms-agent/pull/28.
 - Current source includes OpenAI/Gemini voice paths, Clara-derived Sarvam/ElevenLabs WebSocket relay source, shared email tool runtime and approval-gated send/reply/forward requests.
 - OPS-01 relay deployment remains outstanding. Provider-backed mark-read/archive/move/trash/attachment handlers are intentionally unregistered. No tests/typecheck/build/browser/provider/approval/deployment verification has been run. Issue #26 remains open.
+### SESSION-070 — 2026-10-17
+- Agent: FIX-01 / Sentinel
+- Task: Investigate WhatsApp queued-but-not-delivered message after Meta webhook reports error 131047.
+- Root cause: Meta rejected free-form text because the 24-hour customer-service window expired; use an approved template or wait for customer reply.
+- Recent idempotency commits were reviewed and found unrelated to this provider-policy rejection.
+- Follow-up: UI still showed “sent” despite the supplied failed webhook payload. Exact live webhook-to-row-to-UI path remains unverified; OPS-01 owns deployed runtime/database/webhook evidence.
+- Record: `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`.
+- Verification: source inspection and user-supplied payload only; no tests or live send verification.
+
+### SESSION-FIX01-CHAT-PROVIDER-20261017
+- **Agent:** FIX-01 / Sentinel
+- **Issue:** Saved per-agent Sarvam override ignored under missing organization-defaults-row branch; chat falls back to OpenAI and errors when no OpenAI key is configured.
+- **Source correction:** `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0`.
+- **Regression test:** `apps/web/tests/clara-agent-provider-resolution.test.ts`; authored, not run.
+- **OPS-01 handoff:** `HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017` OPEN.
+- **Session evidence:** `docs/project-control/sessions/FIX01-CHAT-PROVIDER-OVERRIDE-20261017.md`.
+
+
+### SESSION-DEV01-CHAT-WHATSAPP-TOOL-APPROVAL-20261017
+- **Agent:** DEV-01 / Forge
+- **Scope:** Interactive chat host-authorized tool loop; WhatsApp send approval, Meta templates, RBAC, and scheduled action bypass closure.
+- **Source status:** Implemented on main; whatsapp.send creates pending approval only.
+- **Verification:** Tests/typecheck/build/migrations/browser/Meta/deployment not run. No PASS claimed.
+- **Session evidence:** docs/project-control/sessions/DEV01-CHAT-WHATSAPP-TOOL-APPROVAL-20261017.md
+- **Next:** Focused tests/typechecks, migration application, Next.js worker-import boundary review, and live Meta verification. Do not wait on CI/Vercel polling to continue independent development.
+
+
+### SESSION-FIX01-CHAT-MEMBERSHIP-NULL-20261018
+- **Agent:** FIX-01 / Sentinel
+- **Invocation:** Recover current main, shared/role-local memory, authorization, issues and verification; trace recent commits and fix the web production-build membership nullability error.
+- **Started from:** `main`, after worker fixes `acc0745e` / `de44d06c` and verification note `e0b0d02c`.
+- **Scope:** Small source correction, regression protection, governance/evidence records. No unrelated implementation.
+- **Status:** HANDOFF — source fix committed; post-fix build/test pending.
+- **Completed:** Traced TS failure to nullable `AuthSubject.membership`; added fail-closed 403 guard before constructing trusted chat tool context; added static regression assertion.
+- **Commits:** `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9`; `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`.
+- **Pending:** Pull latest main; rerun Docker Compose build; run focused `chat-host-tool-loop.test.ts` with the repo test command if available; update verification from actual output.
+- **Blockers:** No post-fix build/test output yet. Native host shell lacks pnpm; Docker build environment has it.
+- **Handoff:** OPS-01 only for host pnpm/toolchain availability, not the source type error.
+- **Next action:** Rebuild from latest main and report exact result; continue fixing source if new compiler errors appear.
+
+
+### FIX01-WHATSAPP-TEMPLATE-ROW-20261018 — 2026-10-18
+- Agent: FIX-01 / Sentinel
+- Invocation: Fix the next web production-build strict nullability error in WhatsApp template approval after tracing the reported failure.
+- Started from: main after chat membership source correction.
+- Scope: Minimal route correction, regression protection, and project-control records.
+- Status: SOURCE FIX COMMITTED; post-fix build/test pending.
+- Finding: `synced.rows.length` does not narrow `synced.rows[0]` for strict indexed access.
+- Commits: `90fac5e0774b695446e1e0c3ab51072639ba5f06`; `41734923651b1173a703d747f0ac0aa93317a5b9`.
+- Next: Pull latest main, rebuild, run `whatsapp-send-approval.test.ts`, and update verification with real output.

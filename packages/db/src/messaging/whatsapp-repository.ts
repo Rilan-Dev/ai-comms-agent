@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { query, withTransaction } from "../client";
 import { decryptCredential, encryptCredential } from "../security";
 
@@ -24,13 +25,40 @@ export async function getWhatsAppAccountForOrganization(organizationId: string, 
   return r.rows[0] ? mapAccount(r.rows[0]) : null;
 }
 
-export async function createOrUpdateWhatsAppAccount(input: { organizationId: string; accountId?: string; businessAccountId?: string | null; phoneNumberId: string; phoneNumber?: string | null; displayName?: string | null; capabilities?: Record<string, boolean>; status?: "pending" | "connected" | "error" | "disconnected" | "revoked"; createdBy: string; }) {
-  const existing = input.accountId ? await getWhatsAppAccountForOrganization(input.organizationId, input.accountId) : null;
+export async function createOrUpdateWhatsAppAccount(input: { organizationId: string; accountId?: string; businessAccountId?: string | null; phoneNumberId: string; phoneNumber?: string | null; displayName?: string | null; capabilities?: Record<string, boolean>; status?: "pending" | "connected" | "error" | "disconnected" | "revoked"; createdBy: string; verifyToken?: string; }) {
+  // Look up by accountId OR by phone_number_id. The phone_number_id column
+  // has a GLOBAL UNIQUE constraint — if a previous account with the same
+  // phone_number_id exists (even soft-deleted), INSERT would fail with
+  // 23505 "duplicate key value violates unique constraint". By looking up
+  // by phone_number_id first, we UPDATE the existing row instead of
+  // INSERTing a duplicate.
+  let existing = input.accountId ? await getWhatsAppAccountForOrganization(input.organizationId, input.accountId) : null;
+  if (!existing && input.phoneNumberId) {
+    // Check for an existing account with the same phone_number_id in this org
+    // (including soft-deleted ones — we'll restore them).
+    const r = await query<Row>(
+      "SELECT * FROM whatsapp_accounts WHERE phone_number_id = $1 AND organization_id = $2 LIMIT 1",
+      [input.phoneNumberId, input.organizationId],
+    );
+    if (r.rows[0]) {
+      // Restore a soft-deleted account: clear deleted_at, update fields
+      existing = mapAccount(r.rows[0]);
+    }
+  }
   if (existing) {
-    const r = await query<Row>("UPDATE whatsapp_accounts SET business_account_id = $1, phone_number_id = $2, phone_number = $3, display_name = $4, capabilities = $5::jsonb, status = $6, last_error = NULL, connected_at = CASE WHEN $6 = 'connected' THEN now() ELSE connected_at END WHERE id = $7 AND organization_id = $8 AND deleted_at IS NULL RETURNING *", [input.businessAccountId ?? null, input.phoneNumberId, input.phoneNumber ?? null, input.displayName ?? null, JSON.stringify(input.capabilities ?? { send_text: true, receive_text: true }), input.status ?? "pending", input.accountId, input.organizationId]);
+    const values: unknown[] = [input.businessAccountId ?? null, input.phoneNumberId, input.phoneNumber ?? null, input.displayName ?? null, JSON.stringify(input.capabilities ?? { send_text: true, receive_text: true }), input.status ?? "pending"];
+    let setClause = "business_account_id = $1, phone_number_id = $2, phone_number = $3, display_name = $4, capabilities = $5::jsonb, status = $6, last_error = NULL, deleted_at = NULL, connected_at = CASE WHEN $6 = 'connected' THEN now() ELSE connected_at END";
+    if (input.verifyToken) {
+      values.push(input.verifyToken);
+      setClause += `, verify_token = $${values.length}`;
+    }
+    values.push(existing.id, input.organizationId);
+    const r = await query<Row>(`UPDATE whatsapp_accounts SET ${setClause} WHERE id = $${values.length - 1} AND organization_id = $${values.length} RETURNING *`, values);
     return r.rows[0] ? mapAccount(r.rows[0]) : null;
   }
-  const r = await query<Row>("INSERT INTO whatsapp_accounts (organization_id, business_account_id, phone_number_id, phone_number, display_name, capabilities, status, created_by) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8) RETURNING *", [input.organizationId, input.businessAccountId ?? null, input.phoneNumberId, input.phoneNumber ?? null, input.displayName ?? null, JSON.stringify(input.capabilities ?? { send_text: true, receive_text: true }), input.status ?? "pending", input.createdBy]);
+  // Generate a verify_token if not provided — use a random UUID-based token
+  const verifyToken = input.verifyToken || randomUUID().replace(/-/g, "");
+  const r = await query<Row>("INSERT INTO whatsapp_accounts (organization_id, business_account_id, phone_number_id, phone_number, display_name, capabilities, status, verify_token, created_by) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9) RETURNING *", [input.organizationId, input.businessAccountId ?? null, input.phoneNumberId, input.phoneNumber ?? null, input.displayName ?? null, JSON.stringify(input.capabilities ?? { send_text: true, receive_text: true }), input.status ?? "pending", verifyToken, input.createdBy]);
   return r.rows[0] ? mapAccount(r.rows[0]) : null;
 }
 
@@ -61,6 +89,20 @@ export async function listWhatsAppMessagesForOrganization(organizationId: string
 export async function getWhatsAppAccountByPhoneNumberId(phoneNumberId: string) {
   const r = await query<Row>("SELECT * FROM whatsapp_accounts WHERE phone_number_id = $1 AND deleted_at IS NULL LIMIT 1", [phoneNumberId]);
   return r.rows[0] ? mapAccount(r.rows[0]) : null;
+}
+
+// Check a webhook verify token against ALL whatsapp_accounts in the DB.
+// Returns the matching account if found, null otherwise.
+// Used by the webhook GET route to verify Meta's subscription ping
+// WITHOUT requiring WHATSAPP_VERIFY_TOKEN env var — the token is stored
+// per-account in the whatsapp_accounts.verify_token column.
+export async function findWhatsAppAccountByVerifyToken(token: string) {
+  if (!token) return null;
+  const r = await query<Row>(
+    "SELECT id, organization_id, phone_number_id, verify_token FROM whatsapp_accounts WHERE verify_token = $1 AND deleted_at IS NULL LIMIT 1",
+    [token],
+  );
+  return r.rows[0] ? { id: String(r.rows[0].id), organization_id: String(r.rows[0].organization_id), phone_number_id: String(r.rows[0].phone_number_id) } : null;
 }
 
 export async function recordWhatsAppWebhookEvent(input: { organizationId: string; accountId: string; providerEventId?: string | null; eventType: string; payloadHash: string; payload: Record<string, unknown> }) {
@@ -130,21 +172,37 @@ export async function completeWhatsAppInbound(messageId: string, status: "comple
   return r.rows.length > 0;
 }
 
-export async function queueWhatsAppOutboundMessage(input: { organizationId: string; accountId: string; contactId?: string | null; to: string; body: string; idempotencyKey: string; correlationId?: string | null }) {
+export async function queueWhatsAppOutboundMessage(input: {
+  organizationId: string;
+  accountId: string;
+  contactId?: string | null;
+  to: string;
+  body: string;
+  idempotencyKey: string;
+  correlationId?: string | null;
+  messageType?: "text" | "template";
+  media?: Record<string, unknown>;
+}) {
   const contactId = input.contactId ?? await upsertWhatsAppContact({ organizationId: input.organizationId, accountId: input.accountId, phoneNumber: input.to });
+  const messageType = input.messageType ?? "text";
+  const media = input.media ?? {};
   const r = await query<Row>(
-    "INSERT INTO whatsapp_messages (organization_id, whatsapp_account_id, contact_id, direction, message_type, body, status, idempotency_key, correlation_id) VALUES ($1,$2,$3,'outbound','text',$4,'queued',$5,$6) ON CONFLICT (organization_id, idempotency_key) DO NOTHING RETURNING id",
-    [input.organizationId, input.accountId, contactId, input.body, input.idempotencyKey, input.correlationId ?? null],
+    "INSERT INTO whatsapp_messages (organization_id, whatsapp_account_id, contact_id, direction, message_type, body, media, status, idempotency_key, correlation_id) VALUES ($1,$2,$3,'outbound',$4,$5,$6::jsonb,'queued',$7,$8) ON CONFLICT (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING RETURNING id",
+    [input.organizationId, input.accountId, contactId, messageType, input.body, JSON.stringify(media), input.idempotencyKey, input.correlationId ?? null],
   );
   if (r.rows[0]?.id) return String(r.rows[0].id);
 
   const existing = await query<Row>(
-    "SELECT whatsapp_account_id, contact_id, body FROM whatsapp_messages WHERE organization_id = $1 AND idempotency_key = $2 AND direction = 'outbound' LIMIT 1",
-    [input.organizationId, input.idempotencyKey],
+    "SELECT whatsapp_account_id, contact_id, body, message_type, media, media = $3::jsonb AS media_matches FROM whatsapp_messages WHERE organization_id = $1 AND idempotency_key = $2 AND direction = 'outbound' LIMIT 1",
+    [input.organizationId, input.idempotencyKey, JSON.stringify(media)],
   );
   const row = existing.rows[0];
   if (!row) throw new Error("WhatsApp idempotency conflict could not be resolved");
-  if (String(row.whatsapp_account_id) !== input.accountId || String(row.contact_id) !== String(contactId) || String(row.body ?? "") !== input.body) {
+  if (String(row.whatsapp_account_id) !== input.accountId
+    || String(row.contact_id) !== String(contactId)
+    || String(row.body ?? "") !== input.body
+    || String(row.message_type ?? "text") !== messageType
+    || row.media_matches !== true) {
     throw new Error("Idempotency key already exists for a different WhatsApp payload");
   }
   return row.id ? String(row.id) : null;

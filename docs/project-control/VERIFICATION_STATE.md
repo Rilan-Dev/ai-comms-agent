@@ -1429,3 +1429,49 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Not verified:** Static test execution, typecheck, migration execution against PostgreSQL, worker build/restart, cessation of SQLSTATE 22P02, Microsoft Graph subscription configuration, mailbox sync, and persisted-message counts.
 - **Status:** SOURCE_CORRECTED / RUNTIME_VERIFICATION_PENDING. No PASS claimed.
 - **Owner / next action:** OPS-01 applies migrations through the normal process, rebuilds/restarts the worker from matching source, inspects sanitized logs, and verifies sync timestamps and persisted messages. Keep the subscription-prerequisite warning separate from the enum defect.
+
+## FIX-01 — Chat provider override incident (2026-10-17)
+- **Source state:** Correction committed to `main` at `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0`; per-agent provider lookup now continues if org runtime-defaults row is absent.
+- **Regression:** Static test authored at `apps/web/tests/clara-agent-provider-resolution.test.ts`, commits `d9e6c619320390c5290c04d29d30187a6838736f` and `c0e0a31e788ecd24e6af89f42e4f67f5100b7c73`.
+- **Not verified:** Test execution, typecheck, web build, live database row state, provider HTTP call, deployed revision, and successful chat response.
+- **Owner/next:** OPS-01 confirms deployment and tenant-scoped configuration metadata, rebuilds/restarts using the existing manual procedure, and tests one Sarvam chat request. Do not claim PASS until the model call succeeds and logs show the intended provider without exposing secrets.
+- **Session/handoff:** `docs/project-control/sessions/FIX01-CHAT-PROVIDER-OVERRIDE-20261017.md`; `HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017` OPEN.
+
+
+## DEV01-CHAT-WHATSAPP-TOOLS-20261017 — verification status
+
+- **Source changes:** Interactive chat now calls the bounded host-authorized tool loop with authenticated server context. WhatsApp history is read-only; whatsapp.send is registered only as a proposal tool that inserts a pending approval action and does not queue directly.
+- **Approval and template source:** Migrations 0035_whatsapp_send_approvals.sql, 0036_whatsapp_templates.sql, 0037_whatsapp_send_action_outcomes.sql, 0038_whatsapp_feature_permissions.sql, 0039_email_read_tool_permission.sql, and 0040_whatsapp_agent_binding_recheck.sql; organization-scoped approval queue/decision APIs; Meta template submit/status refresh API; approval UI; worker-time 24-hour inbound-window, connected-account, active approval-action, live template-status, and agent/account-binding checks; supported text-body template delivery. Manual, agent-tool, and scheduled/product outbound paths all create approval actions. Media/dynamic-header/button templates fail closed.
+- **Regression source:** apps/web/tests/chat-host-tool-loop.test.ts, apps/web/tests/whatsapp-send-approval.test.ts, and updated apps/worker/tests/whatsapp-tool-runtime.test.ts, apps/worker/tests/whatsapp-send-tool.test.ts, apps/web/tests/cross-surface-product-contract.test.ts, and apps/web/tests/rbac.test.ts.
+- **Not verified:** Tests, typecheck, lint, web/worker build, migration execution, Next.js worker-runtime import boundary, approval UI in browser, Meta template submission/status API, approval races, actual provider sends, and deployment.
+- **Status:** SOURCE_IMPLEMENTED / VERIFICATION_PENDING. No PASS claimed; queue acceptance or approval is not proof of provider delivery.
+- **Next:** Run focused tests/typechecks when available, apply migrations through the normal process, then exercise free-form send inside the customer-service window and an approved text-body template outside it against Meta. Keep whatsapp.send proposal-only and verify the worker's provider-confirmed status before claiming delivery.
+
+### 2026-10-17 — Local Docker worker build failure triage
+
+- **Reported by local checkout:** worker TypeScript build failed in whatsapp-tool-runtime.ts (optional template row narrowing, generic Tool variance, and authorization callback parameter typo) and whatsapp-worker.ts (template payload object narrowing). The web build was canceled by Docker Compose after the worker target failed.
+- **Source corrections committed to main:** guarded the selected template row, cast concrete tools at the non-generic registry boundary, renamed the authorization callback parameter to the actual input value, and explicitly narrowed the worker template payload to Record<string, unknown>.
+- **Verification:** fixes are source-readback verified only. Docker build has not been rerun after these corrections; do not claim the worker/web builds pass. Pull latest main and rerun the worker build first, then rebuild web/compose.
+
+### 2026-10-17 — Follow-up worker build failure triage
+
+- **Reported by local checkout after pulling `d74a083c`:** worker TypeScript build still failed in `product-action-executor.ts` because the WhatsApp approval result used unsupported `message` instead of the shared `ProductActionResult.reason` field; `whatsapp-worker.ts` had a second template-payload narrowing site not covered by the earlier correction.
+- **Source corrections committed to main:** `acc0745e399e907eb479d95b4d80f53543ac462e` uses the shared `reason` field; `de44d06ce1496c8f1a5e985cea03b24b149e0d1b` explicitly narrows the second media/template payload to `Record<string, unknown>`.
+- **Verification:** source changes committed; worker build has not been rerun here. Pull latest `main` and rerun `pnpm --filter @ai-comms-agent/worker build`. If further errors appear, continue fixing the compiler output; do not infer a passing build from source readback.
+
+
+### 2026-10-18 — FIX-01 chat membership nullability build failure
+
+- **User-provided evidence:** `docker compose -f infra/docker-compose.manual.yml up -d --build` built the worker image successfully. The web image's Next.js 15.5.27 compilation succeeded, then type validation failed at `apps/web/src/app/api/chat/stream/route.ts:384`: `subject.membership` is possibly null. Separately, native shell `pnpm --filter ...` returned `pnpm: command not found`; this does not explain the Docker build failure because the Docker build uses Corepack/pnpm.
+- **Root cause:** `authorize()` rejects missing/inactive memberships at runtime, but the shared `AuthSubject` type permits nullable membership; chat route accessed `subject.membership.role` without narrowing.
+- **Correction:** Commit `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9` adds an explicit 403 fail-closed guard after authorization. Commit `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9` adds a regression source assertion requiring the guard before trusted `ToolContext` construction.
+- **Verification status:** Source readback confirms the commits; post-fix web build, focused test execution, migrations, browser, and deployed runtime are NOT VERIFIED. Do not mark the build green based on the patch alone.
+- **Next action:** Pull latest `main`, rerun `docker compose -f infra/docker-compose.manual.yml up -d --build`, then run the focused web regression test when pnpm is available. Route only the missing native-host pnpm/toolchain to OPS-01.
+
+
+### 2026-10-18 — FIX-01 WhatsApp template row nullability build failure
+
+- **User-provided evidence:** `bash scripts/update-and-up.sh` fetched latest main (already up to date), built the worker image, and completed Next.js compilation. Web type validation failed at `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts:119` because `synced.rows[0]` may be undefined.
+- **Root cause/correction:** The existing array length check did not narrow indexed access. Commits `90fac5e0774b695446e1e0c3ab51072639ba5f06` and `41734923651b1173a703d747f0ac0aa93317a5b9` bind/guard the returned template row and add a regression source assertion.
+- **Verification status:** Post-fix build and focused test NOT RUN / NOT VERIFIED. User log establishes only pre-fix failure and worker build success.
+- **Next action:** Pull latest main and rerun `bash scripts/update-and-up.sh`; if build passes, run `pnpm --filter @ai-comms-agent/web exec vitest run tests/whatsapp-send-approval.test.ts` in an environment with pnpm. Do not mark green without actual output.

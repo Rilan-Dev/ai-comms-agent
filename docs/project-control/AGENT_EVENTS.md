@@ -37,6 +37,16 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Suggested next action:** <concrete action>
 - **Related records:** <paths / issue ids / commits>
 
+### EVT-FIX01-WHATSAPP-IDEMPOTENCY-20261017 — 2026-10-17
+- **Agent/session:** FIX-01 / Sentinel — WhatsApp outbound 42P10 correction
+- **Type:** CORRECTION / ROUTE
+- **Summary:** User-provided production logs show POST /api/whatsapp/messages returning internal_server_error because PostgreSQL raises SQLSTATE 42P10 for ON CONFLICT (organization_id, idempotency_key). Source migration 0004 declares whatsapp_messages_idempotency_uniq as a partial unique index with WHERE idempotency_key IS NOT NULL, while queueWhatsAppOutboundMessage omitted that predicate in its conflict target. Corrected the INSERT conflict target to match the partial index and added a static regression test.
+- **Impact:** outbound WhatsApp queueing blocked at database insert.
+- **Owner:** FIX-01 for source correction and regression; OPS-01 for deployed database/index confirmation, image rollout and live send verification.
+- **Evidence:** Source commit ea8c19cfd9e235319323ed1bb7345e0395f5534e; regression source commit 4243afe7748d43ae371c06315f85d47f249cc814; OPS-01 issue #33. Source inspected; test execution and live runtime verification not performed.
+- **Security/reliability:** Preserve organization authorization, connected-account guard, and idempotency semantics. If the partial unique index is absent in production, the SQL correction alone is insufficient; OPS-01 must inspect the exact DB schema.
+- **Next:** OPS-01 deploys matching source, confirms the index exists in the web container's DB, then verifies queueing, worker processing, provider result and duplicate-key behavior. Do not claim live send success from container health or HTTP 202 alone.
+
 <!-- Append new events above this marker. -->
 
 ### EVT-FIX01-AUTH-20261009 — 2026-10-09
@@ -375,3 +385,77 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - EVT-FIX01-VOICE-RELAY-SOURCE-20261016: Added isolated provider WebSocket relay source and client adapters for Sarvam STT/TTS and ElevenLabs Scribe/TTS, with HMAC bootstrap, short-lived session token, origin allowlist and usage telemetry. Shared email runtime is wired into voice; send/reply/forward remain explicit approval requests. Relay deployment and runtime verification remain outstanding.
 
 - EVT-FIX01-VOICE-PR-CONTINUATION-20261016: PR #27 merged only its earlier partial commit; the subsequent multi-provider relay and shared email runtime work is in draft PR #28. Issue #26 remains open pending deployment, provider-backed missing actions and runtime evidence.
+
+### EVT-FIX01-WHATSAPP-PENDING-20261017 — 2026-10-17
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** CORRECTION / ROUTE
+- **Summary:** Investigated user report that deployed WhatsApp account remains pending and outbound POST returns `provider_not_connected`. Current main source already saves credentials encrypted, calls Meta Graph API for the phone-number resource, persists `connected` on success or `error` on provider rejection, and intentionally gates outbound queueing on persisted connected status. UI already has account edit state, saved-token preservation, verification retry, Meta test-phone shortcut, and a test action positioned later in setup guidance. The deployed cause is not provable from source alone: deployment drift, database/status persistence mismatch, or a real Meta token/permission/phone-number-ID issue remain possible.
+- **Impact:** cross-agent
+- **Owner:** OPS-01 for deployed commit/database/provider evidence; FIX-01 for any proven source defect and regression protection.
+- **Evidence:** Source inspection of `apps/web/src/app/api/whatsapp/accounts/route.ts`, `apps/web/src/app/api/whatsapp/messages/route.ts`, `apps/web/src/app/whatsapp/whatsapp-client.tsx`; commits `e606c914bf23b63afe69c6bdea9ed1f3cb01533b`, `d55a3b14adcc594e128348df80d81ac95c614ad2`, `82d22e52904cbc6fda8e84be0437cc1079e1f07f`, `64afd328c4ea429a6175ab296d9d208b9b9190c1`, `dfd65f3855c77cee2958af332f5bf9a3493887de`. OPS-01 issue: https://github.com/Rilan-Dev/ai-comms-agent/issues/32. Investigation record: `docs/project-control/sessions/FIX01-WHATSAPP-PENDING-20261017.md`.
+- **Security:** Do not bypass the connected-state guard or disable webhook challenge verification. The user-provided cookie-like token is exposed and should be revoked/rotated; never reproduce it.
+- **Verification:** Source inspection only. No tests, live Meta API request, deployed commit inspection, database/log access, browser E2E, or deployment check performed. No runtime PASS claimed.
+- **Next:** OPS-01 identifies the serving commit, verifies the correct organization/account row and status persistence, and records redacted Meta error details. FIX-01 makes the smallest source correction and targeted regression test only if evidence proves a source defect.
+
+
+### EVT-FIX01-WHATSAPP-131047-20261017 — 2026-10-17
+- **Agent/session:** FIX-01 / Sentinel — WhatsApp provider rejection
+- **Type:** DIAGNOSIS / ROUTE
+- **Summary:** User-supplied Meta webhook reports outbound message failed with code 131047; details explicitly say more than 24 hours elapsed since customer last replied. This is a provider policy rejection of free-form text, not a queue insertion defect.
+- **Related source:** `apps/worker/src/messaging/whatsapp-worker.ts`, `apps/web/src/app/api/whatsapp/webhook/route.ts`, `packages/db/src/messaging/whatsapp-repository.ts`.
+- **Recent commits reviewed:** `ea8c19cfd9e235319323ed1bb7345e0395f5534e` and `4243afe7748d43ae371c06315f85d47f249cc814` fix the separate 42P10 idempotency conflict-target issue; they do not fix 131047.
+- **Remedy:** Use an approved template outside the 24-hour window, or send free-form text while the window is active. No source policy bypass authorized.
+- **Follow-up:** UI showed “sent” despite a supplied failed status payload. Live webhook-to-row-to-UI propagation is not proven; OPS-01 must inspect deployed revision, webhook delivery/response, scoped DB status/error, and provider message ID. FIX-01 adds regression coverage once the mismatch is isolated.
+- **Verification:** Source inspection and user-supplied payload only. No tests or live runtime checks executed. No delivery PASS claimed.
+- **Security:** User-provided cookie-like access token must be revoked/rotated; never record the value.
+- **Session:** `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`
+
+### EVT-FIX01-WHATSAPP-LABEL-STATUS-20261017 — 2026-10-17
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** SOURCE CORRECTION / OPS ROUTE
+- **Summary:** Fixed the WhatsApp account label overwrite: after Graph API verification, Meta's `verified_name` was overwriting the user's custom `display_name`. Main now preserves the custom label and uses Meta's name only as a fallback. Added a focused static regression test.
+- **Commits:** source `fd1fda7429363091098825dbf37bba0f30be3d0f`; regression test `79f0e6a12511afaa07249005d24e6e50fc3c7d2b`; investigation record `86e4627b15a8c21d36a1035856d6fc0a66c32580`.
+- **Status discrepancy:** Last observed production revision was `0e355bc75df6ab6c41ac619050be561faeb7c3e7` (deployment `dpl_5zjzPd6V3uBGuMK2LppXqsRTkirK`). Historical runtime logs are unavailable beyond Vercel Hobby retention; available grouped errors are older account-save DB constraints and do not identify the exact message. Live row and webhook response could not be accessed, so no source cause for the `sent` vs `failed` mismatch is asserted.
+- **Owner:** OPS-01 for deployed revision, redacted webhook delivery/HTTP response/accepted count, exact scoped row and UI comparison. FIX-01 resumes only if evidence isolates a source defect.
+- **Verification:** Regression test authored, not run. Post-fix deployment not confirmed. No live status PASS claimed.
+- **Session:** `docs/project-control/sessions/FIX01-WHATSAPP-DISPLAY-STATUS-20261017.md`.
+
+### EVT-FIX01-WHATSAPP-LABEL-SECOND-CALLSITE-20261017 — 2026-10-17
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** SOURCE CORRECTION / REGRESSION
+- **Summary:** Follow-up inspection found the worker's pending-account verifier also wrote Meta's `verified_name` over the app's custom display label. Updated it to preserve `account.display_name` first and expanded the regression test to cover both the API and worker paths.
+- **Commits:** worker `7d785b36f2bae90d9d137805e1390fe9ab467550`; updated test `f9bc5ec1cc793fb69c3b2a5a7d26e8d1cf00d5fb`.
+- **Verification:** Test authored but not run; deployment not confirmed.
+
+### EVT-FIX01-CHAT-PROVIDER-OVERRIDE-20261017 — 2026-10-17
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** SOURCE DEFECT / OPS VERIFICATION
+- **Symptom:** Chat API reports missing OpenAI key although the agent's saved chat override is Sarvam; web container logs repeat the same error.
+- **Root cause:** In `packages/clara-core/src/runtime.ts`, `organizationAIConfig` returned null before querying agent overrides whenever `organization_ai_runtime_settings` had no row. Runtime then fell back to environment selection (OpenAI by default), bypassing saved agent override/provider credentials.
+- **Remedy:** Use safe defaults when the organization defaults row is absent so per-agent settings and provider config resolution still execute. Source commit `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0`. Static regression test `apps/web/tests/clara-agent-provider-resolution.test.ts` commits `d9e6c619320390c5290c04d29d30187a6838736f` and `c0e0a31e788ecd24e6af89f42e4f67f5100b7c73`.
+- **Evidence limit:** The source branch is confirmed; the exact live database condition is not. OPS-01 must check whether the organization-default row exists and confirm deployed revision/config rows. Tests/build/deployment not verified.
+- **Owner next:** OPS-01 for container/deployment/database/runtime verification; FIX-01 resumes if a source defect remains after the patched revision is serving.
+- **Session:** `docs/project-control/sessions/FIX01-CHAT-PROVIDER-OVERRIDE-20261017.md`.
+
+
+### EVT-FIX01-CHAT-MEMBERSHIP-NULL-20261018
+- **Agent/session:** FIX-01 / Sentinel; `FIX01-CHAT-MEMBERSHIP-NULL-20261018`
+- **Type:** SOURCE DEFECT / TYPECHECK FAILURE
+- **Symptom:** Docker web build failed after successful Next.js compilation at `apps/web/src/app/api/chat/stream/route.ts:384`, TS nullable access `subject.membership.role`.
+- **Root cause:** Shared `AuthSubject` exposes nullable membership although the successful `authorize()` path guarantees active membership. Call-site type was not narrowed.
+- **Remedy:** Explicit fail-closed 403 guard immediately after `authorize()`; regression source assertion verifies the guard precedes trusted tool-context creation. Commits: `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9`, `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`.
+- **Failed approaches avoided:** No default role, null assertion, auth weakening, or broad type redesign. Source issue is not an OPS-01 infrastructure defect.
+- **Verification:** User log shows worker image built; web compilation succeeded but typecheck failed before the patch. Post-patch build/test pending.
+- **Separate environment note:** Native host shell returned `pnpm: command not found`; Docker build environment has Corepack/pnpm and built the worker. Route host toolchain availability to OPS-01 if native commands are required.
+- **Next:** Pull latest main and rebuild Docker web/worker. Keep runtime PASS unclaimed until build and focused regression test are actually run.
+
+
+### EVT-FIX01-WHATSAPP-TEMPLATE-ROW-20261018
+- **Agent/session:** FIX-01 / Sentinel; `FIX01-WHATSAPP-TEMPLATE-ROW-20261018`
+- **Type:** SOURCE DEFECT / TYPECHECK FAILURE
+- **Symptom:** Docker web build's Next.js compile passed, then TS18048 failed at `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts:119` because `synced.rows[0]` may be undefined.
+- **Root cause:** The `rows.length` check does not narrow indexed array access.
+- **Remedy:** Local row binding + explicit fail-closed 409 guard, then safe component access. Added source regression assertion. Commits `90fac5e0774b695446e1e0c3ab51072639ba5f06`, `41734923651b1173a703d747f0ac0aa93317a5b9`.
+- **Failed approaches avoided:** No non-null assertion, cast, compiler relaxation, or template policy change.
+- **Verification:** Source committed; post-fix build/test pending. Worker build and pre-fix web failure are user-provided evidence.
+- **Next:** Rebuild latest main and run the focused WhatsApp approval test; update state from actual output.

@@ -42,3 +42,47 @@ Cross-agent handoff register. A handoff transfers context, not authority.
 - Commit: `197e6535eab0cafde3e84db8f0605b7a174b3b03`
 - Change: require an active organization membership before creating a login session; return explicit 403 for unprovisioned accounts; add regression protection.
 - Remaining runtime action: deploy/restart the commit in the affected environment and verify a provisioned account reaches the application shell. Do not wait for CI/Vercel; runtime verification remains OPS-01 scope.
+
+
+### HOF-FIX01-WHATSAPP-STATUS-20261017
+- **From:** FIX-01 / Sentinel
+- **To:** OPS-01 / live runtime investigation
+- **State:** OPEN — runtime evidence required
+- **Symptom:** Meta webhook payload for the attempted outbound message reports `failed`, error 131047 (24-hour customer-service window expired), while the conversation UI displayed `sent`.
+- **Confirmed provider cause:** free-form text is not permitted outside the 24-hour window; use an approved template or wait for a customer reply. No source policy bypass is authorized.
+- **OPS-01 action:** Identify serving commit; inspect redacted webhook HTTP status/body and accepted count; trace exact provider message ID in the organization/account-scoped row including status/provider_error; verify UI refresh/state mapping. Do not expose tokens or message secrets in logs.
+- **FIX-01 boundary:** After runtime evidence isolates a source defect, add the smallest status-persistence/UI correction and regression test. Do not claim live delivery based on queue acknowledgement.
+- **Evidence record:** `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`.
+
+### HOF-FIX01-OPS-WHATSAPP-DISPLAY-STATUS-20261017
+- **From:** FIX-01 / Sentinel
+- **To:** OPS-01 / Shipwright
+- **Reason:** Continue live runtime investigation of WhatsApp provider status mismatch; confirm the custom display-name fix reaches the serving revision.
+- **Repository state:** `main`; source fix `fd1fda7429363091098825dbf37bba0f30be3d0f`; regression test `79f0e6a12511afaa07249005d24e6e50fc3c7d2b`. Last observed pre-fix production deployment `dpl_5zjzPd6V3uBGuMK2LppXqsRTkirK` served `0e355bc75df6ab6c41ac619050be561faeb7c3e7`.
+- **Work completed:** Identified and corrected the display-name overwrite: account verification was persisting Meta's `verified_name` over the user-entered label. Added a static regression test. Inspected the provider-status webhook and scoped DB update contract. Vercel's available runtime-error summary only exposed older Oct 10–11 DB constraint failures; runtime logs for the relevant historic window are not retained, and the exact live DB row was not accessible.
+- **Remaining work:** Confirm current deployed revision. For provider message ID `wamid.HBgMOTE5NjI5NTM0NzAxFQIAERgSMjgzMTY2RjQxODQ5NTE4OTlDAA==` (Meta phone number ID `1321845321014373`, failure code `131047`), inspect redacted Meta webhook delivery details and server request record; record HTTP status/body and `accepted` count. Query only the relevant organization/account row and compare provider message ID, status, provider error, and updated_at with the API GET response and UI. Correct deployment/database/environment only if evidence establishes that cause. If the row is failed but the UI renders sent, hand the isolated source defect to FIX-01.
+- **Evidence/records:** `docs/project-control/sessions/FIX01-WHATSAPP-DISPLAY-STATUS-20261017.md`; `apps/web/src/app/api/whatsapp/accounts/route.ts`; `apps/web/src/app/api/whatsapp/webhook/route.ts`; `packages/db/src/messaging/whatsapp-repository.ts`; test `apps/web/tests/whatsapp-account-display-name.test.ts`.
+- **Authorization:** Existing user request authorizes diagnosis and smallest corrective fix. OPS-01 must confirm its deployment/infrastructure scope before changing runtime or database configuration.
+- **Stop condition:** Stop when serving revision and row/webhook/UI status are reconciled, or record the precise external access/retention blocker. Never expose tokens or cross-tenant rows; do not weaken HMAC or tenant scoping.
+- **Status:** OPEN
+
+### HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017
+- **From:** FIX-01 / Sentinel
+- **To:** OPS-01 / Shipwright
+- **Reason:** Verify the live chat provider-selection failure and deploy/runtime boundary after a minimal source correction.
+- **Evidence:** User reports `POST /api/chat/stream` fails with `AI provider openai is not configured` despite Sarvam chat override. User's web container logs show the same; worker health says database and credentials master key are configured. The chat route passes orgId and agentId into `claraRuntime.createChatTurn`.
+- **Source fix:** `packages/clara-core/src/runtime.ts` no longer returns early when `organization_ai_runtime_settings` is absent; it supplies safe defaults and continues to resolve per-agent overrides and saved provider credentials. Commit `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0`. Test authored at `apps/web/tests/clara-agent-provider-resolution.test.ts`; commits `d9e6c619320390c5290c04d29d30187a6838736f`, `c0e0a31e788ecd24e6af89f42e4f67f5100b7c73`.
+- **Required runtime trace:** Confirm serving revision separately for `aca.starcitytechnical.com` and self-hosted `infra-web-1`. In the correct organization scope inspect only: presence of org runtime settings row; agent row's chat_provider/chat_model; Sarvam `purpose='chat'` provider row enabled and key-present metadata. Never log/decrypt/print secrets.
+- **Action:** Rebuild/restart via existing manual deployment procedure from revision containing `8d7aecc`, then make one sanitized test request and confirm the selected provider is Sarvam. If org row exists, diagnose missing/disabled provider config or stale build. Fix infra/env/database/deploy issues within OPS-01 scope.
+- **Authorization:** User explicitly authorized root-cause investigation and the smallest source correction. Do not add OpenAI key as a workaround or weaken authorization.
+- **Verification:** Regression test not run; no build or live request verified. Status OPEN.
+
+
+### HOF-FIX01-OPS-HOST-PNPM-20261018
+- **Owner:** OPS-01 / Shipwright
+- **Type:** Environment/toolchain handoff (separate from source fix)
+- **Symptom:** User's host shell reports `bash: pnpm: command not found` when running `pnpm --filter @ai-comms-agent/worker build`. The subsequent Docker build shows Corepack/pnpm available inside the image and the worker image successfully built.
+- **Scope:** Determine whether native host pnpm is intended/needed in this environment; if so, make the repository-supported Corepack/pnpm command available without altering application source or lockfile. Do not conflate this with the web TypeScript error.
+- **Authorization:** User explicitly instructed CI/CD, deployment, infrastructure, and environment defects to be routed to OPS-01.
+- **Evidence limit:** No installation or host change attempted by FIX-01. Docker worker build success is user-provided evidence; native toolchain state is not otherwise inspected.
+- **Next:** OPS-01 may advise/use the repository's documented Node/Corepack setup. FIX-01 independently corrected the web source type error; rebuild from latest main to verify it.

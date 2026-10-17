@@ -264,11 +264,12 @@ Per Phase 3 correction Finding C: Phase 3 implements the identity and organizati
 **Feature-domain permissions (deferred to feature phases):**
 - `agent.read`, `agent.write`, `agent.deploy` — introduced in Phase 11 (Agent runtime)
 - `email_account.read`, `email_account.write`, `email_account.delete` — introduced in Phase 5/9
+- `email.read` — agent tool access to connected mailbox content, added with the shared interactive tool loop
 - `email.send`, `email.delete`, `email.modify_bulk` — introduced in Phase 12 (Approval system)
-- `messaging.send`, `messaging.read` — introduced in Phase 13 (WhatsApp)
+- `whatsapp.read`, `whatsapp.send` — introduced in Phase 13 (WhatsApp; send permission authorizes only a proposal, with provider delivery gated by human approval)
 - `schedule.read`, `schedule.write` — introduced in Phase 14 (Scheduling)
 
-Feature-domain permissions are introduced with their respective feature phases and must not be treated as missing Phase 3 functionality. The Phase 3 permission catalogue is intentionally limited to identity/organization RBAC foundation permissions.
+Feature-domain permissions are introduced with their respective feature phases and must not be treated as missing Phase 3 functionality. The base Phase 3 identity/organization permission set remains limited to RBAC foundation concerns; feature phases extend the shared TypeScript catalogue and role mapping with their own least-privilege permissions.
 
 **RBAC persistence (Phase 3 correction Finding A — Option A):**
 Phase 3 uses four immutable system roles (`owner`, `admin`, `member`, `viewer`) resolved via the TypeScript `SYSTEM_ROLE_PERMISSIONS` mapping. The persisted `roles` and `role_permissions` tables are deferred to a later phase when custom per-organization roles are introduced. The `permissions` catalogue table is retained as a reference table but is not consulted at runtime — the TypeScript `PERMISSION_CATALOGUE` is the authoritative source.

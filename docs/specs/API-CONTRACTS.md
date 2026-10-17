@@ -140,6 +140,11 @@ This is a Phase 1 document. Exact request/response shapes are validated in Phase
 | POST | `/api/organizations/{org_id}/whatsapp-accounts/{account_id}/send` | Send outbound (manual, not agent — goes through approval policy). |
 | GET | `/api/organizations/{org_id}/whatsapp-accounts/{account_id}/templates` | List templates. |
 | POST | `/api/organizations/{org_id}/whatsapp-accounts/{account_id}/templates` | Submit template for approval. |
+| POST | `/api/whatsapp/messages` | Create a pending outbound send-approval action; does not send immediately. |
+| GET | `/api/whatsapp/send-actions?organizationId=...` | List organization-scoped pending/requires-template actions. |
+| POST | `/api/whatsapp/send-actions/decision` | Authenticated approve/reject; rechecks the 24-hour window and live Meta template status before queueing. |
+| GET | `/api/whatsapp/templates?organizationId=...&accountId=...` | Synchronize current Meta template status and list templates. |
+| POST | `/api/whatsapp/templates` | Submit a template to Meta; approval remains pending until Meta status is confirmed. |
 
 ---
 

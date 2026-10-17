@@ -1,4 +1,25 @@
 ## FIX-01 voice + email action runtime checkpoint — 2026-10-16
+## FIX-01 — Chat membership nullability build correction — 2026-10-18
+
+- User Docker log: worker image built; Next.js web compilation succeeded but type validation failed at `apps/web/src/app/api/chat/stream/route.ts:384` because `subject.membership` may be null.
+- Root cause: shared `AuthSubject` permits nullable membership even though successful `authorize()` calls guarantee an active membership. Caller did not narrow the shared type.
+- Correction on main: explicit fail-closed 403 membership guard after `authorize()`, plus regression assertion requiring the guard before trusted `ToolContext` construction. Commits: `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9`, `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`.
+- Verification remains pending: source changes are committed; no post-fix build/test result yet.
+- **Next:** Pull latest main and rerun `docker compose -f infra/docker-compose.manual.yml up -d --build`. If successful, run the focused chat host-tool-loop test and update this state from actual output. Host shell `pnpm: command not found` is a separate OPS-01 toolchain issue; do not change app source to work around it.
+
+## DEV-01 — Chat tool loop and WhatsApp approval checkpoint — 2026-10-17
+
+- Interactive `/api/chat/stream` now constructs a `ToolContext` from the server-authenticated organization membership, user, role and permissions; it combines only the per-agent allowlisted email/WhatsApp runtime tools, uses the bounded host-authorized invocation path (4 rounds / 8 calls / 10,000-character tool result cap), and preserves host-supplied mailbox context as explicitly untrusted data. Model arguments cannot set tenant, actor or permissions.
+- Added source regression tests for the chat host tool loop, proposal-only send behavior, approval UI, Meta template handling, RBAC, and scheduled-action bypass closure.
+- WhatsApp outbound API requests now create durable `whatsapp_send_actions` proposals instead of queueing sends immediately. Added an organization-scoped approval queue endpoint and authenticated approve/reject endpoint. Approval rechecks the connected account and recent **inbound** customer message; free-form text is queued only inside Meta's 24-hour customer-service window. A free-form text action outside that window transitions to `requires_template`; an approved text-body template is rechecked with Meta at approval and worker send time.
+- Added migrations `0035_whatsapp_send_approvals.sql`, `0036_whatsapp_templates.sql`, `0037_whatsapp_send_action_outcomes.sql`, `0038_whatsapp_feature_permissions.sql`, `0039_email_read_tool_permission.sql`, and `0040_whatsapp_agent_binding_recheck.sql`; added Meta template submission/status sync, supported text-body template delivery, approval queue/decision API, approval UI, worker-time 24-hour and live template-status checks, WhatsApp-specific read/send RBAC for owner/admin/member roles, the email.read feature permission required by host email tools, and send-time agent/account binding rechecks for chat and scheduled product actions. `whatsapp.send` is now registered only as a proposal tool: it creates a pending approval and never directly queues/sends.
+- Known integration risk: the web route imports the existing worker runtimes directly; validate the Next.js monorepo build/import boundary during normal verification and extract a dedicated shared runtime package if the build configuration rejects this dependency direction.
+- Verification boundary: source changes only. Tests, typecheck, build, migration execution, browser approval UI, Meta API, and deployed behavior have **not** been run or verified. Do not claim a send succeeded from an approval or queue response; only provider-confirmed message state establishes delivery progress.
+- Next: run focused web/worker tests and typechecks when available; review the Next.js import boundary for worker runtime imports; apply migrations through the normal deployment process; verify template submission/status refresh and a complete human-approved text/template send against Meta. Keep `whatsapp.send` proposal-only and do not claim delivery before provider confirmation. Do not wait for CI/Vercel polling to continue independent implementation.
+
+---
+
+## FIX-01 realtime voice implementation checkpoint — 2026-10-16
 
 - Reference reviewed: `Rilan-Dev/Clara-AI-Platform` branch `feature/ai-core-from-doable-source`, including realtime hooks, provider relays and session negotiation.
 - Native voice source now covers OpenAI WebRTC, Gemini Live WebSocket with a constrained ephemeral token, and provider-specific Sarvam/ElevenLabs realtime STT/TTS WebSocket client adapters.
@@ -1248,3 +1269,64 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Not wired:** Chat route, voice runtime, worker startup, or vector outbox remain unchanged until FIX-01 closes ISS-026. Do not bypass this security gate.
 - **Not executed:** tests/typechecks/lint/build/live Clara/Qdrant checks are not run; all checks remain source-authored only.
 - **Next:** continue source review; when a dependency-equipped environment is available, run targeted tests and typechecks. After FIX-01 closes ISS-026, connect the same service through the trusted Chat and realtime voice tool path and activate the outbox adapter only after API verification. OPS-01 owns live Qdrant setup, ingestion, isolation evidence and latency/correctness acceptance.
+
+
+## FIX-01 follow-up — WhatsApp provider status mismatch (2026-10-17)
+- **Confirmed:** Meta error 131047 means the 24-hour customer-service window expired; free-form text must not be sent in that state. Use an eligible approved template or wait for a customer reply.
+- **Pending:** UI showed `sent` despite a supplied failed webhook payload. OPS-01 should inspect the serving revision, webhook delivery/HTTP response, provider-message-ID match, persisted status/error and UI refresh using redacted evidence.
+- **FIX-01 next:** Add a focused regression test and source correction only if that trace proves a code defect. Do not change Meta policy handling, weaken authorization, or treat queued=true as delivery.
+- **Session record:** `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`.
+
+## FIX-01 / OPS-01 — WhatsApp label and status follow-up (2026-10-17)
+- **Source fix committed:** WhatsApp account save now preserves the user's custom display label after Meta verification; Meta's `verified_name` is a fallback only. Test added at `apps/web/tests/whatsapp-account-display-name.test.ts`.
+- **Commits:** `fd1fda7429363091098825dbf37bba0f30be3d0f` (source), `79f0e6a12511afaa07249005d24e6e50fc3c7d2b` (regression test).
+- **OPS-01 next:** Confirm the actual post-fix production revision. Trace the specific Meta failed webhook: HTTP status/body + accepted count, organization/account-scoped message row (provider_message_id/status/provider_error/updated_at), then API response and UI. Last observed production revision before the source fix was `0e355bc75df6ab6c41ac619050be561faeb7c3e7` on deployment `dpl_5zjzPd6V3uBGuMK2LppXqsRTkirK`.
+- **Evidence limitation:** Vercel runtime logs for the historic window are outside the available Hobby retention; grouped errors only show older Oct 10–11 account-save DB constraint errors. No direct live DB row was available. Exact cause of the `sent`/ `failed` discrepancy remains OPEN; do not speculate or patch status logic without runtime evidence.
+- **Record:** `docs/project-control/sessions/FIX01-WHATSAPP-DISPLAY-STATUS-20261017.md`; handoff `HOF-FIX01-OPS-WHATSAPP-DISPLAY-STATUS-20261017`.
+
+### Display-name correction scope update (2026-10-17)
+- Both overwrite paths are corrected: immediate verification in `apps/web/src/app/api/whatsapp/accounts/route.ts` and background verification in `apps/worker/src/messaging/whatsapp-worker.ts`.
+- Regression coverage now checks both call sites: `apps/web/tests/whatsapp-account-display-name.test.ts`.
+- Latest source/test commits: `7d785b36f2bae90d9d137805e1390fe9ab467550`, `f9bc5ec1cc793fb69c3b2a5a7d26e8d1cf00d5fb`. Tests remain unexecuted and deployment remains unconfirmed.
+- OPS-01 must continue the separate live status trace; do not close it based on source inspection.
+
+### FIX-01 / OPS-01 — chat provider override follow-up (2026-10-17)
+- **Source correction:** `packages/clara-core/src/runtime.ts` no longer skips per-agent settings when the organization-default row is absent. Commit `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0`.
+- **Regression test:** `apps/web/tests/clara-agent-provider-resolution.test.ts` (commits `d9e6c619320390c5290c04d29d30187a6838736f`, `c0e0a31e788ecd24e6af89f42e4f67f5100b7c73`); not executed.
+- **OPS-01 next:** Confirm serving revision for the public domain and self-hosted web container. Inspect org runtime-default row presence, agent chat override, and Sarvam chat provider-config metadata in the correct org scope. Rebuild/restart through the normal manual procedure and test one chat turn. No credentials may be printed.
+- **Status:** Source correction committed; runtime root branch remains conditional on live DB state. Test/build/deployment not verified. Handoff `HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017` OPEN.
+
+
+## DEV-01 — expose bound WhatsApp history to interactive chat (2026-10-17)
+
+- **Source change:** `apps/web/src/app/api/chat/stream/route.ts` now loads up to 20 recent WhatsApp messages only when the current/recent chat context asks about WhatsApp, and only from a non-deleted, connected account explicitly bound to the active agent and organization.
+- **Prompt safety:** message bodies are marked as untrusted data; the context explicitly says it is read-only and must not be represented as a successful send/reply.
+- **Regression coverage authored:** `apps/web/tests/whatsapp-chat-context.test.ts` asserts the explicit binding, connected-account and organization filters, untrusted-content boundary, and prompt injection point.
+- **Source commits:** `7b58e075368b6a125d6c30cdb14e9fd6731aaed8` (initial route integration), `3f6f568f0a774410926d20c3181b6495c860dc5a` (newline formatting correction), `878890da6e095c1485a3d977f96aecbb3edf026e` (static regression test).
+- **Important limit:** this enables read/context access in interactive chat; it does NOT yet register `whatsapp.send`/`whatsapp.history` in the shared executable tool runtime. Interactive AI-initiated outbound messages still require a shared authorized tool/approval path. Existing inbound worker auto-response and outbound queue are separate.
+- **Verification:** GitHub source readback only. Tests, typecheck, build, browser/chat behavior, database state, Meta webhook delivery, outbound send and deployment have NOT been run or verified. Do not claim end-to-end enablement until those are completed.
+- **Next:** continue shared tool runtime integration using fresh persisted agent/account binding and connected-status checks; implement history + outbound tool behind current allowlist, permission, approval/template compliance and audit path. Do not wait for CI/Vercel; report runtime/deployment validation as pending to OPS-01.
+
+
+- **Follow-up source corrections:** route template literal/interpolation corrections are in `200447d3c1e53c6778b0eee29bb7e35e90fd4354` and `eb5228770df377edd99ed9b902637fe7ad3331c0`; the final route blob read back as `5e70c07803fa2f2f2495dc454cf5b256034907cb`. These are source readback checks only, not executable verification.
+
+
+## DEV-01 — WhatsApp history runtime (2026-10-17)
+
+- Added `apps/worker/src/agent/whatsapp-tool-runtime.ts`: read-only `whatsapp.history`, strict organization and active-agent binding, connected/non-deleted account filtering, bounded result size, permission and execution-time allowlist checks, and audit writes.
+- Added `apps/worker/tests/whatsapp-tool-runtime.test.ts` static regression assertions.
+- Source commits: `637bb72ce0d5c988468f418ef6e36d24251e712b`, `de8fc4c8f1603e4e8f68b449a35c25ab841e35a0`, `ebd57c7cf947d7f9726bb98ac4c04b74151af42b`.
+- This runtime is not yet invoked by interactive `/api/chat/stream`; the previous route-level read-only context is still the chat path. Do not expose this tool to chat until host-authenticated tool-loop wiring is complete.
+- `whatsapp.send` is deliberately not registered: WhatsApp-specific approval persistence and Meta template-compliance enforcement are not yet connected.
+- Source readback only; tests, typecheck, build, database, browser, Meta and deployment checks remain unrun.
+- Next: wire the authenticated shared tool-call loop to chat; then implement an approval/template-compliant WhatsApp send path before registering outbound send.
+
+
+## FIX-01 — WhatsApp template row nullability build correction — 2026-10-18
+
+- User's `bash scripts/update-and-up.sh` output: worker image built/exported; Next.js web compilation succeeded, then type validation failed at `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts:119` because `synced.rows[0]` may be undefined.
+- Root cause: checking `synced.rows.length` does not narrow a subsequent indexed access under strict TypeScript.
+- Correction: bind `synced.rows[0]` to `syncedTemplate`; if absent, return the existing fail-closed 409 `template_not_synced` response; read components from the narrowed local. Added regression source assertion.
+- Commits: `90fac5e0774b695446e1e0c3ab51072639ba5f06`, `41734923651b1173a703d747f0ac0aa93317a5b9`.
+- Verification: post-fix build and test pending; do not claim success from source changes alone.
+- Next: pull latest main, run `bash scripts/update-and-up.sh`; if green, run focused `whatsapp-send-approval.test.ts`. Continue addressing any new source compiler error narrowly. OPS-01 owns only separate host-toolchain/deployment environment defects.

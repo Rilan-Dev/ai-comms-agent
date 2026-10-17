@@ -536,3 +536,56 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Evidence:** User-provided logs show SQLSTATE 22P02; source inspection confirmed enum mismatch; migration and test commits are recorded in GitHub history. Migration execution, tests, typechecks, and runtime sync remain unverified.
 - **Prevention lesson:** When a provider is added, update the exact enum used by the persisted column, not a similarly named parallel enum; add a forward-only migration and regression assertion alongside application support.
 - **Next action:** OPS-01 applies migrations with the normal migration runner, rebuilds/restarts the matching worker, confirms the enum error is gone, then checks account sync timestamps and persisted message counts. Keep runtime verification pending until observed.
+
+
+## ISS-029 — WhatsApp outbound insert fails with PostgreSQL 42P10
+
+- **Opened:** 2026-10-17
+- **Severity:** high (outbound WhatsApp messages cannot be queued on the observed deployment)
+- **Owner:** FIX-01 / Sentinel for source correction and regression coverage; OPS-01 for database/index confirmation, container rollout, and live runtime verification.
+- **Status:** source_corrected_runtime_verification_pending
+- **Symptom:** User's deployed POST /api/whatsapp/messages returns internal_server_error. Web logs show SQLSTATE 42P10 on INSERT ... ON CONFLICT (organization_id, idempotency_key) DO NOTHING.
+- **Root cause:** Migration 0004 declares whatsapp_messages_idempotency_uniq as a partial unique index on (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL. The outbound INSERT conflict target omitted the predicate, so PostgreSQL could not infer the partial index.
+- **Remedy:** Updated packages/db/src/messaging/whatsapp-repository.ts to include WHERE idempotency_key IS NOT NULL in the conflict target (commit ea8c19cfd9e235319323ed1bb7345e0395f5534e). Added apps/web/tests/whatsapp-idempotency-conflict-target.test.ts (commit 4243afe7748d43ae371c06315f85d47f249cc814).
+- **Verification:** GitHub source writes only. Regression test, typecheck, deployed schema/index, Docker rebuild, API queueing, worker processing, Meta delivery, and idempotency replay have NOT been verified.
+- **Next action:** OPS-01 confirms the unique index exists on the exact production database, deploys the matching source, then verifies queue row persistence, worker/provider outcome, same-key deduplication, and different-payload conflict. See [OPS-01 issue #33](https://github.com/Rilan-Dev/ai-comms-agent/issues/33) and `docs/project-control/sessions/FIX01-WHATSAPP-IDEMPOTENCY-20261017.md`.
+
+## ISS-NEW — Chat provider override falls back to OpenAI when org defaults row is absent
+- **Opened:** 2026-10-17
+- **Severity:** high (agent chat unavailable for saved non-OpenAI provider overrides under affected DB state)
+- **Owner:** OPS-01 for live DB/deployment verification; FIX-01 for source correction already committed
+- **Status:** in_progress
+- **Description:** User configured per-agent Sarvam chat, but `POST /api/chat/stream` returned `AI provider openai is not configured`. Source trace found `organizationAIConfig` returned null before reading per-agent settings when `organization_ai_runtime_settings` had no row. That path silently falls back to process environment selection (OpenAI by default), bypassing saved agent provider settings.
+- **Source correction:** Commit `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0` supplies safe defaults and continues per-agent provider lookup. Regression test authored at `apps/web/tests/clara-agent-provider-resolution.test.ts`.
+- **Verification:** Actual live row condition not confirmed. Test/typecheck/build/deployment not run. No production PASS claimed.
+- **Resolution plan:** OPS-01 confirms serving revision and tenant-scoped presence of org settings, agent override, and provider credential metadata; deploy/restart via existing manual process and verify a Sarvam chat turn. If org defaults row exists, diagnose stale build or missing/disabled provider row. Do not add OpenAI key as a workaround.
+
+
+## ISS-030 — Chat stream dereferences nullable authorization membership
+
+- **Opened:** 2026-10-18
+- **Severity:** high (web production build blocker)
+- **Owner:** FIX-01 / Sentinel
+- **Status:** in_progress — source corrected; post-fix build/test evidence pending
+- **Symptom:** User's Docker web build failed type validation at `apps/web/src/app/api/chat/stream/route.ts:384`, TS nullable access on `subject.membership.role`. Next.js compilation itself succeeded and worker image built.
+- **Root cause:** The shared `AuthSubject` type allows nullable membership. The successful `authorize()` implementation ensures active membership, but the route did not narrow the public type before building trusted `ToolContext`.
+- **Failed approaches rejected:** Defaulting the role, using non-null assertions/casts, weakening authorization, or broad unrelated type redesign.
+- **Remedy:** Added a fail-closed 403 guard after `authorize()`; added static regression coverage for guard-before-context ordering. Commits `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9` and `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`.
+- **Prevention:** Explicitly narrow shared auth types at security-sensitive call sites even when a helper enforces a stronger runtime invariant. Keep source errors separate from environment toolchain failures.
+- **Evidence/verification:** Patch and regression source are committed; no post-patch web build or test execution is yet evidenced.
+- **Next action:** Pull latest main and rerun Docker Compose build; then run focused test. Host-native `pnpm: command not found` is routed separately to OPS-01.
+
+
+## ISS-031 — WhatsApp template row strict nullability blocks web build
+
+- **Opened:** 2026-10-18
+- **Severity:** high (web production build blocker)
+- **Owner:** FIX-01 / Sentinel
+- **Status:** in_progress — source corrected; post-fix build/test evidence pending
+- **Symptom:** User's Docker build failed type validation at `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts:119`, TS18048: `synced.rows[0]` may be undefined. Next.js compilation succeeded and worker image was exported.
+- **Root cause:** A `rows.length` check did not narrow direct indexed access to `synced.rows[0].components`.
+- **Failed approaches rejected:** Non-null assertion, cast, compiler relaxation, or changing template approval policy.
+- **Remedy:** Explicitly bind and guard `syncedTemplate`, preserving the existing 409 `template_not_synced` fail-closed response; add a regression source assertion. Commits `90fac5e0774b695446e1e0c3ab51072639ba5f06` and `41734923651b1173a703d747f0ac0aa93317a5b9`.
+- **Prevention:** Narrow the actual database-returned row before reading fields.
+- **Evidence/verification:** Source/test committed; no post-fix build or test execution is evidenced.
+- **Next action:** Pull latest main, rerun manual Docker deployment build, then run focused `whatsapp-send-approval.test.ts`. Keep build status pending until output is observed.

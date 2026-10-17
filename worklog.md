@@ -1824,3 +1824,42 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 
 - PR #27 merged at its earlier partial commit; continued provider relay and shared email runtime work is tracked in draft PR #28.
 - Issue #26 remains open. No tests/typecheck/build/browser/provider/approval/deployment verification is claimed.
+## 2026-10-17 — WhatsApp pending-account and test-phone flow correction
+
+- **Owner:** ChatGPT / DEV-01 source implementation.
+- **Scope:** Fix the reported /api/whatsapp/messages provider_not_connected path by making account verification actionable, and improve phone-account setup/edit/test UX.
+- **Files:** apps/web/src/app/api/whatsapp/accounts/route.ts; apps/web/src/app/whatsapp/whatsapp-client.tsx; apps/web/src/app/whatsapp/whatsapp-webhook-setup-guide.tsx; apps/web/tests/lovable-ui-migration.test.ts.
+- **Implementation:** after saving credentials, the server calls Meta Graph API to validate the phone number ID/token and sets connected only after a successful response; failure persists as error with provider details. The UI now has Verify now/Recheck, Edit, Add Meta test phone, blank-token preservation for edits, a clean reset for each new phone, and a disabled send button until the selected account is connected. The phone form no longer asks for the auto-filled webhook verify token, and the webhook token test is at the end of the setup guide.
+- **Commits:** 3323fdf8fd7a5c230532a8e08d2922c5f9fc7a2c, ab90b544e69321f16d0339f5c78169dcba31c078, 13f730897534c69857d9841f5b33feff00ee2db6, dfd65f3855c77cee2958af332f5bf9a3493887de, 64afd328c4ea429a6175ab296d9d208b9b9190c1, 57c47c37b803f0b1a22c59f3b53b4757a965cf4a, 7e88ef1a65279ef907363f0013a894b47c483659, 82d22e52904cbc6fda8e84be0437cc1079e1f07f, 5a24783a393226366b0446f3e60a524f8f2fb87d, d55a3b14adcc594e128348df80d81ac95c614ad2, be18c22ffabcfb05fb0ad976ce710f6faa95c79f.
+- **Verification:** GitHub source readback and commit comparison only. Tests/typecheck/build/browser/live Meta verification/deployment/send were not run.
+- **Security:** user's curl included an active-looking aca-access-token session cookie; advise invalidating that session and avoiding credential-bearing curl snippets in shared chats.
+
+## 2026-10-17 — WhatsApp chat context access enabled at source level
+
+- Read `docs/project-control/CHAT_CONTINUITY.md` and `docs/project-control/NEXT_ACTION.md` before editing.
+- Root cause confirmed: channel binding and inbound/outbound worker paths existed, but interactive `/api/chat/stream` did not load WhatsApp history into the model messages. Documented WhatsApp tool names were not proof of executable handlers.
+- Updated `apps/web/src/app/api/chat/stream/route.ts` to add a read-only WhatsApp context loader, limited to up to 20 recent messages from the active agent's connected, non-deleted, explicitly bound WhatsApp account in the same organization. Message text is bracketed as untrusted content, and the prompt forbids claiming send/reply success.
+- Added `apps/web/tests/whatsapp-chat-context.test.ts` for source-level assertions covering account binding, status, organization isolation and untrusted/read-only prompt boundary.
+- Source commits: `7b58e075368b6a125d6c30cdb14e9fd6731aaed8`, `3f6f568f0a774410926d20c3181b6495c860dc5a`, `878890da6e095c1485a3d977f96aecbb3edf026e`. Project-control next action updated in `86ac8ccbb3825050d124d87b360c4deb5fb67488`.
+- Verification limitation: source was read back from GitHub, but tests/typecheck/build/browser/live database/Meta/deployment were not run. This is not full WhatsApp tool enablement: outbound AI-initiated send and shared `whatsapp.send`/`whatsapp.history` executable handlers remain outstanding and must go through authorization, allowlist, policy/approval, template compliance and audit.
+
+## 2026-10-17 — WhatsApp history tool runtime
+
+- Added `apps/worker/src/agent/whatsapp-tool-runtime.ts` with a safe `whatsapp.history` tool, account binding and organization checks, connected/non-deleted account filtering, input limits, fresh policy/allowlist recheck, actor permission enforcement and durable audit writes.
+- Added `apps/worker/tests/whatsapp-tool-runtime.test.ts` with static contract assertions. Source commits: `637bb72ce0d5c988468f418ef6e36d24251e712b`, `de8fc4c8f1603e4e8f68b449a35c25ab841e35a0`, `ebd57c7cf947d7f9726bb98ac4c04b74151af42b`.
+- Important boundary: this runtime is not yet wired into the interactive chat route/model loop. Outbound `whatsapp.send` is intentionally not registered until WhatsApp-specific approval and Meta template compliance exist. No tests/typecheck/build/database/browser/Meta/deployment checks were run.
+- `docs/project-control/NEXT_ACTION.md` updated at `580d85f5a424c7690a204b2e1a62bab5f5c5bd0d` with the next authorized action.
+
+
+## DEV-01 — Chat tool loop and WhatsApp approval checkpoint — 2026-10-17
+
+- Interactive `/api/chat/stream` now constructs a `ToolContext` from the server-authenticated organization membership, user, role and permissions; it combines only the per-agent allowlisted email/WhatsApp runtime tools, uses the bounded host-authorized invocation path (4 rounds / 8 calls / 10,000-character tool result cap), and preserves host-supplied mailbox context as explicitly untrusted data. Model arguments cannot set tenant, actor or permissions.
+- Added source regression tests for the chat host tool loop.
+- WhatsApp outbound API requests now create durable `whatsapp_send_actions` proposals instead of queueing sends immediately. Added an organization-scoped approval queue endpoint and authenticated approve/reject endpoint. Approval rechecks the connected account and recent **inbound** customer message; free-form text is queued only inside Meta's 24-hour customer-service window. Outside that window the action transitions to `requires_template` and no message is queued.
+- Added migrations `0035_whatsapp_send_approvals.sql`, `0036_whatsapp_templates.sql`, `0037_whatsapp_send_action_outcomes.sql`, `0038_whatsapp_feature_permissions.sql`, `0039_email_read_tool_permission.sql`, and `0040_whatsapp_agent_binding_recheck.sql`; added Meta template submission/status sync, supported text-body template delivery, approval queue/decision API, approval UI, worker-time 24-hour and live template-status checks, WhatsApp-specific read/send RBAC for owner/admin/member roles, the email.read feature permission required by host email tools, and send-time agent/account binding rechecks for chat and scheduled product actions. `whatsapp.send` is now registered only as a proposal tool: it creates a pending approval and never directly queues/sends.
+- Known integration risk: the web route imports the existing worker runtimes directly; validate the Next.js monorepo build/import boundary during normal verification and extract a dedicated shared runtime package if the build configuration rejects this dependency direction.
+- Verification boundary: source changes only. Tests, typecheck, build, migration execution, browser approval UI, Meta API, and deployed behavior have **not** been run or verified. Do not claim a send succeeded from an approval or queue response; only provider-confirmed message state establishes delivery progress.
+- Next: run focused web/worker tests and typechecks when available; review the Next.js import boundary for worker runtime imports; apply migrations through the normal deployment process; verify template submission/status refresh and a complete human-approved text/template send against Meta. Keep `whatsapp.send` proposal-only and do not claim delivery before provider confirmation. Do not wait for CI/Vercel polling to continue independent implementation.
+
+---
+

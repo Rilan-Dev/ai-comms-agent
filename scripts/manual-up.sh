@@ -1,38 +1,91 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
-if [[ ! -f .env.docker ]]; then
-  cp .env.docker.example .env.docker
-  echo "Created .env.docker from the safe defaults template."
-  echo "Edit .env.docker and configure your externally managed PostgreSQL, Redis, RabbitMQ, and Qdrant endpoints."
+# Always run from the repository root, regardless of the caller's directory.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+cd "$PROJECT_ROOT"
+
+COMPOSE_FILE="docker-compose.manual.yml"
+ENV_FILE=".env"
+
+# Check required commands.
+for cmd in docker node; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "ERROR: Required command not found: $cmd" >&2
+    exit 1
+  fi
+done
+
+if ! docker compose version >/dev/null 2>&1; then
+  echo "ERROR: Docker Compose v2 is required." >&2
   exit 1
 fi
 
-# vendor/clara is the ai-reusable-libraries reference source. It is not part
-# of the ai-comms-agent application build and must not be initialized as a
-# Docker build prerequisite.
+# Create .env from safe defaults if it does not exist.
+if [[ ! -f "$ENV_FILE" ]]; then
+  cp .env.example "$ENV_FILE"
+  chmod 600 "$ENV_FILE" || true
+  echo "Created .env from .env.example."
+  echo "Configure PostgreSQL, Redis, RabbitMQ, and Qdrant endpoints in .env."
+  echo "Review the configuration, then run this script again."
+  exit 1
+fi
 
-# Build Docker images (use --no-cache if source changes aren't picked up)
-docker compose -f infra/docker-compose.manual.yml build --pull
+if [[ ! -f "$COMPOSE_FILE" ]]; then
+  echo "ERROR: Compose file not found: $COMPOSE_FILE" >&2
+  exit 1
+fi
 
-# Apply migrations using the Node.js runner (not psql, which fails with
-# SSL errors on Prisma Postgres Data Proxy). The Node.js runner is at
-# packages/db/migrate.js and uses the pg library which handles SSL
-# correctly via the connection string's sslmode=require parameter.
-migration_db_url="$(docker compose --env-file .env.docker -f infra/docker-compose.manual.yml config --environment | awk -F= '$1 == "DATABASE_URL" {sub(/^[^=]*=/, ""); print; exit}')"
+COMPOSE=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
+
+echo "Building application images..."
+"${COMPOSE[@]}" build --pull
+
+# Resolve DATABASE_URL from the same Compose environment used by the stack.
+echo "Resolving migration database configuration..."
+
+if ! compose_environment="$("${COMPOSE[@]}" config --environment)"; then
+  echo "ERROR: Could not resolve the Compose environment." >&2
+  exit 1
+fi
+
+migration_db_url="$(
+  printf '%s\n' "$compose_environment" |
+    awk -F= '$1 == "DATABASE_URL" {
+      sub(/^[^=]*=/, "")
+      print
+      exit
+    }'
+)"
+
+unset compose_environment
+
 if [[ -z "$migration_db_url" ]]; then
-  echo "ERROR: DATABASE_URL is required in .env.docker for the manual deployment migration." >&2
+  echo "ERROR: DATABASE_URL is missing from the Compose environment." >&2
   exit 1
 fi
+
+# The migration runner executes on the host, not inside Docker.
+# Translate the Docker host alias for host-side database access.
 migration_db_url="${migration_db_url//host.docker.internal/127.0.0.1}"
-echo "Applying migrations via Node.js runner..."
-DATABASE_URL="$migration_db_url" node packages/db/migrate.js || {
-  echo "WARNING: Migration runner failed (migrations may already be applied)."
-  echo "Continuing with container startup..."
-}
 
-docker compose --env-file .env.docker -f infra/docker-compose.manual.yml up -d
+echo "Applying database migrations..."
+if DATABASE_URL="$migration_db_url" node packages/db/migrate.js; then
+  echo "Database migrations completed."
+else
+  migration_status=$?
+  echo "WARNING: Migration runner exited with status $migration_status." >&2
+  echo "Continuing with container startup, as requested."
+fi
 
-echo "Application stack is starting."
+echo "Starting application stack..."
+"${COMPOSE[@]}" up -d
+
+echo
+echo "Application stack startup requested."
 echo "Web: http://localhost:3300"
-echo "Infrastructure: external (Postgres / Redis / RabbitMQ / Qdrant)"
+echo "Infrastructure: externally managed PostgreSQL / Redis / RabbitMQ / Qdrant"
+echo
+echo "Container status:"
+"${COMPOSE[@]}" ps

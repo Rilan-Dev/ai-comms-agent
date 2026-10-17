@@ -197,3 +197,32 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Adapter:** `apps/worker/src/knowledge/clara-email-vector-adapter.ts` and request-contract tests are authored but unbound; worker startup does not import the adapter or start the outbox loop.
 - **Next:** Run focused worker adapter tests/typecheck and Clara typecheck/tests/lint/build plus Qdrant integration coverage when a dependency-equipped checkout is available. After ISS-026 closes, bind adapter + outbox loop and shared PostgreSQL/Qdrant retrieval. OPS-01 handles live runtime/ingestion/latency acceptance.
 - **Retrieval implementation update (2026-10-16):** shared service now authored at `packages/db/src/email/hybrid-retrieval.ts`; Clara search client at `packages/db/src/email/clara-vector-search.ts`; source tests added. It is not yet connected to Chat/voice and is not runtime-verified. ISS-026 remains a hard gate for transport wiring and outbox activation.
+
+### BKL-FIX01-CHAT-PROVIDER-20261017
+- **Work:** Verify live chat provider resolution after source fix for agent-specific Sarvam/Gemini configuration.
+- **Owner:** OPS-01
+- **State:** ROUTED
+- **Dependency:** Access to the actual deployed revision and tenant-scoped database metadata for organization runtime settings, agent override, and provider configuration.
+- **Authorization:** User-explicit FIX-01 incident investigation and corrective change.
+- **Suggested next action:** Deploy/restart revision containing `8d7aecc` via the existing manual procedure; inspect sanitized provider metadata and verify one chat turn selects Sarvam. Do not print secrets or add OpenAI credentials as workaround.
+- **Related session/event/handoff:** `SESSION-FIX01-CHAT-PROVIDER-20261017`; `EVT-FIX01-CHAT-PROVIDER-OVERRIDE-20261017`; `HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017`.
+
+
+### BKL-OPS01-HOST-PNPM-20261018
+- **Work:** Triage native host shell missing pnpm command.
+- **Owner:** OPS-01 / Shipwright
+- **State:** ROUTED
+- **Evidence:** `pnpm: command not found` in host shell; user Docker build's Corepack/pnpm stage ran and worker target built.
+- **Scope:** Toolchain/environment setup only; no app source or lockfile changes unless separately authorized and evidenced as required.
+- **Related handoff:** `HOF-FIX01-OPS-HOST-PNPM-20261018`.
+
+
+### BKL-FIX01-WHATSAPP-TEMPLATE-ROW-20261018
+- **Work:** Verify the strict-nullability correction for the WhatsApp approved-template sync row.
+- **Owner:** FIX-01 / Sentinel
+- **State:** ACTIVE — source corrected; post-fix verification pending
+- **Dependency:** Updated main checkout and Docker build/test output.
+- **Authorization:** User-supplied production-build error and explicit FIX-01 instructions.
+- **Correction commits:** `90fac5e0774b695446e1e0c3ab51072639ba5f06`; `41734923651b1173a703d747f0ac0aa93317a5b9`.
+- **Next action:** Pull latest main; rerun `bash scripts/update-and-up.sh`; if build passes, run focused `whatsapp-send-approval.test.ts`. Do not claim PASS until observed.
+- **Related issue/session/event:** ISS-031; FIX01-WHATSAPP-TEMPLATE-ROW-20261018; EVT-FIX01-WHATSAPP-TEMPLATE-ROW-20261018.

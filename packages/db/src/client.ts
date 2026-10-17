@@ -110,32 +110,60 @@ export function isPostgresConfigured(): boolean {
   return getPostgresConfigFromEnv() !== null;
 }
 
+// Detect whether DATABASE_URL uses session-mode (port 5432) or
+// transaction-mode (port 6543) pooling. Session-mode holds the same
+// backend for the connection's lifetime, so:
+//   - search_path set via startup `options` packet PERSISTS
+//   - No need for per-query BEGIN/COMMIT (no PgBouncer routing issue)
+//   - No need for per-query SET LOCAL search_path
+// Transaction-mode routes each transaction to a different backend, so
+// we MUST wrap each query in BEGIN/COMMIT + SET LOCAL search_path.
+//
+// Performance impact (200ms latency to remote Supabase):
+//   Session-mode: 1 round trip/query × 5 queries = 1.0s per API
+//   Transaction-mode: 3 round trips/query × 5 queries = 3.0s per API
+//   Old code (3 round trips always): 3 × 5 = 3.0s per API
+function isSessionModePooling(): boolean {
+  const url = process.env.DATABASE_URL ?? "";
+  try {
+    const parsed = new URL(url);
+    const port = parsed.port || "5432";
+    return port !== "6543"; // 5432 = session-mode, 6543 = transaction-mode
+  } catch {
+    return false; // If URL parsing fails, assume transaction-mode (safe).
+  }
+}
+
+let _sessionModeCached: boolean | undefined;
+function isSessionMode(): boolean {
+  if (_sessionModeCached === undefined) _sessionModeCached = isSessionModePooling();
+  return _sessionModeCached;
+}
+
 export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   values: unknown[] = [],
 ): Promise<QueryResult<T>> {
-  // Wrap each standalone query in an explicit BEGIN/COMMIT so the
-  // Parse+Bind+Execute+Sync wire messages all go to the SAME PgBouncer
-  // backend connection. Without this, PgBouncer transaction-mode pooling
-  // can route Parse to backend A and Bind to backend B, which fails with
-  // "bind message supplies N parameters, but prepared statement requires M".
-  // The transaction wrap is a no-op for SELECT (read-only) and matches the
-  // semantics app code already expects (single statement = single txn).
   const client = await getPostgresPool().connect();
   try {
-    await client.query("BEGIN");
+    if (isSessionMode()) {
+      // Session-mode: search_path persists via startup `options` packet.
+      // No BEGIN/COMMIT needed (no PgBouncer routing issue). 1 round trip.
+      return await client.query<T>({ text, values, prepare: false } as never);
+    }
+    // Transaction-mode: wrap in BEGIN/COMMIT + SET LOCAL so Parse+Bind
+    // go to the same backend. Combine BEGIN+SET_LOCAL into 1 round trip.
+    await client.query("BEGIN; SET LOCAL search_path = aca,public");
     const result = await client.query<T>({ text, values, prepare: false } as never);
     await client.query("COMMIT");
     return result;
   } catch (error) {
-    try { await client.query("ROLLBACK"); } catch { /* preserve original transaction error */ }
-
+    if (!isSessionMode()) {
+      try { await client.query("ROLLBACK"); } catch { /* preserve original error */ }
+    }
     const postgresError = error && typeof error === "object"
       ? error as { message?: unknown; code?: unknown; position?: unknown; routine?: unknown }
       : {};
-
-    // Log the SQL template, never bound values: values may contain email content,
-    // tenant identifiers, or other sensitive data. Keep the original error intact.
     console.error(JSON.stringify({
       level: "error",
       service: "db.query",
@@ -148,7 +176,6 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
       sql: text,
       parameter_count: values.length,
     }));
-
     throw error;
   } finally {
     client.release();
@@ -160,7 +187,16 @@ export async function withTransaction<T>(
 ): Promise<T> {
   const client = await getPostgresPool().connect();
   try {
-    await client.query("BEGIN");
+    if (isSessionMode()) {
+      // Session-mode: search_path already set. Keep BEGIN/COMMIT for
+      // transaction semantics (atomic multi-statement).
+      await client.query("BEGIN");
+      const result = await callback(client);
+      await client.query("COMMIT");
+      return result;
+    }
+    // Transaction-mode: BEGIN + SET LOCAL combined into 1 round trip.
+    await client.query("BEGIN; SET LOCAL search_path = aca,public");
     const result = await callback(client);
     await client.query("COMMIT");
     return result;

@@ -266,3 +266,67 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Blockers/dependencies:** OPS-01 must apply migrations and rebuild/restart the worker, then verify error cessation and actual mailbox persistence. The Microsoft Graph subscription-disabled warning also requires separate prerequisite/configuration review by OPS-01 if Graph push subscriptions are expected.
 - **Lesson:** Extend the enum actually referenced by the DB column; similarly named provider enums are not interchangeable. Queue retries cannot recover from deterministic SQL/schema incompatibility.
 - **Next action:** OPS-01 apply migration 0034 through the normal migration workflow, restart the matching worker image, inspect sanitized logs, and confirm account sync state and stored message counts advance.
+
+
+### FIX01-WHATSAPP-131047-20261017 / 2026-10-17
+- **Task:** Diagnose WhatsApp queued-but-not-delivered report.
+- **Authorization:** Explicit user request for FIX-01 root-cause investigation, smallest authorized correction, regression protection, and records.
+- **Started from:** `main` at `44a7fbf2b9796a651040e9c2be078928ab6ed983`.
+- **Actions:** Traced recent idempotency commits and reviewed the outbound worker, provider-status webhook, and organization/account-scoped status repository. Identified Meta error 131047 as expired 24-hour customer-service window. No unrelated code changed.
+- **Evidence:** User-supplied Meta payload reports `status=failed`, `code=131047`, and explicitly explains the expired window. API `queued=true` is not delivery confirmation. Prior 42P10 correction commits are separate.
+- **Files/code:** `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`; central event record. No runtime source change justified by the provider error itself.
+- **Verification:** GitHub source inspection only; no test execution or live DB/webhook/deployment access.
+- **Blockers/dependencies:** OPS-01 runtime evidence needed to explain why UI still showed “sent” despite the supplied failed status event.
+- **Lesson:** Distinguish queued, provider accepted, sent, delivered, read, and failed; never infer delivery from queue acknowledgement.
+- **Next action:** Use an approved template out of window. OPS-01 trace deployed webhook/status persistence/UI; FIX-01 add focused regression once the status mismatch is isolated.
+
+### FIX01-WHATSAPP-DISPLAY-STATUS-20261017 / 2026-10-17
+- **Task:** Preserve custom WhatsApp account display name and route queued/sent/failed UI discrepancy to OPS-01.
+- **Authorization:** User explicitly asked to fix the display name reverting from `SMTS WA` to `Test Number` and to carry out the OPS-01 runtime trace.
+- **Root cause (display name):** `apps/web/src/app/api/whatsapp/accounts/route.ts` passed Meta's `verified_name` to `updateWhatsAppAccountStatus` after saving the user label. The same DB field represents the app label, so Meta overwrote the custom name.
+- **Remedy:** Preserve `account.display_name` first and use Meta's verified name only as fallback. Source commit `fd1fda7429363091098825dbf37bba0f30be3d0f`; static regression test `apps/web/tests/whatsapp-account-display-name.test.ts`, commit `79f0e6a12511afaa07249005d24e6e50fc3c7d2b`.
+- **Status mismatch investigation:** Last observed production deployment `dpl_5zjzPd6V3uBGuMK2LppXqsRTkirK` served `0e355bc75df6ab6c41ac619050be561faeb7c3e7` before the fix. Available Vercel grouped errors are older account-save schema failures; relevant historical runtime logs were not retained and no direct live DB row was available. Source contract updates a status only on exact provider-message-ID + org + account match; webhook returns an accepted count. No proven source cause for the exact `sent`/ `failed` discrepancy.
+- **Routing:** Handoff `HOF-FIX01-OPS-WHATSAPP-DISPLAY-STATUS-20261017` remains OPEN. OPS-01 must verify serving revision, webhook HTTP response/accepted count, scoped DB row/provider error, and API/UI consistency. FIX-01 will patch status flow only if runtime evidence proves a source defect.
+- **Verification:** Static regression test authored but not run. Deployment after source commits not confirmed. No live runtime/status PASS claimed.
+- **Lesson:** Do not conflate the user-controlled display label with Meta's provider verified name. Treat queue acceptance and provider delivery status as separate states.
+
+### Follow-up — worker display-name overwrite also fixed (2026-10-17)
+- A second overwrite path existed in `apps/worker/src/messaging/whatsapp-worker.ts`: pending-account verification also persisted Meta's `verified_name` directly. It now prefers the saved `account.display_name` and falls back to Meta only when no custom label exists.
+- Expanded `apps/web/tests/whatsapp-account-display-name.test.ts` to cover the immediate API verification and worker verification call sites.
+- Commits: worker `7d785b36f2bae90d9d137805e1390fe9ab467550`; updated regression test `f9bc5ec1cc793fb69c3b2a5a7d26e8d1cf00d5fb`.
+- Not executed: tests/typecheck/build/deployment. OPS-01 status mismatch handoff remains OPEN.
+
+### FIX01-CHAT-PROVIDER-OVERRIDE-20261017 / 2026-10-17
+- **Task:** Diagnose chat choosing OpenAI despite saved per-agent Sarvam override.
+- **Authorization:** User-explicit FIX-01 request to recover project control, trace recent commits/root cause, apply smallest correction, add regression protection, and route deployment/environment work to OPS-01.
+- **Started from:** `main`; recent commits were mostly records for the WhatsApp incident. Relevant feature-introducing commit: `4dc991fa5616f9a04ed3050a7c748e489c6e75f5`.
+- **Evidence:** `apps/web/src/app/api/chat/stream/route.ts` passes agentId into `createChatTurn`. `packages/clara-core/src/runtime.ts` previously returned null when the org runtime-defaults row was absent, before querying agent_ai_settings or ai_provider_configs. That path falls back to selectedProvider(), defaulting to OpenAI, matching the observed error if OPENAI_API_KEY is absent. Actual live DB row state remains unconfirmed.
+- **Remedy:** Replace early return with safe org-default values so agent override/provider lookup continues. Commit `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0`.
+- **Regression:** Added static test `apps/web/tests/clara-agent-provider-resolution.test.ts`; commits `d9e6c619320390c5290c04d29d30187a6838736f`, `c0e0a31e788ecd24e6af89f42e4f67f5100b7c73`.
+- **Failed approaches to avoid:** Do not add an OpenAI key to mask wrong provider selection; do not trust container startup as chat proof; do not change unrelated channels/adapters.
+- **Verification:** Test authored but not run. No typecheck/build/deploy/provider request/live DB verification. No PASS claimed.
+- **Routing:** OPS-01 handoff `HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017` OPEN. Verify actual DB row state and serving revision; deploy/restart via existing manual procedure; test one chat turn and sanitized logs.
+- **Prevention:** Agent overrides must be resolved independently of org defaults; tenant-scoped saved provider settings should beat process env fallback.
+
+
+### FIX01-CHAT-MEMBERSHIP-NULL-20261018 / 2026-10-18
+- **Role:** FIX-01 / Sentinel
+- **Authorization:** User explicitly authorized recovery of repository/agent state, root-cause trace of recent commits, the smallest authorized correction, regression protection, and recording evidence/next action. Source correction on main was in scope; unrelated work was not.
+- **Symptom:** User's Docker build reports worker image built, but Next.js web build fails TS18047 at chat stream route line 384 because `subject.membership` may be null.
+- **Trace/root cause:** `authorize()` calls `requireOrganizationMember()`, which rejects missing/suspended membership. But shared `AuthSubject.membership` remains nullable; the caller used `subject.membership.role` without narrowing. The source's runtime invariant is stronger than its public type.
+- **Failed approaches:** No default role, unsafe cast, weakening authorization, or broad shared-type refactor. `pnpm: command not found` in the host shell is separate environment/tooling work for OPS-01; the Docker image itself had pnpm and built the worker.
+- **Remedy:** Commit `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9` adds an explicit fail-closed 403 membership guard after authorization. Commit `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9` adds a static regression assertion that the guard precedes trusted tool context construction.
+- **Evidence:** User-supplied log: Next.js compilation succeeded; type validation failed at `route.ts:384`; worker Docker target built/exported successfully. Source correction and test were committed; no post-fix test/build is claimed.
+- **Next:** User pulls latest main and reruns `docker compose -f infra/docker-compose.manual.yml up -d --build`. If web build passes, continue with focused chat host-tool-loop test and runtime checks. OPS-01 separately handles host shell's missing pnpm if native pnpm commands are needed.
+
+
+### FIX01-WHATSAPP-TEMPLATE-ROW-20261018 / 2026-10-18
+- **Task:** Correct strict TypeScript error in WhatsApp template approval route.
+- **Authorization:** User-supplied build error and explicit FIX-01 role instructions.
+- **Started from:** main; previous chat membership source fix had been committed but build remained pending.
+- **Actions:** Traced direct `synced.rows[0].components` access. Kept the existing fail-closed 409 behavior, narrowed the returned row into `syncedTemplate`, added explicit missing-row guard, and added static regression assertion.
+- **Files/code:** `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts`; `apps/web/tests/whatsapp-send-approval.test.ts`.
+- **Evidence:** Source commit `90fac5e0774b695446e1e0c3ab51072639ba5f06`; test commit `41734923651b1173a703d747f0ac0aa93317a5b9`. User's log shows worker image exported and web compile passed before TS error. Post-fix test/build not run.
+- **Blockers/dependencies:** User/deployment checkout must pull latest main for Docker rebuild. Native pnpm absence remains separately routed to OPS-01.
+- **Lesson:** Array length checks do not necessarily narrow indexed reads; bind and guard the element itself.
+- **Next:** Rebuild using `bash scripts/update-and-up.sh`, run focused WhatsApp approval test, record actual output.
