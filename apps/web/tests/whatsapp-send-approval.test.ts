@@ -96,4 +96,11 @@ describe("WhatsApp send approval safety boundary", () => {
     expect(whatsappRuntime).not.toContain("queueWhatsAppOutboundMessage");
     expect(whatsappRuntime).toContain("whatsapp.send_approval.requested");
   });
+  it("fails closed when the approved template update returns no row", () => {
+    expect(decisionRoute).toContain("const syncedTemplate = synced.rows[0];");
+    expect(decisionRoute).toContain('if (!syncedTemplate) return NextResponse.json({ error: "template_not_synced"');
+    expect(decisionRoute).toContain("const components = syncedTemplate.components;");
+    expect(decisionRoute).not.toContain("synced.rows[0].components");
+  });
+
 });
