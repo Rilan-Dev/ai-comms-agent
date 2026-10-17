@@ -350,6 +350,12 @@ If shared memory conflicts with current repository state or current requirements
 - **Evidence/status:** Source commits `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9` and `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`. User log confirms worker Docker build succeeded and web build failed only during type checking; the corrected web build and test have not been rerun.
 - **Related record:** ISS-030; `FIX01-CHAT-MEMBERSHIP-NULL-20261018`.
 
+### DEV-01 / Forge — 2026-10-18 — live provider catalogues
+- **Issue/symptom:** Static model lists and manual text inputs became stale and could mismatch providers/capabilities; original `/api/settings/ai-models` swallowed authorization failure and used server-global keys.
+- **Root cause:** Model selection surfaces were disconnected from Clara-style vendor catalogue and the saved organization/purpose encrypted credential boundary.
+- **Failed approach to avoid:** Calling an env-global provider list or silently returning curated static IDs when the vendor is unreachable; passing TTS ID into STT purpose; showing new V2 models that the current chat runtime cannot invoke.
+- **Remedy:** Require org read authorization before tenant credential lookup; use fixed official vendor endpoints and capability classifications; preserve explicit unavailable and stale-selection states and separate TTS/STT.
+- **Prevention:** Add mocked vendor catalog/pagination/error and auth-order tests; run them plus real credential/browser checks before acceptance. Missing vendor catalog API must be disclosed, not fabricated. Session `DEV01-LIVE-MODEL-CATALOG-20261018`. Evidence remains source-only.
 ### FIX-01 / Sentinel — 2026-10-18 — WhatsApp synced template row nullability
 
 - **Symptom:** User's Docker deployment build reports Next.js compilation success, then TS18048 at `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts:119`: `synced.rows[0]` may be undefined when reading `.components`.

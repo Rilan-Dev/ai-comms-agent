@@ -1,3 +1,14 @@
+## DEV-01 / Forge — live provider-model dropdown source checkpoint — 2026-10-18
+
+- **Authorization:** Owner explicitly asked to copy Clara AI Platform's live model-catalogue selection pattern into ai-comms-agent (no manual model entry, only relevant live provider models). Phase 4 development-first authorization remains active; no acceptance/deployment authorized.
+- **Branch/session:** `feature/dev01-live-provider-model-catalog-20261018`; `DEV01-LIVE-MODEL-CATALOG-20261018`. Draft PR #34: https://github.com/Rilan-Dev/ai-comms-agent/pull/34. Source implementation and tests authored, not executed, not merged.
+- **Done in source:** Tenant-read-authorized `GET /api/settings/ai-models` using encrypted per-organization/per-purpose credentials; real OpenAI/Gemini/Sarvam/ElevenLabs APIs with capability filtering; reusable dropdowns in organization Settings, provider setup, realtime model and six agent override fields; distinct TTS/STT; retired static catalog. No hard-coded fallback and no global vendor key.
+- **Limitations:** No confirmed live catalogue for Sarvam TTS/STT/realtime, TEI embeddings, ElevenLabs realtime; fail visibly rather than invent IDs. Sarvam chat options restricted to v1-runtime-compatible IDs intersected with live v2 listing. No live provider/browser/build/test result yet.
+- **EXACT NEXT_ACTION (DEV-01):** Run focused web tests `pnpm --filter @ai-comms-agent/web test -- tests/live-model-catalog.test.ts tests/ai-runtime-settings.test.ts` plus `pnpm --filter @ai-comms-agent/web typecheck` in a dependency-equipped checkout of the feature branch. Resolve feature-specific defects, validate tenant-scoped live credential and UI select/save/reload for OpenAI, Gemini, Sarvam and ElevenLabs where supported; obtain architect review of draft PR before merge. Do not wait for CI polling when independent source review/test work is available.
+- **Role routing:** FIX-01 retains ISS-026/ISS-030 and substantial unrelated defects. OPS-01 owns host pnpm/Docker, deployment, live provider config and production verification. Do not claim production ready from source.
+
+---
+
 ## FIX-01 voice + email action runtime checkpoint — 2026-10-16
 ## FIX-01 — Chat membership nullability build correction — 2026-10-18
 

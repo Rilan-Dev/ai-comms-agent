@@ -1,106 +1,63 @@
 import { NextResponse } from "next/server";
-import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
-import { getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
+import { getDecryptedProviderConfig } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
+import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
+import { getAuthenticatedAppContext, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
+import { fetchLiveModelCatalog, supportsLiveCatalog, type LiveModelProvider, type LiveModelPurpose } from "@/lib/ai/live-model-catalog";
 
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/settings/ai-models?provider=openai&organizationId=...
+ * GET /api/settings/ai-models?organizationId=...&provider=openai&purpose=chat
  *
- * Fetches the list of available models from the AI provider's API
- * (e.g. OpenAI's /v1/models endpoint) so the UI dropdown is always
- * up-to-date. Falls back to a curated static list if the API is
- * unreachable (e.g. region-blocked or no API key configured).
+ * Credentials are loaded exclusively from the requesting organization's
+ * encrypted, enabled provider configuration. No static catalogue, env-wide
+ * key, or untrusted base URL is used. Unsupported vendor catalogues are
+ * reported, not fabricated.
  */
 export async function GET(request: Request) {
   try {
-    const url = new URL(request.url);
-    const organizationId = url.searchParams.get("organizationId") ?? "";
-    const provider = (url.searchParams.get("provider") ?? "openai").toLowerCase();
+    const params = new URL(request.url).searchParams;
+    const context = await getAuthenticatedAppContext(request);
+    const organizationId = params.get("organizationId")?.trim() || context?.organizationId || "";
+    const provider = params.get("provider")?.trim().toLowerCase() || "";
+    const purpose = params.get("purpose")?.trim().toLowerCase() || "chat";
 
     if (!organizationId) {
-      return NextResponse.json({ error: "validation_error", message: "organizationId is required." }, { status: 422 });
+      return NextResponse.json({ error: "validation_error", message: "An organization context is required." }, { status: 422 });
+    }
+    // Do not disclose provider credentials, or even catalogue availability,
+    // to unauthenticated or cross-organization callers.
+    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    if (!supportsLiveCatalog(provider, purpose)) {
+      return NextResponse.json({
+        error: "catalog_unsupported",
+        message: "This provider does not publish a live model listing for this capability. No static model list is substituted.",
+        models: [],
+      }, { status: 422 });
+    }
+    const saved = await getDecryptedProviderConfig(organizationId, provider, purpose as LiveModelPurpose);
+    if (!saved?.enabled || !saved.apiKey) {
+      return NextResponse.json({
+        error: "provider_configuration_required",
+        message: "Save and enable this provider's API key for this capability before loading live models.",
+        models: [],
+      }, { status: 409 });
     }
 
     try {
-      await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+      const models = await fetchLiveModelCatalog(provider as LiveModelProvider, purpose as LiveModelPurpose, saved.apiKey);
+      return NextResponse.json({ models, provider, purpose, source: "live" }, {
+        headers: { "Cache-Control": "private, no-store" },
+      });
     } catch {
-      // If not authorized, still return static models (they're not sensitive)
-    }
-
-    const apiKey = getApiKey(provider);
-    if (!apiKey) {
-      return NextResponse.json({ models: getStaticModels(provider), source: "static_no_key" });
-    }
-
-    try {
-      const modelsUrl = getModelsUrl(provider);
-      if (!modelsUrl) {
-        return NextResponse.json({ models: getStaticModels(provider), source: "static_no_endpoint" });
-      }
-      const headers: Record<string, string> = { "accept": "application/json" };
-      if (provider === "openai") headers["authorization"] = `Bearer ${apiKey}`;
-      else if (provider === "gemini") headers["x-goog-api-key"] = apiKey;
-      else if (provider === "sarvam") headers["authorization"] = `Bearer ${apiKey}`;
-
-      const resp = await fetch(modelsUrl, { headers, signal: AbortSignal.timeout(10_000) });
-      if (!resp.ok) {
-        return NextResponse.json({ models: getStaticModels(provider), source: `static_api_${resp.status}` });
-      }
-      const data = await resp.json() as { data?: Array<{ id?: string; name?: string }>; models?: Array<{ id?: string; name?: string }>; items?: Array<{ id?: string; name?: string }> };
-      const rawModels = data.data ?? data.models ?? data.items ?? [];
-      const models = rawModels.map((m) => ({ id: m.id ?? m.name ?? "", name: m.id ?? m.name ?? "" })).filter((m) => m.id);
-      if (models.length === 0) {
-        return NextResponse.json({ models: getStaticModels(provider), source: "static_empty_api" });
-      }
-      return NextResponse.json({ models, source: "api" });
-    } catch {
-      return NextResponse.json({ models: getStaticModels(provider), source: "static_fetch_error" });
+      return NextResponse.json({
+        error: "model_catalog_unavailable",
+        message: "The provider model catalogue is unavailable. Retry after checking provider access; no static models will be shown.",
+        models: [],
+      }, { status: 502 });
     }
   } catch (error) {
     return authorizationErrorToResponse(error);
   }
-}
-
-function getApiKey(provider: string): string | undefined {
-  if (provider === "openai") return process.env.OPENAI_API_KEY;
-  if (provider === "gemini") return process.env.GEMINI_API_KEY;
-  if (provider === "sarvam") return process.env.SARVAM_API_KEY;
-  return undefined;
-}
-
-function getModelsUrl(provider: string): string | undefined {
-  if (provider === "openai") return "https://api.openai.com/v1/models";
-  if (provider === "gemini") return "https://generativelanguage.googleapis.com/v1beta/models";
-  if (provider === "sarvam") return undefined; // Sarvam doesn't have a public models endpoint
-  return undefined;
-}
-
-function getStaticModels(provider: string): Array<{ id: string; name: string }> {
-  if (provider === "openai") {
-    return [
-      { id: "gpt-4o", name: "GPT-4o" },
-      { id: "gpt-4o-mini", name: "GPT-4o mini" },
-      { id: "gpt-4-turbo", name: "GPT-4 Turbo" },
-      { id: "gpt-4", name: "GPT-4" },
-      { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
-      { id: "o1-preview", name: "o1-preview" },
-      { id: "o1-mini", name: "o1-mini" },
-    ];
-  }
-  if (provider === "gemini") {
-    return [
-      { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" },
-      { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro" },
-      { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash" },
-    ];
-  }
-  if (provider === "sarvam") {
-    return [
-      { id: "sarvam-105b-conversations", name: "Sarvam 105B Conversations" },
-      { id: "sarvam-8b-conversations", name: "Sarvam 8B Conversations" },
-    ];
-  }
-  return [];
 }

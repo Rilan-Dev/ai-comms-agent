@@ -2,6 +2,7 @@
 
 import { SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
+import { LiveModelSelect } from "@/components/live-model-select";
 
 type RuntimeSettings = {
   default_provider: string;
@@ -15,7 +16,7 @@ type RuntimeSettings = {
 };
 const initial: RuntimeSettings = {
   default_provider: "openai", knowledge_base_id: "", realtime_voice_provider: "openai",
-  realtime_voice_model: "gpt-realtime-2.1-mini", voice_id: "alloy", temperature: 0.8,
+  realtime_voice_model: "", voice_id: "alloy", temperature: 0.8,
   max_tokens: 1500, system_prompt: "You are Clara, a helpful AI assistant for the user's communication workspace."
 };
 
@@ -29,7 +30,13 @@ export function AIRuntimeSettings({ organizationId }: { organizationId: string }
     if (!organizationId) return;
     void fetch(`/api/settings/ai-runtime?organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" })
       .then(async (response) => { const body = await response.json(); if (!response.ok) throw new Error(body.message ?? "AI configuration could not load."); return body.settings; })
-      .then((value) => setSettings({ ...initial, ...value }))
+      .then((value) => setSettings({
+        ...initial, ...value,
+        // The persisted API uses camelCase; this form submits snake_case.
+        // Normalize only the provider/model fields touched by live selection.
+        realtime_voice_provider: value?.realtime_voice_provider ?? value?.realtimeVoiceProvider ?? initial.realtime_voice_provider,
+        realtime_voice_model: value?.realtime_voice_model ?? value?.realtimeVoiceModel ?? "",
+      }))
       .catch((reason) => setError(reason instanceof Error ? reason.message : "AI configuration could not load."))
       .finally(() => setLoading(false));
   }, [organizationId]);
@@ -54,8 +61,8 @@ export function AIRuntimeSettings({ organizationId }: { organizationId: string }
       <div className="grid gap-4 md:grid-cols-2">
         <label className={label}>Clara knowledge-base ID<input className={input} value={settings.knowledge_base_id} onChange={(e) => setSettings({ ...settings, knowledge_base_id: e.target.value })} placeholder="Your actual Clara KB ID" /></label>
         <label className={label}>Default chat provider<select className={input} value={settings.default_provider} onChange={(e) => setSettings({ ...settings, default_provider: e.target.value })}><option value="openai">OpenAI</option><option value="gemini">Google Gemini</option><option value="sarvam">Sarvam AI</option></select></label>
-        <label className={label}>Realtime voice provider<select className={input} value={settings.realtime_voice_provider} onChange={(e) => setSettings({ ...settings, realtime_voice_provider: e.target.value })}><option value="openai">OpenAI Realtime</option><option value="gemini">Gemini Live</option><option value="sarvam">Sarvam</option><option value="elevenlabs">ElevenLabs</option></select></label>
-        <label className={label}>Realtime voice model<input className={input} value={settings.realtime_voice_model} onChange={(e) => setSettings({ ...settings, realtime_voice_model: e.target.value })} /></label>
+        <label className={label}>Realtime voice provider<select className={input} value={settings.realtime_voice_provider} onChange={(e) => setSettings({ ...settings, realtime_voice_provider: e.target.value, realtime_voice_model: "" })}><option value="openai">OpenAI Realtime</option><option value="gemini">Gemini Live</option><option value="sarvam">Sarvam</option><option value="elevenlabs">ElevenLabs</option></select></label>
+        <div className={label}>Realtime voice model<LiveModelSelect organizationId={organizationId} provider={settings.realtime_voice_provider} purpose="realtime" value={settings.realtime_voice_model || null} onChange={(model) => setSettings({ ...settings, realtime_voice_model: model || "" })} className={input} /></div>
         <label className={label}>Voice ID / preset<input className={input} value={settings.voice_id} onChange={(e) => setSettings({ ...settings, voice_id: e.target.value })} /></label>
         <label className={label}>Temperature (0–2)<input className={input} type="number" min="0" max="2" step="0.1" value={settings.temperature} onChange={(e) => setSettings({ ...settings, temperature: e.target.value })} /></label>
         <label className={label}>Maximum output tokens<input className={input} type="number" min="1" max="32768" value={settings.max_tokens} onChange={(e) => setSettings({ ...settings, max_tokens: e.target.value })} /></label>

@@ -449,6 +449,14 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Separate environment note:** Native host shell returned `pnpm: command not found`; Docker build environment has Corepack/pnpm and built the worker. Route host toolchain availability to OPS-01 if native commands are required.
 - **Next:** Pull latest main and rebuild Docker web/worker. Keep runtime PASS unclaimed until build and focused regression test are actually run.
 
+### EVT-DEV01-LIVE-MODEL-CATALOG-20261018 — 2026-10-18
+- **Agent/session:** DEV-01 / Forge; `DEV01-LIVE-MODEL-CATALOG-20261018`
+- **Type:** AUTHORIZED FEATURE SOURCE / REVIEW HANDOFF
+- **Summary:** Clara-style live vendor model discovery adapted into organization-scoped server API and dropdowns for chat, embedding, realtime and available voice model purposes; removed obsolete static catalog fallback and separated TTS/STT selections. Feature branch: `feature/dev01-live-provider-model-catalog-20261018`.
+- **Lesson:** Provider API support is capability-specific; never substitute static or globally keyed models when tenant live discovery fails. Do not present incompatible Sarvam V2-only models as executable by a v1 runtime.
+- **Verification:** Source and test files authored, not run. No production/deployment claim. User owner directly authorized this development.
+- **Other agents:** Keep ISS-026/ISS-030 and source bug remediation with FIX-01; Docker/build/deployment and live environment with OPS-01.
+- **Next:** Run focused model tests/typecheck and credentials-backed browser checks, architect review, then OPS-01 deploy only after accepted.
 
 ### EVT-FIX01-WHATSAPP-TEMPLATE-ROW-20261018
 - **Agent/session:** FIX-01 / Sentinel; `FIX01-WHATSAPP-TEMPLATE-ROW-20261018`

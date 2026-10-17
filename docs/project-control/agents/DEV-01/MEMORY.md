@@ -106,3 +106,10 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 - Qdrant returns candidates, not trusted message content. Re-fetch current message rows in SQL with the same organization/account/agent/date filters and return citations to authoritative message IDs.
 - Include the indexed message content hash in semantic hits and discard semantic-only candidates when the current PostgreSQL document hash differs or the source document is missing. Keep lexical fallback visibly marked degraded when Clara search fails.
 - ISS-026 remains FIX-01-owned/open; never wire this service to Chat/voice or activate vector sync until the authorization fix is closed and tested.
+
+### 2026-10-18 — Model discovery and credential-scoped selection
+- Read Clara-AI-Platform `ai-governance/core/live-catalog.ts` before building provider settings. Vendor catalog endpoints are capability-specific; OpenAI models need kind filtering, Gemini models need `supportedGenerationMethods` and pagination, and ElevenLabs has separate TTS and voice listing resources.
+- A global provider key or unauthorized static fallback is never a substitute for organization-bound configured provider credentials. Check `organization.read` before decrypting/fetching; use fixed vendor HTTPS origins; do not expose secrets in any JSON response.
+- A dropdown must never invent compatibility. The current Sarvam chat runtime calls v1, so V2-only live models must not be offered until runtime changes are authorized. Vendor TTS/STT model-list absence must be stated plainly; do not create static 'live' choices.
+- Models used for TTS and STT require two separate saved values. Preserve legacy selections visibly as unavailable rather than silently resetting them.
+- Do not mark GitHub source writes as Vitest/typecheck/build/browser/live-credential verification. Session: `DEV01-LIVE-MODEL-CATALOG-20261018`.

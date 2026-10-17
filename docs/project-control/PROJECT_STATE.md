@@ -1,3 +1,11 @@
+## DEV-01 — Clara-style live provider model catalogues — 2026-10-18
+
+- Owner-authorized product change underway on `feature/dev01-live-provider-model-catalog-20261018`, started at main `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`. Phase 4 remains `implementation_in_progress`; no change to phase acceptance, deployment or existing FIX-01/OPS-01 ownership.
+- Source introduces organization-read-authorized live vendor model lookups (per-purpose saved encrypted keys; fixed endpoints), dropdown-only model selection in organization and per-agent settings, separate TTS/STT values, honest catalog failure/unsupported states, and mocked-fetch tests. Static model catalog endpoint retired.
+- **Verification = NOT RUN** for tests/typecheck/build/browser/live providers/deployment. See `docs/project-control/sessions/DEV01-LIVE-MODEL-CATALOG-20261018.md` and `docs/project-control/NEXT_ACTION.md`. Live catalogue support for some vendor capabilities is unconfirmed and cannot be invented.
+
+---
+
 ## DEV-01 — Chat tool loop and WhatsApp approval checkpoint — 2026-10-17
 
 - Interactive `/api/chat/stream` now constructs a `ToolContext` from the server-authenticated organization membership, user, role and permissions; it combines only the per-agent allowlisted email/WhatsApp runtime tools, uses the bounded host-authorized invocation path (4 rounds / 8 calls / 10,000-character tool result cap), and preserves host-supplied mailbox context as explicitly untrusted data. Model arguments cannot set tenant, actor or permissions.

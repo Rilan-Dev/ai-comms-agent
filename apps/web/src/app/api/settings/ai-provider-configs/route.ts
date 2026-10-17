@@ -5,11 +5,6 @@ import {
   upsertProviderConfig,
 } from "@ai-comms-agent/db";
 import {
-  ALL_CHAT_MODELS,
-  ALL_EMBEDDING_MODELS,
-  ALL_STT_MODELS,
-  ALL_TTS_MODELS,
-  REALTIME_MODELS,
   asOrganizationId,
   type AiPurpose,
 } from "@ai-comms-agent/shared";
@@ -159,25 +154,12 @@ export async function DELETE(request: Request) {
 }
 
 /**
- * POST /api/settings/ai-provider-configs
- * Body: { action: "catalog" } → static catalog of all model lists (no auth)
- *       { action: "fetch", provider, purpose } → live fetch (requires saved key + read perm)
+ * Removed the static catalogue endpoint. Consumers must use the authorized
+ * /api/settings/ai-models vendor-live endpoint and explicitly handle failures.
  */
-export async function POST(request: Request) {
-  try {
-    const body = await request.json().catch(() => null) as Record<string, unknown> | null;
-    const action = typeof body?.action === "string" ? body.action : "catalog";
-    if (action === "catalog") {
-      return NextResponse.json({
-        chat: ALL_CHAT_MODELS,
-        tts: ALL_TTS_MODELS,
-        stt: ALL_STT_MODELS,
-        realtime: REALTIME_MODELS,
-        embedding: ALL_EMBEDDING_MODELS,
-      });
-    }
-    return NextResponse.json({ error: "validation_error", message: "Unknown action." }, { status: 422 });
-  } catch (error) {
-    return authorizationErrorToResponse(error);
-  }
+export async function POST() {
+  return NextResponse.json({
+    error: "catalog_endpoint_retired",
+    message: "The static catalogue is retired. Use GET /api/settings/ai-models?provider=...&purpose=...&organizationId=... for live models.",
+  }, { status: 410 });
 }

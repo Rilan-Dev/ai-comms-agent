@@ -687,6 +687,17 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Handoff:** OPS-01 only for host pnpm/toolchain availability, not the source type error.
 - **Next action:** Rebuild from latest main and report exact result; continue fixing source if new compiler errors appear.
 
+### DEV01-LIVE-MODEL-CATALOG-20261018 — 2026-10-18
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Recover current ai-comms-agent and mirror Clara AI Platform's live provider model listing as selection-only UI.
+- **Started from:** main `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`; branch `feature/dev01-live-provider-model-catalog-20261018`.
+- **Scope:** Owner-explicit authorized product development; Phase 4 unchanged.
+- **Status:** HANDOFF — source changes on unmerged feature branch, executable acceptance pending.
+- **Completed:** Vendor-live org-authorized model API, live selector across provider/agent/realtime settings, separate TTS/STT, retired static fallback and mocked-source tests.
+- **Pending:** Execute focused Vitest/typecheck, validate actual key-scoped vendor responses and browser save/reload; architect review before merge.
+- **Blockers:** No live credentials/toolchain verification; no confirmed Sarvam voice/TEI/ElevenLabs realtime catalog endpoints. FIX-01's separate chat/voice bugs and OPS-01's deployment/toolchain checks remain separately owned.
+- **Handoff:** See `docs/project-control/sessions/DEV01-LIVE-MODEL-CATALOG-20261018.md`; no role takeover.
+- **Next action:** Validate `apps/web/tests/live-model-catalog.test.ts` and `ai-runtime-settings.test.ts` + web typecheck in full checkout; then credential-backed browser tests and architect review.
 
 ### FIX01-WHATSAPP-TEMPLATE-ROW-20261018 — 2026-10-18
 - Agent: FIX-01 / Sentinel

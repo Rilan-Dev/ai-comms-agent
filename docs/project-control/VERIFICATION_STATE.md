@@ -1,3 +1,13 @@
+## 2026-10-18 — DEV-01 live provider model catalogues (NOT VERIFIED)
+
+- Branch: `feature/dev01-live-provider-model-catalog-20261018` from `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`; session `DEV01-LIVE-MODEL-CATALOG-20261018`.
+- Evidence available: GitHub accepted source updates and mocked provider test source; reviewed Clara-AI-Platform `ai-governance/core/live-catalog.ts` reference.
+- **NOT EXECUTED:** `apps/web/tests/live-model-catalog.test.ts`, `apps/web/tests/ai-runtime-settings.test.ts`, pnpm/web typecheck, Next build, live vendor model listing, browser form selection/persistence, cross-org negative check, deployment or production provider invocation.
+- Provider coverage is source-proposed only. Unsupported catalogue purposes intentionally fail visibly; no static selection presented as live.
+- Owner: DEV-01 for focused code verification and correctness; OPS-01 for dependency-equipped/live/deployment verification; architect for PR approval. No phase/release acceptance.
+
+---
+
 ### Provider real-time email sync — 2026-10-16
 
 - Branch: `feature/provider-realtime-email-sync`.

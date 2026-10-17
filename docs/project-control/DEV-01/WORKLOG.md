@@ -166,3 +166,9 @@
 - **Commits:** 3323fdf8, ab90b544, 13f73089, dfd65f38, 64afd328, 57c47c37, 7e88ef1a, 82d22e52, 5a24783a, d55a3b14, be18c22f.
 - **Verification boundary:** source was fetched back from GitHub and commit range inspected. Tests, typecheck, build, browser, deployed runtime, Meta credentials, webhook subscription and live message delivery were NOT run. No deployment or live-send success is claimed.
 - **Operational note:** the exposed aca-access-token session cookie in the user's pasted curl should be revoked/invalidated. Development-mode Meta testing still requires a valid token, a Meta test phone/phone-number ID, and an allowed recipient where applicable.
+
+### 2026-10-18 — DEV01-LIVE-MODEL-CATALOG-20261018
+- Owner-authorized feature: Clara-style live, scoped provider model catalogues and model-selection-only UX in ai-comms-agent. Implemented on `feature/dev01-live-provider-model-catalog-20261018`.
+- Files: vendor-live adapter, authorized /api/settings/ai-models, reusable select, org/agent/runtime UI, legacy endpoint cleanup and focused tests. See `docs/project-control/sessions/DEV01-LIVE-MODEL-CATALOG-20261018.md`.
+- Status: source-only; no tests, typecheck, build, provider connection or deployment verified. Phase 4 unchanged. FIX-01 and OPS-01 issues not assumed.
+- Next: focused Vitest/typecheck and live credential/UI validation, then architect review.

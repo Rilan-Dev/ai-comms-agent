@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Save, AlertCircle, CheckCircle2 } from "lucide-react";
+import { LiveModelSelect } from "@/components/live-model-select";
 
 type AiSettings = {
   chatProvider: string | null;
@@ -42,6 +43,20 @@ export function AgentAISettingsPanel({
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [orgProviders, setOrgProviders] = useState({ chat: "openai", voice: "elevenlabs", realtime: "openai", embedding: "openai" });
+
+  useEffect(() => {
+    if (!organizationId) return;
+    void fetch(`/api/settings/ai-runtime?organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" })
+      .then(async (response) => { if (!response.ok) throw new Error("Organization defaults unavailable"); return response.json(); })
+      .then(({ settings }) => setOrgProviders({
+        chat: settings?.defaultProvider || "openai",
+        voice: settings?.voiceChatProvider || "elevenlabs",
+        realtime: settings?.realtimeVoiceProvider || "openai",
+        embedding: settings?.embeddingProvider || "openai",
+      }))
+      .catch(() => setError("Organization AI defaults could not load; verify inherited providers before changing models."));
+  }, [organizationId]);
 
   useEffect(() => {
     if (!agentId) return;
@@ -118,7 +133,7 @@ export function AgentAISettingsPanel({
           <label className={labelCls}>Chat provider (null = inherit)
             <select className={inputCls}
               value={settings.chatProvider ?? ""}
-              onChange={(e) => update("chatProvider", e.target.value || null)}>
+              onChange={(e) => setSettings((current) => ({ ...current, chatProvider: e.target.value || null, chatModel: null }))}>
               <option value="">(inherit org default)</option>
               <option value="openai">OpenAI</option>
               <option value="gemini">Google Gemini</option>
@@ -126,9 +141,8 @@ export function AgentAISettingsPanel({
             </select>
           </label>
           <label className={labelCls}>Chat model (null = inherit)
-            <input className={inputCls} type="text" placeholder="e.g. gpt-4o-mini"
-              value={settings.chatModel ?? ""}
-              onChange={(e) => update("chatModel", e.target.value || null)} />
+            <LiveModelSelect organizationId={organizationId} provider={settings.chatProvider || orgProviders.chat} purpose="chat"
+              className={inputCls} value={settings.chatModel} onChange={(selected) => update("chatModel", selected)} allowInherit />
           </label>
         </div>
       </fieldset>
@@ -140,7 +154,7 @@ export function AgentAISettingsPanel({
           <label className={labelCls}>Voice-chat provider (null = inherit)
             <select className={inputCls}
               value={settings.voiceChatProvider ?? ""}
-              onChange={(e) => update("voiceChatProvider", e.target.value || null)}>
+              onChange={(e) => setSettings((current) => ({ ...current, voiceChatProvider: e.target.value || null, voiceChatTtsModel: null, voiceChatSttModel: null }))}>
               <option value="">(inherit org default)</option>
               <option value="elevenlabs">ElevenLabs</option>
               <option value="sarvam">Sarvam AI</option>
@@ -154,14 +168,12 @@ export function AgentAISettingsPanel({
               onChange={(e) => update("voiceChatVoiceId", e.target.value || null)} />
           </label>
           <label className={labelCls}>TTS model
-            <input className={inputCls} type="text" placeholder="eleven_flash_v2_5 / bulbul:v3"
-              value={settings.voiceChatTtsModel ?? ""}
-              onChange={(e) => update("voiceChatTtsModel", e.target.value || null)} />
+            <LiveModelSelect organizationId={organizationId} provider={settings.voiceChatProvider || orgProviders.voice} purpose="tts"
+              className={inputCls} value={settings.voiceChatTtsModel} onChange={(selected) => update("voiceChatTtsModel", selected)} allowInherit />
           </label>
           <label className={labelCls}>STT model
-            <input className={inputCls} type="text" placeholder="scribe_v2 / saaras:v3"
-              value={settings.voiceChatSttModel ?? ""}
-              onChange={(e) => update("voiceChatSttModel", e.target.value || null)} />
+            <LiveModelSelect organizationId={organizationId} provider={settings.voiceChatProvider || orgProviders.voice} purpose="stt"
+              className={inputCls} value={settings.voiceChatSttModel} onChange={(selected) => update("voiceChatSttModel", selected)} allowInherit />
           </label>
         </div>
       </fieldset>
@@ -173,7 +185,7 @@ export function AgentAISettingsPanel({
           <label className={labelCls}>Realtime voice provider (null = inherit)
             <select className={inputCls}
               value={settings.realtimeVoiceProviderOverride ?? ""}
-              onChange={(e) => update("realtimeVoiceProviderOverride", e.target.value || null)}>
+              onChange={(e) => setSettings((current) => ({ ...current, realtimeVoiceProviderOverride: e.target.value || null, realtimeSttModel: null, realtimeTtsModel: null }))}>
               <option value="">(inherit org default)</option>
               <option value="openai">OpenAI Realtime</option>
               <option value="gemini">Gemini Live</option>
@@ -187,14 +199,12 @@ export function AgentAISettingsPanel({
               onChange={(e) => update("realtimeVoiceIdOverride", e.target.value || null)} />
           </label>
           <label className={labelCls}>Realtime STT model
-            <input className={inputCls} type="text" placeholder="scribe_v2_realtime / saaras:v3-realtime"
-              value={settings.realtimeSttModel ?? ""}
-              onChange={(e) => update("realtimeSttModel", e.target.value || null)} />
+            <LiveModelSelect organizationId={organizationId} provider={settings.realtimeVoiceProviderOverride || orgProviders.realtime} purpose="stt"
+              className={inputCls} value={settings.realtimeSttModel} onChange={(selected) => update("realtimeSttModel", selected)} allowInherit />
           </label>
           <label className={labelCls}>Realtime TTS model
-            <input className={inputCls} type="text" placeholder="eleven_flash_v2_5"
-              value={settings.realtimeTtsModel ?? ""}
-              onChange={(e) => update("realtimeTtsModel", e.target.value || null)} />
+            <LiveModelSelect organizationId={organizationId} provider={settings.realtimeVoiceProviderOverride || orgProviders.realtime} purpose="tts"
+              className={inputCls} value={settings.realtimeTtsModel} onChange={(selected) => update("realtimeTtsModel", selected)} allowInherit />
           </label>
         </div>
       </fieldset>
@@ -206,7 +216,7 @@ export function AgentAISettingsPanel({
           <label className={labelCls}>Embedding provider (null = inherit)
             <select className={inputCls}
               value={settings.embeddingProvider ?? ""}
-              onChange={(e) => update("embeddingProvider", e.target.value || null)}>
+              onChange={(e) => setSettings((current) => ({ ...current, embeddingProvider: e.target.value || null, embeddingModel: null, embeddingDimension: null }))}>
               <option value="">(inherit org default)</option>
               <option value="openai">OpenAI</option>
               <option value="gemini">Google Gemini</option>
@@ -214,9 +224,8 @@ export function AgentAISettingsPanel({
             </select>
           </label>
           <label className={labelCls}>Embedding model
-            <input className={inputCls} type="text" placeholder="text-embedding-3-small"
-              value={settings.embeddingModel ?? ""}
-              onChange={(e) => update("embeddingModel", e.target.value || null)} />
+            <LiveModelSelect organizationId={organizationId} provider={settings.embeddingProvider || orgProviders.embedding} purpose="embedding"
+              className={inputCls} value={settings.embeddingModel} onChange={(selected) => update("embeddingModel", selected)} allowInherit />
           </label>
           <label className={labelCls}>Dimension
             <input className={inputCls} type="number" min="1" max="4096" placeholder="1536"

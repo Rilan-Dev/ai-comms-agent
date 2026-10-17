@@ -1863,3 +1863,8 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 
 ---
 
+### 2026-10-18 — DEV-01 live AI provider model catalogues (SOURCE ONLY)
+- Owner-directed product slice on `feature/dev01-live-provider-model-catalog-20261018` from main `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`.
+- Compared Clara-AI-Platform vendor live catalogue and integrated secure tenant-scoped vendor fetching plus model dropdowns for organization, agent and realtime settings. Removed static catalog fallback; added mocked provider/source contract tests. No cross-role runtime/deployment work.
+- Verification: GitHub source accepted; executable tests, typecheck, browser, live vendor credential and deployment verification remain **NOT RUN**.
+- Recovery/next: `docs/project-control/sessions/DEV01-LIVE-MODEL-CATALOG-20261018.md` and `docs/project-control/NEXT_ACTION.md`.
