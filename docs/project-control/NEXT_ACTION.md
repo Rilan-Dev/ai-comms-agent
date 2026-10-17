@@ -1405,3 +1405,10 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Source correction on main:** `scripts/manual-up.sh` now falls back to host `DATABASE_URL` or the concrete `DATABASE_URL` value in `.env` if the Compose CLI lacks that option; unresolved interpolation/missing URL remains a hard failure and the URL is never printed. Commits: source `a93176b3cbba730c30a016b4e47a9dd3dd46039c`, regression test `0386f03fa9534ff2d53db84b7ffbd2b5fe864154`.
 - **Next:** Pull latest main, run `node --test scripts/tests/manual-up-compose-env.test.mjs`, then `bash scripts/update-and-up.sh`. Confirm migration and container startup from actual output. If Compose still fails, capture only the error text (no environment values/secrets).
 - **Verification boundary:** Docker image builds are verified by the user's log; the compatibility test, migration chain, stack startup, and live runtime are not yet verified. Continue independent source work without waiting on unrelated CI/Vercel gates.
+
+## OPS-01 — Manual Compose env-file startup correction — 2026-10-18
+
+- Latest user log: image builds passed; migration runner completed with 6 applied and 62 skipped; Compose startup failed because `../.env` resolved to a missing parent-directory file.
+- Corrected both `docker-compose.manual.yml` service `env_file` paths to repository-root `.env` (commit `5072621a66eab0016bf8c29e76df8683070baa14`) and added regression source (commit `2649466dd53f5a545bfaa2dd52ecaa9df959ba00`).
+- Exact next action: pull latest `main`; run `node --test scripts/tests/manual-up-compose-env.test.mjs`; then run `bash scripts/update-and-up.sh`. Capture Compose startup and `ps` results, and check service health before claiming deployment success. Do not share secrets or database URLs.
+- Verification status: source committed; test and post-fix startup not yet verified.
