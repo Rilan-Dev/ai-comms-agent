@@ -31,7 +31,7 @@ export async function verifyPendingWhatsAppAccounts(limit = 10) {
       const response = await fetch(url, { headers: { authorization: "Bearer " + token } });
       const payload = (await response.json().catch(() => ({}))) as WhatsAppGraphPayload;
       if (!response.ok) throw new Error(typeof payload?.error?.message === "string" ? payload.error.message : "Meta WhatsApp account verification failed");
-      await updateWhatsAppAccountStatus(account.organization_id, account.id, "connected", null, typeof payload?.display_phone_number === "string" ? payload.display_phone_number : null, typeof payload?.verified_name === "string" ? payload.verified_name : null);
+      await updateWhatsAppAccountStatus(account.organization_id, account.id, "connected", null, typeof payload?.display_phone_number === "string" ? payload.display_phone_number : null, account.display_name ?? (typeof payload?.verified_name === "string" ? payload.verified_name : null));
       await recordAuditEvent({ organizationId: account.organization_id, actorUserId: null, eventType: "whatsapp.account.verified", targetType: "whatsapp_account", targetId: account.id, action: "verify", decision: "allowed" });
     } catch (error) {
       const message = error instanceof Error ? error.message : "WhatsApp verification failed";
