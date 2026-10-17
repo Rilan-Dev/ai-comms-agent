@@ -81,7 +81,7 @@ export async function POST(request: Request) {
       const components = approvedTemplate.rows[0].components;
       const bodyComponent = Array.isArray(components) ? components.find((item) => item && typeof item === "object" && (item as Record<string, unknown>).type === "BODY") as Record<string, unknown> | undefined : undefined;
       const bodyText = typeof bodyComponent?.text === "string" ? bodyComponent.text : "";
-      const indexes = [...bodyText.matchAll(/\\{\\{(\\d+)\\}\\}/g)].map((match) => Number(match[1]));
+      const indexes = [...bodyText.matchAll(/\{\{(\d+)\}\}/g)].map((match) => Number(match[1]));
       const requiredParameters = indexes.length ? Math.max(...indexes) : 0;
       if (templateParameters.length !== requiredParameters || templateParameters.some((value) => typeof value !== "string" || value.length > 1024)) {
         return NextResponse.json({ error: "template_parameter_mismatch", message: "Template parameters no longer match the approved template." }, { status: 409 });
