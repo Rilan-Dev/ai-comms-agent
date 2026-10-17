@@ -1,12 +1,3 @@
-
-
-### FIX01-MIGRATION-NETWORK-20261018 — 2026-10-18
-- **Symptom:** Manual deployment build completed, then migration failed with `getaddrinfo ENOTFOUND postgres`; script continued startup.
-- **Root cause:** `scripts/manual-up.sh` runs the migration Node process on the host, but its DB hostname `postgres` is only a Compose network alias.
-- **Failed approaches:** Host-side runner with Compose DNS; using `host.docker.internal:5433` for app traffic, which conflicts with the requested internal network route.
-- **Remedy/owner:** Routed deployment script and migration execution to OPS-01. Migration should run as a one-off Compose container; ensure `supabase/migrations` exists inside the runner (current Dockerfile does not copy it). Do not silently change the DB name.
-- **Evidence:** User output + source inspection; no post-fix tests or deployment verification.
-- **Prevention:** Verify the process network namespace and required migration files before changing URLs; separate source diagnosis from deployment PASS.
 # FIX-01 Role-Local Memory
 
 This is durable memory for FIX-01. It supplements, but never overrides, shared APCP memory or repository authority.
@@ -171,3 +162,12 @@ The authentication loop was traced to session issuance preceding active organiza
 - Strict indexed-access applies to Int16Array, Float32Array, and split() results; guard reads directly rather than disabling compiler checks.
 - Voice-turn trust context must explicitly fail closed if membership is null and must provide a real string conversation ID; do not cast unknown session metadata.
 - Source/test commits: 1fb04529, 9a9e09ee, 5946168a, 57618396, fee2a239. Verification pending; user logs are pre-fix.
+
+
+### FIX01-MIGRATION-NETWORK-20261018 — 2026-10-18
+- **Symptom:** Manual deployment build completed, then migration failed with `getaddrinfo ENOTFOUND postgres`; script continued startup.
+- **Root cause:** `scripts/manual-up.sh` runs the migration Node process on the host, but its DB hostname `postgres` is only a Compose network alias.
+- **Failed approaches:** Host-side runner with Compose DNS; using `host.docker.internal:5433` for app traffic, which conflicts with the requested internal network route.
+- **Remedy/owner:** Routed deployment script and migration execution to OPS-01. Migration should run as a one-off Compose container; ensure `supabase/migrations` exists inside the runner (current Dockerfile does not copy it). Do not silently change the DB name.
+- **Evidence:** User output + source inspection; no post-fix tests or deployment verification.
+- **Prevention:** Verify the process network namespace and required migration files before changing URLs; separate source diagnosis from deployment PASS.
