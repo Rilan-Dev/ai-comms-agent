@@ -3,25 +3,10 @@
 import { SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LiveModelSelect } from "@/components/live-model-select";
-
-type RuntimeSettings = {
-  default_provider: string;
-  knowledge_base_id: string;
-  realtime_voice_provider: string;
-  realtime_voice_model: string;
-  voice_id: string;
-  temperature: number | string;
-  max_tokens: number | string;
-  system_prompt: string;
-};
-const initial: RuntimeSettings = {
-  default_provider: "openai", knowledge_base_id: "", realtime_voice_provider: "openai",
-  realtime_voice_model: "", voice_id: "alloy", temperature: 0.8,
-  max_tokens: 1500, system_prompt: "You are Clara, a helpful AI assistant for the user's communication workspace."
-};
+import { initialRuntimeSettings, normalizeRuntimeSettings, type RuntimeSettings } from "@/lib/ai/runtime-settings-state";
 
 export function AIRuntimeSettings({ organizationId }: { organizationId: string }) {
-  const [settings, setSettings] = useState<RuntimeSettings>(initial);
+  const [settings, setSettings] = useState<RuntimeSettings>(initialRuntimeSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -30,13 +15,7 @@ export function AIRuntimeSettings({ organizationId }: { organizationId: string }
     if (!organizationId) return;
     void fetch(`/api/settings/ai-runtime?organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" })
       .then(async (response) => { const body = await response.json(); if (!response.ok) throw new Error(body.message ?? "AI configuration could not load."); return body.settings; })
-      .then((value) => setSettings({
-        ...initial, ...value,
-        // The persisted API uses camelCase; this form submits snake_case.
-        // Normalize only the provider/model fields touched by live selection.
-        realtime_voice_provider: value?.realtime_voice_provider ?? value?.realtimeVoiceProvider ?? initial.realtime_voice_provider,
-        realtime_voice_model: value?.realtime_voice_model ?? value?.realtimeVoiceModel ?? "",
-      }))
+      .then((value: unknown) => setSettings(normalizeRuntimeSettings(value)))
       .catch((reason) => setError(reason instanceof Error ? reason.message : "AI configuration could not load."))
       .finally(() => setLoading(false));
   }, [organizationId]);
