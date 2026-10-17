@@ -45,21 +45,53 @@ echo "Building application images..."
 # Resolve DATABASE_URL from the same Compose environment used by the stack.
 echo "Resolving migration database configuration..."
 
-if ! compose_environment="$("${COMPOSE[@]}" config --environment)"; then
-  echo "ERROR: Could not resolve the Compose environment." >&2
-  exit 1
+migration_db_url=""
+
+# Compose added "config --environment" after some packaged Docker Compose
+# versions. Prefer it, but retain compatibility with older Compose v2 installs.
+if compose_environment="$("${COMPOSE[@]}" config --environment 2>/dev/null)"; then
+  migration_db_url="$(
+    printf '%s\\n' "$compose_environment" |
+      awk -F= '$1 == "DATABASE_URL" {
+        sub(/^[^=]*=/, "")
+        print
+        exit
+      }'
+  )"
+else
+  echo "NOTE: Compose lacks 'config --environment'; reading DATABASE_URL from the same host/.env interpolation sources."
+  migration_db_url="${DATABASE_URL:-}"
+
+  if [[ -z "$migration_db_url" ]]; then
+    migration_db_url="$(
+      awk '
+        /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
+        {
+          line=$0
+          sub(/^[[:space:]]*/, "", line)
+          if (index(line, "DATABASE_URL=") == 1) {
+            value=substr(line, length("DATABASE_URL=") + 1)
+            sub(/[[:space:]]+#.*$/, "", value)
+            dq=sprintf("%c",34)
+            sq=sprintf("%c",39)
+            if (substr(value,1,1)==dq || substr(value,1,1)==sq) value=substr(value,2)
+            if (substr(value,length(value),1)==dq || substr(value,length(value),1)==sq) value=substr(value,1,length(value)-1)
+            print value
+            exit
+          }
+        }
+      ' "$ENV_FILE"
+    )"
+  fi
 fi
 
-migration_db_url="$(
-  printf '%s\n' "$compose_environment" |
-    awk -F= '$1 == "DATABASE_URL" {
-      sub(/^[^=]*=/, "")
-      print
-      exit
-    }'
-)"
-
 unset compose_environment
+
+# An unresolved interpolation expression is not a usable host-side DSN.
+if [[ "$migration_db_url" == *'${'* ]]; then
+  echo "ERROR: DATABASE_URL contains unresolved Compose interpolation; update .env to a concrete URL or use a newer Docker Compose." >&2
+  exit 1
+fi
 
 if [[ -z "$migration_db_url" ]]; then
   echo "ERROR: DATABASE_URL is missing from the Compose environment." >&2
