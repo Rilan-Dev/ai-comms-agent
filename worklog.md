@@ -1813,3 +1813,12 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 - **Commits:** 3323fdf8fd7a5c230532a8e08d2922c5f9fc7a2c, ab90b544e69321f16d0339f5c78169dcba31c078, 13f730897534c69857d9841f5b33feff00ee2db6, dfd65f3855c77cee2958af332f5bf9a3493887de, 64afd328c4ea429a6175ab296d9d208b9b9190c1, 57c47c37b803f0b1a22c59f3b53b4757a965cf4a, 7e88ef1a65279ef907363f0013a894b47c483659, 82d22e52904cbc6fda8e84be0437cc1079e1f07f, 5a24783a393226366b0446f3e60a524f8f2fb87d, d55a3b14adcc594e128348df80d81ac95c614ad2, be18c22ffabcfb05fb0ad976ce710f6faa95c79f.
 - **Verification:** GitHub source readback and commit comparison only. Tests/typecheck/build/browser/live Meta verification/deployment/send were not run.
 - **Security:** user's curl included an active-looking aca-access-token session cookie; advise invalidating that session and avoiding credential-bearing curl snippets in shared chats.
+
+## 2026-10-17 — WhatsApp chat context access enabled at source level
+
+- Read `docs/project-control/CHAT_CONTINUITY.md` and `docs/project-control/NEXT_ACTION.md` before editing.
+- Root cause confirmed: channel binding and inbound/outbound worker paths existed, but interactive `/api/chat/stream` did not load WhatsApp history into the model messages. Documented WhatsApp tool names were not proof of executable handlers.
+- Updated `apps/web/src/app/api/chat/stream/route.ts` to add a read-only WhatsApp context loader, limited to up to 20 recent messages from the active agent's connected, non-deleted, explicitly bound WhatsApp account in the same organization. Message text is bracketed as untrusted content, and the prompt forbids claiming send/reply success.
+- Added `apps/web/tests/whatsapp-chat-context.test.ts` for source-level assertions covering account binding, status, organization isolation and untrusted/read-only prompt boundary.
+- Source commits: `7b58e075368b6a125d6c30cdb14e9fd6731aaed8`, `3f6f568f0a774410926d20c3181b6495c860dc5a`, `878890da6e095c1485a3d977f96aecbb3edf026e`. Project-control next action updated in `86ac8ccbb3825050d124d87b360c4deb5fb67488`.
+- Verification limitation: source was read back from GitHub, but tests/typecheck/build/browser/live database/Meta/deployment were not run. This is not full WhatsApp tool enablement: outbound AI-initiated send and shared `whatsapp.send`/`whatsapp.history` executable handlers remain outstanding and must go through authorization, allowlist, policy/approval, template compliance and audit.
