@@ -126,8 +126,15 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
       if (!token) throw new Error("WhatsApp access token is unavailable");
       const version = process.env.WHATSAPP_GRAPH_API_VERSION || "v23.0";
       if (message.message_type === "template") {
-        const media = message.media && typeof message.media === "object" && !Array.isArray(message.media) ? message.media : {};
-        const template = media.template && typeof media.template === "object" && !Array.isArray(media.template) ? media.template : null;
+        const media: Record<string, unknown> =
+          message.media && typeof message.media === "object" && !Array.isArray(message.media)
+            ? message.media as Record<string, unknown>
+            : {};
+        const rawTemplate = media.template;
+        const template: Record<string, unknown> | null =
+          rawTemplate && typeof rawTemplate === "object" && !Array.isArray(rawTemplate)
+            ? rawTemplate as Record<string, unknown>
+            : null;
         const templateName = typeof template?.name === "string" ? template.name : "";
         const templateLanguage = typeof template?.language === "string" ? template.language : "";
         if (!account.business_account_id || !templateName || !templateLanguage) throw new Error("WhatsApp template payload cannot be verified");
