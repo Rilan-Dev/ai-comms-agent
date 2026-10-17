@@ -1,3 +1,14 @@
+## 2026-10-18 — DEV-01 organization-scoped provider UI correction (partial verification only)
+
+- Source commits to `main`: `0fe7ce37` (provider setup), `f5407bf1` (chat provider), `a28bf2d5` (live-model select), plus portable tests `c7ac01fb`/`74a2fcca`/`e0931386` and Vitest `a94705cf`. No branch/PR.
+- **EXECUTED:** Node v22.16.0 15/15 across previously committed vendor catalog, form hydration, provider status tests; `tsc --noEmit` exact three previously committed pure modules passed. Authenticated GitHub source checks for changed org-scoped provider forms and aborted response guard 12/12 passed (not dynamic UI tests).
+- **NOT EXECUTED:** Newly added `ai-provider-organization-safety.test.mjs`, updated Vitest, full `pnpm` install, web/worker typecheck, Next build, browser/React, real provider API and model persistence, cross-tenant runtime negative tests, migrations, deployment. Browser connector could not read user tab in this chat due originating-context requirement. No production acceptance.
+- Exact source blobs after correction: provider setup `a17a41f780fcb5b4ff4c3b22740fd73668dfe41c`, provider settings `7794ab839340bd46f85b444b69d53d0a2de8cfdb`, live model selector `ea4e5a7762b607d33fdb002c150622e00e2c9128`, new Node test `114464176f3f31491accae05d0468ae142bb1034`, Vitest `89f001c68eb458d0d86dbff34aeff5794825ecfa`.
+- OPS-01/full checkout required for integration; full session `docs/project-control/sessions/DEV01-ORG-CREDENTIAL-ISOLATION-20261018.md`.
+
+
+---
+
 ## 2026-10-18 — DEV-01 provider setup hardening (LIMITED EXECUTED CHECKS)
 
 - All source commits on `main`, no branch/PR. Files: `ai-provider-setup-shared.tsx`, `provider-config-status.ts`, `provider-config-status.test.mjs`, `ai-provider-setup-safety.test.mjs`, `live-model-catalog.test.ts`.
