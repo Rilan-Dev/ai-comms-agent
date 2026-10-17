@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getWhatsAppAccountForOrganization, listWhatsAppMessagesForOrganization, queueWhatsAppOutboundMessage, recordAuditEvent } from "@ai-comms-agent/db";
+import { getWhatsAppAccountForOrganization, listWhatsAppMessagesForOrganization, query, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -34,21 +34,35 @@ export async function POST(request: Request) {
     if (!account) return NextResponse.json({ error: "not_found", message: "WhatsApp account was not found." }, { status: 404 });
     if (account.status !== "connected") return NextResponse.json({ error: "provider_not_connected", message: "WhatsApp account must be verified and connected before outbound messages can be queued." }, { status: 409 });
     const requestedIdempotencyKey = request.headers.get("Idempotency-Key") ?? (typeof body?.idempotencyKey === "string" ? body.idempotencyKey : "");
-    const idempotencyKey = requestedIdempotencyKey.trim();
+    const idempotencyKey = requestedIdempotencyKey.trim() || crypto.randomUUID();
     if (idempotencyKey.length > 200) return NextResponse.json({ error: "validation_error", message: "Idempotency-Key must be 200 characters or fewer." }, { status: 422 });
-    const effectiveIdempotencyKey = idempotencyKey || crypto.randomUUID();
     const correlationId = crypto.randomUUID();
-    let messageId: string | null;
-    try {
-      messageId = await queueWhatsAppOutboundMessage({ organizationId, accountId, to, body: messageBody, idempotencyKey: effectiveIdempotencyKey, correlationId });
-    } catch (error) {
-      if (error instanceof Error && error.message === "Idempotency key already exists for a different WhatsApp payload") {
+
+    // Outbound requests are proposals only. The worker queue is reached solely
+    // after a separate authenticated human approval and a fresh Meta window check.
+    const inserted = await query<{ id: string }>(
+      `INSERT INTO whatsapp_send_actions
+        (organization_id, whatsapp_account_id, requested_by, recipient_phone, message_body, payload_type, status, idempotency_key, correlation_id)
+       VALUES ($1,$2,$3,$4,$5,'text','pending',$6,$7)
+       ON CONFLICT (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL
+       DO NOTHING RETURNING id`,
+      [organizationId, accountId, actor.user.id, to, messageBody, idempotencyKey, correlationId],
+    );
+    let actionId = inserted.rows[0]?.id ? String(inserted.rows[0].id) : "";
+    if (!actionId) {
+      const existing = await query<{ id: string; whatsapp_account_id: string; recipient_phone: string; message_body: string; status: string }>(
+        "SELECT id, whatsapp_account_id, recipient_phone, message_body, status FROM whatsapp_send_actions WHERE organization_id=$1 AND idempotency_key=$2 LIMIT 1",
+        [organizationId, idempotencyKey],
+      );
+      const row = existing.rows[0];
+      if (!row) throw new Error("WhatsApp approval idempotency conflict could not be resolved");
+      if (String(row.whatsapp_account_id) !== accountId || String(row.recipient_phone) !== to || String(row.message_body) !== messageBody) {
         return NextResponse.json({ error: "idempotency_conflict", message: "This Idempotency-Key was already used for a different WhatsApp message." }, { status: 409 });
       }
-      throw error;
+      actionId = String(row.id);
+      return NextResponse.json({ approvalRequired: true, actionId, status: row.status, message: "This WhatsApp message is awaiting or has already received an approval decision." }, { status: 202 });
     }
-    if (!messageId) return NextResponse.json({ queued: false, message: "This outbound message was already queued with the same idempotency key." });
-    await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId, eventType: "whatsapp.message.queued", targetType: "whatsapp_message", targetId: messageId, action: "send", decision: "allowed" });
-    return NextResponse.json({ queued: true, messageId, status: "queued", correlationId }, { status: 202 });
+    await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId, eventType: "whatsapp.send_approval.requested", targetType: "whatsapp_send_action", targetId: actionId, action: "request_send", decision: "pending", metadata: { accountId, recipientSuffix: to.slice(-4), payloadType: "text" } });
+    return NextResponse.json({ approvalRequired: true, actionId, status: "pending", correlationId, message: "Message saved for human approval. It has not been sent." }, { status: 202 });
   } catch (error) { return authorizationErrorToResponse(error); }
 }
