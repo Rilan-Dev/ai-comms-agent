@@ -1,3 +1,12 @@
+## DEV-01 — 2026-10-18 Clara email vector worker adapter test-runner correction
+
+- **Source correction on main:** `apps/worker/tests/clara-email-vector-adapter.test.ts` Node-native test is now inside the worker test glob; old undiscovered `src/knowledge/clara-email-vector-adapter.test.ts` Vitest test removed. `apps/worker/src/knowledge/clara-email-vector-adapter.ts` now validates organization/account/message/source IDs and SHA-256 hashes before sending the server credential. Commits `1513f237`, `6cdde3fe`, `8bc21242`, `dccd8a7f`, `247e5a6c`. No branch or PR.
+- **Actually run:** Node v22.16 `--experimental-strip-types --test` on four previously recorded portable files: 20/20 PASS (6 live-model mocks, 4 persisted runtime state, 5 provider setup status, 5 Clara vector read). Actual GitHub source/runner contract assertions 12/12 PASS. New adapter source SHA `b07e2b45f438b5f8cb0475837ced81b86a71a2ab`, Node worker test SHA `97e2e6abd070e45955e4c6a176bebf2772ff7a76`.
+- **Not run:** Newly committed worker Node adapter test itself, all worker package tests, full pnpm web/worker typechecks, Next/worker builds, migrations, Clara/Qdrant API with credentials, browser/tenant, any prod/deployment acceptance. Shell has no private checkout/working git DNS/pnpm; CLI cannot run monorepo. Worker tests remain unverified until OPS-enabled CI/local checkout actually executes them.
+- **Session / exact commands:** `docs/project-control/sessions/DEV01-WORKER-VECTOR-TEST-COVERAGE-20261018.md`; `NEXT_ACTION.md`.
+
+---
+
 ## 2026-10-18 — DEV-01 Clara email-vector boundary / exact-source limited verification
 
 - **Committed directly to main:** Search adapter security input/account scoping and `redirect: "error"` + safe URL requirements; mirrored redirect/URL safety in worker upsert/delete adapter; portable Node and worker Vitest regression source.
