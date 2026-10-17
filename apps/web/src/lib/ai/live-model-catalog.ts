@@ -15,6 +15,35 @@ const SUPPORTED: Record<LiveModelProvider, readonly LiveModelPurpose[]> = {
   elevenlabs: ["tts", "stt"],
 };
 
+/**
+ * These providers expose realtime *streaming speech recognition* through our
+ * relay, not an end-to-end vendor conversation model. Neither publishes a
+ * compatible per-key REST catalogue for this realtime STT capability.
+ *
+ * Names are sourced from the vendors' realtime WebSocket API references, NOT
+ * represented as dynamically queried or account-verified model availability:
+ * https://docs.sarvam.ai/api/api-guides-tutorials/speech-to-text/realtime-streaming
+ * https://elevenlabs.io/docs/api-reference/speech-to-text/v-1-speech-to-text-realtime
+ */
+const DOCUMENTED_REALTIME_STT: Partial<Record<LiveModelProvider, readonly LiveModel[]>> = {
+  sarvam: [
+    { id: "saaras:v3-realtime", name: "Saaras v3 Realtime (streaming STT)" },
+    { id: "saaras:v4", name: "Saaras v4 (streaming STT)" },
+  ],
+  elevenlabs: [
+    { id: "scribe_v2_realtime", name: "Scribe v2 Realtime (streaming STT)" },
+  ],
+};
+
+export function hasDocumentedRealtimeModels(provider: string, purpose: string): boolean {
+  return purpose === "realtime" && (provider === "sarvam" || provider === "elevenlabs");
+}
+
+export function documentedRealtimeModels(provider: string, purpose: string): LiveModel[] {
+  if (!hasDocumentedRealtimeModels(provider, purpose)) return [];
+  return [...(DOCUMENTED_REALTIME_STT[provider as LiveModelProvider] ?? [])];
+}
+
 export function supportsLiveCatalog(provider: string, purpose: string): provider is LiveModelProvider {
   return Object.prototype.hasOwnProperty.call(SUPPORTED, provider) &&
     SUPPORTED[provider as LiveModelProvider].includes(purpose as LiveModelPurpose);
