@@ -1446,3 +1446,9 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Not verified:** Tests, typecheck, lint, web/worker build, migration execution, Next.js worker-runtime import boundary, approval UI in browser, Meta template submission/status API, approval races, actual provider sends, and deployment.
 - **Status:** SOURCE_IMPLEMENTED / VERIFICATION_PENDING. No PASS claimed; queue acceptance or approval is not proof of provider delivery.
 - **Next:** Run focused tests/typechecks when available, apply migrations through the normal process, then exercise free-form send inside the customer-service window and an approved text-body template outside it against Meta. Keep whatsapp.send proposal-only and verify the worker's provider-confirmed status before claiming delivery.
+
+### 2026-10-17 — Local Docker worker build failure triage
+
+- **Reported by local checkout:** worker TypeScript build failed in whatsapp-tool-runtime.ts (optional template row narrowing, generic Tool variance, and authorization callback parameter typo) and whatsapp-worker.ts (template payload object narrowing). The web build was canceled by Docker Compose after the worker target failed.
+- **Source corrections committed to main:** guarded the selected template row, cast concrete tools at the non-generic registry boundary, renamed the authorization callback parameter to the actual input value, and explicitly narrowed the worker template payload to Record<string, unknown>.
+- **Verification:** fixes are source-readback verified only. Docker build has not been rerun after these corrections; do not claim the worker/web builds pass. Pull latest main and rerun the worker build first, then rebuild web/compose.
