@@ -651,3 +651,29 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Verification:** Tests/typecheck/build/migrations/browser/Meta/deployment not run. No PASS claimed.
 - **Session evidence:** docs/project-control/sessions/DEV01-CHAT-WHATSAPP-TOOL-APPROVAL-20261017.md
 - **Next:** Focused tests/typechecks, migration application, Next.js worker-import boundary review, and live Meta verification. Do not wait on CI/Vercel polling to continue independent development.
+
+
+### SESSION-FIX01-CHAT-MEMBERSHIP-NULL-20261018
+- **Agent:** FIX-01 / Sentinel
+- **Invocation:** Recover current main, shared/role-local memory, authorization, issues and verification; trace recent commits and fix the web production-build membership nullability error.
+- **Started from:** `main`, after worker fixes `acc0745e` / `de44d06c` and verification note `e0b0d02c`.
+- **Scope:** Small source correction, regression protection, governance/evidence records. No unrelated implementation.
+- **Status:** HANDOFF — source fix committed; post-fix build/test pending.
+- **Completed:** Traced TS failure to nullable `AuthSubject.membership`; added fail-closed 403 guard before constructing trusted chat tool context; added static regression assertion.
+- **Commits:** `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9`; `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`.
+- **Pending:** Pull latest main; rerun Docker Compose build; run focused `chat-host-tool-loop.test.ts` with the repo test command if available; update verification from actual output.
+- **Blockers:** No post-fix build/test output yet. Native host shell lacks pnpm; Docker build environment has it.
+- **Handoff:** OPS-01 only for host pnpm/toolchain availability, not the source type error.
+- **Next action:** Rebuild from latest main and report exact result; continue fixing source if new compiler errors appear.
+
+### DEV01-LIVE-MODEL-CATALOG-20261018 — 2026-10-18
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Recover current ai-comms-agent and mirror Clara AI Platform's live provider model listing as selection-only UI.
+- **Started from:** main `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`; branch `feature/dev01-live-provider-model-catalog-20261018`.
+- **Scope:** Owner-explicit authorized product development; Phase 4 unchanged.
+- **Status:** HANDOFF — source changes on unmerged feature branch, executable acceptance pending.
+- **Completed:** Vendor-live org-authorized model API, live selector across provider/agent/realtime settings, separate TTS/STT, retired static fallback and mocked-source tests.
+- **Pending:** Execute focused Vitest/typecheck, validate actual key-scoped vendor responses and browser save/reload; architect review before merge.
+- **Blockers:** No live credentials/toolchain verification; no confirmed Sarvam voice/TEI/ElevenLabs realtime catalog endpoints. FIX-01's separate chat/voice bugs and OPS-01's deployment/toolchain checks remain separately owned.
+- **Handoff:** See `docs/project-control/sessions/DEV01-LIVE-MODEL-CATALOG-20261018.md`; no role takeover.
+- **Next action:** Validate `apps/web/tests/live-model-catalog.test.ts` and `ai-runtime-settings.test.ts` + web typecheck in full checkout; then credential-backed browser tests and architect review.
