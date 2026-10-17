@@ -42,7 +42,7 @@ services:
       POSTGRES_PASSWORD: aca_local_dev
       POSTGRES_DB: aca
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - aca-postgres-data:/var/lib/postgresql/data
     healthcheck:
