@@ -789,3 +789,11 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** No pnpm/full private checkout or browser connector context; OPS-01 owns environment/Vercel/provider secrets, FIX-01 unrelated voice/WhatsApp.
 - **Session:** `docs/project-control/sessions/DEV01-ORG-CREDENTIAL-ISOLATION-20261018.md`.
 - **Next:** Run named checks on current main with full toolchain; verify multi-org browser and provider live flows; resume secure email RAG/tool work behind authorization gate.
+
+### DEV01-CLARA-VECTOR-BOUNDARY-20261018 — 2026-10-18
+- **Agent:** DEV-01 / Forge
+- **Instruction:** Proceed with remaining secure email/RAG work directly on `main` (no branches).
+- **Completed:** Validated Clara upstream contract, added fail-closed scoped search input validation and no-redirect/clean-URL guards in search and worker vector adapters, added portable Node and Vitest source tests.
+- **Executed:** Exact blob search adapter and portable test 5/5 Node; 20/20 with existing portable suites; isolated TypeScript with declared-only imports PASS. No full monorepo/worker/browser/Clara provider run.
+- **Ownership:** FIX-01 owns remaining voice/email authorization bugs, OPS-01 owns CI/deployment/Vercel/provider credentials. DEV-01 does not activate vector outbox until ISS-026 live scope verification and Clara deployment confirmed.
+- **Record:** `docs/project-control/sessions/DEV01-CLARA-VECTOR-BOUNDARY-20261018.md`.
