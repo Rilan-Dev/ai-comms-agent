@@ -1467,3 +1467,11 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Correction:** Commit `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9` adds an explicit 403 fail-closed guard after authorization. Commit `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9` adds a regression source assertion requiring the guard before trusted `ToolContext` construction.
 - **Verification status:** Source readback confirms the commits; post-fix web build, focused test execution, migrations, browser, and deployed runtime are NOT VERIFIED. Do not mark the build green based on the patch alone.
 - **Next action:** Pull latest `main`, rerun `docker compose -f infra/docker-compose.manual.yml up -d --build`, then run the focused web regression test when pnpm is available. Route only the missing native-host pnpm/toolchain to OPS-01.
+
+
+### 2026-10-18 — FIX-01 WhatsApp template row nullability build failure
+
+- **User-provided evidence:** `bash scripts/update-and-up.sh` fetched latest main (already up to date), built the worker image, and completed Next.js compilation. Web type validation failed at `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts:119` because `synced.rows[0]` may be undefined.
+- **Root cause/correction:** The existing array length check did not narrow indexed access. Commits `90fac5e0774b695446e1e0c3ab51072639ba5f06` and `41734923651b1173a703d747f0ac0aa93317a5b9` bind/guard the returned template row and add a regression source assertion.
+- **Verification status:** Post-fix build and focused test NOT RUN / NOT VERIFIED. User log establishes only pre-fix failure and worker build success.
+- **Next action:** Pull latest main and rerun `bash scripts/update-and-up.sh`; if build passes, run `pnpm --filter @ai-comms-agent/web exec vitest run tests/whatsapp-send-approval.test.ts` in an environment with pnpm. Do not mark green without actual output.
