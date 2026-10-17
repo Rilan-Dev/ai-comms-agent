@@ -18,7 +18,8 @@
     "@ai-comms-agent/clara-core": "workspace:*",
     "@ai-comms-agent/db": "workspace:*",
     "@ai-comms-agent/shared": "workspace:*",
-    "amqplib": "^2.2.0"
+    "amqplib": "^2.2.0",
+    "@ai-comms-agent/email-agent-runtime": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
