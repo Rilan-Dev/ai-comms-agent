@@ -1505,3 +1505,12 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Root cause/fix:** The same provider branch declared `generationId` twice in the same block. Commit `f6efffdb42dbd75df38841fab43b985eb565ee3f` reuses the original identifier; `05519965adae7ebab837a03e4d7a0d2306e3f0c1` adds a regression assertion.
 - **Verification status:** Post-fix Docker build and focused test NOT RUN / NOT VERIFIED. Do not infer a successful build from the source commit.
 - **Next:** Pull latest main and rerun `bash scripts/update-and-up.sh`; then run `pnpm --filter @ai-comms-agent/web exec vitest run tests/voice-realtime-transport.test.ts` if build passes and pnpm is available.
+
+
+
+### 2026-10-18 — FIX-01 voice resampling indexed sample correction
+
+- **User evidence:** Docker web build completed Next.js compilation and failed TypeScript validation at `apps/web/src/app/ai-voice/voice-workspace.tsx:331`, where `input[i]` was typed as `number | undefined`.
+- **Source fix:** Commit `baa9746142297322c5bf796e7c6fb94060bbc9cf` guards same-rate indexed sample reads with `?? 0` and guards downsampling accumulation reads. Regression source assertion committed at `ff8ab0faa72a1a235c47be6d773c16738d2cd79a`.
+- **Status:** SOURCE_CORRECTED / POST-FIX VERIFICATION_PENDING. This user's log is pre-fix; Docker build and focused test have not been observed after the patch.
+- **Next:** Pull latest main, rerun `bash scripts/update-and-up.sh`, then run focused `voice-realtime-transport.test.ts` if build succeeds. No PASS claim until output confirms it.
