@@ -38,6 +38,10 @@ export async function POST(request: Request) {
       getIdentityRepository(),
     );
 
+    if (!subject.membership) {
+      return NextResponse.json({ error: "forbidden", message: "An active organization membership is required." }, { status: 403 });
+    }
+
     const agent = await new PostgresAgentRepository().get(organizationId, agentId);
     if (!agent) return NextResponse.json({ error: "not_found", message: "Agent was not found in this organization." }, { status: 404 });
 
@@ -73,7 +77,7 @@ export async function POST(request: Request) {
         organization_id: organizationId,
         agent_id: agentId,
         user_id: subject.user.id,
-        conversation_id: session.conversation_id ?? sessionId,
+        conversation_id: typeof session.conversation_id === "string" && session.conversation_id.trim() ? session.conversation_id : sessionId,
         turn_id: executionId,
         correlation_id: executionId,
         channel: "voice",
