@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     if (!organizationId || !actionId || (decision !== "approve" && decision !== "reject")) {
       return NextResponse.json({ error: "validation_error", message: "organizationId, actionId and decision (approve|reject) are required." }, { status: 422 });
     }
-    const actor = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.update" }, getIdentityAdapter(), getIdentityRepository());
+    const actor = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "whatsapp.send" }, getIdentityAdapter(), getIdentityRepository());
     const found = await query<SendAction>(
       "SELECT id, organization_id, whatsapp_account_id, recipient_phone, message_body, status, idempotency_key, correlation_id, expires_at, approved_by, payload_type, template_name, template_language, template_parameters FROM whatsapp_send_actions WHERE id=$1 AND organization_id=$2 LIMIT 1",
       [actionId, organizationId],
