@@ -1341,3 +1341,12 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - Commits: `90fac5e0774b695446e1e0c3ab51072639ba5f06`, `41734923651b1173a703d747f0ac0aa93317a5b9`.
 - Verification: post-fix build and test pending; do not claim success from source changes alone.
 - Next: pull latest main, run `bash scripts/update-and-up.sh`; if green, run focused `whatsapp-send-approval.test.ts`. Continue addressing any new source compiler error narrowly. OPS-01 owns only separate host-toolchain/deployment environment defects.
+
+
+## FIX-01 — Voice workspace duplicate generation identifier — 2026-10-18
+
+- **Observed failure:** Web webpack parser error: `Identifier 'generationId' has already been declared` in `apps/web/src/app/ai-voice/voice-workspace.tsx`; worker image was built/exported.
+- **Cause:** Duplicate declaration inside the Sarvam/ElevenLabs provider TTS fallback branch.
+- **Correction:** Reuse the already-computed generation identifier. Regression test asserts one declaration within that branch. Commits: `f6efffdb42dbd75df38841fab43b985eb565ee3f`, `05519965adae7ebab837a03e4d7a0d2306e3f0c1`.
+- **Verification:** Post-fix build/test pending; no PASS claim.
+- **Next action:** Pull latest main, run `bash scripts/update-and-up.sh`, then focused `voice-realtime-transport.test.ts`; address the next source error if any. Keep unrelated feature work untouched.
