@@ -54,3 +54,16 @@ Append-only operational history for OPS-01. This is not the source of authorizat
 - Evidence: Source commits `5072621a66eab0016bf8c29e76df8683070baa14` and `2649466dd53f5a545bfaa2dd52ecaa9df959ba00`. Test and post-fix startup have not been run.
 - Lesson: Compose resolves relative env-file paths from the Compose file directory.
 - Next: Pull latest main; run the focused Node test and manual deployment; record actual startup and health results.
+
+
+### OPS01-MIGRATION-CONTAINER-20261018 / 2026-10-18
+- **Task:** Correct migration DNS failure while keeping application-to-Postgres traffic on Docker's internal network.
+- **Authorization:** User explicitly selected and approved the OPS-01 next action from handoff `HOF-FIX01-OPS01-MIGRATION-NETWORK-20261018`; scope limited to migration execution and regression coverage.
+- **Started from:** `main` `86f5f83d0917291537eedcdb6b33f233c5b7d2bf`.
+- **Actions:** Replaced host-side `node packages/db/migrate.js` with `docker compose run --rm --no-deps` for service `web`, mounting `$PROJECT_ROOT/supabase` read-only at `/workspace/supabase`. Removed host-side DATABASE_URL resolution and host alias rewriting. Kept the existing warning-and-continue startup policy. Replaced obsolete host-Compose-env tests with migration-container assertions.
+- **Files/code:** `scripts/manual-up.sh`; `scripts/tests/manual-up-compose-env.test.mjs`.
+- **Source/test commits:** `65a215151ecd14900fac3c9ba9a421fb7a777a77`; `6cd93638bffa0e2f6a9e8d6ce2f3f2664b13341b` (an intermediate test iteration was corrected).
+- **Evidence:** `bash -n scripts/manual-up.sh` passed. Focused Node regression suite: 4/4 pass in an isolated harness with fetched script/test and a Compose env-file fixture matching the two current `.env` entries. An initial assertion failed because the regex did not account for Bash line-continuation backslashes; assertions were corrected to verify option ordering. This is not a full checkout/build/deployment test.
+- **Blockers/dependencies:** No migration or deployment was run. Confirm intended DB name before applying: prior user URL targets `/postgres`; local Compose declares `POSTGRES_DB=aca`. Need operator to rerun script with current .env and report sanitized migration output and container health.
+- **Lesson:** Process network namespace and migration artifact paths both matter; published port availability alone cannot fix Compose DNS.
+- **Next action:** Confirm intended database target; pull latest main; run `node --test scripts/tests/manual-up-compose-env.test.mjs` in the actual checkout; rerun deployment and record migration outcome separately from service health.
