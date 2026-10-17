@@ -1436,3 +1436,13 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Not verified:** Test execution, typecheck, web build, live database row state, provider HTTP call, deployed revision, and successful chat response.
 - **Owner/next:** OPS-01 confirms deployment and tenant-scoped configuration metadata, rebuilds/restarts using the existing manual procedure, and tests one Sarvam chat request. Do not claim PASS until the model call succeeds and logs show the intended provider without exposing secrets.
 - **Session/handoff:** `docs/project-control/sessions/FIX01-CHAT-PROVIDER-OVERRIDE-20261017.md`; `HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017` OPEN.
+
+
+## DEV01-CHAT-WHATSAPP-TOOLS-20261017 — verification status
+
+- **Source changes:** Interactive chat now calls the bounded host-authorized tool loop with authenticated server context. WhatsApp history is read-only; whatsapp.send is registered only as a proposal tool that inserts a pending approval action and does not queue directly.
+- **Approval and template source:** Migrations 0035_whatsapp_send_approvals.sql, 0036_whatsapp_templates.sql, and 0037_whatsapp_send_action_outcomes.sql; organization-scoped approval queue/decision APIs; Meta template submit/status refresh API; approval UI; worker-time 24-hour inbound-window and live Meta template-status checks; supported text-body template delivery. Media/dynamic-header/button templates fail closed.
+- **Regression source:** apps/web/tests/chat-host-tool-loop.test.ts, apps/web/tests/whatsapp-send-approval.test.ts, and updated apps/worker/tests/whatsapp-tool-runtime.test.ts / apps/web/tests/cross-surface-product-contract.test.ts.
+- **Not verified:** Tests, typecheck, lint, web/worker build, migration execution, Next.js worker-runtime import boundary, approval UI in browser, Meta template submission/status API, approval races, actual provider sends, and deployment.
+- **Status:** SOURCE_IMPLEMENTED / VERIFICATION_PENDING. No PASS claimed; queue acceptance or approval is not proof of provider delivery.
+- **Next:** Run focused tests/typechecks when available, apply migrations through the normal process, then exercise free-form send inside the customer-service window and an approved text-body template outside it against Meta. Keep whatsapp.send proposal-only and verify the worker's provider-confirmed status before claiming delivery.
