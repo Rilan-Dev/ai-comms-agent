@@ -187,11 +187,11 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(whatsappPage).toContain("getAuthenticatedAppContext");
     expect(whatsappPage).toContain("context.organizationId");
     expect(whatsappPage).not.toContain("getDevOrgId");
-    expect(whatsapp).toContain('aria-controls="whatsapp-connect-form"');
-    expect(whatsapp).toContain('id="whatsapp-connect-form"');
-    expect(whatsapp).toContain("setShowConnectForm(v => !v)");
+    expect(whatsapp).toContain('role="dialog"');
+    expect(whatsapp).toContain('aria-modal="true"');
+    expect(whatsapp).toContain("setShowWebhookSetupModal(true)");
+    expect(whatsapp).toContain("WhatsApp Webhook Setup");
     expect(whatsapp).toContain("Save and connect");
-    expect(whatsapp).toContain("does not claim a successful Meta verification");
     expect(whatsapp).toContain("Daily briefing");
     expect(whatsapp).toContain('href="/schedules"');
     expect(whatsapp).toContain("webhook verification are not yet confirmed");
