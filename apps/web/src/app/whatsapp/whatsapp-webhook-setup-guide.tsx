@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Clipboard, ExternalLink, KeyRound, Loader2, AlertCircle, Webhook, Save, RefreshCw } from "lucide-react";
 
-export function WhatsAppWebhookSetupGuide({ organizationId, children }: { organizationId: string; children?: React.ReactNode }) {
+export function WhatsAppWebhookSetupGuide({ organizationId, children, onVerifyTokenChange }: { organizationId: string; children?: React.ReactNode; onVerifyTokenChange?: (token: string) => void }) {
   const [origin, setOrigin] = useState("");
   const [verifyToken, setVerifyToken] = useState("");
   const [appSecret, setAppSecret] = useState("");
@@ -25,10 +25,10 @@ export function WhatsAppWebhookSetupGuide({ organizationId, children }: { organi
       const r = await fetch(`/api/whatsapp/webhook-config?organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" });
       const d = await r.json();
       if (!r.ok) throw new Error(d.message ?? "Could not load saved webhook settings.");
-      if (d.verifyToken) setVerifyToken(d.verifyToken);
+      if (d.verifyToken) { setVerifyToken(d.verifyToken); onVerifyTokenChange?.(d.verifyToken); }
       setAppSecretConfigured(Boolean(d.appSecretConfigured));
       if (d.saved) setVerifyStatus("ok");
-      else if (!verifyToken) setVerifyToken(generateToken(32));
+      else if (!verifyToken) { const token = generateToken(32); setVerifyToken(token); onVerifyTokenChange?.(token); }
     } catch {
       setSavedMsg("Could not load saved settings. Check your connection and try again.");
     }
@@ -78,7 +78,9 @@ export function WhatsAppWebhookSetupGuide({ organizationId, children }: { organi
   }
 
   function regenerateToken() {
-    setVerifyToken(generateToken(32));
+    const token = generateToken(32);
+    setVerifyToken(token);
+    onVerifyTokenChange?.(token);
     setVerifyStatus("unknown");
     setSavedMsg("Token changed. Save the settings and update the token in Meta again.");
   }
@@ -111,7 +113,7 @@ export function WhatsAppWebhookSetupGuide({ organizationId, children }: { organi
         <div>
           <label className="mb-1 block text-xs font-semibold text-muted-foreground">VERIFY TOKEN</label>
           <div className="flex gap-2">
-            <input aria-label="Webhook verify token" value={verifyToken} onChange={e => { setVerifyToken(e.target.value); setVerifyStatus("unknown"); }} className="h-10 min-w-0 flex-1 rounded-lg border bg-background px-3 font-mono text-xs" autoComplete="off" />
+            <input aria-label="Webhook verify token" value={verifyToken} onChange={e => { setVerifyToken(e.target.value); onVerifyTokenChange?.(e.target.value); setVerifyStatus("unknown"); }} className="h-10 min-w-0 flex-1 rounded-lg border bg-background px-3 font-mono text-xs" autoComplete="off" />
             <button type="button" onClick={() => copyToClipboard("Verify token", verifyToken)} className="inline-flex items-center gap-1.5 rounded-lg border px-3 text-xs font-medium"><Clipboard className="size-3.5" />{copied === "Verify token" ? "Copied" : "Copy"}</button>
             <button type="button" onClick={regenerateToken} title="Generate a new verify token" className="rounded-lg border p-2"><RefreshCw className="size-4" /></button>
           </div>
