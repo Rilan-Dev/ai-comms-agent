@@ -6,9 +6,13 @@ const script = await readFile(new URL("../manual-up.sh", import.meta.url), "utf8
 
 test("manual deployment runs migrations in a one-off Docker container with internal DNS", () => {
   assert.match(script, /Applying database migrations inside Docker/);
-  assert.match(
-    script,
-    /"\$\{COMPOSE\[@\]\}" run --rm --no-deps\s+--volume "\$PROJECT_ROOT\/supabase:\/workspace\/supabase:ro"\s+web node packages\/db\/migrate\.js/s,
+  assert.match(script, /"\$\{COMPOSE\[@\]\}" run --rm --no-deps/);
+  assert.match(script, /--volume "\$PROJECT_ROOT\/supabase:\/workspace\/supabase:ro"/);
+  assert.match(script, /web node packages\/db\/migrate\.js; then/);
+  assert.ok(
+    script.indexOf("--no-deps") < script.indexOf("--volume") &&
+      script.indexOf("--volume") < script.indexOf("web node packages/db/migrate.js"),
+    "migration container must mount supabase migrations before running the migration command",
   );
   assert.doesNotMatch(script, /DATABASE_URL="\$migration_db_url" node packages\/db\/migrate\.js/);
   assert.doesNotMatch(script, /migration_db_url/);
