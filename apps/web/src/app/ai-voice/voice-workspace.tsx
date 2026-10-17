@@ -259,7 +259,6 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
           ttsObjectUrlRef.current = URL.createObjectURL(await response.blob());
           audio.srcObject = null;
           audio.src = ttsObjectUrlRef.current;
-          const generationId = `${current.id}-${sequence}`;
           ttsGenerationRef.current = generationId;
           audio.onended = () => {
             ttsGenerationRef.current = null;
