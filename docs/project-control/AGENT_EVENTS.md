@@ -421,3 +421,13 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Summary:** Follow-up inspection found the worker's pending-account verifier also wrote Meta's `verified_name` over the app's custom display label. Updated it to preserve `account.display_name` first and expanded the regression test to cover both the API and worker paths.
 - **Commits:** worker `7d785b36f2bae90d9d137805e1390fe9ab467550`; updated test `f9bc5ec1cc793fb69c3b2a5a7d26e8d1cf00d5fb`.
 - **Verification:** Test authored but not run; deployment not confirmed.
+
+### EVT-FIX01-CHAT-PROVIDER-OVERRIDE-20261017 — 2026-10-17
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** SOURCE DEFECT / OPS VERIFICATION
+- **Symptom:** Chat API reports missing OpenAI key although the agent's saved chat override is Sarvam; web container logs repeat the same error.
+- **Root cause:** In `packages/clara-core/src/runtime.ts`, `organizationAIConfig` returned null before querying agent overrides whenever `organization_ai_runtime_settings` had no row. Runtime then fell back to environment selection (OpenAI by default), bypassing saved agent override/provider credentials.
+- **Remedy:** Use safe defaults when the organization defaults row is absent so per-agent settings and provider config resolution still execute. Source commit `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0`. Static regression test `apps/web/tests/clara-agent-provider-resolution.test.ts` commits `d9e6c619320390c5290c04d29d30187a6838736f` and `c0e0a31e788ecd24e6af89f42e4f67f5100b7c73`.
+- **Evidence limit:** The source branch is confirmed; the exact live database condition is not. OPS-01 must check whether the organization-default row exists and confirm deployed revision/config rows. Tests/build/deployment not verified.
+- **Owner next:** OPS-01 for container/deployment/database/runtime verification; FIX-01 resumes if a source defect remains after the patched revision is serving.
+- **Session:** `docs/project-control/sessions/FIX01-CHAT-PROVIDER-OVERRIDE-20261017.md`.
