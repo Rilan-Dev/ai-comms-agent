@@ -1,3 +1,11 @@
+## FIX-01 — Chat membership nullability build correction — 2026-10-18
+
+- User Docker log: worker image built; Next.js web compilation succeeded but type validation failed at `apps/web/src/app/api/chat/stream/route.ts:384` because `subject.membership` may be null.
+- Root cause: shared `AuthSubject` permits nullable membership even though successful `authorize()` calls guarantee an active membership. Caller did not narrow the shared type.
+- Correction on main: explicit fail-closed 403 membership guard after `authorize()`, plus regression assertion requiring the guard before trusted `ToolContext` construction. Commits: `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9`, `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`.
+- Verification remains pending: source changes are committed; no post-fix build/test result yet.
+- **Next:** Pull latest main and rerun `docker compose -f infra/docker-compose.manual.yml up -d --build`. If successful, run the focused chat host-tool-loop test and update this state from actual output. Host shell `pnpm: command not found` is a separate OPS-01 toolchain issue; do not change app source to work around it.
+
 ## DEV-01 — Chat tool loop and WhatsApp approval checkpoint — 2026-10-17
 
 - Interactive `/api/chat/stream` now constructs a `ToolContext` from the server-authenticated organization membership, user, role and permissions; it combines only the per-agent allowlisted email/WhatsApp runtime tools, uses the bounded host-authorized invocation path (4 rounds / 8 calls / 10,000-character tool result cap), and preserves host-supplied mailbox context as explicitly untrusted data. Model arguments cannot set tenant, actor or permissions.
