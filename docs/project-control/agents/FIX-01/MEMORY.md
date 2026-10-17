@@ -157,3 +157,8 @@ The authentication loop was traced to session issuance preceding active organiza
 - **Fix/test:** Guarded both direct sample conversion and averaging-loop sample reads with `?? 0`; added source-contract regression assertions. Commits `baa9746142297322c5bf796e7c6fb94060bbc9cf`, `ff8ab0faa72a1a235c47be6d773c16738d2cd79a`.
 - **Verification:** Post-fix Docker build and focused test remain unverified.
 - **Next:** Pull main and rerun manual build; continue source-error remediation without claiming unobserved success.
+
+### FIX01-STRICT-INDEXED-ACCESS-VOICE-CONTEXT-20261018
+- Strict indexed-access applies to Int16Array, Float32Array, and split() results; guard reads directly rather than disabling compiler checks.
+- Voice-turn trust context must explicitly fail closed if membership is null and must provide a real string conversation ID; do not cast unknown session metadata.
+- Source/test commits: 1fb04529, 9a9e09ee, 5946168a, 57618396, fee2a239. Verification pending; user logs are pre-fix.
