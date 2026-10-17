@@ -616,3 +616,13 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Commits:** source `baa9746142297322c5bf796e7c6fb94060bbc9cf`; regression `ff8ab0faa72a1a235c47be6d773c16738d2cd79a`.
 - **Verification:** Source and test are committed on `main`; post-fix Docker build and focused test are NOT RUN / NOT VERIFIED.
 - **Next action:** Pull latest `main`, rerun `bash scripts/update-and-up.sh`, then run `pnpm --filter @ai-comms-agent/web exec vitest run tests/voice-realtime-transport.test.ts` if the build succeeds and pnpm is available. Continue with any subsequent source error; do not mark build green without actual output.
+
+## ISS-034 — Strict indexed access and trusted voice context typecheck (2026-10-18)
+- **Owner:** FIX-01 / Sentinel for source and regression fixes; OPS-01 only for separate host/deployment failures.
+- **User evidence:** After the prior resampling guard was merged, the web TypeScript check surfaced more strict-indexed-access errors at voice workspace lines 368, 432, and 606, plus /api/voice/turn/route.ts nullable membership and non-string conversation ID typing, and WhatsApp template selection destructuring at whatsapp-client.tsx:202.
+- **Root cause:** Strict indexed-access types permit undefined for typed-array reads and split-array elements; the shared authorization/session contracts are broader than the runtime assumptions at this call site.
+- **Correction:** Guard indexed PCM/WAV samples with ?? 0; narrow voice-turn membership with an explicit 403 fail-closed guard; pass a validated string conversation ID or session ID fallback; give template-selection destructured fields safe defaults. No compiler settings or security checks were weakened.
+- **Regression coverage:** Extend voice-realtime-transport.test.ts for audio sample guards, membership narrowing and conversation ID type; extend whatsapp-send-approval.test.ts for safe template selection defaults.
+- **Commits:** voice workspace 1fb045298ed77cd218a36d7babdc911e17b2211d; voice turn route 9a9e09ee4f6a8c3e2ece81d0b717e9ef22403281; WhatsApp UI 5946168a22cd316e03c7e859c17d5a53724d48f3; voice test 57618396c400863cf9de31a3dde6de1869447a6b; WhatsApp test fee2a2394dfe1e687a470c0caa24a26a9039a20b.
+- **Verification:** Source and regression changes are committed. The user's logs are pre-fix; post-fix web typecheck, tests, Docker build, and deployment are NOT RUN / NOT VERIFIED.
+- **Next action:** Pull latest main; rerun pnpm typecheck and bash scripts/update-and-up.sh. If further compiler errors appear, continue narrow source fixes and keep deployment/test claims tied to actual output.
