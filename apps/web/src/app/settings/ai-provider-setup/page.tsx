@@ -18,7 +18,7 @@ type Tab = "chat" | "voice-chat" | "realtime" | "embedding";
 const TABS: Array<{ id: Tab; label: string; icon: typeof Bot; description: string }> = [
   { id: "chat",         label: "Chat Models",           icon: Bot,   description: "Text chat completions. Used by /api/chat/stream and worker agent execution." },
   { id: "voice-chat",   label: "Voice Chat (TTS / STT)", icon: Mic,   description: "Text-to-speech + speech-to-text pipeline. ElevenLabs and Sarvam Bulbul / Saaras." },
-  { id: "realtime",     label: "Realtime Voice AI Agent", icon: Radio, description: "Real-time bidirectional voice (Mode B). OpenAI Realtime, Gemini Live, ElevenLabs Conversational AI." },
+  { id: "realtime",     label: "Realtime Voice AI Agent", icon: Radio, description: "Realtime voice: OpenAI Realtime or Gemini Live; Sarvam Saaras and ElevenLabs Scribe streaming STT + host AI/TTS relays. ElevenLabs Conversational AI agents require a separate integration." },
   { id: "embedding",     label: "Embedding Models",       icon: Boxes, description: "Vector embeddings for RAG / knowledge retrieval. OpenAI text-embedding-3-* / Gemini embedding-*." },
 ];
 
