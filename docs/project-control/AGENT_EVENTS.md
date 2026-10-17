@@ -37,6 +37,16 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Suggested next action:** <concrete action>
 - **Related records:** <paths / issue ids / commits>
 
+### EVT-FIX01-WHATSAPP-IDEMPOTENCY-20261017 — 2026-10-17
+- **Agent/session:** FIX-01 / Sentinel — WhatsApp outbound 42P10 correction
+- **Type:** CORRECTION / ROUTE
+- **Summary:** User-provided production logs show POST /api/whatsapp/messages returning internal_server_error because PostgreSQL raises SQLSTATE 42P10 for ON CONFLICT (organization_id, idempotency_key). Source migration 0004 declares whatsapp_messages_idempotency_uniq as a partial unique index with WHERE idempotency_key IS NOT NULL, while queueWhatsAppOutboundMessage omitted that predicate in its conflict target. Corrected the INSERT conflict target to match the partial index and added a static regression test.
+- **Impact:** outbound WhatsApp queueing blocked at database insert.
+- **Owner:** FIX-01 for source correction and regression; OPS-01 for deployed database/index confirmation, image rollout and live send verification.
+- **Evidence:** Source commit ea8c19cfd9e235319323ed1bb7345e0395f5534e; regression source commit 4243afe7748d43ae371c06315f85d47f249cc814; OPS-01 issue #33. Source inspected; test execution and live runtime verification not performed.
+- **Security/reliability:** Preserve organization authorization, connected-account guard, and idempotency semantics. If the partial unique index is absent in production, the SQL correction alone is insufficient; OPS-01 must inspect the exact DB schema.
+- **Next:** OPS-01 deploys matching source, confirms the index exists in the web container's DB, then verifies queueing, worker processing, provider result and duplicate-key behavior. Do not claim live send success from container health or HTTP 202 alone.
+
 <!-- Append new events above this marker. -->
 
 ### EVT-FIX01-AUTH-20261009 — 2026-10-09
