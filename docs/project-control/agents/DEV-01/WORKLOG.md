@@ -383,3 +383,14 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Blockers:** No private checkout/pnpm due DNS, no live vendor keys/browser, Vercel build-rate-limit belongs OPS-01. Repository Vitest/typecheck/build and runtime checks remain NOT VERIFIED.
 - **Lesson:** Verify exact Git object against tested bytes; executable adapter tests support limited claims, never full app/production acceptance. Record merge-state correction promptly when concurrent agents merge a PR.
 - **Next action:** Run full focused Vitest and web typecheck/build in available checkout; validate org-scoped live APIs and UI save/reload; route OPS deployment and infrastructure separately.
+
+### DEV01-MAIN-RUNTIME-MODEL-20261018 / 2026-10-18
+- **Task:** Continue live provider model flow verification without another branch.
+- **Authorization:** Owner explicitly directed all follow-up edits onto `main`.
+- **Started from:** Existing merge of PR #35 at `e58c0bf3993e6480fdf586192adfed39b06a7b8b`.
+- **Actions:** Confirmed both PRs merged, verified catalog tests, audited provider + runtime UI/API; found and corrected snake/camel hydration defect which could erase saved KB or prompt during model edits. Added pure mapper, Node and Vitest regression tests, and removed static initial realtime voice model default.
+- **Commits direct main:** `ec06d126`, `dad58b5d`, `5076248d`, `040d5730`, `98116cbb`, `39bacaf1`.
+- **Evidence:** Node mocked providers 6/6, Node runtime hydration 4/4, isolated tsc both modules PASS; hashes recorded in session.
+- **Blocks:** Full pnpm tests/typecheck/Next build, browser/provider credentials and deployment remain UNVERIFIED; OPS-01 owns environment and Vercel build rate limit.
+- **Lesson:** Backend GET may be camelCase while PUT accepts snake_case; normalize every editable value before saving and test that the KB ID/policy are retained. Do not mix per-feature bug fix with unrelated FIX-01 runtime work. Owner requested direct-main workflow.
+- **Next:** Full web suite in equipped checkout on main and tenant-scoped real provider+UI smoke checks.
