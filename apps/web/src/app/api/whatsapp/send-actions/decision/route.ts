@@ -10,6 +10,8 @@ type SendAction = {
   id: string;
   organization_id: string;
   whatsapp_account_id: string;
+  agent_id: string | null;
+  agent_binding_required: boolean;
   recipient_phone: string;
   message_body: string;
   status: string;
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
     }
     const actor = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "whatsapp.send" }, getIdentityAdapter(), getIdentityRepository());
     const found = await query<SendAction>(
-      "SELECT id, organization_id, whatsapp_account_id, recipient_phone, message_body, status, idempotency_key, correlation_id, expires_at, approved_by, payload_type, template_name, template_language, template_parameters FROM whatsapp_send_actions WHERE id=$1 AND organization_id=$2 LIMIT 1",
+      "SELECT id, organization_id, whatsapp_account_id, agent_id, agent_binding_required, recipient_phone, message_body, status, idempotency_key, correlation_id, expires_at, approved_by, payload_type, template_name, template_language, template_parameters FROM whatsapp_send_actions WHERE id=$1 AND organization_id=$2 LIMIT 1",
       [actionId, organizationId],
     );
     const action = found.rows[0];
@@ -64,6 +66,21 @@ export async function POST(request: Request) {
     const account = await getWhatsAppAccountForOrganization(organizationId, action.whatsapp_account_id);
     if (!account || account.status !== "connected") {
       return NextResponse.json({ error: "provider_not_connected", message: "The WhatsApp account must remain connected at approval time." }, { status: 409 });
+    }
+    if (action.agent_binding_required) {
+      if (!action.agent_id) {
+        await query("UPDATE whatsapp_send_actions SET status='failed', updated_at=now() WHERE id=$1 AND organization_id=$2 AND status IN ('pending','approved')", [actionId, organizationId]);
+        return NextResponse.json({ error: "agent_binding_missing", message: "This request was created by an agent whose binding is no longer available; it cannot be approved." }, { status: 409 });
+      }
+      const binding = await query<{ agent_id: string }>(
+        "SELECT b.agent_id FROM agent_whatsapp_accounts b JOIN agents a ON a.id=b.agent_id AND a.organization_id=$1 WHERE b.agent_id=$2 AND b.whatsapp_account_id=$3 LIMIT 1",
+        [organizationId, action.agent_id, action.whatsapp_account_id],
+      );
+      if (!binding.rows.length) {
+        await query("UPDATE whatsapp_send_actions SET status='failed', updated_at=now() WHERE id=$1 AND organization_id=$2 AND status IN ('pending','approved')", [actionId, organizationId]);
+        await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.binding_revoked", targetType: "whatsapp_send_action", targetId: actionId, action: "approve", decision: "denied", metadata: { agentId: action.agent_id } });
+        return NextResponse.json({ error: "agent_binding_missing", message: "The agent-to-WhatsApp account binding has changed; this request cannot be approved." }, { status: 409 });
+      }
     }
 
     const templateParameters = Array.isArray(action.template_parameters) ? action.template_parameters : [];
