@@ -138,3 +138,9 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 - Both `AIProviderSetupShared` and legacy `AIProviderSettings` must clear unsaved API keys, invalidate old org config, abort previous GET, ignore old fulfillment, and gate all writes on `loadedOrganizationId === organizationId` after loading. A provider switch and an organization switch are independent credential-isolation events.
 - `LiveModelSelect` catches errors on an aborted fetch but must ALSO check `signal.aborted` before `setModels` on successful JSON; otherwise old tenant model IDs can render after new tenant selection. Clear `loading` in no-org branch.
 - Evidence recorded: 15 old Node tests, 3 isolated TS modules, 12 source-contract assertions PASS; *new* Node/Vitest, full web/worker/browser/provider/live verification not run. Session `docs/project-control/sessions/DEV01-ORG-CREDENTIAL-ISOLATION-20261018.md`. OPS-01 owns environment and deployment, FIX-01 voice/WhatsApp source bugs.
+
+### 2026-10-18 — Clara email-vector service request hardening
+- For privileged Clara vector search/upsert/delete, require an explicit authenticated org/account scope before network access, and use no-redirect fetch with clean HTTP(S) endpoint URLs (HTTPS-only production). Bearer credentials must stay server-only; do not forward into arbitrary redirect/authenticated URLs.
+- Actual 5/5 exact-source Node behavioral tests and combined 20/20 portable tests passed; isolated TypeScript with type-only local declarations passed. Full pnpm/browser/Qdrant/deploy still UNVERIFIED.
+- Clara PR #298 is merged to Vite-Converted branch, but RAG outbox/startup and live account grant enforcement remain blocked until ISS-026 endpoint verification and actual Clara deployment proof. Owner wants direct edits on main; never create branches absent new direction.
+- Full session: `docs/project-control/sessions/DEV01-CLARA-VECTOR-BOUNDARY-20261018.md`.
