@@ -1284,3 +1284,14 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 
 
 - **Follow-up source corrections:** route template literal/interpolation corrections are in `200447d3c1e53c6778b0eee29bb7e35e90fd4354` and `eb5228770df377edd99ed9b902637fe7ad3331c0`; the final route blob read back as `5e70c07803fa2f2f2495dc454cf5b256034907cb`. These are source readback checks only, not executable verification.
+
+
+## DEV-01 — WhatsApp history runtime (2026-10-17)
+
+- Added `apps/worker/src/agent/whatsapp-tool-runtime.ts`: read-only `whatsapp.history`, strict organization and active-agent binding, connected/non-deleted account filtering, bounded result size, permission and execution-time allowlist checks, and audit writes.
+- Added `apps/worker/tests/whatsapp-tool-runtime.test.ts` static regression assertions.
+- Source commits: `637bb72ce0d5c988468f418ef6e36d24251e712b`, `de8fc4c8f1603e4e8f68b449a35c25ab841e35a0`, `ebd57c7cf947d7f9726bb98ac4c04b74151af42b`.
+- This runtime is not yet invoked by interactive `/api/chat/stream`; the previous route-level read-only context is still the chat path. Do not expose this tool to chat until host-authenticated tool-loop wiring is complete.
+- `whatsapp.send` is deliberately not registered: WhatsApp-specific approval persistence and Meta template-compliance enforcement are not yet connected.
+- Source readback only; tests, typecheck, build, database, browser, Meta and deployment checks remain unrun.
+- Next: wire the authenticated shared tool-call loop to chat; then implement an approval/template-compliant WhatsApp send path before registering outbound send.
