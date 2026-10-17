@@ -42,6 +42,33 @@ export async function verifyPendingWhatsAppAccounts(limit = 10) {
   return { processed };
 }
 
+function buildWhatsAppOutboundPayload(message: Record<string, any>) {
+  const to = String(message.phone_number ?? "");
+  if (message.message_type !== "template") {
+    const body = String(message.body ?? "");
+    if (!body.trim() || body.length > 4096) throw new Error("WhatsApp text body is empty or exceeds the supported limit");
+    return { messaging_product: "whatsapp", to, type: "text", text: { body } };
+  }
+
+  const media = message.media && typeof message.media === "object" && !Array.isArray(message.media) ? message.media : {};
+  const template = media.template && typeof media.template === "object" && !Array.isArray(media.template) ? media.template : null;
+  const name = typeof template?.name === "string" ? template.name : "";
+  const language = typeof template?.language === "string" ? template.language : "";
+  const parameters = Array.isArray(template?.parameters) ? template.parameters : [];
+  if (!/^[a-z0-9_]{1,512}$/.test(name) || !language || parameters.some((value: unknown) => typeof value !== "string" || value.length > 1024)) {
+    throw new Error("Approved WhatsApp template payload is invalid");
+  }
+  const components = parameters.length
+    ? [{ type: "body", parameters: parameters.map((text: string) => ({ type: "text", text })) }]
+    : undefined;
+  return {
+    messaging_product: "whatsapp",
+    to,
+    type: "template",
+    template: { name, language: { code: language }, ...(components ? { components } : {}) },
+  };
+}
+
 export async function processQueuedWhatsAppMessages(limit = 10) {
   if (!process.env.DATABASE_URL) return { processed: 0 };
   const masterKey = process.env.CREDENTIALS_MASTER_KEY ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY) : null;
@@ -83,7 +110,7 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
       const response = await fetch(url, {
         method: "POST",
         headers: { authorization: "Bearer " + token, "content-type": "application/json" },
-        body: JSON.stringify({ messaging_product: "whatsapp", to: String(message.phone_number), type: "text", text: { body: String(message.body ?? "") } }),
+        body: JSON.stringify(buildWhatsAppOutboundPayload(message)),
       });
       const payload = (await response.json().catch(() => ({}))) as WhatsAppGraphPayload;
       if (!response.ok) throw new Error(typeof payload?.error?.message === "string" ? payload.error.message : "Meta WhatsApp API request failed");
