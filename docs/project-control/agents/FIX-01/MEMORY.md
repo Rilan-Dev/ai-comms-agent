@@ -124,3 +124,10 @@ The authentication loop was traced to session issuance preceding active organiza
 - The per-agent AI configuration feature must not require an `organization_ai_runtime_settings` row before reading `agent_ai_settings` and `ai_provider_configs`. A missing org-default row previously caused `organizationAIConfig` to return null and silently use the environment default (OpenAI), bypassing a saved Sarvam/Gemini override.
 - Preserve the distinction between source cause and runtime confirmation: verify the live org row and serving revision before claiming this explains a particular deployment.
 - Do not add a default OpenAI key to mask incorrect provider selection. Regression source test: `apps/web/tests/clara-agent-provider-resolution.test.ts`; source fix `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0`. Tests/deployment remain unverified.
+
+
+### FIX-01 / Sentinel — 2026-10-18 — Nullable membership at chat tool-context boundary
+- `AuthSubject.membership` is nullable in the shared type even though `authorize()` only returns after `requireOrganizationMember()` has found an active membership. TypeScript still requires narrowing at the caller.
+- Small safe fix: immediately after `authorize()`, explicitly return 403 if membership is absent; then construct `ToolContext.auth_subject.role` from the narrowed membership. Never default the role or cast away nullability.
+- Add regression protection for guard-before-context ordering. Static test source is not test execution; keep build/test status pending until rerun evidence arrives.
+- Commits: `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9`, `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`.
