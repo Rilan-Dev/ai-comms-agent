@@ -115,6 +115,10 @@ export function AIProviderSetupShared({
     if (next === provider) return;
     // Never carry an unsaved secret from one vendor's password field into another.
     setProvider(next);
+    // Prevent the previous provider's unsaved model IDs from being submitted
+    // before the new provider's saved configuration finishes restoring.
+    setModel("");
+    setSttModel("");
     setApiKey("");
     setNotice("");
     setError("");
