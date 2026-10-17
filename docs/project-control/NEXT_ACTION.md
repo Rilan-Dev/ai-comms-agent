@@ -1381,3 +1381,10 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Correction:** Same-rate conversion defaults a missing sample to zero; downsampling accumulation also guards indexed reads. Commits: source `baa9746142297322c5bf796e7c6fb94060bbc9cf`, regression `ff8ab0faa72a1a235c47be6d773c16738d2cd79a`.
 - **Verification:** Post-fix Docker build and focused voice test pending; no PASS claim.
 - **Next:** Pull latest main, rerun `bash scripts/update-and-up.sh`; if build succeeds, run focused `voice-realtime-transport.test.ts`. Keep fixing subsequent source compiler errors narrowly, without waiting on unrelated CI gates.
+
+## Current next action — strict web typecheck corrections (2026-10-18)
+- FIX-01 committed guards for all newly reported indexed PCM/WAV samples, explicit fail-closed voice-turn membership narrowing, a string-only conversation ID fallback, and safe WhatsApp template-selection destructuring.
+- Regression source-contract assertions were extended in voice-realtime-transport.test.ts and whatsapp-send-approval.test.ts.
+- Relevant issue: ISS-034. Source commits: 1fb04529, 9a9e09ee, 5946168a; tests: 57618396, fee2a239.
+- **Verification boundary:** User output is pre-fix. Post-fix typecheck, focused tests, Docker build, and deployment are pending. Do not claim a green build from commits alone.
+- **Next:** git pull --ff-only origin main, run pnpm typecheck, then bash scripts/update-and-up.sh; continue with any new source errors and record actual results.
