@@ -144,3 +144,9 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 - Actual 5/5 exact-source Node behavioral tests and combined 20/20 portable tests passed; isolated TypeScript with type-only local declarations passed. Full pnpm/browser/Qdrant/deploy still UNVERIFIED.
 - Clara PR #298 is merged to Vite-Converted branch, but RAG outbox/startup and live account grant enforcement remain blocked until ISS-026 endpoint verification and actual Clara deployment proof. Owner wants direct edits on main; never create branches absent new direction.
 - Full session: `docs/project-control/sessions/DEV01-CLARA-VECTOR-BOUNDARY-20261018.md`.
+
+### 2026-10-18 — Worker test discoverability and privileged vector adapter gates
+- A `src/**/*.test.ts` file can be excluded from both tsconfig and the worker Node test glob; additionally Vitest was not a worker dependency. Always verify the actual package test command before writing regression tests. Worker is `node --import tsx --test tests/*.test.ts`, so prefer `apps/worker/tests/*.test.ts` with `node:test` and `node:assert/strict`.
+- Tests with mocked `Response` must use a fresh body for each sequential HTTP call (e.g. `response.clone()`) since fetch response bodies are one-time consumable.
+- Privileged Clara vector worker adapter should reject malformed org/account/provider-message IDs, source identity and content/metadata hashes **before** service credential-bearing network I/O. This is defense-in-depth, not a substitute for runtime org/agent/mailbox authorization. Do not enable outbox/Chat/Voice vector flows before live Clara API + ISS-026 verified.
+- Actual tests 20/20 prior exact standalone sources plus 12/12 GitHub source assertions PASS; new worker test, pnpm suite, build, database, browser, provider endpoints **not tested** in this environment. Direct main only; no branches/PRs.
