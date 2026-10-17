@@ -549,3 +549,13 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Remedy:** Updated packages/db/src/messaging/whatsapp-repository.ts to include WHERE idempotency_key IS NOT NULL in the conflict target (commit ea8c19cfd9e235319323ed1bb7345e0395f5534e). Added apps/web/tests/whatsapp-idempotency-conflict-target.test.ts (commit 4243afe7748d43ae371c06315f85d47f249cc814).
 - **Verification:** GitHub source writes only. Regression test, typecheck, deployed schema/index, Docker rebuild, API queueing, worker processing, Meta delivery, and idempotency replay have NOT been verified.
 - **Next action:** OPS-01 confirms the unique index exists on the exact production database, deploys the matching source, then verifies queue row persistence, worker/provider outcome, same-key deduplication, and different-payload conflict. See [OPS-01 issue #33](https://github.com/Rilan-Dev/ai-comms-agent/issues/33) and `docs/project-control/sessions/FIX01-WHATSAPP-IDEMPOTENCY-20261017.md`.
+
+## ISS-NEW — Chat provider override falls back to OpenAI when org defaults row is absent
+- **Opened:** 2026-10-17
+- **Severity:** high (agent chat unavailable for saved non-OpenAI provider overrides under affected DB state)
+- **Owner:** OPS-01 for live DB/deployment verification; FIX-01 for source correction already committed
+- **Status:** in_progress
+- **Description:** User configured per-agent Sarvam chat, but `POST /api/chat/stream` returned `AI provider openai is not configured`. Source trace found `organizationAIConfig` returned null before reading per-agent settings when `organization_ai_runtime_settings` had no row. That path silently falls back to process environment selection (OpenAI by default), bypassing saved agent provider settings.
+- **Source correction:** Commit `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0` supplies safe defaults and continues per-agent provider lookup. Regression test authored at `apps/web/tests/clara-agent-provider-resolution.test.ts`.
+- **Verification:** Actual live row condition not confirmed. Test/typecheck/build/deployment not run. No production PASS claimed.
+- **Resolution plan:** OPS-01 confirms serving revision and tenant-scoped presence of org settings, agent override, and provider credential metadata; deploy/restart via existing manual process and verify a Sarvam chat turn. If org defaults row exists, diagnose stale build or missing/disabled provider row. Do not add OpenAI key as a workaround.
