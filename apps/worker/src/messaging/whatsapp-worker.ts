@@ -126,6 +126,7 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
            WHERE m.organization_id=$1 AND m.whatsapp_account_id=$2
              AND c.phone_number=$3 AND m.direction='inbound'
              AND COALESCE(m.provider_timestamp,m.created_at) >= now() - interval '24 hours'
+           AND COALESCE(m.provider_timestamp,m.created_at) <= now()
            ORDER BY COALESCE(m.provider_timestamp,m.created_at) DESC LIMIT 1`,
           [String(message.organization_id), String(message.whatsapp_account_id), String(message.phone_number)],
         );
