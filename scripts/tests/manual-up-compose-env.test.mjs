@@ -19,3 +19,9 @@ test("manual deployment fails closed when DATABASE_URL is unresolved or missing"
 test("manual deployment does not print the resolved database URL", () => {
   assert.doesNotMatch(script, /echo ["'].*\$migration_db_url/);
 });
+
+test("manual Compose services use the repository-root env file", async () => {
+  const compose = await readFile(new URL("../../docker-compose.manual.yml", import.meta.url), "utf8");
+  assert.equal(compose.split("      - .env").length - 1, 2);
+  assert.equal(compose.includes("../.env"), false);
+});
