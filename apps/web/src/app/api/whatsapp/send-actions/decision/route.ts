@@ -115,8 +115,9 @@ export async function POST(request: Request) {
         "UPDATE whatsapp_templates SET provider_template_id=$5, status='approved', components=$6::jsonb, last_synced_at=now(), updated_at=now() WHERE organization_id=$1 AND whatsapp_account_id=$2 AND name=$3 AND language=$4 RETURNING components",
         [organizationId, action.whatsapp_account_id, action.template_name, action.template_language, currentTemplate.id, JSON.stringify(Array.isArray(currentTemplate.components) ? currentTemplate.components : [])],
       );
-      if (!synced.rows.length) return NextResponse.json({ error: "template_not_synced", message: "Approved template is not stored for this WhatsApp account." }, { status: 409 });
-      const components = synced.rows[0].components;
+      const syncedTemplate = synced.rows[0];
+      if (!syncedTemplate) return NextResponse.json({ error: "template_not_synced", message: "Approved template is not stored for this WhatsApp account." }, { status: 409 });
+      const components = syncedTemplate.components;
       const componentList = Array.isArray(components) ? components.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item)) : [];
       const unsupportedComponents = componentList.some((item) => {
         if (item.type === "BUTTONS") return true;
