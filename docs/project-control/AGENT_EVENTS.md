@@ -525,3 +525,11 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Commits:** `a93176b3cbba730c30a016b4e47a9dd3dd46039c`, `0386f03fa9534ff2d53db84b7ffbd2b5fe864154`.
 - **Evidence boundary:** User log verifies image builds only. Regression test, migrations, stack startup and live health remain unverified.
 - **Next:** Pull latest main, run the Node test and manual deployment; record exact observed outcome.
+
+### EVT-DEV01-PROVIDER-SETUP-HARDENING-20261018
+- **Session/role:** DEV01-PROVIDER-SETUP-HARDENING-20261018 / DEV-01
+- **Change:** Direct-main provider credential editor hardening and accurate TTS/STT readiness indicator; save/delete status and model refresh reliability.
+- **Evidence:** Exact Git object SHA verified; 15 Node mocked/pure tests pass (6 catalog + 4 runtime + 5 status), three standalone `tsc` pure modules pass, 5 provider source assertions pass.
+- **Not claimed:** full Vitest, React/browser, provider-secret-backed HTTP, worker/web build, deployed runtime or production status.
+- **Lesson:** Reconcile credential state with the selected vendor; do not reuse unsaved secrets or claim multi-purpose readiness from a single config. Separate module/test evidence from end-to-end integration.
+- **Next:** OPS-01 dependency/runtime verification; DEV-01 continues source work directly on main; FIX-01 unrelated incidents.
