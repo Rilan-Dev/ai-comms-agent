@@ -372,3 +372,14 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Blockers:** Missing vendor listing APIs for Sarvam voice, TEI, ElevenLabs realtime. Live credentials, build/deployment and end-to-end verification not available here. FIX-01 and OPS-01 retain their existing independent issues.
 - **Lesson:** A selectable model list is only trustworthy if live, capability-filtered and obtained using credentials scoped to the authorized organization; a silently substituted static catalog is misleading. Keep credential-first setup and distinct TTS/STT IDs.
 - **Next action:** Execute focused Vitest and web typecheck in a full checkout, then test real encrypted keys/catalogues and save/reload; request architect review, route deployment to OPS-01. Session: `docs/project-control/sessions/DEV01-LIVE-MODEL-CATALOG-20261018.md`.
+
+### DEV01-LIVE-MODEL-VERIFY-20261018 / 2026-10-18
+- **Task:** Continue owner-authorized live provider dropdown feature verification.
+- **Authorization:** Owner follow-up "proceed" from DEV-01 NEXT_ACTION; PR #34 merged (do not treat prior unmerged description as authoritative).
+- **Started from:** Main merge commit `5413468`, feature verification branch `feature/dev01-live-model-offline-verification-20261018`.
+- **Actions:** Confirmed GitHub blob SHA of exact catalog source; locally typechecked isolated module; ran six provider behavior tests; performed 13 API/UI/source authorization assertions on current main; committed repeatable dependency-free Node test.
+- **Files:** `apps/web/tests/live-model-catalog-standalone.test.mjs`; session + project-control records.
+- **Evidence:** 6/6 Node mocked-vendor tests, 13/13 source assertions, exact module TypeScript standalone exit=0, local and committed test blob SHA `35e1521a0619430a784a351d42e400b08c13cf5d`.
+- **Blockers:** No private checkout/pnpm due DNS, no live vendor keys/browser, Vercel build-rate-limit belongs OPS-01. Repository Vitest/typecheck/build and runtime checks remain NOT VERIFIED.
+- **Lesson:** Verify exact Git object against tested bytes; executable adapter tests support limited claims, never full app/production acceptance. Record merge-state correction promptly when concurrent agents merge a PR.
+- **Next action:** Run full focused Vitest and web typecheck/build in available checkout; validate org-scoped live APIs and UI save/reload; route OPS deployment and infrastructure separately.

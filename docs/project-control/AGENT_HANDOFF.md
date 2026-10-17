@@ -86,3 +86,15 @@ Cross-agent handoff register. A handoff transfers context, not authority.
 - **Authorization:** User explicitly instructed CI/CD, deployment, infrastructure, and environment defects to be routed to OPS-01.
 - **Evidence limit:** No installation or host change attempted by FIX-01. Docker worker build success is user-provided evidence; native toolchain state is not otherwise inspected.
 - **Next:** OPS-01 may advise/use the repository's documented Node/Corepack setup. FIX-01 independently corrected the web source type error; rebuild from latest main to verify it.
+
+### HOF-DEV01-OPS-LIVE-MODEL-VERIFY-20261018
+- **From:** DEV-01 / `DEV01-LIVE-MODEL-VERIFY-20261018`
+- **To:** OPS-01 / Shipwright
+- **Reason:** Full web toolchain, live provider credentials, browser/runtime and deployment checks are inaccessible in the current development environment.
+- **Repository state:** PR #34 already merged into main at `5413468fc1ff0ae0088796b25d01b680126e521c`; additional portable test on `feature/dev01-live-model-offline-verification-20261018`.
+- **Work completed:** Exact-source SHA verification, isolated TypeScript check, 6/6 Node mocks, 13/13 GitHub source contracts. No application/Vercel success claimed.
+- **Remaining work:** In dependency-equipped host run focused Vitest, complete web typecheck/Next build; use secure org-saved keys for live vendor model listings; verify browser dropdown/save/reload and org isolation; diagnose build-rate-limit indicator returned by Vercel status for merged commit. Do not print or disclose credentials.
+- **Evidence:** `docs/project-control/sessions/DEV01-LIVE-MODEL-VERIFY-20261018.md`, source test file, Vercel commit status `failure` link containing `upgradeToPro=build-rate-limit`.
+- **Authorization:** Existing owner development-first verification request; actual production deployment still under OPS-01 authorization/control.
+- **Stop condition:** Finish the environment/deployment-specific checks or record exact external blocker; route source defects to FIX-01 and do not claim production PASS without runtime evidence.
+- **Status:** OPEN
