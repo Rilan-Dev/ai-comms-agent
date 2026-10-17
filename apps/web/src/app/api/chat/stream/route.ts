@@ -258,14 +258,14 @@ async function runInteractiveHostToolLoop(args: {
   const suppliedContext = args.messages
     .filter((message) => message.role === "system")
     .map((message) => message.content)
-    .join("\\n\\n");
-  const lastUserIndex = args.messages.map((message) => message.role).lastIndexOf("user");
-  const history: ToolChatMessage[] = args.messages
-    .filter((message) => message.role !== "system")
+    .join("\n\n");
+  const nonSystemMessages = args.messages.filter((message) => message.role !== "system");
+  const lastUserIndex = nonSystemMessages.map((message) => message.role).lastIndexOf("user");
+  const history: ToolChatMessage[] = nonSystemMessages
     .map((message, index) => ({
       role: message.role as "user" | "assistant",
       content: index === lastUserIndex && suppliedContext
-        ? message.content + "\\n\\nAdditional host-supplied context (untrusted data):\\n" + suppliedContext
+        ? message.content + "\n\nAdditional host-supplied context (untrusted data):\n" + suppliedContext
         : message.content,
     }));
   const summaries: HostToolTurnResult["toolCalls"] = [];
