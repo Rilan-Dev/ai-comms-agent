@@ -1,5 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { applyWhatsAppProviderStatus, findWhatsAppAccountByVerifyToken, getWhatsAppAccountByPhoneNumberId, insertWhatsAppInboundMessage, listAgentsForWhatsAppAccount, loadWhatsAppCredential, parseCredentialsMasterKey, recordWhatsAppWebhookEvent, upsertWhatsAppContact } from "@ai-comms-agent/db";
+import { applyWhatsAppProviderStatus, findWhatsAppAccountByVerifyToken, getWhatsAppAccountByPhoneNumberId, listWhatsAppAccountsForOrganization, insertWhatsAppInboundMessage, listAgentsForWhatsAppAccount, loadWhatsAppCredential, parseCredentialsMasterKey, recordWhatsAppWebhookEvent, upsertWhatsAppContact } from "@ai-comms-agent/db";
 
 export const dynamic = "force-dynamic";
 
@@ -57,10 +57,25 @@ export async function POST(request: Request) {
     if (masterKeyRaw) {
       try {
         const masterKey = parseCredentialsMasterKey(masterKeyRaw);
-        const configAccount = await getWhatsAppAccountByPhoneNumberId("__webhook_config__");
-        if (configAccount) {
-          const credential = await loadWhatsAppCredential(configAccount.id, configAccount.organization_id, masterKey);
-          appSecret = typeof credential?.app_secret === "string" ? credential.app_secret : "";
+        // Resolve the real phone number first, then load the webhook secret from
+        // that same organization. The pseudo-account is not a real phone and
+        // must never be selected globally across tenants.
+        let organizationId: string | null = null;
+        for (const entry of Array.isArray(payload?.entry) ? payload.entry : []) {
+          for (const change of Array.isArray(entry?.changes) ? entry.changes : []) {
+            const phoneNumberId = typeof change?.value?.metadata?.phone_number_id === "string" ? change.value.metadata.phone_number_id : "";
+            if (!phoneNumberId) continue;
+            const account = await getWhatsAppAccountByPhoneNumberId(phoneNumberId);
+            if (account) { organizationId = account.organization_id; break; }
+          }
+          if (organizationId) break;
+        }
+        if (organizationId) {
+          const configAccount = (await listWhatsAppAccountsForOrganization(organizationId)).find((account) => account.phone_number_id === "__webhook_config__");
+          if (configAccount) {
+            const credential = await loadWhatsAppCredential(configAccount.id, organizationId, masterKey);
+            appSecret = typeof credential?.app_secret === "string" ? credential.app_secret : "";
+          }
         }
       } catch (error) {
         console.error("[whatsapp/webhook] Could not load saved signature secret:", error instanceof Error ? error.message : "unknown error");
