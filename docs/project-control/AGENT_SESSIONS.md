@@ -743,3 +743,11 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** No local execution evidence for this commit; native-host pnpm availability is unknown and must not be conflated with Docker build status.
 - **Handoff:** User/local checkout for rebuild; OPS-01 only for separate infrastructure/toolchain failures.
 - **Next action:** `git pull --ff-only origin main && bash scripts/update-and-up.sh`; if build succeeds, run focused voice realtime transport test.
+
+### DEV01-MAIN-RUNTIME-MODEL-20261018 — 2026-10-18
+- **Agent/authorization:** DEV-01 / Forge; owner "proceed ... don't create any branch directly work on main branch".
+- **Repository:** Current main; existing PR #35 already merged. No new branch or PR.
+- **Work:** Discovered camelCase GET settings silently lost when snake_case form state saved; normalized all eight API fields, removed new-org hard-coded realtime model default, added dual-layer standalone and Vitest coverage, committed directly to main.
+- **Verification:** Exact-Git-SHA-based Node tests 10/10 (6 catalog + 4 runtime) and isolated TypeScript 2/2 modules passed. Full repo app suite/build/live provider/browser/deploy NOT RUN.
+- **Blocked:** Private repo/dependency download unavailable and no saved provider keys in this environment; OPS-01 owns host + Vercel rate limits. No change to FIX-01 scope.
+- **Next:** Complete focused Vitest and full web typecheck/build, live tenant credential and UI smoke verification on main.
