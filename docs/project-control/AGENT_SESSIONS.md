@@ -634,3 +634,11 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Follow-up: UI still showed “sent” despite the supplied failed webhook payload. Exact live webhook-to-row-to-UI path remains unverified; OPS-01 owns deployed runtime/database/webhook evidence.
 - Record: `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`.
 - Verification: source inspection and user-supplied payload only; no tests or live send verification.
+
+### SESSION-FIX01-CHAT-PROVIDER-20261017
+- **Agent:** FIX-01 / Sentinel
+- **Issue:** Saved per-agent Sarvam override ignored under missing organization-defaults-row branch; chat falls back to OpenAI and errors when no OpenAI key is configured.
+- **Source correction:** `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0`.
+- **Regression test:** `apps/web/tests/clara-agent-provider-resolution.test.ts`; authored, not run.
+- **OPS-01 handoff:** `HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017` OPEN.
+- **Session evidence:** `docs/project-control/sessions/FIX01-CHAT-PROVIDER-OVERRIDE-20261017.md`.
