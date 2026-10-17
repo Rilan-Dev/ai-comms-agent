@@ -589,3 +589,18 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Prevention:** Narrow the actual database-returned row before reading fields.
 - **Evidence/verification:** Source/test committed; no post-fix build or test execution is evidenced.
 - **Next action:** Pull latest main, rerun manual Docker deployment build, then run focused `whatsapp-send-approval.test.ts`. Keep build status pending until output is observed.
+
+
+## ISS-032 — Duplicate generationId declaration blocks voice workspace build
+
+- **Opened:** 2026-10-18
+- **Severity:** high (web production build blocker)
+- **Owner:** FIX-01 / Sentinel
+- **Status:** in_progress — source corrected; post-fix build/test evidence pending
+- **Symptom:** User's `bash scripts/update-and-up.sh` reports webpack parse failure in `apps/web/src/app/ai-voice/voice-workspace.tsx` at line 340: `Identifier 'generationId' has already been declared`.
+- **Root cause:** The Sarvam/ElevenLabs speech branch declared `const generationId` before attempting streaming TTS, then declared the same identifier again in the same lexical block for HTTP speech fallback playback. Both declarations use the same session/sequence value.
+- **Remedy:** Reuse the first declaration for fallback playback; preserve generation tracking and playback callbacks. Added regression assertion that the provider speech branch has exactly one declaration and assigns that identifier to `ttsGenerationRef.current`.
+- **Commits:** source `f6efffdb42dbd75df38841fab43b985eb565ee3f`; regression test `05519965adae7ebab837a03e4d7a0d2306e3f0c1`.
+- **Evidence/verification:** User's log proves worker image build/export and web webpack parse failure before correction. Post-fix build and test are NOT RUN / NOT VERIFIED.
+- **Prevention lesson:** When adding a fallback branch within an existing lexical scope, reuse the request/generation identity already computed rather than redeclaring a `const`.
+- **Next action:** Pull latest main, rerun `bash scripts/update-and-up.sh`; if compilation passes, run focused `voice-realtime-transport.test.ts`. Record actual output before closing.
