@@ -1829,3 +1829,17 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 - Added `apps/worker/tests/whatsapp-tool-runtime.test.ts` with static contract assertions. Source commits: `637bb72ce0d5c988468f418ef6e36d24251e712b`, `de8fc4c8f1603e4e8f68b449a35c25ab841e35a0`, `ebd57c7cf947d7f9726bb98ac4c04b74151af42b`.
 - Important boundary: this runtime is not yet wired into the interactive chat route/model loop. Outbound `whatsapp.send` is intentionally not registered until WhatsApp-specific approval and Meta template compliance exist. No tests/typecheck/build/database/browser/Meta/deployment checks were run.
 - `docs/project-control/NEXT_ACTION.md` updated at `580d85f5a424c7690a204b2e1a62bab5f5c5bd0d` with the next authorized action.
+
+
+## DEV-01 — Chat tool loop and WhatsApp approval checkpoint — 2026-10-17
+
+- Interactive `/api/chat/stream` now constructs a `ToolContext` from the server-authenticated organization membership, user, role and permissions; it combines only the per-agent allowlisted email/WhatsApp runtime tools, uses the bounded host-authorized invocation path (4 rounds / 8 calls / 10,000-character tool result cap), and preserves host-supplied mailbox context as explicitly untrusted data. Model arguments cannot set tenant, actor or permissions.
+- Added source regression tests for the chat host tool loop.
+- WhatsApp outbound API requests now create durable `whatsapp_send_actions` proposals instead of queueing sends immediately. Added an organization-scoped approval queue endpoint and authenticated approve/reject endpoint. Approval rechecks the connected account and recent **inbound** customer message; free-form text is queued only inside Meta's 24-hour customer-service window. Outside that window the action transitions to `requires_template` and no message is queued.
+- Added migration `0035_whatsapp_send_approvals.sql` and static regression tests. `whatsapp.send` remains deliberately unregistered: approved-template lifecycle/sync, template payload persistence + worker delivery, approval UI, and an end-to-end approval/send test are still required before the model can invoke it.
+- Known integration risk: the web route imports the existing worker runtimes directly; validate the Next.js monorepo build/import boundary during normal verification and extract a dedicated shared runtime package if the build configuration rejects this dependency direction.
+- Verification boundary: source changes only. Tests, typecheck, build, migration execution, browser approval UI, Meta API, and deployed behavior have **not** been run or verified. Do not claim a send succeeded from an approval or queue response; only provider-confirmed message state establishes delivery progress.
+- Next: implement approved-template submission/status reconciliation and template sends in the worker; add approval UI; then register `whatsapp.send` behind the same authorization/approval path. Do not wait for CI/Vercel polling to continue independent implementation.
+
+---
+
