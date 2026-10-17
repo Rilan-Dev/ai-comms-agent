@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const runtime = readFileSync(resolve(__dirname, "../../packages/clara-core/src/runtime.ts"), "utf8");
+const runtime = readFileSync(resolve(__dirname, "../../../packages/clara-core/src/runtime.ts"), "utf8");
 
 describe("Clara agent provider resolution", () => {
   it("still resolves per-agent provider overrides when organization runtime defaults are absent", () => {
