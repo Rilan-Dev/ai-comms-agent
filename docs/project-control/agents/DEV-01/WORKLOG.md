@@ -394,3 +394,13 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Blocks:** Full pnpm tests/typecheck/Next build, browser/provider credentials and deployment remain UNVERIFIED; OPS-01 owns environment and Vercel build rate limit.
 - **Lesson:** Backend GET may be camelCase while PUT accepts snake_case; normalize every editable value before saving and test that the KB ID/policy are retained. Do not mix per-feature bug fix with unrelated FIX-01 runtime work. Owner requested direct-main workflow.
 - **Next:** Full web suite in equipped checkout on main and tenant-scoped real provider+UI smoke checks.
+
+### DEV01-PROVIDER-SETUP-HARDENING-20261018 / 2026-10-18
+- **Task:** Continue authorized core AI provider UX/correctness enhancements on `main`.
+- **Authorization:** Owner "Please proceed", preserving previous explicit no-branch/direct-main instruction.
+- **Started from:** main `2864975b32d79a61257b63806aff4031560258a9`.
+- **Changes:** Switched both provider selectors to an API-key-clearing handler, validated DELETE and configuration reload responses before success, invalidated catalog after key deletion; added aggregate TTS/STT readiness indicator and tests. Commits: `f85a2240`, `f64222e1`, `6f4ae958`, `9b0a6262`, `2a295ae7`, `df55f31b`.
+- **Evidence:** 6/6 Node vendor mocks, 4/4 runtime hydration, 5/5 provider-status tests, 3 pure-module isolated tsc checks, 5/5 GitHub source-contract assertions. SHA identity verified for new status helper/test. Node source-safety and Vitest tests created but not separately run.
+- **Blockers:** No local full private repo or working pnpm npm registry; live vendor credentials/browser/OPS environment inaccessible; Vercel build-rate-limit separate. Nothing merged via branch.
+- **Lesson:** A provider switch must discard unsaved vendor secrets; multi-purpose readiness requires all capabilities, not the first matching record; check HTTP status before success toast.
+- **Next:** Full web Vitest/Next/typecheck and live UI provider settings flow in OPS-enabled checkout; resume approved email AI capabilities / RAG after security/Clara endpoint gates.
