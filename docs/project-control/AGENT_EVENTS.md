@@ -467,3 +467,13 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Failed approaches avoided:** No non-null assertion, cast, compiler relaxation, or template policy change.
 - **Verification:** Source committed; post-fix build/test pending. Worker build and pre-fix web failure are user-provided evidence.
 - **Next:** Rebuild latest main and run the focused WhatsApp approval test; update state from actual output.
+
+
+### EVT-FIX01-VOICE-GENERATION-ID-20261018
+- Agent/session: FIX-01 / Sentinel — FIX01-VOICE-GENERATION-ID-20261018
+- Type: SOURCE BUILD DEFECT
+- Symptom: User Docker web build fails webpack parse on duplicate `generationId` declaration in voice workspace.
+- Root cause: duplicate `const` in one provider TTS fallback block.
+- Remedy: reuse existing identifier and add branch-scoped regression assertion. Commits `f6efffdb42dbd75df38841fab43b985eb565ee3f`, `05519965adae7ebab837a03e4d7a0d2306e3f0c1`.
+- Verification: post-fix build/test pending.
+- Next: pull main, rebuild, run focused test.
