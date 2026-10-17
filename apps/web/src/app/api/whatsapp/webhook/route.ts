@@ -62,12 +62,13 @@ export async function POST(request: Request) {
         // that same organization. The pseudo-account is not a real phone and
         // must never be selected globally across tenants.
         let organizationId: string | null = null;
+        let resolvedAccount: { id: string; organization_id: string } | null = null;
         for (const entry of Array.isArray(payload?.entry) ? payload.entry : []) {
           for (const change of Array.isArray(entry?.changes) ? entry.changes : []) {
             const phoneNumberId = typeof change?.value?.metadata?.phone_number_id === "string" ? change.value.metadata.phone_number_id : "";
             if (!phoneNumberId) continue;
             const account = await getWhatsAppAccountByPhoneNumberId(phoneNumberId);
-            if (account) { organizationId = account.organization_id; break; }
+            if (account) { organizationId = account.organization_id; resolvedAccount = account; break; }
           }
           if (organizationId) break;
         }
@@ -77,6 +78,12 @@ export async function POST(request: Request) {
             const credential = await loadWhatsAppCredential(configAccount.id, organizationId, masterKey);
             appSecret = typeof credential?.app_secret === "string" ? credential.app_secret : "";
           }
+        }
+        // Backward compatibility: older setups may have saved the App Secret
+        // with the phone's encrypted credential instead of webhook settings.
+        if (!appSecret && resolvedAccount) {
+          const credential = await loadWhatsAppCredential(resolvedAccount.id, resolvedAccount.organization_id, masterKey);
+          appSecret = typeof credential?.app_secret === "string" ? credential.app_secret : "";
         }
       } catch (error) {
         console.error("[whatsapp/webhook] Could not load saved signature secret:", error instanceof Error ? error.message : "unknown error");
