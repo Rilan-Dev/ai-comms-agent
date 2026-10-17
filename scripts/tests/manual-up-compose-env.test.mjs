@@ -30,7 +30,7 @@ test("manual deployment runs migrations in a one-off Docker container with inter
   assert.match(script, /Applying database migrations inside Docker/);
   assert.match(
     script,
-    /"\$\{COMPOSE\[@\]\}" run --rm --no-deps\\s+--volume "\$PROJECT_ROOT\/supabase:\/workspace\/supabase:ro"\\s+web node packages\/db\/migrate\.js/s,
+    /"\$\{COMPOSE\[@\]\}" run --rm --no-deps\s+--volume "\$PROJECT_ROOT\/supabase:\/workspace\/supabase:ro"\s+web node packages\/db\/migrate\.js/s,
   );
   assert.doesNotMatch(script, /DATABASE_URL="\$migration_db_url" node packages\/db\/migrate\.js/);
   assert.doesNotMatch(script, /migration_db_url="\$\{migration_db_url\/\/host\.docker\.internal\/127\.0\.0\.1\}"/);
