@@ -1244,3 +1244,10 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Not wired:** Chat route, voice runtime, worker startup, or vector outbox remain unchanged until FIX-01 closes ISS-026. Do not bypass this security gate.
 - **Not executed:** tests/typechecks/lint/build/live Clara/Qdrant checks are not run; all checks remain source-authored only.
 - **Next:** continue source review; when a dependency-equipped environment is available, run targeted tests and typechecks. After FIX-01 closes ISS-026, connect the same service through the trusted Chat and realtime voice tool path and activate the outbox adapter only after API verification. OPS-01 owns live Qdrant setup, ingestion, isolation evidence and latency/correctness acceptance.
+
+
+## FIX-01 follow-up — WhatsApp provider status mismatch (2026-10-17)
+- **Confirmed:** Meta error 131047 means the 24-hour customer-service window expired; free-form text must not be sent in that state. Use an eligible approved template or wait for a customer reply.
+- **Pending:** UI showed `sent` despite a supplied failed webhook payload. OPS-01 should inspect the serving revision, webhook delivery/HTTP response, provider-message-ID match, persisted status/error and UI refresh using redacted evidence.
+- **FIX-01 next:** Add a focused regression test and source correction only if that trace proves a code defect. Do not change Meta policy handling, weaken authorization, or treat queued=true as delivery.
+- **Session record:** `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`.
