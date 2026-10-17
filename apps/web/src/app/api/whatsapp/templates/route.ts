@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     const category = body?.category;
     const components = body?.components;
     if (!organizationId || !accountId || !/^[a-z0-9_]{1,512}$/.test(name) || !/^[a-zA-Z0-9_-]{2,32}$/.test(language)
-      || !["UTILITY","MARKETING","AUTHENTICATION"].includes(category)
+      || !["UTILITY","MARKETING"].includes(category)
       || !Array.isArray(components) || components.length < 1 || components.length > 10
       || components.some((item: unknown) => !item || typeof item !== "object" || !["HEADER","BODY","FOOTER","BUTTONS"].includes(String((item as Record<string, unknown>).type)))) {
       return NextResponse.json({ error: "validation_error", message: "Valid account, template name, language, category and 1–10 Meta template components are required." }, { status: 422 });
