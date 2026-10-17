@@ -1388,3 +1388,10 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - Relevant issue: ISS-034. Source commits: 1fb04529, 9a9e09ee, 5946168a; tests: 57618396, fee2a239.
 - **Verification boundary:** User output is pre-fix. Post-fix typecheck, focused tests, Docker build, and deployment are pending. Do not claim a green build from commits alone.
 - **Next:** git pull --ff-only origin main, run pnpm typecheck, then bash scripts/update-and-up.sh; continue with any new source errors and record actual results.
+
+## OPS-01 — Manual deploy Compose CLI compatibility — 2026-10-18
+
+- **Current evidence:** User's manual deployment successfully builds worker and web images; Next.js production build completes. The script then fails before migrations because installed Compose rejects `config --environment`.
+- **Source correction on main:** `scripts/manual-up.sh` now falls back to host `DATABASE_URL` or the concrete `DATABASE_URL` value in `.env` if the Compose CLI lacks that option; unresolved interpolation/missing URL remains a hard failure and the URL is never printed. Commits: source `a93176b3cbba730c30a016b4e47a9dd3dd46039c`, regression test `0386f03fa9534ff2d53db84b7ffbd2b5fe864154`.
+- **Next:** Pull latest main, run `node --test scripts/tests/manual-up-compose-env.test.mjs`, then `bash scripts/update-and-up.sh`. Confirm migration and container startup from actual output. If Compose still fails, capture only the error text (no environment values/secrets).
+- **Verification boundary:** Docker image builds are verified by the user's log; the compatibility test, migration chain, stack startup, and live runtime are not yet verified. Continue independent source work without waiting on unrelated CI/Vercel gates.
