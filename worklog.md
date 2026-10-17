@@ -1868,3 +1868,8 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 - Compared Clara-AI-Platform vendor live catalogue and integrated secure tenant-scoped vendor fetching plus model dropdowns for organization, agent and realtime settings. Removed static catalog fallback; added mocked provider/source contract tests. No cross-role runtime/deployment work.
 - Verification: GitHub source accepted; executable tests, typecheck, browser, live vendor credential and deployment verification remain **NOT RUN**.
 - Recovery/next: `docs/project-control/sessions/DEV01-LIVE-MODEL-CATALOG-20261018.md` and `docs/project-control/NEXT_ACTION.md`.
+
+### 2026-10-18 — DEV-01 live model catalogue verification continuation
+- PR #34 was already merged at `5413468` when user requested to proceed. Verified GitHub blob equals standalone tested TS adapter (SHA `47c427b77c2dffe4555451ede58fec28b4dfe941`); module-only TypeScript check 0 errors; 6/6 mocked provider tests, 13/13 source contract checks PASS.
+- Committed dependency-free Node test on `feature/dev01-live-model-offline-verification-20261018` (blob `35e1521a0619430a784a351d42e400b08c13cf5d`). Did not run full Vitest/Next build/typecheck or live credentials/browser/deployment.
+- Environment lacks pnpm/private clone due outbound DNS; Vercel status on PR merge commit indicates build-rate-limit and is routed OPS-01. FIX-01 retains substantial bugs. Next: full focused tests/build and provider/UI smoke tests in equipped checkout. Session `docs/project-control/sessions/DEV01-LIVE-MODEL-VERIFY-20261018.md`.
