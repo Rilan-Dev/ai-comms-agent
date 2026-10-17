@@ -42,7 +42,7 @@ export function createClaraEmailVectorSearch(config: {
   return async (input) => {
     // Reject invalid scope before contacting a privileged service. A service
     // token is never a substitute for the caller's agent-to-account grants.
-    if (typeof input.orgId !== "string" || !input.orgId.trim() || input.orgId.length > 128 ||
+    if (typeof input.orgId !== "string" || !input.orgId.trim() || input.orgId !== input.orgId.trim() || input.orgId.length > 128 ||
         !Array.isArray(input.allowedAccountIds) ||
         input.allowedAccountIds.length < 1 || input.allowedAccountIds.length > 100 ||
         input.allowedAccountIds.some((id) =>
