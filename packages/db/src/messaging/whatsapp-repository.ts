@@ -26,17 +26,35 @@ export async function getWhatsAppAccountForOrganization(organizationId: string, 
 }
 
 export async function createOrUpdateWhatsAppAccount(input: { organizationId: string; accountId?: string; businessAccountId?: string | null; phoneNumberId: string; phoneNumber?: string | null; displayName?: string | null; capabilities?: Record<string, boolean>; status?: "pending" | "connected" | "error" | "disconnected" | "revoked"; createdBy: string; verifyToken?: string; }) {
-  const existing = input.accountId ? await getWhatsAppAccountForOrganization(input.organizationId, input.accountId) : null;
+  // Look up by accountId OR by phone_number_id. The phone_number_id column
+  // has a GLOBAL UNIQUE constraint — if a previous account with the same
+  // phone_number_id exists (even soft-deleted), INSERT would fail with
+  // 23505 "duplicate key value violates unique constraint". By looking up
+  // by phone_number_id first, we UPDATE the existing row instead of
+  // INSERTing a duplicate.
+  let existing = input.accountId ? await getWhatsAppAccountForOrganization(input.organizationId, input.accountId) : null;
+  if (!existing && input.phoneNumberId) {
+    // Check for an existing account with the same phone_number_id in this org
+    // (including soft-deleted ones — we'll restore them).
+    const r = await query<Row>(
+      "SELECT * FROM whatsapp_accounts WHERE phone_number_id = $1 AND organization_id = $2 LIMIT 1",
+      [input.phoneNumberId, input.organizationId],
+    );
+    if (r.rows[0]) {
+      // Restore a soft-deleted account: clear deleted_at, update fields
+      existing = mapAccount(r.rows[0]);
+    }
+  }
   if (existing) {
     const updates: string[] = [];
     const values: unknown[] = [input.businessAccountId ?? null, input.phoneNumberId, input.phoneNumber ?? null, input.displayName ?? null, JSON.stringify(input.capabilities ?? { send_text: true, receive_text: true }), input.status ?? "pending", input.accountId, input.organizationId];
-    let setClause = "business_account_id = $1, phone_number_id = $2, phone_number = $3, display_name = $4, capabilities = $5::jsonb, status = $6, last_error = NULL, connected_at = CASE WHEN $6 = 'connected' THEN now() ELSE connected_at END";
+    let setClause = "business_account_id = $1, phone_number_id = $2, phone_number = $3, display_name = $4, capabilities = $5::jsonb, status = $6, last_error = NULL, deleted_at = NULL, connected_at = CASE WHEN $6 = 'connected' THEN now() ELSE connected_at END";
     if (input.verifyToken) {
       values.push(input.verifyToken);
       setClause += `, verify_token = $${values.length}`;
     }
-    values.push(input.accountId!, input.organizationId);
-    const r = await query<Row>(`UPDATE whatsapp_accounts SET ${setClause} WHERE id = $${values.length - 1} AND organization_id = $${values.length} AND deleted_at IS NULL RETURNING *`, values);
+    values.push(existing.id, input.organizationId);
+    const r = await query<Row>(`UPDATE whatsapp_accounts SET ${setClause} WHERE id = $${values.length - 1} AND organization_id = $${values.length} RETURNING *`, values);
     return r.rows[0] ? mapAccount(r.rows[0]) : null;
   }
   // Generate a verify_token if not provided — use a random UUID-based token
