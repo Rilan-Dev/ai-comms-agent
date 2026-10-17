@@ -9,8 +9,16 @@ type VoiceSession = { id: string; status: string; provider?: string | null; mode
 type Transport = { transportMode?: "transcript_bridge" | "realtime" | "pipeline"; sessionEndpoint?: string; turnEndpoint?: string; provider?: string | null; realtimeProvider?: string | null; model?: string | null; voiceId?: string | null };
 type Turn = { id: string; role: "user" | "assistant"; text: string; state?: "thinking" | "done" };
 
-export function VoiceWorkspace({ organizationId, agents }: { organizationId: string; agents: Agent[] }) {
-  const [agentId, setAgentId] = useState(agents[0]?.id ?? "");
+export function VoiceWorkspace({
+  organizationId, agents, initialAgentId, embedded = false, onReturnToChat,
+}: {
+  organizationId: string;
+  agents: Agent[];
+  initialAgentId?: string;
+  embedded?: boolean;
+  onReturnToChat?: () => void;
+}) {
+  const [agentId, setAgentId] = useState(initialAgentId ?? agents[0]?.id ?? "");
   const [languageCode, setLanguageCode] = useState("en-IN");
   const [session, setSession] = useState<VoiceSession | null>(null);
   const [transport, setTransport] = useState<Transport | null>(null);
@@ -121,9 +129,20 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   }, []);
 
   useEffect(() => () => {
+    const active = sessionRef.current;
     abortRef.current?.abort();
     stopMedia();
-  }, [stopMedia]);
+    // Leaving an embedded voice panel must also terminate the host lifecycle,
+    // not merely close the microphone and leave an orphaned active session.
+    if (active && active.status !== "ended" && active.status !== "error") {
+      void fetch("/api/voice/session", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ organizationId, sessionId: active.id, reason: "user_ended" }),
+        keepalive: true,
+      }).catch(() => undefined);
+    }
+  }, [organizationId, stopMedia]);
 
   const patchSession = useCallback(async (body: Record<string, unknown>) => {
     const current = sessionRef.current;
@@ -950,10 +969,22 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   const liveSession = session?.status === "starting" || session?.status === "active";
   const bridgeOnly = transport?.transportMode === "transcript_bridge";
 
+  const Container = embedded ? "section" : "main";
   return (
-    <main className="min-h-[calc(100vh-72px)] bg-background px-4 py-5 sm:px-8 sm:py-8">
+    <Container aria-label={embedded ? "Live voice conversation" : undefined} className={embedded ? "min-w-0 flex-1 bg-background px-4 py-5 sm:px-8 sm:py-8" : "min-h-[calc(100vh-72px)] bg-background px-4 py-5 sm:px-8 sm:py-8"}>
       <audio ref={audioRef} autoPlay playsInline className="hidden" aria-hidden="true" />
       <div className="mx-auto max-w-6xl">
+        {embedded && onReturnToChat ? (
+          <button type="button" onClick={() => {
+            if (liveSession) {
+              void endSession().then(onReturnToChat).catch(() => setError("Could not end the voice session. Use End session and retry."));
+            } else {
+              onReturnToChat();
+            }
+          }} className="mb-4 inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-secondary" aria-label="Return to text chat">
+            ← Back to chat
+          </button>
+        ) : null}
         <header className="flex flex-col gap-4 border-b pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.18em] text-primary"><Waves size={14} /> Clara voice workspace</p>
@@ -1090,7 +1121,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
           </aside>
         </section>
       </div>
-    </main>
+    </Container>
   );
 }
 
