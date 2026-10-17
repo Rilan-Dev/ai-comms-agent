@@ -562,3 +562,12 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Boundary/remedy:** Deployment script and migration execution are OPS-01 scope. Run migrations in a temporary Compose container with internal DNS; ensure `supabase/migrations` is available inside it (current Dockerfile does not COPY `supabase/`). Keep app DB URLs internal; do not switch them to `host.docker.internal`.
 - **Evidence status:** GitHub source and user-provided logs inspected; no post-fix migration, health or live database target verification.
 - **Next:** OPS-01 implements and tests the deployment correction; confirm `/postgres` versus Compose default database `aca` before applying migrations.
+
+
+### EVT-OPS01-MIGRATION-CONTAINER-20261018
+- **Owner/session:** OPS-01 / `OPS01-MIGRATION-CONTAINER-20261018`; accepted FIX-01 handoff `HOF-FIX01-OPS01-MIGRATION-NETWORK-20261018`.
+- **Change:** `scripts/manual-up.sh` now runs migrations in a one-off Compose web container and mounts `supabase/` read-only at the runner's auto-detected path. App traffic remains on Docker internal DNS.
+- **Regression:** Added tests for container invocation, mount ordering, no host DSN resolution, and existing continue-on-failure policy.
+- **Commits:** source `65a215151ecd14900fac3c9ba9a421fb7a777a77`; final focused test `6cd93638bffa0e2f6a9e8d6ce2f3f2664b13341b`.
+- **Verification:** Bash syntax PASS; isolated Node test 4/4 PASS. Actual checkout, Docker, migration and health verification pending. The initial line-continuation assertion failure was fixed.
+- **Next:** Confirm intended database name (`postgres` vs Compose default `aca`), then operator runs the focused test and deployment. Preserve internal network routing.
