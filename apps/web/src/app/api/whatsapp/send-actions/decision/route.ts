@@ -179,9 +179,20 @@ export async function POST(request: Request) {
       if (!existing.rows[0]) throw new Error("Approved WhatsApp message queue state could not be reconciled");
     }
     const resolvedMessageId = messageId || (await query<{ id: string }>("SELECT id FROM whatsapp_messages WHERE organization_id=$1 AND idempotency_key=$2 LIMIT 1", [organizationId, idempotencyKey])).rows[0]?.id;
-    await query("UPDATE whatsapp_send_actions SET status='queued', queued_message_id=$3, updated_at=now() WHERE id=$1 AND organization_id=$2 AND status='approved'", [actionId, organizationId, resolvedMessageId ?? null]);
-    await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.approved", targetType: "whatsapp_send_action", targetId: actionId, action: "approve", decision: "allowed", metadata: { messageId: resolvedMessageId ?? null, payloadType: action.payload_type } });
-    return NextResponse.json({ approved: true, queued: true, status: "queued", messageId: resolvedMessageId ?? null, message: "Approved and queued for delivery. Provider delivery is not yet confirmed." }, { status: 202 });
+    const outcome = await query<{ status: string }>(
+      "UPDATE whatsapp_send_actions SET status=CASE WHEN status='approved' THEN 'queued' ELSE status END, queued_message_id=COALESCE(queued_message_id,$3), updated_at=now() WHERE id=$1 AND organization_id=$2 AND status IN ('approved','queued','sent','failed','requires_template') RETURNING status",
+      [actionId, organizationId, resolvedMessageId ?? null],
+    );
+    const outcomeStatus = outcome.rows[0]?.status ?? "queued";
+    await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.approved", targetType: "whatsapp_send_action", targetId: actionId, action: "approve", decision: "allowed", metadata: { messageId: resolvedMessageId ?? null, payloadType: action.payload_type, outcomeStatus } });
+    const message = outcomeStatus === "failed"
+      ? "Approval was recorded, but the worker reports that sending failed. Check the message status before retrying."
+      : outcomeStatus === "sent"
+        ? "Approved and accepted by Meta. Recipient delivery is not yet confirmed."
+        : outcomeStatus === "requires_template"
+          ? "The worker blocked this free-form message because the 24-hour window closed; use an approved template."
+          : "Approved and queued for delivery. Provider delivery is not yet confirmed.";
+    return NextResponse.json({ approved: true, queued: outcomeStatus === "queued" || outcomeStatus === "sent" || outcomeStatus === "requires_template" || outcomeStatus === "failed", status: outcomeStatus, messageId: resolvedMessageId ?? null, message }, { status: 202 });
   } catch (error) {
     return authorizationErrorToResponse(error);
   }
