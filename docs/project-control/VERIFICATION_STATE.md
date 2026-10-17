@@ -1429,3 +1429,10 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Not verified:** Static test execution, typecheck, migration execution against PostgreSQL, worker build/restart, cessation of SQLSTATE 22P02, Microsoft Graph subscription configuration, mailbox sync, and persisted-message counts.
 - **Status:** SOURCE_CORRECTED / RUNTIME_VERIFICATION_PENDING. No PASS claimed.
 - **Owner / next action:** OPS-01 applies migrations through the normal process, rebuilds/restarts the worker from matching source, inspects sanitized logs, and verifies sync timestamps and persisted messages. Keep the subscription-prerequisite warning separate from the enum defect.
+
+## FIX-01 — Chat provider override incident (2026-10-17)
+- **Source state:** Correction committed to `main` at `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0`; per-agent provider lookup now continues if org runtime-defaults row is absent.
+- **Regression:** Static test authored at `apps/web/tests/clara-agent-provider-resolution.test.ts`, commits `d9e6c619320390c5290c04d29d30187a6838736f` and `c0e0a31e788ecd24e6af89f42e4f67f5100b7c73`.
+- **Not verified:** Test execution, typecheck, web build, live database row state, provider HTTP call, deployed revision, and successful chat response.
+- **Owner/next:** OPS-01 confirms deployment and tenant-scoped configuration metadata, rebuilds/restarts using the existing manual procedure, and tests one Sarvam chat request. Do not claim PASS until the model call succeeds and logs show the intended provider without exposing secrets.
+- **Session/handoff:** `docs/project-control/sessions/FIX01-CHAT-PROVIDER-OVERRIDE-20261017.md`; `HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017` OPEN.
