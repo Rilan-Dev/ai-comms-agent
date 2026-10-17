@@ -412,3 +412,11 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **ACTUAL TESTS:** existing local Node catalog 6/6, state 4/4, provider readiness 5/5 PASS (15 total); three pure-module isolated TS checks PASS; 12 authenticated GitHub source assertions PASS. New Node source-contract and Vitest tests committed but not executed locally.
 - **Cannot claim:** Full pnpm install, web/worker typecheck/build, live app/browser, real provider keys, cross-tenant API integration, Vercel/deployment. Browser connector lacked originating browser context; no full checkout/working registry.
 - **Next:** Full repo test/build then organization switch/cross-org live smoke; continue secure email tools and RAG behind FIX-01's runtime isolation and verified Clara API.
+
+### DEV01-CLARA-VECTOR-BOUNDARY-20261018 — 2026-10-18
+- **Authorized:** Continue approved RAG work on main only; no branches.
+- **Code:** `packages/db/src/email/clara-vector-search.ts` invalid scope/query/limit rejection before sending service token, URL sanitizer and redirect:error; `apps/worker/src/knowledge/clara-email-vector-adapter.ts` symmetric URL/redirect restrictions. Added `packages/db/tests/clara-vector-search-standalone.test.mjs` and extended worker Vitest test.
+- **Commits:** `b630da65`, `1203c374`, `b31b4db2`, `6c167816`, `3577fe79`.
+- **Evidence:** 5/5 new exact-source Node tests and combined 20/20 Node pass; module-only TS check with declaration-only stubs passed. No full app build, worker Vitest, real Clara/Qdrant or browser test.
+- **Source dependency:** Clara PR #298 merged into Vite-Converted (does not establish a live deployed endpoint). ISS-026 live endpoint denial checks still required; do not wire RAG outbox or expose semantic retrieval without those gates.
+- **Next:** Execute dependency-equipped web/worker tests and builds, confirm Clara Qdrant and tenant filtering, then resume approved email/RAG integration. Do not claim production ready.
