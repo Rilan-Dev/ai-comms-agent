@@ -730,3 +730,16 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** No pnpm or private repo download due outbound DNS; OPS-01 owns Vercel build-rate-limit and deployment.
 - **Handoff:** `HOF-DEV01-OPS-LIVE-MODEL-VERIFY-20261018`; FIX-01 bugs remain separately owned.
 - **Next action:** Run exact repo Vitest and typecheck/build in dependency-equipped checkout; validate model dropdown save/reload + real provider catalog then architect acceptance.
+
+
+### FIX01-VOICE-RESAMPLING-INDEX-20261018 — 2026-10-18
+- **Agent:** FIX-01 / Sentinel
+- **Invocation:** Correct user's new Docker web build TypeScript error in voice audio resampling.
+- **Started from:** `main` after voice generation-id fix; source correction committed at `baa9746142297322c5bf796e7c6fb94060bbc9cf`.
+- **Scope:** Minimal source fix, regression assertion, and project-control updates.
+- **Status:** HANDOFF — source/test committed; post-fix build and test pending.
+- **Completed:** Guarded potentially missing Float32Array samples in both same-rate conversion and downsampling accumulation; added regression assertion in `voice-realtime-transport.test.ts`.
+- **Pending:** User pulls latest main, rebuilds, runs focused test, and shares actual output if another failure occurs.
+- **Blockers:** No local execution evidence for this commit; native-host pnpm availability is unknown and must not be conflated with Docker build status.
+- **Handoff:** User/local checkout for rebuild; OPS-01 only for separate infrastructure/toolchain failures.
+- **Next action:** `git pull --ff-only origin main && bash scripts/update-and-up.sh`; if build succeeds, run focused voice realtime transport test.
