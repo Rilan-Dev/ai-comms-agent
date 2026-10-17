@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       : "Template: " + templateName;
     const parametersValid = templateParameters.length <= 20
       && templateParameters.every((value: unknown) => typeof value === "string" && value.length <= 1024);
-    if (!organizationId || !accountId || !/^\\+[1-9]\\d{7,14}$/.test(to)
+    if (!organizationId || !accountId || !/^\+[1-9]\d{7,14}$/.test(to)
       || !messageBody || messageBody.length > 4096
       || (payloadType === "template" && (!/^[a-z0-9_]{1,512}$/.test(templateName) || !/^[a-zA-Z0-9_-]{2,32}$/.test(templateLanguage) || !parametersValid))
       || (payloadType === "text" && (typeof body?.body !== "string" || !body.body.trim() || body.body.trim().length > 4096))) {
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       if (!approvedTemplate.rows.length) return NextResponse.json({ error: "template_not_approved", message: "Only a template synchronized from Meta with approved status can be proposed for sending." }, { status: 409 });
       const bodyComponent = Array.isArray(components) ? components.find((item) => item && typeof item === "object" && (item as Record<string, unknown>).type === "BODY") as Record<string, unknown> | undefined : undefined;
       const bodyText = typeof bodyComponent?.text === "string" ? bodyComponent.text : "";
-      const indexes = [...bodyText.matchAll(/\\{\\{(\\d+)\\}\\}/g)].map((match) => Number(match[1]));
+      const indexes = [...bodyText.matchAll(/\{\{(\d+)\}\}/g)].map((match) => Number(match[1]));
       const requiredParameters = indexes.length ? Math.max(...indexes) : 0;
       if (templateParameters.length !== requiredParameters) {
         return NextResponse.json({ error: "template_parameter_mismatch", message: "Template parameter count does not match the approved template body." }, { status: 422 });
