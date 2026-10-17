@@ -391,3 +391,16 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Security:** Do not bypass the connected-state guard or disable webhook challenge verification. The user-provided cookie-like token is exposed and should be revoked/rotated; never reproduce it.
 - **Verification:** Source inspection only. No tests, live Meta API request, deployed commit inspection, database/log access, browser E2E, or deployment check performed. No runtime PASS claimed.
 - **Next:** OPS-01 identifies the serving commit, verifies the correct organization/account row and status persistence, and records redacted Meta error details. FIX-01 makes the smallest source correction and targeted regression test only if evidence proves a source defect.
+
+
+### EVT-FIX01-WHATSAPP-131047-20261017 — 2026-10-17
+- **Agent/session:** FIX-01 / Sentinel — WhatsApp provider rejection
+- **Type:** DIAGNOSIS / ROUTE
+- **Summary:** User-supplied Meta webhook reports outbound message failed with code 131047; details explicitly say more than 24 hours elapsed since customer last replied. This is a provider policy rejection of free-form text, not a queue insertion defect.
+- **Related source:** `apps/worker/src/messaging/whatsapp-worker.ts`, `apps/web/src/app/api/whatsapp/webhook/route.ts`, `packages/db/src/messaging/whatsapp-repository.ts`.
+- **Recent commits reviewed:** `ea8c19cfd9e235319323ed1bb7345e0395f5534e` and `4243afe7748d43ae371c06315f85d47f249cc814` fix the separate 42P10 idempotency conflict-target issue; they do not fix 131047.
+- **Remedy:** Use an approved template outside the 24-hour window, or send free-form text while the window is active. No source policy bypass authorized.
+- **Follow-up:** UI showed “sent” despite a supplied failed status payload. Live webhook-to-row-to-UI propagation is not proven; OPS-01 must inspect deployed revision, webhook delivery/response, scoped DB status/error, and provider message ID. FIX-01 adds regression coverage once the mismatch is isolated.
+- **Verification:** Source inspection and user-supplied payload only. No tests or live runtime checks executed. No delivery PASS claimed.
+- **Security:** User-provided cookie-like access token must be revoked/rotated; never record the value.
+- **Session:** `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`
