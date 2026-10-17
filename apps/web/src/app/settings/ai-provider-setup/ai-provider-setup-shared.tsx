@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, Loader2, Trash2 } from "lucide-react";
 import { LiveModelSelect, type ModelPurpose } from "@/components/live-model-select";
+import { providerConfigStatus } from "@/lib/ai/provider-config-status";
 
 
 
@@ -210,9 +211,10 @@ export function AIProviderSetupShared({
       {/* Status badges */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {ALLOWED_PROVIDERS[tab].map((p) => {
-          const cfg = configs.find((c) => c.provider === p);
-          const Icon = cfg?.enabled && cfg?.hasApiKey ? CheckCircle2 : AlertCircle;
-          const color = cfg?.enabled && cfg?.hasApiKey ? "text-emerald-600" : "text-amber-500";
+          const requiredPurposes = tab === "voice-chat" ? ["tts", "stt"] : [PURPOSE_FOR_TAB[tab]];
+          const status = providerConfigStatus(configs, p, requiredPurposes);
+          const Icon = status === "active" ? CheckCircle2 : AlertCircle;
+          const color = status === "active" ? "text-emerald-600" : "text-amber-500";
           return (
             <div
               key={p}
@@ -224,7 +226,7 @@ export function AIProviderSetupShared({
               <Icon className={"h-3.5 w-3.5 " + color} />
               <span className="font-medium">{PROVIDER_LABELS[p] || p}</span>
               <span className="text-muted-foreground">
-                {cfg?.hasApiKey ? (cfg?.enabled ? "active" : "saved (disabled)") : "not configured"}
+                {status}
               </span>
               <button
                 type="button"
