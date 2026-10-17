@@ -330,3 +330,13 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Blockers/dependencies:** User/deployment checkout must pull latest main for Docker rebuild. Native pnpm absence remains separately routed to OPS-01.
 - **Lesson:** Array length checks do not necessarily narrow indexed reads; bind and guard the element itself.
 - **Next:** Rebuild using `bash scripts/update-and-up.sh`, run focused WhatsApp approval test, record actual output.
+
+
+### FIX01-VOICE-GENERATION-ID-20261018 / 2026-10-18
+- **Task:** Fix the user's new web build parse error in the voice workspace.
+- **Authorization:** User supplied exact deployment build output; FIX-01 source correction.
+- **Root cause:** Duplicate `const generationId` in one Sarvam/ElevenLabs TTS branch: first for streamed TTS attempt, second for HTTP fallback playback.
+- **Remedy:** Removed second declaration and reused the existing identifier; playback tracking remains unchanged. Added a focused regression assertion to `voice-realtime-transport.test.ts`.
+- **Commits:** `f6efffdb42dbd75df38841fab43b985eb565ee3f`; `05519965adae7ebab837a03e4d7a0d2306e3f0c1`.
+- **Evidence:** User log confirms worker image built/exported and web parser failure before fix. Post-fix build/test not run.
+- **Next:** Pull latest main, rerun manual Docker build, run focused voice realtime transport test, record actual results.
