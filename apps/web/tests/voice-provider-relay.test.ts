@@ -29,7 +29,7 @@ describe("provider realtime relay security and lifecycle", () => {
     expect(relayInit).toContain("getVoiceSessionForOrganization");
     expect(relayInit).toContain("session.user_id !== claims.userId");
     expect(relayInit).toContain("resolveVoiceProviderApiKey");
-    expect(relayInit).toContain('sttModel: "saaras:v3-realtime"');
+    expect(relayInit).toContain('selectedModel === "saaras:v4" || selectedModel === "saaras:v3-realtime"');
     expect(relayInit).toContain('sttModel: "scribe_v2_realtime"');
     expect(relayInit).toContain("apiKey,");
   });
