@@ -414,3 +414,10 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Owner:** OPS-01 for deployed revision, redacted webhook delivery/HTTP response/accepted count, exact scoped row and UI comparison. FIX-01 resumes only if evidence isolates a source defect.
 - **Verification:** Regression test authored, not run. Post-fix deployment not confirmed. No live status PASS claimed.
 - **Session:** `docs/project-control/sessions/FIX01-WHATSAPP-DISPLAY-STATUS-20261017.md`.
+
+### EVT-FIX01-WHATSAPP-LABEL-SECOND-CALLSITE-20261017 — 2026-10-17
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** SOURCE CORRECTION / REGRESSION
+- **Summary:** Follow-up inspection found the worker's pending-account verifier also wrote Meta's `verified_name` over the app's custom display label. Updated it to preserve `account.display_name` first and expanded the regression test to cover both the API and worker paths.
+- **Commits:** worker `7d785b36f2bae90d9d137805e1390fe9ab467550`; updated test `f9bc5ec1cc793fb69c3b2a5a7d26e8d1cf00d5fb`.
+- **Verification:** Test authored but not run; deployment not confirmed.
