@@ -22,7 +22,7 @@ describe("WhatsApp send approval safety boundary", () => {
     expect(messagesRoute).toContain("Message saved for human approval. It has not been sent.");
   });
 
-  it("requires an authenticated organization update permission to decide", () => {
+  it("requires an authenticated WhatsApp send permission to decide", () => {
     expect(decisionRoute).toContain('permission: "whatsapp.send"');
     expect(messagesRoute).toContain('permission: "whatsapp.send"');
     expect(decisionRoute).toContain('decision !== "approve" && decision !== "reject"');
