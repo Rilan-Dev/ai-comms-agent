@@ -165,6 +165,8 @@ describe("realtime voice selection and relay integration", () => {
     expect(selector).toContain("Previously saved model");
     expect(setup).toContain("Realtime speech-recognition model");
     expect(setup).toContain("ElevenLabs Conversational AI agents are a separate integration");
+    expect(setup).toContain('status === "active" ? "key enabled" : status');
+    expect(setup).toContain("API key saved (enabled; model not yet verified)");
   });
 });
 
