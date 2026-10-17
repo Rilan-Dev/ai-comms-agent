@@ -1,3 +1,14 @@
+## DEV-01 — Main-only organization provider credential isolation (2026-10-18)
+
+- **Owner direction:** Continue directly on `main` without creating branches or PRs.
+- **New source correction:** Both AI provider forms now clear secrets/state when org changes, never display previous-org configs while loading, cancel and ignore old GETs, gate save/remove on current-org readiness, and expose retry on failure. `LiveModelSelect` now discards a late fulfilled response if its AbortSignal is aborted and clears stalled loading state when the org is missing. New Node source-contract and Vitest regression tests committed on `main`. Full session `docs/project-control/sessions/DEV01-ORG-CREDENTIAL-ISOLATION-20261018.md`.
+- **ACTUALLY EXECUTED:** Three previously committed standalone Node test files PASS **15/15** (vendor mocks 6, org runtime hydration 4, provider readiness 5); standalone TypeScript check on three pure TS modules PASS; authenticated source-contract checks against new GitHub files PASS **12/12**. **NOT executed:** new source-contract Node test / Vitest, React browser, full web/worker typecheck+build, live keys, Docker/migrations or E2E/deploy.
+- **EXACT NEXT_ACTION (on current main):** On a dependency-equipped host run `node --experimental-strip-types --test apps/web/tests/ai-provider-organization-safety.test.mjs apps/web/tests/ai-provider-setup-safety.test.mjs apps/web/tests/provider-config-status.test.mjs`, `pnpm --filter @ai-comms-agent/web exec vitest run tests/live-model-catalog.test.ts tests/ai-runtime-settings.test.ts`, `pnpm --filter @ai-comms-agent/web typecheck`, `pnpm --filter @ai-comms-agent/worker typecheck`, both builds and normal migrations. Browser-test org A -> org B while an A credentials edit and delayed model fetch are in flight; check no A value is shown/saved under B, verify 403/tenant isolation with authorized accounts; real vendor model select/save/reload. OPS-01 handles environment, live provider credentials and Vercel build-rate-limit. FIX-01 retains source issues #26/WhatsApp/voice. Continue DEV-01 email tools/RAG only behind enforced agent-mailbox isolation and verified Clara vector API.
+- **Production status:** Implementation ongoing; do not mark application accepted from isolated tests.
+
+
+---
+
 ## DEV-01 — Direct-main provider-switch model isolation — 2026-10-18
 
 - **Completed on main:** In addition to clearing unsaved vendor API keys, switching provider now clears both transient chat/TTS model and STT model before the new provider's saved configuration restores. This prevents briefly submitting a different vendor's unsaved model IDs during an immediate switch/save. Source `apps/web/src/app/settings/ai-provider-setup/ai-provider-setup-shared.tsx`; regression source `apps/web/tests/ai-provider-setup-safety.test.mjs`. Commits `4b82db49` and `032d7560`. No branch or PR.
