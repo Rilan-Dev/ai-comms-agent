@@ -1611,3 +1611,12 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Status:** ROOT CAUSE CONFIRMED FROM SOURCE + USER LOG; REMEDIATION NOT APPLIED; TESTS / MIGRATION / HEALTH NOT VERIFIED. OPS-01 owns the fix.
 - **Additional unresolved configuration question:** User's URL targeted database `postgres`; local Compose defaults `POSTGRES_DB=aca`. Confirm intended target before running migrations; do not change it by assumption.
 - **Next:** OPS-01 updates the deployment script and regression test, runs focused test, then the user/operator records actual migration completion and container health. Keep application traffic on the Docker network.
+
+
+## 2026-10-18 — OPS-01 migration runner moved onto Compose network
+- **Source:** `scripts/manual-up.sh` now invokes the migration runner in a one-off `web` container using Compose network DNS and a read-only mount from `$PROJECT_ROOT/supabase` to `/workspace/supabase`. Host-side DSN resolution and host alias translation were removed.
+- **Regression:** `scripts/tests/manual-up-compose-env.test.mjs` now asserts containerized execution, migration mount, no host-side DB URL resolution, and retained startup policy.
+- **Evidence:** `bash -n scripts/manual-up.sh` passed; focused Node test passed 4/4 in an isolated harness using source/test fetched from GitHub and a fixture matching the current Compose `.env` declarations. Initial test assertion failed on a line-continuation regex and was corrected; final isolated run passed.
+- **Not verified:** Test not run from a complete repository checkout; no Docker image build, real Compose invocation, migration execution, or service health check was performed. No deployment PASS is claimed.
+- **Safety dependency:** Confirm whether `DATABASE_URL` should target `/postgres` or `/aca` before applying migrations; do not infer/change the database.
+- **Next:** Operator confirms database target, pulls latest main, runs focused test in checkout, then runs deployment and records migration completion separately from container health.
