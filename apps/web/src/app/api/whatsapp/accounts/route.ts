@@ -34,19 +34,21 @@ export async function POST(request: Request) {
     const organizationId = typeof body?.organizationId === "string" ? body.organizationId : "";
     const phoneNumberId = typeof body?.phoneNumberId === "string" ? body.phoneNumberId.trim() : "";
     const accessToken = typeof body?.accessToken === "string" ? body.accessToken.trim() : "";
-    if (!organizationId || !phoneNumberId || !accessToken) return NextResponse.json({ error: "validation_error", message: "Organization, Meta phone number ID, and access token are required." }, { status: 422 });
+    const accountId = typeof body?.accountId === "string" ? body.accountId : undefined;
+    if (!organizationId || !phoneNumberId || (!accessToken && !accountId)) return NextResponse.json({ error: "validation_error", message: "Organization and Meta phone number ID are required; provide an access token for a new account." }, { status: 422 });
     const actor = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.update" }, getIdentityAdapter(), getIdentityRepository());
     const masterKey = process.env.CREDENTIALS_MASTER_KEY ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY) : null;
     if (!masterKey) return NextResponse.json({ error: "provider_configuration_required", message: "Credential encryption is not configured on the server." }, { status: 503 });
-    const account = await createOrUpdateWhatsAppAccount({ organizationId, accountId: typeof body?.accountId === "string" ? body.accountId : undefined, businessAccountId: typeof body?.businessAccountId === "string" ? body.businessAccountId : null, phoneNumberId, phoneNumber: typeof body?.phoneNumber === "string" ? body.phoneNumber : null, displayName: typeof body?.displayName === "string" ? body.displayName : null, verifyToken: typeof body?.verifyToken === "string" ? body.verifyToken.trim() : undefined, status: "pending", createdBy: actor.user.id });
+    const existingCredential = !accessToken && accountId ? await (async () => { try { const value = await (await import("@ai-comms-agent/db")).loadWhatsAppCredential(accountId, organizationId, masterKey); return value; } catch { return null; } })() : null;
+    const effectiveAccessToken = accessToken || (typeof existingCredential?.access_token === "string" ? existingCredential.access_token : "");
+    if (!effectiveAccessToken) return NextResponse.json({ error: "validation_error", message: "The saved access token could not be loaded. Enter a new access token and try again." }, { status: 422 });
+    const account = await createOrUpdateWhatsAppAccount({ organizationId, accountId, businessAccountId: typeof body?.businessAccountId === "string" ? body.businessAccountId : null, phoneNumberId, phoneNumber: typeof body?.phoneNumber === "string" ? body.phoneNumber : null, displayName: typeof body?.displayName === "string" ? body.displayName : null, verifyToken: typeof body?.verifyToken === "string" ? body.verifyToken.trim() : undefined, status: "pending", createdBy: actor.user.id });
     if (!account) return NextResponse.json({ error: "not_found", message: "WhatsApp account could not be saved." }, { status: 404 });
     // Store access_token + app_secret in the encrypted credential envelope.
     // The app_secret is used by the webhook POST route to verify Meta's
     // x-hub-signature-256 HMAC — no longer requires WHATSAPP_APP_SECRET env var.
-    const credentialPayload: Record<string, unknown> = { credential_type: "oauth_token", access_token: accessToken };
-    if (typeof body?.appSecret === "string" && body.appSecret.trim()) {
-      credentialPayload.app_secret = body.appSecret.trim();
-    }
+    const credentialPayload: Record<string, unknown> = { ...(existingCredential ?? {}), credential_type: "oauth_token", access_token: effectiveAccessToken };
+    if (typeof body?.appSecret === "string" && body.appSecret.trim()) credentialPayload.app_secret = body.appSecret.trim();
     await saveWhatsAppCredential(account.id, organizationId, credentialPayload, masterKey);
     await recordAuditEvent({ organizationId, actorUserId: actor.user.id, eventType: "whatsapp.account.saved", targetType: "whatsapp_account", targetId: account.id, action: "save", decision: "allowed" });
     return NextResponse.json({ account: { ...account, status: "pending" }, message: "Credentials stored encrypted. Provider verification is still required before this account is marked connected." }, { status: 201 });
