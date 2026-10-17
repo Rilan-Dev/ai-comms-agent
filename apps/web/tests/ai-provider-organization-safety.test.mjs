@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 const setup = readFileSync(new URL("../src/app/settings/ai-provider-setup/ai-provider-setup-shared.tsx", import.meta.url), "utf8");
 const chat = readFileSync(new URL("../src/app/settings/ai-provider-settings.tsx", import.meta.url), "utf8");
+const selector = readFileSync(new URL("../src/components/live-model-select.tsx", import.meta.url), "utf8");
 
 test("both credential forms clear plaintext keys on organization switch", () => {
   for (const source of [setup, chat]) {
@@ -50,4 +51,21 @@ test("organization chat provider editor fails closed and provides a retry", () =
 test("neither form confirms success from stale previous-organization write", () => {
   assert.ok(setup.includes("if (currentOrganizationId.current !== organizationId) return;"));
   assert.ok(chat.includes("if (currentOrganizationId.current !== organizationId) return;"));
+});
+
+test("live-model selector ignores fulfilled responses from aborted previous organizations", () => {
+  const json = selector.indexOf("const body = await response.json()");
+  const aborted = selector.indexOf("if (controller.signal.aborted) return;", json);
+  const accepted = selector.indexOf("setModels(body.models ?? [])", json);
+  assert.ok(json >= 0 && aborted > json && accepted > aborted, "stale response must be discarded before rendering model IDs");
+});
+
+test("live-model selector clears previous loading state when organization is missing", () => {
+  const start = selector.indexOf("if (!organizationId || !provider) {");
+  const end = selector.indexOf("const controller = new AbortController()", start);
+  assert.ok(start >= 0 && end > start);
+  const branch = selector.slice(start, end);
+  assert.ok(branch.includes("setModels([]);"));
+  assert.ok(branch.includes("setLoading(false);"));
+  assert.ok(branch.includes("Select an organization first."));
 });
