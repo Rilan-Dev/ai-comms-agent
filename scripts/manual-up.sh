@@ -51,7 +51,7 @@ migration_db_url=""
 # versions. Prefer it, but retain compatibility with older Compose v2 installs.
 if compose_environment="$("${COMPOSE[@]}" config --environment 2>/dev/null)"; then
   migration_db_url="$(
-    printf '%s\\n' "$compose_environment" |
+    printf '%s\n' "$compose_environment" |
       awk -F= '$1 == "DATABASE_URL" {
         sub(/^[^=]*=/, "")
         print
