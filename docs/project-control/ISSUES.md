@@ -536,3 +536,16 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Evidence:** User-provided logs show SQLSTATE 22P02; source inspection confirmed enum mismatch; migration and test commits are recorded in GitHub history. Migration execution, tests, typechecks, and runtime sync remain unverified.
 - **Prevention lesson:** When a provider is added, update the exact enum used by the persisted column, not a similarly named parallel enum; add a forward-only migration and regression assertion alongside application support.
 - **Next action:** OPS-01 applies migrations with the normal migration runner, rebuilds/restarts the matching worker, confirms the enum error is gone, then checks account sync timestamps and persisted message counts. Keep runtime verification pending until observed.
+
+
+## ISS-029 — WhatsApp outbound insert fails with PostgreSQL 42P10
+
+- **Opened:** 2026-10-17
+- **Severity:** high (outbound WhatsApp messages cannot be queued on the observed deployment)
+- **Owner:** FIX-01 / Sentinel for source correction and regression coverage; OPS-01 for database/index confirmation, container rollout, and live runtime verification.
+- **Status:** source_corrected_runtime_verification_pending
+- **Symptom:** User's deployed POST /api/whatsapp/messages returns internal_server_error. Web logs show SQLSTATE 42P10 on INSERT ... ON CONFLICT (organization_id, idempotency_key) DO NOTHING.
+- **Root cause:** Migration 0004 declares whatsapp_messages_idempotency_uniq as a partial unique index on (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL. The outbound INSERT conflict target omitted the predicate, so PostgreSQL could not infer the partial index.
+- **Remedy:** Updated packages/db/src/messaging/whatsapp-repository.ts to include WHERE idempotency_key IS NOT NULL in the conflict target (commit ea8c19cfd9e235319323ed1bb7345e0395f5534e). Added apps/web/tests/whatsapp-idempotency-conflict-target.test.ts (commit 4243afe7748d43ae371c06315f85d47f249cc814).
+- **Verification:** GitHub source writes only. Regression test, typecheck, deployed schema/index, Docker rebuild, API queueing, worker processing, Meta delivery, and idempotency replay have NOT been verified.
+- **Next action:** OPS-01 confirms the unique index exists on the exact production database, deploys the matching source, then verifies queue row persistence, worker/provider outcome, same-key deduplication, and different-payload conflict. See [OPS-01 issue #33](https://github.com/Rilan-Dev/ai-comms-agent/issues/33) and `docs/project-control/sessions/FIX01-WHATSAPP-IDEMPOTENCY-20261017.md`.
