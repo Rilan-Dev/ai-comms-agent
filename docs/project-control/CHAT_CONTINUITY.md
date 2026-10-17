@@ -188,3 +188,8 @@ WhatsApp outbound paths (manual API/UI, the agent whatsapp.send tool, and schedu
 Feature RBAC additions: email.read, whatsapp.read, whatsapp.send. Migrations added: 0035–0040 (approval records, templates, outcomes, feature permissions, agent-binding recheck). Regression tests were authored, including a behavioral test for the proposal-only tool.
 
 Verification remains pending: no tests/typecheck/build/migrations/browser/Meta/live-send/deployment checks were run. The web route currently imports worker runtime modules directly; review this boundary in the next dependency-equipped checkout. Continue from docs/project-control/NEXT_ACTION.md and VERIFICATION_STATE.md; do not claim provider delivery from an approval or queue response.
+
+
+## 2026-10-18 — FIX-01 chat membership nullability
+
+The user's Docker build evidence showed worker image success but web type validation failure at `route.ts:384` because `subject.membership` is nullable in the shared auth type. `authorize()` guarantees active membership in its implementation, but TypeScript requires local narrowing. FIX-01 committed an explicit fail-closed 403 guard before trusted tool context creation and a static regression assertion: `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9`, `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`. Post-fix build/test are pending. Native shell pnpm absence is separate and routed to OPS-01; Docker already had pnpm.
