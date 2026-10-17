@@ -365,7 +365,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
     view.setUint16(34, 16, true);
     write(36, "data");
     view.setUint32(40, samples.length * 2, true);
-    for (let i = 0; i < samples.length; i++) view.setInt16(44 + i * 2, samples[i], true);
+    for (let i = 0; i < samples.length; i++) view.setInt16(44 + i * 2, samples[i] ?? 0, true);
     return new Blob([buffer], { type: "audio/wav" });
   }
 
@@ -429,7 +429,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
           ttsAudioContextRef.current = context;
           const buffer = context.createBuffer(1, samples.length, sampleRate);
           const channel = buffer.getChannelData(0);
-          for (let i = 0; i < samples.length; i++) channel[i] = samples[i] / 32768;
+          for (let i = 0; i < samples.length; i++) channel[i] = (samples[i] ?? 0) / 32768;
           const source = context.createBufferSource();
           source.buffer = buffer;
           source.connect(context.destination);
@@ -603,7 +603,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       const pcm = downsampleTo16k(input, audioContext.sampleRate);
       if (!pcm.length) return;
       let energy = 0;
-      for (let i = 0; i < input.length; i++) energy += input[i] * input[i];
+      for (let i = 0; i < input.length; i++) { const sample = input[i] ?? 0; energy += sample * sample; }
       const rms = Math.sqrt(energy / Math.max(1, input.length));
       const now = Date.now();
       if (!pipelineSpeechStartedRef.current) {
