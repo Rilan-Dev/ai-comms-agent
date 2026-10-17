@@ -112,12 +112,12 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
       );
       let action: { id: string; status: string; whatsapp_account_id?: string; recipient_phone?: string; message_body?: string; payload_type?: string } | undefined = inserted.rows[0];
       if (!action) {
-        const existing = await query<{ id: string; status: string; whatsapp_account_id: string; recipient_phone: string; message_body: string; payload_type: string }>(
-          "SELECT id,status,whatsapp_account_id,recipient_phone,message_body,payload_type FROM whatsapp_send_actions WHERE organization_id=$1 AND idempotency_key=$2 LIMIT 1",
+        const existing = await query<{ id: string; status: string; whatsapp_account_id: string; recipient_phone: string; message_body: string; payload_type: string; template_name: string | null; template_language: string | null; template_parameters: unknown }>(
+          "SELECT id,status,whatsapp_account_id,recipient_phone,message_body,payload_type,template_name,template_language,template_parameters FROM whatsapp_send_actions WHERE organization_id=$1 AND idempotency_key=$2 LIMIT 1",
           [context.organization_id, idempotencyKey],
         );
         action = existing.rows[0];
-        if (!action || String(action.whatsapp_account_id) !== input.account_id || String(action.recipient_phone) !== input.to || String(action.message_body) !== messageBody || action.payload_type !== input.payload_type) {
+        if (!action || String(action.whatsapp_account_id) !== input.account_id || String(action.recipient_phone) !== input.to || String(action.message_body) !== messageBody || action.payload_type !== input.payload_type || (action.template_name ?? null) !== (input.payload_type === "template" ? input.template_name : null) || (action.template_language ?? null) !== (input.payload_type === "template" ? input.template_language : null) || JSON.stringify(action.template_parameters ?? []) !== JSON.stringify(input.payload_type === "template" ? templateParameters : [])) {
           return fail("idempotency_conflict", "This tool turn already requested a different WhatsApp payload for the same recipient.");
         }
       }
