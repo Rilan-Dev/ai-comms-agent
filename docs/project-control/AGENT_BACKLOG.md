@@ -226,3 +226,11 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Correction commits:** `90fac5e0774b695446e1e0c3ab51072639ba5f06`; `41734923651b1173a703d747f0ac0aa93317a5b9`.
 - **Next action:** Pull latest main; rerun `bash scripts/update-and-up.sh`; if build passes, run focused `whatsapp-send-approval.test.ts`. Do not claim PASS until observed.
 - **Related issue/session/event:** ISS-031; FIX01-WHATSAPP-TEMPLATE-ROW-20261018; EVT-FIX01-WHATSAPP-TEMPLATE-ROW-20261018.
+
+### BKL-DEV01-ELEVENAGENTS-NATIVE-CONVERSATION-20261018 — Native ElevenLabs Conversational AI agent integration
+- **Work:** Optional separate feature to expose user-owned ElevenAgents via authenticated `GET /v1/convai/agents`, select an `agent_id`, obtain a scoped signed conversation WebSocket URL and bridge only authorized turns/actions into host policy. This is NOT `scribe_v2_realtime` STT/TTS host relay.
+- **Owner:** DEV-01 for future authorized source design; FIX-01 for existing realtime voice bug remediation; OPS-01 for provider/live credentials and deployment.
+- **State:** NOT IMPLEMENTED — DESIGN/OWNER REVIEW REQUIRED. The annotated `/settings/ai-provider-setup` selector fix covers the currently executable ElevenLabs Scribe realtime STT + host-authorized Clara/TTS pipeline only. Legacy `elevenlabs-conversational` is not a runnable model ID and is rejected on new realtime model saves.
+- **Prerequisites:** Owner approves separate conversation-agent mode; assess security/approval/agent-account tool boundaries; confirm ElevenLabs API permissions and signed URL lifecycle, transport teardown/interruption, tenant-scoped agent IDs and session policy.
+- **Next:** Do not pretend to support ElevenAgents by inserting a fake model into `/v1/models`. If full native feature authorized, add a separate agent resource selector and transport tests, then real-provider verification.
+- **Related:** `docs/project-control/sessions/DEV01-REALTIME-VOICE-MODEL-CATALOG-20261018.md`.
