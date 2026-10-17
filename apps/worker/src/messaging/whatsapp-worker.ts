@@ -167,13 +167,17 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
         });
         continue;
       }
+      await query("UPDATE whatsapp_send_actions SET status='sent', updated_at=now() WHERE queued_message_id=$1 AND organization_id=$2 AND status='queued'", [String(message.id), String(message.organization_id)]);
       await emitProviderEvent({ type: "whatsapp.message.sent", organizationId: String(message.organization_id), messageId: String(message.id), accountId: String(message.whatsapp_account_id), correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { providerMessageId, retryAttempts } });
       await recordAuditEvent({ organizationId: String(message.organization_id), actorUserId: null, eventType: "whatsapp.message.sent", targetType: "whatsapp_message", targetId: String(message.id), action: "send", decision: "allowed", correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { providerMessageId } });
     } catch (error) {
       const messageText = error instanceof Error ? error.message : "WhatsApp send failed";
       const retryable = isRetryableProviderError(error);
-      if (messageText.includes("free-form text blocked") && message.id) {
-        await query("UPDATE whatsapp_send_actions SET status='requires_template', updated_at=now() WHERE queued_message_id=$1 AND organization_id=$2 AND status='queued'", [String(message.id), String(message.organization_id)]);
+      if (message.id) {
+        const nextActionStatus = messageText.includes("free-form text blocked") || messageText.includes("template is not currently approved")
+          ? "requires_template"
+          : "failed";
+        await query("UPDATE whatsapp_send_actions SET status=$3, updated_at=now() WHERE queued_message_id=$1 AND organization_id=$2 AND status='queued'", [String(message.id), String(message.organization_id), nextActionStatus]);
       }
       await markWhatsAppOutboundFailed(String(message.id), messageText);
       await emitProviderEvent({ type: "whatsapp.message.failed", organizationId: String(message.organization_id), messageId: String(message.id), accountId: String(message.whatsapp_account_id), correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { error: messageText, retryAttempts, retryable } });
