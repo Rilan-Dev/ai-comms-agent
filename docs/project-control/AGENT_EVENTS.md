@@ -533,3 +533,8 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Not claimed:** full Vitest, React/browser, provider-secret-backed HTTP, worker/web build, deployed runtime or production status.
 - **Lesson:** Reconcile credential state with the selected vendor; do not reuse unsaved secrets or claim multi-purpose readiness from a single config. Separate module/test evidence from end-to-end integration.
 - **Next:** OPS-01 dependency/runtime verification; DEV-01 continues source work directly on main; FIX-01 unrelated incidents.
+
+### EVT-DEV01-ORG-CREDENTIAL-ISOLATION-20261018
+- DEV-01 found and corrected cross-organization stale secret/config UI state in both AI provider setup screens, late fulfilled model-catalog request leak and missing-org spinner persistence. Source + regression code committed directly to main.
+- Executed existing module tests 15/15, standalone 3-module TS compile, GitHub source assertions 12/12; no new repo Vitest/web/worker/browser/live provider/deployment acceptance.
+- Continue on main only. OPS-01 owns environment; FIX-01 retains substantial unrelated defects. Source/session: `DEV01-ORG-CREDENTIAL-ISOLATION-20261018`.
