@@ -121,3 +121,13 @@ Cross-agent handoff register. A handoff transfers context, not authority.
 - **Evidence/status:** Source inspection and user logs only; no fix, regression test execution, migration rerun or health verification performed by FIX-01.
 - **Required OPS-01 actions:** Update migration execution; add regression assertion for in-container command and migration files being available; run focused test; confirm intended DB target; have operator rerun deployment; record migration output and service health.
 - **Stop condition:** Handoff is complete when OPS-01 owns the code change. FIX-01 does not edit deployment source absent a new role/authorization decision.
+
+
+## HOF-FIX01-OPS01-MIGRATION-NETWORK-20261018 — OPS-01 implementation update
+- **Status:** Implementation and source-contract regression coverage committed; runtime verification pending.
+- **Source:** `65a215151ecd14900fac3c9ba9a421fb7a777a77`.
+- **Test:** `6cd93638bffa0e2f6a9e8d6ce2f3f2664b13341b`.
+- **Change:** One-off Compose web container runs the migration runner with a read-only `supabase/` mount. Host-side DSN parsing and `host.docker.internal` translation are removed; application URLs remain internal. Startup-on-migration-failure policy is preserved.
+- **Evidence:** `bash -n` passed; isolated focused Node test 4/4 passed. No actual project checkout test, Docker invocation, migration, or health result.
+- **Outstanding safety check:** Confirm intended DB name (`/postgres` in the user's URL vs Compose `POSTGRES_DB=aca`) before running migrations.
+- **Next:** Operator confirms DB target, runs focused test in checkout, then deploys and records migration completion separately from container health.
