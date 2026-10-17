@@ -18,6 +18,9 @@ type SendAction = {
   expires_at: string;
   approved_by: string | null;
   payload_type: string;
+  template_name: string | null;
+  template_language: string | null;
+  template_parameters: unknown;
 };
 
 export async function POST(request: Request) {
@@ -33,7 +36,7 @@ export async function POST(request: Request) {
     }
     const actor = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.update" }, getIdentityAdapter(), getIdentityRepository());
     const found = await query<SendAction>(
-      "SELECT id, organization_id, whatsapp_account_id, recipient_phone, message_body, status, idempotency_key, correlation_id, expires_at, approved_by, payload_type FROM whatsapp_send_actions WHERE id=$1 AND organization_id=$2 LIMIT 1",
+      "SELECT id, organization_id, whatsapp_account_id, recipient_phone, message_body, status, idempotency_key, correlation_id, expires_at, approved_by, payload_type, template_name, template_language, template_parameters FROM whatsapp_send_actions WHERE id=$1 AND organization_id=$2 LIMIT 1",
       [actionId, organizationId],
     );
     const action = found.rows[0];
@@ -58,29 +61,50 @@ export async function POST(request: Request) {
       return NextResponse.json({ approved: false, status: "rejected" });
     }
 
-    if (action.payload_type !== "text") {
-      return NextResponse.json({ error: "unsupported_payload_type", message: "This sender currently supports only free-form text inside the 24-hour customer-service window." }, { status: 409 });
-    }
     const account = await getWhatsAppAccountForOrganization(organizationId, action.whatsapp_account_id);
     if (!account || account.status !== "connected") {
       return NextResponse.json({ error: "provider_not_connected", message: "The WhatsApp account must remain connected at approval time." }, { status: 409 });
     }
 
-    // Meta's customer-service window is based on a recent inbound customer
-    // message, not the timestamp of the last outbound message or contact record.
-    const inbound = await query<{ id: string }>(
-      `SELECT m.id FROM whatsapp_messages m
-       JOIN whatsapp_contacts c ON c.id=m.contact_id
-       WHERE m.organization_id=$1 AND m.whatsapp_account_id=$2
-         AND c.phone_number=$3 AND m.direction='inbound'
-         AND COALESCE(m.provider_timestamp,m.created_at) >= now() - interval '24 hours'
-       ORDER BY COALESCE(m.provider_timestamp,m.created_at) DESC LIMIT 1`,
-      [organizationId, action.whatsapp_account_id, action.recipient_phone],
-    );
-    if (!inbound.rows.length) {
-      await query("UPDATE whatsapp_send_actions SET status='requires_template', updated_at=now() WHERE id=$1 AND organization_id=$2 AND status IN ('pending','approved')", [actionId, organizationId]);
-      await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.template_required", targetType: "whatsapp_send_action", targetId: actionId, action: "approve", decision: "denied", metadata: { reason: "outside_customer_service_window" } });
-      return NextResponse.json({ error: "template_required", status: "requires_template", message: "No inbound customer message was received in the last 24 hours. Meta requires an approved message template outside that window; this text-only send path fails closed and did not queue a message." }, { status: 409 });
+    const templateParameters = Array.isArray(action.template_parameters) ? action.template_parameters : [];
+    if (action.payload_type === "template") {
+      if (!action.template_name || !action.template_language) {
+        return NextResponse.json({ error: "invalid_template_action", message: "Template name and language are required." }, { status: 409 });
+      }
+      const approvedTemplate = await query<{ components: unknown }>(
+        "SELECT components FROM whatsapp_templates WHERE organization_id=$1 AND whatsapp_account_id=$2 AND name=$3 AND language=$4 AND status='approved' LIMIT 1",
+        [organizationId, action.whatsapp_account_id, action.template_name, action.template_language],
+      );
+      if (!approvedTemplate.rows.length) {
+        return NextResponse.json({ error: "template_not_approved", message: "The selected template is no longer approved by Meta." }, { status: 409 });
+      }
+      const components = approvedTemplate.rows[0].components;
+      const bodyComponent = Array.isArray(components) ? components.find((item) => item && typeof item === "object" && (item as Record<string, unknown>).type === "BODY") as Record<string, unknown> | undefined : undefined;
+      const bodyText = typeof bodyComponent?.text === "string" ? bodyComponent.text : "";
+      const indexes = [...bodyText.matchAll(/\\{\\{(\\d+)\\}\\}/g)].map((match) => Number(match[1]));
+      const requiredParameters = indexes.length ? Math.max(...indexes) : 0;
+      if (templateParameters.length !== requiredParameters || templateParameters.some((value) => typeof value !== "string" || value.length > 1024)) {
+        return NextResponse.json({ error: "template_parameter_mismatch", message: "Template parameters no longer match the approved template." }, { status: 409 });
+      }
+    } else if (action.payload_type === "text") {
+      // Meta's customer-service window is based on a recent inbound customer
+      // message, not the timestamp of the last outbound message or contact record.
+      const inbound = await query<{ id: string }>(
+        `SELECT m.id FROM whatsapp_messages m
+         JOIN whatsapp_contacts c ON c.id=m.contact_id
+         WHERE m.organization_id=$1 AND m.whatsapp_account_id=$2
+           AND c.phone_number=$3 AND m.direction='inbound'
+           AND COALESCE(m.provider_timestamp,m.created_at) >= now() - interval '24 hours'
+         ORDER BY COALESCE(m.provider_timestamp,m.created_at) DESC LIMIT 1`,
+        [organizationId, action.whatsapp_account_id, action.recipient_phone],
+      );
+      if (!inbound.rows.length) {
+        await query("UPDATE whatsapp_send_actions SET status='requires_template', updated_at=now() WHERE id=$1 AND organization_id=$2 AND status IN ('pending','approved')", [actionId, organizationId]);
+        await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.template_required", targetType: "whatsapp_send_action", targetId: actionId, action: "approve", decision: "denied", metadata: { reason: "outside_customer_service_window" } });
+        return NextResponse.json({ error: "template_required", status: "requires_template", message: "No inbound customer message was received in the last 24 hours. Meta requires an approved message template outside that window; no free-form text was queued." }, { status: 409 });
+      }
+    } else {
+      return NextResponse.json({ error: "unsupported_payload_type", message: "The requested WhatsApp payload type is not supported." }, { status: 409 });
     }
 
     if (action.status === "pending") {
@@ -94,7 +118,10 @@ export async function POST(request: Request) {
     const idempotencyKey = action.idempotency_key || "whatsapp-approval:" + action.id;
     const messageId = await queueWhatsAppOutboundMessage({
       organizationId, accountId: action.whatsapp_account_id, to: action.recipient_phone,
-      body: action.message_body, idempotencyKey, correlationId: action.correlation_id,
+      body: action.message_body,
+      messageType: action.payload_type === "template" ? "template" : "text",
+      media: action.payload_type === "template" ? { template: { name: action.template_name, language: action.template_language, parameters: templateParameters } } : {},
+      idempotencyKey, correlationId: action.correlation_id,
     });
     if (!messageId) {
       const existing = await query<{ id: string }>(
@@ -105,7 +132,7 @@ export async function POST(request: Request) {
     }
     const resolvedMessageId = messageId || (await query<{ id: string }>("SELECT id FROM whatsapp_messages WHERE organization_id=$1 AND idempotency_key=$2 LIMIT 1", [organizationId, idempotencyKey])).rows[0]?.id;
     await query("UPDATE whatsapp_send_actions SET status='queued', queued_message_id=$3, updated_at=now() WHERE id=$1 AND organization_id=$2 AND status='approved'", [actionId, organizationId, resolvedMessageId ?? null]);
-    await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.approved", targetType: "whatsapp_send_action", targetId: actionId, action: "approve", decision: "allowed", metadata: { messageId: resolvedMessageId ?? null, payloadType: "text" } });
+    await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.approved", targetType: "whatsapp_send_action", targetId: actionId, action: "approve", decision: "allowed", metadata: { messageId: resolvedMessageId ?? null, payloadType: action.payload_type } });
     return NextResponse.json({ approved: true, queued: true, status: "queued", messageId: resolvedMessageId ?? null, message: "Approved and queued for delivery. Provider delivery is not yet confirmed." }, { status: 202 });
   } catch (error) {
     return authorizationErrorToResponse(error);
