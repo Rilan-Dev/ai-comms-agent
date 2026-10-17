@@ -40,3 +40,6 @@ Meta explicitly rejected free-form text because more than 24 hours had elapsed s
 
 ## Security
 The cookie-like access token previously included by the user should be revoked/rotated. It is not copied into this record.
+
+### Follow-up source coverage — 2026-10-17
+The custom-name overwrite also existed in the worker's pending-account verification path, which passed Meta's `verified_name` into `updateWhatsAppAccountStatus`. FIX-01 corrected both immediate API verification and worker verification to preserve `account.display_name` first. The regression test now asserts both call paths. Worker source commit: `7d785b36f2bae90d9d137805e1390fe9ab467550`; updated test commit: `f9bc5ec1cc793fb69c3b2a5a7d26e8d1cf00d5fb`. Test remains authored, not executed.
