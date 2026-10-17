@@ -507,3 +507,12 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Executed:** 6/6 catalog Node mocks, 4/4 runtime normalization Node cases, both pure-module isolated `tsc --noEmit` PASS with identical Git blob hashes.
 - **Remaining:** pnpm Vitest/web build/typecheck, browser and credential-backed provider integration — NOT VERIFIED, OPS-01 environment. Vercel build-rate-limit signal is not source compile evidence. FIX-01 retains unrelated runtime defects.
 - **Next:** Run named checks on current main, record live credentials/browser evidence before architect acceptance.
+
+### EVT-FIX01-STRICT-INDEXED-ACCESS-VOICE-CONTEXT-20261018
+- **Role/session:** FIX-01 / Sentinel; FIX01-STRICT-INDEXED-ACCESS-VOICE-CONTEXT-20261018
+- **Type:** SOURCE CORRECTION / VERIFICATION PENDING
+- **Summary:** Resolved newly reported strict indexed-access type errors in voice WAV writing, provider PCM playback and microphone energy calculation; added explicit fail-closed membership guard and string conversation ID fallback in voice turn route; safe default destructuring in WhatsApp template selector.
+- **Regression coverage:** Updated voice realtime transport and WhatsApp send approval tests.
+- **Commits:** 1fb04529, 9a9e09ee, 5946168a, 57618396, fee2a239.
+- **Evidence boundary:** User logs are pre-fix. No post-fix typecheck, focused test, Docker build or live deployment pass is claimed.
+- **Next:** Pull latest main, run pnpm typecheck and focused tests, then manual Docker build; continue with any newly surfaced source errors.
