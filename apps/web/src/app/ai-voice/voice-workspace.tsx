@@ -328,7 +328,10 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
   function downsampleTo16k(input: Float32Array, inputRate: number): Int16Array {
     if (inputRate === 16000) {
       const sameRate = new Int16Array(input.length);
-      for (let i = 0; i < input.length; i++) sameRate[i] = Math.max(-1, Math.min(1, input[i])) * 0x7fff;
+      for (let i = 0; i < input.length; i++) {
+        const sample = input[i] ?? 0;
+        sameRate[i] = Math.max(-1, Math.min(1, sample)) * 0x7fff;
+      }
       return sameRate;
     }
     const ratio = inputRate / 16000;
@@ -338,7 +341,7 @@ export function VoiceWorkspace({ organizationId, agents }: { organizationId: str
       const start = Math.floor(i * ratio);
       const end = Math.min(Math.floor((i + 1) * ratio), input.length);
       let sum = 0;
-      for (let j = start; j < end; j++) sum += input[j];
+      for (let j = start; j < end; j++) sum += input[j] ?? 0;
       const sample = end > start ? sum / (end - start) : 0;
       output[i] = Math.max(-1, Math.min(1, sample)) * (sample < 0 ? 0x8000 : 0x7fff);
     }
