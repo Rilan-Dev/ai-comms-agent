@@ -420,3 +420,9 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Evidence:** 5/5 new exact-source Node tests and combined 20/20 Node pass; module-only TS check with declaration-only stubs passed. No full app build, worker Vitest, real Clara/Qdrant or browser test.
 - **Source dependency:** Clara PR #298 merged into Vite-Converted (does not establish a live deployed endpoint). ISS-026 live endpoint denial checks still required; do not wire RAG outbox or expose semantic retrieval without those gates.
 - **Next:** Execute dependency-equipped web/worker tests and builds, confirm Clara Qdrant and tenant filtering, then resume approved email/RAG integration. Do not claim production ready.
+
+### DEV01-WORKER-VECTOR-TEST-COVERAGE-20261018 — 2026-10-18
+- User direction: Proceed with web/worker verification then email RAG/tools; edit `main` only, no branch/PR.
+- Found `apps/worker/src/knowledge/clara-email-vector-adapter.test.ts` was Vitest-only, worker package had no Vitest devDependency and its test runner only discovers `tests/*.test.ts`. Fixed by migrating coverage to `apps/worker/tests/clara-email-vector-adapter.test.ts` with `node:test`; removed old undiscovered suite. Also enforced nonblank/valid identities and SHA-256 content/metadata on worker privileged Clara API requests before network; added negative zero-I/O test.
+- Source commits: `1513f237`, `6cdde3fe`, `8bc21242`, `dccd8a7f`, `247e5a6c`; no new branch. Local prior standalone Node modules pass 20/20 (actual command and exit 0), GitHub static source/runner checks pass 12/12. **New worker test not executed** without full checkout/pnpm; no full app or deployed checks.
+- Next: OPS-enabled main checkout runs new worker adapter test, worker suite and typecheck/build, web test/typecheck/Next build, migration structure check; validate server-to-server Clara and tenant/account isolation before enabling RAG outbox. FIX-01 unrelated source incidents remain out of scope.
