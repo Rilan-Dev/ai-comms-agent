@@ -353,3 +353,12 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Blockers/dependencies:** Need user's dependency-equipped checkout/Docker build output for runtime verification.
 - **Lesson:** Strict indexed-access checking applies to typed-array reads; guard every indexed read in the resampling path rather than fixing only the first compiler-reported access.
 - **Next:** Pull latest main, rerun manual deployment build, then run focused voice transport test and record actual output.
+
+### FIX01-STRICT-INDEXED-ACCESS-VOICE-CONTEXT-20261018
+- **Task:** Address the user's new typecheck output after the resampling fix.
+- **Root cause:** Additional strict indexed-access errors in PCM WAV/audio channel/energy loops and template split fields; /api/voice/turn also needed explicit nullable membership narrowing and a string conversation ID.
+- **Changes:** Added zero fallback for indexed audio reads, fail-closed 403 membership guard, validated conversation ID fallback, and safe template selection defaults.
+- **Regression coverage:** Extended voice-realtime-transport.test.ts and whatsapp-send-approval.test.ts.
+- **Commits:** 1fb04529, 9a9e09ee, 5946168a, 57618396, fee2a239.
+- **Verification:** User output predates these changes; post-fix typecheck/tests/Docker build have not been run or observed.
+- **Next:** Pull main, run pnpm typecheck, focused voice/WhatsApp tests, then manual Docker build; fix any next source error without weakening strict checks.
