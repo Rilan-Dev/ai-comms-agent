@@ -770,3 +770,13 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Commits:** `a93176b3cbba730c30a016b4e47a9dd3dd46039c`; `0386f03fa9534ff2d53db84b7ffbd2b5fe864154`.
 - **Status:** HANDOFF — source corrected, post-fix verification pending.
 - **Next:** Pull main; run `node --test scripts/tests/manual-up-compose-env.test.mjs`; rerun `bash scripts/update-and-up.sh`; verify migrations and stack startup from actual output.
+
+### DEV01-PROVIDER-SETUP-HARDENING-20261018 — 2026-10-18
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Owner requested continued planned development, direct `main` only.
+- **Started from:** `main` 2864975b32d79a61257b63806aff4031560258a9
+- **Completed:** Prevent unsaved provider-key crossover; check failed DELETE/reload before notifying success; refresh live list on deletion; require both TTS and STT configs for active Voice Chat badge. Added portable Node/provider helper tests and Vitest regression source directly on main.
+- **Verification:** Node mocked vendor 6/6, runtime hydration 4/4, provider config status 5/5, three pure TS modules pass isolated typecheck, GitHub source checks 5/5. No full pnpm/web/worker/Next/browser/live-provider/deployment verification.
+- **Blockers/ownership:** Environment cannot install/fetch authenticated full private repo; OPS-01 owns build/runtime/live provider + Vercel limit; FIX-01 source incidents unchanged.
+- **Session:** `docs/project-control/sessions/DEV01-PROVIDER-SETUP-HARDENING-20261018.md`
+- **Next:** Execute focused Vitest and all web/worker builds against latest main; verify real provider setup UI and cross-org; continue independent authorized DEV-01 email/RAG work after its security gates.
