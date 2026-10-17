@@ -1,3 +1,11 @@
+## DEV-01 — Screenshot-specific realtime model catalog repair (2026-10-18)
+
+- Fixed Sarvam/ElevenLabs blank/unsupported realtime selector on `main` by presenting **vendor-documented streaming STT models** with explicit provenance, not falsely asserting a live catalog. Saved provider choice can reach the voice runtime/relay; legacy `elevenlabs-conversational` marker rejected as an upstream STT model. ElevenAgents native conversation integration is a distinct future feature.
+- 23/23 standalone module tests, exact catalog TypeScript noEmit and 13/13 GitHub source contracts passed; complete Next/worker tests/build, live provider sessions, DB migrations and production deployment unverified. Phase 4 remains implementation in progress.
+- Session `docs/project-control/sessions/DEV01-REALTIME-VOICE-MODEL-CATALOG-20261018.md`; exact pending checks in `NEXT_ACTION.md`.
+
+---
+
 ## DEV-01 — Worker Clara vector-test integration checkpoint (2026-10-18)
 
 - On direct `main` (no branch/PR), migrated a previously undiscovered Vitest worker vector adapter test to standard Node test glob, and implemented fail-closed source identity/hash checks before credentialed vector API operations.
