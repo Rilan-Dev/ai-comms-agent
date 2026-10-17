@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getWhatsAppAccountForOrganization, queueWhatsAppOutboundMessage, query, recordAuditEvent } from "@ai-comms-agent/db";
+import { getWhatsAppAccountForOrganization, loadWhatsAppCredential, parseCredentialsMasterKey, queueWhatsAppOutboundMessage, query, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -71,14 +71,33 @@ export async function POST(request: Request) {
       if (!action.template_name || !action.template_language) {
         return NextResponse.json({ error: "invalid_template_action", message: "Template name and language are required." }, { status: 409 });
       }
-      const approvedTemplate = await query<{ components: unknown }>(
-        "SELECT components FROM whatsapp_templates WHERE organization_id=$1 AND whatsapp_account_id=$2 AND name=$3 AND language=$4 AND status='approved' LIMIT 1",
-        [organizationId, action.whatsapp_account_id, action.template_name, action.template_language],
-      );
-      if (!approvedTemplate.rows.length) {
-        return NextResponse.json({ error: "template_not_approved", message: "The selected template is no longer approved by Meta." }, { status: 409 });
+      // Re-query Meta at approval time; cached status alone must not authorize a template send.
+      const masterKeyValue = process.env.CREDENTIALS_MASTER_KEY?.trim();
+      if (!masterKeyValue || !account.business_account_id) {
+        return NextResponse.json({ error: "template_status_unavailable", message: "Current Meta template approval could not be verified." }, { status: 503 });
       }
-      const components = approvedTemplate.rows[0].components;
+      const credential = await loadWhatsAppCredential(account.id, organizationId, parseCredentialsMasterKey(masterKeyValue));
+      const token = typeof credential?.access_token === "string" ? credential.access_token : "";
+      if (!token) return NextResponse.json({ error: "template_status_unavailable", message: "Current Meta template approval could not be verified." }, { status: 503 });
+      const version = process.env.WHATSAPP_GRAPH_API_VERSION || "v23.0";
+      const templateUrl = new URL(version + "/" + encodeURIComponent(account.business_account_id) + "/message_templates", "https://graph.facebook.com/");
+      templateUrl.searchParams.set("name", action.template_name);
+      templateUrl.searchParams.set("fields", "id,name,language,status,components");
+      const metaResponse = await fetch(templateUrl, { headers: { authorization: "Bearer " + token } });
+      const metaPayload = await metaResponse.json().catch(() => ({})) as { error?: { message?: unknown }; data?: Array<{ id?: unknown; name?: unknown; language?: unknown; status?: unknown; components?: unknown }> };
+      if (!metaResponse.ok) return NextResponse.json({ error: "template_status_unavailable", message: "Current Meta template approval could not be verified." }, { status: 503 });
+      const currentTemplate = (Array.isArray(metaPayload.data) ? metaPayload.data : []).find((item) => item.name === action.template_name && item.language === action.template_language);
+      const approvedNow = currentTemplate?.status === "APPROVED" && typeof currentTemplate.id === "string";
+      if (!approvedNow) {
+        await query("UPDATE whatsapp_templates SET status=$5, last_synced_at=now(), updated_at=now() WHERE organization_id=$1 AND whatsapp_account_id=$2 AND name=$3 AND language=$4", [organizationId, action.whatsapp_account_id, action.template_name, action.template_language, currentTemplate?.status === "REJECTED" ? "rejected" : "pending"]);
+        return NextResponse.json({ error: "template_not_approved", message: "Meta does not currently report this template as approved." }, { status: 409 });
+      }
+      const synced = await query<{ components: unknown }>(
+        "UPDATE whatsapp_templates SET provider_template_id=$5, status='approved', components=$6::jsonb, last_synced_at=now(), updated_at=now() WHERE organization_id=$1 AND whatsapp_account_id=$2 AND name=$3 AND language=$4 RETURNING components",
+        [organizationId, action.whatsapp_account_id, action.template_name, action.template_language, currentTemplate.id, JSON.stringify(Array.isArray(currentTemplate.components) ? currentTemplate.components : [])],
+      );
+      if (!synced.rows.length) return NextResponse.json({ error: "template_not_synced", message: "Approved template is not stored for this WhatsApp account." }, { status: 409 });
+      const components = synced.rows[0].components;
       const bodyComponent = Array.isArray(components) ? components.find((item) => item && typeof item === "object" && (item as Record<string, unknown>).type === "BODY") as Record<string, unknown> | undefined : undefined;
       const bodyText = typeof bodyComponent?.text === "string" ? bodyComponent.text : "";
       const indexes = [...bodyText.matchAll(/\{\{(\d+)\}\}/g)].map((match) => Number(match[1]));
