@@ -125,6 +125,7 @@ export async function POST(request: Request) {
          WHERE m.organization_id=$1 AND m.whatsapp_account_id=$2
            AND c.phone_number=$3 AND m.direction='inbound'
            AND COALESCE(m.provider_timestamp,m.created_at) >= now() - interval '24 hours'
+           AND COALESCE(m.provider_timestamp,m.created_at) <= now()
          ORDER BY COALESCE(m.provider_timestamp,m.created_at) DESC LIMIT 1`,
         [organizationId, action.whatsapp_account_id, action.recipient_phone],
       );
