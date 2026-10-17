@@ -1,7 +1,7 @@
 "use client";
 
 import { KeyRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LiveModelSelect } from "@/components/live-model-select";
 
 type Provider = "openai" | "gemini" | "sarvam";
@@ -10,6 +10,11 @@ const labels: Record<Provider, string> = { openai: "OpenAI", gemini: "Google Gem
 
 export function AIProviderSettings({ organizationId }: { organizationId: string }) {
   const [configs, setConfigs] = useState<Config[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadedOrganizationId, setLoadedOrganizationId] = useState("");
+  const [loadRetry, setLoadRetry] = useState(0);
+  const currentOrganizationId = useRef(organizationId);
+  currentOrganizationId.current = organizationId;
   const [provider, setProvider] = useState<Provider>("openai");
   const [model, setModel] = useState("");
   const [apiKey, setApiKey] = useState("");
@@ -19,46 +24,95 @@ export function AIProviderSettings({ organizationId }: { organizationId: string 
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  async function load() {
-    if (!organizationId) return;
-    const response = await fetch("/api/settings/ai-providers?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.message ?? "Provider settings could not load.");
-    setConfigs(body.providers ?? []);
-    const selectedConfig = (body.providers ?? []).find((item: Config) => item.provider === provider);
-    if (selectedConfig) {
-      setModel(selectedConfig.model || "");
-      setBaseUrl(selectedConfig.baseUrl ?? "");
-      setEnabled(selectedConfig.enabled);
-    }
+  async function load(targetOrganizationId: string, signal?: AbortSignal) {
+    const response = await fetch("/api/settings/ai-providers?organizationId=" + encodeURIComponent(targetOrganizationId), {
+      cache: "no-store",
+      signal,
+    });
+    const body = await response.json().catch(() => null) as { providers?: Config[]; message?: string } | null;
+    if (!response.ok) throw new Error(body?.message ?? "Provider settings could not load.");
+    // Ignore responses issued before an organization switch.
+    if (signal?.aborted || currentOrganizationId.current !== targetOrganizationId) return;
+    setConfigs(body?.providers ?? []);
+    setLoadedOrganizationId(targetOrganizationId);
   }
-  useEffect(() => { void load().catch((e) => setError(e instanceof Error ? e.message : "Provider settings could not load.")); }, [organizationId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    // Never carry a typed plaintext vendor key into another organization's form.
+    setApiKey("");
+    setConfigs([]);
+    setModel("");
+    setBaseUrl("");
+    setEnabled(true);
+    setNotice("");
+    setError("");
+    setLoadedOrganizationId("");
+    setLoading(true);
+    if (!organizationId) {
+      setLoading(false);
+      return () => controller.abort();
+    }
+    void load(organizationId, controller.signal)
+      .catch((reason: unknown) => {
+        if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Provider settings could not load.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [organizationId, loadRetry]);
+
+  const organizationReady = Boolean(organizationId) && loadedOrganizationId === organizationId && !loading;
+  const visibleConfigs = loadedOrganizationId === organizationId ? configs : [];
+
+  useEffect(() => {
+    const current = visibleConfigs.find((item) => item.provider === provider);
+    setModel(current?.model || "");
+    setBaseUrl(current?.baseUrl ?? "");
+    setEnabled(current?.enabled ?? true);
+  }, [provider, configs, organizationId, loadedOrganizationId]);
+
   function choose(next: Provider) {
     setProvider(next); setApiKey("");
-    const config = configs.find((item) => item.provider === next);
+    const config = visibleConfigs.find((item) => item.provider === next);
     setModel(config?.model || "");
     setBaseUrl(config?.baseUrl ?? ""); setEnabled(config?.enabled ?? true);
   }
   async function save() {
+    if (!organizationReady) {
+      setError("Load the selected organization's provider settings before saving.");
+      return;
+    }
     setBusy(true); setNotice(""); setError("");
     try {
       const existing = configs.find((item) => item.provider === provider);
       const response = await fetch("/api/settings/ai-providers", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ organizationId, provider, model, apiKey, baseUrl, enabled, keepExistingKey: !apiKey && Boolean(existing?.hasApiKey) }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.message ?? "Provider settings could not save.");
-      setApiKey(""); setNotice(body.message ?? "Provider settings saved."); await load(); setCatalogVersion((n) => n + 1);
+      if (currentOrganizationId.current !== organizationId) return;
+      await load(organizationId);
+      if (currentOrganizationId.current !== organizationId) return;
+      setApiKey("");
+      setNotice(body.message ?? "Provider settings saved.");
+      setCatalogVersion((n) => n + 1);
     } catch (e) { setError(e instanceof Error ? e.message : "Provider settings could not save."); }
     finally { setBusy(false); }
   }
   const input = "mt-1 w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm";
   const label = "block text-sm font-medium";
-  const current = configs.find((item) => item.provider === provider);
+  const current = visibleConfigs.find((item) => item.provider === provider);
   return <section className="space-y-4 rounded-md border border-border bg-card p-5 sm:p-6">
     <div><p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground"><KeyRound className="h-3.5 w-3.5 text-primary" />AI providers</p><h2 className="mt-1 text-xl font-semibold">API credentials and model catalog</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Configure provider credentials per organization. Keys are encrypted before database storage and are never sent back to the browser. Save the key first to load the current provider catalogue; then choose a model and save again.</p></div>
     {notice ? <p role="status" className="rounded-md border bg-muted/40 p-3 text-sm">{notice}</p> : null}
     {error ? <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}
-    {!configs.some((item) => item.enabled && item.hasApiKey) ? <p role="alert" className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm">No enabled chat provider has a saved API key yet. Configure and save a provider before starting chat.</p> : null}
-    <div className="grid gap-4 md:grid-cols-2">
+    {organizationReady && !visibleConfigs.some((item) => item.enabled && item.hasApiKey) ? <p role="alert" className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm">No enabled chat provider has a saved API key yet. Configure and save a provider before starting chat.</p> : null}
+    {!organizationReady ? (
+      <div role="status" className="space-y-2 text-sm text-muted-foreground">
+        <p>{loading ? "Loading provider settings…" : organizationId ? "Provider settings could not be loaded for this organization." : "Select an organization to configure AI providers."}</p>
+        {organizationId && !loading ? <button type="button" className="underline" onClick={() => setLoadRetry((n) => n + 1)}>Retry loading</button> : null}
+      </div>
+    ) : <div className="grid gap-4 md:grid-cols-2">
       <div className="space-y-4">
         <label className={label}>Provider<select className={input} value={provider} onChange={(e) => choose(e.target.value as Provider)}><option value="openai">OpenAI</option><option value="gemini">Google Gemini</option><option value="sarvam">Sarvam AI</option></select></label>
         <div className="rounded-md border border-border p-3 text-sm"><span className="font-medium">{labels[provider]} status: </span>{current?.hasApiKey ? "API key saved (hidden)" : "Not configured"}</div>
@@ -71,6 +125,6 @@ export function AIProviderSettings({ organizationId }: { organizationId: string 
         <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void save()} disabled={busy} className="rounded-md bg-foreground px-4 py-2 text-sm font-semibold text-background disabled:opacity-50">{busy ? "Saving…" : "Save provider"}</button></div>
         <p className="text-xs leading-5 text-muted-foreground">All dropdown choices are fetched live from the provider using this organization’s saved key. No prefilled or static models are substituted. A successful save does not verify connectivity.</p>
       </div>
-    </div>
+    </div>}
   </section>;
 }
