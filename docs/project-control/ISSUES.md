@@ -626,3 +626,15 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Commits:** voice workspace 1fb045298ed77cd218a36d7babdc911e17b2211d; voice turn route 9a9e09ee4f6a8c3e2ece81d0b717e9ef22403281; WhatsApp UI 5946168a22cd316e03c7e859c17d5a53724d48f3; voice test 57618396c400863cf9de31a3dde6de1869447a6b; WhatsApp test fee2a2394dfe1e687a470c0caa24a26a9039a20b.
 - **Verification:** Source and regression changes are committed. The user's logs are pre-fix; post-fix web typecheck, tests, Docker build, and deployment are NOT RUN / NOT VERIFIED.
 - **Next action:** Pull latest main; rerun pnpm typecheck and bash scripts/update-and-up.sh. If further compiler errors appear, continue narrow source fixes and keep deployment/test claims tied to actual output.
+
+## ISS-035 — Manual deployment Compose environment flag incompatibility
+
+- **Opened:** 2026-10-18
+- **Severity:** high (blocks manual migration/startup after image build)
+- **Owner:** OPS-01
+- **Status:** in_progress
+- **Evidence:** User's current `bash scripts/update-and-up.sh` output shows both worker and web images built successfully, including the Next.js production build. Deployment then stops at migration DB configuration with `unknown flag: --environment`, emitted by `docker compose config --environment`.
+- **Root cause:** `scripts/manual-up.sh` relied exclusively on a newer Docker Compose config option unsupported by the user's installed Compose version.
+- **Correction:** Source commit `a93176b3cbba730c30a016b4e47a9dd3dd46039c` adds a compatibility fallback that first checks host `DATABASE_URL`, then reads the key from the script's `.env` interpolation file; unresolved interpolation and missing values fail closed. It does not print the DSN. Regression source-contract test commit: `0386f03fa9534ff2d53db84b7ffbd2b5fe864154`.
+- **Verification:** User's log verifies image builds only. Compatibility test execution, migrations, container startup, health, and runtime behavior remain pending.
+- **Next action:** Pull latest `main`; run `node --test scripts/tests/manual-up-compose-env.test.mjs`, then `bash scripts/update-and-up.sh`. Capture whether migration execution and `docker compose up -d` complete. Do not share the database URL or other secrets.
