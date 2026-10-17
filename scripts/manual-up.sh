@@ -19,7 +19,7 @@ docker compose -f infra/docker-compose.manual.yml build --pull
 # SSL errors on Prisma Postgres Data Proxy). The Node.js runner is at
 # packages/db/migrate.js and uses the pg library which handles SSL
 # correctly via the connection string's sslmode=require parameter.
-migration_db_url="$(docker compose --env-file .env.docker -f infra/docker-compose.manual.yml config --environment | awk -F= '$1 == "DATABASE_URL" {sub(/^[^=]*=/, ""); print; exit}')"
+migration_db_url="$(docker compose -f infra/docker-compose.manual.yml config --environment | awk -F= '$1 == "DATABASE_URL" {sub(/^[^=]*=/, ""); print; exit}')"
 if [[ -z "$migration_db_url" ]]; then
   echo "ERROR: DATABASE_URL is required in .env.docker for the manual deployment migration." >&2
   exit 1
