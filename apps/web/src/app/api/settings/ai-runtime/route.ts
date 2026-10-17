@@ -21,7 +21,8 @@ const DEFAULTS = {
   defaultProvider: "openai",
   knowledgeBaseId: "default",
   realtimeVoiceProvider: "openai",
-  realtimeVoiceModel: "gpt-realtime-2.1-mini",
+  // New organizations must choose a model from the provider's live catalogue.
+  realtimeVoiceModel: "",
   voiceId: "alloy",
   temperature: 0.8,
   maxTokens: 1500,
