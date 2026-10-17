@@ -219,3 +219,8 @@ The user's Docker build evidence showed worker image success but web type valida
 - Issue ISS-034. Source commits: 1fb04529, 9a9e09ee, 5946168a; tests: 57618396, fee2a239.
 - **Verification boundary:** Current user logs are pre-fix. Post-fix typecheck, focused tests, Docker build and deployment are not yet verified.
 - Next: pull main, run pnpm typecheck, focused voice and WhatsApp tests, then manual Docker build. Continue resolving source errors; do not claim green from commits alone.
+
+## 2026-10-18 — Manual deployment Compose compatibility handoff
+- Latest user evidence: worker and web Docker images build successfully; Next.js production build passes. Manual deployment then fails before migrations because installed Docker Compose rejects `config --environment`.
+- OPS-01 correction is on main in `scripts/manual-up.sh` with regression source-contract test `scripts/tests/manual-up-compose-env.test.mjs`. Commits: `a93176b3cbba730c30a016b4e47a9dd3dd46039c`, newline parsing follow-up `2503f5352a821e4a338a2578fc49e6cd341a11da`, test `0386f03fa9534ff2d53db84b7ffbd2b5fe864154`.
+- Current boundary: post-fix test, migration execution, `compose up`, and runtime health are not verified. Next action is to pull main, run the focused Node test, then rerun the manual deployment script. Never expose the database URL or claim deployment success based on image build alone.
