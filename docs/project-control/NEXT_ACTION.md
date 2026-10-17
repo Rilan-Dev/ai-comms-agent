@@ -1,12 +1,13 @@
-## OPS-01 — Fix host-side migration DNS failure (ISS-037) — 2026-10-18
+## OPS-01 — Verify containerized migration correction (ISS-037) — 2026-10-18
 
-- **Current blocker:** User's latest deployment built the web/worker images but migration execution failed with `getaddrinfo ENOTFOUND postgres`.
-- **Root cause:** `scripts/manual-up.sh` runs `packages/db/migrate.js` on the host while `DATABASE_URL` points to Compose-only hostname `postgres:5432`. The web/worker/Postgres containers share `ai-comms-agent_default`; host DNS does not use that alias.
-- **Required owner:** OPS-01 / Shipwright. FIX-01 diagnosed and handed off; no deployment source was changed by FIX-01.
-- **Exact next action:** Update `scripts/manual-up.sh` to run the migration runner in a one-off Compose container on the internal network. Because current `Dockerfile` does not copy `supabase/`, mount `$PROJECT_ROOT/supabase` read-only at `/workspace/supabase` for that run, or make a reviewed image change. Add a regression assertion to `scripts/tests/manual-up-compose-env.test.mjs` proving migration runs in-container and migration files are available.
-- **Do not:** Change application DB URLs to `host.docker.internal:5433`; confirm the target DB first because the current URL uses `/postgres` while local Compose declares `POSTGRES_DB=aca`.
-- **Verification required:** Run focused Node test; have operator rerun deployment; record migration completion separately from `docker compose ps`/health. Do not claim PASS before observed output.
+- **Implementation:** Committed `scripts/manual-up.sh` change to run migrations via one-off Compose `web` container with `$PROJECT_ROOT/supabase` mounted read-only at `/workspace/supabase`. Application DB URLs remain on Docker internal DNS. Existing startup-on-migration-failure behavior is unchanged.
+- **Commits:** source `65a215151ecd14900fac3c9ba9a421fb7a777a77`; regression test `6cd93638bffa0e2f6a9e8d6ce2f3f2664b13341b`.
+- **Focused evidence:** Bash syntax check passed; isolated Node test 4/4 passed using fetched script/test and a fixture matching current Compose `.env` declarations. Actual checkout test and runtime deployment remain pending.
+- **Required next action:** Before applying migrations, confirm intended DB target: user's configured URL ends in `/postgres`, while local Compose declares `POSTGRES_DB=aca`. Do not change this by assumption.
+- **Then:** Pull latest `main`; run `node --test scripts/tests/manual-up-compose-env.test.mjs` in the actual checkout; run `bash scripts/update-and-up.sh`; capture sanitized migration output and `docker compose ps`/health separately.
+- **Do not:** Route application DB connections through `host.docker.internal:5433`; claim migration or deployment PASS from source tests alone.
 - **Related:** ISS-037; BKL-OPS01-MIGRATION-IN-CONTAINER-20261018; `HOF-FIX01-OPS01-MIGRATION-NETWORK-20261018`.
+
 
 ---
 
