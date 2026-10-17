@@ -1452,3 +1452,9 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Reported by local checkout:** worker TypeScript build failed in whatsapp-tool-runtime.ts (optional template row narrowing, generic Tool variance, and authorization callback parameter typo) and whatsapp-worker.ts (template payload object narrowing). The web build was canceled by Docker Compose after the worker target failed.
 - **Source corrections committed to main:** guarded the selected template row, cast concrete tools at the non-generic registry boundary, renamed the authorization callback parameter to the actual input value, and explicitly narrowed the worker template payload to Record<string, unknown>.
 - **Verification:** fixes are source-readback verified only. Docker build has not been rerun after these corrections; do not claim the worker/web builds pass. Pull latest main and rerun the worker build first, then rebuild web/compose.
+
+### 2026-10-17 — Follow-up worker build failure triage
+
+- **Reported by local checkout after pulling `d74a083c`:** worker TypeScript build still failed in `product-action-executor.ts` because the WhatsApp approval result used unsupported `message` instead of the shared `ProductActionResult.reason` field; `whatsapp-worker.ts` had a second template-payload narrowing site not covered by the earlier correction.
+- **Source corrections committed to main:** `acc0745e399e907eb479d95b4d80f53543ac462e` uses the shared `reason` field; `de44d06ce1496c8f1a5e985cea03b24b149e0d1b` explicitly narrows the second media/template payload to `Record<string, unknown>`.
+- **Verification:** source changes committed; worker build has not been rerun here. Pull latest `main` and rerun `pnpm --filter @ai-comms-agent/worker build`. If further errors appear, continue fixing the compiler output; do not infer a passing build from source readback.
