@@ -110,6 +110,15 @@ export function AIProviderSetupShared({
     setEnabled(current?.enabled ?? true);
   }, [provider, tab, configs]);
 
+  function chooseProvider(next: string) {
+    if (next === provider) return;
+    // Never carry an unsaved secret from one vendor's password field into another.
+    setProvider(next);
+    setApiKey("");
+    setNotice("");
+    setError("");
+  }
+
   async function saveProvider() {
     setSaving(true); setNotice(""); setError("");
     try {
@@ -135,16 +144,20 @@ export function AIProviderSetupShared({
         if (!response.ok) throw new Error(body.message ?? "Save failed.");
       }
       setApiKey("");
-      setNotice("Provider settings saved. Secret values are never returned to the browser.");
       // Reload
       const refreshed = await Promise.all(
         purposes.map((p) =>
           fetch(`/api/settings/ai-provider-configs?purpose=${p}&organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" })
-            .then(async (r) => ((await r.json()).configs ?? []) as Config[])
+            .then(async (r) => {
+              const body = await r.json().catch(() => null) as { configs?: Config[]; message?: string } | null;
+              if (!r.ok) throw new Error(body?.message ?? "Provider configs could not reload.");
+              return body?.configs ?? [];
+            })
         ),
       );
       setConfigs(refreshed.flat());
       setCatalogVersion((n) => n + 1);
+      setNotice("Provider settings saved. Secret values are never returned to the browser.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Provider settings could not save.");
     } finally {
@@ -158,19 +171,29 @@ export function AIProviderSetupShared({
     try {
       const purposes = tab === "voice-chat" ? ["tts", "stt"] : [PURPOSE_FOR_TAB[tab]];
       for (const purpose of purposes) {
-        await fetch(`/api/settings/ai-provider-configs?purpose=${purpose}&provider=${provider}&organizationId=${encodeURIComponent(organizationId)}`, {
+        const response = await fetch(`/api/settings/ai-provider-configs?purpose=${purpose}&provider=${provider}&organizationId=${encodeURIComponent(organizationId)}`, {
           method: "DELETE",
         });
+        if (!response.ok) {
+          const body = await response.json().catch(() => null) as { message?: string } | null;
+          throw new Error(body?.message || `Could not remove the ${purpose} configuration (HTTP ${response.status}). Other capabilities may have been changed; reload to review.`);
+        }
       }
       setNotice("Provider config removed.");
       setApiKey("");
       const refreshed = await Promise.all(
         purposes.map((p) =>
           fetch(`/api/settings/ai-provider-configs?purpose=${p}&organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" })
-            .then(async (r) => ((await r.json()).configs ?? []) as Config[])
+            .then(async (r) => {
+              const body = await r.json().catch(() => null) as { configs?: Config[]; message?: string } | null;
+              if (!r.ok) throw new Error(body?.message ?? "Provider configs could not reload.");
+              return body?.configs ?? [];
+            })
         ),
       );
       setConfigs(refreshed.flat());
+      // Drop any catalogue fetched using credentials that were just removed.
+      setCatalogVersion((n) => n + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not remove provider config.");
     } finally {
@@ -206,7 +229,7 @@ export function AIProviderSetupShared({
               <button
                 type="button"
                 className="ml-auto rounded px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted"
-                onClick={() => setProvider(p)}
+                onClick={() => chooseProvider(p)}
               >
                 select
               </button>
@@ -231,7 +254,7 @@ export function AIProviderSetupShared({
           <div className="space-y-4">
             <label className={labelCls}>
               Provider
-              <select className={inputCls} value={provider} onChange={(e) => setProvider(e.target.value)}>
+              <select className={inputCls} value={provider} onChange={(e) => chooseProvider(e.target.value)}>
                 {ALLOWED_PROVIDERS[tab].map((p) => (
                   <option key={p} value={p}>{PROVIDER_LABELS[p] || p}</option>
                 ))}
