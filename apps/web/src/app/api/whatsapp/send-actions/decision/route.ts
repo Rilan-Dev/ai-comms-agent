@@ -98,7 +98,18 @@ export async function POST(request: Request) {
       );
       if (!synced.rows.length) return NextResponse.json({ error: "template_not_synced", message: "Approved template is not stored for this WhatsApp account." }, { status: 409 });
       const components = synced.rows[0].components;
-      const bodyComponent = Array.isArray(components) ? components.find((item) => item && typeof item === "object" && (item as Record<string, unknown>).type === "BODY") as Record<string, unknown> | undefined : undefined;
+      const componentList = Array.isArray(components) ? components.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item)) : [];
+      const unsupportedComponents = componentList.some((item) => {
+        if (item.type === "BUTTONS") return true;
+        if (item.type !== "HEADER") return false;
+        const format = typeof item.format === "string" ? item.format : "TEXT";
+        const headerText = typeof item.text === "string" ? item.text : "";
+        return format !== "TEXT" || /\\{\\{\\d+\\}\\}/.test(headerText);
+      });
+      if (unsupportedComponents) {
+        return NextResponse.json({ error: "unsupported_template_components", message: "This sender supports approved text templates with body parameters only; media, dynamic headers and button templates fail closed." }, { status: 409 });
+      }
+      const bodyComponent = componentList.find((item) => item.type === "BODY");
       const bodyText = typeof bodyComponent?.text === "string" ? bodyComponent.text : "";
       const indexes = [...bodyText.matchAll(/\{\{(\d+)\}\}/g)].map((match) => Number(match[1]));
       const requiredParameters = indexes.length ? Math.max(...indexes) : 0;
