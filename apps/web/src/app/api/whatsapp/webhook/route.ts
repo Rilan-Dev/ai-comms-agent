@@ -40,32 +40,39 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const raw = await request.text();
-  // DB-backed app secret: load from the account's encrypted credentials.
-  // Falls back to env var for backwards compatibility.
-  let appSecret: string | undefined = process.env.WHATSAPP_APP_SECRET;
-  // Try to resolve app_secret from DB after we know which account the
-  // webhook is for. For the initial signature check, use env var fallback
-  // if no DB account has an app_secret stored yet.
-  if (!appSecret) {
-    // No env var — try to find ANY account with an app_secret in its
-    // encrypted credentials. This handles the initial webhook subscription
-    // where Meta hasn't sent a phone_number_id yet.
-    // For POST webhooks, Meta always sends entry[].changes[].value.metadata
-    // .phone_number_id, so we can resolve the account from the payload.
-    // But the signature check must happen FIRST (before parsing the payload).
-    // If no env var is set, we accept the webhook without signature check
-    // and verify per-account after parsing. This is acceptable because:
-    // 1. The webhook URL is not publicly advertised
-    // 2. The verify_token GET check already authenticates the subscription
-    // 3. Each inbound message is idempotent (deduplicated by provider_event_id)
-    // In production with env var set, signature check is always enforced.
-    appSecret = ""; // Empty string = skip signature check, verify per-account below
+  let payload: any;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    return new Response("Bad Request", { status: 400 });
   }
-  if (appSecret && !signatureValid(raw, request.headers.get("x-hub-signature-256"), appSecret)) {
+
+  // Always verify Meta's signature before processing events. If an environment
+  // secret is not configured, load the encrypted organization webhook secret.
+  // Parsing JSON above has no side effects; event writes happen only after HMAC
+  // verification succeeds.
+  let appSecret = process.env.WHATSAPP_APP_SECRET ?? "";
+  if (!appSecret) {
+    const masterKeyRaw = process.env.CREDENTIALS_MASTER_KEY;
+    if (masterKeyRaw) {
+      try {
+        const masterKey = parseCredentialsMasterKey(masterKeyRaw);
+        const configAccount = await getWhatsAppAccountByPhoneNumberId("__webhook_config__");
+        if (configAccount) {
+          const credential = await loadWhatsAppCredential(configAccount.id, configAccount.organization_id, masterKey);
+          appSecret = typeof credential?.app_secret === "string" ? credential.app_secret : "";
+        }
+      } catch (error) {
+        console.error("[whatsapp/webhook] Could not load saved signature secret:", error instanceof Error ? error.message : "unknown error");
+      }
+    }
+  }
+  if (!appSecret) {
+    return new Response("Webhook signature verification is not configured", { status: 503 });
+  }
+  if (!signatureValid(raw, request.headers.get("x-hub-signature-256"), appSecret)) {
     return new Response("Forbidden", { status: 403 });
   }
-  let payload: any;
-  try { payload = JSON.parse(raw); } catch { return new Response("Bad Request", { status: 400 }); }
   const payloadHash = createHash("sha256").update(raw).digest("hex");
   const entries = Array.isArray(payload?.entry) ? payload.entry : [];
   let accepted = 0;
