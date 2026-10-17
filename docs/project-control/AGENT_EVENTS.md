@@ -499,3 +499,11 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Dependency:** OPS-01 needs dependency-equipped checkout, provider credentials and live runtime; Vercel status on merge commit indicates build-rate-limit. Avoid repeatedly polling.
 - **Lesson:** Include reproducible dependency-free provider-adapter smoke checks where full package installation is unavailable, but do not conflate with monorepo typecheck or live provider evidence.
 - **Record:** `docs/project-control/sessions/DEV01-LIVE-MODEL-VERIFY-20261018.md`.
+
+### EVT-DEV01-MAIN-RUNTIME-MODEL-20261018
+- **Agent:** DEV-01 / Forge; session `DEV01-MAIN-RUNTIME-MODEL-20261018`.
+- **Instruction:** Owner explicitly required direct-to-main work and no new branches; #34/#35 had both already merged.
+- **Source change:** Fixed previously unsafe AI runtime GET camelCase → form snake_case hydration for all 8 fields; prevented static preselected realtime model on unconfigured org; added Vitest and standalone Node regression protection on main.
+- **Executed:** 6/6 catalog Node mocks, 4/4 runtime normalization Node cases, both pure-module isolated `tsc --noEmit` PASS with identical Git blob hashes.
+- **Remaining:** pnpm Vitest/web build/typecheck, browser and credential-backed provider integration — NOT VERIFIED, OPS-01 environment. Vercel build-rate-limit signal is not source compile evidence. FIX-01 retains unrelated runtime defects.
+- **Next:** Run named checks on current main, record live credentials/browser evidence before architect acceptance.
