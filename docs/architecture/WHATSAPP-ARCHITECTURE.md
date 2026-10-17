@@ -148,3 +148,10 @@ Meta pushes status events (`sent`, `delivered`, `read`, `failed`) for outbound m
 - UI for WhatsApp conversation view.
 
 Phase 13 cannot complete end-to-end without the user's Meta Business Account and WhatsApp Business number registration (RSK-004). The user should begin that process during Phase 11.
+
+
+## Implementation checkpoint — 2026-10-17
+
+Outbound requests through `POST /api/whatsapp/messages` now create a pending `whatsapp_send_actions` record rather than enqueueing a message directly. `GET /api/whatsapp/send-actions?organizationId=...` lists the organization-scoped approval queue. `POST /api/whatsapp/send-actions/decision` accepts authenticated `approve`/`reject` decisions and records audit events. Text sends are queued only when the account remains connected and a recent inbound customer message proves the 24-hour window is open; otherwise the action is marked `requires_template` and fails closed.
+
+**Still incomplete:** no approved-template submit/status sync or template delivery path exists; no approval UI is connected; `whatsapp.send` is intentionally absent from the runtime. Do not register it until template handling, approval lifecycle, current authorization checks, audit, idempotency, and tests cover the full path. Source edits only; migration/tests/runtime not verified.
