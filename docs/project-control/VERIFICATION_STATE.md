@@ -1,3 +1,14 @@
+## 2026-10-18 — DEV-01 direct-main runtime form correction / model catalogue limited tests
+
+- PRs #34/#35: already merged. Latest owner instruction: **work directly on main; no new branches**.
+- New source: pure `normalizeRuntimeSettings` maps all eight camelCase GET fields into snake_case POST/PUT form state; new-org server default realtime voice model is blank (no hard-coded selection). This prevents a reproducible source path that could overwrite saved KB, provider and policy settings with local form defaults.
+- **ACTUALLY PASSED:** Node v22.16 mocked live catalogue 6/6, new runtime settings hydration 4/4, global TS 5.8.3 standalone compilation of exact two pure modules with zero errors. Verified all four committed Git blob hashes match executed local bytes: catalog `47c427b77c2dffe4555451ede58fec28b4dfe941`, catalog Node test `35e1521a0619430a784a351d42e400b08c13cf5d`, runtime mapper `35894c44325698c64d20d3939c85aa3a2f808390`, runtime test `c60e0201f9e88e10e5a8b290b4d9489dbda01e81`. Vitest assertions also added as source, NOT executed.
+- **NOT EXECUTED:** pnpm Vitest, whole web typecheck or Next build, provider-authenticated HTTP, browser form save/reload, cross-org runtime isolation, Vercel/self-hosted deployment. Sandbox has no private GitHub checkout or npm/pnpm registry DNS. GitHub Actions CI currently manual-only; OPS-01 owns workflow/host and merged-PR Vercel `build-rate-limit` indicator.
+- Full session `docs/project-control/sessions/DEV01-MAIN-RUNTIME-MODEL-20261018.md`. Do not mark product/release accepted from mocked tests.
+
+
+---
+
 ## 2026-10-18 — Live model catalogue partial verification (DEV-01)
 
 - **Merged feature:** PR #34 merged into main at `5413468fc1ff0ae0088796b25d01b680126e521c`. Original "not merged" statements below are superseded; full feature acceptance still pending.
