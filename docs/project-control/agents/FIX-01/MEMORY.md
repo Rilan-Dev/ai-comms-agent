@@ -113,3 +113,9 @@ The authentication loop was traced to session issuance preceding active organiza
 - A similarly named enum such as email_account_provider does not update email_provider; change the exact type referenced by the failing column.
 - Prefer a forward-only migration and a source regression assertion. Do not remove supported provider values from polling queries to silence the error.
 - Distinguish deterministic source/schema errors from separate subscription prerequisites and deployment/runtime evidence. Migration execution and live sync remain OPS-01 verification.
+
+
+### FIX-01 / Sentinel — 2026-10-17 — WhatsApp error 131047
+- Meta error 131047 with the explicit 24-hour-window explanation means free-form text was rejected as an out-of-window re-engagement message. Use an eligible approved template or wait for a customer reply; never bypass Meta policy.
+- Queue acknowledgement is not delivery confirmation. Treat queued/provider-accepted/sent/delivered/read/failed as distinct states.
+- If the UI contradicts a supplied failed webhook event, trace the exact provider message ID through webhook response, tenant/account-scoped persistence, and UI refresh before changing code. Route live deployment/database/webhook-delivery issues to OPS-01.
