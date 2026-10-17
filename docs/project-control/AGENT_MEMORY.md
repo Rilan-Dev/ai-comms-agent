@@ -399,3 +399,12 @@ If shared memory conflicts with current repository state or current requirements
 - When moving a migration runner into an image, verify that the migration files are actually present. Here `packages/db/migrate.js` auto-detects `supabase/migrations`, but the current Dockerfile does not copy `supabase/`; a read-only mount or deliberate image inclusion is required.
 - Deployment-script implementation and rollout belong to OPS-01. FIX-01 records evidence and routes the handoff; source diagnosis is not a deployed fix.
 - Session `FIX01-MIGRATION-NETWORK-20261018`; issue ISS-037; OPS handoff `HOF-FIX01-OPS01-MIGRATION-NETWORK-20261018`.
+
+
+### OPS-01 lesson — run schema migrations in the Compose network (2026-10-18)
+- The host cannot resolve Compose-only service names such as `postgres`. Execute the Node migration runner with `docker compose run` on the app's network instead of rewriting application URLs to the host-published port.
+- The current Dockerfile does not copy `supabase/`; bind-mount `$PROJECT_ROOT/supabase` read-only at `/workspace/supabase`, the path auto-detected by `packages/db/migrate.js`.
+- Preserve the current startup-on-migration-failure policy unless separately authorized to change it. Do not report deployment PASS from static tests.
+- Regression protection checks the Compose invocation, read-only migration mount, absence of host-side DSN translation, no URL logging, and retained failure policy.
+- Session `OPS01-MIGRATION-CONTAINER-20261018`; source `65a215151ecd14900fac3c9ba9a421fb7a777a77`; regression test `6cd93638bffa0e2f6a9e8d6ce2f3f2664b13341b`.
+- Verification: `bash -n` passed and the focused Node test passed 4/4 in an isolated harness using fetched source/test and a matching Compose env-file fixture. Actual project-checkout execution, database target confirmation, migration, and live health remain pending.
