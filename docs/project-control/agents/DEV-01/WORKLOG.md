@@ -350,3 +350,14 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Verification:** Source edits only. Tests/typecheck/lint/build/live API/Qdrant were not run.
 - **Boundary:** No transport wiring or worker outbox startup; ISS-026 remains open/FIX-01-owned. OPS-01 owns live Qdrant, ingestion, runtime isolation and performance acceptance.
 - **Next:** focused review, then targeted tests/typechecks when dependency-equipped; after FIX-01 closes ISS-026, connect shared service to Chat + realtime voice and bind/start outbox.
+
+
+## 2026-10-17 — Interactive chat tool loop and WhatsApp send approval
+
+- Connected interactive chat to the host-authorized tool loop using server-derived tenant/user/role/permissions, per-agent tool allowlists, execution-time policy checks, bounded rounds/calls, and untrusted host context.
+- Implemented WhatsApp pending send actions, approval queue/decision API and UI, Meta template submit/status refresh, supported text-body template send, and worker-time checks for the inbound 24-hour window, live template approval, connected account, and agent/account binding.
+- Changed scheduled/product WhatsApp actions from direct queueing to pending human approval. Registered whatsapp.send only as an approval-proposal tool; it cannot queue directly.
+- Added email.read / whatsapp.read / whatsapp.send feature permissions and RBAC coverage.
+- **Verification:** Source only. Tests, typecheck, build, migration execution, browser flow, Meta API, provider send, and deployment were not run. No PASS claimed.
+- **Next:** Focused test/typecheck; inspect web-to-worker import boundary; apply migrations; verify text-window and approved-template sends against Meta.
+- **Session:** docs/project-control/sessions/DEV01-CHAT-WHATSAPP-TOOL-APPROVAL-20261017.md
