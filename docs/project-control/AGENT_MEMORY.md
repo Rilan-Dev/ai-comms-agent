@@ -381,3 +381,8 @@ If shared memory conflicts with current repository state or current requirements
 - **Fix/test:** Explicitly default a missing sample to zero in both same-rate conversion and averaging accumulation; added focused source-contract assertions. Commits `baa9746142297322c5bf796e7c6fb94060bbc9cf` and `ff8ab0faa72a1a235c47be6d773c16738d2cd79a`.
 - **Verification:** Post-fix build/test pending. Do not equate source commits with a successful build.
 - **Next:** Pull main, rebuild with the manual script, run focused voice transport test, and record actual evidence.
+
+### FIX-01 lesson — strict indexed access and voice authorization context (2026-10-18)
+- Guard every indexed typed-array read and split-array field that feeds a strict numeric/string API; use a conservative fallback when an absent audio sample should contribute silence.
+- Narrow nullable authorization membership at the request boundary with an explicit fail-closed response. Validate the conversation ID as a string instead of trusting a wider DB row type.
+- Source/test commits: 1fb04529, 9a9e09ee, 5946168a, 57618396, fee2a239. Post-fix verification remains pending.
