@@ -172,21 +172,37 @@ export async function completeWhatsAppInbound(messageId: string, status: "comple
   return r.rows.length > 0;
 }
 
-export async function queueWhatsAppOutboundMessage(input: { organizationId: string; accountId: string; contactId?: string | null; to: string; body: string; idempotencyKey: string; correlationId?: string | null }) {
+export async function queueWhatsAppOutboundMessage(input: {
+  organizationId: string;
+  accountId: string;
+  contactId?: string | null;
+  to: string;
+  body: string;
+  idempotencyKey: string;
+  correlationId?: string | null;
+  messageType?: "text" | "template";
+  media?: Record<string, unknown>;
+}) {
   const contactId = input.contactId ?? await upsertWhatsAppContact({ organizationId: input.organizationId, accountId: input.accountId, phoneNumber: input.to });
+  const messageType = input.messageType ?? "text";
+  const media = input.media ?? {};
   const r = await query<Row>(
-    "INSERT INTO whatsapp_messages (organization_id, whatsapp_account_id, contact_id, direction, message_type, body, status, idempotency_key, correlation_id) VALUES ($1,$2,$3,'outbound','text',$4,'queued',$5,$6) ON CONFLICT (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING RETURNING id",
-    [input.organizationId, input.accountId, contactId, input.body, input.idempotencyKey, input.correlationId ?? null],
+    "INSERT INTO whatsapp_messages (organization_id, whatsapp_account_id, contact_id, direction, message_type, body, media, status, idempotency_key, correlation_id) VALUES ($1,$2,$3,'outbound',$4,$5,$6::jsonb,'queued',$7,$8) ON CONFLICT (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING RETURNING id",
+    [input.organizationId, input.accountId, contactId, messageType, input.body, JSON.stringify(media), input.idempotencyKey, input.correlationId ?? null],
   );
   if (r.rows[0]?.id) return String(r.rows[0].id);
 
   const existing = await query<Row>(
-    "SELECT whatsapp_account_id, contact_id, body FROM whatsapp_messages WHERE organization_id = $1 AND idempotency_key = $2 AND direction = 'outbound' LIMIT 1",
-    [input.organizationId, input.idempotencyKey],
+    "SELECT whatsapp_account_id, contact_id, body, message_type, media, media = $3::jsonb AS media_matches FROM whatsapp_messages WHERE organization_id = $1 AND idempotency_key = $2 AND direction = 'outbound' LIMIT 1",
+    [input.organizationId, input.idempotencyKey, JSON.stringify(media)],
   );
   const row = existing.rows[0];
   if (!row) throw new Error("WhatsApp idempotency conflict could not be resolved");
-  if (String(row.whatsapp_account_id) !== input.accountId || String(row.contact_id) !== String(contactId) || String(row.body ?? "") !== input.body) {
+  if (String(row.whatsapp_account_id) !== input.accountId
+    || String(row.contact_id) !== String(contactId)
+    || String(row.body ?? "") !== input.body
+    || String(row.message_type ?? "text") !== messageType
+    || row.media_matches !== true) {
     throw new Error("Idempotency key already exists for a different WhatsApp payload");
   }
   return row.id ? String(row.id) : null;
