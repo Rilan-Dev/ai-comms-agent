@@ -1,19 +1,3 @@
-
-
-## ISS-037 — Host-side migration runner cannot resolve Docker-only PostgreSQL hostname
-
-- **Opened:** 2026-10-18
-- **Severity:** high — migrations fail before deployment validation
-- **Owner:** OPS-01
-- **Status:** open / routed; source change not made by FIX-01
-- **Symptom/evidence:** User ran `bash scripts/update-and-up.sh`; image build completed, then `packages/db/migrate.js` logged a masked URL whose host was `postgres:5432` and failed with `getaddrinfo ENOTFOUND postgres`. The script then continued to container startup. User's container inspection showed `aca-postgres`, web and worker attached to `ai-comms-agent_default`; PostgreSQL had network alias `postgres`. Host `pg_isready -h 127.0.0.1 -p 5433` and in-container `pg_isready` succeeded.
-- **Root cause:** `scripts/manual-up.sh` runs `node packages/db/migrate.js` on the host. The hostname `postgres` is Compose-network DNS, not host DNS. The script's existing translation only rewrites `host.docker.internal`, so it does not make `postgres` resolvable on the host.
-- **Recent history:** Current main was `2cf9a52266af0fd69df809b40f482bb0eb95fb5c` (`fix(docker): update Postgres port mapping to avoid conflict`, host mapping changed from `5432:5432` to `5433:5432`). Earlier OPS-01 commits `a93176b3cbba730c30a016b4e47a9dd3dd46039c` and `0386f03fa9534ff2d53db84b7ffbd2b5fe864154` address unsupported Compose `config --environment`, not Docker-only hostname resolution. The new error is a separate failure after that fallback.
-- **Failed approaches:** Running the migration runner on the host with `postgres:5432` fails DNS. Changing application URLs to `host.docker.internal:5433` is not the requested architecture and would route app database traffic through the host-published port. Do not use that as the fix.
-- **Remedy for OPS-01:** Run the migration runner as a one-off Compose service container so it uses Compose DNS and the same internal network, preserving `postgres:5432`. Important implementation detail: the current Dockerfile copies `apps` and `packages` but not `supabase/`; the migration runner auto-detects `/workspace/supabase/migrations`. Therefore mount the repository's `supabase` directory read-only into the one-off container at `/workspace/supabase`, or make the smallest reviewed image change that includes migration files. Add a regression test proving the migration invocation runs in Docker, uses the internal hostname, and does not rewrite app connection URLs to the host. Do not print database URLs or credentials.
-- **Configuration caution:** Compose initializes `POSTGRES_DB=aca`, while the user's supplied URL ended in `/postgres`. Do not silently change the target database; OPS-01 must confirm which database is the intended application database before applying migrations.
-- **Verification state:** Source/config inspection plus user-provided command output only. No migration was successfully rerun in a container, no database target was confirmed, and no post-fix deployment/health PASS exists.
-- **Next action:** OPS-01 owns the corrective deployment-script/migration-container change and regression test, then the user runs the focused test and deployment script. Record migration result and container health separately. FIX-01 makes no deployment/infrastructure source change.
 # ISSUES.md — Open Issues
 
 Open issues that block or affect progress but are not architectural decisions (architectural decisions live in `DECISIONS.md`). Each issue has an ID, date opened, severity, owner, status, and resolution plan.
@@ -666,3 +650,19 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - Correction: Both service paths changed to `.env` in commit `5072621a66eab0016bf8c29e76df8683070baa14`. Regression assertion added in commit `2649466dd53f5a545bfaa2dd52ecaa9df959ba00`.
 - Verification: Source only. Focused test, Compose startup and health remain pending.
 - Next: Pull latest main, run `node --test scripts/tests/manual-up-compose-env.test.mjs`, then rerun `bash scripts/update-and-up.sh`. Share sanitized output only.
+
+
+## ISS-037 — Host-side migration runner cannot resolve Docker-only PostgreSQL hostname
+
+- **Opened:** 2026-10-18
+- **Severity:** high — migrations fail before deployment validation
+- **Owner:** OPS-01
+- **Status:** open / routed; source change not made by FIX-01
+- **Symptom/evidence:** User ran `bash scripts/update-and-up.sh`; image build completed, then `packages/db/migrate.js` logged a masked URL whose host was `postgres:5432` and failed with `getaddrinfo ENOTFOUND postgres`. The script then continued to container startup. User's container inspection showed `aca-postgres`, web and worker attached to `ai-comms-agent_default`; PostgreSQL had network alias `postgres`. Host `pg_isready -h 127.0.0.1 -p 5433` and in-container `pg_isready` succeeded.
+- **Root cause:** `scripts/manual-up.sh` runs `node packages/db/migrate.js` on the host. The hostname `postgres` is Compose-network DNS, not host DNS. The script's existing translation only rewrites `host.docker.internal`, so it does not make `postgres` resolvable on the host.
+- **Recent history:** Current main was `2cf9a52266af0fd69df809b40f482bb0eb95fb5c` (`fix(docker): update Postgres port mapping to avoid conflict`, host mapping changed from `5432:5432` to `5433:5432`). Earlier OPS-01 commits `a93176b3cbba730c30a016b4e47a9dd3dd46039c` and `0386f03fa9534ff2d53db84b7ffbd2b5fe864154` address unsupported Compose `config --environment`, not Docker-only hostname resolution. The new error is a separate failure after that fallback.
+- **Failed approaches:** Running the migration runner on the host with `postgres:5432` fails DNS. Changing application URLs to `host.docker.internal:5433` is not the requested architecture and would route app database traffic through the host-published port. Do not use that as the fix.
+- **Remedy for OPS-01:** Run the migration runner as a one-off Compose service container so it uses Compose DNS and the same internal network, preserving `postgres:5432`. Important implementation detail: the current Dockerfile copies `apps` and `packages` but not `supabase/`; the migration runner auto-detects `/workspace/supabase/migrations`. Therefore mount the repository's `supabase` directory read-only into the one-off container at `/workspace/supabase`, or make the smallest reviewed image change that includes migration files. Add a regression test proving the migration invocation runs in Docker, uses the internal hostname, and does not rewrite app connection URLs to the host. Do not print database URLs or credentials.
+- **Configuration caution:** Compose initializes `POSTGRES_DB=aca`, while the user's supplied URL ended in `/postgres`. Do not silently change the target database; OPS-01 must confirm which database is the intended application database before applying migrations.
+- **Verification state:** Source/config inspection plus user-provided command output only. No migration was successfully rerun in a container, no database target was confirmed, and no post-fix deployment/health PASS exists.
+- **Next action:** OPS-01 owns the corrective deployment-script/migration-container change and regression test, then the user runs the focused test and deployment script. Record migration result and container health separately. FIX-01 makes no deployment/infrastructure source change.
