@@ -289,3 +289,9 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Routing:** Handoff `HOF-FIX01-OPS-WHATSAPP-DISPLAY-STATUS-20261017` remains OPEN. OPS-01 must verify serving revision, webhook HTTP response/accepted count, scoped DB row/provider error, and API/UI consistency. FIX-01 will patch status flow only if runtime evidence proves a source defect.
 - **Verification:** Static regression test authored but not run. Deployment after source commits not confirmed. No live runtime/status PASS claimed.
 - **Lesson:** Do not conflate the user-controlled display label with Meta's provider verified name. Treat queue acceptance and provider delivery status as separate states.
+
+### Follow-up — worker display-name overwrite also fixed (2026-10-17)
+- A second overwrite path existed in `apps/worker/src/messaging/whatsapp-worker.ts`: pending-account verification also persisted Meta's `verified_name` directly. It now prefers the saved `account.display_name` and falls back to Meta only when no custom label exists.
+- Expanded `apps/web/tests/whatsapp-account-display-name.test.ts` to cover the immediate API verification and worker verification call sites.
+- Commits: worker `7d785b36f2bae90d9d137805e1390fe9ab467550`; updated regression test `f9bc5ec1cc793fb69c3b2a5a7d26e8d1cf00d5fb`.
+- Not executed: tests/typecheck/build/deployment. OPS-01 status mismatch handoff remains OPEN.
