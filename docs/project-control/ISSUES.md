@@ -657,7 +657,7 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Opened:** 2026-10-18
 - **Severity:** high — migrations fail before deployment validation
 - **Owner:** OPS-01
-- **Status:** open / routed; source change not made by FIX-01
+- **Status:** in_progress — OPS-01 source/test committed; actual migration and live health verification pending
 - **Symptom/evidence:** User ran `bash scripts/update-and-up.sh`; image build completed, then `packages/db/migrate.js` logged a masked URL whose host was `postgres:5432` and failed with `getaddrinfo ENOTFOUND postgres`. The script then continued to container startup. User's container inspection showed `aca-postgres`, web and worker attached to `ai-comms-agent_default`; PostgreSQL had network alias `postgres`. Host `pg_isready -h 127.0.0.1 -p 5433` and in-container `pg_isready` succeeded.
 - **Root cause:** `scripts/manual-up.sh` runs `node packages/db/migrate.js` on the host. The hostname `postgres` is Compose-network DNS, not host DNS. The script's existing translation only rewrites `host.docker.internal`, so it does not make `postgres` resolvable on the host.
 - **Recent history:** Current main was `2cf9a52266af0fd69df809b40f482bb0eb95fb5c` (`fix(docker): update Postgres port mapping to avoid conflict`, host mapping changed from `5432:5432` to `5433:5432`). Earlier OPS-01 commits `a93176b3cbba730c30a016b4e47a9dd3dd46039c` and `0386f03fa9534ff2d53db84b7ffbd2b5fe864154` address unsupported Compose `config --environment`, not Docker-only hostname resolution. The new error is a separate failure after that fallback.
@@ -666,3 +666,11 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Configuration caution:** Compose initializes `POSTGRES_DB=aca`, while the user's supplied URL ended in `/postgres`. Do not silently change the target database; OPS-01 must confirm which database is the intended application database before applying migrations.
 - **Verification state:** Source/config inspection plus user-provided command output only. No migration was successfully rerun in a container, no database target was confirmed, and no post-fix deployment/health PASS exists.
 - **Next action:** OPS-01 owns the corrective deployment-script/migration-container change and regression test, then the user runs the focused test and deployment script. Record migration result and container health separately. FIX-01 makes no deployment/infrastructure source change.
+
+
+### ISS-037 implementation update — 2026-10-18
+- OPS-01 committed the minimal source correction in `scripts/manual-up.sh`: migrations now run in a one-off Compose `web` container with `supabase/` mounted read-only at `/workspace/supabase`. App DB URLs remain on internal service DNS; host-side URL rewriting was removed.
+- Regression tests updated in `scripts/tests/manual-up-compose-env.test.mjs`. `bash -n` passed; isolated focused Node test passed 4/4 using fetched source/test and a Compose env-file fixture. The full checkout test has not been run.
+- The existing warning-and-continue startup policy remains unchanged.
+- **Not yet verified:** Actual target database, migration completion, Docker image/Compose execution, or runtime health. Prior user URL targets `/postgres`; local Compose default is `aca`. Operator must confirm the intended database before rerunning migrations.
+- **Next:** Confirm database target, run the focused test in the actual checkout, run deployment, and record migration outcome separately from container health.
