@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS whatsapp_send_actions (
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   whatsapp_account_id uuid NOT NULL REFERENCES whatsapp_accounts(id) ON DELETE CASCADE,
   agent_id uuid REFERENCES agents(id) ON DELETE SET NULL,
+  agent_binding_required boolean NOT NULL DEFAULT false,
   requested_by uuid REFERENCES users(id) ON DELETE SET NULL,
   recipient_phone text NOT NULL CHECK (recipient_phone ~ '^\\+[1-9][0-9]{7,14}$'),
   message_body text NOT NULL CHECK (length(message_body) BETWEEN 1 AND 4096),
