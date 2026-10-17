@@ -339,3 +339,13 @@ If shared memory conflicts with current repository state or current requirements
 - A saved per-agent provider override must still be resolved when `organization_ai_runtime_settings` has no row. Organization defaults are inherited values, not a prerequisite for reading `agent_ai_settings` and saved provider credentials.
 - The source correction at `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0` supplies safe defaults and continues provider resolution. A missing-org-row branch was a concrete source defect, but the live database condition remains unconfirmed; OPS-01 must verify actual row/config state and the serving revision.
 - Never add an OpenAI key to mask a provider-selection error when the agent explicitly selects Sarvam/Gemini. Queue/build/container health is not evidence of a successful model request. Test/deployment remain unverified.
+
+
+### FIX-01 / Sentinel — 2026-10-18 — Nullable membership at chat tool-context boundary
+- **Issue/symptom:** Next.js production build compiled JavaScript successfully but failed type validation at `apps/web/src/app/api/chat/stream/route.ts:384`: `subject.membership` may be null while building the trusted `ToolContext`.
+- **Root cause:** The shared `AuthSubject` contract allows a nullable membership. The `authorize()` implementation guarantees active membership on success, but TypeScript cannot infer that stronger invariant through the shared return type.
+- **Failed approaches:** Do not default a missing role to `member`/another role, cast away nullability, or weaken `authorize()`. Those approaches can conceal an authorization invariant and weaken fail-closed behavior. Do not route this source type error to OPS-01.
+- **Remedy:** Add an explicit 403 fail-closed membership guard immediately after `authorize()`, narrowing `subject.membership` before trusted tool context is constructed. Add a regression assertion that the guard precedes `ToolContext` construction.
+- **Prevention:** When a shared auth type is broader than a helper's runtime invariant, narrow at the call site explicitly; don't use a role fallback or unsafe assertion. Keep tenant and role checks intact.
+- **Evidence/status:** Source commits `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9` and `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`. User log confirms worker Docker build succeeded and web build failed only during type checking; the corrected web build and test have not been rerun.
+- **Related record:** ISS-030; `FIX01-CHAT-MEMBERSHIP-NULL-20261018`.
