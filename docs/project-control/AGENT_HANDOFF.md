@@ -53,3 +53,15 @@ Cross-agent handoff register. A handoff transfers context, not authority.
 - **OPS-01 action:** Identify serving commit; inspect redacted webhook HTTP status/body and accepted count; trace exact provider message ID in the organization/account-scoped row including status/provider_error; verify UI refresh/state mapping. Do not expose tokens or message secrets in logs.
 - **FIX-01 boundary:** After runtime evidence isolates a source defect, add the smallest status-persistence/UI correction and regression test. Do not claim live delivery based on queue acknowledgement.
 - **Evidence record:** `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`.
+
+### HOF-FIX01-OPS-WHATSAPP-DISPLAY-STATUS-20261017
+- **From:** FIX-01 / Sentinel
+- **To:** OPS-01 / Shipwright
+- **Reason:** Continue live runtime investigation of WhatsApp provider status mismatch; confirm the custom display-name fix reaches the serving revision.
+- **Repository state:** `main`; source fix `fd1fda7429363091098825dbf37bba0f30be3d0f`; regression test `79f0e6a12511afaa07249005d24e6e50fc3c7d2b`. Last observed pre-fix production deployment `dpl_5zjzPd6V3uBGuMK2LppXqsRTkirK` served `0e355bc75df6ab6c41ac619050be561faeb7c3e7`.
+- **Work completed:** Identified and corrected the display-name overwrite: account verification was persisting Meta's `verified_name` over the user-entered label. Added a static regression test. Inspected the provider-status webhook and scoped DB update contract. Vercel's available runtime-error summary only exposed older Oct 10–11 DB constraint failures; runtime logs for the relevant historic window are not retained, and the exact live DB row was not accessible.
+- **Remaining work:** Confirm current deployed revision. For the exact failed provider message ID supplied in the original incident, inspect redacted Meta webhook delivery details and server request record; record HTTP status/body and `accepted` count. Query only the relevant organization/account row and compare provider message ID, status, provider error, and updated_at with the API GET response and UI. Correct deployment/database/environment only if evidence establishes that cause. If the row is failed but the UI renders sent, hand the isolated source defect to FIX-01.
+- **Evidence/records:** `docs/project-control/sessions/FIX01-WHATSAPP-DISPLAY-STATUS-20261017.md`; `apps/web/src/app/api/whatsapp/accounts/route.ts`; `apps/web/src/app/api/whatsapp/webhook/route.ts`; `packages/db/src/messaging/whatsapp-repository.ts`; test `apps/web/tests/whatsapp-account-display-name.test.ts`.
+- **Authorization:** Existing user request authorizes diagnosis and smallest corrective fix. OPS-01 must confirm its deployment/infrastructure scope before changing runtime or database configuration.
+- **Stop condition:** Stop when serving revision and row/webhook/UI status are reconciled, or record the precise external access/retention blocker. Never expose tokens or cross-tenant rows; do not weaken HMAC or tenant scoping.
+- **Status:** OPEN
