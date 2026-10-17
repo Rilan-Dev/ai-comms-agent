@@ -11,6 +11,8 @@ test('switching providers clears the previously typed unsaved secret', () => {
   const handler = source.slice(start, end);
   assert.ok(handler.indexOf('setProvider(next);') >= 0);
   assert.ok(handler.indexOf('setApiKey("");') > handler.indexOf('setProvider(next);'));
+  assert.ok(handler.includes('setModel("");'));
+  assert.ok(handler.includes('setSttModel("");'));
   assert.ok(handler.includes('setNotice("");'));
   assert.ok(handler.includes('setError("");'));
 });
