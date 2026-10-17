@@ -24,7 +24,7 @@ export async function executeProductActions(context: Context, params: Record<str
     if (type === "send_whatsapp") {
       const account = await getWhatsAppAccountForAgent(context.organizationId, context.agentId);
       const to = stringValue(action.to);
-      if (!account || account.status !== "connected" || !to || !/^\\+[1-9]\\d{7,14}$/.test(to)) {
+      if (!account || account.status !== "connected" || !to || !/^\+[1-9]\d{7,14}$/.test(to)) {
         results.push({
           type,
           status: "configuration_required",
@@ -44,7 +44,7 @@ export async function executeProductActions(context: Context, params: Record<str
         "INSERT INTO whatsapp_send_actions (organization_id, whatsapp_account_id, agent_id, agent_binding_required, requested_by, recipient_phone, message_body, payload_type, status, idempotency_key, correlation_id) VALUES ($1,$2,$3,true,NULL,$4,$5,'text','pending',$6,$7) ON CONFLICT (organization_id,idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING RETURNING id,status",
         [context.organizationId, account.id, context.agentId, to, body, idempotencyKey, correlationId],
       );
-      let approval = inserted.rows[0];
+      let approval: { id: string; status: string; whatsapp_account_id?: string; recipient_phone?: string; message_body?: string } | undefined = inserted.rows[0];
       if (!approval) {
         const existing = await query<{ id: string; status: string; whatsapp_account_id: string; recipient_phone: string; message_body: string }>(
           "SELECT id,status,whatsapp_account_id,recipient_phone,message_body FROM whatsapp_send_actions WHERE organization_id=$1 AND idempotency_key=$2 LIMIT 1",
