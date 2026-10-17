@@ -690,7 +690,12 @@ export const claraRuntime = {
           sessionEndpoint: provider === "sarvam" ? "/api/voice/sarvam/session" : "/api/voice/elevenlabs/session",
           turnEndpoint: "/api/voice/turn",
           voiceId,
-          model: provider === "sarvam" ? "saaras:v3-realtime" : "scribe_v2_realtime",
+          // Only advertise models that the relay's upstream WebSocket
+          // actually supports. Legacy "elevenlabs-conversational" describes
+          // a different API (ElevenAgents) and must never be sent to Scribe.
+          model: provider === "sarvam"
+            ? (model === "saaras:v4" || model === "saaras:v3-realtime" ? model : "saaras:v3-realtime")
+            : "scribe_v2_realtime",
         };
       }
       if (available) {
