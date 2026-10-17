@@ -7,7 +7,7 @@ import type { ToolAuthorizationDecision, ToolAuditWriter } from "./tool-executor
 type WhatsAppHistoryInput = { account_id?: string; contact_phone?: string; limit?: number };
 type WhatsAppHistoryRow = { id: string; whatsapp_account_id: string; direction: string; message_type: string; body: string | null; status: string; provider_timestamp: string | null; created_at: string; phone_number: string | null; display_name: string | null };
 
-function toolResult(output: unknown, startedAt: number, error?: { code: string; message: string; retryable: boolean }): ToolResult {
+function toolResult(output: unknown, startedAt: number, error?: { code: string; message: string; retryable: boolean }): ToolResult<any> {
   return { ok: !error, ...(output === undefined ? {} : { output }), ...(error ? { error } : {}), audit: { tool_name: "whatsapp.history", input_summary: "whatsapp.history", output_summary: error ? error.code : `whatsapp.history: ${Array.isArray(output) ? output.length : 0} message(s)`, duration_ms: Math.max(0, Date.now() - startedAt) } };
 }
 
