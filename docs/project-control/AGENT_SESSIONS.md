@@ -624,3 +624,13 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Implemented on `fix/voice-transport-contract`: host-authorized OpenAI WebRTC SDP negotiation; organization-scoped encrypted realtime/chat key lookup with server env fallback; microphone/audio/data-channel UI, transcript-to-host-turn routing, spoken host-generated answer, greeting, mute/interrupt/end controls, explicit transport state and readiness timeout; added static transport tests.
 - Scope limit: native WebRTC currently OpenAI only. Other providers remain explicitly on transcript bridge. Full voice-triggered email mutations are not claimed; shared authorized email-tool runtime integration remains outstanding.
 - Verification: GitHub source edits only; tests, typecheck, build, browser/provider and deployment not run. PR #27 remains open; issue #26 remains open.
+
+
+### SESSION-070 — 2026-10-17
+- Agent: FIX-01 / Sentinel
+- Task: Investigate WhatsApp queued-but-not-delivered message after Meta webhook reports error 131047.
+- Root cause: Meta rejected free-form text because the 24-hour customer-service window expired; use an approved template or wait for customer reply.
+- Recent idempotency commits were reviewed and found unrelated to this provider-policy rejection.
+- Follow-up: UI still showed “sent” despite the supplied failed webhook payload. Exact live webhook-to-row-to-UI path remains unverified; OPS-01 owns deployed runtime/database/webhook evidence.
+- Record: `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`.
+- Verification: source inspection and user-supplied payload only; no tests or live send verification.
