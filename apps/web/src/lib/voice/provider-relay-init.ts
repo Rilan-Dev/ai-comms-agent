@@ -24,6 +24,9 @@ export async function voiceRelayInit(request: Request, provider: RelayProvider) 
         String(session.provider ?? "").toLowerCase() !== provider) {
       return NextResponse.json({ error: "session_not_authorized" }, { status: 403 });
     }
+    // The host stores a model only after the authenticated /api/voice/session
+    // negotiation. Re-validate it here before sending an upstream relay URL.
+    const selectedModel = bounded(session.model, 100);
     const apiKey = await resolveVoiceProviderApiKey(organizationId, provider);
     if (!apiKey) return NextResponse.json({ error: "provider_not_configured" }, { status: 503 });
 
@@ -33,7 +36,8 @@ export async function voiceRelayInit(request: Request, provider: RelayProvider) 
       return NextResponse.json({
         apiKey,
         baseUrl: "https://api.sarvam.ai",
-        sttModel: "saaras:v3-realtime",
+        sttModel: selectedModel === "saaras:v4" || selectedModel === "saaras:v3-realtime"
+          ? selectedModel : "saaras:v3-realtime",
         languageCode: claims.languageCode,
         sampleRate: 16000,
         vad: { silenceDurationMs: 750, speechThreshold: 0.025 },
@@ -54,7 +58,7 @@ export async function voiceRelayInit(request: Request, provider: RelayProvider) 
     return NextResponse.json({
       apiKey,
       baseUrl: "https://api.elevenlabs.io",
-      sttModel: "scribe_v2_realtime",
+      sttModel: "scribe_v2_realtime", // Only realtime STT model the current ElevenLabs relay accepts.
       languageCode: null,
       audioFormat: "pcm_16000",
       sampleRate: 16000,
