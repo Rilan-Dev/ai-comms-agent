@@ -90,7 +90,9 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
           [context.organization_id, input.account_id, input.template_name, input.template_language],
         );
         if (!template.rows.length) return fail("template_not_approved", "Only a template synchronized from Meta with approved status can be requested.");
-        const components = template.rows[0].components;
+        const approvedTemplate = template.rows[0];
+        if (!approvedTemplate) return fail("template_not_approved", "Only a template synchronized from Meta with approved status can be requested.");
+        const components = approvedTemplate.components;
         const componentList = Array.isArray(components) ? components.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item)) : [];
         if (componentList.some((item) => item.type === "BUTTONS" || (item.type === "HEADER" && ((typeof item.format === "string" ? item.format : "TEXT") !== "TEXT" || (typeof item.text === "string" && /\{\{\d+\}\}/.test(item.text)))))) {
           return fail("unsupported_template_components", "This sender supports approved text templates with body parameters only.");
@@ -138,9 +140,9 @@ export async function createWhatsAppToolRuntime(organizationId: string, agentId:
   const policy = await agents.policy(organizationId, agentId);
   const allowedTools = policy?.allowedTools ?? [];
   const registry = new ToolRegistry((requestedAgentId) => requestedAgentId === agentId ? allowedTools : null);
-  registry.register(createWhatsAppHistoryTool());
-  registry.register(createWhatsAppSendApprovalTool());
-  const authorize: WhatsAppToolRuntime["authorize"] = async (tool, _input, context) => {
+  registry.register(createWhatsAppHistoryTool() as unknown as Tool);
+  registry.register(createWhatsAppSendApprovalTool() as unknown as Tool);
+  const authorize: WhatsAppToolRuntime["authorize"] = async (tool, input, context) => {
     if (context.organization_id !== organizationId || context.agent_id !== agentId) return { allowed: false, code: "context_mismatch", message: "The tool context does not match the initialized agent runtime." };
     const currentPolicy = await agents.policy(organizationId, agentId);
     if (!currentPolicy?.allowedTools.includes(tool.name)) return { allowed: false, code: "tool_not_allowed", message: "This tool is not enabled for the current agent." };
