@@ -279,3 +279,13 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Blockers/dependencies:** OPS-01 runtime evidence needed to explain why UI still showed “sent” despite the supplied failed status event.
 - **Lesson:** Distinguish queued, provider accepted, sent, delivered, read, and failed; never infer delivery from queue acknowledgement.
 - **Next action:** Use an approved template out of window. OPS-01 trace deployed webhook/status persistence/UI; FIX-01 add focused regression once the status mismatch is isolated.
+
+### FIX01-WHATSAPP-DISPLAY-STATUS-20261017 / 2026-10-17
+- **Task:** Preserve custom WhatsApp account display name and route queued/sent/failed UI discrepancy to OPS-01.
+- **Authorization:** User explicitly asked to fix the display name reverting from `SMTS WA` to `Test Number` and to carry out the OPS-01 runtime trace.
+- **Root cause (display name):** `apps/web/src/app/api/whatsapp/accounts/route.ts` passed Meta's `verified_name` to `updateWhatsAppAccountStatus` after saving the user label. The same DB field represents the app label, so Meta overwrote the custom name.
+- **Remedy:** Preserve `account.display_name` first and use Meta's verified name only as fallback. Source commit `fd1fda7429363091098825dbf37bba0f30be3d0f`; static regression test `apps/web/tests/whatsapp-account-display-name.test.ts`, commit `79f0e6a12511afaa07249005d24e6e50fc3c7d2b`.
+- **Status mismatch investigation:** Last observed production deployment `dpl_5zjzPd6V3uBGuMK2LppXqsRTkirK` served `0e355bc75df6ab6c41ac619050be561faeb7c3e7` before the fix. Available Vercel grouped errors are older account-save schema failures; relevant historical runtime logs were not retained and no direct live DB row was available. Source contract updates a status only on exact provider-message-ID + org + account match; webhook returns an accepted count. No proven source cause for the exact `sent`/ `failed` discrepancy.
+- **Routing:** Handoff `HOF-FIX01-OPS-WHATSAPP-DISPLAY-STATUS-20261017` remains OPEN. OPS-01 must verify serving revision, webhook HTTP response/accepted count, scoped DB row/provider error, and API/UI consistency. FIX-01 will patch status flow only if runtime evidence proves a source defect.
+- **Verification:** Static regression test authored but not run. Deployment after source commits not confirmed. No live runtime/status PASS claimed.
+- **Lesson:** Do not conflate the user-controlled display label with Meta's provider verified name. Treat queue acceptance and provider delivery status as separate states.
