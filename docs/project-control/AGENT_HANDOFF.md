@@ -42,3 +42,14 @@ Cross-agent handoff register. A handoff transfers context, not authority.
 - Commit: `197e6535eab0cafde3e84db8f0605b7a174b3b03`
 - Change: require an active organization membership before creating a login session; return explicit 403 for unprovisioned accounts; add regression protection.
 - Remaining runtime action: deploy/restart the commit in the affected environment and verify a provisioned account reaches the application shell. Do not wait for CI/Vercel; runtime verification remains OPS-01 scope.
+
+
+### HOF-FIX01-WHATSAPP-STATUS-20261017
+- **From:** FIX-01 / Sentinel
+- **To:** OPS-01 / live runtime investigation
+- **State:** OPEN — runtime evidence required
+- **Symptom:** Meta webhook payload for the attempted outbound message reports `failed`, error 131047 (24-hour customer-service window expired), while the conversation UI displayed `sent`.
+- **Confirmed provider cause:** free-form text is not permitted outside the 24-hour window; use an approved template or wait for a customer reply. No source policy bypass is authorized.
+- **OPS-01 action:** Identify serving commit; inspect redacted webhook HTTP status/body and accepted count; trace exact provider message ID in the organization/account-scoped row including status/provider_error; verify UI refresh/state mapping. Do not expose tokens or message secrets in logs.
+- **FIX-01 boundary:** After runtime evidence isolates a source defect, add the smallest status-persistence/UI correction and regression test. Do not claim live delivery based on queue acknowledgement.
+- **Evidence record:** `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`.
