@@ -197,3 +197,12 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Adapter:** `apps/worker/src/knowledge/clara-email-vector-adapter.ts` and request-contract tests are authored but unbound; worker startup does not import the adapter or start the outbox loop.
 - **Next:** Run focused worker adapter tests/typecheck and Clara typecheck/tests/lint/build plus Qdrant integration coverage when a dependency-equipped checkout is available. After ISS-026 closes, bind adapter + outbox loop and shared PostgreSQL/Qdrant retrieval. OPS-01 handles live runtime/ingestion/latency acceptance.
 - **Retrieval implementation update (2026-10-16):** shared service now authored at `packages/db/src/email/hybrid-retrieval.ts`; Clara search client at `packages/db/src/email/clara-vector-search.ts`; source tests added. It is not yet connected to Chat/voice and is not runtime-verified. ISS-026 remains a hard gate for transport wiring and outbox activation.
+
+### BKL-FIX01-CHAT-PROVIDER-20261017
+- **Work:** Verify live chat provider resolution after source fix for agent-specific Sarvam/Gemini configuration.
+- **Owner:** OPS-01
+- **State:** ROUTED
+- **Dependency:** Access to the actual deployed revision and tenant-scoped database metadata for organization runtime settings, agent override, and provider configuration.
+- **Authorization:** User-explicit FIX-01 incident investigation and corrective change.
+- **Suggested next action:** Deploy/restart revision containing `8d7aecc` via the existing manual procedure; inspect sanitized provider metadata and verify one chat turn selects Sarvam. Do not print secrets or add OpenAI credentials as workaround.
+- **Related session/event/handoff:** `SESSION-FIX01-CHAT-PROVIDER-20261017`; `EVT-FIX01-CHAT-PROVIDER-OVERRIDE-20261017`; `HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017`.
