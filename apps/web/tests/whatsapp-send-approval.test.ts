@@ -21,7 +21,7 @@ describe("WhatsApp send approval safety boundary", () => {
   });
 
   it("requires an authenticated organization update permission to decide", () => {
-    expect(decisionRoute).toContain('permission: "organization.update"');
+    expect(decisionRoute).toContain('permission: "whatsapp.send"');
     expect(decisionRoute).toContain('decision !== "approve" && decision !== "reject"');
     expect(decisionRoute).toContain("WHERE id=$1 AND organization_id=$2");
     expect(decisionRoute).toContain("whatsapp.send_approval.approved");
@@ -48,7 +48,7 @@ describe("WhatsApp send approval safety boundary", () => {
   it("requires templates to be submitted to and status-synced from Meta", () => {
     expect(templatesRoute).toContain("/message_templates");
     expect(templatesRoute).toContain("templateStatus(payload.status)");
-    expect(templatesRoute).toContain('permission: "organization.update"');
+    expect(templatesRoute).toContain('permission: "whatsapp.send"');
     expect(templateMigration).toContain("whatsapp_templates");
     expect(templateMigration).toContain("status text NOT NULL DEFAULT 'pending'");
   });
