@@ -96,7 +96,7 @@
 - Root cause: shared `AuthSubject` permits nullable membership even though successful `authorize()` calls guarantee an active membership. Caller did not narrow the shared type.
 - Correction on main: explicit fail-closed 403 membership guard after `authorize()`, plus regression assertion requiring the guard before trusted `ToolContext` construction. Commits: `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9`, `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`.
 - Verification remains pending: source changes are committed; no post-fix build/test result yet.
-- **Next:** Pull latest main and rerun `docker compose -f infra/docker-compose.manual.yml up -d --build`. If successful, run the focused chat host-tool-loop test and update this state from actual output. Host shell `pnpm: command not found` is a separate OPS-01 toolchain issue; do not change app source to work around it.
+- **Next:** Pull latest main and rerun `docker compose -f infra/docker-compose.yml up -d --build`. If successful, run the focused chat host-tool-loop test and update this state from actual output. Host shell `pnpm: command not found` is a separate OPS-01 toolchain issue; do not change app source to work around it.
 
 ## DEV-01 — Chat tool loop and WhatsApp approval checkpoint — 2026-10-17
 
@@ -175,7 +175,7 @@
 - **Symptom:** Clean Docker worker build failed TypeScript compilation with TS2352 in Gmail watch renewal and IMAP IDLE startup.
 - **Root cause:** Generic decrypted credential records were cast directly to `EmailCredentials`, whose required `credential_type` discriminant was not guaranteed.
 - **Source remedy committed:** Validate supported discriminant values (`oauth_token`, `password`, `app_password`), pass a narrowed spread object, and remove unsafe casts. See ISS-027 and FIX01-WORKER-CREDENTIAL-TYPE-20261016.
-- **Next action:** From the deployment checkout, run `pnpm --filter @ai-comms-agent/worker typecheck`, `pnpm --filter @ai-comms-agent/worker test`, then rebuild with `docker compose -f infra/docker-compose.manual.yml build --no-cache worker`. Re-run `docker compose --env-file .env.docker -f infra/docker-compose.manual.yml up -d` only after the worker image build succeeds.
+- **Next action:** From the deployment checkout, run `pnpm --filter @ai-comms-agent/worker typecheck`, `pnpm --filter @ai-comms-agent/worker test`, then rebuild with `docker compose -f infra/docker-compose.yml build --no-cache worker`. Re-run `docker compose --env-file .env.docker -f infra/docker-compose.yml up -d` only after the worker image build succeeds.
 - **Verification state:** Source change committed; no typecheck/test/rebuild pass claimed. Keep ISS-027 open until evidence is recorded.
 - **Routing:** If the source build succeeds but compose, network, registry, host, or deployment operations fail, route that distinct failure to OPS-01. Do not wait for DEV-01.
 
@@ -1226,7 +1226,7 @@ The user's latest `manual-up.sh` run built both Docker images and skipped migrat
 Latest user runtime evidence: migration 0032 now applies; the web inbox still fails because the deployed legacy attachment table has `email_message_id` while current repository SQL expects `message_id`. Draft GET returns `insufficient_role` for `Requires one of: member`; role guard was not hierarchical. Worker queue enqueue/consumer repeatedly fails with `Expected ConnectionOpenOk; got <ConnectionClose channel:0>`, so eligible accounts remain queued.
 Source corrections committed to `main`: forward-only migration 0033 copies legacy attachment foreign keys; role guard now implements member < admin < owner; if RabbitMQ enqueue fails, worker attempts the existing direct-sync batch under its Redis distributed lease; RabbitMQ logs include sanitized endpoint/error details. Regression assertions were added.
 Commits: migration `de8a79b2`; auth `0ab61969`; auth test `25d35236`; migration test `65ca6a0d`; queue fallback `a0124202`; diagnostics `d058b5e1` and `27d960eb`; fallback test `c45f6a9d`.
-**User next action:** `git pull --ff-only origin main && git status --short && bash scripts/manual-up.sh`; then inspect `docker compose -f infra/docker-compose.manual.yml logs --tail=200 worker web`. Do not wait for CI/Vercel. Tests, migration 0033 execution, provider synchronization, and live API behavior are still unverified. If fallback reports Redis lease unavailable, correct Redis credentials/ACL/TLS from the exact sanitized error; do not bypass the distributed lease. Check that the inbox renders, drafts GET returns 200 for a valid organization member/owner, and messages are persisted/fetched. The user pasted an access token in a curl command; advise revoking it and creating a fresh session, but never store the token.
+**User next action:** `git pull --ff-only origin main && git status --short && bash scripts/manual-up.sh`; then inspect `docker compose -f infra/docker-compose.yml logs --tail=200 worker web`. Do not wait for CI/Vercel. Tests, migration 0033 execution, provider synchronization, and live API behavior are still unverified. If fallback reports Redis lease unavailable, correct Redis credentials/ACL/TLS from the exact sanitized error; do not bypass the distributed lease. Check that the inbox renders, drafts GET returns 200 for a valid organization member/owner, and messages are persisted/fetched. The user pasted an access token in a curl command; advise revoking it and creating a fresh session, but never store the token.
 
 
 ## FIX-01 follow-up — 2026-10-10 test-command mismatch
@@ -1457,6 +1457,6 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 ## OPS-01 — Manual Compose env-file startup correction — 2026-10-18
 
 - Latest user log: image builds passed; migration runner completed with 6 applied and 62 skipped; Compose startup failed because `../.env` resolved to a missing parent-directory file.
-- Corrected both `docker-compose.manual.yml` service `env_file` paths to repository-root `.env` (commit `5072621a66eab0016bf8c29e76df8683070baa14`) and added regression source (commit `2649466dd53f5a545bfaa2dd52ecaa9df959ba00`).
+- Corrected both `docker-compose.yml` service `env_file` paths to repository-root `.env` (commit `5072621a66eab0016bf8c29e76df8683070baa14`) and added regression source (commit `2649466dd53f5a545bfaa2dd52ecaa9df959ba00`).
 - Exact next action: pull latest `main`; run `node --test scripts/tests/manual-up-compose-env.test.mjs`; then run `bash scripts/update-and-up.sh`. Capture Compose startup and `ps` results, and check service health before claiming deployment success. Do not share secrets or database URLs.
 - Verification status: source committed; test and post-fix startup not yet verified.

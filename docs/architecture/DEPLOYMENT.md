@@ -149,7 +149,7 @@ The repository now provides a reproducible Docker path for manual testing withou
 - `scripts/migration-changes.sh`: detects migration drift against the local migration ledger.
 - `scripts/verify-docker.sh`: starts PostgreSQL, applies/checks migrations, verifies the Phase 3 owner invariant, and verifies direct ownerless organization creation is rejected.
 - `scripts/verify.sh`: the complete local gate — Docker DB verification, workspace typecheck, web tests/build, and worker build.
-- `infra/docker-compose.manual.yml`: full manual stack (Next.js web, worker, PostgreSQL, Redis, RabbitMQ, Qdrant). The `migrate` service automatically applies migrations before web/worker start.
+- `infra/docker-compose.yml`: full manual stack (Next.js web, worker, PostgreSQL, Redis, RabbitMQ, Qdrant). The `migrate` service automatically applies migrations before web/worker start.
 - `scripts/manual-up.sh` / `scripts/manual-down.sh`: start/stop the manual stack.
 
 Typical manual verification:

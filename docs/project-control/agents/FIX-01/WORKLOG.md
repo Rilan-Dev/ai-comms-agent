@@ -317,7 +317,7 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Failed approaches:** No default role, unsafe cast, weakening authorization, or broad shared-type refactor. `pnpm: command not found` in the host shell is separate environment/tooling work for OPS-01; the Docker image itself had pnpm and built the worker.
 - **Remedy:** Commit `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9` adds an explicit fail-closed 403 membership guard after authorization. Commit `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9` adds a static regression assertion that the guard precedes trusted tool context construction.
 - **Evidence:** User-supplied log: Next.js compilation succeeded; type validation failed at `route.ts:384`; worker Docker target built/exported successfully. Source correction and test were committed; no post-fix test/build is claimed.
-- **Next:** User pulls latest main and reruns `docker compose -f infra/docker-compose.manual.yml up -d --build`. If web build passes, continue with focused chat host-tool-loop test and runtime checks. OPS-01 separately handles host shell's missing pnpm if native pnpm commands are needed.
+- **Next:** User pulls latest main and reruns `docker compose -f infra/docker-compose.yml up -d --build`. If web build passes, continue with focused chat host-tool-loop test and runtime checks. OPS-01 separately handles host shell's missing pnpm if native pnpm commands are needed.
 
 
 ### FIX01-WHATSAPP-TEMPLATE-ROW-20261018 / 2026-10-18

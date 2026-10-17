@@ -1546,11 +1546,11 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 
 ### 2026-10-18 — FIX-01 chat membership nullability build failure
 
-- **User-provided evidence:** `docker compose -f infra/docker-compose.manual.yml up -d --build` built the worker image successfully. The web image's Next.js 15.5.27 compilation succeeded, then type validation failed at `apps/web/src/app/api/chat/stream/route.ts:384`: `subject.membership` is possibly null. Separately, native shell `pnpm --filter ...` returned `pnpm: command not found`; this does not explain the Docker build failure because the Docker build uses Corepack/pnpm.
+- **User-provided evidence:** `docker compose -f infra/docker-compose.yml up -d --build` built the worker image successfully. The web image's Next.js 15.5.27 compilation succeeded, then type validation failed at `apps/web/src/app/api/chat/stream/route.ts:384`: `subject.membership` is possibly null. Separately, native shell `pnpm --filter ...` returned `pnpm: command not found`; this does not explain the Docker build failure because the Docker build uses Corepack/pnpm.
 - **Root cause:** `authorize()` rejects missing/inactive memberships at runtime, but the shared `AuthSubject` type permits nullable membership; chat route accessed `subject.membership.role` without narrowing.
 - **Correction:** Commit `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9` adds an explicit 403 fail-closed guard after authorization. Commit `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9` adds a regression source assertion requiring the guard before trusted `ToolContext` construction.
 - **Verification status:** Source readback confirms the commits; post-fix web build, focused test execution, migrations, browser, and deployed runtime are NOT VERIFIED. Do not mark the build green based on the patch alone.
-- **Next action:** Pull latest `main`, rerun `docker compose -f infra/docker-compose.manual.yml up -d --build`, then run the focused web regression test when pnpm is available. Route only the missing native-host pnpm/toolchain to OPS-01.
+- **Next action:** Pull latest `main`, rerun `docker compose -f infra/docker-compose.yml up -d --build`, then run the focused web regression test when pnpm is available. Route only the missing native-host pnpm/toolchain to OPS-01.
 
 
 ### 2026-10-18 — FIX-01 WhatsApp template row nullability build failure

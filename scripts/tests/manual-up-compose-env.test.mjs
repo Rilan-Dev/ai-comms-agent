@@ -21,7 +21,7 @@ test("manual deployment does not print the resolved database URL", () => {
 });
 
 test("manual Compose services use the repository-root env file", async () => {
-  const compose = await readFile(new URL("../../docker-compose.manual.yml", import.meta.url), "utf8");
+  const compose = await readFile(new URL("../../docker-compose.yml", import.meta.url), "utf8");
   assert.equal(compose.split("      - .env").length - 1, 2);
   assert.equal(compose.includes("../.env"), false);
 });

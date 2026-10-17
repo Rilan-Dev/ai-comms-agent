@@ -646,7 +646,7 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - Owner: OPS-01
 - Status: in_progress
 - Evidence: User log shows image builds succeeded and migration chain completed, then Compose failed because `/home/techadmin/docker/.env` was missing.
-- Root cause: `docker-compose.manual.yml` referenced `../.env`, but `scripts/manual-up.sh` uses repository-root `.env`. Compose resolves `env_file` paths relative to the Compose file.
+- Root cause: `docker-compose.yml` referenced `../.env`, but `scripts/manual-up.sh` uses repository-root `.env`. Compose resolves `env_file` paths relative to the Compose file.
 - Correction: Both service paths changed to `.env` in commit `5072621a66eab0016bf8c29e76df8683070baa14`. Regression assertion added in commit `2649466dd53f5a545bfaa2dd52ecaa9df959ba00`.
 - Verification: Source only. Focused test, Compose startup and health remain pending.
 - Next: Pull latest main, run `node --test scripts/tests/manual-up-compose-env.test.mjs`, then rerun `bash scripts/update-and-up.sh`. Share sanitized output only.

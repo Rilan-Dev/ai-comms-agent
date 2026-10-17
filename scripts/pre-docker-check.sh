@@ -54,7 +54,7 @@ if ! run_typecheck_excluding_vendor "worker" pnpm --filter @ai-comms-agent/worke
 
 echo
 echo "== Docker configuration precheck =="
-if docker compose -f infra/docker-compose.manual.yml config >/dev/null; then ok "manual Docker Compose configuration"; else fail "manual Docker Compose configuration"; failures=$((failures + 1)); fi
+if docker compose -f infra/docker-compose.yml config >/dev/null; then ok "manual Docker Compose configuration"; else fail "manual Docker Compose configuration"; failures=$((failures + 1)); fi
 
 if (( failures > 0 )); then
   echo

@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-COMPOSE_FILE="docker-compose.manual.yml"
+COMPOSE_FILE="docker-compose.yml"
 ENV_FILE=".env"
 
 # Check required commands.

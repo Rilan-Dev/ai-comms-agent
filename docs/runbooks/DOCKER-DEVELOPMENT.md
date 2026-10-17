@@ -116,13 +116,13 @@ The stack contains postgres-db, redis, rabbitmq, qdrant, migrate, web and worker
 
 Check:
 ~~~bash
-docker compose -f infra/docker-compose.manual.yml ps
+docker compose -f infra/docker-compose.yml ps
 ~~~
 Logs:
 ~~~bash
-docker compose -f infra/docker-compose.manual.yml logs -f web
-docker compose -f infra/docker-compose.manual.yml logs -f worker
-docker compose -f infra/docker-compose.manual.yml logs -f
+docker compose -f infra/docker-compose.yml logs -f web
+docker compose -f infra/docker-compose.yml logs -f worker
+docker compose -f infra/docker-compose.yml logs -f
 ~~~
 
 Endpoints:
@@ -143,7 +143,7 @@ bash scripts/manual-down.sh
 ~~~
 Destroy data too:
 ~~~bash
-docker compose -f infra/docker-compose.manual.yml down -v
+docker compose -f infra/docker-compose.yml down -v
 ~~~
 
 ## 7. Migration operations
@@ -170,10 +170,10 @@ This also runs workspace typechecking, web tests/build and worker build.
 
 ## 9. Useful commands
 ~~~bash
-docker compose -f infra/docker-compose.manual.yml ps -a
-docker compose -f infra/docker-compose.manual.yml logs --tail=200 worker
-docker compose -f infra/docker-compose.manual.yml build web worker
-docker compose -f infra/docker-compose.manual.yml up -d --no-deps web worker
+docker compose -f infra/docker-compose.yml ps -a
+docker compose -f infra/docker-compose.yml logs --tail=200 worker
+docker compose -f infra/docker-compose.yml build web worker
+docker compose -f infra/docker-compose.yml up -d --no-deps web worker
 docker exec -it <postgres-container> psql -U aca -d aca
 docker exec -it <redis-container> redis-cli ping
 docker exec -it <rabbitmq-container> rabbitmq-diagnostics -q ping
@@ -182,7 +182,7 @@ curl -fsS http://localhost:6333/health
 
 ## 10. Clean reset
 ~~~bash
-docker compose -f infra/docker-compose.manual.yml down -v --remove-orphans
+docker compose -f infra/docker-compose.yml down -v --remove-orphans
 docker compose -f infra/docker-compose.yml --profile local-infra down -v --remove-orphans
 ~~~
 
@@ -207,7 +207,7 @@ Get-NetTCPConnection -State Listen | Where-Object {$_.LocalPort -in 3000,5432,63
 
 ### Migration failure
 ~~~bash
-docker compose -f infra/docker-compose.manual.yml logs migrate
+docker compose -f infra/docker-compose.yml logs migrate
 ~~~
 Do not rewrite an already-applied migration. Create a new forward migration after review.
 
@@ -216,7 +216,7 @@ Inside Compose use postgres-db, redis, rabbitmq and qdrant. From the host use 12
 
 Inspect web environment:
 ~~~bash
-docker compose -f infra/docker-compose.manual.yml exec web env | grep -E 'DATABASE_URL|REDIS_URL|RABBITMQ_URL|QDRANT_URL'
+docker compose -f infra/docker-compose.yml exec web env | grep -E 'DATABASE_URL|REDIS_URL|RABBITMQ_URL|QDRANT_URL'
 ~~~
 
 ## 12. Security rules

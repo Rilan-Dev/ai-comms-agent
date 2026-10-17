@@ -37,6 +37,6 @@ Source changes and static regression source are committed. The provided pre-fix 
 ## Next action
 
 1. Pull latest `main` in the user's checkout.
-2. Rerun `docker compose -f infra/docker-compose.manual.yml up -d --build`.
+2. Rerun `docker compose -f infra/docker-compose.yml up -d --build`.
 3. If the build succeeds, run the focused `chat-host-tool-loop.test.ts` via the repository's test command and report actual output.
 4. OPS-01 handles host-native pnpm setup if native commands are required; do not change application source to work around the missing host command.

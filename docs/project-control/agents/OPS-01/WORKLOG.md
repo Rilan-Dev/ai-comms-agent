@@ -49,8 +49,8 @@ Append-only operational history for OPS-01. This is not the source of authorizat
 ### OPS01-MANUAL-COMPOSE-ENV-PATH-20261018 / 2026-10-18
 - Task: Fix startup failure from a missing Compose env file.
 - Authorization: User-provided deployment output; minimal operational correction.
-- Actions: Changed both service `env_file` entries in `docker-compose.manual.yml` from `../.env` to `.env`, matching the repository-root file selected by `scripts/manual-up.sh`. Added a source regression assertion.
-- Files: `docker-compose.manual.yml`; `scripts/tests/manual-up-compose-env.test.mjs`.
+- Actions: Changed both service `env_file` entries in `docker-compose.yml` from `../.env` to `.env`, matching the repository-root file selected by `scripts/manual-up.sh`. Added a source regression assertion.
+- Files: `docker-compose.yml`; `scripts/tests/manual-up-compose-env.test.mjs`.
 - Evidence: Source commits `5072621a66eab0016bf8c29e76df8683070baa14` and `2649466dd53f5a545bfaa2dd52ecaa9df959ba00`. Test and post-fix startup have not been run.
 - Lesson: Compose resolves relative env-file paths from the Compose file directory.
 - Next: Pull latest main; run the focused Node test and manual deployment; record actual startup and health results.

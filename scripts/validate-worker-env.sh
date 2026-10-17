@@ -5,7 +5,7 @@
 set -uo pipefail
 
 ENV_FILE="${ENV_FILE:-.env.docker}"
-COMPOSE_FILE="${COMPOSE_FILE:-infra/docker-compose.manual.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-infra/docker-compose.yml}"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "FAIL: $ENV_FILE not found."

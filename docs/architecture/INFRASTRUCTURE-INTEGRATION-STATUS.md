@@ -26,7 +26,7 @@ infra/docker-compose.yml now contains runnable PostgreSQL, Redis, RabbitMQ, and 
 
     docker compose -f infra/docker-compose.yml --profile local-infra up -d
 
-This is local-development infrastructure only. The manual app stack in infra/docker-compose.manual.yml intentionally uses external endpoints from .env.docker; enabling local containers does not automatically connect application code to them. Replace local-only credentials before any network exposure. Production service provisioning and deployment remain OPS-01's responsibility.
+This is local-development infrastructure only. The manual app stack in infra/docker-compose.yml intentionally uses external endpoints from .env.docker; enabling local containers does not automatically connect application code to them. Replace local-only credentials before any network exposure. Production service provisioning and deployment remain OPS-01's responsibility.
 
 ## Completion criteria before calling these services enabled
 
