@@ -1,4 +1,4 @@
-import { createEmailAction, getWhatsAppAccountForAgent, queueWhatsAppOutboundMessage, PostgresEmailAccountRepository, recordAuditEvent } from "@ai-comms-agent/db";
+import { createEmailAction, getWhatsAppAccountForAgent, PostgresEmailAccountRepository, query, recordAuditEvent } from "@ai-comms-agent/db";
 import type { ProductActionResult } from "@ai-comms-agent/shared";
 
 type Action = Record<string, unknown>;
@@ -24,26 +24,40 @@ export async function executeProductActions(context: Context, params: Record<str
     if (type === "send_whatsapp") {
       const account = await getWhatsAppAccountForAgent(context.organizationId, context.agentId);
       const to = stringValue(action.to);
-      if (!account || account.status !== "connected" || !to) {
+      if (!account || account.status !== "connected" || !to || !/^\\+[1-9]\\d{7,14}$/.test(to)) {
         results.push({
           type,
           status: "configuration_required",
-          reason: !account ? "No WhatsApp account is bound to the agent" : account.status !== "connected" ? "WhatsApp account is not connected" : "WhatsApp recipient is missing",
+          reason: !account ? "No WhatsApp account is bound to the agent" : account.status !== "connected" ? "WhatsApp account is not connected" : "A valid E.164 WhatsApp recipient is required",
         });
         continue;
       }
       const template = stringValue(action.body);
-      const body = template ? template.replaceAll("{{output}}", context.output) : context.output;
-      const messageId = await queueWhatsAppOutboundMessage({
-        organizationId: context.organizationId,
-        accountId: account.id,
-        to,
-        body,
-        idempotencyKey: "agent:" + context.agentId + ":execution:" + context.executionId + ":whatsapp:" + to,
-        correlationId: context.executionId,
-      });
-      await recordAuditEvent({ organizationId: context.organizationId, actorUserId: null, agentId: context.agentId, eventType: "whatsapp.message.queued", targetType: "whatsapp_message", targetId: messageId, action: "send_whatsapp", decision: messageId ? "queued" : "duplicate", correlationId: context.executionId, metadata: { executionId: context.executionId, recipient: to } });
-      results.push({ type, status: messageId ? "queued" : "duplicate", messageId: messageId ?? null });
+      const body = (template ? template.replaceAll("{{output}}", context.output) : context.output).trim();
+      if (!body || body.length > 4096) {
+        results.push({ type, status: "configuration_required", reason: "Generated WhatsApp text must contain 1–4096 characters" });
+        continue;
+      }
+      const idempotencyKey = "agent:" + context.agentId + ":execution:" + context.executionId + ":whatsapp:" + to;
+      const correlationId = context.executionId;
+      const inserted = await query<{ id: string; status: string }>(
+        "INSERT INTO whatsapp_send_actions (organization_id, whatsapp_account_id, agent_id, agent_binding_required, requested_by, recipient_phone, message_body, payload_type, status, idempotency_key, correlation_id) VALUES ($1,$2,$3,true,NULL,$4,$5,'text','pending',$6,$7) ON CONFLICT (organization_id,idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING RETURNING id,status",
+        [context.organizationId, account.id, context.agentId, to, body, idempotencyKey, correlationId],
+      );
+      let approval = inserted.rows[0];
+      if (!approval) {
+        const existing = await query<{ id: string; status: string; whatsapp_account_id: string; recipient_phone: string; message_body: string }>(
+          "SELECT id,status,whatsapp_account_id,recipient_phone,message_body FROM whatsapp_send_actions WHERE organization_id=$1 AND idempotency_key=$2 LIMIT 1",
+          [context.organizationId, idempotencyKey],
+        );
+        approval = existing.rows[0];
+        if (!approval || String(approval.whatsapp_account_id) !== account.id || String(approval.recipient_phone) !== to || String(approval.message_body) !== body) {
+          results.push({ type, status: "failed", reason: "WhatsApp approval idempotency conflict" });
+          continue;
+        }
+      }
+      await recordAuditEvent({ organizationId: context.organizationId, actorUserId: null, agentId: context.agentId, eventType: "whatsapp.send_approval.requested", targetType: "whatsapp_send_action", targetId: approval.id, action: "send_whatsapp", decision: "pending_approval", correlationId, metadata: { executionId: context.executionId, recipientSuffix: to.slice(-4), accountId: account.id } });
+      results.push({ type, status: "pending_approval", actionId: String(approval.id), message: "Human approval is required; no WhatsApp message has been queued or sent." });
       continue;
     }
 
