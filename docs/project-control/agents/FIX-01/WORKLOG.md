@@ -295,3 +295,15 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - Expanded `apps/web/tests/whatsapp-account-display-name.test.ts` to cover the immediate API verification and worker verification call sites.
 - Commits: worker `7d785b36f2bae90d9d137805e1390fe9ab467550`; updated regression test `f9bc5ec1cc793fb69c3b2a5a7d26e8d1cf00d5fb`.
 - Not executed: tests/typecheck/build/deployment. OPS-01 status mismatch handoff remains OPEN.
+
+### FIX01-CHAT-PROVIDER-OVERRIDE-20261017 / 2026-10-17
+- **Task:** Diagnose chat choosing OpenAI despite saved per-agent Sarvam override.
+- **Authorization:** User-explicit FIX-01 request to recover project control, trace recent commits/root cause, apply smallest correction, add regression protection, and route deployment/environment work to OPS-01.
+- **Started from:** `main`; recent commits were mostly records for the WhatsApp incident. Relevant feature-introducing commit: `4dc991fa5616f9a04ed3050a7c748e489c6e75f5`.
+- **Evidence:** `apps/web/src/app/api/chat/stream/route.ts` passes agentId into `createChatTurn`. `packages/clara-core/src/runtime.ts` previously returned null when the org runtime-defaults row was absent, before querying agent_ai_settings or ai_provider_configs. That path falls back to selectedProvider(), defaulting to OpenAI, matching the observed error if OPENAI_API_KEY is absent. Actual live DB row state remains unconfirmed.
+- **Remedy:** Replace early return with safe org-default values so agent override/provider lookup continues. Commit `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0`.
+- **Regression:** Added static test `apps/web/tests/clara-agent-provider-resolution.test.ts`; commits `d9e6c619320390c5290c04d29d30187a6838736f`, `c0e0a31e788ecd24e6af89f42e4f67f5100b7c73`.
+- **Failed approaches to avoid:** Do not add an OpenAI key to mask wrong provider selection; do not trust container startup as chat proof; do not change unrelated channels/adapters.
+- **Verification:** Test authored but not run. No typecheck/build/deploy/provider request/live DB verification. No PASS claimed.
+- **Routing:** OPS-01 handoff `HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017` OPEN. Verify actual DB row state and serving revision; deploy/restart via existing manual procedure; test one chat turn and sanitized logs.
+- **Prevention:** Agent overrides must be resolved independently of org defaults; tenant-scoped saved provider settings should beat process env fallback.
