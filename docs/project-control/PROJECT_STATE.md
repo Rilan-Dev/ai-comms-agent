@@ -1,3 +1,12 @@
+## DEV-01 — Main-only provider organization isolation repair (2026-10-18)
+
+- Client-side organization switching and stale-response risks in both AI provider forms and the live model selector have source fixes on `main`; no new branch or PR. Credential editor clears an unsaved key, gates writes until org settings load, and ignores late previous-org results.
+- Limited verification: 15/15 existing isolated Node tests, three pure-module TS checks, 12/12 new GitHub source-contract checks passed; updated new Node/Vitest, app typecheck/build, browser/live integrations **not executed**. Production acceptance pending. See `NEXT_ACTION.md` and session `docs/project-control/sessions/DEV01-ORG-CREDENTIAL-ISOLATION-20261018.md`.
+- Phase 4 remains implementation in progress; existing DEV-01/FIX-01/OPS-01 ownership retained.
+
+
+---
+
 ## 2026-10-18 — DEV-01 direct-main provider settings safety and UX continuation
 
 - Owner requirement: continue directly on `main`, **no new branch**.
