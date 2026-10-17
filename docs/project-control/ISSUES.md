@@ -604,3 +604,15 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Evidence/verification:** User's log proves worker image build/export and web webpack parse failure before correction. Post-fix build and test are NOT RUN / NOT VERIFIED.
 - **Prevention lesson:** When adding a fallback branch within an existing lexical scope, reuse the request/generation identity already computed rather than redeclaring a `const`.
 - **Next action:** Pull latest main, rerun `bash scripts/update-and-up.sh`; if compilation passes, run focused `voice-realtime-transport.test.ts`. Record actual output before closing.
+
+
+
+## ISS-033 — Voice audio resampling indexed sample nullability (2026-10-18)
+- **Owner:** FIX-01 / Sentinel for source correction; OPS-01 only for separate environment/deployment failures.
+- **Evidence:** User's Docker deployment log shows Next.js compilation succeeds but TypeScript fails at `apps/web/src/app/ai-voice/voice-workspace.tsx:331`: `input[i]` has type `number | undefined` and is passed to `Math.min`.
+- **Root cause:** Typed-array indexed reads are possibly undefined under the project's strict indexed-access settings; the same risk exists in the averaging loop.
+- **Correction:** Treat an absent indexed sample as zero in both same-rate conversion and downsampling accumulation. This is defensive and preserves finite audio conversion without weakening type checks.
+- **Regression:** Added a focused source-contract assertion in `apps/web/tests/voice-realtime-transport.test.ts` for both fallback guards.
+- **Commits:** source `baa9746142297322c5bf796e7c6fb94060bbc9cf`; regression `ff8ab0faa72a1a235c47be6d773c16738d2cd79a`.
+- **Verification:** Source and test are committed on `main`; post-fix Docker build and focused test are NOT RUN / NOT VERIFIED.
+- **Next action:** Pull latest `main`, rerun `bash scripts/update-and-up.sh`, then run `pnpm --filter @ai-comms-agent/web exec vitest run tests/voice-realtime-transport.test.ts` if the build succeeds and pnpm is available. Continue with any subsequent source error; do not mark build green without actual output.
