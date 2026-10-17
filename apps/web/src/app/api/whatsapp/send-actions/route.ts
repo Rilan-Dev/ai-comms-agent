@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     );
     return NextResponse.json({ actions: actions.rows.map((action) => ({
       ...action,
-      recipient_phone: action.recipient_phone.replace(/\\d(?=\\d{4})/g, "•"),
+      recipient_phone: action.recipient_phone.replace(/\d(?=\d{4})/g, "•"),
       message_body: action.message_body.slice(0, 4096),
     })) });
   } catch (error) {
