@@ -365,3 +365,11 @@ If shared memory conflicts with current repository state or current requirements
 - **Prevention:** Narrow array elements directly after database writes/RETURNING operations; keep an explicit absent-row response even when a length check is present.
 - **Evidence:** Source commit `90fac5e0774b695446e1e0c3ab51072639ba5f06`; regression test commit `41734923651b1173a703d747f0ac0aa93317a5b9`. User log shows worker image built/exported and web compile succeeded before type validation failed. No post-fix test or build has been run/observed.
 - **Next action:** Pull latest `main` and rerun `bash scripts/update-and-up.sh` (or the documented Docker Compose build). If the build passes, run the focused `whatsapp-send-approval.test.ts` suite. Record actual results; do not infer success from source commits.
+
+
+### FIX01-VOICE-GENERATION-ID-20261018 — 2026-10-18
+- **Symptom:** Web build failed webpack parse with duplicate `generationId` in `apps/web/src/app/ai-voice/voice-workspace.tsx`; worker image built/exported.
+- **Root cause:** Two `const generationId` declarations in one Sarvam/ElevenLabs speech fallback block.
+- **Fix/test:** Reuse the existing identifier; regression assertion checks a single declaration in the provider branch. Commits `f6efffdb42dbd75df38841fab43b985eb565ee3f` and `05519965adae7ebab837a03e4d7a0d2306e3f0c1`.
+- **Verification:** Post-fix build/test pending; no green claim.
+- **Next:** Pull main, rebuild, run focused voice transport test, update records with actual output.
