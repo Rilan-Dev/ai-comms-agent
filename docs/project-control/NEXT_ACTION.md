@@ -1251,3 +1251,10 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Pending:** UI showed `sent` despite a supplied failed webhook payload. OPS-01 should inspect the serving revision, webhook delivery/HTTP response, provider-message-ID match, persisted status/error and UI refresh using redacted evidence.
 - **FIX-01 next:** Add a focused regression test and source correction only if that trace proves a code defect. Do not change Meta policy handling, weaken authorization, or treat queued=true as delivery.
 - **Session record:** `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`.
+
+## FIX-01 / OPS-01 — WhatsApp label and status follow-up (2026-10-17)
+- **Source fix committed:** WhatsApp account save now preserves the user's custom display label after Meta verification; Meta's `verified_name` is a fallback only. Test added at `apps/web/tests/whatsapp-account-display-name.test.ts`.
+- **Commits:** `fd1fda7429363091098825dbf37bba0f30be3d0f` (source), `79f0e6a12511afaa07249005d24e6e50fc3c7d2b` (regression test).
+- **OPS-01 next:** Confirm the actual post-fix production revision. Trace the specific Meta failed webhook: HTTP status/body + accepted count, organization/account-scoped message row (provider_message_id/status/provider_error/updated_at), then API response and UI. Last observed production revision before the source fix was `0e355bc75df6ab6c41ac619050be561faeb7c3e7` on deployment `dpl_5zjzPd6V3uBGuMK2LppXqsRTkirK`.
+- **Evidence limitation:** Vercel runtime logs for the historic window are outside the available Hobby retention; grouped errors only show older Oct 10–11 account-save DB constraint errors. No direct live DB row was available. Exact cause of the `sent`/ `failed` discrepancy remains OPEN; do not speculate or patch status logic without runtime evidence.
+- **Record:** `docs/project-control/sessions/FIX01-WHATSAPP-DISPLAY-STATUS-20261017.md`; handoff `HOF-FIX01-OPS-WHATSAPP-DISPLAY-STATUS-20261017`.
