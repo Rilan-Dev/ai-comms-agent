@@ -1,8 +1,35 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { normalizeRuntimeSettings } from "../src/lib/ai/runtime-settings-state";
 
 const read = (path: string) => readFileSync(resolve(__dirname, path), "utf8");
+
+describe("Organization AI runtime form state", () => {
+  it("hydrates ALL persisted camelCase fields before a snake_case PUT without overwriting KB or prompt", () => {
+    const state = normalizeRuntimeSettings({
+      defaultProvider: "gemini",
+      knowledgeBaseId: "org-kb-private",
+      realtimeVoiceProvider: "openai",
+      realtimeVoiceModel: "live-model-id",
+      voiceId: "sage",
+      temperature: 0,
+      maxTokens: 3072,
+      systemPrompt: "Organization policy survives reload",
+    });
+    expect(state).toEqual({
+      default_provider: "gemini",
+      knowledge_base_id: "org-kb-private",
+      realtime_voice_provider: "openai",
+      realtime_voice_model: "live-model-id",
+      voice_id: "sage",
+      temperature: 0,
+      max_tokens: 3072,
+      system_prompt: "Organization policy survives reload",
+    });
+    expect(read("../src/app/settings/ai-runtime-settings.tsx")).toContain("setSettings(normalizeRuntimeSettings(value))");
+  });
+});
 
 describe("Organization AI configuration", () => {
   it("persists tenant-scoped Clara runtime settings with validated values", () => {
