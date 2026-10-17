@@ -816,3 +816,12 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Failed approaches:** Host-side `node packages/db/migrate.js` with `postgres:5432`; proposed app URL change to `host.docker.internal:5433` (rejected because it violates the requested internal network design).
 - **Evidence:** User logs show `ENOTFOUND postgres`; inspection shows shared Docker network and PostgreSQL alias. No migration retry, test execution, database-name confirmation, or post-fix health check.
 - **Next:** OPS-01 implements one-off Compose migration with migrations mounted/copied into image, adds regression coverage, verifies intended DB target, then records actual migration and service health outcomes.
+
+
+### OPS01-MIGRATION-CONTAINER-20261018 — 2026-10-18 implementation update
+- **Agent:** OPS-01 / Shipwright
+- **Source:** `scripts/manual-up.sh` now runs migrations inside a one-off Compose container and mounts migration files read-only; no app URL is redirected through the host.
+- **Regression:** Focused source-contract suite has four assertions/tests covering the container invocation, mount, host-side DSN removal, no URL logging, and unchanged startup policy.
+- **Commits:** source `65a215151ecd14900fac3c9ba9a421fb7a777a77`; final test `6cd93638bffa0e2f6a9e8d6ce2f3f2664b13341b`.
+- **Evidence:** `bash -n` PASS; isolated Node test 4/4 PASS. No live migration/health test.
+- **Next:** Confirm DB target, then run the focused test from the user's actual checkout and perform deployment verification.
