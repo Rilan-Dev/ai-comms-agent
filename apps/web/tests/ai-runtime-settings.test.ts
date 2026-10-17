@@ -28,6 +28,9 @@ describe("Organization AI runtime form state", () => {
       system_prompt: "Organization policy survives reload",
     });
     expect(read("../src/app/settings/ai-runtime-settings.tsx")).toContain("setSettings(normalizeRuntimeSettings(value))");
+    const api = read("../src/app/api/settings/ai-runtime/route.ts");
+    expect(api).toContain('realtimeVoiceModel: ""');
+    expect(api).not.toContain('realtimeVoiceModel: "gpt-realtime-2.1-mini"');
   });
 });
 
