@@ -104,7 +104,7 @@ export async function POST(request: Request) {
         if (item.type !== "HEADER") return false;
         const format = typeof item.format === "string" ? item.format : "TEXT";
         const headerText = typeof item.text === "string" ? item.text : "";
-        return format !== "TEXT" || /\\{\\{\\d+\\}\\}/.test(headerText);
+        return format !== "TEXT" || /\{\{\d+\}\}/.test(headerText);
       });
       if (unsupportedComponents) {
         return NextResponse.json({ error: "unsupported_template_components", message: "This sender supports approved text templates with body parameters only; media, dynamic headers and button templates fail closed." }, { status: 409 });
