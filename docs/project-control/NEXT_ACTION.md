@@ -1264,3 +1264,9 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - Regression coverage now checks both call sites: `apps/web/tests/whatsapp-account-display-name.test.ts`.
 - Latest source/test commits: `7d785b36f2bae90d9d137805e1390fe9ab467550`, `f9bc5ec1cc793fb69c3b2a5a7d26e8d1cf00d5fb`. Tests remain unexecuted and deployment remains unconfirmed.
 - OPS-01 must continue the separate live status trace; do not close it based on source inspection.
+
+### FIX-01 / OPS-01 — chat provider override follow-up (2026-10-17)
+- **Source correction:** `packages/clara-core/src/runtime.ts` no longer skips per-agent settings when the organization-default row is absent. Commit `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0`.
+- **Regression test:** `apps/web/tests/clara-agent-provider-resolution.test.ts` (commits `d9e6c619320390c5290c04d29d30187a6838736f`, `c0e0a31e788ecd24e6af89f42e4f67f5100b7c73`); not executed.
+- **OPS-01 next:** Confirm serving revision for the public domain and self-hosted web container. Inspect org runtime-default row presence, agent chat override, and Sarvam chat provider-config metadata in the correct org scope. Rebuild/restart through the normal manual procedure and test one chat turn. No credentials may be printed.
+- **Status:** Source correction committed; runtime root branch remains conditional on live DB state. Test/build/deployment not verified. Handoff `HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017` OPEN.
