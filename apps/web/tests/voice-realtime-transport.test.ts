@@ -71,7 +71,9 @@ describe("Clara realtime voice transport", () => {
 
   it("uses the same shared authorized email runtime for spoken and typed turns", () => {
     expect(turnRoute).toContain('import { runEmailAgentTurn } from "@ai-comms-agent/email-agent-runtime"');
+    expect(turnRoute).toContain("if (!subject.membership)");
     expect(turnRoute).toContain("subject.membership.role");
+    expect(turnRoute).toContain('conversation_id: typeof session.conversation_id === "string"');
     expect(turnRoute).toContain("[...subject.permissions]");
     expect(turnRoute).toContain("maxRounds: 4");
     expect(turnRoute).toContain("maxToolCalls: 8");
@@ -109,6 +111,9 @@ describe("Clara realtime voice transport", () => {
     );
     expect(resampler).toContain("const sample = input[i] ?? 0;");
     expect(resampler).toContain("sum += input[j] ?? 0;");
+    expect(workspace).toContain("samples[i] ?? 0, true);");
+    expect(workspace).toContain("(samples[i] ?? 0) / 32768");
+    expect(workspace).toContain("const sample = input[i] ?? 0; energy += sample * sample;");
   });
 
   it("keeps the OpenAI SDP endpoint provider-specific and refuses unsupported negotiation", () => {
