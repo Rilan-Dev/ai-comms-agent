@@ -43,7 +43,8 @@ function mockRequests(response: Response = successfulResponse()) {
   const calls: Array<{ url: string; init: RequestInit }> = [];
   globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
     calls.push({ url: String(url), init: init ?? {} });
-    return response;
+    // Each HTTP call receives an independent consumable body.
+    return response.clone();
   }) as typeof fetch;
   return calls;
 }
