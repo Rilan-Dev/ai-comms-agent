@@ -129,7 +129,7 @@ Initial intent set:
 | `forward_email` | **Forward an email** | **sensitive** |
 | `delete_email` | **Delete an email** | **sensitive** |
 | `bulk_modify` | **Bulk read/unread/label/archive** | **sensitive** |
-| `send_whatsapp_message` | **Send an outbound WhatsApp message** | **sensitive** |
+| `send_whatsapp_message` | **Request an outbound WhatsApp message for human approval** | **sensitive** |
 | `create_schedule` | Create a scheduled job | safe (but creates durable state) |
 | `list_schedules` | List scheduled jobs | safe |
 | `cancel_schedule` | Cancel a scheduled job | safe (but mutates durable state) |
@@ -160,7 +160,7 @@ The tool registry is the single source of truth for what tools exist, what they 
 
 ### 4.2 WhatsApp tools
 
-- `whatsapp.send(agent_id, contact, message)` — **send outbound**. Sensitive.
+- `whatsapp.send(account_id, to, payload)` — create a pending human-approval action only; it never queues or sends directly. Sensitive.
 - `whatsapp.history(agent_id, contact, limit)` — read conversation history. Safe.
 
 ### 4.3 Schedule tools
@@ -214,7 +214,7 @@ Per-organization policy overrides are stored in `organizations.policy_jsonb` (ad
     "email.send": "always_ask",
     "email.forward": "always_ask",
     "email.delete": "never_allow",
-    "whatsapp.send": "auto_approve_for_known_contacts"
+    "whatsapp.send": "always_ask"
   }
 }
 ```
@@ -293,3 +293,8 @@ Voice model selection follows the same pattern but uses `voice-core/resolve.ts` 
 - No LLM-driven authorization. The policy engine is deterministic.
 
 These constraints are deliberate. They may be relaxed in a future phase, but only via an explicit architecture decision in `DECISIONS.md`.
+
+
+## WhatsApp outbound safety implementation note — 2026-10-17
+
+The shared tool registry exposes `whatsapp.send` only as an approval proposal. The interactive chat route and scheduled product-action executor persist pending actions; neither bypasses the approval queue. Human approval and the worker recheck the account state, agent/account binding when agent-originated, and Meta's 24-hour inbound customer-service window. Outside the window, only a template currently approved by Meta is eligible. Current sender support is limited to approved text-body templates with body parameters; media headers, dynamic headers, and button templates fail closed. A queue/approval response is not proof of recipient delivery.
