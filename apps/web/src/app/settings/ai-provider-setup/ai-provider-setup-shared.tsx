@@ -226,7 +226,7 @@ export function AIProviderSetupShared({
       const purposes = tab === "voice-chat" ? ["tts", "stt"] : [PURPOSE_FOR_TAB[tab]];
       for (const purpose of purposes) {
         if (currentOrganizationId.current !== organizationId) return;
-        const response = await fetch(/api/settings/ai-provider-configs?purpose=${purpose}&provider=${provider}&organizationId=${encodeURIComponent(organizationId)}`, {
+        const response = await fetch(`/api/settings/ai-provider-configs?purpose=${purpose}&provider=${provider}&organizationId=${encodeURIComponent(organizationId)}`, {
           method: "DELETE",
         });
         if (!response.ok) {
