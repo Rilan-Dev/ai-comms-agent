@@ -75,11 +75,24 @@ export default function WhatsAppClient({ organizationId }: { organizationId: str
   }
 
   return <main className="min-h-full bg-background p-5 sm:p-7 lg:p-10"><div className="mx-auto max-w-[1200px]">
-    {/* Webhook Setup at the TOP — users need to configure the webhook BEFORE
-        connecting a phone, because Meta requires the webhook to be verified
-        first. Showing it at the bottom caused confusion about where to enter
-        the webhook connection details. */}
-    <WhatsAppWebhookSetupGuide organizationId={organizationId} />
+    {/* Unified WhatsApp setup guide — webhook config + connect form merged
+        into one step-by-step guide. The connect form is rendered inline
+        as children inside step 5 of the guide, so the user sees everything
+        in one logical flow. */}
+    <WhatsAppWebhookSetupGuide organizationId={organizationId}>
+      {/* The connect form — rendered inside step 5 of the setup guide */}
+      <div className="mt-4 rounded-md border bg-background p-5 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground"><ShieldCheck size={18} /></div>
+          <div>
+            <h3 className="font-display text-base font-medium">Connect Meta Cloud API</h3>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">Use the Phone Number ID, WhatsApp Business Account ID and access token from your Meta app. Credentials are encrypted server-side.</p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">{credentialFields.map(([key,label,secret])=><label key={key} className="block"><span className="text-xs font-medium">{label}</span><input type={secret ? "password" : "text"} value={form[key]} onChange={e=>setForm(v=>({...v,[key]:e.target.value}))} required={key === "phoneNumberId" || key === "accessToken" || key === "verifyToken"} aria-label={label} className="mt-1 h-11 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20" autoComplete={secret ? "new-password" : "off"} /></label>)}</div>
+        <div className="mt-4 flex justify-end"><button type="button" disabled={busy || !form.phoneNumberId.trim() || !form.accessToken.trim() || !form.verifyToken.trim()} onClick={() => void save()} className="h-10 rounded-md bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-50">{busy ? "Saving securely…" : "Save and connect"}</button></div>
+      </div>
+    </WhatsAppWebhookSetupGuide>
     <header className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Messaging</p><h1 className="mt-2 font-display text-3xl font-medium tracking-tight">WhatsApp Business</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Connect one WhatsApp Business phone to each agent. Credentials stay encrypted on the server; the account remains pending until Meta connectivity and webhook verification are confirmed.</p></div><button type="button" onClick={() => setShowConnectForm(v => !v)} aria-expanded={showConnectForm} aria-controls="whatsapp-connect-form" className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90"><Smartphone size={16} />{showConnectForm ? "Close connection form" : accounts.length ? "Connect another phone" : "Connect WhatsApp Business"}</button></header>
     {notice && <div role="status" className="mt-5 rounded-md border bg-background px-4 py-3 text-sm">{notice}</div>}
     <div className="mt-7 grid gap-6 lg:grid-cols-[1.05fr_.95fr]">
@@ -88,10 +101,6 @@ export default function WhatsAppClient({ organizationId }: { organizationId: str
         <div className="mt-5 space-y-3">{accounts.length === 0 ? <div className="rounded-md border border-dashed p-7 text-center text-sm text-muted-foreground">No WhatsApp Business account configured yet.</div> : accounts.map(a => <article key={a.id} className="rounded-md border p-4"><div className="flex items-start justify-between gap-4"><div><p className="font-semibold">{a.display_name || a.phone_number || "WhatsApp Business phone"}</p><p className="mt-1 text-xs text-muted-foreground">Phone ID {a.phone_number_id}{a.business_account_id ? " · Business " + a.business_account_id : ""}</p></div><span className={"rounded-full px-2.5 py-1 text-[11px] font-semibold " + (a.status === "connected" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700")}>{a.status}</span></div>{a.status !== "connected" && <p className="mt-3 text-xs text-muted-foreground">Meta connectivity and webhook verification are not yet confirmed.</p>}{a.last_error && <p role="alert" className="mt-2 text-xs text-destructive">{a.last_error}</p>}<div className="mt-4 flex justify-end"><button type="button" disabled={busy} onClick={() => void disconnect(a.id)} className="rounded-lg border border-destructive/20 px-3 py-2 text-xs font-semibold text-destructive disabled:opacity-50"><Unplug size={13} className="mr-1 inline" />Disconnect</button></div></article>)}</div>
       </section>
       <section className="rounded-md border bg-background p-5 shadow-sm sm:p-7 lg:col-span-2"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-display text-lg font-medium">Daily briefing</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{accounts.some(a => a.status === "connected") ? "Your verified WhatsApp channel can receive scheduled summaries once a briefing schedule is configured." : "Connect and verify a WhatsApp Business phone first. Then configure a schedule to deliver daily summaries to your chosen recipient."}</p></div><a href="/schedules" className="inline-flex h-10 shrink-0 items-center justify-center rounded-md border px-4 text-sm font-medium hover:bg-secondary">Manage schedules</a></div></section>
-      {showConnectForm && <section id="whatsapp-connect-form" className="rounded-md border bg-background p-5 shadow-sm sm:p-7 lg:col-span-2"><div className="flex items-start gap-3"><div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground"><ShieldCheck size={18} /></div><div><h2 className="font-display text-lg font-medium">Connect Meta Cloud API</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Use the Phone Number ID, WhatsApp Business Account ID and access token from your Meta app. This connection form saves encrypted server-side credentials; it does not claim a successful Meta verification until the account status changes.</p></div></div>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">{credentialFields.map(([key,label,secret])=><label key={key} className="block"><span className="text-xs font-medium">{label}{(key === "phoneNumberId" || key === "accessToken") ? " *" : ""}</span><input type={secret ? "password" : "text"} value={form[key]} onChange={e=>setForm(v=>({...v,[key]:e.target.value}))} required={key === "phoneNumberId" || key === "accessToken"} aria-label={label} className="mt-1 h-11 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20" autoComplete={secret ? "new-password" : "off"} /></label>)}</div>
-        <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={() => setShowConnectForm(false)} className="h-10 rounded-md border px-4 text-sm font-medium hover:bg-secondary">Cancel</button><button type="button" disabled={busy || !form.phoneNumberId.trim() || !form.accessToken.trim()} onClick={() => void save()} className="h-10 rounded-md bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-50">{busy ? "Saving securely…" : "Save and connect"}</button></div>
-      </section>}
     </div>
   </div></main>;
 }

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Clipboard, ExternalLink, KeyRound, Loader2, AlertCircle, Webhook, Save } from "lucide-react";
 
-export function WhatsAppWebhookSetupGuide({ organizationId }: { organizationId: string }) {
+export function WhatsAppWebhookSetupGuide({ organizationId, children }: { organizationId: string; children?: React.ReactNode }) {
   const [origin, setOrigin] = useState<string>("");
   const [verifyToken, setVerifyToken] = useState<string>("");
   const [appSecret, setAppSecret] = useState<string>("");
@@ -164,11 +164,14 @@ export function WhatsAppWebhookSetupGuide({ organizationId }: { organizationId: 
         </ol>
       </StepBlock>
 
-      {/* Step 5: Connect a WhatsApp number */}
-      <StepBlock step={5} title="Connect a WhatsApp Business number">
+      {/* Step 5: Connect a WhatsApp number — the connect form is rendered
+          inline here (passed as children from the parent), so the user sees
+          the form IN the setup guide, not in a separate section below. */}
+      <StepBlock step={5} title="Connect your WhatsApp Business number">
         <p className="text-sm text-muted-foreground">
-          Once the webhook is verified by Meta (step 4), connect a WhatsApp Business number below using the "Connect WhatsApp Business" button. Use the <strong>same Verify Token</strong> when connecting. Inbound messages will start flowing into the messages list automatically.
+          Once the webhook is verified by Meta (step 4), fill in the form below to connect your WhatsApp Business phone. Use the <strong>same Verify Token</strong> from step 2. Inbound messages will start flowing into the messages list automatically.
         </p>
+        {children}
       </StepBlock>
     </section>
   );
