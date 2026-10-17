@@ -125,3 +125,10 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 - `GET /api/settings/ai-runtime` emits camelCase repository settings; the UI/PUT uses snake_case. Mapping only the realtime fields silently replaces persisted `knowledgeBaseId`, `defaultProvider`, `voiceId`, `systemPrompt`, etc. with client defaults on save. New mapper `apps/web/src/lib/ai/runtime-settings-state.ts` normalizes all eight. Test KB and prompt round trips, including temperature 0 and blank model, to prevent loss.
 - Do not hard-code a realtime model ID as a new-org default in a vendor-live-only selector.
 - Recorded exact-source tests: Node 6/6 live adapter mocks, Node 4/4 hydration, isolated tsc both pure modules passed. Full web/Vitest/Next/provider/browser/production remains unverified. Session: `docs/project-control/sessions/DEV01-MAIN-RUNTIME-MODEL-20261018.md`.
+
+### 2026-10-18 — Provider editor safety and multi-purpose readiness
+- Owner instruction remains: make continuing changes directly on `main`, never create feature branches/PRs without new direction.
+- Credential entry in `AIProviderSetupShared` is stateful: selecting another provider must call a single clearing handler for BOTH card and dropdown, or an unsaved secret can be accidentally saved to another vendor.
+- `fetch` resolves for 4xx/5xx. Saving/deleting credentials must inspect `response.ok` and GET reload status before claiming success. Removing credentials must invalidate any fetched model list (refresh key).
+- Voice chat requires separate TTS and STT keys/config rows; a first-match badge falsely reports active if only one exists. Use `providerConfigStatus` helper to require both; use `incomplete` and `saved (disabled)` honestly.
+- Actual limited tests: mocked adapter 6/6, hydration 4/4, provider helper 5/5, three isolated module TypeScript checks and 5 GitHub source assertions PASS. No full pnpm/UI/live provider/build acceptance. Session `DEV01-PROVIDER-SETUP-HARDENING-20261018`.
