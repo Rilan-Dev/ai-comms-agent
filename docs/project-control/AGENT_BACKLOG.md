@@ -1,3 +1,15 @@
+
+
+### BKL-OPS01-MIGRATION-IN-CONTAINER-20261018 — Run migrations on the Compose network
+- **Work:** Correct host-side migration DNS failure while preserving internal container-to-container PostgreSQL routing.
+- **Owner:** OPS-01 / Shipwright
+- **State:** OPEN — handoff from FIX-01; no source change by FIX-01
+- **Authorization:** User requested root-cause-first correction and durable evidence; APCP assigns Docker/deployment scripts and environment to OPS-01.
+- **Evidence:** On main `2cf9a52266af0fd69df809b40f482bb0eb95fb5c`, `scripts/manual-up.sh` invokes the Node migration runner on the host. User output reports `getaddrinfo ENOTFOUND postgres`; the web/worker/Postgres containers share `ai-comms-agent_default`, where `postgres` is an alias.
+- **Implementation caution:** Dockerfile currently does not copy `supabase/`; if migration is run in the web container, mount `$PROJECT_ROOT/supabase` read-only at `/workspace/supabase` or deliberately include migrations in the image. Confirm intended DB name: user URL used `/postgres`, Compose default is `aca`.
+- **Do not:** Change app DATABASE_URL to host-published routing; do not change DB name blindly; do not claim success from build-only output.
+- **Next:** Implement the one-off container migration invocation and regression assertion in `scripts/tests/manual-up-compose-env.test.mjs`; run focused test, then deployment/migration and health verification. Preserve the user's existing intended startup-on-migration-failure policy unless explicitly changed.
+- **Related:** ISS-037; `FIX01-MIGRATION-NETWORK-20261018`; `HOF-FIX01-OPS01-MIGRATION-NETWORK-20261018`.
 # APCP Central Agent Backlog
 
 Cross-agent coordination backlog. This records ownership and dependencies; it does not authorize implementation.

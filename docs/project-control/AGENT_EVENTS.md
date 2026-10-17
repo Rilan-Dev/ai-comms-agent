@@ -1,5 +1,15 @@
 
 
+### EVT-FIX01-OPS01-MIGRATION-NETWORK-20261018
+- **Role/session:** FIX-01 / `FIX01-MIGRATION-NETWORK-20261018`; routed to OPS-01.
+- **Symptom:** Manual deployment built images but host-side migration failed with `getaddrinfo ENOTFOUND postgres`; script continued to container startup.
+- **Root cause:** Migration Node process runs on the host, but `postgres` is a Docker Compose network alias. Existing host-alias substitution does not rewrite this alias.
+- **Trace:** Latest main commit `2cf9a52266af0fd69df809b40f482bb0eb95fb5c` only changes PostgreSQL published host port to 5433. Earlier OPS commits `a93176b3` / `0386f03f` fixed old Compose CLI environment-resolution compatibility, not the network boundary.
+- **Boundary/remedy:** Deployment script and migration execution are OPS-01 scope. Run migrations in a temporary Compose container with internal DNS; ensure `supabase/migrations` is available inside it (current Dockerfile does not COPY `supabase/`). Keep app DB URLs internal; do not switch them to `host.docker.internal`.
+- **Evidence status:** GitHub source and user-provided logs inspected; no post-fix migration, health or live database target verification.
+- **Next:** OPS-01 implements and tests the deployment correction; confirm `/postgres` versus Compose default database `aca` before applying migrations.
+
+
 ### EVT-DEV01-CLARA-REALTIME-VOICE-20261016
 - Agent/session: DEV-01 / Forge — SESSION-066
 - Type: SOURCE_DIAGNOSIS / ROLE_HANDOFF

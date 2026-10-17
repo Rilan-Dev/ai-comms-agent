@@ -1,5 +1,16 @@
 
 
+### FIX01-MIGRATION-NETWORK-20261018 — Root-cause trace and OPS-01 handoff
+- **Agent:** FIX-01 / Sentinel
+- **Started from:** `main` `2cf9a52266af0fd69df809b40f482bb0eb95fb5c`
+- **Authorization:** User explicitly requested repository recovery, root-cause-first diagnosis, smallest authorized correction, regression protection and durable records; APCP role registry reserves Docker/deployment/infrastructure for OPS-01.
+- **Actions:** Recovered shared memory, FIX-01 and OPS-01 role-local records, current issues/backlog/verification state; inspected latest commits, `scripts/manual-up.sh`, `docker-compose.yml`, `Dockerfile`, `packages/db/migrate.js`, and related regression test history. Confirmed host-side migration invocation conflicts with Docker-only `postgres` DNS. Found a second implementation detail for OPS: Dockerfile does not copy `supabase/`, which the migration runner auto-detects.
+- **Source changes:** None. Correctly routed implementation to OPS-01 rather than crossing role ownership.
+- **Failed approaches:** Host-side `node packages/db/migrate.js` with `postgres:5432`; proposed app URL change to `host.docker.internal:5433` (rejected because it violates the requested internal network design).
+- **Evidence:** User logs show `ENOTFOUND postgres`; inspection shows shared Docker network and PostgreSQL alias. No migration retry, test execution, database-name confirmation, or post-fix health check.
+- **Next:** OPS-01 implements one-off Compose migration with migrations mounted/copied into image, adds regression coverage, verifies intended DB target, then records actual migration and service health outcomes.
+
+
 ### SESSION-066 — 2026-10-16
 - Agent: DEV-01 / Forge
 - Invocation: Recover current main state and investigate Clara realtime voice failure: UI appears active but provider WebSocket never starts; natural-language email enquiries cannot be spoken.

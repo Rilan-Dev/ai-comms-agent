@@ -1,3 +1,12 @@
+
+
+## 2026-10-18 — ISS-037 migration hostname boundary (FIX-01 diagnosis / OPS-01 action)
+- **Observed:** User's manual deployment build completed; migration process reported `FATAL code: ENOTFOUND`, `FATAL message: getaddrinfo ENOTFOUND postgres`. Script continued startup. Container inspection showed Postgres, web and worker on `ai-comms-agent_default`, with `postgres` as a network alias; host endpoint `127.0.0.1:5433` was accepting connections.
+- **Source diagnosis:** `scripts/manual-up.sh` executes `node packages/db/migrate.js` on the host, while `DATABASE_URL` uses Compose-only `postgres:5432`. `Dockerfile` does not copy `supabase/`, so moving execution into the container requires a read-only migration-directory mount or a reviewed image change.
+- **Prior changes ruled out:** `a93176b3` / `0386f03f` address Compose CLI `config --environment` support; `2cf9a522` changes only the published host port. Neither fixes host DNS for `postgres`.
+- **Status:** ROOT CAUSE CONFIRMED FROM SOURCE + USER LOG; REMEDIATION NOT APPLIED; TESTS / MIGRATION / HEALTH NOT VERIFIED. OPS-01 owns the fix.
+- **Additional unresolved configuration question:** User's URL targeted database `postgres`; local Compose defaults `POSTGRES_DB=aca`. Confirm intended target before running migrations; do not change it by assumption.
+- **Next:** OPS-01 updates the deployment script and regression test, runs focused test, then the user/operator records actual migration completion and container health. Keep application traffic on the Docker network.
 ## DEV-01 — Verification rerun on current main; full CI still blocked — 2026-10-18
 
 - **Owner's request:** Proceed with selected pending focused model catalogue tests, TypeScript/web verification, authenticated provider save/reload validation. Work remains on existing `main` with no new branch/PR.

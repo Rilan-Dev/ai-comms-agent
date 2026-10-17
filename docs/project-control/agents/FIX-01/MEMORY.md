@@ -1,3 +1,12 @@
+
+
+### FIX01-MIGRATION-NETWORK-20261018 — 2026-10-18
+- **Symptom:** Manual deployment build completed, then migration failed with `getaddrinfo ENOTFOUND postgres`; script continued startup.
+- **Root cause:** `scripts/manual-up.sh` runs the migration Node process on the host, but its DB hostname `postgres` is only a Compose network alias.
+- **Failed approaches:** Host-side runner with Compose DNS; using `host.docker.internal:5433` for app traffic, which conflicts with the requested internal network route.
+- **Remedy/owner:** Routed deployment script and migration execution to OPS-01. Migration should run as a one-off Compose container; ensure `supabase/migrations` exists inside the runner (current Dockerfile does not copy it). Do not silently change the DB name.
+- **Evidence:** User output + source inspection; no post-fix tests or deployment verification.
+- **Prevention:** Verify the process network namespace and required migration files before changing URLs; separate source diagnosis from deployment PASS.
 # FIX-01 Role-Local Memory
 
 This is durable memory for FIX-01. It supplements, but never overrides, shared APCP memory or repository authority.

@@ -1,3 +1,16 @@
+
+
+### FIX01-MIGRATION-NETWORK-20261018 / 2026-10-18
+- **Task:** Trace the migration failure after the user's latest Docker deployment attempt.
+- **Authorization:** User explicitly invoked FIX-01 for root-cause-first investigation and durable records. Role registry routes Docker/deployment/environment corrections to OPS-01.
+- **Started from:** GitHub `main` `2cf9a52266af0fd69df809b40f482bb0eb95fb5c`.
+- **Actions:** Inspected the last eight commits, prior OPS Compose compatibility and env-file commits, current migration script, Compose network configuration, Dockerfile, migration runner, shared memory, issue list, verification state, and both role-local logs. Identified the host/container DNS mismatch and the missing migration-directory copy that must be handled by the migration-container remedy.
+- **Files/code:** No application or deployment source changed by FIX-01. Updated issue/backlog/event/session/verification/shared memory/role memory/worklog/handoff/next-action records.
+- **Evidence:** User output: `FATAL code: ENOTFOUND`, `getaddrinfo ENOTFOUND postgres`; user inspections show the Postgres alias and app containers share `ai-comms-agent_default`; host port 5433 accepts connections. Source inspection shows host-side migration invocation and absent `COPY supabase` in Dockerfile. No test/migration/post-fix health run.
+- **Failed approaches:** Host-side connection to `postgres:5432`; host gateway URL for app traffic. No source fix attempted because implementation is OPS-01-owned.
+- **Lesson:** A reachable published database port does not make Compose service DNS resolvable from the host; migration artifacts must exist inside the execution environment.
+- **Blockers/dependencies:** OPS-01 owns deployment-script change and regression test; intended target database must be confirmed because URL uses `/postgres` while Compose default is `aca`.
+- **Next action:** OPS-01 implements containerized migration execution with a read-only `supabase/` mount or image inclusion, adds a test, verifies target DB, then records actual migration and health output.
 # FIX-01 Role-Local Worklog
 
 Append-only operational history for FIX-01. This is not the source of authorization.
