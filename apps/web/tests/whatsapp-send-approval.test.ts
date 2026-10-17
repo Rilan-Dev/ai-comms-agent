@@ -4,8 +4,8 @@ import { resolve } from "node:path";
 
 const messagesRoute = readFileSync(resolve(__dirname, "../src/app/api/whatsapp/messages/route.ts"), "utf8");
 const decisionRoute = readFileSync(resolve(__dirname, "../src/app/api/whatsapp/send-actions/decision/route.ts"), "utf8");
-const migration = readFileSync(resolve(__dirname, "../../supabase/migrations/0035_whatsapp_send_approvals.sql"), "utf8");
-const whatsappRuntime = readFileSync(resolve(__dirname, "../../apps/worker/src/agent/whatsapp-tool-runtime.ts"), "utf8");
+const migration = readFileSync(resolve(__dirname, "../../../supabase/migrations/0035_whatsapp_send_approvals.sql"), "utf8");
+const whatsappRuntime = readFileSync(resolve(__dirname, "../../worker/src/agent/whatsapp-tool-runtime.ts"), "utf8");
 
 describe("WhatsApp send approval safety boundary", () => {
   it("persists outbound requests as pending approvals instead of queueing them", () => {
