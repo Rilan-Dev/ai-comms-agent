@@ -3,7 +3,7 @@ import { getDecryptedProviderConfig } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { getAuthenticatedAppContext, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
-import { fetchLiveModelCatalog, supportsLiveCatalog, type LiveModelProvider, type LiveModelPurpose } from "@/lib/ai/live-model-catalog";
+import { documentedRealtimeModels, fetchLiveModelCatalog, hasDocumentedRealtimeModels, supportsLiveCatalog, type LiveModelProvider, type LiveModelPurpose } from "@/lib/ai/live-model-catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     // Do not disclose provider credentials, or even catalogue availability,
     // to unauthenticated or cross-organization callers.
     await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
-    if (!supportsLiveCatalog(provider, purpose)) {
+    if (!supportsLiveCatalog(provider, purpose) && !hasDocumentedRealtimeModels(provider, purpose)) {
       return NextResponse.json({
         error: "catalog_unsupported",
         message: "This provider does not publish a live model listing for this capability. No static model list is substituted.",
@@ -43,6 +43,22 @@ export async function GET(request: Request) {
         message: "Save and enable this provider's API key for this capability before loading live models.",
         models: [],
       }, { status: 409 });
+    }
+
+    // Sarvam and ElevenLabs realtime voice on this host are streaming
+    // speech-recognition + host-authorized response/TTS pipelines, not vendor
+    // conversational agents. Their websocket model choices are documented by
+    // the vendors but NOT exposed through a live REST models endpoint.
+    // Only show these after the same authenticated per-org enabled-key check.
+    if (hasDocumentedRealtimeModels(provider, purpose)) {
+      return NextResponse.json({
+        models: documentedRealtimeModels(provider, purpose),
+        provider,
+        purpose,
+        source: "documented",
+        capability: "streaming_stt",
+        message: "These are vendor-documented streaming speech-recognition models for this app's voice relay, not account-verified live model listings or ElevenLabs Conversational AI agents.",
+      }, { headers: { "Cache-Control": "private, no-store" } });
     }
 
     try {
