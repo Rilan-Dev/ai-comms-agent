@@ -780,3 +780,12 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers/ownership:** Environment cannot install/fetch authenticated full private repo; OPS-01 owns build/runtime/live provider + Vercel limit; FIX-01 source incidents unchanged.
 - **Session:** `docs/project-control/sessions/DEV01-PROVIDER-SETUP-HARDENING-20261018.md`
 - **Next:** Execute focused Vitest and all web/worker builds against latest main; verify real provider setup UI and cross-org; continue independent authorized DEV-01 email/RAG work after its security gates.
+
+### DEV01-ORG-CREDENTIAL-ISOLATION-20261018 — 2026-10-18
+- **Owner / scope:** DEV-01 / Forge; user "Please proceed", preserves main-only/no-branch instruction.
+- **Started:** main `7923c99ef73ef14f704c03cf4cdbe9973409b324`.
+- **Done:** Corrected plaintext-key and old-org config retention and racing org GETs in both settings forms; live selector discards a late fulfilled stale catalog and clears stalled loading state. Added Node and Vitest regression source on main.
+- **Evidence:** Existing standalone Node tests 15/15 PASS, 3 pure TS module checks PASS, 12/12 GitHub source contracts PASS; full Vitest/web/worker build/browser/provider testing **not run**.
+- **Blockers:** No pnpm/full private checkout or browser connector context; OPS-01 owns environment/Vercel/provider secrets, FIX-01 unrelated voice/WhatsApp.
+- **Session:** `docs/project-control/sessions/DEV01-ORG-CREDENTIAL-ISOLATION-20261018.md`.
+- **Next:** Run named checks on current main with full toolchain; verify multi-org browser and provider live flows; resume secure email RAG/tool work behind authorization gate.
