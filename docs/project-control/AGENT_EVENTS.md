@@ -369,3 +369,15 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Next:** OPS-01 applies migration and verifies worker poll/retry errors stop and mailbox rows persist.
 
 - EVT-FIX01-VOICE-WEBRTC-20261016: Implemented host-authorized OpenAI WebRTC negotiation and Clara-style voice workspace on `fix/voice-transport-contract`; added organization-scoped credential resolution, microphone/audio/data-channel lifecycle, final transcript bridge through the host turn route, spoken response, mute/interrupt/end and readiness timeout. Native WebRTC for Gemini/Sarvam/ElevenLabs and full authorized email action/tool integration remain outstanding. Tests/typecheck/build/browser/provider/deployment not run; PR #27 open and issue #26 remains open.
+
+
+### EVT-FIX01-WHATSAPP-PENDING-20261017 — 2026-10-17
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** CORRECTION / ROUTE
+- **Summary:** Investigated user report that deployed WhatsApp account remains pending and outbound POST returns `provider_not_connected`. Current main source already saves credentials encrypted, calls Meta Graph API for the phone-number resource, persists `connected` on success or `error` on provider rejection, and intentionally gates outbound queueing on persisted connected status. UI already has account edit state, saved-token preservation, verification retry, Meta test-phone shortcut, and a test action positioned later in setup guidance. The deployed cause is not provable from source alone: deployment drift, database/status persistence mismatch, or a real Meta token/permission/phone-number-ID issue remain possible.
+- **Impact:** cross-agent
+- **Owner:** OPS-01 for deployed commit/database/provider evidence; FIX-01 for any proven source defect and regression protection.
+- **Evidence:** Source inspection of `apps/web/src/app/api/whatsapp/accounts/route.ts`, `apps/web/src/app/api/whatsapp/messages/route.ts`, `apps/web/src/app/whatsapp/whatsapp-client.tsx`; commits `e606c914bf23b63afe69c6bdea9ed1f3cb01533b`, `d55a3b14adcc594e128348df80d81ac95c614ad2`, `82d22e52904cbc6fda8e84be0437cc1079e1f07f`, `64afd328c4ea429a6175ab296d9d208b9b9190c1`, `dfd65f3855c77cee2958af332f5bf9a3493887de`. OPS-01 issue: https://github.com/Rilan-Dev/ai-comms-agent/issues/32. Investigation record: `docs/project-control/sessions/FIX01-WHATSAPP-PENDING-20261017.md`.
+- **Security:** Do not bypass the connected-state guard or disable webhook challenge verification. The user-provided cookie-like token is exposed and should be revoked/rotated; never reproduce it.
+- **Verification:** Source inspection only. No tests, live Meta API request, deployed commit inspection, database/log access, browser E2E, or deployment check performed. No runtime PASS claimed.
+- **Next:** OPS-01 identifies the serving commit, verifies the correct organization/account row and status persistence, and records redacted Meta error details. FIX-01 makes the smallest source correction and targeted regression test only if evidence proves a source defect.
