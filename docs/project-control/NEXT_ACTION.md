@@ -1,3 +1,12 @@
+## DEV-01 — Direct-main provider-switch model isolation — 2026-10-18
+
+- **Completed on main:** In addition to clearing unsaved vendor API keys, switching provider now clears both transient chat/TTS model and STT model before the new provider's saved configuration restores. This prevents briefly submitting a different vendor's unsaved model IDs during an immediate switch/save. Source `apps/web/src/app/settings/ai-provider-setup/ai-provider-setup-shared.tsx`; regression source `apps/web/tests/ai-provider-setup-safety.test.mjs`. Commits `4b82db49` and `032d7560`. No branch or PR.
+- **Evidence boundary:** GitHub committed file mutations succeeded; focused new source guard added. Full pnpm/Vitest/typecheck/Next build and browser race simulation **not executed** this turn. Existing prior isolated 15/15 test evidence predates these two edits and is not a new whole-application PASS.
+- **EXACT NEXT_ACTION:** In fully equipped checkout on current main, run `node --experimental-strip-types --test apps/web/tests/ai-provider-setup-safety.test.mjs apps/web/tests/provider-config-status.test.mjs`, `pnpm --filter @ai-comms-agent/web exec vitest run tests/live-model-catalog.test.ts tests/ai-runtime-settings.test.ts`, `pnpm --filter @ai-comms-agent/web typecheck`, and `pnpm --filter @ai-comms-agent/web build`. Then verify actual browser credential/model provider-switch and save/reload; OPS-01 handles deployment and Vercel build-rate-limit.
+- **Browser read-only observation:** Connected production Chat page rendered navigation and previous agent conversation in the authenticated tab, but read-only tab access does not prove live provider calls, save/reload, or current deployed main commit. Do not claim browser feature acceptance.
+
+---
+
 ## DEV-01 — Direct-main AI provider setup hardening checkpoint — 2026-10-18
 
 - **Direction:** Owner explicitly requires direct writes to `main` only, no branches or PRs. Work is ongoing; do not claim complete.
