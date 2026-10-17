@@ -266,3 +266,8 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Blockers/dependencies:** OPS-01 must apply migrations and rebuild/restart the worker, then verify error cessation and actual mailbox persistence. The Microsoft Graph subscription-disabled warning also requires separate prerequisite/configuration review by OPS-01 if Graph push subscriptions are expected.
 - **Lesson:** Extend the enum actually referenced by the DB column; similarly named provider enums are not interchangeable. Queue retries cannot recover from deterministic SQL/schema incompatibility.
 - **Next action:** OPS-01 apply migration 0034 through the normal migration workflow, restart the matching worker image, inspect sanitized logs, and confirm account sync state and stored message counts advance.
+
+### FIX01-CLEAN-VOICE-TRANSPORT-20261016
+- Created `feature/voice-transport-clean` from current main after identifying PR #28's 639-file divergent diff. Rebuilt the feature scope with targeted voice transport UI, Gemini Live and Sarvam/ElevenLabs relay routes/service, shared email runtime, tests and project-control updates only.
+- Preserved the current main OpenAI realtime-purpose credential guard and voice session/turn authorization. Shared runtime is used by voice and worker loop; sends/replies/forwards remain explicit approval requests.
+- No tests/typecheck/build/browser/provider/relay/approval/deployment verification performed. PR #28 stays open/unmerged.

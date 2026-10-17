@@ -624,3 +624,10 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Implemented on `fix/voice-transport-contract`: host-authorized OpenAI WebRTC SDP negotiation; organization-scoped encrypted realtime/chat key lookup with server env fallback; microphone/audio/data-channel UI, transcript-to-host-turn routing, spoken host-generated answer, greeting, mute/interrupt/end controls, explicit transport state and readiness timeout; added static transport tests.
 - Scope limit: native WebRTC currently OpenAI only. Other providers remain explicitly on transcript bridge. Full voice-triggered email mutations are not claimed; shared authorized email-tool runtime integration remains outstanding.
 - Verification: GitHub source edits only; tests, typecheck, build, browser/provider and deployment not run. PR #27 remains open; issue #26 remains open.
+
+### SESSION-073 — 2026-10-16
+- Agent: FIX-01 / Sentinel
+- Clean branch: `feature/voice-transport-clean`, based on current `main`.
+- PR #28's 639-file diff was identified as historical/divergent content; it remains open and unmerged. Only the targeted voice UI/transport, relay source, shared email runtime, tests and project-control records were transferred.
+- OpenAI realtime-purpose credential guard from current main preserved. Voice turns use the shared email runtime with server-derived authorization context. Provider send/reply/forward remains approval-gated.
+- Verification not run; relay deployment is an OPS-01 handoff. See SESSION-073.
