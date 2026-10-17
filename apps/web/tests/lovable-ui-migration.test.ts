@@ -209,7 +209,8 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(whatsapp).toContain('"/api/whatsapp/messages"');
     expect(whatsapp).toContain('"Idempotency-Key": idempotencyKey');
     expect(whatsapp).toContain('type={secret ? "password" : "text"}');
-    expect(whatsapp).toContain("Credentials stay encrypted on the server");
+    expect(whatsapp).toContain("Credentials are encrypted server-side.");
+    expect(whatsapp).toContain("Verify now");
     expect(whatsapp).toContain("No persisted messages yet.");
   });
 
