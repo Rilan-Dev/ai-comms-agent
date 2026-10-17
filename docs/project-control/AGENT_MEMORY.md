@@ -334,3 +334,8 @@ If shared memory conflicts with current repository state or current requirements
 - Treat a user's editable account label as app-owned metadata. Provider verified names are only a fallback; both synchronous API verification and asynchronous worker verification must preserve a non-empty custom label.
 - When a webhook reports `failed` but the UI says `sent`, keep the status incident open until OPS-01 correlates provider webhook HTTP outcome/accepted count with the exact organization/account-scoped row and UI/API response. Do not infer a race or deploy claim without evidence.
 - Source/test commits for label correction: `fd1fda7429363091098825dbf37bba0f30be3d0f`, `7d785b36f2bae90d9d137805e1390fe9ab467550`, `f9bc5ec1cc793fb69c3b2a5a7d26e8d1cf00d5fb`. Tests and deployment have not been verified.
+
+### 2026-10-17 — FIX-01 — Chat provider override fallback
+- A saved per-agent provider override must still be resolved when `organization_ai_runtime_settings` has no row. Organization defaults are inherited values, not a prerequisite for reading `agent_ai_settings` and saved provider credentials.
+- The source correction at `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0` supplies safe defaults and continues provider resolution. A missing-org-row branch was a concrete source defect, but the live database condition remains unconfirmed; OPS-01 must verify actual row/config state and the serving revision.
+- Never add an OpenAI key to mask a provider-selection error when the agent explicitly selects Sarvam/Gemini. Queue/build/container health is not evidence of a successful model request. Test/deployment remain unverified.
