@@ -1,3 +1,13 @@
+## DEV-01 — 2026-10-18 annotated realtime model dropdown repair (source PASS, deployment pending)
+
+- **GitHub commits on main, no branch/PR:** documented provider models `a1c25962`; authorized `source:documented` GET `50df9c1d`; UI `623932a1`/`281103ed`/`146495f1`; persisted model/relay wiring `22fca2b0`/`5475132c`/`4f6fdda0`; server PUT legacy rejection `6b12e0e2`; tests `11534f7d`/`bffa45e1`/`a087deec`.
+- **ACTUALLY PASSED:** Node v22.16.0 standalone catalog 9/9 (6 prior vendor-mocked + 3 new documented), combined all four available portable suites **23/23 PASS** (exit 0); standalone global TypeScript 5.8.3 catalog `tsc --noEmit` PASS. Exact Git blob bytes match executed catalog + Node test: `70bdd8ca7483fb8f1e4d866cffff350242969aae`, `000a8062eead4646203ca46f8c18d7114c605189`. Current GitHub route/UI/voice integration source checks 13/13 PASS.
+- **NOT RUN:** Full pnpm Vitest including new integration static tests, web/worker typecheck/build, migration execution, browser save/reload, provider API authenticated calls, Sarvam and ElevenLabs live WebSocket, cross-org negative runtime, deployed screenshot acceptance, Clara/Qdrant and E2E. Browser connector could not access originating tab; no private checkout or pnpm. Current Vercel status still `failure` with URL indicating build-rate-limit; not proof of compiler defect. CI manual-only, not triggered.
+- **Note:** ElevenLabs current realtime transport = Scribe STT + host authorized agent + TTS. `elevenlabs-conversational` is a legacy catalog marker, not supported as realtime Scribe STT; native ElevenAgents agent IDs/signed URL transport are NOT implemented.
+- **Evidence and exact commands:** `docs/project-control/sessions/DEV01-REALTIME-VOICE-MODEL-CATALOG-20261018.md`; `NEXT_ACTION.md`.
+
+---
+
 ## DEV-01 — 2026-10-18 Clara email vector worker adapter test-runner correction
 
 - **Source correction on main:** `apps/worker/tests/clara-email-vector-adapter.test.ts` Node-native test is now inside the worker test glob; old undiscovered `src/knowledge/clara-email-vector-adapter.test.ts` Vitest test removed. `apps/worker/src/knowledge/clara-email-vector-adapter.ts` now validates organization/account/message/source IDs and SHA-256 hashes before sending the server credential. Commits `1513f237`, `6cdde3fe`, `8bc21242`, `dccd8a7f`, `247e5a6c`. No branch or PR.
