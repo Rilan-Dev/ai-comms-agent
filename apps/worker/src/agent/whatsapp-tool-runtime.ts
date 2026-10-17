@@ -110,7 +110,7 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
         "INSERT INTO whatsapp_send_actions (organization_id, whatsapp_account_id, agent_id, requested_by, recipient_phone, message_body, payload_type, template_name, template_language, template_parameters, status, idempotency_key, correlation_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,'pending',$11,$12) ON CONFLICT (organization_id,idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING RETURNING id,status",
         [context.organization_id, input.account_id, context.agent_id, context.user_id, input.to, messageBody, input.payload_type, input.payload_type === "template" ? input.template_name : null, input.payload_type === "template" ? input.template_language : null, JSON.stringify(input.payload_type === "template" ? templateParameters : []), idempotencyKey, correlationId],
       );
-      let action = inserted.rows[0];
+      let action: { id: string; status: string; whatsapp_account_id?: string; recipient_phone?: string; message_body?: string; payload_type?: string } | undefined = inserted.rows[0];
       if (!action) {
         const existing = await query<{ id: string; status: string; whatsapp_account_id: string; recipient_phone: string; message_body: string; payload_type: string }>(
           "SELECT id,status,whatsapp_account_id,recipient_phone,message_body,payload_type FROM whatsapp_send_actions WHERE organization_id=$1 AND idempotency_key=$2 LIMIT 1",
