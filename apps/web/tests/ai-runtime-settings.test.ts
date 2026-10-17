@@ -25,7 +25,8 @@ describe("Organization AI configuration", () => {
     expect(runtime).toContain("Clara knowledge-base ID");
     expect(runtime).toContain("Realtime voice provider");
     expect(providers).toContain('type="password"');
-    expect(providers).toContain("Fetch models");
+    expect(providers).toContain("LiveModelSelect");
+    expect(runtime).toContain("LiveModelSelect");
   });
 
   it("stores provider credentials encrypted and never returns plaintext credentials", () => {
@@ -60,8 +61,9 @@ describe("Organization AI configuration", () => {
   it("fetches provider model catalogs server-side without returning credentials to clients", () => {
     const route = read("../src/app/api/settings/ai-providers/route.ts");
     expect(route).toContain("decryptCredential");
-    expect(route).toContain("/v1/models");
-    expect(route).toContain("/v1beta/models");
+    expect(route).toContain("fetchLiveModelCatalog");
+    expect(read("../src/lib/ai/live-model-catalog.ts")).toContain("/v1/models");
+    expect(read("../src/lib/ai/live-model-catalog.ts")).toContain("/v1beta/models");
     expect(route).toContain("model_catalog_unavailable");
     expect(route).toContain("officialBaseUrl");
     expect(route).toContain("Only the official HTTPS API origin");
