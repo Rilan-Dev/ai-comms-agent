@@ -20,13 +20,13 @@ describe("cross-surface product completion contract", () => {
     expect(emailActionRepository).toContain("content_hash = EXCLUDED.content_hash");
   });
 
-  it("keeps WhatsApp outbound idempotent and audited", () => {
+  it("requires an approval record before WhatsApp outbound can be queued", () => {
     expect(whatsappRoute).toContain("Idempotency-Key");
-    expect(whatsappRoute).toContain("whatsapp.message.queued");
-    expect(whatsappRoute).toContain("idempotency_conflict");
-    expect(whatsappRoute).toContain("status: 409");
-    expect(whatsappRoute).toContain("const correlationId = crypto.randomUUID()");
-    expect(whatsappRoute).toContain("correlationId, targetType: \"whatsapp_message\"");
+    expect(whatsappRoute).toContain("whatsapp_send_actions");
+    expect(whatsappRoute).toContain("whatsapp.send_approval.requested");
+    expect(whatsappRoute).toContain("approvalRequired: true");
+    expect(whatsappRoute).toContain("Message saved for human approval. It has not been sent.");
+    expect(whatsappRoute).not.toContain("queueWhatsAppOutboundMessage");
     expect(whatsappRepository).toContain("correlationId?: string | null");
     expect(whatsappRepository).toContain("return row.id ? String(row.id) : null");
     expect(whatsappRepository).toContain("Idempotency key already exists for a different WhatsApp payload");
