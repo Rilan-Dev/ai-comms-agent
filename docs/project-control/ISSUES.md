@@ -559,3 +559,18 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Source correction:** Commit `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0` supplies safe defaults and continues per-agent provider lookup. Regression test authored at `apps/web/tests/clara-agent-provider-resolution.test.ts`.
 - **Verification:** Actual live row condition not confirmed. Test/typecheck/build/deployment not run. No production PASS claimed.
 - **Resolution plan:** OPS-01 confirms serving revision and tenant-scoped presence of org settings, agent override, and provider credential metadata; deploy/restart via existing manual process and verify a Sarvam chat turn. If org defaults row exists, diagnose stale build or missing/disabled provider row. Do not add OpenAI key as a workaround.
+
+
+## ISS-030 — Chat stream dereferences nullable authorization membership
+
+- **Opened:** 2026-10-18
+- **Severity:** high (web production build blocker)
+- **Owner:** FIX-01 / Sentinel
+- **Status:** in_progress — source corrected; post-fix build/test evidence pending
+- **Symptom:** User's Docker web build failed type validation at `apps/web/src/app/api/chat/stream/route.ts:384`, TS nullable access on `subject.membership.role`. Next.js compilation itself succeeded and worker image built.
+- **Root cause:** The shared `AuthSubject` type allows nullable membership. The successful `authorize()` implementation ensures active membership, but the route did not narrow the public type before building trusted `ToolContext`.
+- **Failed approaches rejected:** Defaulting the role, using non-null assertions/casts, weakening authorization, or broad unrelated type redesign.
+- **Remedy:** Added a fail-closed 403 guard after `authorize()`; added static regression coverage for guard-before-context ordering. Commits `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9` and `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`.
+- **Prevention:** Explicitly narrow shared auth types at security-sensitive call sites even when a helper enforces a stronger runtime invariant. Keep source errors separate from environment toolchain failures.
+- **Evidence/verification:** Patch and regression source are committed; no post-patch web build or test execution is yet evidenced.
+- **Next action:** Pull latest main and rerun Docker Compose build; then run focused test. Host-native `pnpm: command not found` is routed separately to OPS-01.

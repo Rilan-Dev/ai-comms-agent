@@ -307,3 +307,14 @@ Append-only operational history for FIX-01. This is not the source of authorizat
 - **Verification:** Test authored but not run. No typecheck/build/deploy/provider request/live DB verification. No PASS claimed.
 - **Routing:** OPS-01 handoff `HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017` OPEN. Verify actual DB row state and serving revision; deploy/restart via existing manual procedure; test one chat turn and sanitized logs.
 - **Prevention:** Agent overrides must be resolved independently of org defaults; tenant-scoped saved provider settings should beat process env fallback.
+
+
+### FIX01-CHAT-MEMBERSHIP-NULL-20261018 / 2026-10-18
+- **Role:** FIX-01 / Sentinel
+- **Authorization:** User explicitly authorized recovery of repository/agent state, root-cause trace of recent commits, the smallest authorized correction, regression protection, and recording evidence/next action. Source correction on main was in scope; unrelated work was not.
+- **Symptom:** User's Docker build reports worker image built, but Next.js web build fails TS18047 at chat stream route line 384 because `subject.membership` may be null.
+- **Trace/root cause:** `authorize()` calls `requireOrganizationMember()`, which rejects missing/suspended membership. But shared `AuthSubject.membership` remains nullable; the caller used `subject.membership.role` without narrowing. The source's runtime invariant is stronger than its public type.
+- **Failed approaches:** No default role, unsafe cast, weakening authorization, or broad shared-type refactor. `pnpm: command not found` in the host shell is separate environment/tooling work for OPS-01; the Docker image itself had pnpm and built the worker.
+- **Remedy:** Commit `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9` adds an explicit fail-closed 403 membership guard after authorization. Commit `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9` adds a static regression assertion that the guard precedes trusted tool context construction.
+- **Evidence:** User-supplied log: Next.js compilation succeeded; type validation failed at `route.ts:384`; worker Docker target built/exported successfully. Source correction and test were committed; no post-fix test/build is claimed.
+- **Next:** User pulls latest main and reruns `docker compose -f infra/docker-compose.manual.yml up -d --build`. If web build passes, continue with focused chat host-tool-loop test and runtime checks. OPS-01 separately handles host shell's missing pnpm if native pnpm commands are needed.

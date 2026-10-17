@@ -206,3 +206,12 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Authorization:** User-explicit FIX-01 incident investigation and corrective change.
 - **Suggested next action:** Deploy/restart revision containing `8d7aecc` via the existing manual procedure; inspect sanitized provider metadata and verify one chat turn selects Sarvam. Do not print secrets or add OpenAI credentials as workaround.
 - **Related session/event/handoff:** `SESSION-FIX01-CHAT-PROVIDER-20261017`; `EVT-FIX01-CHAT-PROVIDER-OVERRIDE-20261017`; `HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017`.
+
+
+### BKL-OPS01-HOST-PNPM-20261018
+- **Work:** Triage native host shell missing pnpm command.
+- **Owner:** OPS-01 / Shipwright
+- **State:** ROUTED
+- **Evidence:** `pnpm: command not found` in host shell; user Docker build's Corepack/pnpm stage ran and worker target built.
+- **Scope:** Toolchain/environment setup only; no app source or lockfile changes unless separately authorized and evidenced as required.
+- **Related handoff:** `HOF-FIX01-OPS-HOST-PNPM-20261018`.
