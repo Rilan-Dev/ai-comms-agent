@@ -9,6 +9,7 @@ const whatsappRuntime = readFileSync(resolve(__dirname, "../../worker/src/agent/
 const templatesRoute = readFileSync(resolve(__dirname, "../src/app/api/whatsapp/templates/route.ts"), "utf8");
 const whatsappWorker = readFileSync(resolve(__dirname, "../../worker/src/messaging/whatsapp-worker.ts"), "utf8");
 const templateMigration = readFileSync(resolve(__dirname, "../../../supabase/migrations/0036_whatsapp_templates.sql"), "utf8");
+const permissionsMigration = readFileSync(resolve(__dirname, "../../../supabase/migrations/0038_whatsapp_feature_permissions.sql"), "utf8");
 const whatsappClient = readFileSync(resolve(__dirname, "../src/app/whatsapp/whatsapp-client.tsx"), "utf8");
 
 describe("WhatsApp send approval safety boundary", () => {
@@ -22,6 +23,7 @@ describe("WhatsApp send approval safety boundary", () => {
 
   it("requires an authenticated organization update permission to decide", () => {
     expect(decisionRoute).toContain('permission: "whatsapp.send"');
+    expect(messagesRoute).toContain('permission: "whatsapp.send"');
     expect(decisionRoute).toContain('decision !== "approve" && decision !== "reject"');
     expect(decisionRoute).toContain("WHERE id=$1 AND organization_id=$2");
     expect(decisionRoute).toContain("whatsapp.send_approval.approved");
@@ -51,6 +53,8 @@ describe("WhatsApp send approval safety boundary", () => {
     expect(templatesRoute).toContain('permission: "whatsapp.send"');
     expect(templateMigration).toContain("whatsapp_templates");
     expect(templateMigration).toContain("status text NOT NULL DEFAULT 'pending'");
+    expect(permissionsMigration).toContain("'whatsapp.read'");
+    expect(permissionsMigration).toContain("'whatsapp.send'");
   });
 
   it("supports only approved text-body template payloads and rejects unsupported components", () => {
