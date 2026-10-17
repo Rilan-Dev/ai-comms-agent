@@ -41,6 +41,7 @@ describe("WhatsApp send approval safety boundary", () => {
     expect(decisionRoute).toContain("template_required");
     expect(decisionRoute).toContain("no free-form text was queued");
     expect(whatsappWorker).toContain("no inbound customer message within Meta");
+    expect(whatsappWorker).toContain("No active human-approved WhatsApp action is associated");
   });
 
   it("persists expiry, idempotency, organization scoping, and audit correlation", () => {
