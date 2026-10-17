@@ -368,7 +368,7 @@ export function AIProviderSetupShared({
             ) : null}
             <p className="text-xs text-muted-foreground">
               {tab === "realtime" && (provider === "sarvam" || provider === "elevenlabs")
-                ? "This app uses realtime speech recognition, the authorized Clara agent, and streaming text-to-speech. These voice models are documented for the provider's WebSocket and are not a live per-key catalogue; availability is confirmed when a session connects. ElevenLabs Conversational AI agents are a separate integration, not a selectable model here."
+                ? "This app uses realtime speech recognition, the authorized Clara agent, and streaming text-to-speech. These voice models are documented for the provider's WebSocket and are not a live per-key catalogue; availability is confirmed when a session connects. To use this provider in voice calls, select it as the organization's realtime voice default or override it per agent. ElevenLabs Conversational AI agents are a separate integration, not a selectable model here."
                 : "Model options are fetched from the provider's live API with this organization's saved key. Save the key first, choose a listed model, and save again. Unsupported capabilities are never presented as live."}
             </p>
             <label className="flex items-center gap-2 text-sm">
