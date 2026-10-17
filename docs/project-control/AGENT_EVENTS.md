@@ -404,3 +404,13 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Verification:** Source inspection and user-supplied payload only. No tests or live runtime checks executed. No delivery PASS claimed.
 - **Security:** User-provided cookie-like access token must be revoked/rotated; never record the value.
 - **Session:** `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`
+
+### EVT-FIX01-WHATSAPP-LABEL-STATUS-20261017 — 2026-10-17
+- **Agent/session:** FIX-01 / Sentinel
+- **Type:** SOURCE CORRECTION / OPS ROUTE
+- **Summary:** Fixed the WhatsApp account label overwrite: after Graph API verification, Meta's `verified_name` was overwriting the user's custom `display_name`. Main now preserves the custom label and uses Meta's name only as a fallback. Added a focused static regression test.
+- **Commits:** source `fd1fda7429363091098825dbf37bba0f30be3d0f`; regression test `79f0e6a12511afaa07249005d24e6e50fc3c7d2b`; investigation record `86e4627b15a8c21d36a1035856d6fc0a66c32580`.
+- **Status discrepancy:** Last observed production revision was `0e355bc75df6ab6c41ac619050be561faeb7c3e7` (deployment `dpl_5zjzPd6V3uBGuMK2LppXqsRTkirK`). Historical runtime logs are unavailable beyond Vercel Hobby retention; available grouped errors are older account-save DB constraints and do not identify the exact message. Live row and webhook response could not be accessed, so no source cause for the `sent` vs `failed` mismatch is asserted.
+- **Owner:** OPS-01 for deployed revision, redacted webhook delivery/HTTP response/accepted count, exact scoped row and UI comparison. FIX-01 resumes only if evidence isolates a source defect.
+- **Verification:** Regression test authored, not run. Post-fix deployment not confirmed. No live status PASS claimed.
+- **Session:** `docs/project-control/sessions/FIX01-WHATSAPP-DISPLAY-STATUS-20261017.md`.
