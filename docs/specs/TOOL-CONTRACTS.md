@@ -331,7 +331,7 @@ The registry is **not** the full execution security boundary: it does not itself
 
 The Clara boundary now has provider-neutral tool-call types and `claraRuntime.completeWithTools(ctx, messages, tools)`. OpenAI-compatible calls serialize assistant tool-call history into the provider wire shape; Gemini uses functionCall/functionResponse parts. Malformed OpenAI tool arguments fail closed. Sarvam tool calling deliberately throws an explicit unsupported error until its behavior is verified.
 
-`apps/worker/src/agent/email-agent-loop.ts` uses only tools actually registered and allowlisted for the agent, creates a bounded 4-round / 8-call loop, validates trusted tenant/agent identity, invokes every model-emitted tool name through the shared executor (including unknown names so denials reach durable audit), caps tool result text, and marks results as untrusted data. The loop is reusable by transports but is **not currently called by chat, voice, WhatsApp, or schedule transports**.
+`apps/worker/src/agent/email-agent-loop.ts` uses only tools actually registered and allowlisted for the agent, creates a bounded 4-round / 8-call loop, validates trusted tenant/agent identity, invokes every model-emitted tool name through the shared executor (including unknown names so denials reach durable audit), caps tool result text, and marks results as untrusted data. The bounded loop is now connected to interactive web chat for registered, allowlisted email read tools and WhatsApp history. Realtime voice, inbound WhatsApp conversation turns, and scheduled execution are not yet connected to this host invocation path.
 
 Do not send contract-only catalogue entries to the model. Currently registered handlers are read-only. Drafts, mutation, attachment, and send descriptors are not executable. The runtime still needs execution-time allowlist/policy refresh, all-of/any-of capability enforcement for future multi-capability tools, cancellation/timeouts, token-aware output limits, and live provider contract evidence. ISS-026 remains FIX-01-owned and blocks safe chat transport integration.
 
@@ -341,3 +341,12 @@ Source tests were added but not run. No typecheck/build/provider/database/runtim
 ### Authorization follow-up — 2026-10-13
 
 `email-tool-runtime.ts` now re-reads the persisted agent allowlist during each invocation and applies all-of/any-of capability checks from the canonical `EMAIL_TOOL_CATALOG` descriptor for account-scoped calls. This is still source-only: add tests for allowlist revocation between tool calls, missing one required capability, and no supported any-capability alternative. Keep contract-only tools hidden until these checks and transport wiring are verified.
+
+
+## 11. Interactive chat host loop and WhatsApp outbound approval — 2026-10-17
+
+Interactive chat now builds its `ToolContext` from the authenticated server subject and invokes only registered tools from the per-agent email/WhatsApp registries. It bounds execution to four rounds and eight calls, caps tool-result serialization, and writes each invocation through the shared audited executor. The route does not trust model-supplied tenant, actor, role, or permissions.
+
+WhatsApp outbound API proposals persist to `whatsapp_send_actions`. Authenticated organization-update users can approve/reject them. Text proposals are queued only after a fresh account check and evidence of an inbound customer message within 24 hours. Outside that window the action is marked `requires_template` and no free-form text is sent. Approved template submission/status synchronization and template delivery are not implemented yet, so `whatsapp.send` remains unregistered and must not be advertised to the model.
+
+Source-only state: no test/typecheck/build/migration/Meta/browser/deployment verification has been performed for this checkpoint.
