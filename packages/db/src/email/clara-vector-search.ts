@@ -29,15 +29,39 @@ export function createClaraEmailVectorSearch(config: {
     ? baseUrl
     : `${baseUrl}/api/internal/email-vectors`;
   const parsed = new URL(endpoint);
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("CLARA_EMAIL_VECTOR_API_URL must use HTTP or HTTPS.");
+  }
   if (process.env.NODE_ENV === "production" && parsed.protocol !== "https:") {
     throw new Error("CLARA_EMAIL_VECTOR_API_URL must use HTTPS in production.");
   }
+  if (parsed.username || parsed.password || parsed.search || parsed.hash) {
+    throw new Error("CLARA_EMAIL_VECTOR_API_URL must not contain credentials, query, or fragment.");
+  }
 
   return async (input) => {
+    // Reject invalid scope before contacting a privileged service. A service
+    // token is never a substitute for the caller's agent-to-account grants.
+    if (typeof input.orgId !== "string" || !input.orgId.trim() || input.orgId.length > 128 ||
+        !Array.isArray(input.allowedAccountIds) ||
+        input.allowedAccountIds.length < 1 || input.allowedAccountIds.length > 100 ||
+        input.allowedAccountIds.some((id) =>
+          typeof id !== "string" || !id.trim() || id.length > 256 || id !== id.trim()
+        ) ||
+        new Set(input.allowedAccountIds).size !== input.allowedAccountIds.length) {
+      throw new Error("Clara email-vector search requires a trusted organization and unique allowed accounts.");
+    }
+    if (typeof input.query !== "string" || !input.query.trim() || input.query.length > 2000) {
+      throw new Error("Clara email-vector search requires a non-empty, bounded query.");
+    }
+    if (!Number.isFinite(input.limit) || !Number.isInteger(input.limit) || input.limit < 1) {
+      throw new Error("Clara email-vector search requires a positive integer limit.");
+    }
     let response: Response;
     try {
       response = await fetch(endpoint, {
         method: "POST",
+        redirect: "error",
         headers: {
           authorization: `Bearer ${apiKey}`,
           "content-type": "application/json",
@@ -48,7 +72,7 @@ export function createClaraEmailVectorSearch(config: {
           orgId: input.orgId,
           allowedAccountIds: input.allowedAccountIds,
           query: input.query,
-          limit: Math.max(1, Math.min(20, Math.floor(input.limit))),
+          limit: Math.min(20, input.limit),
         }),
         signal: AbortSignal.timeout(timeoutMs),
       });
