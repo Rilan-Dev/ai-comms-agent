@@ -329,3 +329,8 @@ If shared memory conflicts with current repository state or current requirements
 - Queue acknowledgement is not delivery confirmation. Preserve distinct queued, provider-accepted/sent, delivered, read and failed states.
 - When webhook evidence says failed but UI says sent, trace provider message ID through signed webhook acceptance, organization/account-scoped persistence and UI refresh before modifying code. Route live deployment/database/webhook-delivery diagnosis to OPS-01.
 - Session: `docs/project-control/sessions/FIX01-WHATSAPP-131047-20261017.md`; source inspection only, no runtime PASS.
+
+### FIX-01 lesson — WhatsApp display labels (2026-10-17)
+- Treat a user's editable account label as app-owned metadata. Provider verified names are only a fallback; both synchronous API verification and asynchronous worker verification must preserve a non-empty custom label.
+- When a webhook reports `failed` but the UI says `sent`, keep the status incident open until OPS-01 correlates provider webhook HTTP outcome/accepted count with the exact organization/account-scoped row and UI/API response. Do not infer a race or deploy claim without evidence.
+- Source/test commits for label correction: `fd1fda7429363091098825dbf37bba0f30be3d0f`, `7d785b36f2bae90d9d137805e1390fe9ab467550`, `f9bc5ec1cc793fb69c3b2a5a7d26e8d1cf00d5fb`. Tests and deployment have not been verified.
