@@ -119,7 +119,7 @@ The agent runtime uses the registry to:
 
 | Name | Sensitivity | Required permission | Description |
 |---|---|---|---|
-| `whatsapp.send` | **sensitive** | `whatsapp.send` | **Send an outbound WhatsApp message** (requires authorization; template compliance enforced) |
+| `whatsapp.send` | **sensitive** | `whatsapp.send` | Request an outbound WhatsApp message; creates a pending human approval and never sends directly |
 | `whatsapp.history` | safe | `whatsapp.read` | Read conversation history with a contact |
 
 ### 3.3 Schedule tools (domain: `schedule`)
@@ -347,6 +347,6 @@ Source tests were added but not run. No typecheck/build/provider/database/runtim
 
 Interactive chat now builds its `ToolContext` from the authenticated server subject and invokes only registered tools from the per-agent email/WhatsApp registries. It bounds execution to four rounds and eight calls, caps tool-result serialization, and writes each invocation through the shared audited executor. The route does not trust model-supplied tenant, actor, role, or permissions.
 
-WhatsApp outbound API proposals persist to `whatsapp_send_actions`. Authenticated organization-update users can approve/reject them. Text proposals are queued only after a fresh account check and evidence of an inbound customer message within 24 hours. Outside that window the action is marked `requires_template` and no free-form text is sent. Approved template submission/status synchronization and template delivery are not implemented yet, so `whatsapp.send` remains unregistered and must not be advertised to the model.
+WhatsApp outbound API proposals persist to `whatsapp_send_actions`. Authenticated organization-update users can approve/reject them. Text proposals are queued only after a fresh account check and evidence of an inbound customer message within 24 hours. Outside that window the action is marked `requires_template` and no free-form text is sent. Meta template submission/status synchronization and supported text-body template delivery now exist at source level. `whatsapp.send` is registered as a proposal-only handler and is exposed only when the persisted agent allowlist includes it and the authenticated actor has `whatsapp.send`; it creates a pending action and never queues directly. Approval-time and worker-time checks revalidate account status, the inbound 24-hour window for free-form text, and live Meta template approval. Unsupported media/dynamic-header/button templates fail closed.
 
 Source-only state: no test/typecheck/build/migration/Meta/browser/deployment verification has been performed for this checkpoint.
