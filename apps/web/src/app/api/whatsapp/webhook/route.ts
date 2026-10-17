@@ -7,8 +7,9 @@ function signatureValid(raw: string, signature: string | null, secret: string) {
   if (!signature?.startsWith("sha256=")) return false;
   const expected = createHmac("sha256", secret).update(raw).digest("hex");
   const actual = signature.slice("sha256=".length);
+  if (!/^[a-f0-9]{64}$/i.test(actual)) return false;
   if (actual.length !== expected.length) return false;
-  return timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
+  return timingSafeEqual(Buffer.from(actual, "hex"), Buffer.from(expected, "hex"));
 }
 
 export async function GET(request: Request) {
