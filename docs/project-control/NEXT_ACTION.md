@@ -1,3 +1,12 @@
+## DEV-01 — Clara email vector boundary hardening / direct main — 2026-10-18
+
+- **Done on main (no branches):** `packages/db/src/email/clara-vector-search.ts` rejects empty/duplicate/whitespace/oversized organization-account scope, invalid query/limit, malformed credential-bearing endpoint URLs and unexpected redirects before privileged Clara requests. Worker `clara-email-vector-adapter.ts` likewise rejects redirects/unsafe endpoint URLs on vector upsert/delete/purge. Added exact-source portable search test and worker Vitest regression source; no production integration was activated. Clara upstream PR #298 is **merged into Vite-Converted** but deployment and safety integration still unverified.
+- **Actual evidence:** Exact committed search TS and standalone test Git blobs were executed locally: 5/5 new Node security/provider tests PASS. Combined with previous exact-source standalone provider-catalog/runtime-form/status tests: **20/20 PASS**. Isolated search module `tsc` with declaration-only stubs PASS. This is not a full workspace/binary/browser or provider runtime PASS.
+- **EXACT NEXT_ACTION:** On dependency-equipped latest `main`, run `node --experimental-strip-types --test packages/db/tests/clara-vector-search-standalone.test.mjs`, `pnpm --filter @ai-comms-agent/worker exec vitest run src/knowledge/clara-email-vector-adapter.test.ts`, `pnpm --filter @ai-comms-agent/worker test`, `pnpm --filter @ai-comms-agent/worker typecheck`, `pnpm --filter @ai-comms-agent/web typecheck`, and `pnpm --filter @ai-comms-agent/web build`. OPS-01 verifies deployed Clara email-vector API/Qdrant and ISS-026 cross-agent denial before DEV-01 may bind vector sync outbox or enable Chat/Voice retrieval. Keep existing WhatsApp/voice defects with FIX-01. No deployment or phase acceptance until evidence.
+- **Session:** `docs/project-control/sessions/DEV01-CLARA-VECTOR-BOUNDARY-20261018.md`. User instruction remains direct main/no branch.
+
+---
+
 ## DEV-01 — Main-only organization provider credential isolation (2026-10-18)
 
 - **Owner direction:** Continue directly on `main` without creating branches or PRs.
