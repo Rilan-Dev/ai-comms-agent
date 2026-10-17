@@ -386,3 +386,8 @@ If shared memory conflicts with current repository state or current requirements
 - Guard every indexed typed-array read and split-array field that feeds a strict numeric/string API; use a conservative fallback when an absent audio sample should contribute silence.
 - Narrow nullable authorization membership at the request boundary with an explicit fail-closed response. Validate the conversation ID as a string instead of trusting a wider DB row type.
 - Source/test commits: 1fb04529, 9a9e09ee, 5946168a, 57618396, fee2a239. Post-fix verification remains pending.
+
+### OPS-01 lesson — Compose config environment compatibility (2026-10-18)
+- Docker Compose versions may not support `docker compose config --environment`; when this fails with an unknown flag, distinguish CLI compatibility from application build errors.
+- Prefer the modern resolved environment where available; otherwise resolve only the required non-secret output value from the same host/.env interpolation sources. Fail closed for absent or unresolved `DATABASE_URL`, and never print the DSN.
+- Successful Docker image builds do not prove migrations, container startup, or live service health. Session `OPS01-COMPOSE-ENV-FALLBACK-20261018`; verification pending.
