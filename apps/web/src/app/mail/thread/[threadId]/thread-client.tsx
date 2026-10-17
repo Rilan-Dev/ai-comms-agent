@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Eye, Code2 } from "lucide-react";
+import { buildEmailPreviewDocument } from "@/lib/email/html-preview-document";
 
 type Message = Record<string, any>;
 type Attachment = { id: string; filename: string; content_type?: string | null; size_bytes?: number | null; scan_status: string; download_available: boolean };
@@ -136,37 +137,35 @@ export function ThreadClient({ organizationId, threadId, initialMessages }: { or
 }
 
 /**
- * Render HTML email body in a sandboxed iframe. The iframe prevents the
- * email's scripts/links from interacting with the parent app's DOM.
- *
- * iframe srcDoc + sandbox="allow-popups allow-same-origin allow-popups-to-escape-sandbox"
- * — note: we DO NOT pass allow-scripts because email HTML scripts are
- * untrusted. allow-same-origin is needed so the iframe can resize itself
- * to fit its content (via document.documentElement.scrollHeight).
- *
- * Without allow-scripts, the iframe can't run resize JavaScript — so we
- * use a ResizeObserver that polls the iframe's document.body.scrollHeight.
+ * MailFlow-inspired email reader with an opaque-origin iframe and restrictive
+ * CSP. Embedded data: images and sender HTML layout work; tracking pixels,
+ * scripts, forms, embeds, external styles and remote fonts never load.
+ * Without allow-same-origin we intentionally use an internal scroll region
+ * instead of reading the email's DOM for auto-height.
  */
 function HtmlEmailFrame({ htmlBody }: { htmlBody: string }) {
+  const [expanded, setExpanded] = useState(false);
   return (
-    <iframe
-      srcDoc={htmlBody}
-      title="Email body"
-      sandbox="allow-same-origin"
-      className="w-full rounded-md border bg-white"
-      style={{ minHeight: "300px", height: "60vh", maxHeight: "80vh" }}
-      onLoad={(e) => {
-        try {
-          const iframe = e.currentTarget;
-          const doc = iframe.contentDocument;
-          if (doc?.body) {
-            const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight, 300);
-            iframe.style.height = Math.min(h + 24, 800) + "px";
-          }
-        } catch {
-          // Cross-origin blocked (shouldn't happen with sandbox=allow-same-origin + srcDoc)
-        }
-      }}
-    />
+    <div className="overflow-hidden rounded-lg border border-border bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/30 px-3 py-2">
+        <p className="text-xs text-muted-foreground">Formatted message · remote images blocked for privacy</p>
+        <button
+          type="button"
+          onClick={() => setExpanded((previous) => !previous)}
+          aria-expanded={expanded}
+          className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-secondary"
+        >
+          {expanded ? "Reduce preview" : "Expand preview"}
+        </button>
+      </div>
+      <iframe
+        srcDoc={buildEmailPreviewDocument(htmlBody)}
+        title="Formatted email message (external content blocked)"
+        sandbox=""
+        referrerPolicy="no-referrer"
+        loading="lazy"
+        className={`block w-full border-0 bg-white ${expanded ? "h-[85vh]" : "h-[480px] sm:h-[600px]"}`}
+      />
+    </div>
   );
 }
