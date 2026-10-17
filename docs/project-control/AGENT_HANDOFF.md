@@ -65,3 +65,14 @@ Cross-agent handoff register. A handoff transfers context, not authority.
 - **Authorization:** Existing user request authorizes diagnosis and smallest corrective fix. OPS-01 must confirm its deployment/infrastructure scope before changing runtime or database configuration.
 - **Stop condition:** Stop when serving revision and row/webhook/UI status are reconciled, or record the precise external access/retention blocker. Never expose tokens or cross-tenant rows; do not weaken HMAC or tenant scoping.
 - **Status:** OPEN
+
+### HOF-FIX01-OPS-CHAT-PROVIDER-OVERRIDE-20261017
+- **From:** FIX-01 / Sentinel
+- **To:** OPS-01 / Shipwright
+- **Reason:** Verify the live chat provider-selection failure and deploy/runtime boundary after a minimal source correction.
+- **Evidence:** User reports `POST /api/chat/stream` fails with `AI provider openai is not configured` despite Sarvam chat override. User's web container logs show the same; worker health says database and credentials master key are configured. The chat route passes orgId and agentId into `claraRuntime.createChatTurn`.
+- **Source fix:** `packages/clara-core/src/runtime.ts` no longer returns early when `organization_ai_runtime_settings` is absent; it supplies safe defaults and continues to resolve per-agent overrides and saved provider credentials. Commit `8d7aecc8fc4b4b23fb4ecd10946da1bd51042ab0`. Test authored at `apps/web/tests/clara-agent-provider-resolution.test.ts`; commits `d9e6c619320390c5290c04d29d30187a6838736f`, `c0e0a31e788ecd24e6af89f42e4f67f5100b7c73`.
+- **Required runtime trace:** Confirm serving revision separately for `aca.starcitytechnical.com` and self-hosted `infra-web-1`. In the correct organization scope inspect only: presence of org runtime settings row; agent row's chat_provider/chat_model; Sarvam `purpose='chat'` provider row enabled and key-present metadata. Never log/decrypt/print secrets.
+- **Action:** Rebuild/restart via existing manual deployment procedure from revision containing `8d7aecc`, then make one sanitized test request and confirm the selected provider is Sarvam. If org row exists, diagnose missing/disabled provider config or stale build. Fix infra/env/database/deploy issues within OPS-01 scope.
+- **Authorization:** User explicitly authorized root-cause investigation and the smallest source correction. Do not add OpenAI key as a workaround or weaken authorization.
+- **Verification:** Regression test not run; no build or live request verified. Status OPEN.
