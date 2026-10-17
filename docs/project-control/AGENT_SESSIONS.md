@@ -751,3 +751,12 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Verification:** Exact-Git-SHA-based Node tests 10/10 (6 catalog + 4 runtime) and isolated TypeScript 2/2 modules passed. Full repo app suite/build/live provider/browser/deploy NOT RUN.
 - **Blocked:** Private repo/dependency download unavailable and no saved provider keys in this environment; OPS-01 owns host + Vercel rate limits. No change to FIX-01 scope.
 - **Next:** Complete focused Vitest and full web typecheck/build, live tenant credential and UI smoke verification on main.
+
+### FIX01-STRICT-INDEXED-ACCESS-VOICE-CONTEXT-20261018 — 2026-10-18
+- **Agent:** FIX-01 / Sentinel
+- **Invocation:** Correct user's current web typecheck errors after the prior voice resampling fix.
+- **Scope:** Minimal audio sample guards, voice authorization context narrowing, WhatsApp selection typing, regression tests and project-control records.
+- **Completed:** Committed three source corrections and two regression-test updates on main; logged ISS-034 and updated verification/next-action/memory/worklog/event records.
+- **Commits:** 1fb04529, 9a9e09ee, 5946168a, 57618396, fee2a239, plus project-control commits.
+- **Status:** HANDOFF — source corrected; post-fix typecheck/tests/build pending.
+- **Next:** User pulls main, runs pnpm typecheck, focused voice/WhatsApp tests and bash scripts/update-and-up.sh. Fix further source failures based on actual output.
