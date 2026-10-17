@@ -477,3 +477,12 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - Remedy: reuse existing identifier and add branch-scoped regression assertion. Commits `f6efffdb42dbd75df38841fab43b985eb565ee3f`, `05519965adae7ebab837a03e4d7a0d2306e3f0c1`.
 - Verification: post-fix build/test pending.
 - Next: pull main, rebuild, run focused test.
+
+### EVT-DEV01-LIVE-MODEL-VERIFY-20261018
+- **Role/session:** DEV-01 / Forge; `DEV01-LIVE-MODEL-VERIFY-20261018`
+- **Type:** LIMITED EXECUTABLE SOURCE VERIFICATION / OPS HANDOFF
+- **Summary:** PR #34 is already merged. Verified exact Git blob of live-model-catalog adapter; six standalone mocked-provider Node tests PASS, module-only global TypeScript typecheck PASS, GitHub source contracts 13/13 PASS. Added a portable Node test for future runs without pnpm.
+- **Limit:** No full web/Vitest/build/browser/live provider/tenant runtime/deployment checks; no acceptance claim.
+- **Dependency:** OPS-01 needs dependency-equipped checkout, provider credentials and live runtime; Vercel status on merge commit indicates build-rate-limit. Avoid repeatedly polling.
+- **Lesson:** Include reproducible dependency-free provider-adapter smoke checks where full package installation is unavailable, but do not conflate with monorepo typecheck or live provider evidence.
+- **Record:** `docs/project-control/sessions/DEV01-LIVE-MODEL-VERIFY-20261018.md`.
