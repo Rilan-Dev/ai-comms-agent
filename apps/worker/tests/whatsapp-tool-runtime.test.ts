@@ -26,8 +26,12 @@ describe("WhatsApp history tool runtime", () => {
     expect(runtime).toContain("recordAuditEvent");
     expect(runtime).toContain("executeRegisteredTool");
   });
-  it("does not expose outbound sending before approval and template compliance are implemented", () => {
-    expect(runtime).toContain("Outbound send stays unregistered until WhatsApp approval and template compliance exist");
-    expect(runtime).not.toContain('name: "whatsapp.send"');
+  it("exposes outbound sending only as a pending-approval proposal", () => {
+    expect(runtime).toContain('name: "whatsapp.send"');
+    expect(runtime).toContain("registry.register(createWhatsAppSendApprovalTool())");
+    expect(runtime).toContain("INSERT INTO whatsapp_send_actions");
+    expect(runtime).toContain("approval_required: true");
+    expect(runtime).not.toContain("queueWhatsAppOutboundMessage");
+    expect(runtime).toContain("whatsapp.send_approval.requested");
   });
 });
