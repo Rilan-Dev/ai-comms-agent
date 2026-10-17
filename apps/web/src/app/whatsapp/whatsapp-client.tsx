@@ -108,7 +108,7 @@ export default function WhatsAppClient({ organizationId }: { organizationId: str
       const r = await fetch("/api/whatsapp/send-actions/decision", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ organizationId, actionId, decision }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.message ?? d.error ?? "Could not decide this WhatsApp action.");
-      setNotice(decision === "approve" ? "Approved and queued. Meta delivery has not yet been confirmed." : "WhatsApp send request rejected.");
+      setNotice(typeof d.message === "string" ? d.message : decision === "approve" ? "Approved and queued. Meta delivery has not yet been confirmed." : "WhatsApp send request rejected.");
       await loadApprovals();
     } catch (e) { setNotice(e instanceof Error ? e.message : "Could not decide this WhatsApp action."); } finally { setBusy(false); }
   }
