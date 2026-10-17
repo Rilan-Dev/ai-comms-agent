@@ -1,3 +1,15 @@
+## 2026-10-18 — Live model catalogue partial verification (DEV-01)
+
+- **Merged feature:** PR #34 merged into main at `5413468fc1ff0ae0088796b25d01b680126e521c`. Original "not merged" statements below are superseded; full feature acceptance still pending.
+- **Exact-source integrity:** Git blob `47c427b77c2dffe4555451ede58fec28b4dfe941` matches local module used for checks.
+- **PASSED (limited scope):** Standalone module `tsc --noEmit` with TS 5.8.3, six mocked vendor/Node tests (6/6), and thirteen GitHub source/API/UI contract assertions (13/13).
+- **Reproducibility:** `apps/web/tests/live-model-catalog-standalone.test.mjs` (locally executed and committed byte-identically, blob `35e1521a0619430a784a351d42e400b08c13cf5d`). `node --experimental-strip-types --test apps/web/tests/live-model-catalog-standalone.test.mjs`.
+- **NOT RUN:** Repository Vitest suite, complete Next/web typecheck/build, UI/browser, actual provider credentials/HTTP, cross-tenant runtime, and production deployment. These are mandatory for completion.
+- **Blockers:** Local private-repo/network/npm/pnpm unavailable; OPS-01 build/deployment has Vercel rate-limit status on merged revision. See session `DEV01-LIVE-MODEL-VERIFY-20261018` and new NEXT_ACTION. No phase or production acceptance.
+
+
+---
+
 ## 2026-10-18 — DEV-01 live provider model catalogues (NOT VERIFIED)
 
 - Branch: `feature/dev01-live-provider-model-catalog-20261018` from `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`; session `DEV01-LIVE-MODEL-CATALOG-20261018`.
