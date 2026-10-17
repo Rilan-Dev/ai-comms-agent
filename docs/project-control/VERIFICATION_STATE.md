@@ -1525,3 +1525,9 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Source fix:** Commit `baa9746142297322c5bf796e7c6fb94060bbc9cf` guards same-rate indexed sample reads with `?? 0` and guards downsampling accumulation reads. Regression source assertion committed at `ff8ab0faa72a1a235c47be6d773c16738d2cd79a`.
 - **Status:** SOURCE_CORRECTED / POST-FIX VERIFICATION_PENDING. This user's log is pre-fix; Docker build and focused test have not been observed after the patch.
 - **Next:** Pull latest main, rerun `bash scripts/update-and-up.sh`, then run focused `voice-realtime-transport.test.ts` if build succeeds. No PASS claim until output confirms it.
+
+## FIX-01 strict indexed-access and voice-context correction — 2026-10-18
+- User-provided pre-fix evidence: web typecheck failed at PCM WAV sample access, provider audio channel sample access, voice energy sample access, nullable voice membership, voice conversation ID typing, and WhatsApp template selection destructuring.
+- Source/test commits on main: 1fb045298ed77cd218a36d7babdc911e17b2211d, 9a9e09ee4f6a8c3e2ece81d0b717e9ef22403281, 5946168a22cd316e03c7e859c17d5a53724d48f3, 57618396c400863cf9de31a3dde6de1869447a6b, fee2a2394dfe1e687a470c0caa24a26a9039a20b.
+- Current status: SOURCE_CORRECTED / POST-FIX_VERIFICATION_PENDING. The prior user output does not verify these corrections. No typecheck, test, build, or deployment PASS is claimed.
+- Next: run current-main pnpm typecheck, focused voice and WhatsApp tests, then Docker build; document only observed outcomes.
