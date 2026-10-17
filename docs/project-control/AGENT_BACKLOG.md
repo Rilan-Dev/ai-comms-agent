@@ -215,3 +215,14 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Evidence:** `pnpm: command not found` in host shell; user Docker build's Corepack/pnpm stage ran and worker target built.
 - **Scope:** Toolchain/environment setup only; no app source or lockfile changes unless separately authorized and evidenced as required.
 - **Related handoff:** `HOF-FIX01-OPS-HOST-PNPM-20261018`.
+
+
+### BKL-FIX01-WHATSAPP-TEMPLATE-ROW-20261018
+- **Work:** Verify the strict-nullability correction for the WhatsApp approved-template sync row.
+- **Owner:** FIX-01 / Sentinel
+- **State:** ACTIVE — source corrected; post-fix verification pending
+- **Dependency:** Updated main checkout and Docker build/test output.
+- **Authorization:** User-supplied production-build error and explicit FIX-01 instructions.
+- **Correction commits:** `90fac5e0774b695446e1e0c3ab51072639ba5f06`; `41734923651b1173a703d747f0ac0aa93317a5b9`.
+- **Next action:** Pull latest main; rerun `bash scripts/update-and-up.sh`; if build passes, run focused `whatsapp-send-approval.test.ts`. Do not claim PASS until observed.
+- **Related issue/session/event:** ISS-031; FIX01-WHATSAPP-TEMPLATE-ROW-20261018; EVT-FIX01-WHATSAPP-TEMPLATE-ROW-20261018.
