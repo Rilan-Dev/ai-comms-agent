@@ -404,3 +404,11 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Blockers:** No local full private repo or working pnpm npm registry; live vendor credentials/browser/OPS environment inaccessible; Vercel build-rate-limit separate. Nothing merged via branch.
 - **Lesson:** A provider switch must discard unsaved vendor secrets; multi-purpose readiness requires all capabilities, not the first matching record; check HTTP status before success toast.
 - **Next:** Full web Vitest/Next/typecheck and live UI provider settings flow in OPS-enabled checkout; resume approved email AI capabilities / RAG after security/Clara endpoint gates.
+
+### DEV01-ORG-CREDENTIAL-ISOLATION-20261018 / 2026-10-18
+- **Task:** Continue development verification and hardening directly on `main`, no branches/PRs per user.
+- **Work:** Provider setup and old chat provider screen both retained a typed key and old configs across `organizationId` changes, and allowed save before new org configs loaded; async GET race could mix tenants. Added abort/cancellation, org-readiness gates, secret clearing, retry. Live model selector now rejects fulfilled stale responses after abort and clears loading when no org.
+- **Commits:** `0fe7ce37`, `f5407bf1`, `c7ac01fb`, `74a2fcca`, `a28bf2d5`, `e0931386`, `a94705cf`. All directly on main.
+- **ACTUAL TESTS:** existing local Node catalog 6/6, state 4/4, provider readiness 5/5 PASS (15 total); three pure-module isolated TS checks PASS; 12 authenticated GitHub source assertions PASS. New Node source-contract and Vitest tests committed but not executed locally.
+- **Cannot claim:** Full pnpm install, web/worker typecheck/build, live app/browser, real provider keys, cross-tenant API integration, Vercel/deployment. Browser connector lacked originating browser context; no full checkout/working registry.
+- **Next:** Full repo test/build then organization switch/cross-org live smoke; continue secure email tools and RAG behind FIX-01's runtime isolation and verified Clara API.
