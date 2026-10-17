@@ -98,3 +98,11 @@ Cross-agent handoff register. A handoff transfers context, not authority.
 - **Authorization:** Existing owner development-first verification request; actual production deployment still under OPS-01 authorization/control.
 - **Stop condition:** Finish the environment/deployment-specific checks or record exact external blocker; route source defects to FIX-01 and do not claim production PASS without runtime evidence.
 - **Status:** OPEN
+
+### HOF-FIX01-STRICT-INDEXED-ACCESS-VOICE-CONTEXT-20261018
+- **From:** FIX-01 / Sentinel
+- **To:** User local checkout; OPS-01 only for separate environment/deployment defects
+- **Reason:** Source changes are committed; post-fix verification requires the user's dependency-equipped checkout and Docker host.
+- **Source commits:** 1fb04529, 9a9e09ee, 5946168a; tests 57618396 and fee2a239.
+- **Next:** Pull current main, run pnpm typecheck and focused voice/WhatsApp Vitest suites, then bash scripts/update-and-up.sh. Share full new compiler output if errors remain.
+- **Evidence limit:** The provided typecheck/build logs predate this correction; no post-fix pass or live deployment claim is made.
