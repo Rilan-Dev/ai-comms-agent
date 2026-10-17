@@ -1315,3 +1315,13 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - `whatsapp.send` is deliberately not registered: WhatsApp-specific approval persistence and Meta template-compliance enforcement are not yet connected.
 - Source readback only; tests, typecheck, build, database, browser, Meta and deployment checks remain unrun.
 - Next: wire the authenticated shared tool-call loop to chat; then implement an approval/template-compliant WhatsApp send path before registering outbound send.
+
+
+## FIX-01 — WhatsApp template row nullability build correction — 2026-10-18
+
+- User's `bash scripts/update-and-up.sh` output: worker image built/exported; Next.js web compilation succeeded, then type validation failed at `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts:119` because `synced.rows[0]` may be undefined.
+- Root cause: checking `synced.rows.length` does not narrow a subsequent indexed access under strict TypeScript.
+- Correction: bind `synced.rows[0]` to `syncedTemplate`; if absent, return the existing fail-closed 409 `template_not_synced` response; read components from the narrowed local. Added regression source assertion.
+- Commits: `90fac5e0774b695446e1e0c3ab51072639ba5f06`, `41734923651b1173a703d747f0ac0aa93317a5b9`.
+- Verification: post-fix build and test pending; do not claim success from source changes alone.
+- Next: pull latest main, run `bash scripts/update-and-up.sh`; if green, run focused `whatsapp-send-approval.test.ts`. Continue addressing any new source compiler error narrowly. OPS-01 owns only separate host-toolchain/deployment environment defects.
