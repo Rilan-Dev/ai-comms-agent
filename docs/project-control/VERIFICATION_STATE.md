@@ -1,3 +1,14 @@
+## 2026-10-18 — DEV-01 provider setup hardening (LIMITED EXECUTED CHECKS)
+
+- All source commits on `main`, no branch/PR. Files: `ai-provider-setup-shared.tsx`, `provider-config-status.ts`, `provider-config-status.test.mjs`, `ai-provider-setup-safety.test.mjs`, `live-model-catalog.test.ts`.
+- **PASS (executed locally):** 6/6 live-model catalog vendor mocked Node tests; 4/4 runtime hydration Node tests; 5/5 provider-status Node tests; isolated `tsc --noEmit` of the three exact pure modules. SHA identity confirmed for new status helper `7bbbf6c89e1686844675961a45219f6783d61044` and its Node test `5248d331af8122f1ab31112e1f0e603d2d779ad3`.
+- **PASS (authenticated GitHub source checks, not browser):** 5/5 assertions on provider switching secret clearance, both selection controls, rejection of failed delete/reload, catalog refresh. Source after all changes blob `bd866815ac0f9a6b4b45dcce68acb152b37eaf9a`.
+- **NOT RUN:** Newly added Node TSX-source-safety test against full repo, expanded Vitest tests, whole workspace/web/worker typecheck or Next build, browser/provider/tenant/approval end-to-end flows, deployment/migrations. No full production acceptance.
+- **Block:** No dependency-equipped private checkout, pnpm registry/DNS or authorized provider credentials in this execution runtime. OPS-01 owns environment and latest Vercel build-rate-limit; details and exact next commands in `NEXT_ACTION.md`.
+- **Session:** `docs/project-control/sessions/DEV01-PROVIDER-SETUP-HARDENING-20261018.md`.
+
+---
+
 ## 2026-10-18 — DEV-01 direct-main runtime form correction / model catalogue limited tests
 
 - PRs #34/#35: already merged. Latest owner instruction: **work directly on main; no new branches**.
