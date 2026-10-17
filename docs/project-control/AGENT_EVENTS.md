@@ -443,3 +443,14 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Verification:** User log shows worker image built; web compilation succeeded but typecheck failed before the patch. Post-patch build/test pending.
 - **Separate environment note:** Native host shell returned `pnpm: command not found`; Docker build environment has Corepack/pnpm and built the worker. Route host toolchain availability to OPS-01 if native commands are required.
 - **Next:** Pull latest main and rebuild Docker web/worker. Keep runtime PASS unclaimed until build and focused regression test are actually run.
+
+
+### EVT-FIX01-WHATSAPP-TEMPLATE-ROW-20261018
+- **Agent/session:** FIX-01 / Sentinel; `FIX01-WHATSAPP-TEMPLATE-ROW-20261018`
+- **Type:** SOURCE DEFECT / TYPECHECK FAILURE
+- **Symptom:** Docker web build's Next.js compile passed, then TS18048 failed at `apps/web/src/app/api/whatsapp/send-actions/decision/route.ts:119` because `synced.rows[0]` may be undefined.
+- **Root cause:** The `rows.length` check does not narrow indexed array access.
+- **Remedy:** Local row binding + explicit fail-closed 409 guard, then safe component access. Added source regression assertion. Commits `90fac5e0774b695446e1e0c3ab51072639ba5f06`, `41734923651b1173a703d747f0ac0aa93317a5b9`.
+- **Failed approaches avoided:** No non-null assertion, cast, compiler relaxation, or template policy change.
+- **Verification:** Source committed; post-fix build/test pending. Worker build and pre-fix web failure are user-provided evidence.
+- **Next:** Rebuild latest main and run the focused WhatsApp approval test; update state from actual output.
