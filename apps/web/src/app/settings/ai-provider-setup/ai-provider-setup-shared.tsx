@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, Loader2, Trash2 } from "lucide-react";
 import { LiveModelSelect, type ModelPurpose } from "@/components/live-model-select";
 import { providerConfigStatus } from "@/lib/ai/provider-config-status";
@@ -57,6 +57,10 @@ export function AIProviderSetupShared({
   tab: Tab;
 }) {
   const [catalogVersion, setCatalogVersion] = useState(0);
+  const [loadRetry, setLoadRetry] = useState(0);
+  const [loadedOrganizationId, setLoadedOrganizationId] = useState("");
+  const currentOrganizationId = useRef(organizationId);
+  currentOrganizationId.current = organizationId;
   const [configs, setConfigs] = useState<Config[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -81,35 +85,69 @@ export function AIProviderSetupShared({
     setError("");
   }, [tab]);
 
-  // Load configs when tab changes
+  // A secret typed in organization A must never survive switching to B.
   useEffect(() => {
-    if (!organizationId) return;
+    setApiKey("");
+    setModel("");
+    setSttModel("");
+    setConfigs([]);
+    setLoadedOrganizationId("");
+    setNotice("");
+    setError("");
+  }, [organizationId]);
+
+  // Never let a late response from organization A overwrite organization B.
+  useEffect(() => {
+    const controller = new AbortController();
     setLoading(true);
+    setLoadedOrganizationId("");
+    setConfigs([]);
+    if (!organizationId) {
+      setLoading(false);
+      return () => controller.abort();
+    }
     const purposes = tab === "voice-chat" ? ["tts", "stt"] : [PURPOSE_FOR_TAB[tab]];
-    Promise.all(
+    void Promise.all(
       purposes.map((p) =>
-        fetch(`/api/settings/ai-provider-configs?purpose=${p}&organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" })
-          .then(async (r) => {
-            if (!r.ok) throw new Error("Provider configs could not load.");
-            const body = await r.json();
-            return (body.configs ?? []) as Config[];
-          })
+        fetch(`/api/settings/ai-provider-configs?purpose=${p}&organizationId=${encodeURIComponent(organizationId)}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        }).then(async (response) => {
+          const body = await response.json().catch(() => null) as { configs?: Config[]; message?: string } | null;
+          if (!response.ok) throw new Error(body?.message ?? "Provider configs could not load.");
+          return body?.configs ?? [];
+        }),
       ),
     )
-      .then((groups) => setConfigs(groups.flat()))
-      .catch((e) => setError(e instanceof Error ? e.message : "Provider configs could not load."))
-      .finally(() => setLoading(false));
-  }, [organizationId, tab]);
+      .then((groups) => {
+        if (controller.signal.aborted) return;
+        setConfigs(groups.flat());
+        setLoadedOrganizationId(organizationId);
+        setError("");
+      })
+      .catch((reason: unknown) => {
+        if (controller.signal.aborted) return;
+        setError(reason instanceof Error ? reason.message : "Provider configs could not load.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [organizationId, tab, loadRetry]);
+
+  const organizationReady = Boolean(organizationId) && loadedOrganizationId === organizationId && !loading;
+  const visibleConfigs = loadedOrganizationId === organizationId ? configs : [];
 
   // Restore the provider's own saved values, never choose a static default.
   useEffect(() => {
     const purpose = PURPOSE_FOR_TAB[tab];
-    const current = configs.find((c) => c.provider === provider && c.purpose === purpose);
+    const activeConfigs = loadedOrganizationId === organizationId ? configs : [];
+    const current = activeConfigs.find((c) => c.provider === provider && c.purpose === purpose);
     setModel(current?.model || "");
-    setSttModel(configs.find((c) => c.provider === provider && c.purpose === "stt")?.model || "");
+    setSttModel(activeConfigs.find((c) => c.provider === provider && c.purpose === "stt")?.model || "");
     setBaseUrl(current?.baseUrl || PROVIDER_BASE_URLS[provider] || "");
     setEnabled(current?.enabled ?? true);
-  }, [provider, tab, configs]);
+  }, [provider, tab, configs, organizationId, loadedOrganizationId]);
 
   function chooseProvider(next: string) {
     if (next === provider) return;
@@ -125,11 +163,16 @@ export function AIProviderSetupShared({
   }
 
   async function saveProvider() {
+    if (!organizationReady) {
+      setError("Load the selected organization's provider settings before saving.");
+      return;
+    }
     setSaving(true); setNotice(""); setError("");
     try {
       // Voice Chat stores distinct TTS/STT choices, not one model in two slots.
       const purposes = tab === "voice-chat" ? ["tts", "stt"] : [PURPOSE_FOR_TAB[tab]];
       for (const purpose of purposes) {
+        if (currentOrganizationId.current !== organizationId) return;
         const existing = configs.find((c) => c.provider === provider && c.purpose === purpose);
         const response = await fetch("/api/settings/ai-provider-configs", {
           method: "PUT",
@@ -148,6 +191,7 @@ export function AIProviderSetupShared({
         const body = await response.json();
         if (!response.ok) throw new Error(body.message ?? "Save failed.");
       }
+      if (currentOrganizationId.current !== organizationId) return;
       setApiKey("");
       // Reload
       const refreshed = await Promise.all(
@@ -160,6 +204,7 @@ export function AIProviderSetupShared({
             })
         ),
       );
+      if (currentOrganizationId.current !== organizationId) return;
       setConfigs(refreshed.flat());
       setCatalogVersion((n) => n + 1);
       setNotice("Provider settings saved. Secret values are never returned to the browser.");
@@ -171,12 +216,17 @@ export function AIProviderSetupShared({
   }
 
   async function deleteProvider() {
+    if (!organizationReady) {
+      setError("Load the selected organization's provider settings before removing credentials.");
+      return;
+    }
     if (!confirm(`Remove the saved ${provider} configuration for this purpose? This deletes the encrypted API key.`)) return;
     setSaving(true); setNotice(""); setError("");
     try {
       const purposes = tab === "voice-chat" ? ["tts", "stt"] : [PURPOSE_FOR_TAB[tab]];
       for (const purpose of purposes) {
-        const response = await fetch(`/api/settings/ai-provider-configs?purpose=${purpose}&provider=${provider}&organizationId=${encodeURIComponent(organizationId)}`, {
+        if (currentOrganizationId.current !== organizationId) return;
+        const response = await fetch(/api/settings/ai-provider-configs?purpose=${purpose}&provider=${provider}&organizationId=${encodeURIComponent(organizationId)}`, {
           method: "DELETE",
         });
         if (!response.ok) {
@@ -184,6 +234,7 @@ export function AIProviderSetupShared({
           throw new Error(body?.message || `Could not remove the ${purpose} configuration (HTTP ${response.status}). Other capabilities may have been changed; reload to review.`);
         }
       }
+      if (currentOrganizationId.current !== organizationId) return;
       setNotice("Provider config removed.");
       setApiKey("");
       const refreshed = await Promise.all(
@@ -196,6 +247,7 @@ export function AIProviderSetupShared({
             })
         ),
       );
+      if (currentOrganizationId.current !== organizationId) return;
       setConfigs(refreshed.flat());
       // Drop any catalogue fetched using credentials that were just removed.
       setCatalogVersion((n) => n + 1);
@@ -206,7 +258,7 @@ export function AIProviderSetupShared({
     }
   }
 
-  const current = configs.find((c) => c.provider === provider && c.purpose === PURPOSE_FOR_TAB[tab]);
+  const current = visibleConfigs.find((c) => c.provider === provider && c.purpose === PURPOSE_FOR_TAB[tab]);
   const inputCls = "mt-1 w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm";
   const labelCls = "block text-sm font-medium";
 
@@ -216,7 +268,7 @@ export function AIProviderSetupShared({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {ALLOWED_PROVIDERS[tab].map((p) => {
           const requiredPurposes = tab === "voice-chat" ? ["tts", "stt"] : [PURPOSE_FOR_TAB[tab]];
-          const status = providerConfigStatus(configs, p, requiredPurposes);
+          const status = providerConfigStatus(visibleConfigs, p, requiredPurposes);
           const Icon = status === "active" ? CheckCircle2 : AlertCircle;
           const color = status === "active" ? "text-emerald-600" : "text-amber-500";
           return (
@@ -255,6 +307,11 @@ export function AIProviderSetupShared({
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading provider configuration…
         </p>
+      ) : !organizationReady ? (
+        <div role="status" className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <span>{organizationId ? "Provider settings for this organization could not be loaded." : "Select an organization to configure AI providers."}</span>
+          {organizationId ? <button type="button" className="underline" onClick={() => setLoadRetry((n) => n + 1)}>Retry loading</button> : null}
+        </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-4">
