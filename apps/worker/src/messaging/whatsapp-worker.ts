@@ -50,8 +50,9 @@ function buildWhatsAppOutboundPayload(message: Record<string, any>) {
     return { messaging_product: "whatsapp", to, type: "text", text: { body } };
   }
 
-  const media = message.media && typeof message.media === "object" && !Array.isArray(message.media) ? message.media : {};
-  const template = media.template && typeof media.template === "object" && !Array.isArray(media.template) ? media.template : null;
+  const media: Record<string, unknown> = message.media && typeof message.media === "object" && !Array.isArray(message.media) ? message.media as Record<string, unknown> : {};
+  const rawTemplate = media.template;
+  const template: Record<string, unknown> | null = rawTemplate && typeof rawTemplate === "object" && !Array.isArray(rawTemplate) ? rawTemplate as Record<string, unknown> : null;
   const name = typeof template?.name === "string" ? template.name : "";
   const language = typeof template?.language === "string" ? template.language : "";
   const parameters = Array.isArray(template?.parameters) ? template.parameters : [];
