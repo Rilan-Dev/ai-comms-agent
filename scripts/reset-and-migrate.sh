@@ -32,6 +32,39 @@ then
 fi
 echo "OK     schemas reset"
 
+# Purge stale "shadow" tables that may have been created in the `public`
+# schema by the old buggy migrate.sh (which didn't set search_path = aca,public
+# before running migration files). These shadow tables are duplicates of the
+# real tables in `aca` and can cause confusion when Postgres resolves
+# unqualified table references. The purge drops ALL user-created tables from
+# `public` — the `public` schema should only contain Supabase-managed
+# objects (auth, storage, etc.), never application tables.
+if ! psql "$DB_URL" -v ON_ERROR_STOP=1 -q >/dev/null 2>"$LOG_FILE" <<'SQL'
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN
+    SELECT table_name FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_type = 'BASE TABLE'
+      AND table_name NOT LIKE 'schema_%'
+      AND table_name NOT LIKE 'pg_%'
+      AND table_name NOT IN ('_aca_schema_migrations')
+  LOOP
+    EXECUTE format('DROP TABLE IF EXISTS public.%I CASCADE', r.table_name);
+  END LOOP;
+END $$;
+SQL
+then
+  KEEP_LOG=1
+  echo "ERROR: stale public shadow purge failed." >&2
+  tail -12 "$LOG_FILE" >&2
+  echo "Log: $LOG_FILE" >&2
+  exit 1
+fi
+echo "OK     stale public shadow objects purged"
+
 cd -- "${SCRIPT_DIR}/.."
 if ! bash "$MIGRATE_SCRIPT" 2>&1 | tee -a "$LOG_FILE"; then
   KEEP_LOG=1
