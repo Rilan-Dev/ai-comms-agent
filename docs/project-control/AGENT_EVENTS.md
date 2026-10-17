@@ -516,3 +516,12 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Commits:** 1fb04529, 9a9e09ee, 5946168a, 57618396, fee2a239.
 - **Evidence boundary:** User logs are pre-fix. No post-fix typecheck, focused test, Docker build or live deployment pass is claimed.
 - **Next:** Pull latest main, run pnpm typecheck and focused tests, then manual Docker build; continue with any newly surfaced source errors.
+
+### EVT-OPS01-COMPOSE-ENV-FALLBACK-20261018
+- **Role/session:** OPS-01; `OPS01-COMPOSE-ENV-FALLBACK-20261018`
+- **Type:** DEPLOYMENT SCRIPT COMPATIBILITY FIX / VERIFICATION PENDING
+- **Summary:** User's Docker image builds succeeded, but manual deployment failed before migration because the installed Compose CLI rejected `config --environment`.
+- **Correction:** Added a fallback for host/.env `DATABASE_URL` resolution with fail-closed handling for missing/unresolved values; added a Node source-contract regression test.
+- **Commits:** `a93176b3cbba730c30a016b4e47a9dd3dd46039c`, `0386f03fa9534ff2d53db84b7ffbd2b5fe864154`.
+- **Evidence boundary:** User log verifies image builds only. Regression test, migrations, stack startup and live health remain unverified.
+- **Next:** Pull latest main, run the Node test and manual deployment; record exact observed outcome.
