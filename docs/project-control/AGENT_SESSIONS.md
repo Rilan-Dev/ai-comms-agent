@@ -797,3 +797,11 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Executed:** Exact blob search adapter and portable test 5/5 Node; 20/20 with existing portable suites; isolated TypeScript with declared-only imports PASS. No full monorepo/worker/browser/Clara provider run.
 - **Ownership:** FIX-01 owns remaining voice/email authorization bugs, OPS-01 owns CI/deployment/Vercel/provider credentials. DEV-01 does not activate vector outbox until ISS-026 live scope verification and Clara deployment confirmed.
 - **Record:** `docs/project-control/sessions/DEV01-CLARA-VECTOR-BOUNDARY-20261018.md`.
+
+### DEV01-REALTIME-VOICE-MODEL-CATALOG-20261018 — 2026-10-18
+- **User instruction:** Fix annotated `/settings/ai-provider-setup` realtime-model selection for enabled Sarvam/ElevenLabs keys and continue selected verification backlog. Direct `main` only, no branches/PRs.
+- **Root cause:** Realtime capability deliberately excluded both providers from live REST catalog; saved legacy `elevenlabs-conversational` marker is not a supported Scribe realtime STT model. Sarvam `/v2/models` lists chat models, not streaming STT.
+- **Committed source:** Documented (not live) WebSocket options for Sarvam `saaras:v3-realtime`/`saaras:v4` and ElevenLabs `scribe_v2_realtime`, authenticated enabled-key check, selector source-specific UX and legacy warning, PUT incompatibility rejection, selected model propagation to voice session/Sarvam relay, clearer provider default vs saved key labels.
+- **Evidence:** Exact executed catalog module/test blobs match GitHub; 9/9 module Node, 23/23 combined standalone Node, isolated catalog tsc, 13/13 GitHub source checks PASS. Full pnpm/web/worker build/migration/E2E and live app/provider/deploy NOT RUN.
+- **Session:** `docs/project-control/sessions/DEV01-REALTIME-VOICE-MODEL-CATALOG-20261018.md`. OPS-01 owns build-rate-limit / deployment / provider realtime verification, FIX-01 unrelated voice bugs.
+- **Next:** Full focused Vitest and worker/Next build on latest main; authorized Sarvam/ElevenLabs selection/save/reload, per-agent provider selection, model-to-WebSocket and cross-org runtime verification. Native ElevenAgents `/v1/convai/agents` support remains unimplemented as separate feature.
