@@ -431,3 +431,24 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Evidence limit:** The source branch is confirmed; the exact live database condition is not. OPS-01 must check whether the organization-default row exists and confirm deployed revision/config rows. Tests/build/deployment not verified.
 - **Owner next:** OPS-01 for container/deployment/database/runtime verification; FIX-01 resumes if a source defect remains after the patched revision is serving.
 - **Session:** `docs/project-control/sessions/FIX01-CHAT-PROVIDER-OVERRIDE-20261017.md`.
+
+
+### EVT-FIX01-CHAT-MEMBERSHIP-NULL-20261018
+- **Agent/session:** FIX-01 / Sentinel; `FIX01-CHAT-MEMBERSHIP-NULL-20261018`
+- **Type:** SOURCE DEFECT / TYPECHECK FAILURE
+- **Symptom:** Docker web build failed after successful Next.js compilation at `apps/web/src/app/api/chat/stream/route.ts:384`, TS nullable access `subject.membership.role`.
+- **Root cause:** Shared `AuthSubject` exposes nullable membership although the successful `authorize()` path guarantees active membership. Call-site type was not narrowed.
+- **Remedy:** Explicit fail-closed 403 guard immediately after `authorize()`; regression source assertion verifies the guard precedes trusted tool-context creation. Commits: `4a71cfcf553c7f2be5286b2a1d36fbb749b845d9`, `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`.
+- **Failed approaches avoided:** No default role, null assertion, auth weakening, or broad type redesign. Source issue is not an OPS-01 infrastructure defect.
+- **Verification:** User log shows worker image built; web compilation succeeded but typecheck failed before the patch. Post-patch build/test pending.
+- **Separate environment note:** Native host shell returned `pnpm: command not found`; Docker build environment has Corepack/pnpm and built the worker. Route host toolchain availability to OPS-01 if native commands are required.
+- **Next:** Pull latest main and rebuild Docker web/worker. Keep runtime PASS unclaimed until build and focused regression test are actually run.
+
+### EVT-DEV01-LIVE-MODEL-CATALOG-20261018 — 2026-10-18
+- **Agent/session:** DEV-01 / Forge; `DEV01-LIVE-MODEL-CATALOG-20261018`
+- **Type:** AUTHORIZED FEATURE SOURCE / REVIEW HANDOFF
+- **Summary:** Clara-style live vendor model discovery adapted into organization-scoped server API and dropdowns for chat, embedding, realtime and available voice model purposes; removed obsolete static catalog fallback and separated TTS/STT selections. Feature branch: `feature/dev01-live-provider-model-catalog-20261018`.
+- **Lesson:** Provider API support is capability-specific; never substitute static or globally keyed models when tenant live discovery fails. Do not present incompatible Sarvam V2-only models as executable by a v1 runtime.
+- **Verification:** Source and test files authored, not run. No production/deployment claim. User owner directly authorized this development.
+- **Other agents:** Keep ISS-026/ISS-030 and source bug remediation with FIX-01; Docker/build/deployment and live environment with OPS-01.
+- **Next:** Run focused model tests/typecheck and credentials-backed browser checks, architect review, then OPS-01 deploy only after accepted.
