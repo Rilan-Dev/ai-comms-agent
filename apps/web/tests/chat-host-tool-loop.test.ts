@@ -16,6 +16,7 @@ describe("interactive chat host-authorized tool loop", () => {
   it("uses only registered and allowlisted email and WhatsApp tools", () => {
     expect(route).toContain("emailRuntime.registry.listForAgent(args.agentId)");
     expect(route).toContain("whatsappRuntime.registry.listForAgent(args.agentId)");
+    expect(route).toContain("args.toolContext.auth_subject.permissions.includes(tool.required_permission)");
     expect(route).toContain("invokeWhatsAppTool(whatsappRuntime, call.name, call.arguments, args.toolContext)");
     expect(route).toContain("invokeEmailReadTool(emailRuntime, call.name, call.arguments, args.toolContext)");
   });
