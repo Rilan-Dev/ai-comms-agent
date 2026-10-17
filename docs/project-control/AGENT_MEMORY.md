@@ -1,11 +1,3 @@
-
-
-### FIX-01 lesson — host-run migrations cannot use Compose-only service DNS (2026-10-18)
-- A database hostname such as `postgres` resolves only for processes on the Compose network; a migration script launched by the host cannot use that alias. Trace the execution location, not only whether the database port is listening.
-- Preserve the desired internal application path; do not recommend changing app URLs to a host-published port when the user requires same-network container communication.
-- When moving a migration runner into an image, verify that the migration files are actually present. Here `packages/db/migrate.js` auto-detects `supabase/migrations`, but the current Dockerfile does not copy `supabase/`; a read-only mount or deliberate image inclusion is required.
-- Deployment-script implementation and rollout belong to OPS-01. FIX-01 records evidence and routes the handoff; source diagnosis is not a deployed fix.
-- Session `FIX01-MIGRATION-NETWORK-20261018`; issue ISS-037; OPS handoff `HOF-FIX01-OPS01-MIGRATION-NETWORK-20261018`.
 # APCP Shared Agent Memory
 
 This is the shared, durable memory layer for all APCP agents. It is a memory/lessons record, not an authorization source.
@@ -399,3 +391,11 @@ If shared memory conflicts with current repository state or current requirements
 - Docker Compose versions may not support `docker compose config --environment`; when this fails with an unknown flag, distinguish CLI compatibility from application build errors.
 - Prefer the modern resolved environment where available; otherwise resolve only the required non-secret output value from the same host/.env interpolation sources. Fail closed for absent or unresolved `DATABASE_URL`, and never print the DSN.
 - Successful Docker image builds do not prove migrations, container startup, or live service health. Session `OPS01-COMPOSE-ENV-FALLBACK-20261018`; verification pending.
+
+
+### FIX-01 lesson — host-run migrations cannot use Compose-only service DNS (2026-10-18)
+- A database hostname such as `postgres` resolves only for processes on the Compose network; a migration script launched by the host cannot use that alias. Trace the execution location, not only whether the database port is listening.
+- Preserve the desired internal application path; do not recommend changing app URLs to a host-published port when the user requires same-network container communication.
+- When moving a migration runner into an image, verify that the migration files are actually present. Here `packages/db/migrate.js` auto-detects `supabase/migrations`, but the current Dockerfile does not copy `supabase/`; a read-only mount or deliberate image inclusion is required.
+- Deployment-script implementation and rollout belong to OPS-01. FIX-01 records evidence and routes the handoff; source diagnosis is not a deployed fix.
+- Session `FIX01-MIGRATION-NETWORK-20261018`; issue ISS-037; OPS handoff `HOF-FIX01-OPS01-MIGRATION-NETWORK-20261018`.
