@@ -361,3 +361,14 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - **Verification:** Source only. Tests, typecheck, build, migration execution, browser flow, Meta API, provider send, and deployment were not run. No PASS claimed.
 - **Next:** Focused test/typecheck; inspect web-to-worker import boundary; apply migrations; verify text-window and approved-template sends against Meta.
 - **Session:** docs/project-control/sessions/DEV01-CHAT-WHATSAPP-TOOL-APPROVAL-20261017.md
+
+### DEV01-LIVE-MODEL-CATALOG-20261018 / 2026-10-18
+- **Task:** Replace manual/curated model inputs with Clara-style, vendor-live, provider/capability-filtered model dropdowns.
+- **Authorization:** Owner's 2026-10-18 explicit product requirement; Phase 4 development-first instruction. DEV-01 scope.
+- **Started from:** main `182cf3de1ab5f7cd783ebcab5ab536aae7afabf9`, branch `feature/dev01-live-provider-model-catalog-20261018`.
+- **Actions:** Inspected Clara live-catalog implementation, existing org credentials/config and agent/runtime settings. Added secure tenant-scoped live list API; built reusable dropdown; connected organization provider setup, main Settings, runtime realtime model and six per-agent model fields; made TTS/STT independent; retired static endpoint; wrote mocked-fetch tests.
+- **Files/code:** `apps/web/src/lib/ai/live-model-catalog.ts`, `apps/web/src/app/api/settings/ai-models/route.ts`, `apps/web/src/components/live-model-select.tsx`, `apps/web/src/app/settings/ai-provider-setup/ai-provider-setup-shared.tsx`, `apps/web/src/app/settings/ai-provider-settings.tsx`, `apps/web/src/app/settings/ai-runtime-settings.tsx`, `apps/web/src/app/agents/[id]/agent-ai-settings-panel.tsx`, legacy config routes and targeted tests.
+- **Evidence:** GitHub accepted commits on feature branch; source readback confirmed scope. Tests/typecheck/build/live provider and browser not executed. No runtime PASS or merge.
+- **Blockers:** Missing vendor listing APIs for Sarvam voice, TEI, ElevenLabs realtime. Live credentials, build/deployment and end-to-end verification not available here. FIX-01 and OPS-01 retain their existing independent issues.
+- **Lesson:** A selectable model list is only trustworthy if live, capability-filtered and obtained using credentials scoped to the authorized organization; a silently substituted static catalog is misleading. Keep credential-first setup and distinct TTS/STT IDs.
+- **Next action:** Execute focused Vitest and web typecheck in a full checkout, then test real encrypted keys/catalogues and save/reload; request architect review, route deployment to OPS-01. Session: `docs/project-control/sessions/DEV01-LIVE-MODEL-CATALOG-20261018.md`.
