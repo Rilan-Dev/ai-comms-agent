@@ -119,3 +119,9 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 - Node 22.16+ `--experimental-strip-types --test` runs no-dependency provider-adapter mock tests. Record the tested code's SHA and results; keep Vitest/Next/React, live HTTP, credentials and browser as separate unverified gates.
 - PR merge status can advance concurrently; a stale `NEXT_ACTION` calling it "draft/unmerged" must be superseded with fresh GitHub truth. Vercel `build-rate-limit` routes to OPS-01, not DEV-01 source.
 - Session `DEV01-LIVE-MODEL-VERIFY-20261018`; 6/6 mocked adapter and 13/13 source checks PASS, module-only typecheck PASS.
+
+### 2026-10-18 — Direct-main owner instruction and AI runtime field mapping
+- User explicitly said to work directly on `main` and **not create branches** for continuing this task; PR #34/#35 already merged. Follow this in future continuation until the owner changes it.
+- `GET /api/settings/ai-runtime` emits camelCase repository settings; the UI/PUT uses snake_case. Mapping only the realtime fields silently replaces persisted `knowledgeBaseId`, `defaultProvider`, `voiceId`, `systemPrompt`, etc. with client defaults on save. New mapper `apps/web/src/lib/ai/runtime-settings-state.ts` normalizes all eight. Test KB and prompt round trips, including temperature 0 and blank model, to prevent loss.
+- Do not hard-code a realtime model ID as a new-org default in a vendor-live-only selector.
+- Recorded exact-source tests: Node 6/6 live adapter mocks, Node 4/4 hydration, isolated tsc both pure modules passed. Full web/Vitest/Next/provider/browser/production remains unverified. Session: `docs/project-control/sessions/DEV01-MAIN-RUNTIME-MODEL-20261018.md`.
