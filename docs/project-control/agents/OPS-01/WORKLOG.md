@@ -45,3 +45,12 @@ Append-only operational history for OPS-01. This is not the source of authorizat
 - **Blockers/dependencies:** User must pull current main and rerun manual deployment; database connectivity/migration success remains unknown.
 - **Lesson:** Do not require a recently added Compose CLI option without a fallback; keep migration configuration fail-closed and never print DSNs.
 - **Next action:** Run `node --test scripts/tests/manual-up-compose-env.test.mjs`, then `bash scripts/update-and-up.sh`; record migration and startup outcomes.
+
+### OPS01-MANUAL-COMPOSE-ENV-PATH-20261018 / 2026-10-18
+- Task: Fix startup failure from a missing Compose env file.
+- Authorization: User-provided deployment output; minimal operational correction.
+- Actions: Changed both service `env_file` entries in `docker-compose.manual.yml` from `../.env` to `.env`, matching the repository-root file selected by `scripts/manual-up.sh`. Added a source regression assertion.
+- Files: `docker-compose.manual.yml`; `scripts/tests/manual-up-compose-env.test.mjs`.
+- Evidence: Source commits `5072621a66eab0016bf8c29e76df8683070baa14` and `2649466dd53f5a545bfaa2dd52ecaa9df959ba00`. Test and post-fix startup have not been run.
+- Lesson: Compose resolves relative env-file paths from the Compose file directory.
+- Next: Pull latest main; run the focused Node test and manual deployment; record actual startup and health results.
