@@ -665,3 +665,14 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** No post-fix build/test output yet. Native host shell lacks pnpm; Docker build environment has it.
 - **Handoff:** OPS-01 only for host pnpm/toolchain availability, not the source type error.
 - **Next action:** Rebuild from latest main and report exact result; continue fixing source if new compiler errors appear.
+
+
+### FIX01-WHATSAPP-TEMPLATE-ROW-20261018 — 2026-10-18
+- Agent: FIX-01 / Sentinel
+- Invocation: Fix the next web production-build strict nullability error in WhatsApp template approval after tracing the reported failure.
+- Started from: main after chat membership source correction.
+- Scope: Minimal route correction, regression protection, and project-control records.
+- Status: SOURCE FIX COMMITTED; post-fix build/test pending.
+- Finding: `synced.rows.length` does not narrow `synced.rows[0]` for strict indexed access.
+- Commits: `90fac5e0774b695446e1e0c3ab51072639ba5f06`; `41734923651b1173a703d747f0ac0aa93317a5b9`.
+- Next: Pull latest main, rebuild, run `whatsapp-send-approval.test.ts`, and update verification with real output.
