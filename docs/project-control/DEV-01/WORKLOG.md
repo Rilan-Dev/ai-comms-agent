@@ -155,3 +155,14 @@
 - **Narrow-screen follow-up:** the Chat agent selector was hidden under the small breakpoint, making agent switching unavailable on phones. It is now visible at every viewport width, with a capped mobile width and accessible name. Commits: source `bc8e698f`, assertion `ad7dc7f8`; migration inventory `fb0d251f`, NEXT_ACTION `6e4cc8c2`. Responsive browser checks NOT RUN.
 
 - **Chat announcement refinement:** added a persistent polite live region for the start of generation, response completion, and response failure; the visual thinking indicator is aria-hidden to prevent duplicate announcements. Source `d9662da6`, contract assertions `529ed8b2`. Screen-reader/browser validation NOT RUN.
+
+
+## 2026-10-17 — WhatsApp account verification and test-phone UX
+
+- **Role:** DEV-01 / Forge; explicit user request to fix WhatsApp provider_not_connected, pending account status, stale add-phone form, setup guide ordering, account editing and Meta test-number onboarding.
+- **Implemented directly on main:** saving a phone now immediately calls the Meta Graph API using the saved encrypted access token and sets connected only after Meta returns the phone-number resource; failed checks set error with a provider message rather than leaving a misleading pending state. Editing an account can keep its existing encrypted access token when the access-token field is blank. Existing credentials are loaded and retained when editing.
+- **UI:** adding a phone resets the form so previous account details do not leak into the next flow; added an Add Meta test phone shortcut, per-account Edit and Verify now/Recheck actions, connected-status-aware send button, and a clearer distinction between Graph API verification and webhook/test-recipient setup. Removed the required Webhook Verify Token field from the phone credential form; the generated webhook token remains in the setup guide. Moved Test token to the bottom after the setup steps.
+- **Regression assertions:** updated apps/web/tests/lovable-ui-migration.test.ts for the new account form, edit/test actions and immediate verification contract.
+- **Commits:** 3323fdf8, ab90b544, 13f73089, dfd65f38, 64afd328, 57c47c37, 7e88ef1a, 82d22e52, 5a24783a, d55a3b14, be18c22f.
+- **Verification boundary:** source was fetched back from GitHub and commit range inspected. Tests, typecheck, build, browser, deployed runtime, Meta credentials, webhook subscription and live message delivery were NOT run. No deployment or live-send success is claimed.
+- **Operational note:** the exposed aca-access-token session cookie in the user's pasted curl should be revoked/invalidated. Development-mode Meta testing still requires a valid token, a Meta test phone/phone-number ID, and an allowed recipient where applicable.
