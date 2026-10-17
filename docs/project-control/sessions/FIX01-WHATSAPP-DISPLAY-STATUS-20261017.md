@@ -19,6 +19,12 @@ Date: 2026-10-17
 - Source trace: `apps/web/src/app/api/whatsapp/webhook/route.ts` resolves the account from the webhook phone-number ID, calls `applyWhatsAppProviderStatus` with organization/account scope and provider error, and returns an `accepted` count. `packages/db/src/messaging/whatsapp-repository.ts` updates the row only when provider message ID + organization ID + WhatsApp account ID all match. The UI reads the stored `status` from the messages endpoint.
 - No access to the live PostgreSQL row or the historical webhook request/response was available. Therefore the cause of the exact UI mismatch is **not yet established**. Do not assume a race or patch status logic speculatively.
 
+## Runtime correlation keys
+- Meta provider message ID: `wamid.HBgMOTE5NjI5NTM0NzAxFQIAERgSMjgzMTY2RjQxODQ5NTE4OTlDAA==`
+- Meta phone number ID: `1321845321014373`
+- Provider failure code: `131047`
+- Use these identifiers only for the relevant account-scoped lookup; do not expose credentials or dump unrelated tenant rows.
+
 ## OPS-01 handoff — OPEN
 OPS-01 should:
 1. Confirm the actual serving deployment/commit after commits `fd1fda7` and `79f0e6a`; don't infer deployment from GitHub merge/commit alone.
