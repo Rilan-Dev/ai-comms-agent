@@ -37,6 +37,13 @@ function labelsField(metadata: Record<string, unknown>): string[] | undefined {
   return undefined;
 }
 
+/** Reject malformed source identities before sending a privileged API request. */
+function requireSourceIdentity(value: unknown, label: string, maxLength = 256): void {
+  if (typeof value !== "string" || !value.trim() || value !== value.trim() || value.length > maxLength || /[\\u0000-\\u001f\\u007f]/.test(value)) {
+    throw new Error(`Clara email-vector API requires a valid ${label}.`);
+  }
+}
+
 /**
  * Creates the trusted worker adapter for Clara's documented internal API.
  * It is deliberately not wired into worker startup: ISS-026 must close before
@@ -100,6 +107,13 @@ export function createClaraEmailVectorAdapter(config: AdapterConfig = {}): Email
 
   return {
     async upsertMessageVectors(snapshot: EmailKnowledgeVectorSnapshot): Promise<void> {
+      requireSourceIdentity(snapshot.organizationId, "organization ID", 128);
+      requireSourceIdentity(snapshot.accountId, "account ID");
+      requireSourceIdentity(snapshot.providerMessageId, "message ID", 512);
+      requireSourceIdentity(snapshot.sourceIdentityHash, "source identity hash");
+      if (!/^[a-f0-9]{64}$/i.test(snapshot.contentHash) || !/^[a-f0-9]{64}$/i.test(snapshot.metadataHash)) {
+        throw new Error("Clara email-vector API requires valid content and metadata hashes.");
+      }
       const metadata: Record<string, unknown> = {
         orgId: snapshot.organizationId,
         accountId: snapshot.accountId,
@@ -129,6 +143,9 @@ export function createClaraEmailVectorAdapter(config: AdapterConfig = {}): Email
     },
 
     async deleteMessageVectors(input): Promise<void> {
+      requireSourceIdentity(input.organizationId, "organization ID", 128);
+      requireSourceIdentity(input.accountId, "account ID");
+      requireSourceIdentity(input.providerMessageId, "message ID", 512);
       // The Clara contract scopes message identity by organization + account +
       // provider message ID. Provider is already represented by the account's
       // owning source system and does not replace the account boundary.
@@ -142,6 +159,8 @@ export function createClaraEmailVectorAdapter(config: AdapterConfig = {}): Email
     },
 
     async deleteAccountVectors(input): Promise<void> {
+      requireSourceIdentity(input.organizationId, "organization ID", 128);
+      requireSourceIdentity(input.accountId, "account ID");
       void input.provider;
       await send({
         action: "purge_account",
