@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fetchLiveModelCatalog, supportsLiveCatalog } from "../src/lib/ai/live-model-catalog";
+import { providerConfigStatus } from "../src/lib/ai/provider-config-status";
 
 function mockApi(handler: (url: string) => unknown) {
   const fetchMock = vi.fn(async (url: string) => {
@@ -93,5 +94,27 @@ describe("model catalog boundary contracts", () => {
     expect(selector).toContain("/api/settings/ai-models?");
     expect(selector).toContain("source !== \"live\"");
     expect(selector).not.toContain("static_");
+  });
+});
+
+describe("provider-setup safety and truthful status", () => {
+  it("requires both voice-chat capabilities before marking a provider active", () => {
+    const tts = { provider: "elevenlabs", purpose: "tts", enabled: true, hasApiKey: true };
+    const stt = { provider: "elevenlabs", purpose: "stt", enabled: true, hasApiKey: true };
+    expect(providerConfigStatus([tts], "elevenlabs", ["tts", "stt"])).toBe("incomplete");
+    expect(providerConfigStatus([tts, stt], "elevenlabs", ["tts", "stt"])).toBe("active");
+    expect(providerConfigStatus([tts, { ...stt, enabled: false }], "elevenlabs", ["tts", "stt"])).toBe("saved (disabled)");
+  });
+
+  it("clears a typed secret on provider switch and checks failed deletion before success UI", () => {
+    const setup = readFileSync(resolve(__dirname, "../src/app/settings/ai-provider-setup/ai-provider-setup-shared.tsx"), "utf8");
+    const choose = setup.slice(setup.indexOf("function chooseProvider(next: string)"), setup.indexOf("async function saveProvider()"));
+    const remove = setup.slice(setup.indexOf("async function deleteProvider()"));
+    expect(choose).toContain('setApiKey("");');
+    expect(setup).toContain("onClick={() => chooseProvider(p)}");
+    expect(setup).toContain("onChange={(e) => chooseProvider(e.target.value)}");
+    expect(remove).toContain("if (!response.ok)");
+    expect(remove.indexOf("if (!response.ok)")).toBeLessThan(remove.indexOf('setNotice("Provider config removed.")'));
+    expect(remove).toContain("setCatalogVersion((n) => n + 1)");
   });
 });
