@@ -1531,3 +1531,11 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - Source/test commits on main: 1fb045298ed77cd218a36d7babdc911e17b2211d, 9a9e09ee4f6a8c3e2ece81d0b717e9ef22403281, 5946168a22cd316e03c7e859c17d5a53724d48f3, 57618396c400863cf9de31a3dde6de1869447a6b, fee2a2394dfe1e687a470c0caa24a26a9039a20b.
 - Current status: SOURCE_CORRECTED / POST-FIX_VERIFICATION_PENDING. The prior user output does not verify these corrections. No typecheck, test, build, or deployment PASS is claimed.
 - Next: run current-main pnpm typecheck, focused voice and WhatsApp tests, then Docker build; document only observed outcomes.
+
+## 2026-10-18 — Manual deploy Compose compatibility (OPS-01)
+
+- **User-observed PASS:** Docker worker image built/exported; web Next.js production build completed and web image exported.
+- **User-observed BLOCKER:** Manual deployment stopped before migration execution at `docker compose config --environment` with `unknown flag: --environment`.
+- **Source correction:** `scripts/manual-up.sh` has a fallback to host `DATABASE_URL` or the `.env` key when this Compose option is unsupported; unresolved interpolation and missing URL fail closed. Source commit `a93176b3cbba730c30a016b4e47a9dd3dd46039c`; regression contract test `0386f03fa9534ff2d53db84b7ffbd2b5fe864154`.
+- **NOT RUN / NOT VERIFIED:** The new Node test, migration runner, `docker compose up -d`, container health, and live behavior after this change.
+- **Next:** Pull current main, execute `node --test scripts/tests/manual-up-compose-env.test.mjs`, rerun `bash scripts/update-and-up.sh`, and update this state from the observed output. Do not treat image build success as deployment success.
