@@ -132,7 +132,7 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
 
 export interface WhatsAppToolRuntime { registry: ToolRegistry; authorize: (tool: Tool, input: unknown, context: ToolContext) => Promise<ToolAuthorizationDecision>; writeAudit: ToolAuditWriter; }
 
-/** Missing policy and revoked allowlist entries fail closed. Outbound send stays unregistered until WhatsApp approval and template compliance exist. */
+/** Missing policy and revoked allowlist entries fail closed. whatsapp.send only creates a pending approval; provider delivery remains worker-only after a human decision. */
 export async function createWhatsAppToolRuntime(organizationId: string, agentId: string): Promise<WhatsAppToolRuntime> {
   const agents = new PostgresAgentRepository();
   const policy = await agents.policy(organizationId, agentId);
