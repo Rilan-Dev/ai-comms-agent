@@ -95,15 +95,6 @@ export function WhatsAppWebhookSetupGuide({ organizationId, children, onVerifyTo
         </div>
       </div>
 
-      <div className={`flex items-start gap-2 rounded-xl border p-3 text-sm ${verifyStatus === "ok" ? "border-emerald-500/30 bg-emerald-500/5" : verifyStatus === "fail" ? "border-amber-500/30 bg-amber-500/5" : "bg-muted/30"}`}>
-        {verifyStatus === "checking" ? <Loader2 className="mt-0.5 size-4 animate-spin" /> : verifyStatus === "ok" ? <CheckCircle2 className="mt-0.5 size-4 text-emerald-600" /> : verifyStatus === "fail" ? <AlertCircle className="mt-0.5 size-4 text-amber-600" /> : <KeyRound className="mt-0.5 size-4 text-muted-foreground" />}
-        <div className="min-w-0 flex-1">
-          <p className="font-medium">{verifyStatus === "checking" ? "Checking your saved token…" : verifyStatus === "ok" ? "Your server accepts the saved verify token" : verifyStatus === "fail" ? "Token check failed" : "Start with the generated values below"}</p>
-          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{verifyStatus === "ok" ? "This confirms the app can answer Meta's verification challenge. It does not confirm that Meta subscriptions are complete." : verifyStatus === "fail" ? "Save the settings first, and confirm this deployment URL is publicly reachable over HTTPS." : "The App Secret is never shown again after saving. You can leave it blank to keep the saved secret."}</p>
-        </div>
-        <button type="button" onClick={() => void checkWebhookConfigured()} disabled={!webhookUrl || !verifyToken || verifyStatus === "checking"} className="shrink-0 rounded-lg border bg-background px-3 py-2 text-xs font-medium disabled:opacity-50">Test token</button>
-      </div>
-
       <StepBlock step={1} title="Copy the callback URL">
         <p className="text-sm leading-5 text-muted-foreground">This is where Meta sends incoming messages. It is filled in automatically for this deployment.</p>
         <CopyField label="Callback URL" value={webhookUrl} copied={copied} onCopy={copyToClipboard} />
@@ -140,6 +131,15 @@ export function WhatsAppWebhookSetupGuide({ organizationId, children, onVerifyTo
         <div className="rounded-lg border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">Keep your App Secret and access token private. Do not paste them into support messages or public logs.</div>
         {children}
       </StepBlock>
+      <div className={`flex items-start gap-2 rounded-xl border p-3 text-sm ${verifyStatus === "ok" ? "border-emerald-500/30 bg-emerald-500/5" : verifyStatus === "fail" ? "border-amber-500/30 bg-amber-500/5" : "bg-muted/30"}`}>
+        {verifyStatus === "checking" ? <Loader2 className="mt-0.5 size-4 animate-spin" /> : verifyStatus === "ok" ? <CheckCircle2 className="mt-0.5 size-4 text-emerald-600" /> : verifyStatus === "fail" ? <AlertCircle className="mt-0.5 size-4 text-amber-600" /> : <KeyRound className="mt-0.5 size-4 text-muted-foreground" />}
+        <div className="min-w-0 flex-1">
+          <p className="font-medium">{verifyStatus === "checking" ? "Checking your saved token…" : verifyStatus === "ok" ? "Your server accepts the saved verify token" : verifyStatus === "fail" ? "Token check failed" : "Start with the generated values below"}</p>
+          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{verifyStatus === "ok" ? "This confirms the app can answer Meta's verification challenge. It does not confirm that Meta subscriptions are complete." : verifyStatus === "fail" ? "Save the settings first, and confirm this deployment URL is publicly reachable over HTTPS." : "The App Secret is never shown again after saving. You can leave it blank to keep the saved secret."}</p>
+        </div>
+        <button type="button" onClick={() => void checkWebhookConfigured()} disabled={!webhookUrl || !verifyToken || verifyStatus === "checking"} className="shrink-0 rounded-lg border bg-background px-3 py-2 text-xs font-medium disabled:opacity-50">Test token</button>
+      </div>
+
     </section>
   );
 }
