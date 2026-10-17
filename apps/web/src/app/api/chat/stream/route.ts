@@ -249,10 +249,12 @@ async function runInteractiveHostToolLoop(args: {
     createEmailToolRuntime(args.organizationId, args.agentId),
     createWhatsAppToolRuntime(args.organizationId, args.agentId),
   ]);
-  const definitions: ChatToolDefinition[] = [
+  const visibleTools = [
     ...emailRuntime.registry.listForAgent(args.agentId),
     ...whatsappRuntime.registry.listForAgent(args.agentId),
-  ].map((tool) => ({ name: tool.name, description: tool.description, parameters: tool.input_schema }));
+  ].filter((tool) => args.toolContext.auth_subject.permissions.includes(tool.required_permission));
+  const definitions: ChatToolDefinition[] = visibleTools
+    .map((tool) => ({ name: tool.name, description: tool.description, parameters: tool.input_schema }));
   if (definitions.length === 0) return null;
 
   const history: ToolChatMessage[] = args.messages.map((message) => ({
