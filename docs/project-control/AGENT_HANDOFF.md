@@ -76,3 +76,13 @@ Cross-agent handoff register. A handoff transfers context, not authority.
 - **Action:** Rebuild/restart via existing manual deployment procedure from revision containing `8d7aecc`, then make one sanitized test request and confirm the selected provider is Sarvam. If org row exists, diagnose missing/disabled provider config or stale build. Fix infra/env/database/deploy issues within OPS-01 scope.
 - **Authorization:** User explicitly authorized root-cause investigation and the smallest source correction. Do not add OpenAI key as a workaround or weaken authorization.
 - **Verification:** Regression test not run; no build or live request verified. Status OPEN.
+
+
+### HOF-FIX01-OPS-HOST-PNPM-20261018
+- **Owner:** OPS-01 / Shipwright
+- **Type:** Environment/toolchain handoff (separate from source fix)
+- **Symptom:** User's host shell reports `bash: pnpm: command not found` when running `pnpm --filter @ai-comms-agent/worker build`. The subsequent Docker build shows Corepack/pnpm available inside the image and the worker image successfully built.
+- **Scope:** Determine whether native host pnpm is intended/needed in this environment; if so, make the repository-supported Corepack/pnpm command available without altering application source or lockfile. Do not conflate this with the web TypeScript error.
+- **Authorization:** User explicitly instructed CI/CD, deployment, infrastructure, and environment defects to be routed to OPS-01.
+- **Evidence limit:** No installation or host change attempted by FIX-01. Docker worker build success is user-provided evidence; native toolchain state is not otherwise inspected.
+- **Next:** OPS-01 may advise/use the repository's documented Node/Corepack setup. FIX-01 independently corrected the web source type error; rebuild from latest main to verify it.
