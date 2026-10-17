@@ -11,6 +11,7 @@ const whatsappWorker = readFileSync(resolve(__dirname, "../../worker/src/messagi
 const templateMigration = readFileSync(resolve(__dirname, "../../../supabase/migrations/0036_whatsapp_templates.sql"), "utf8");
 const permissionsMigration = readFileSync(resolve(__dirname, "../../../supabase/migrations/0038_whatsapp_feature_permissions.sql"), "utf8");
 const whatsappClient = readFileSync(resolve(__dirname, "../src/app/whatsapp/whatsapp-client.tsx"), "utf8");
+const productActionExecutor = readFileSync(resolve(__dirname, "../../worker/src/agent/product-action-executor.ts"), "utf8");
 
 describe("WhatsApp send approval safety boundary", () => {
   it("persists outbound requests as pending approvals instead of queueing them", () => {
@@ -64,6 +65,13 @@ describe("WhatsApp send approval safety boundary", () => {
     expect(whatsappWorker).toContain('type: "template"');
     expect(whatsappWorker).toContain("Approved WhatsApp template payload is invalid");
     expect(whatsappWorker).toContain('item.status === "APPROVED"');
+  });
+
+  it("prevents scheduled/product actions from bypassing the approval workflow", () => {
+    expect(productActionExecutor).toContain("INSERT INTO whatsapp_send_actions");
+    expect(productActionExecutor).toContain("agent_binding_required");
+    expect(productActionExecutor).toContain('status: "pending_approval"');
+    expect(productActionExecutor).not.toContain("queueWhatsAppOutboundMessage");
   });
 
   it("exposes approval decisions and approved-template submission in the WhatsApp workspace", () => {
