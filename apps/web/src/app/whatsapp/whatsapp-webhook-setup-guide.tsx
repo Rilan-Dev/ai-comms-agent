@@ -166,5 +166,5 @@ function generateToken(bytes: number): string {
   crypto.getRandomValues(arr);
   let bin = "";
   for (const b of arr) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/, "");
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
