@@ -243,3 +243,24 @@ export async function acknowledgeBriefingItems(
     return { reviewed };
   });
 }
+
+/** No admin shortcut: only user grants ∩ readable agent bindings are listed. */
+export function listGrantedBriefingMailboxes(
+  principal: TrustedBriefingPrincipal,
+): Promise<Array<{ id: string; emailAddress: string }>> {
+  requireBriefingIds(principal.organizationId, principal.userId, principal.agentId);
+  return withTransaction(async client => {
+    await requireBriefingActor(client, principal);
+    const result = await client.query<{ id: string; email_address: string }>(
+      `SELECT e.id, e.email_address FROM email_accounts e
+       JOIN agents a ON a.organization_id=e.organization_id AND a.id=$3 AND a.status='active'
+       JOIN agent_email_accounts b ON b.agent_id=a.id AND b.email_account_id=e.id AND b.role IN ('primary','read_only')
+       JOIN briefing_mailbox_grants g ON g.organization_id=e.organization_id AND g.mailbox_id=e.id
+          AND g.user_id=$2 AND g.revoked_at IS NULL
+       WHERE e.organization_id=$1 AND e.deleted_at IS NULL AND e.status::text IN ('active','connected')
+       ORDER BY e.email_address, e.id`,
+      [principal.organizationId, principal.userId, principal.agentId],
+    );
+    return result.rows.map(row => ({ id: row.id, emailAddress: row.email_address }));
+  });
+}
