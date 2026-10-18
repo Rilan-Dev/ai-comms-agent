@@ -5,7 +5,7 @@ import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
-import type { ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/clara-core";
+import type { ChatToolCompletion, ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/clara-core";
 import type { ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { createEmailToolRuntime, invokeEmailReadTool } from "../../../../../../../apps/worker/src/agent/email-tool-runtime";
 import { createWhatsAppToolRuntime, invokeWhatsAppTool } from "../../../../../../../apps/worker/src/agent/whatsapp-tool-runtime";
@@ -266,7 +266,7 @@ async function runInteractiveHostToolLoop(args: {
   const summaries: HostToolTurnResult["toolCalls"] = [];
   let totalCalls = 0;
   for (let round = 0; round < MAX_HOST_TOOL_ROUNDS; round += 1) {
-    let completion;
+    let completion: ChatToolCompletion;
     try {
       completion = await claraRuntime.completeWithTools(
         { orgId: args.organizationId, agentId: args.agentId, kbId: args.kbId }, history, definitions,
