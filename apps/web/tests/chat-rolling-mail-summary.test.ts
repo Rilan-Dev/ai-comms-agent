@@ -53,14 +53,14 @@ describe("FIX-01 rolling 24-hour email report", () => {
     const start = route.indexOf("const rows = await query<RollingMailRow>");
     const end = route.indexOf("const report = formatRollingMailSummary", start);
     const query = route.slice(start, end);
-    expect(query).toContain("rollingMail.sender ?? null");
-    expect(query).toContain("rollingMail.topic ?? null");
+    expect(query).toContain("requestedMailScope.sender ?? null");
+    expect(query).toContain("requestedMailScope.topic ?? null");
     expect(query).toContain("strpos(lower(coalesce(m.from_email::text, ''))");
     expect(query).toContain("strpos(lower(coalesce(m.subject, ''))");
   });
 
   it("reports bounded coverage truthfully and records the actual assistant report", () => {
-    expect(route).toContain("formatRollingMailSummary(rows.rows, rollingMail, fromUtc, toUtc)");
+    expect(route).toContain("rows.rows, requestedMailScope, fromUtc, toUtc");
     expect(route).toContain('role: "assistant", content: report');
     expect(route).toContain('source: "local_mail_database", complete: true');
     const sample = Array.from({ length: 37 }, (_, i) => ({
