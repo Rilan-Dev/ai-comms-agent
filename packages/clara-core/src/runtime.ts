@@ -268,10 +268,11 @@ async function readSseStream(response: Response): Promise<AsyncGenerator<string,
   return generator();
 }
 
-async function openAICompatibleStream(config: ProviderConfig, messages: ChatMessage[], options: ChatOptions): Promise<AsyncGenerator<string, void, unknown>> {
+async function openAICompatibleStream(config: ProviderConfig, messages: ChatMessage[], options: ChatOptions, signal?: AbortSignal): Promise<AsyncGenerator<string, void, unknown>> {
   assertApiKey(config);
   const response = await fetch(`${config.baseUrl}/v1/chat/completions`, {
     method: "POST",
+    signal,
     headers: { "content-type": "application/json", authorization: `Bearer ${config.apiKey}` },
     body: JSON.stringify({
       model: config.chatModel,
@@ -294,7 +295,7 @@ async function openAICompatibleStream(config: ProviderConfig, messages: ChatMess
   return readSseStream(response);
 }
 
-async function geminiStream(config: ProviderConfig, messages: ChatMessage[], options: ChatOptions): Promise<AsyncGenerator<string, void, unknown>> {
+async function geminiStream(config: ProviderConfig, messages: ChatMessage[], options: ChatOptions, signal?: AbortSignal): Promise<AsyncGenerator<string, void, unknown>> {
   assertApiKey(config);
   const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
   const contents = messages.filter((m) => m.role !== "system").map((m) => ({
@@ -306,6 +307,7 @@ async function geminiStream(config: ProviderConfig, messages: ChatMessage[], opt
   const url = `${config.baseUrl}/v1beta/models/${encodeURIComponent(config.chatModel ?? "gemini-2.0-flash")}:streamGenerateContent?alt=sse&key=${encodeURIComponent(config.apiKey)}`;
   const response = await fetch(url, {
     method: "POST",
+    signal,
     headers: { "content-type": "application/json", accept: "text/event-stream" },
     body: JSON.stringify({
       systemInstruction: system ? { parts: [{ text: system }] } : undefined,
@@ -360,9 +362,9 @@ async function geminiStream(config: ProviderConfig, messages: ChatMessage[], opt
   return generator();
 }
 
-async function chatStream(config: ProviderConfig, messages: ChatMessage[], options: ChatOptions): Promise<AsyncGenerator<string, void, unknown>> {
-  if (config.provider === "gemini") return geminiStream(config, messages, options);
-  return openAICompatibleStream(config, messages, options);
+async function chatStream(config: ProviderConfig, messages: ChatMessage[], options: ChatOptions, signal?: AbortSignal): Promise<AsyncGenerator<string, void, unknown>> {
+  if (config.provider === "gemini") return geminiStream(config, messages, options, signal);
+  return openAICompatibleStream(config, messages, options, signal);
 }
 
 /**
@@ -854,7 +856,7 @@ export const claraRuntime = {
    * completed canonical tool-loop response before showing it to the user.
    * Do not expose this generator directly to a client.
    */
-  async streamCanonicalToolAnswer(ctx: ClaraRuntimeContext, canonical: string): Promise<AsyncGenerator<string, void, unknown>> {
+  async streamCanonicalToolAnswer(ctx: ClaraRuntimeContext, canonical: string, signal?: AbortSignal): Promise<AsyncGenerator<string, void, unknown>> {
     if (!ctx.orgId || !ctx.agentId || !canonical || canonical.length > 6000) {
       throw new Error("A bounded authorized tool answer and organization/agent are required.");
     }
@@ -870,7 +872,7 @@ export const claraRuntime = {
     ], {
       temperature: 0,
       maxTokens: Math.min(3500, Math.max(128, Math.ceil(canonical.length / 2) + 32)),
-    });
+    }, signal);
   },
 
   async completeWithTools(
