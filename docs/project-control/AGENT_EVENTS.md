@@ -571,3 +571,12 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Commits:** source `65a215151ecd14900fac3c9ba9a421fb7a777a77`; final focused test `6cd93638bffa0e2f6a9e8d6ce2f3f2664b13341b`.
 - **Verification:** Bash syntax PASS; isolated Node test 4/4 PASS. Actual checkout, Docker, migration and health verification pending. The initial line-continuation assertion failure was fixed.
 - **Next:** Confirm intended database name (`postgres` vs Compose default `aca`), then operator runs the focused test and deployment. Preserve internal network routing.
+
+### EVT-DEV01-CHAT-FIRST-UI-20261018
+- **Agent/session:** DEV-01 / Forge — DEV01-CHAT-FIRST-WORKSPACE-20261018.
+- **Type:** REQUIREMENT / SOURCE CORRECTION / ROUTE.
+- **Finding:** Chat and realtime voice were separate primary screens; desktop topbar duplicated the root 248px offset; Mail children appeared only when active; thread HTML was rendered with same-origin iframe without strict privacy CSP. Owner asked for seamless chat-first single surface.
+- **Change:** Source-first Chat home and embedded voice, Mail open folders, corrected bar layout; opaque iframe/CSP HTML reader. 13/13 source assertions PASS only, full runtime unverified.
+- **Routing:** FIX-01 #36 server sanitizer and historical raw HTML rows; FIX-01 #26 end-state. OPS-01 CI/run `39079140157` and deployments.
+- **Lesson:** Never remove a VoiceWorkspace component before ending its live transport; never treat an iframe CSP as proof that provider HTML was server-sanitized; only one owner should apply the desktop nav inset.
+- **Next:** Execute focused tests and browser acceptance on correct current main; run security checks before broad email HTML exposure.
