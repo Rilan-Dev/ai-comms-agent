@@ -34,6 +34,8 @@ export {
   SupabaseEmailAccountRepository,
   type CreateEmailAccountInput,
   listInboxMessages,
+  listMailThreadsForOrganization,
+  type MailThreadFilters,
   getMailMessageForOrganization,
   getMailThreadForOrganization,
   listMailAttachmentsForOrganization,
