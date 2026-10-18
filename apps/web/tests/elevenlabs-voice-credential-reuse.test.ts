@@ -12,7 +12,7 @@ const catalog = source("../src/app/api/settings/ai-models/route.ts");
 describe("ElevenLabs purpose-specific credentials", () => {
   it("explains missing TTS/STT as capability-specific and never downgrades authorization", () => {
     expect(catalog).toContain("getDecryptedProviderConfig(organizationId, provider, purpose");
-    expect(catalog).toContain('error: "provider_configuration_required"');
+    expect(catalog).toContain('error: unavailableStoredKey ? "provider_credentials_unavailable" : "provider_configuration_required"');
     expect(catalog.indexOf("await authorize")).toBeLessThan(catalog.indexOf("await getDecryptedProviderConfig"));
     expect(api).toContain('permission: "organization.update"');
     expect(api.indexOf("await authorize(")).toBeLessThan(api.indexOf("await getDecryptedProviderConfig("));
