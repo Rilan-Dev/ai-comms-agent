@@ -4,6 +4,7 @@ import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AudioLines, Bot, Send, Sparkles, User } from "lucide-react";
 import dynamic from "next/dynamic";
+import { readSseEvents } from "@/lib/streaming/sse";
 
 // Defer microphone and vendor transport code until the user requests voice.
 const VoiceWorkspace = dynamic(
@@ -32,6 +33,8 @@ export function ChatClient({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [responseStarted, setResponseStarted] = useState(false);
+  const [activity, setActivity] = useState("");
   const [voiceOpen, setVoiceOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -74,6 +77,8 @@ export function ChatClient({
     if (!content || busy || !activeAgent) return;
     setDraft("");
     setBusy(true);
+    setResponseStarted(false);
+    setActivity("Preparing response…");
 
     const optimisticId = "local-" + Date.now();
     setMessages((current) => [...current, { id: optimisticId, conversationId, role: "user", content, createdAt: new Date().toISOString() }]);
@@ -86,47 +91,45 @@ export function ChatClient({
       });
       if (!response.ok || !response.body) throw new Error((await response.text()) || "Chat request failed");
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let assistantId = "local-assistant-" + Date.now();
+      const assistantId = "local-assistant-" + Date.now();
       let assistant = "";
-      let buffer = "";
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\n\n");
-        buffer = events.pop() ?? "";
-
-        for (const event of events) {
-          const lines = event.split("\n");
-          const dataLine = lines.find((item) => item.startsWith("data: "));
-          if (!dataLine) {
-            if (event.includes("event: conversation") && dataLine) {
-              const payload = JSON.parse(dataLine.slice(6)) as { conversationId?: string };
-              if (payload.conversationId) setConversationId(payload.conversationId);
-            }
-            continue;
-          }
-          const payload = JSON.parse(dataLine.slice(6)) as { text?: string; conversationId?: string; message?: string };
-          if (payload.conversationId) setConversationId(payload.conversationId);
-          if (payload.text) {
-            assistant += payload.text;
-            setMessages((current) => {
-              const existing = current.findIndex((message) => message.id === assistantId);
-              const next = { id: assistantId, conversationId, role: "assistant", content: assistant, createdAt: new Date().toISOString() };
-              if (existing === -1) return [...current, next];
-              return current.map((message, index) => index === existing ? next : message);
-            });
-          }
-          if (payload.message) throw new Error(payload.message);
+      let completed = false;
+      for await (const event of readSseEvents(response.body)) {
+        const payload = JSON.parse(event.data) as {
+          text?: string; conversationId?: string; message?: string; phase?: string;
+        };
+        if (event.event === "error") throw new Error(payload.message || "AI generation failed.");
+        if (payload.conversationId) setConversationId(payload.conversationId);
+        if (event.event === "status") {
+          setActivity(payload.phase === "tools" ? "Checking authorized tools…" : "Generating response…");
+          continue;
+        }
+        if (event.event === "done") {
+          completed = true;
+          break;
+        }
+        if (payload.text) {
+          assistant += payload.text;
+          setResponseStarted(true);
+          setActivity("Streaming response…");
+          setMessages((current) => {
+            const next: Message = {
+              id: assistantId, conversationId, role: "assistant",
+              content: assistant, createdAt: new Date().toISOString(),
+            };
+            return current.some((message) => message.id === assistantId)
+              ? current.map((message) => message.id === assistantId ? next : message)
+              : [...current, next];
+          });
         }
       }
+      if (!completed) throw new Error("The AI response stopped before completion. The partial answer above may be incomplete.");
     } catch (error) {
       setMessages((current) => [...current, { id: "error-" + Date.now(), conversationId, role: "system", content: error instanceof Error ? error.message : "Chat failed", createdAt: new Date().toISOString() }]);
     } finally {
       setBusy(false);
+      setResponseStarted(false);
+      setActivity("");
     }
   }
 
@@ -138,7 +141,7 @@ export function ChatClient({
             <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground"><Bot size={18} /></span>
             <div>
               <p className="text-sm font-semibold">{activeAgent?.name ?? "Clara"}</p>
-              <p className="text-[11px] text-muted-foreground">{busy ? "Thinking…" : "Ready"}</p>
+              <p className="text-[11px] text-muted-foreground">{busy ? (activity || "Thinking…") : "Ready"}</p>
             </div>
           </div>
           <div className="flex min-w-0 items-center gap-2">
@@ -178,7 +181,7 @@ export function ChatClient({
           ) : messages.map((message) => (
             <MessageBubble key={message.id} role={message.role} content={message.content} />
           ))}
-          {busy && <TypingIndicator />}
+          {busy && !responseStarted && <TypingIndicator />}
           <div ref={bottomRef} />
         </div>
 
