@@ -258,6 +258,9 @@ async function readSseStream(response: Response): Promise<AsyncGenerator<string,
       // Not every compatible provider ends its final SSE frame with two LF's.
       if (buffer.trim()) yield* textDeltas(buffer);
     } finally {
+      // If the host aborts or stops consuming an early answer, cancel the
+      // upstream provider body rather than merely releasing the reader lock.
+      await reader.cancel().catch(() => undefined);
       reader.releaseLock();
     }
   }
@@ -348,6 +351,9 @@ async function geminiStream(config: ProviderConfig, messages: ChatMessage[], opt
         }
       }
     } finally {
+      // If the host aborts or stops consuming an early answer, cancel the
+      // upstream provider body rather than merely releasing the reader lock.
+      await reader.cancel().catch(() => undefined);
       reader.releaseLock();
     }
   }
