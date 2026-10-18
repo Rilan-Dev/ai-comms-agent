@@ -119,7 +119,8 @@ export async function runEmailAgentTurn(
         });
       }
       const registeredTool = registered.find((entry) => entry.name === call.name);
-      const readOnly = result.ok && registeredTool?.sensitivity === "safe"
+      const approvalRequested = toolOutput?.status === "pending_approval" || toolOutput?.approval_required === true;
+      const readOnly = result.ok && !approvalRequested && registeredTool?.sensitivity === "safe"
         && registeredTool.required_permission === "email.read";
       summaries.push({
         name: call.name,
