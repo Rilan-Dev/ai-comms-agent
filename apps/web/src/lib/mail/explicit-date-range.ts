@@ -29,10 +29,12 @@ function utcDay(value: string): number | null {
 const INVALID_SCOPE = "Use two valid dates as YYYY-MM-DD to YYYY-MM-DD (UTC), within 366 days. Only optional unread, exact sender-email and subject/topic filters are supported; unsupported filters are not ignored.";
 
 export function parseExplicitMailDateRangeRequest(input: string): ExplicitMailDateRangeParse {
-  const text = input.trim().slice(0, 1000);
+  const text = input.trim();
   if (!/\b(?:mail|mails|email|emails|inbox|message|messages)\b/i.test(text) ||
       !/\b(?:summari[sz]\w*|summery|summary|recap|report|review|list|show|count|find|check)\b|how many/i.test(text) ||
       !/\d{4}-\d{2}-\d{2}/.test(text)) return null;
+
+  if (text.length > 1000) return { kind: "invalid", message: INVALID_SCOPE };
 
   const pair = /\b(?:between\s+|from\s+)?(\d{4}-\d{2}-\d{2})\s+(?:to|through|until|and)\s+(\d{4}-\d{2}-\d{2})\b/i.exec(text);
   if (!pair) return { kind: "invalid", message: INVALID_SCOPE };
@@ -60,10 +62,10 @@ export function parseExplicitMailDateRangeRequest(input: string): ExplicitMailDa
   const topic = topicMatch?.[1]?.trim();
   // Optional expressions must be unambiguous and known; catch unsupported
   // qualifiers such as "messages containing invoice" or "from Alice".
-  let residual = remaining
+  const residual = remaining
     .replace(senderMatch?.[0] ?? "\u0000", " ")
     .replace(topicMatch?.[0] ?? "\u0000", " ")
-    .replace(/\b(?:please|can|you|my|the|me|all|unread|received|incoming|mail|mails|emails?|inbox|messages?|summari[sz]\w*|summery|summary|recap|report|review|list|show|count|find|check|how|many|for|of|on|in|during|between|and|with|a|an)\b/gi, " ")
+    .replace(/\b(?:please|can|you|my|the|me|all|only|unread|received|incoming|mail|mails|emails?|inbox|messages?|summari[sz]\w*|summery|summary|recap|report|review|list|show|count|find|check|how|many|for|of|on|in|during|between|and|with|a|an)\b/gi, " ")
     .replace(/\s+/g, " ").trim();
   if (residual) return { kind: "invalid", message: INVALID_SCOPE };
 
@@ -72,7 +74,8 @@ export function parseExplicitMailDateRangeRequest(input: string): ExplicitMailDa
     firstDate: pair[1]!,
     lastDate: pair[2]!,
     fromUtc: new Date(from).toISOString(),
-    // Exclusive upper bound includes every microsecond of the final date in PostgreSQL.\n    toUtc: new Date(until + 86400000).toISOString(),
+    // Exclusive upper bound includes every microsecond of the final date in PostgreSQL.
+    toUtc: new Date(until + 86400000).toISOString(),
     unreadOnly: /\bunread\b|\bnot\s+read\b/i.test(remaining),
     ...(sender ? { sender: sender.slice(0, 120) } : {}),
     ...(topic ? { topic } : {}),
