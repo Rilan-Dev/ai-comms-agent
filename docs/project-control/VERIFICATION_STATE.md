@@ -1,3 +1,12 @@
+## DEV-01 — Abort + approval streaming gates: follow-up 2026-10-18
+
+- **Current main source:** Optional abort `AbortSignal` passed to OpenAI/Sarvam and Gemini `fetch` from `streamCanonicalToolAnswer` through Chat/Voice requests; read-only stream eligibility rejected if tool output signals pending approval; new worker and Vitest regression cases committed.
+- **ACTUALLY EXECUTED:** Exact Git blob-matched helper `ab488dfa888066bf86399cae7227ba3c996d24df` and test `33fae517247b47c5776796d4db83cfb5bb87965f` with Node v22.16: 8/8 PASS; `tsc --noEmit` exact helper PASS. Fresh-source 12/12 assertions on HTTP abort wires, approval gates and test content PASS.
+- **NOT EXECUTED:** full pnpm web/worker/DB Vitest/typecheck/build, new source-contract Vitest cases, approval-shaped worker Node test, database migrations, live provider cancellation/first-token latency, browser/mailbox/tenant-negative E2E or deployment. No production acceptance.
+- **Session/commands:** `docs/project-control/sessions/DEV01-VERIFIED-TOOL-ANSWER-STREAMING-20261018.md`, `NEXT_ACTION.md`.
+
+--- 
+
 - **Follow-up interruption cleanup:** `packages/clara-core/src/runtime.ts` now cancels the upstream OpenAI/Sarvam-compatible and Gemini reader in both model SSE generator finalizers when the host consumer returns early, instead of merely releasing its lock. Added source assertion in `apps/web/tests/verified-tool-streaming-contract.test.ts`. This was committed to `main` but is **not** yet provider/browser E2E tested.
 
 ## 2026-10-18 — DEV-01 verified post-tool provider streaming (partial tests only)
