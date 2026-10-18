@@ -33,7 +33,8 @@ describe("ElevenLabs purpose-specific credentials", () => {
   });
 
   it("never returns a plaintext secret or overwrites a TTS/STT model", () => {
-    expect(api).toContain("source.hasApiKey");\n    expect(api).toContain("if (!source.apiKey)");
+    expect(api).toContain("source.hasApiKey");
+    expect(api).toContain("if (!source.apiKey)");
     expect(api).toContain("reuseElevenLabsRealtimeKeyForVoiceChat(organizationId)");
     expect(api).toContain("recordAuditEvent");
     expect(api).toContain("source_configuration_required");
