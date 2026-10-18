@@ -5,6 +5,7 @@ import { authorize, authorizationErrorToResponse } from "@/lib/identity/authoriz
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { runEmailAgentTurn } from "@ai-comms-agent/email-agent-runtime";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
+import { emitVerifiedToolAnswer } from "@/lib/streaming/verified-tool-answer";
 
 export const dynamic = "force-dynamic";
 
@@ -100,11 +101,37 @@ export async function POST(request: Request) {
                 maxRounds: 4, maxToolCalls: 8,
               });
               if (!request.signal.aborted) {
-                emit("delta", { text: result.text });
-                emit("done", {
-                  executionId, toolCalls: result.toolCalls, pendingApprovals: result.pendingApprovals,
-                  finishReason: result.finishReason, mode: "host-authorized-tools",
-                });
+                const safeReadOnly = result.finishReason === "completed"
+                  && result.pendingApprovals.length === 0
+                  && result.toolCalls.length > 0
+                  && result.toolCalls.every((call) => call.ok && call.readOnly === true)
+                  && result.text.length > 0 && result.text.length <= 6000;
+                let deliveryMode = "canonical-tool-answer";
+                if (safeReadOnly) {
+                  emit("status", { phase: "generating" });
+                  const delivery = await emitVerifiedToolAnswer(
+                    result.text,
+                    () => claraRuntime.streamCanonicalToolAnswer(
+                      { orgId: organizationId, agentId, kbId },
+                      result.text,
+                    ),
+                    (text) => emit("delta", { text }),
+                    request.signal,
+                  );
+                  if (!delivery.completed) return;
+                  deliveryMode = delivery.mode;
+                } else {
+                  // Approval-required and denied/write outcomes retain the
+                  // canonical, audited tool-loop answer with no second model.
+                  emit("delta", { text: result.text });
+                }
+                if (!request.signal.aborted) {
+                  emit("done", {
+                    executionId, toolCalls: result.toolCalls, pendingApprovals: result.pendingApprovals,
+                    finishReason: result.finishReason, mode: "host-authorized-tools",
+                    deliveryMode,
+                  });
+                }
               }
             } else {
               // Actual model-generated tokens arrive incrementally here.
