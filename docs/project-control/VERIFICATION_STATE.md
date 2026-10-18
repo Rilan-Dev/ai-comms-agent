@@ -1,3 +1,13 @@
+## 2026-10-18 — DEV-01 Mail Threads / progressive Chat+Voice text (LIMITED)
+
+- **Source directly on main:** org-scoped Mail Threads SQL/index export/authorized API/server page/filter UI, Chat focus; SSE decoder and Chat delta/status/complete parser; token streaming for non-tool Chat and voice, native Gemini SSE, OpenAI/Sarvam EOF correction. Tool-backed answers remain final-after-tool by design; no unsafe speculative or fake streaming.
+- **ACTUALLY EXECUTED:** Node v22.16.0 test on **exact file content matching GitHub blobs** `apps/web/src/lib/streaming/sse.ts` `a53568b7c1923b13ec3c2fe41d153da483ec28c8` and `apps/web/tests/sse-streaming.test.mjs` `31d793842f93bf0c1dbc21989f89b432a266eecd`: **5/5 PASS** including split UTF8, CRLF, final EOF and oversized event. Global standalone `tsc --noEmit` on SSE module **PASS**. Separately **23/23** static current GitHub contract assertions for new SQL filters/auth, UI, Chat/voice security and streaming presence **PASS**. Static assertions are not browser/API integration tests.
+- **NOT RUN:** New Vitest suites `mail-threads-workspace.test.ts`, `streaming-conversations.test.ts`, full web/DB/worker typecheck+Next build, mail SQL on Postgres, migrations, live model tool SSE, real Gemini/OpenAI/Sarvam/ElevenLabs request, voice TTS, cross-org, browser/responsive E2E or deployment. No production acceptance; old CI/Vercel issues remain OPS-01.
+- **Session/exact next commands:** `docs/project-control/sessions/DEV01-MAIL-THREADS-STREAMING-20261018.md`; `NEXT_ACTION.md`.
+
+
+---
+
 ## 2026-10-18 — DEV-01 chat-first shell, embedded voice and rich mail preview — LIMITED VERIFICATION
 
 - **Authored source on main:** Chat home/Overview alternate, sidebar order and Mail accordion, Chat lazy voice panel, existing voice component embedded props/teardown, thread SQL HTML alias, opaque sandbox/CSP mail preview and tests. No branch, PR, deployed release or phase transition.
