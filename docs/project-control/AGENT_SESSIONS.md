@@ -887,3 +887,10 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Changes:** Direct audited/authorized counted rolling query + conservative intent/filters and 500 cap, all returned rows individually described with UTC and sync caveat; email.read and registered agent tool gate; SSE delivery. Tests and session record.
 - **Evidence:** real Node 8/8, isolated tsc PASS, current GitHub source checks 15/15; no whole repo/db/browser/provider/deploy.
 - **Next:** focused suite/typecheck/build, seeded DB permission/coverage, live email UI after OPS-01 approval, compare counts. `docs/project-control/sessions/FIX01-ROLLING-MAIL-20261019.md`.
+
+### DEV01-EXPLICIT-DATE-MAIL-20261019 — 2026-10-19
+- **Role / authorization:** DEV-01 / Forge, user "please proceed" after local mail report limitation; source directly on main, no branches/PRs. FIX-01 existing production 24h incident and HTML security; OPS-01 host, CI/CD, migrations, provider sync, deployment.
+- **Starting main:** `a02fa371446fda90151b170e95385a9f5fa1853e`. Implemented separate conservative explicit ISO calendar date parser and route selection retaining existing per-user/per-agent email grants, counted query, bounded 500 record coverage and local freshness disclaimer. UTC end is next midnight exclusive to include PostgreSQL microseconds. Unsupported filters return 422 without model broadening. Backward-compatible 24h formatter label.
+- **Actual verification:** Exact GitHub SHA local Node tests new 8 + existing rolling 8 = **16/16 PASS**; both source module TS noEmit PASS; 19/19 current source contract checks PASS. Added Vitest SQL/auth contracts (not run). No full builds/connected PostgreSQL/browser/provider E2E/deploy.
+- **Next:** Full pnpm suites/DB microsecond cross-tenant negative, optional evidence-grounded semantic summary. Security user action: rotate exposed host password and revoke browser session; secrets never accessed.
+- **Session:** `docs/project-control/sessions/DEV01-EXPLICIT-DATE-MAIL-20261019.md`.
