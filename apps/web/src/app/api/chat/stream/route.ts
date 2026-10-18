@@ -433,7 +433,11 @@ export async function POST(request: Request) {
             emit("status", { phase: "generating" });
             const turn = await claraRuntime.createChatTurn({
               orgId: organizationId, agentId, kbId, userId: subject.user.id, sessionId: conversation.id,
-              surface: "chat", ragMode: "hybrid", messages,
+              surface: "chat", ragMode: "hybrid",
+              messages: [
+                { role: "system", content: "This is a text-only model response. Do not claim to have sent, approved, deleted, moved or otherwise changed an external resource. All such actions require an explicit authorized tool result and approval." },
+                ...messages,
+              ],
             });
             provider = turn.providerName;
             model = turn.model;
