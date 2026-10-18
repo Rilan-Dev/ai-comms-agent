@@ -1,3 +1,11 @@
+## DEV-01 — Mail Threads and model-token streaming checkpoint — 2026-10-18
+
+- Real organization-scoped Mail Threads replaced placeholder with server-paginated search/unread/account view. Chat and embedded voice render SSE model tokens incrementally for non-tool prompts; Gemini provider now genuinely streams. Sensitive email/WhatsApp tool-completion text remains buffered while the bounded host-authorized loop executes, and TTS still starts after complete model answer. No side effects are bypassed for streaming.
+- Exact SSE module Node tests 5/5 and isolated TypeScript PASS, 23/23 GitHub source checks PASS. New Vitest, full web/worker/DB builds, connected SQL, browser/provider E2E and deployment NOT executed. Phase 4 remains implementation in progress, not accepted. See `docs/project-control/sessions/DEV01-MAIL-THREADS-STREAMING-20261018.md`.
+
+
+---
+
 ## DEV-01 — Chat-first workspace / voice / mail reader source checkpoint — 2026-10-18
 
 - Owner-directed design implemented directly on `main`: default Chat at `/`, Overview at `/overview`, Chat-first/Mail-expanded sidebar, duplicate desktop header margin eliminated, Clara voice view embedded from Chat, and tenant-scoped mail HTML body alias + opaque-CSP preview. Existing `/chat` and `/ai-voice` bookmarks preserved. Concurrent DEV-01 source changes to TopBar and mail preview were retained without override.
