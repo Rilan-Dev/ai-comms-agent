@@ -266,9 +266,19 @@ async function runInteractiveHostToolLoop(args: {
   const summaries: HostToolTurnResult["toolCalls"] = [];
   let totalCalls = 0;
   for (let round = 0; round < MAX_HOST_TOOL_ROUNDS; round += 1) {
-    const completion = await claraRuntime.completeWithTools(
-      { orgId: args.organizationId, agentId: args.agentId, kbId: args.kbId }, history, definitions,
-    );
+    let completion;
+    try {
+      completion = await claraRuntime.completeWithTools(
+        { orgId: args.organizationId, agentId: args.agentId, kbId: args.kbId }, history, definitions,
+      );
+    } catch (error) {
+      // Unsupported tool providers can fall back to the read-only model
+      // ONLY before any host tool was executed. A failure during native final
+      // streaming after a tool result must instead terminate the SSE turn.
+      if (round === 0 && totalCalls === 0 && error instanceof Error
+        && /(?:not supported|not enabled for Sarvam|unsupported native tool)/i.test(error.message)) return null;
+      throw error;
+    }
     if (completion.toolCalls.length === 0) {
       if (completion.finishReason === "invalid_tool_call" || completion.finishReason === "invalid_tool_arguments") {
         return { text: "I couldn't complete that request safely because the provider returned an invalid tool call.", toolCalls: summaries };
@@ -434,8 +444,7 @@ export async function POST(request: Request) {
           let toolTurn: HostToolTurnResult | null = null;
           if (shouldResolveTools) {
             emit("status", { phase: "tools" });
-            try {
-              toolTurn = await runInteractiveHostToolLoop({
+            toolTurn = await runInteractiveHostToolLoop({
                 organizationId, agentId, kbId, messages, toolContext: trustedToolContext,
                 onSafeReadOnlyFinal: async (completedHistory) => {
                   emit("status", { phase: "generating" });
@@ -456,12 +465,6 @@ export async function POST(request: Request) {
                   return generated;
                 },
               });
-            } catch (error) {
-              if (!(error instanceof Error) || !/unsupported/i.test(error.message)) throw error;
-              // Unsupported native tool calling cannot silently invoke tools.
-              // Fall back to ordinary model answers while maintaining the
-              // same org/agent grounding and authorized context boundaries.
-            }
           }
           if (toolTurn) {
             assistantOutput = toolTurn.text;
