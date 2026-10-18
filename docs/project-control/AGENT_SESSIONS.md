@@ -852,3 +852,10 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Done:** Persisted real Mail Threads SQL/page/authorized API/search/unread/pagination/account filters with stale-fetch guards, improved voice→Chat composer focus and mobile header; shared SSE decoder, early Chat status + incremental delta rendering, non-tool voice model SSE with authorized session, Gemini native SSE, OpenAI-compatible final EOF parser. Secure tool loop retained and marked as non-token-streaming for tool-specific final text.
 - **Evidence:** Exact SHA-matched isolated Node SSE tests 5/5 PASS, module tsc PASS, 23/23 GitHub static source assertions PASS. Full Vitest/app build/Postgres/browser/provider TTS/production NOT RUN.
 - **Next:** Execute named tests/build/migration and browser acceptance; implement safe native streaming function/tool-call final responses; defer FIX-01 HTML/voice bugs and OPS-01 CI/deploy. Details `docs/project-control/sessions/DEV01-MAIL-THREADS-STREAMING-20261018.md`.
+
+### DEV01-VERIFIED-TOOL-ANSWER-STREAMING-20261018 — 2026-10-18
+- Owner: DEV-01 / Forge; explicit continue request, direct commits on main, no branches/PRs.
+- Starting main `ba9e948b4b58a4f270d5382f919957843e6eecb5`. Existing Chat/Voice tool loops already authorized but non-streamed. Added genuine model streaming read-only *presentation* after completed host tool loops, checked against canonical answer, fallback on mismatch/error, abort-safe, legacy voice JSON retained. Extra provider call is optional and cannot call tools.
+- Actual unit evidence: Node exact Git blobs 8/8 PASS, isolated tsc helper PASS, 16 GitHub static contract checks PASS; full repo Vitest/worker/typecheck/build/DB/provider/browser/deployment not run. No production acceptance.
+- Key limitation: not streaming function-call planning; no speculative or fake typed text, no early TTS. Next DEV-01 native provider tool-call SSE adapter and full verification; FIX-01 transport/HTML, OPS-01 CI/deploy.
+- Session `docs/project-control/sessions/DEV01-VERIFIED-TOOL-ANSWER-STREAMING-20261018.md`.
