@@ -866,3 +866,9 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Actual evidence:** Git-hash-verified exact committed source + test files OpenAI 10/10, Gemini 9/9; combined 19/19 Node PASS; strict isolated TypeScript PASS. Full web/worker/DB workspace, adapter mock integration, browser/provider/deployed E2E NOT VERIFIED.
 - **Next:** Full package test/typecheck/build on current main, then direct native final model token output after authorized tools with approvals and abort safety; browser real mailbox/voice consent/security tests. FIX-01 runtime/security #36 and OPS-01 infrastructure/deployment boundaries retained.
 - **Session:** `docs/project-control/sessions/DEV01-NATIVE-TOOL-SSE-20261018.md`.
+
+### DEV01-NATIVE-POSTTOOL-FINAL-STREAM-20261018
+- **Owner:** DEV-01 / Forge. **Authorization:** owner repeatedly said proceed with direct read-tool final SSE, full integration verification, main-only commits/no branches.
+- **Start:** main `f623f512e8d55b044583faab955e725ed3081020`. **Done:** bounded completed tool-result prompt; same-org/agent native provider no-tool final SSE; Chat/Voice callback after 1–4 safe, audited read-only calls; no extra exact-copy request; host tool denial/approval/write paths preserved. Unsupported provider fallback only before tool execution; duplicate ID rejection.
+- **Actual:** exact-source Node 7/7 PASS, strict isolated TypeScript PASS, initial source checks 18/18 PASS. Full pnpm/Vitest/worker/db/Next and browser/provider/deploy not executed due unavailable full repo/pnpm/authenticated browser.
+- **Session:** `docs/project-control/sessions/DEV01-NATIVE-POSTTOOL-FINAL-STREAM-20261018.md`. **Next:** full named tests/build and real org A/B mailbox + voice provider QA. FIX-01 runtime/security and OPS-01 rollout scopes remain unchanged.
