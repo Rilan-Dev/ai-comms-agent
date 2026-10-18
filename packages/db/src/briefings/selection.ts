@@ -18,8 +18,8 @@ function validateRequest(request: BriefingRequest): void {
   // Scheduled coverage deliberately has a different ledger. Never use personal
   // review state to generate or suppress routine mail.
   if (request.mode !== 'catch_up') throw new Error('Scheduled briefing selection is not yet enabled.');
-  if (!/^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$/.test(request.requestKey)) throw new Error('Invalid idempotency key.');
-  if (!/^[a-z]{2,3}(?:-[A-Z]{2})?$/.test(request.language)) throw new Error('Invalid briefing language.');
+  if (typeof request.requestKey !== "string" || !/^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$/.test(request.requestKey)) throw new Error('Invalid idempotency key.');
+  if (typeof request.language !== "string" || !/^[a-z]{2,3}(?:-[A-Z]{2})?$/.test(request.language)) throw new Error('Invalid briefing language.');
 }
 
 function asManifest(row: Record<string, unknown>, scope: EffectiveBriefingScope): BriefingManifest {
