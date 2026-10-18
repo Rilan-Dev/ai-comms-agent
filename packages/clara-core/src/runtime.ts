@@ -1,4 +1,5 @@
 import { decryptCredential, parseCredentialsMasterKey, query } from "@ai-comms-agent/db";
+import { readOpenAIToolCompletion } from "./tool-call-stream";
 import type {
   AIProvider,
   ChatMessage,
@@ -428,7 +429,7 @@ async function chatWithTools(
 
   const response = await fetch(`${config.baseUrl}/v1/chat/completions`, {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${config.apiKey}` },
+    headers: { "content-type": "application/json", accept: "text/event-stream", authorization: `Bearer ${config.apiKey}` },
     body: JSON.stringify({
       model: config.chatModel,
       messages: messages.map((message) => {
@@ -447,6 +448,7 @@ async function chatWithTools(
       }),
       tools: tools.map((tool) => ({ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.parameters, strict: false } })),
       tool_choice: "auto",
+      stream: true,
       parallel_tool_calls: false,
       temperature: options.temperature,
       max_completion_tokens: options.maxTokens,
@@ -456,6 +458,16 @@ async function chatWithTools(
     const body = await response.text().catch(() => "");
     throw new Error(`OpenAI tool request failed (${response.status}): ${body.slice(0, 300)}`);
   }
+  // A streamed provider response can split function names, JSON arguments
+  // and UTF-8 bytes at arbitrary boundaries. The decoder buffers until
+  // [DONE] and validates the entire tool-call collection before returning
+  // anything executable to the host authorization/audit loop.
+  if (response.headers.get("content-type")?.includes("text/event-stream")) {
+    if (!response.body) throw new Error("Provider returned an empty tool-call stream.");
+    return readOpenAIToolCompletion(response.body);
+  }
+  // Some compatible gateways still answer stream:true using JSON. Preserve
+  // their existing validated non-streaming contract; never parse SSE as JSON.
   const payload = await response.json() as {
     choices?: Array<{ finish_reason?: string; message?: { content?: string | null; tool_calls?: Array<{ id?: string; function?: { name?: string; arguments?: string } }> } }>;
   };
