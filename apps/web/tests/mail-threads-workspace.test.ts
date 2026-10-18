@@ -17,7 +17,9 @@ describe("persisted Mail Threads — tenant scoped source contracts", () => {
     expect(page).toContain("<ThreadsClient");
     expect(page).not.toContain("No live mailbox connected");
     expect(page).not.toContain("getDevOrgId");
-    expect(page).toContain('redirect("/login?reason=not_provisioned")');
+    expect(page).toContain('headers: await headers()');
+    expect(page).toContain("if (!context?.organizationId)");
+    expect(page).not.toContain("aca-access-token");
   });
 
   it("joins messages to thread and account by the same organization and mailbox", () => {
