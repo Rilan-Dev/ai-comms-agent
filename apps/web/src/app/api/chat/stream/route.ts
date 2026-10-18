@@ -447,6 +447,7 @@ export async function POST(request: Request) {
                 () => claraRuntime.streamCanonicalToolAnswer(
                   { orgId: organizationId, agentId, kbId },
                   assistantOutput,
+                  request.signal,
                 ),
                 (text) => emit("delta", { text }),
                 request.signal,
