@@ -17,6 +17,10 @@ describe("authorized tool result progressive model delivery", () => {
     expect(method).toContain("temperature: 0");
     expect(method).toContain("canonical.length > 6000");
   });
+  it("cancels upstream native streaming responses when a user interrupts", () => {
+    const cancellation = "await reader.cancel().catch(() => undefined)";
+    expect(runtime.split(cancellation).length - 1).toBeGreaterThanOrEqual(2);
+  });
   it("only exposes verified chunks of an authorized canonical answer", () => {
     expect(verifier).toContain("canonical.startsWith(chunk, matched)");
     expect(verifier).toContain('mode: providerComplete ? "verified-provider-tokens" : "canonical-fallback"');
