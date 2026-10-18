@@ -17,7 +17,7 @@ describe("FIX-01 rolling 24-hour email report", () => {
     const start = route.indexOf("const rollingMail = parseRollingMailSummaryRequest(content)");
     const query = route.indexOf("const rows = await query<RollingMailRow>", start);
     const scope = route.slice(start, query);
-    expect(scope).toContain('subject.permissions.includes("email.read")');
+    expect(scope).toContain('subject.permissions.has("email.read")');
     expect(scope).toContain("createEmailToolRuntime(organizationId, agentId)");
     expect(scope).toContain("mailRuntime.registry.listForAgent(agentId)");
     expect(scope).toContain('tool.name === "email.search" || tool.name === "email.messages.list"');
@@ -68,7 +68,7 @@ describe("FIX-01 rolling 24-hour email report", () => {
       subject: `Subject ${i}`, received_at: "2026-10-18T18:00:00Z", snippet: "Sample",
       text_body: null, total_count: 37,
     }));
-    const result = formatRollingMailSummary(sample, { hours: 24, unreadOnly: true }, "2026-10-17T18:00:00Z", "2026-10-18T18:00:00Z");
+    const result = formatRollingMailSummary(sample, { unreadOnly: true }, "2026-10-17T18:00:00Z", "2026-10-18T18:00:00Z");
     expect(result).toContain("Matched: 37. Included: 37 of 37.");
     expect(result).toContain("Subject 36");
   });

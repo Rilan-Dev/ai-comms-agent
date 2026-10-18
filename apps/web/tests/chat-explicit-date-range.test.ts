@@ -30,7 +30,7 @@ describe("DEV-01 exact calendar-date mail report", () => {
     const branchStart = route.indexOf("if (requestedMailScope) {");
     const branchEnd = route.indexOf("const history = await listChatMessages(", branchStart);
     const branch = route.slice(branchStart, branchEnd);
-    expect(branch).toContain('subject.permissions.includes("email.read")');
+    expect(branch).toContain('subject.permissions.has("email.read")');
     expect(branch).toContain("createEmailToolRuntime(organizationId, agentId)");
     expect(branch).toContain('tool.name === "email.search" || tool.name === "email.messages.list"');
     expect(branch).toContain("m.organization_id = $1");

@@ -64,10 +64,12 @@ describe("RBAC persistence consistency (Option A: system roles, deferred custom-
     expect(names).toContain("settings.read");
     expect(names).toContain("settings.manage");
 
-    // Explicitly NOT present in Phase 3 (deferred to feature phases)
+    // Feature permissions ARE now in the catalogue (added by later migrations)
+    expect(names).toContain("email.read");
+    expect(names).toContain("whatsapp.send");
+    // Still NOT present (truly deferred)
     expect(names).not.toContain("agent.read");
     expect(names).not.toContain("email.send");
-    expect(names).not.toContain("whatsapp.send");
     expect(names).not.toContain("schedule.read");
   });
 
@@ -94,7 +96,7 @@ describe("RBAC persistence consistency (Option A: system roles, deferred custom-
 
     // Verify the method signature does not accept a role_id or query a roles table
     const perms = await repo.getPermissionsForRole(asOrganizationId(fixture.orgA), "member");
-    expect(perms).toEqual(["organization.read", "users.read"]);
+    expect(perms).toEqual(["organization.read", "users.read", "email.read", "whatsapp.read"]);
   });
 
   it("viewer has exactly one permission (least privilege enforced by TypeScript mapping)", () => {
