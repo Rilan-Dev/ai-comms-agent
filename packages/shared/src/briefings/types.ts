@@ -21,6 +21,6 @@ export type BriefingItem = {
     quote: string; supports: 'deadline' | 'amount' | 'priority_reason' | 'summary' }[];
   representation: 'complete' | 'partial'; snoozedUntil: string | null;
 };
-export type BriefingRead = { manifest: BriefingManifest; items: BriefingItem[] };
+export type BriefingRead = { manifest: BriefingManifest; items: BriefingItem[]; reviewedItemIds?: string[] };
 export type BriefingListOptions = { limit?: number; before?: { createdAt: string; id: string } };
 export type BriefingList = { briefings: BriefingRead[]; nextCursor: { createdAt: string; id: string } | null };
