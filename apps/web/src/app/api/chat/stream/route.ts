@@ -423,7 +423,7 @@ export async function POST(request: Request) {
       const stream = new ReadableStream<Uint8Array>({
         start(controller) {
           const emit = (event: string, payload: Record<string, unknown>) =>
-            controller.enqueue(encoder.encode(`event: ${event}\\ndata: ${JSON.stringify(payload)}\\n\\n`.replace(/\\\\n/g, "\\n")));
+            controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
           emit("conversation", { conversationId: conversation.id });
           emit("status", { phase: "verified_local_mail" });
           // Chunk the DB report for the UI; these are database records, not
