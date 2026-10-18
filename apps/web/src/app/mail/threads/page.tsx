@@ -1,1 +1,46 @@
-export default function ThreadsPage(){return <main className="mx-auto max-w-[1200px] bg-background p-5 sm:p-7 lg:p-10"><div><p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.16em] text-muted-foreground"><span className="grid size-7 place-items-center rounded bg-accent text-accent-foreground"><svg aria-hidden="true" viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></svg></span> Mail workspace</p><h1 className="font-display text-3xl font-medium">Threads<span className="text-tertiary">.</span></h1><p className="mt-2 text-sm text-muted-foreground">Conversation-level email context for Clara and your team.</p></div><div className="mt-8 rounded-md border border-border bg-card p-10 text-center"><p className="font-semibold">No live mailbox connected</p><p className="mt-2 text-sm text-muted-foreground">Connect an account to populate threads from PostgreSQL-backed sync.</p><a href="/mail/accounts" className="mt-5 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-85">Connect account</a></div></main>}
+import { listMailThreadsForOrganization, PostgresEmailAccountRepository } from "@ai-comms-agent/db";
+import { getAuthenticatedAppContext } from "@/lib/identity/repository";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { ThreadsClient } from "./threads-client";
+
+export const dynamic = "force-dynamic";
+
+export default async function ThreadsPage() {
+  if (!process.env.DATABASE_URL) {
+    return <Status title="Mail needs PostgreSQL" description="Configure the database to browse your organization's actual messages." />;
+  }
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("aca-access-token")?.value;
+  const authHeaders = new Headers();
+  if (accessToken) authHeaders.set("cookie", `aca-access-token=${encodeURIComponent(accessToken)}`);
+  const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: authHeaders }));
+  if (!context) redirect("/login?reason=not_provisioned");
+
+  try {
+    const organizationId = context.organizationId;
+    const [result, accounts] = await Promise.all([
+      listMailThreadsForOrganization(organizationId, { limit: 25 }),
+      new PostgresEmailAccountRepository().listForOrganization(organizationId),
+    ]);
+    return <ThreadsClient
+      organizationId={organizationId}
+      initialThreads={result.threads as never[]}
+      initialHasMore={result.hasMore}
+      accounts={accounts.map((account) => ({ id: account.id, label: account.email_address }))}
+    />;
+  } catch (error) {
+    console.error("[mail/threads] load failed", error);
+    return <Status title="Threads unavailable" description="Your email threads could not be loaded. Try again after the mail service reconnects." />;
+  }
+}
+
+function Status({ title, description }: { title: string; description: string }) {
+  return <main className="mx-auto max-w-4xl px-5 py-9 sm:px-8">
+    <a href="/mail/inbox" className="text-sm text-muted-foreground hover:text-foreground">← Inbox</a>
+    <div role="status" className="mt-6 rounded-md border border-border bg-card p-6">
+      <h1 className="font-display text-2xl font-medium">{title}</h1>
+      <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+    </div>
+  </main>;
+}
