@@ -254,3 +254,12 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Regression test:** `6cd93638bffa0e2f6a9e8d6ce2f3f2664b13341b` (final test assertion correction).
 - **Verification evidence:** Bash syntax PASS; isolated Node focused test 4/4 PASS. This was not a complete checkout or live Docker/database test.
 - **Remaining:** Operator confirms `/postgres` versus `/aca`, runs focused test in the actual checkout, reruns deployment, and records migration and health outcomes. No deployment PASS claimed.
+
+### BKL-DEV01-CHAT-FIRST-UX-20261018 — Chat-first UI acceptance and follow-on polish
+- **Owner:** DEV-01 / Forge
+- **State:** SOURCE IMPLEMENTED — VERIFICATION PENDING.
+- **Authorization:** Owner's 2026-10-18 explicit Chat/voice/nav/Mail redesign request; main-only/no-branch instruction carried forward.
+- **Delivered:** Root Chat, Overview, default-expanded Mail, single navbar offset, Chat-embedded realtime voice, rich opaque HTML mail preview with tests. Plan `docs/plans/CHAT_FIRST_WORKSPACE_REDESIGN_20261018.md`.
+- **Next:** Focused Vitest/typecheck/build; mobile/keyboard/voice/media/mail threaded integration and UX polish. Avoid waiting on OPS.
+- **Dependency routing:** FIX-01 #36 sanitization of provider HTML before storing and historical unsafe rows; FIX-01 #26 voice host end-state correctness. OPS-01 current-head CI, migrations/deploy/runtime. Do not duplicate ownership.
+- **Session:** `docs/project-control/sessions/DEV01-CHAT-FIRST-WORKSPACE-20261018.md`.
