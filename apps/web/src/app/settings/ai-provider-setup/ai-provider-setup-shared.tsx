@@ -363,6 +363,15 @@ export function AIProviderSetupShared({
             {tab === "voice-chat" && provider === "elevenlabs" ? (
               <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
                 <p>ElevenLabs voice chat requires separate enabled TTS and STT settings. A key saved under Realtime is not automatically configured for these capabilities.</p>
+                <div className="grid gap-1" role="status" aria-label="ElevenLabs voice capability credentials">
+                  {(["tts", "stt"] as const).map((purpose) => {
+                    const saved = visibleConfigs.find((config) => config.provider === "elevenlabs" && config.purpose === purpose);
+                    const status = saved?.hasApiKey
+                      ? (saved.enabled ? "Key enabled" : "Key disabled")
+                      : (saved?.enabled === false ? "Disabled" : "Key required");
+                    return <p key={purpose}><strong>{purpose.toUpperCase()}:</strong> {status}</p>;
+                  })}
+                </div>
                 {canReuseRealtimeKey ? (
                   <button type="button" onClick={() => void reuseSavedRealtimeKey()} disabled={saving}
                     className="rounded-md border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:bg-secondary disabled:opacity-50">
