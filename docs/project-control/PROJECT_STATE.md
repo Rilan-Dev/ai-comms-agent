@@ -1,3 +1,11 @@
+## DEV-01 — Calendar-date mail reporting checkpoint (2026-10-19)
+
+- Explicit UTC date-range Chat reports are now implemented in source on main, reusing the previously corrected secure 24-hour mailbox query; no automatic provider sync and no full AI semantic summaries. Bounded 366 days, counted 500-message cap and actor/agent/mailbox authorization, fail-closed scope parser.
+- 16/16 exact-source Node tests, two-module standalone tsc, 19/19 source assertions PASS. Full app DB/worker/Clara builds, live browser/provider and deployment unverified. Phase 4 remains implementation_in_progress; no production acceptance, no branch/PR.
+- Session `docs/project-control/sessions/DEV01-EXPLICIT-DATE-MAIL-20261019.md`; next actions `NEXT_ACTION.md`.
+
+---
+
 ## FIX-01 — Email Agent last 24h unread-summary fix — 2026-10-19
 
 - Main now has a direct authenticated, agent-mailbox-scoped report for explicit rolling 24h mail summary requests. It enforces unread/date/sender/topic at query time, lists all matching synchronized messages up to 500, and explicitly states matched/included/partial and sync limitations. This avoids the legacy 20-item seven-day LLM summary mismatch for the reported request.
