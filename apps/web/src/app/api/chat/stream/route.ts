@@ -393,39 +393,67 @@ export async function POST(request: Request) {
       channel: "chat",
       auth_subject: { user_id: subject.user.id, role: subject.membership.role, permissions: [...subject.permissions] },
     };
-    let toolTurn: HostToolTurnResult | null = null;
-    try {
-      toolTurn = await runInteractiveHostToolLoop({ organizationId, agentId, kbId, messages, toolContext: trustedToolContext });
-    } catch (error) {
-      // Providers whose tool-call adapter is explicitly unsupported retain the
-      // ordinary chat path; no tool is executed on that fallback.
-      if (!(error instanceof Error) || !/unsupported/i.test(error.message)) throw error;
-    }
-    const turn = toolTurn ? null : await claraRuntime.createChatTurn({
-      orgId: organizationId, agentId, kbId, userId: subject.user.id, sessionId: conversation.id,
-      surface: "chat", ragMode: "hybrid", messages,
-    });
+    // Routine conversational prompts should reach the streaming LLM directly.
+    // Mail, WhatsApp, and potential account mutations still go through the
+    // bounded, host-authorized tool loop (which has not yet gained model-token
+    // streaming). Never shortcut a potentially actionable follow-up.
+    const shouldResolveTools = asksAboutEmail(combinedSearchContext)
+      || asksAboutWhatsApp(combinedSearchContext)
+      || /\b(send|reply|forward|archive|trash|delete|mark|move|approve|schedule|contact|conversation|account)\b/i.test(content);
 
     const encoder = new TextEncoder();
     let assistantOutput = "";
-    const stream = new ReadableStream({
+    const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
+        const emit = (event: string, data: Record<string, unknown>) => {
+          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        };
+        let provider = "host-authorized-tools";
+        let model = "tool-loop";
         try {
-          controller.enqueue(encoder.encode("event: conversation\ndata: " + JSON.stringify({ conversationId: conversation.id }) + "\n\n"));
-          if (toolTurn) {
-            assistantOutput = toolTurn.text;
-            controller.enqueue(encoder.encode("data: " + JSON.stringify({ text: assistantOutput }) + "\n\n"));
-          } else if (turn) {
-            for await (const chunk of turn.stream) {
-              assistantOutput += chunk;
-              controller.enqueue(encoder.encode("data: " + JSON.stringify({ text: chunk }) + "\n\n"));
+          emit("conversation", { conversationId: conversation.id });
+          let toolTurn: HostToolTurnResult | null = null;
+          if (shouldResolveTools) {
+            emit("status", { phase: "tools" });
+            try {
+              toolTurn = await runInteractiveHostToolLoop({
+                organizationId, agentId, kbId, messages, toolContext: trustedToolContext,
+              });
+            } catch (error) {
+              if (!(error instanceof Error) || !/unsupported/i.test(error.message)) throw error;
+              // Unsupported native tool calling cannot silently invoke tools.
+              // Fall back to ordinary model answers while maintaining the
+              // same org/agent grounding and authorized context boundaries.
             }
           }
-          await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "assistant", content: assistantOutput });
-          controller.enqueue(encoder.encode("event: done\ndata: " + JSON.stringify({ conversationId: conversation.id, provider: turn?.providerName ?? "host-authorized-tools", model: turn?.model ?? "tool-loop" }) + "\n\n"));
+          if (toolTurn) {
+            assistantOutput = toolTurn.text;
+            emit("delta", { text: assistantOutput });
+          } else {
+            emit("status", { phase: "generating" });
+            const turn = await claraRuntime.createChatTurn({
+              orgId: organizationId, agentId, kbId, userId: subject.user.id, sessionId: conversation.id,
+              surface: "chat", ragMode: "hybrid", messages,
+            });
+            provider = turn.providerName;
+            model = turn.model;
+            for await (const chunk of turn.stream) {
+              if (request.signal.aborted) break;
+              assistantOutput += chunk;
+              emit("delta", { text: chunk });
+            }
+          }
+          if (request.signal.aborted) {
+            controller.close();
+            return;
+          }
+          await appendConversationMessage({
+            organizationId, conversationId: conversation.id, role: "assistant", content: assistantOutput,
+          });
+          emit("done", { conversationId: conversation.id, provider, model });
           controller.close();
         } catch (error) {
-          controller.enqueue(encoder.encode("event: error\ndata: " + JSON.stringify({ message: error instanceof Error ? error.message : "Chat execution failed" }) + "\n\n"));
+          if (!request.signal.aborted) emit("error", { message: error instanceof Error ? error.message : "Chat execution failed" });
           controller.close();
         }
       },
@@ -436,6 +464,7 @@ export async function POST(request: Request) {
       headers: {
         "content-type": "text/event-stream; charset=utf-8",
         "cache-control": "no-cache, no-transform",
+        "x-accel-buffering": "no",
         connection: "keep-alive",
       },
     });
