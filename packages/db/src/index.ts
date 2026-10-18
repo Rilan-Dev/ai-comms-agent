@@ -144,4 +144,4 @@ export { resolveBriefingScope, recordForegroundActivity, assignBriefingMailboxGr
 export { getBriefing, listBriefings } from './briefings/repository';
 
 // Private user-owned catch-up selection and explicit review checkpoint (C2).
-export { prepareBriefing, listBriefingSources, acknowledgeBriefingItems, listGrantedBriefingMailboxes } from './briefings/selection';
+export { prepareBriefing, listBriefingSources, acknowledgeBriefingItems, listGrantedBriefingMailboxes, publishBriefingItems } from './briefings/selection';
