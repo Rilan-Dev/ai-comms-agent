@@ -1,3 +1,14 @@
+## 2026-10-18 — DEV-01 chat-first shell, embedded voice and rich mail preview — LIMITED VERIFICATION
+
+- **Authored source on main:** Chat home/Overview alternate, sidebar order and Mail accordion, Chat lazy voice panel, existing voice component embedded props/teardown, thread SQL HTML alias, opaque sandbox/CSP mail preview and tests. No branch, PR, deployed release or phase transition.
+- **Actually verified (not dynamic tests):** 14/14 source assertions against fresh GitHub file blobs for new routes, expanded Mail, header single offset, embedded voice open/close and cleanup, HTML reader alias and CSP, test existence. Not a browser/API or build PASS.
+- **Not run:** Newly authored `apps/web/tests/workspace-shell.test.ts`; existing `apps/web/tests/mail-html-preview.test.ts`; full pnpm Vitest/worker, full web/worker typecheck/build, migrations, browser, connected mail HTML, provider microphone/WebSocket, tenant-negative tests, deployed SHA. No full dependency-equipped checkout or authenticated browser context in this environment.
+- **Security:** FIX-01 issue #36 tracks HTML allowlist sanitization before provider data is stored; opaque iframe is a second-line protection, not an assertion that persisted HTML is safe. Previous 23/23 tests belong to an unrelated AI model slice and do not count for this UI.
+- **CI:** User-linked run 39079140157 failed against earlier SHA `2cf9a522`; logs BlobNotFound, OPS-01. Do not transfer failure or acceptance to this slice. Plan `docs/plans/CHAT-FIRST-VOICE-MAIL-UX-20261018.md`; session `docs/project-control/sessions/DEV01-CHAT-FIRST-VOICE-MAIL-20261018.md`.
+
+
+---
+
 ## DEV-01 — 2026-10-18 Chat-first and secure Mail preview source checkpoint
 
 - **Executed:** 13/13 authenticated GitHub source-structure assertions PASS: root Chat route + Overview retained; Chat first, Mail submenu default open; single sidebar offset; existing embedded/lazy VoiceWorkspace and no parent escape toggle; opaque/no-same-origin email iframe and restrictive CSP; new Vitest source present. Exact files checked and hashes recorded in `docs/project-control/sessions/DEV01-CHAT-FIRST-WORKSPACE-20261018.md`.
