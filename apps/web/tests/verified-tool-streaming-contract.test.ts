@@ -21,6 +21,27 @@ describe("authorized tool result progressive model delivery", () => {
     const cancellation = "await reader.cancel().catch(() => undefined)";
     expect(runtime.split(cancellation).length - 1).toBeGreaterThanOrEqual(2);
   });
+  it("propagates request cancellation into the underlying model HTTP fetch", () => {
+    expect(runtime).toContain("async streamCanonicalToolAnswer(ctx: ClaraRuntimeContext, canonical: string, signal?: AbortSignal)");
+    expect(runtime).toContain("return chatStream(configuration");
+    expect(runtime).toContain("}, signal);");
+    expect(runtime).toContain("return geminiStream(config, messages, options, signal)");
+    expect(runtime).toContain("return openAICompatibleStream(config, messages, options, signal)");
+    const open = runtime.slice(runtime.indexOf("async function openAICompatibleStream("), runtime.indexOf("async function geminiStream("));
+    const gemini = runtime.slice(runtime.indexOf("async function geminiStream("), runtime.indexOf("async function chatStream("));
+    expect(open).toContain('    method: "POST",\n    signal,');
+    expect(gemini).toContain('    method: "POST",\n    signal,');
+    expect(chat).toContain("assistantOutput,\n                  request.signal,");
+    expect(voice).toContain("result.text,\n                      request.signal,");
+  });
+
+  it("rejects an approval-marked response even when the registered handler is a read tool", () => {
+    expect(chat).toContain('toolOutput?.status === "pending_approval" || toolOutput?.approval_required === true');
+    expect(chat).toContain('result.ok && !approvalRequested && registeredTool?.sensitivity === "safe"');
+    expect(loop).toContain('toolOutput?.status === "pending_approval" || toolOutput?.approval_required === true');
+    expect(loop).toContain('result.ok && !approvalRequested && registeredTool?.sensitivity === "safe"');
+  });
+
   it("only exposes verified chunks of an authorized canonical answer", () => {
     expect(verifier).toContain("canonical.startsWith(chunk, matched)");
     expect(verifier).toContain('mode: providerComplete ? "verified-provider-tokens" : "canonical-fallback"');
