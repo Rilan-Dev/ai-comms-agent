@@ -423,7 +423,7 @@ export async function POST(request: Request) {
           AND a.organization_id = $1 AND a.deleted_at IS NULL
          WHERE m.organization_id = $1
            AND m.received_at >= $3::timestamptz
-           AND m.received_at <= $4::timestamptz
+           AND (CASE WHEN $9::boolean THEN m.received_at < $4::timestamptz ELSE m.received_at <= $4::timestamptz END)
            AND m.is_draft IS FALSE AND m.is_sent IS FALSE
            AND (NOT $7::boolean OR m.is_read IS FALSE)
            AND ($5::text IS NULL OR strpos(lower(coalesce(m.from_email::text, '')), lower($5::text)) > 0
@@ -440,11 +440,11 @@ export async function POST(request: Request) {
          LIMIT $8`,
         [organizationId, agentId, fromUtc, toUtc,
          requestedMailScope.sender ?? null, requestedMailScope.topic ?? null,
-         requestedMailScope.unreadOnly, MAX_REPORT_MESSAGES],
+         requestedMailScope.unreadOnly, MAX_REPORT_MESSAGES, explicitRange?.kind === "valid"],
       );
       const report = formatRollingMailSummary(
         rows.rows, requestedMailScope, fromUtc, toUtc,
-        explicitRange?.kind === "valid" ? "explicit UTC calendar-date range" : undefined,
+        explicitRange?.kind === "valid" ? "explicit UTC calendar-date range (exclusive end)" : undefined,
       );
       await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "user", content });
       await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "assistant", content: report });
