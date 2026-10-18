@@ -602,3 +602,8 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Change:** Real OpenAI/Gemini provider tool-call SSE assembled and validated to completion before host execution; malformed/partial/ambiguous tool args fail closed. Existing org/agent/read/write/approval/audit boundaries untouched.
 - **Evidence:** Git exact parser blob-matched combined Node tests 19/19 PASS and strict isolated TS PASS; full adapter/Next/worker/provider/browser/production not run.
 - **Follow-up:** `docs/project-control/sessions/DEV01-NATIVE-TOOL-SSE-20261018.md`; role ownership unchanged.
+
+### EVT-DEV01-NATIVE-POSTTOOL-FINAL-STREAM-20261018
+- **Implementation:** Chat/Voice output now streams directly from provider after registered host has finished successful read-only calls, no second canonical-copy model pass; completed tool-call IDs, bounds and untrusted tool results checked. Unsupported-tool fallback prohibited after tool execution.
+- **Role:** DEV-01 main-only; FIX-01 existing runtime bugs and HTML sanitizer #36; OPS-01 CI/CD/migrations/deploy/secret environment.
+- **Evidence:** exact Node prompt suite 7/7 PASS and isolated strict tsc PASS; web/worker/full build/live provider/browser not executed. Session `DEV01-NATIVE-POSTTOOL-FINAL-STREAM-20261018`.
