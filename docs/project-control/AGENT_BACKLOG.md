@@ -337,3 +337,10 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Authorization:** Owner's substantial-bug routing instruction; receiving role recovers repair scope.
 - **Suggested next action:** Reproduce `node --experimental-strip-types --test packages/clara-core/tests/tool-result-final.test.mjs`; add completed duplicate pair and wrong-name cases, then correct helper and rerun Clara/affected host tests.
 - **Related session/event/handoff:** HOF-DEV01-FIX01-TOOL-FINAL-REGRESSION-20261018; DEV01-CATCHUP-ROUTINES-20261018. Concurrent native SSE source is preserved, not assigned to this planning session.
+
+### BKL-DEV01-SEMANTIC-MAIL-DATE-SUMMARIES-20261019 — Evidence-grounded date-range semantic email summaries
+- **Role:** DEV-01 / Forge. **State:** NEXT PRODUCT FEATURE / NOT IMPLEMENTED.
+- **Delivered prerequisite:** `main` supports strict 1–366 day UTC ISO date-range reports with counted locally synced records and explicit limits, 16/16 exact-source regression tests PASS. This is a deterministic overview, not semantic AI synthesis; existing FIX-01 rolling-24h route remains stable.
+- **Next product work:** Define a securely bounded read-only model synthesis layer over a COMPLETE authorized counted row set, with per-message IDs, citations, source count, date/agent account scope, explicit partial/empty abstention and prompt-injection-resilient serialization. Do not show one LLM-summarized sample as the whole inbox, invent messages, fabricate provider freshness or bypass mailbox permissions/tool allowlists. If count exceeds 500, require paginated evidence retrieval before claiming full coverage; no native provider-sync guarantee.
+- **Verification gate:** Full pnpm/Vitest/web/Clara/worker/DB builds, PostgreSQL seeded boundary/role/tenant negatives, browser and real source sync status after OPS-01 environment readiness. FIX-01 retains previous 24h summary incidents, HTML sanitizer #36 and transport bugs; OPS-01 owns credentials/CI/Vercel/migrations/sync integration.
+- **Session:** `docs/project-control/sessions/DEV01-EXPLICIT-DATE-MAIL-20261019.md`.

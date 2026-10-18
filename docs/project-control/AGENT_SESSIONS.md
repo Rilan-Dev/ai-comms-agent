@@ -903,3 +903,25 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Next action:** Complete C1 tests/implementation and review before committing final evidence. Detailed session: sessions/DEV01-CATCHUP-C1-20261018.md.
 
 - DEV01-CATCHUP-C1-20261018: implementation complete; 17 SQL + 8 API checks pass; review corrections applied; next C2. Implementation support hit usage limit; DEV-01 parent took over. OPS test DB support completed; independent reviewer completed initial review. No production actions.
+
+### DEV01-ELEVENLABS-VOICE-CREDENTIAL-REUSE-20261019 — 2026-10-19
+- **Role/owner direction:** DEV-01 / Forge; user provided deployed ElevenLabs STT/TTS `provider_configuration_required` and requested progress on full verification. Existing authorization is direct edits to `main`, no branches/PRs. Phase 4 implementation_in_progress.
+- **Root cause in current source:** API loads exact organization/provider/purpose secret. An enabled Realtime secret does not imply an enabled `tts` or `stt` credential; reported 409 arises before hitting ElevenLabs. Actual production DB rows unavailable; pasted browser session token must be invalidated, never reused.
+- **Source implemented:** Explicit authorized/admin-confirmed same-org ElevenLabs Realtime key reuse to missing enabled voice-chat TTS/STT using ciphertext SQL copy and audit, no overwrite of existing keys/models/disabled rows; decryptability checked, truthful purpose-specific diagnostics and UI status/reload. New Vitest contract suite.
+- **Evidence:** GitHub source-level authorization/no-secret/SQL/UI checks 29/29 PASS; full Vitest/TS/build/SQL/provider/browser/deploy not executed without checkout/pnpm/access. Vercel rate-limit remains OPS-01.
+- **Next:** Execute recorded exact suite; verify live org A/B and TTS/STT model endpoints on deployed revision after OPS-01 unblocks. Session file `docs/project-control/sessions/DEV01-ELEVENLABS-VOICE-CREDENTIAL-REUSE-20261019.md`.
+
+### FIX01-ROLLING-MAIL-20261019 — 2026-10-19
+- **Owner/role:** User explicitly invoked FIX-01/Sentinel to debug bad AI last24 unread summaries, requested minimal fix, tests and documented cause; main-only, no PR/branch, no server access.
+- **Starting SHA:** `3a1d9cf5052c4d66949b60dfa508b24f76340a99`, recent head commits primarily DEV-01 capability UI/docs.
+- **Root:** legacy 20-row, seven-day drafts-first, unread-agnostic email context; previous assistant text contaminates search terms; agent could confidently hallucinate timing/count.
+- **Changes:** Direct audited/authorized counted rolling query + conservative intent/filters and 500 cap, all returned rows individually described with UTC and sync caveat; email.read and registered agent tool gate; SSE delivery. Tests and session record.
+- **Evidence:** real Node 8/8, isolated tsc PASS, current GitHub source checks 15/15; no whole repo/db/browser/provider/deploy.
+- **Next:** focused suite/typecheck/build, seeded DB permission/coverage, live email UI after OPS-01 approval, compare counts. `docs/project-control/sessions/FIX01-ROLLING-MAIL-20261019.md`.
+
+### DEV01-EXPLICIT-DATE-MAIL-20261019 — 2026-10-19
+- **Role / authorization:** DEV-01 / Forge, user "please proceed" after local mail report limitation; source directly on main, no branches/PRs. FIX-01 existing production 24h incident and HTML security; OPS-01 host, CI/CD, migrations, provider sync, deployment.
+- **Starting main:** `a02fa371446fda90151b170e95385a9f5fa1853e`. Implemented separate conservative explicit ISO calendar date parser and route selection retaining existing per-user/per-agent email grants, counted query, bounded 500 record coverage and local freshness disclaimer. UTC end is next midnight exclusive to include PostgreSQL microseconds. Unsupported filters return 422 without model broadening. Backward-compatible 24h formatter label.
+- **Actual verification:** Exact GitHub SHA local Node tests new 8 + existing rolling 8 = **16/16 PASS**; both source module TS noEmit PASS; 19/19 current source contract checks PASS. Added Vitest SQL/auth contracts (not run). No full builds/connected PostgreSQL/browser/provider E2E/deploy.
+- **Next:** Full pnpm suites/DB microsecond cross-tenant negative, optional evidence-grounded semantic summary. Security user action: rotate exposed host password and revoke browser session; secrets never accessed.
+- **Session:** `docs/project-control/sessions/DEV01-EXPLICIT-DATE-MAIL-20261019.md`.

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { appendConversationMessage, getChatConversation, getOrCreateChatConversation, listChatMessages, PostgresAgentRepository, query } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
+import { formatRollingMailSummary, MAX_REPORT_MESSAGES, parseRollingMailSummaryRequest, type RollingMailRow } from "@/lib/mail/rolling-summary";
+import { parseExplicitMailDateRangeRequest } from "@/lib/mail/explicit-date-range";
 
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -372,6 +374,103 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "not_found", message: "Conversation was not found for this organization and agent." }, { status: 404 });
     }
 
+    // Exact rolling-window reports are not a prompt-generation task. A model
+    // cannot truthfully call 20 arbitrary messages "all unread mail" or infer
+    // the server clock from prior assistant turns. Query *only* the current
+    // user's explicit scope and return coverage with every available match.
+    const explicitRange = parseExplicitMailDateRangeRequest(content);
+    if (explicitRange?.kind === "invalid") {
+      // A malformed/unsupported explicit time/filter scope must NOT fall back
+      // to the LLM and pretend it queried the user's requested date range.
+      return NextResponse.json({
+        error: "unsupported_mail_date_scope",
+        message: explicitRange.message,
+      }, { status: 422, headers: { "Cache-Control": "private, no-store" } });
+    }
+    const rollingMail = parseRollingMailSummaryRequest(content);
+    const requestedMailScope = explicitRange?.kind === "valid" ? explicitRange : rollingMail;
+    if (requestedMailScope) {
+      if (!subject.permissions.includes("email.read")) {
+        return NextResponse.json({
+          error: "forbidden",
+          message: "Email read permission is required for a mailbox summary.",
+        }, { status: 403 });
+      }
+      // The read permission alone is insufficient: an agent must have a
+      // registered read/search tool in its persisted allowlist. This is the
+      // same agent policy used by the normal email tool executor.
+      const mailRuntime = await createEmailToolRuntime(organizationId, agentId);
+      if (!mailRuntime.registry.listForAgent(agentId).some((tool) =>
+        tool.required_permission === "email.read"
+        && (tool.name === "email.search" || tool.name === "email.messages.list"))) {
+        return NextResponse.json({
+          error: "forbidden",
+          message: "This agent has no enabled mailbox list or search capability.",
+        }, { status: 403 });
+      }
+      const windowEnd = new Date();
+      const toUtc = explicitRange?.kind === "valid"
+        ? explicitRange.toUtc : windowEnd.toISOString();
+      const fromUtc = explicitRange?.kind === "valid"
+        ? explicitRange.fromUtc : new Date(windowEnd.getTime() - 24 * 60 * 60 * 1000).toISOString();
+      const rows = await query<RollingMailRow>(
+        `SELECT m.id, a.email_address AS account_email, m.from_email::text AS from_email,
+                m.from_name, m.subject, m.received_at,
+                LEFT(m.snippet, 600) AS snippet, LEFT(m.text_body, 1200) AS text_body,
+                COUNT(*) OVER ()::integer AS total_count
+         FROM email_messages m
+         JOIN email_accounts a ON a.id = m.email_account_id
+          AND a.organization_id = $1 AND a.deleted_at IS NULL
+         WHERE m.organization_id = $1
+           AND m.received_at >= $3::timestamptz
+           AND (CASE WHEN $9::boolean THEN m.received_at < $4::timestamptz ELSE m.received_at <= $4::timestamptz END)
+           AND m.is_draft IS FALSE AND m.is_sent IS FALSE
+           AND (NOT $7::boolean OR m.is_read IS FALSE)
+           AND ($5::text IS NULL OR strpos(lower(coalesce(m.from_email::text, '')), lower($5::text)) > 0
+                OR strpos(lower(coalesce(m.from_name, '')), lower($5::text)) > 0)
+           AND ($6::text IS NULL OR strpos(lower(coalesce(m.subject, '')), lower($6::text)) > 0
+                OR strpos(lower(coalesce(m.text_body, '')), lower($6::text)) > 0)
+           AND EXISTS (
+             SELECT 1 FROM agent_email_accounts b
+             JOIN agents bound_agent ON bound_agent.id = b.agent_id AND bound_agent.organization_id = $1
+             WHERE b.email_account_id = a.id AND b.agent_id = $2
+               AND b.role IN ('primary', 'read_only')
+           )
+         ORDER BY m.received_at DESC, m.id DESC
+         LIMIT $8`,
+        [organizationId, agentId, fromUtc, toUtc,
+         requestedMailScope.sender ?? null, requestedMailScope.topic ?? null,
+         requestedMailScope.unreadOnly, MAX_REPORT_MESSAGES, explicitRange?.kind === "valid"],
+      );
+      const report = formatRollingMailSummary(
+        rows.rows, requestedMailScope, fromUtc, toUtc,
+        explicitRange?.kind === "valid" ? "explicit UTC calendar-date range (exclusive end)" : undefined,
+      );
+      await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "user", content });
+      await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "assistant", content: report });
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          const emit = (event: string, payload: Record<string, unknown>) =>
+            controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
+          emit("conversation", { conversationId: conversation.id });
+          emit("status", { phase: "verified_local_mail" });
+          // Chunk the DB report for the UI; these are database records, not
+          // fabricated model tokens, and completion is explicitly labeled.
+          for (let i = 0; i < report.length; i += 2000) {
+            emit("delta", { text: report.slice(i, i + 2000) });
+          }
+          emit("done", { conversationId: conversation.id, source: "local_mail_database", complete: true });
+          controller.close();
+        },
+      });
+      return new Response(stream, { headers: {
+        "content-type": "text/event-stream; charset=utf-8",
+        "cache-control": "private, no-store, no-transform",
+        "x-accel-buffering": "no",
+      } });
+    }
+
     const history = await listChatMessages(organizationId, conversation.id, 40);
     // Build combined search context from the current message + recent user
     // AND assistant messages. Including the assistant's previous response is
@@ -386,7 +485,9 @@ export async function POST(request: Request) {
       .slice(-6)
       .map(m => m.content);
     const combinedSearchContext = [...recentMessages, content].join(" ");
-    const emailContext = await loadEmailContext(organizationId, agentId, combinedSearchContext);
+    const emailContext = subject.permissions.includes("email.read")
+      ? await loadEmailContext(organizationId, agentId, combinedSearchContext)
+      : null;
     const whatsappContext = await loadWhatsAppContext(organizationId, agentId, combinedSearchContext);
     await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "user", content });
 

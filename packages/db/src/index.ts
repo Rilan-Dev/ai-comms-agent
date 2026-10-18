@@ -124,6 +124,7 @@ export {
   listProviderConfigs,
   getProviderConfig,
   getDecryptedProviderConfig,
+  reuseElevenLabsRealtimeKeyForVoiceChat,
   upsertProviderConfig,
   deleteProviderConfig,
   getOrgAiRuntimeSettings,

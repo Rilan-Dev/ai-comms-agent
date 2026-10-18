@@ -19,6 +19,28 @@ Owner continued the reviewed plan; C1 storage/access implementation is now autho
 - **Routing:** Scheduler first-fire/recovery, automation tenant/trigger contract and new tool-final validation defect → FIX-01. Isolated runtime/provider evidence → OPS-01. Existing ISS-026, #36, #26 and ISS-037 remain owned/open; historical active sessions unchanged.
 - **Exact next:** Review the concrete spec/plans, then Catch-up C1 access/storage contracts and tests, off by default; recheck main/migration numbers. Concurrent native tool-streaming source is preserved; regression correction and live acceptance remain pending. [Full session](sessions/DEV01-CATCHUP-ROUTINES-20261018.md).
 
+## DEV-01 — Calendar-date mail reporting checkpoint (2026-10-19)
+
+- Explicit UTC date-range Chat reports are now implemented in source on main, reusing the previously corrected secure 24-hour mailbox query; no automatic provider sync and no full AI semantic summaries. Bounded 366 days, counted 500-message cap and actor/agent/mailbox authorization, fail-closed scope parser.
+- 16/16 exact-source Node tests, two-module standalone tsc, 19/19 source assertions PASS. Full app DB/worker/Clara builds, live browser/provider and deployment unverified. Phase 4 remains implementation_in_progress; no production acceptance, no branch/PR.
+- Session `docs/project-control/sessions/DEV01-EXPLICIT-DATE-MAIL-20261019.md`; next actions `NEXT_ACTION.md`.
+
+---
+
+## FIX-01 — Email Agent last 24h unread-summary fix — 2026-10-19
+
+- Main now has a direct authenticated, agent-mailbox-scoped report for explicit rolling 24h mail summary requests. It enforces unread/date/sender/topic at query time, lists all matching synchronized messages up to 500, and explicitly states matched/included/partial and sync limitations. This avoids the legacy 20-item seven-day LLM summary mismatch for the reported request.
+- 8/8 exact Node tests and isolated TypeScript PASS; GitHub source contracts 15/15 PASS. Full pnpm/SQL/browser/provider/production acceptance **PENDING**. FIX-01 scoped change; OPS-01 remains CI/CD/deploy owner. Session `docs/project-control/sessions/FIX01-ROLLING-MAIL-20261019.md`.
+
+
+---
+
+## DEV-01 — ElevenLabs TTS/STT configuration recovery UX (2026-10-19)
+
+- Production user's ElevenLabs TTS/STT model-catalog calls gave app-side `provider_configuration_required` (not provider-originated error). Implemented secure explicit per-organization reuse of enabled ElevenLabs Realtime credentials into missing enabled TTS/STT capability slots, with audit, model/key preservation, disabled-purpose protection, actionable UI and API diagnostics. No plaintext secret exposed or logged. Key-sharing across capability purposes is **never automatic**.
+- 29/29 live-GitHub source contracts pass; full Vitest/monorepo build, DB/provider/browser/deploy **not verified**. OPS-01 retains Vercel build-rate-limit deployment/infra gates, FIX-01 existing voice transport/email HTML security defects. Phase 4 remains implementation in progress. Session `DEV01-ELEVENLABS-VOICE-CREDENTIAL-REUSE-20261019`.
+
+
 ---
 
 ## 2026-10-18 DEV-01 native post-tool final-token checkpoint

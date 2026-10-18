@@ -462,3 +462,23 @@ If shared memory conflicts with current repository state or current requirements
 ## 2026-10-19 — C1 private catch-up
 
 Implemented C1; session `sessions/DEV01-CATCHUP-C1-20261018.md` records evidence and limits. Next: C2 stable manifests/coverage. Read authorization must revalidate evidence IDs/revisions as well as top-level sources; forward only allowed output fields. Prove audit atomicity with forced failure, not only successful audit rows. Multiple permissive RLS policies combine with OR: private content needs restrictive isolation plus trusted application predicates. Strict real PostgreSQL migration execution and structural checker results are separate evidence. Never equate focused green checks with full-suite acceptance.
+
+### 2026-10-19 — Capability-scoped credentials and safely reusable encrypted secrets
+- Provider-key availability must be checked against exact `(organization_id, provider, purpose)`, not a generic provider badge. If one capability is configured and another isn't, return an actionable purpose-specific error instead of a misleading empty live catalogue. Do not silently fall back across capabilities.
+- Reuse an existing encrypted secret only by explicit organization-update permission and user confirmation. In DB copy only missing enabled target slots without overwriting keys/models or re-enabling a disabled purpose; audit the operation and never return/repeat plaintext. Verify decryptability before copying bytes. Distinguish a stored encrypted blob from a successfully decrypted credential on server.
+- User-supplied session cookies must never be reused or recorded in issue docs; direct user to revoke exposed session. APP 409 occurs before vendor network, so don't call it an ElevenLabs outage. Actual provider and deployed status remain OPS verification gates.
+- Evidence `DEV01-ELEVENLABS-VOICE-CREDENTIAL-REUSE-20261019`: 29/29 current GitHub source contracts PASS, new Vitest and full monorepo/DB/browser/provider NOT RUN.
+
+### FIX-01 / Sentinel — 2026-10-19 — Mail summary completeness and time-scoping lesson
+- **Symptom:** Agent fabricated a summary of old messages and then claimed no unread messages for a specific rolling 24h period.
+- **Root cause:** 20-item, seven-day, draft-first, unread-agnostic LLM context plus prior-assistant keyword contamination. This is not evidence of provider live mail; an assistant cannot infer full coverage from that sample.
+- **Failed approach:** Early sender-filter regex truncated a dotted email domain; isolated Node regression caught 7/8, fixed to preserve domain and rerun 8/8 green.
+- **Remedy:** When the user explicitly requests a rolling time-bounded "all" mail report, use a parameterized org/agent/read-role + email.read + allowlisted-tool checked SQL query with time and unread predicates. Include total, included, exact UTC bounds and a local-sync/partial caveat; do not claim more than what was fetched. Fail closed on unsupported specific filters.
+- **Prevention:** Never let an LLM infer 24h/unread/all from arbitrary LIMIT 20; never include previous assistant content as search scope for new independent requests; test >30, >500, sender-specific and cross-tenant scenarios. Role session FIX01-ROLLING-MAIL-20261019.
+
+### DEV-01 — 2026-10-19 — Complete UTC mail-date filtering without broadening
+
+- **Source issue:** Prior report code only recognized a rolling 24-hour UTC interval; user date-range request could fall through unrelated assistant/tool context and produce an unverified "all" claim. Exact explicit date scopes need data-backed SQL, not model-inferred time and counts.
+- **Pattern:** Parse 2 complete YYYY-MM-DD dates and supported filters *before* chat history; fail closed to 422 for malformed/reversed/unsupported scopes; reuse actor email.read, enabled per-agent read/search list capability, organization+agent+primary/read_only mailbox binding, parameterized COUNT and 500 cap. To include every PostgreSQL timestamp on the user-selected last calendar day, use **exclusive following midnight UTC** (`received_at < end`), not `23:59:59.999Z`. Keep 24h rolling endpoint semantics unchanged.
+- **Evidence:** Git SHA-byte-matched isolated original+new Node tests 16/16 PASS, two-module tsc PASS, current GitHub source contracts 19/19. New full Vitest/DB runtime/browser/provider sync not run; only locally synced data is known and freshness cannot be inferred.
+- **Ownership:** DEV-01 product date-range feature; FIX-01 original 24h incident and HTML sanitization bug; OPS-01 deployment, migration, secrets and provider synchronization. User should revoke exposed browser token and rotate exposed server password without copying secrets into repo/logs. Session `DEV01-EXPLICIT-DATE-MAIL-20261019`.

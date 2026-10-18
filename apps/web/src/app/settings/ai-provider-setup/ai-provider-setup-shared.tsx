@@ -106,7 +106,7 @@ export function AIProviderSetupShared({
       setLoading(false);
       return () => controller.abort();
     }
-    const purposes = tab === "voice-chat" ? ["tts", "stt"] : [PURPOSE_FOR_TAB[tab]];
+    const purposes = tab === "voice-chat" ? ["tts", "stt", "realtime"] : [PURPOSE_FOR_TAB[tab]];
     void Promise.all(
       purposes.map((p) =>
         fetch(`/api/settings/ai-provider-configs?purpose=${p}&organizationId=${encodeURIComponent(organizationId)}`, {
@@ -215,6 +215,31 @@ export function AIProviderSetupShared({
     }
   }
 
+  async function reuseSavedRealtimeKey() {
+    if (!organizationReady || tab !== "voice-chat" || provider !== "elevenlabs") return;
+    if (!confirm("Reuse the enabled ElevenLabs Realtime API key for missing TTS/STT credentials in this organization? Existing keys and disabled capabilities will not be overwritten.")) return;
+    setSaving(true); setNotice(""); setError("");
+    try {
+      const response = await fetch("/api/settings/ai-provider-configs/reuse-voice-key", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ organizationId, provider: "elevenlabs" }),
+      });
+      const body = await response.json().catch(() => null) as { message?: string } | null;
+      if (!response.ok) throw new Error(body?.message || "Unable to reuse the saved key.");
+      if (currentOrganizationId.current !== organizationId) return;
+      setNotice(body?.message || "Voice credentials updated. Select TTS/STT models and save.");
+      setCatalogVersion((version) => version + 1);
+      setLoadRetry((version) => version + 1);
+    } catch (reason) {
+      if (currentOrganizationId.current === organizationId) {
+        setError(reason instanceof Error ? reason.message : "Unable to reuse saved credentials.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function deleteProvider() {
     if (!organizationReady) {
       setError("Load the selected organization's provider settings before removing credentials.");
@@ -259,6 +284,14 @@ export function AIProviderSetupShared({
   }
 
   const current = visibleConfigs.find((c) => c.provider === provider && c.purpose === PURPOSE_FOR_TAB[tab]);
+  const realtimeVoiceConfig = visibleConfigs.find((c) => c.provider === "elevenlabs" && c.purpose === "realtime");
+  const missingVoiceKey = ["tts", "stt"].some((purpose) => {
+    const capability = visibleConfigs.find((config) =>
+      config.provider === "elevenlabs" && config.purpose === purpose);
+    return !capability || (capability.enabled && !capability.hasApiKey);
+  });
+  const canReuseRealtimeKey = tab === "voice-chat" && provider === "elevenlabs"
+    && realtimeVoiceConfig?.enabled === true && realtimeVoiceConfig.hasApiKey && missingVoiceKey;
   const inputCls = "mt-1 w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm";
   const labelCls = "block text-sm font-medium";
 
@@ -317,7 +350,7 @@ export function AIProviderSetupShared({
           <div className="space-y-4">
             <label className={labelCls}>
               Provider
-              <select className={inputCls} value={provider} onChange={(e) => chooseProvider(e.target.value)}>
+              <select className={inputCls} value={provider} disabled={saving} onChange={(e) => chooseProvider(e.target.value)}>
                 {ALLOWED_PROVIDERS[tab].map((p) => (
                   <option key={p} value={p}>{PROVIDER_LABELS[p] || p}</option>
                 ))}
@@ -327,6 +360,27 @@ export function AIProviderSetupShared({
               <span className="font-medium">{PROVIDER_LABELS[provider] || provider} status: </span>
               {current?.hasApiKey ? (current?.enabled ? "API key saved (enabled; model not yet verified)" : "API key saved (disabled)") : "Not configured"}
             </div>
+            {tab === "voice-chat" && provider === "elevenlabs" ? (
+              <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
+                <p>ElevenLabs voice chat requires separate enabled TTS and STT settings. A key saved under Realtime is not automatically configured for these capabilities.</p>
+                <div className="grid gap-1" role="status" aria-label="ElevenLabs voice capability credentials">
+                  {(["tts", "stt"] as const).map((purpose) => {
+                    const saved = visibleConfigs.find((config) => config.provider === "elevenlabs" && config.purpose === purpose);
+                    const status = saved?.hasApiKey
+                      ? (saved.enabled ? "Key enabled" : "Key disabled")
+                      : (saved?.enabled === false ? "Disabled" : "Key required");
+                    return <p key={purpose}><strong>{purpose.toUpperCase()}:</strong> {status}</p>;
+                  })}
+                </div>
+                {canReuseRealtimeKey ? (
+                  <button type="button" onClick={() => void reuseSavedRealtimeKey()} disabled={saving}
+                    className="rounded-md border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:bg-secondary disabled:opacity-50">
+                    Use saved Realtime key for missing TTS/STT
+                  </button>
+                ) : null}
+                <p>Alternatively, enter an API key below and save to configure both voice capabilities. Existing models must be selected and saved for their own capability.</p>
+              </div>
+            ) : null}
             <label className={labelCls}>
               API key
               <input

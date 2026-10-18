@@ -36,6 +36,33 @@ phase_acceptance: unchanged_pending
 
 Exact commands, local log paths, source-audit findings and limitations: [session](sessions/DEV01-CATCHUP-ROUTINES-20261018.md). Many selected tests assert source contracts; a pass does not establish scheduling recovery, event tenant safety or WhatsApp delivery. Earlier inability to run these selected checks is superseded for this checkout/baseline only. No new product source, dependencies or migrations changed. Plan review corrected independent routine coverage, all-source reads, grant/template scope, quiet hours, multiple obligations and browser harness requirements.
 
+## DEV-01 — 2026-10-19 explicit UTC date-range mail reports
+
+- Direct-`main` source and tests for `YYYY-MM-DD to YYYY-MM-DD`, conservative fail-closed filters, 366-day max, tenant and agent read permissions, 500-message counted coverage, exclusive final UTC date and accurate local-sync caveat. Separate product slice from FIX-01's 24-hour incident repair; no branch/PR/deployment.
+- **EXECUTED:** Byte-matched current GitHub blobs `explicit-date-range.ts` `979dd2cca7e26bcc255e7c66a5566ada3b529d72`, `rolling-summary.ts` `d5e23f8649e5a1820bfd3db85ace0393108b576c` and Node tests `46f0cf9fdbb3492619a529b78160fdfea9c5647a`/`bd9cffc8264c11be06d495dc3dba024b21935494`: **16/16 Node PASS** (new 8 + old 8); both module global `tsc --noEmit` PASS; **19/19 source contracts** PASS. Date-range changes preserved existing 24-hour report byte output in tests.
+- **NOT executed:** Full Vitest/Next app/worker/Clara/db pnpm typecheck/build, actual SQL against PostgreSQL, provider sync, browser, multi-tenant runtime denial, microsecond last-day DB row, migration/deployment. No production acceptance. Previous credentials exposed by user remain owner-revoke/rotate action; none used.
+- Session `docs/project-control/sessions/DEV01-EXPLICIT-DATE-MAIL-20261019.md`; exact commands in `NEXT_ACTION.md`.
+
+---
+
+## FIX-01 — 2026-10-19 rolling 24-hour mail summary correction
+
+- **Source:** `apps/web/src/lib/mail/rolling-summary.ts`, `apps/web/src/app/api/chat/stream/route.ts`, Node regression `apps/web/tests/rolling-mail-summary.test.mjs`, Vitest contract `apps/web/tests/chat-rolling-mail-summary.test.ts`. Direct main, no branch/PR, no deployment.
+- **Executed:** Node v22.16.0 **8/8 PASS** for exact committed helper/test SHA `edc3c5c2091d260ec2f25a80b2a9fa8a098809a2` / `bd9cffc8264c11be06d495dc3dba024b21935494` (first run 7/8 revealed email domain truncation; repaired, rerun green). Global `tsc --noEmit` on exact helper PASS. **15/15** authenticated GitHub route/helper invariants PASS. Tests include 37 unread message coverage, >500 truthful partial result, sender/topic filters, no-data caveat.
+- **NOT run:** new Vitest, whole repo TypeScript/pnpm/Next build, actual PostgreSQL SQL, live inbox/authorization E2E, server or production deployment. No trustworthy live mailbox counts can be stated.
+- **Session:** `docs/project-control/sessions/FIX01-ROLLING-MAIL-20261019.md`; exact next commands `NEXT_ACTION.md`.
+
+
+---
+
+## 2026-10-19 — DEV-01 ElevenLabs missing TTS/STT capability credentials (source-only verified)
+
+- The reported production 409 `provider_configuration_required` was traced to per-purpose encrypted provider config rows. Existing Realtime key is **not** a valid TTS/STT config unless owner explicitly opts in to secure same-org reuse. This 409 is before the vendor call and does not prove real ElevenLabs availability or deployment SHA.
+- **Source on main:** auth-guarded, audit-recorded `POST /api/settings/ai-provider-configs/reuse-voice-key` using atomic encrypted DB copy only for missing enabled TTS/STT; no overwrite of saved secrets/models or disabled capabilities. Realtime metadata loaded only to show explicit Voice Chat reuse action. Missing/disabled/decrypt failure messages differentiated and no cross-purpose automatic fallback. Saved encrypted key detection fixed. New Vitest suite added.
+- **ACTUAL evidence:** 29/29 current authenticated GitHub source contract checks PASS, exact source SHAs recorded in session. **NOT ACTUALLY RUN:** new Vitest, full pnpm web/worker/DB/Clara typechecks/tests/builds, SQL against live Postgres, migration, vendor TTS/STT API, browser session, secure cross-tenant negative, deployment. Shell lacked full checkout/pnpm and failed GitHub DNS. GitHub HEAD Vercel `failure` target still build-rate-limit; this is not a compiler diagnosis.
+- **Session/next:** `docs/project-control/sessions/DEV01-ELEVENLABS-VOICE-CREDENTIAL-REUSE-20261019.md`, `NEXT_ACTION.md`. No branch/PR, no production deployment.
+
+
 ---
 
 ## 2026-10-18 — DEV-01 direct final read-tool SSE (source done, full acceptance pending)
