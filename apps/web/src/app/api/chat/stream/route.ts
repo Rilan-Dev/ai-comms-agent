@@ -286,7 +286,10 @@ async function runInteractiveHostToolLoop(args: {
       // This flag is computed from the persisted, server-registered tool,
       // NEVER from a provider-supplied tool name or model argument.
       const registeredTool = visibleTools.find((entry) => entry.name === call.name);
-      const readOnly = result.ok && registeredTool?.sensitivity === "safe"
+      const toolOutput = result.output && typeof result.output === "object" && !Array.isArray(result.output)
+        ? result.output as Record<string, unknown> : null;
+      const approvalRequested = toolOutput?.status === "pending_approval" || toolOutput?.approval_required === true;
+      const readOnly = result.ok && !approvalRequested && registeredTool?.sensitivity === "safe"
         && (registeredTool.required_permission === "email.read" || registeredTool.required_permission === "whatsapp.read");
       summaries.push({ name: call.name, ok: result.ok, readOnly, ...(result.error ? { errorCode: result.error.code } : {}) });
       const payload = JSON.stringify({
