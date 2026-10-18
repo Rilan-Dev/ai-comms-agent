@@ -44,7 +44,7 @@ export function parseExplicitMailDateRangeRequest(input: string): ExplicitMailDa
   }
   // Reject a second date, relative window, or unsupported predicate before
   // querying; never silently report unrelated messages.
-  const remaining = text.replace(pair[0], " ").replace(/[?!,.;]/g, " ");
+  const remaining = text.replace(pair[0], " ").replace(/[?!,;]/g, " ").replace(/\.(?=\s|$)/g, " ");
   if (/\d{4}-\d{2}-\d{2}|\b(?:except|excluding|without|before|after|since|last|past|next|only\s+from|important|urgent|priority|starred|flagged|labelled|labeled|folder|attachment|has\s+attachment)\b/i.test(remaining)) {
     return { kind: "invalid", message: INVALID_SCOPE };
   }
