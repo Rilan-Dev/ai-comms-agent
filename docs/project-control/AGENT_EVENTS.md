@@ -580,3 +580,10 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Routing:** FIX-01 #36 server sanitizer and historical raw HTML rows; FIX-01 #26 end-state. OPS-01 CI/run `39079140157` and deployments.
 - **Lesson:** Never remove a VoiceWorkspace component before ending its live transport; never treat an iframe CSP as proof that provider HTML was server-sanitized; only one owner should apply the desktop nav inset.
 - **Next:** Execute focused tests and browser acceptance on correct current main; run security checks before broad email HTML exposure.
+
+### EVT-DEV01-CHAT-FIRST-VOICE-MAIL-20261018
+- **Role/authorization:** DEV-01 owner-directed Chat-first and Mail UX, `main` only.
+- **Material change:** `/` chat, overview retained; voice embedded in Chat using existing relay, Mail folders expanded, navbar gap corrected, HTML thread alias and isolated rich preview. Mailflow source consulted. Concurrency: another DEV-01 updated navbar and preview while this session progressed; preserve current blobs and remove duplicate unused helper.
+- **Security handoff:** FIX-01 [#36](https://github.com/Rilan-Dev/ai-comms-agent/issues/36) — provider HTML is persisted without an observed robust sanitizer despite `html_body_sanitized` name; do not treat sandbox as server sanitization. OPS-01 owns backfill rollout/migrations, CI and deployment.
+- **Actual evidence:** 14/14 source contracts PASS, Vitest suite authored not executed, no full build/browser or production. Project phase 4 ongoing.
+- **Session:** `DEV01-CHAT-FIRST-VOICE-MAIL-20261018`; plan `docs/plans/CHAT-FIRST-VOICE-MAIL-UX-20261018.md`.
