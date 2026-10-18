@@ -385,6 +385,18 @@ export async function POST(request: Request) {
           message: "Email read permission is required for a mailbox summary.",
         }, { status: 403 });
       }
+      // The read permission alone is insufficient: an agent must have a
+      // registered read/search tool in its persisted allowlist. This is the
+      // same agent policy used by the normal email tool executor.
+      const mailRuntime = await createEmailToolRuntime(organizationId, agentId);
+      if (!mailRuntime.registry.listForAgent(agentId).some((tool) =>
+        tool.required_permission === "email.read"
+        && (tool.name === "email.search" || tool.name === "email.messages.list"))) {
+        return NextResponse.json({
+          error: "forbidden",
+          message: "This agent has no enabled mailbox list or search capability.",
+        }, { status: 403 });
+      }
       const windowEnd = new Date();
       const toUtc = windowEnd.toISOString();
       const fromUtc = new Date(windowEnd.getTime() - 24 * 60 * 60 * 1000).toISOString();
