@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isCurrentVoiceSequence } from "@ai-comms-agent/shared";
+import { readSseEvents } from "@/lib/streaming/sse";
 import { AudioLines, CheckCircle2, CircleStop, Mic, MicOff, Radio, ShieldCheck, Waves } from "lucide-react";
 
 type Agent = { id: string; name: string; status: string };
 type VoiceSession = { id: string; status: string; provider?: string | null; model?: string | null; voice_id?: string | null };
 type Transport = { transportMode?: "transcript_bridge" | "realtime" | "pipeline"; sessionEndpoint?: string; turnEndpoint?: string; provider?: string | null; realtimeProvider?: string | null; model?: string | null; voiceId?: string | null };
-type Turn = { id: string; role: "user" | "assistant"; text: string; state?: "thinking" | "done" };
+type Turn = { id: string; role: "user" | "assistant"; text: string; state?: "thinking" | "streaming" | "done" };
 
 export function VoiceWorkspace({
   organizationId, agents, initialAgentId, embedded = false, onReturnToChat,
@@ -239,17 +240,50 @@ export function VoiceWorkspace({
     const assistantTurn: Turn = { id: `assistant-${sequence}`, role: "assistant", text: "", state: "thinking" };
     setTurns((old) => [...old, userTurn, assistantTurn]);
     setNotice("Clara is processing your request through the authorized host runtime.");
+    let streamedText = "";
     try {
       const response = await fetch("/api/voice/turn", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", accept: "text/event-stream" },
         signal: controller.signal,
         body: JSON.stringify({ organizationId, agentId: agent.id, sessionId: current.id, transcript: text }),
       });
-      const payload = await response.json().catch(() => ({})) as { text?: string; message?: string; error?: string; toolCalls?: Array<{ name: string; ok: boolean; errorCode?: string }>; pendingApprovals?: Array<{ actionId: string; actionType: string; message: string }> };
-      if (!response.ok) throw new Error(payload.message ?? payload.error ?? "Voice turn failed.");
+      if (!response.ok || !response.body) {
+        const errorBody = await response.json().catch(() => ({})) as { message?: string; error?: string };
+        throw new Error(errorBody.message ?? errorBody.error ?? "Voice turn failed.");
+      }
+      type VoiceStreamDone = {
+        toolCalls?: Array<{ name: string; ok: boolean; errorCode?: string }>;
+        pendingApprovals?: Array<{ actionId: string; actionType: string; message: string }>;
+      };
+      let payload: VoiceStreamDone = {};
+      let complete = false;
+      for await (const event of readSseEvents(response.body)) {
+        if (!isCurrentVoiceSequence(turnSequenceRef.current, sequence) || controller.signal.aborted) return;
+        const message = JSON.parse(event.data) as VoiceStreamDone & { text?: string; message?: string; phase?: string };
+        if (event.event === "error") throw new Error(message.message || "Voice response failed.");
+        if (event.event === "status") {
+          setNotice(message.phase === "tools"
+            ? "Checking authorized email tools and approvals…"
+            : "Clara is generating a live response…");
+          continue;
+        }
+        if (event.event === "done") {
+          payload = message;
+          complete = true;
+          break;
+        }
+        if (event.event === "delta" && message.text) {
+          streamedText += message.text;
+          const partial = streamedText;
+          setTurns((old) => old.map((turn) => turn.id === assistantTurn.id
+            ? { ...turn, text: partial, state: "streaming" }
+            : turn));
+        }
+      }
+      if (!complete) throw new Error("The voice response stopped before completion.");
       if (!isCurrentVoiceSequence(turnSequenceRef.current, sequence) || controller.signal.aborted) return;
-      const answer = payload.text?.trim() || "I couldn't produce a response for that turn.";
+      const answer = streamedText.trim() || "I couldn't produce a response for that turn.";
       setTurns((old) => old.map((turn) => turn.id === assistantTurn.id ? { ...turn, text: answer, state: "done" } : turn));
       setPendingApprovals((old) => [...old, ...(payload.pendingApprovals ?? [])]);
       const succeeded = payload.toolCalls?.filter((call) => call.ok).length ?? 0;
@@ -330,7 +364,9 @@ export function VoiceWorkspace({
       ttsPendingFramesRef.current = 0;
       const message = e instanceof Error ? e.message : "Voice turn failed.";
       setError(message);
-      setTurns((old) => old.map((turn) => turn.id === assistantTurn.id ? { ...turn, text: message, state: "done" } : turn));
+      setTurns((old) => old.map((turn) => turn.id === assistantTurn.id
+        ? { ...turn, text: streamedText ? `${streamedText}\n\n[Response interrupted: ${message}]` : message, state: "done" }
+        : turn));
       setNotice("This turn failed. No external action is claimed as completed.");
     }
   }, [agent, organizationId]);
@@ -1076,7 +1112,7 @@ export function VoiceWorkspace({
                 <div className="mb-4 max-h-64 space-y-3 overflow-y-auto pr-1">
                   {turns.map((turn) => (
                     <article key={turn.id} className={`max-w-[92%] rounded-2xl border px-4 py-3 text-left ${turn.role === "user" ? "ml-auto bg-primary/5" : "mr-auto bg-background"}`}>
-                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-[.13em] text-muted-foreground">{turn.role === "user" ? "You" : "Clara"}{turn.state === "thinking" ? " · thinking…" : ""}</p>
+                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-[.13em] text-muted-foreground">{turn.role === "user" ? "You" : "Clara"}{turn.state === "thinking" ? " · thinking…" : turn.state === "streaming" ? " · streaming…" : ""}</p>
                       <p className="whitespace-pre-wrap text-sm leading-6">{turn.text || "Preparing response…"}</p>
                     </article>
                   ))}
