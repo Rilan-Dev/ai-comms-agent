@@ -56,6 +56,12 @@ describe("native final read-only answer streaming after host tool execution", ()
     expect(voice).toContain('mode: "host-authorized-tools"');
     expect(voice).toContain("return NextResponse.json({");
   });
+  it("never falls back to an unguarded model after a completed tool or final-stream failure", () => {
+    expect(chat).toContain("round === 0 && totalCalls === 0");
+    expect(chat).toContain("if (round === 0 && totalCalls === 0 && error instanceof Error");
+    expect(chat).not.toContain('!/unsupported/i.test(error.message)');
+    expect(chat).toContain('emit("error", { message:');
+  });
   it("does not enable speculative streaming for requests without completed audited tool results", () => {
     expect(chat).toContain('toolOutput?.status === "pending_approval" || toolOutput?.approval_required === true');
     expect(loop).toContain('toolOutput?.status === "pending_approval" || toolOutput?.approval_required === true');
