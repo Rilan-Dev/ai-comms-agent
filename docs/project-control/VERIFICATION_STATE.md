@@ -1,3 +1,13 @@
+## FIX-01 — 2026-10-19 rolling 24-hour mail summary correction
+
+- **Source:** `apps/web/src/lib/mail/rolling-summary.ts`, `apps/web/src/app/api/chat/stream/route.ts`, Node regression `apps/web/tests/rolling-mail-summary.test.mjs`, Vitest contract `apps/web/tests/chat-rolling-mail-summary.test.ts`. Direct main, no branch/PR, no deployment.
+- **Executed:** Node v22.16.0 **8/8 PASS** for exact committed helper/test SHA `edc3c5c2091d260ec2f25a80b2a9fa8a098809a2` / `bd9cffc8264c11be06d495dc3dba024b21935494` (first run 7/8 revealed email domain truncation; repaired, rerun green). Global `tsc --noEmit` on exact helper PASS. **15/15** authenticated GitHub route/helper invariants PASS. Tests include 37 unread message coverage, >500 truthful partial result, sender/topic filters, no-data caveat.
+- **NOT run:** new Vitest, whole repo TypeScript/pnpm/Next build, actual PostgreSQL SQL, live inbox/authorization E2E, server or production deployment. No trustworthy live mailbox counts can be stated.
+- **Session:** `docs/project-control/sessions/FIX01-ROLLING-MAIL-20261019.md`; exact next commands `NEXT_ACTION.md`.
+
+
+---
+
 ## 2026-10-19 — DEV-01 ElevenLabs missing TTS/STT capability credentials (source-only verified)
 
 - The reported production 409 `provider_configuration_required` was traced to per-purpose encrypted provider config rows. Existing Realtime key is **not** a valid TTS/STT config unless owner explicitly opts in to secure same-org reuse. This 409 is before the vendor call and does not prove real ElevenLabs availability or deployment SHA.
