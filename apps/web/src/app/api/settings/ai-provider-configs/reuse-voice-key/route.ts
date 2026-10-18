@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import {
-  getProviderConfig,
+  getDecryptedProviderConfig,
   listProviderConfigs,
   recordAuditEvent,
   reuseElevenLabsRealtimeKeyForVoiceChat,
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  * Realtime secret into missing voice-chat TTS/STT credential slots.
  *
  * This is NOT automatic fallback in model discovery. An administrator must
- * initiate it. Encryption stays in PostgreSQL; no secret enters a response.
+ * initiate it. Ciphertext copying stays in PostgreSQL; the key is validated\n * server-side but no secret enters a response.
  * Existing saved keys, model choices and disabled capabilities are preserved.
  */
 export async function POST(request: Request) {
@@ -37,12 +37,21 @@ export async function POST(request: Request) {
       getIdentityRepository(),
     );
 
-    const source = await getProviderConfig(organizationId, "elevenlabs", "realtime");
+    const source = await getDecryptedProviderConfig(organizationId, "elevenlabs", "realtime");
     if (!source?.enabled || !source.hasApiKey) {
       return NextResponse.json({
         error: "source_configuration_required",
         message: "Save and enable an ElevenLabs Realtime API key in this organization before reusing it for voice chat.",
       }, { status: 409 });
+    }
+
+    // Validate server-side decryptability before duplicating an encrypted blob.
+    // Do not include plaintext in the HTTP response or audit record.
+    if (!source.apiKey) {
+      return NextResponse.json({
+        error: "provider_credentials_unavailable",
+        message: "The saved Realtime credential cannot be decrypted. Ask an administrator to check the server encryption key.",
+      }, { status: 503 });
     }
 
     const copied = await reuseElevenLabsRealtimeKeyForVoiceChat(organizationId);
