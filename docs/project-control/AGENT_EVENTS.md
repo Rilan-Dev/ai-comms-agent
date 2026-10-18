@@ -613,3 +613,12 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **DEV-01 correction:** Explicit opt-in reuse of the encrypted, enabled, decryptable same-org Realtime secret for missing enabled TTS/STT slots only; preserves existing key/model/disabled purpose and audits; UI supports capability status and retry; API diagnostic distinguishes unavailable key from missing/disabled.
 - **Evidence:** 29/29 current GitHub source invariants PASS; full integration/Next/db/worker/Clara/browser/provider not run. Vercel build-rate-limit persists as OPS-01 deployment blocker; Phase 4 ongoing.
 - **Session:** `docs/project-control/sessions/DEV01-ELEVENLABS-VOICE-CREDENTIAL-REUSE-20261019.md`.
+
+### EVT-FIX01-MAIL-24H-SUMMARY-20261019
+- **Type:** SOURCE BUG / USER-REPORTED INCORRECT AI ANSWER.
+- **Agent:** FIX-01 / Sentinel; started main `3a1d9cf`, phase 4 active.
+- **Finding:** Chat loaded 20 mixed 7-day messages and let the LLM invent a count/date for "all unread from last 24h"; actor email.read was not required before old local context fetch. Existing agent binding ISS-026 maintained.
+- **Fix:** New explicit 24-hour counted query gated by actor email.read + agent registered email read/search, tenant/agent binding and read roles; sent/draft excluded, unread condition enforced; every returned message listed (<=500), local-sync/partial reported; legacy local context permission-gated. Unsupported filters fail closed.
+- **Test:** 8/8 real isolated Node, helper tsc and 15/15 current GitHub structural checks PASS; production unverified.
+- **Security:** Owner's pasted host password/session was not accessed/used/recorded; must rotate/revoke. OPS-01 owns deployment and live provider sync.
+- **Session:** `docs/project-control/sessions/FIX01-ROLLING-MAIL-20261019.md`.
