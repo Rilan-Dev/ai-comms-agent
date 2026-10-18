@@ -264,3 +264,88 @@ export function listGrantedBriefingMailboxes(
     return result.rows.map(row => ({ id: row.id, emailAddress: row.email_address }));
   });
 }
+
+/**
+ * C3 worker publication boundary. Source-grounded generation does not become
+ * a "ready" personal briefing until all provenance is rechecked and every
+ * represented obligation is registered in the review ledger in one commit.
+ * This function is NEVER called from a browser route.
+ */
+export async function publishBriefingItems(
+  principal: TrustedBriefingPrincipal,
+  manifestId: string,
+  expectedScopeVersion: string,
+  generated: BriefingItem[],
+): Promise<{ status: "ready" | "partial"; itemCount: number }> {
+  if (!Array.isArray(generated) || generated.length > 1000
+    || typeof expectedScopeVersion !== "string" || expectedScopeVersion.length !== 64) {
+    throw new Error("Invalid generated briefing result");
+  }
+  return withTransaction(async client => {
+    const { row, scope } = await validatedManifest(client, principal, manifestId);
+    if (scope.scopeVersion !== expectedScopeVersion) throw notAvailable();
+    if (row.briefing_status === "ready" && Number(row.source_count) > 0) {
+      throw new Error("A ready briefing cannot be silently replaced.");
+    }
+    if (row.briefing_status !== "pending" && row.briefing_status !== "partial") {
+      throw new Error("Briefing is not pending publication.");
+    }
+    const result = await client.query<{
+      message_id: string; mailbox_id: string; content_revision: string; text_body: string | null;
+    }>(
+      `SELECT s.email_message_id AS message_id,s.mailbox_id,s.content_revision,m.text_body
+       FROM summary_sources s JOIN email_messages m ON m.id=s.email_message_id
+          AND m.organization_id=s.organization_id AND m.email_account_id=s.mailbox_id
+       WHERE s.summary_id=$1 AND s.organization_id=$2 AND s.owner_user_id=$3 AND s.agent_id=$4`,
+      [manifestId, principal.organizationId, principal.userId, principal.agentId],
+    );
+    const sources = new Map(result.rows.map(r => [r.message_id, r]));
+    const registrations: Array<{ itemId: string; source: typeof result.rows[number]; representation: "complete" | "partial" }> = [];
+    for (const item of generated) {
+      if (!item || typeof item.id !== "string" || !/^[a-f0-9]{64}$/.test(item.id)
+        || !Array.isArray(item.sourceIds) || !item.sourceIds.length || item.sourceIds.length > 10
+        || !["complete","partial"].includes(item.representation)
+        || !Array.isArray(item.evidence)) throw new Error("Malformed briefing item.");
+      if (item.evidence.some(e => !item.sourceIds.includes(e.sourceId)
+        || !sources.has(e.sourceId) || e.contentRevision !== sources.get(e.sourceId)?.content_revision
+        || !Number.isInteger(e.start) || !Number.isInteger(e.end) || e.start < 0 || e.end <= e.start
+        || typeof e.quote !== "string"
+        || (sources.get(e.sourceId)?.text_body ?? "").slice(e.start, e.end) !== e.quote)) {
+        throw new Error("Briefing evidence no longer matches canonical mail.");
+      }
+      for (const id of item.sourceIds) {
+        const src = sources.get(id);
+        if (!src) throw notAvailable();
+        registrations.push({ itemId: item.id, source: src, representation: item.representation });
+      }
+    }
+    const covered = new Set(registrations.map(r => r.source.message_id));
+    const metadata = row.coverage_metadata as { selectionTruncated?: boolean } | null;
+    const ready = !metadata?.selectionTruncated && sources.size === covered.size
+      && registrations.length > 0 && registrations.every(r => r.representation === "complete");
+    for (const record of registrations) {
+      await client.query(
+        `INSERT INTO mail_review_items(organization_id,owner_user_id,agent_id,mailbox_id,message_id,
+            content_revision,item_id,representation)
+          VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+          ON CONFLICT(organization_id,owner_user_id,agent_id,message_id,content_revision,item_id)
+          DO NOTHING`,
+        [principal.organizationId, principal.userId, principal.agentId,
+          record.source.mailbox_id, record.source.message_id, record.source.content_revision,
+          record.itemId, record.representation],
+      );
+    }
+    const status = ready ? "ready" : "partial";
+    await client.query(
+      `UPDATE summaries SET content_json=$1::jsonb,briefing_status=$2
+        WHERE id=$3 AND organization_id=$4 AND owner_user_id=$5 AND agent_id=$6`,
+      [JSON.stringify(generated), status, manifestId, principal.organizationId, principal.userId, principal.agentId],
+    );
+    await client.query(
+      `UPDATE briefing_generation_jobs SET status=$1,updated_at=now()
+        WHERE summary_id=$2 AND organization_id=$3 AND owner_user_id=$4 AND agent_id=$5`,
+      [status, manifestId, principal.organizationId, principal.userId, principal.agentId],
+    );
+    return { status, itemCount: generated.length };
+  });
+}
