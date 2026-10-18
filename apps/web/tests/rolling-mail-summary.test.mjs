@@ -37,6 +37,9 @@ test("complex or ambiguous filters do not silently become an all-mail report", (
   assert.equal(parseRollingMailSummaryRequest("summarize unread messages excluding Amazon from last 24hours"), null);
   assert.equal(parseRollingMailSummaryRequest("summarize unread emails between yesterday and today last 24 hours"), null);
   assert.equal(parseRollingMailSummaryRequest("summarize unread emails from last week"), null);
+  assert.equal(parseRollingMailSummaryRequest("summarize urgent unread messages from last 24 hours"), null);
+  assert.equal(parseRollingMailSummaryRequest("summarize unread emails with attachments in the last 24h"), null);
+  assert.equal(parseRollingMailSummaryRequest("summarize unread mail regarding last 24 hours"), null);
   assert.equal(parseRollingMailSummaryRequest("hello"), null);
 });
 test("a 37-message report includes all 37 and does not mix a 7-day sample", () => {
