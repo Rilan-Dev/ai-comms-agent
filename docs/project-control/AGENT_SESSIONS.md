@@ -825,3 +825,14 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Commits:** source `65a215151ecd14900fac3c9ba9a421fb7a777a77`; final test `6cd93638bffa0e2f6a9e8d6ce2f3f2664b13341b`.
 - **Evidence:** `bash -n` PASS; isolated Node test 4/4 PASS. No live migration/health test.
 - **Next:** Confirm DB target, then run the focused test from the user's actual checkout and perform deployment verification.
+
+### DEV01-CHAT-FIRST-WORKSPACE-20261018 — 2026-10-18
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Owner requested recovered-state continuation and UX redesign: Chat primary, inline voice, Chat first sidebar, open Mail folders, aligned navbar, safe HTML mail previews using Mailflow patterns.
+- **Started from:** `9081fb89932e44eaa4b6cfb217b1ee1346ba0010` (main advanced during session). No branch or PR.
+- **Status:** SOURCE IMPLEMENTED / INTEGRATION VERIFICATION PENDING.
+- **Completed:** Main/Overview/sidebar/top-bar/Chat voice action/VoiceWorkspace embedding and safe HTML iframe preview; regression test source and staged UX plan. 13/13 GitHub source checks PASS.
+- **Pending:** Full Vitest/typecheck/build, mobile/a11y/browser, agent and voice real transport, mail HTML sanitizer backfill and authenticated provider scenarios.
+- **Blockers:** FIX-01 #36 untrusted email ingestion; FIX-01 #26 teardown; OPS-01 CI/deployment. Old Actions run `39079140157` from historical SHA not evidence for this head.
+- **Next action:** Execute focused Vitest, web typecheck/build on latest main and complete real-world UI scenario matrix without waiting on OPS work.
+- **Session:** `docs/project-control/sessions/DEV01-CHAT-FIRST-WORKSPACE-20261018.md`.
