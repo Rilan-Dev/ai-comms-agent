@@ -1,3 +1,5 @@
+- **Follow-up interruption cleanup:** `packages/clara-core/src/runtime.ts` now cancels the upstream OpenAI/Sarvam-compatible and Gemini reader in both model SSE generator finalizers when the host consumer returns early, instead of merely releasing its lock. Added source assertion in `apps/web/tests/verified-tool-streaming-contract.test.ts`. This was committed to `main` but is **not** yet provider/browser E2E tested.
+
 ## 2026-10-18 — DEV-01 verified post-tool provider streaming (partial tests only)
 
 - **Main-only source:** `claraRuntime.streamCanonicalToolAnswer` (no-tools model token delivery), new pure `emitVerifiedToolAnswer` literal prefix/abort/fallback, Chat host read-only metadata and guarded tool answers, Voice completed/approval-free email read-only gating with same mechanism, worker read-only summary metadata. This is a *second read-only model pass* after the original tool loop, not native streaming function-call execution.
