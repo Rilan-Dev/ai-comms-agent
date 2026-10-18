@@ -5,7 +5,7 @@ import { authorize, authorizationErrorToResponse } from "@/lib/identity/authoriz
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { runEmailAgentTurn } from "@ai-comms-agent/email-agent-runtime";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
-import { emitVerifiedToolAnswer } from "@/lib/streaming/verified-tool-answer";
+
 
 export const dynamic = "force-dynamic";
 
@@ -99,40 +99,34 @@ export async function POST(request: Request) {
                   auth_subject: { user_id: subject.user.id, role, permissions },
                 },
                 maxRounds: 4, maxToolCalls: 8,
-              });
-              if (!request.signal.aborted) {
-                const safeReadOnly = result.finishReason === "completed"
-                  && result.pendingApprovals.length === 0
-                  && result.toolCalls.length > 0
-                  && result.toolCalls.every((call) => call.ok && call.readOnly === true)
-                  && result.text.length > 0 && result.text.length <= 6000;
-                let deliveryMode = "canonical-tool-answer";
-                if (safeReadOnly) {
+                onSafeReadOnlyFinal: async (completedHistory) => {
                   emit("status", { phase: "generating" });
-                  const delivery = await emitVerifiedToolAnswer(
-                    result.text,
-                    () => claraRuntime.streamCanonicalToolAnswer(
-                      { orgId: organizationId, agentId, kbId },
-                      result.text,
-                      request.signal,
-                    ),
-                    (text) => emit("delta", { text }),
+                  const finalStream = await claraRuntime.streamAuthorizedReadOnlyToolAnswer(
+                    { orgId: organizationId, agentId, kbId },
+                    completedHistory,
                     request.signal,
                   );
-                  if (!delivery.completed) return;
-                  deliveryMode = delivery.mode;
-                } else {
-                  // Approval-required and denied/write outcomes retain the
-                  // canonical, audited tool-loop answer with no second model.
-                  emit("delta", { text: result.text });
-                }
-                if (!request.signal.aborted) {
-                  emit("done", {
-                    executionId, toolCalls: result.toolCalls, pendingApprovals: result.pendingApprovals,
-                    finishReason: result.finishReason, mode: "host-authorized-tools",
-                    deliveryMode,
-                  });
-                }
+                  let generated = "";
+                  for await (const token of finalStream) {
+                    if (request.signal.aborted) break;
+                    generated += token;
+                    emit("delta", { text: token });
+                  }
+                  if (!request.signal.aborted && !generated.trim()) {
+                    throw new Error("The provider did not produce a final voice answer after completed read-only tools.");
+                  }
+                  return generated;
+                },
+              });
+              if (!request.signal.aborted) {
+                // The callback already streamed the provider's final tokens.
+                // Writes/approvals/denials retain the canonical host answer.
+                if (!result.streamed) emit("delta", { text: result.text });
+                emit("done", {
+                  executionId, toolCalls: result.toolCalls, pendingApprovals: result.pendingApprovals,
+                  finishReason: result.finishReason, mode: "host-authorized-tools",
+                  deliveryMode: result.streamed ? "direct-provider-final" : "canonical-tool-answer",
+                });
               }
             } else {
               // Actual model-generated tokens arrive incrementally here.
