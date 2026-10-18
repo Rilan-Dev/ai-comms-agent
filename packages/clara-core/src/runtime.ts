@@ -285,10 +285,12 @@ async function geminiStream(config: ProviderConfig, messages: ChatMessage[], opt
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: m.content }],
   }));
-  const url = `${config.baseUrl}/v1beta/models/${encodeURIComponent(config.chatModel ?? "gemini-2.0-flash")}:generateContent?key=${encodeURIComponent(config.apiKey)}`;
+  // :generateContent waits until the entire answer is ready. Gemini's
+  // :streamGenerateContent?alt=sse endpoint yields generated text as it arrives.
+  const url = `${config.baseUrl}/v1beta/models/${encodeURIComponent(config.chatModel ?? "gemini-2.0-flash")}:streamGenerateContent?alt=sse&key=${encodeURIComponent(config.apiKey)}`;
   const response = await fetch(url, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", accept: "text/event-stream" },
     body: JSON.stringify({
       systemInstruction: system ? { parts: [{ text: system }] } : undefined,
       contents,
@@ -297,11 +299,45 @@ async function geminiStream(config: ProviderConfig, messages: ChatMessage[], opt
   });
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    throw new Error(`Gemini request failed (${response.status}): ${body.slice(0, 500)}`);
+    throw new Error(`Gemini streaming request failed (${response.status}): ${body.slice(0, 300)}`);
   }
-  const payload = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-  const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
-  async function* generator(): AsyncGenerator<string, void, unknown> { if (text) yield text; }
+  if (!response.body) throw new Error("Gemini returned no streaming response body.");
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  async function* generator(): AsyncGenerator<string, void, unknown> {
+    let buffer = "";
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
+        let separator: RegExpExecArray | null;
+        while ((separator = /\r?\n\r?\n/.exec(buffer)) !== null) {
+          const event = buffer.slice(0, separator.index);
+          buffer = buffer.slice(separator.index + separator[0].length);
+          for (const line of event.split(/\r?\n/)) {
+            if (!line.startsWith("data:")) continue;
+            const data = line.slice(5).trim();
+            if (!data || data === "[DONE]") continue;
+            const payload = JSON.parse(data) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+            const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+            if (text) yield text;
+          }
+        }
+        if (done) break;
+        if (buffer.length > 1024 * 1024) throw new Error("Gemini returned an oversized streaming event.");
+      }
+      if (buffer.trim()) {
+        for (const line of buffer.split(/\r?\n/)) {
+          if (!line.startsWith("data:")) continue;
+          const payload = JSON.parse(line.slice(5).trim()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+          const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+          if (text) yield text;
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
   return generator();
 }
 
