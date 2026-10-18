@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDecryptedProviderConfig } from "@ai-comms-agent/db";
+import { getDecryptedProviderConfig, getProviderConfig } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { getAuthenticatedAppContext, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -38,11 +38,27 @@ export async function GET(request: Request) {
     }
     const saved = await getDecryptedProviderConfig(organizationId, provider, purpose as LiveModelPurpose);
     if (!saved?.enabled || !saved.apiKey) {
+      // A Realtime key does not automatically configure the separate TTS and
+      // STT capability rows. Offer an explicit, authenticated reuse path
+      // instead of silently sharing credentials across purposes.
+      const voiceCapability = provider === "elevenlabs" && (purpose === "tts" || purpose === "stt");
+      const realtime = voiceCapability && !saved
+        ? await getProviderConfig(organizationId, "elevenlabs", "realtime")
+        : null;
+      const reusable = Boolean(realtime?.enabled && realtime.hasApiKey);
+      const unavailableStoredKey = Boolean(saved?.enabled && saved.hasApiKey && !saved.apiKey);
       return NextResponse.json({
-        error: "provider_configuration_required",
-        message: "Save and enable this provider's API key for this capability before loading live models.",
+        error: unavailableStoredKey ? "provider_credentials_unavailable" : "provider_configuration_required",
+        message: unavailableStoredKey
+          ? "An encrypted API key is saved, but the server could not read it. Ask an administrator to check the credentials encryption configuration."
+          : saved && !saved.enabled
+            ? "This provider is disabled for this capability. Enable it in AI Provider Setup before loading models."
+            : reusable
+              ? "An ElevenLabs Realtime key is enabled, but TTS/STT keys are configured separately. In AI Provider Setup → Voice Chat, choose 'Use saved Realtime key for missing TTS/STT'."
+              : "Save and enable this provider's API key for this capability before loading live models.",
         models: [],
-      }, { status: 409 });
+        ...(reusable ? { canReuseRealtimeKey: true } : {}),
+      }, { status: unavailableStoredKey ? 503 : 409, headers: { "Cache-Control": "private, no-store" } });
     }
 
     // Sarvam and ElevenLabs realtime voice on this host are streaming
