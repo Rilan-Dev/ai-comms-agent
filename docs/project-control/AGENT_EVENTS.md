@@ -607,3 +607,9 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Implementation:** Chat/Voice output now streams directly from provider after registered host has finished successful read-only calls, no second canonical-copy model pass; completed tool-call IDs, bounds and untrusted tool results checked. Unsupported-tool fallback prohibited after tool execution.
 - **Role:** DEV-01 main-only; FIX-01 existing runtime bugs and HTML sanitizer #36; OPS-01 CI/CD/migrations/deploy/secret environment.
 - **Evidence:** exact Node prompt suite 7/7 PASS and isolated strict tsc PASS; web/worker/full build/live provider/browser not executed. Session `DEV01-NATIVE-POSTTOOL-FINAL-STREAM-20261018`.
+
+### EVT-DEV01-ELEVENLABS-CAPABILITY-CREDENTIALS-20261019
+- **User report:** ElevenLabs TTS/STT model catalog 409 `provider_configuration_required`; source confirms exact purpose-key guard, not external vendor failure. Credentials are `(organization_id,provider,purpose)` scoped. Exposed session cookie should be revoked; not copied to source/docs.
+- **DEV-01 correction:** Explicit opt-in reuse of the encrypted, enabled, decryptable same-org Realtime secret for missing enabled TTS/STT slots only; preserves existing key/model/disabled purpose and audits; UI supports capability status and retry; API diagnostic distinguishes unavailable key from missing/disabled.
+- **Evidence:** 29/29 current GitHub source invariants PASS; full integration/Next/db/worker/Clara/browser/provider not run. Vercel build-rate-limit persists as OPS-01 deployment blocker; Phase 4 ongoing.
+- **Session:** `docs/project-control/sessions/DEV01-ELEVENLABS-VOICE-CREDENTIAL-REUSE-20261019.md`.
