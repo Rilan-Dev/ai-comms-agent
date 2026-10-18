@@ -245,6 +245,7 @@ async function runInteractiveHostToolLoop(args: {
   messages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
   toolContext: ToolContext;
   onSafeReadOnlyFinal?: (completedHistory: ToolChatMessage[]) => Promise<string>;
+  onProgress?: (phase: "planning_tools" | "reading_email" | "reading_whatsapp" | "checking_permissions" | "denied") => void;
 }): Promise<HostToolTurnResult | null> {
   if (args.toolContext.organization_id !== args.organizationId || args.toolContext.agent_id !== args.agentId) {
     throw new Error("Trusted tool context does not match the requested organization and agent.");
@@ -268,6 +269,7 @@ async function runInteractiveHostToolLoop(args: {
   const summaries: HostToolTurnResult["toolCalls"] = [];
   let totalCalls = 0;
   for (let round = 0; round < MAX_HOST_TOOL_ROUNDS; round += 1) {
+    args.onProgress?.("planning_tools");
     let completion: ChatToolCompletion;
     try {
       completion = await claraRuntime.completeWithTools(
@@ -293,9 +295,17 @@ async function runInteractiveHostToolLoop(args: {
         return { text: "I stopped before running more operations because this turn reached its tool-call safety limit.", toolCalls: summaries };
       }
       totalCalls += 1;
+      const known = visibleTools.find(tool => tool.name === call.name);
+      args.onProgress?.(known?.required_permission === "email.read"
+        ? "reading_email" : known?.required_permission === "whatsapp.read"
+          ? "reading_whatsapp" : "checking_permissions");
       const result: ToolResult = call.name.startsWith("whatsapp.")
         ? await invokeWhatsAppTool(whatsappRuntime, call.name, call.arguments, args.toolContext)
         : await invokeEmailReadTool(emailRuntime, call.name, call.arguments, args.toolContext);
+      if (!result.ok || (result.output && typeof result.output === "object"
+          && "status" in result.output && result.output.status === "pending_approval")) {
+        args.onProgress?.("denied");
+      }
       // This flag is computed from the persisted, server-registered tool,
       // NEVER from a provider-supplied tool name or model argument.
       const registeredTool = visibleTools.find((entry) => entry.name === call.name);
@@ -454,6 +464,7 @@ export async function POST(request: Request) {
           const emit = (event: string, payload: Record<string, unknown>) =>
             controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
           emit("conversation", { conversationId: conversation.id });
+          emit("progress", { phase: "preparing" });
           emit("status", { phase: "verified_local_mail" });
           // Chunk the DB report for the UI; these are database records, not
           // fabricated model tokens, and completion is explicitly labeled.
@@ -547,8 +558,10 @@ export async function POST(request: Request) {
             emit("status", { phase: "tools" });
             toolTurn = await runInteractiveHostToolLoop({
                 organizationId, agentId, kbId, messages, toolContext: trustedToolContext,
+                onProgress: (phase) => emit("progress", { phase }),
                 onSafeReadOnlyFinal: async (completedHistory) => {
                   emit("status", { phase: "generating" });
+                  emit("progress", { phase: "generating" });
                   const finalStream = await claraRuntime.streamAuthorizedReadOnlyToolAnswer(
                     { orgId: organizationId, agentId, kbId },
                     completedHistory,
@@ -599,6 +612,7 @@ export async function POST(request: Request) {
           await appendConversationMessage({
             organizationId, conversationId: conversation.id, role: "assistant", content: assistantOutput,
           });
+          emit("progress", { phase: "completed" });
           emit("done", { conversationId: conversation.id, provider, model });
           controller.close();
         } catch (error) {
