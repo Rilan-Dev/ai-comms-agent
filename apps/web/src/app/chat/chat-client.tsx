@@ -72,6 +72,28 @@ export function ChatClient({
     }
   }
 
+  async function returnFromVoice() {
+    setVoiceOpen(false);
+    // Reload the same server-scoped agent conversation. Keep the unsent Chat
+    // draft intact; only host-confirmed transcript turns appear after reload.
+    try {
+      const params = new URLSearchParams({ organizationId, agentId });
+      const response = await fetch(`/api/chat/conversation?${params}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("Could not refresh the conversation.");
+      const data = await response.json() as { conversation?: { id: string }; messages?: Message[] };
+      if (data.conversation && Array.isArray(data.messages)) {
+        setConversationId(data.conversation.id);
+        setMessages(data.messages);
+      }
+    } catch {
+      setMessages(current => [...current, {
+        id: `voice-history-error-${Date.now()}`, conversationId, role: "system",
+        content: "Voice history could not be refreshed. Your unsent message is preserved; retry the chat page to load saved turns.",
+        createdAt: new Date().toISOString(),
+      }]);
+    }
+  }
+
   async function sendMessage() {
     const content = draft.trim();
     if (!content || busy || !activeAgent) return;
@@ -161,7 +183,7 @@ export function ChatClient({
 
       {voiceOpen ? (
         <VoiceWorkspace organizationId={organizationId} agents={agents} initialAgentId={agentId}
-          embedded onReturnToChat={() => setVoiceOpen(false)} />
+          conversationId={conversationId} embedded onReturnToChat={() => { void returnFromVoice(); }} />
       ) : (
       <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
         <div role="log" aria-live="polite" className="min-w-0 flex-1 space-y-6 overflow-y-auto py-6">
