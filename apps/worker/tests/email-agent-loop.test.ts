@@ -118,3 +118,72 @@ test("an approval-shaped result from a registered read tool cannot be marked saf
   assert.equal(result.pendingApprovals.length, 1);
   assert.equal(result.pendingApprovals[0]?.actionId, "approval-1");
 });
+
+test("read-only successful host batch generates one direct final text stream without another tool decision", async () => {
+  let decisions = 0;
+  let invoked = 0;
+  const result = await runEmailAgentTurn({
+    organizationId: "org-1", agentId: "agent-1", messages: inputMessages, toolContext: context,
+    onSafeReadOnlyFinal: async (history) => {
+      assert.equal(invoked, 1, "tool must be completed before text becomes visible");
+      assert.equal(history.at(-1)?.role, "tool");
+      return "Live answer delivered token by token";
+    },
+  }, {
+    createRuntime: async () => fakeRuntime(),
+    completeWithTools: async () => {
+      decisions += 1;
+      return { text: "", toolCalls: [{ id: "call-read", name: "email.accounts.list", arguments: {} }], finishReason: "tool_calls" };
+    },
+    invoke: async () => { invoked += 1; return okResult(); },
+  });
+  assert.equal(decisions, 1);
+  assert.equal(result.streamed, true);
+  assert.equal(result.text, "Live answer delivered token by token");
+  assert.equal(result.toolCalls[0]?.readOnly, true);
+  assert.deepEqual(result.pendingApprovals, []);
+});
+
+test("a denied tool result never enters the native final streaming path", async () => {
+  let decisions = 0;
+  let streamed = false;
+  const result = await runEmailAgentTurn({
+    organizationId: "org-1", agentId: "agent-1", messages: inputMessages, toolContext: context,
+    onSafeReadOnlyFinal: async () => { streamed = true; return "unsafe"; },
+  }, {
+    createRuntime: async () => fakeRuntime(),
+    completeWithTools: async () => (++decisions === 1
+      ? { text: "", toolCalls: [{ id: "call-read", name: "email.accounts.list", arguments: {} }], finishReason: "tool_calls" }
+      : { text: "Access denied.", toolCalls: [], finishReason: "stop" }),
+    invoke: async () => ({
+      ok: false, error: { code: "permission_denied", message: "No access", retryable: false },
+      audit: { tool_name: "email.accounts.list", input_summary: "", output_summary: "denied", duration_ms: 1 },
+    }),
+  });
+  assert.equal(streamed, false);
+  assert.equal(decisions, 2);
+  assert.equal(result.streamed, undefined);
+  assert.equal(result.toolCalls[0]?.readOnly, false);
+});
+
+test("a pending-approval result must never trigger direct read-only final streaming", async () => {
+  let round = 0;
+  let streamingCalled = false;
+  const result = await runEmailAgentTurn({
+    organizationId: "org-1", agentId: "agent-1", messages: inputMessages, toolContext: context,
+    onSafeReadOnlyFinal: async () => { streamingCalled = true; return "sent"; },
+  }, {
+    createRuntime: async () => fakeRuntime(),
+    completeWithTools: async () => (++round === 1
+      ? { text: "", toolCalls: [{ id: "call-read", name: "email.accounts.list", arguments: {} }], finishReason: "tool_calls" }
+      : { text: "Pending approval; not sent.", toolCalls: [], finishReason: "stop" }),
+    invoke: async () => ({
+      ok: true, output: { status: "pending_approval", action_id: "approval-1", action_type: "email.send" },
+      audit: { tool_name: "email.accounts.list", input_summary: "", output_summary: "pending", duration_ms: 1 },
+    }),
+  });
+  assert.equal(streamingCalled, false);
+  assert.equal(result.toolCalls[0]?.readOnly, false);
+  assert.equal(result.pendingApprovals.length, 1);
+  assert.equal(result.pendingApprovals[0]?.actionId, "approval-1");
+});
