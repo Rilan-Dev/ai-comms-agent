@@ -34,8 +34,8 @@ export function parseRollingMailSummaryRequest(input: string): RollingMailSummar
   const from = /\bfrom\s+(?!last\b|past\b|previous\b|the\s+(?:last|past|previous)\b)(.+?)(?=\s+(?:during|within|over|in|for|last|past|previous)\b|[,!?]|$)/i.exec(message)?.[1]?.trim().replace(/\.$/, "");
   const subject = /\b(?:about|regarding|with\s+subject|subject\s+(?:contains|is))\s+(.+?)(?=\s+(?:during|within|over|in|for|last|past|previous)\b|[,.!?]|$)/i.exec(message)?.[1]?.trim();
   // Do not downgrade complex requests to an unfiltered broad report.
-  const hasUnsupportedFilter = /\b(?:excluding|except|without|only from|labelled|tagged|folder|before|after|between)\b/i.test(message);
-  if (hasUnsupportedFilter) return null;
+  const hasUnsupportedFilter = /\b(?:excluding|except|without|only from|labelled|tagged|folder|before|after|between|important|urgent|priority|flagged|starred|attachments?|containing)\b/i.test(message);
+  if (hasUnsupportedFilter || (/(?:\bsender\b|\bsubject\b|\bregarding\b|\babout\b)/i.test(message) && !from && !subject)) return null;
   // If the user supplied an explicit filter but it could not be parsed,
   // never return all messages while pretending the filter was applied.
   if (/\bfrom\s+(?!last\b|past\b|previous\b|the\s+(?:last|past|previous)\b)/i.test(message) && !from) return null;
