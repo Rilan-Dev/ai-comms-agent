@@ -136,14 +136,14 @@ export function ChatClient({
           continue;
         }
         if (event.event === "status") {
-          const phase = payload.phase === "tools" ? "checking_permissions" : "generating";
+          const phase: AgentActivityPhase = payload.phase === "tools" ? "checking_permissions" : "generating";
           setActivity(agentActivityLabel(phase));
           setActivitySteps((steps) => steps.at(-1) === phase ? steps : [...steps, phase].slice(-10));
           continue;
         }
         if (event.event === "done") {
           completed = true;
-          setActivitySteps((steps) => [...steps, "completed"].slice(-10));
+          setActivitySteps((steps) => [...steps, "completed" as AgentActivityPhase].slice(-10));
           break;
         }
         if (payload.text) {

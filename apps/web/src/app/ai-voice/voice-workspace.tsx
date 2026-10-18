@@ -284,7 +284,7 @@ export function VoiceWorkspace({
         if (event.event === "done") {
           payload = message;
           complete = true;
-          setVoiceActivitySteps(current => [...current, "completed"].slice(-10));
+          setVoiceActivitySteps(current => [...current, "completed" as AgentActivityPhase].slice(-10));
           break;
         }
         if (event.event === "delta" && message.text) {

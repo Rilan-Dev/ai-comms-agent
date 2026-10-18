@@ -25,7 +25,7 @@ export default async function CatchUpPage() {
       let mailboxes: Array<{ id: string; emailAddress: string }> = [];
       try {
         mailboxes = await listGrantedBriefingMailboxes({
-          organizationId: context.organizationId, userId: context.userId, agentId: agent.id,
+          organizationId: context.organizationId, userId: context.user.id, agentId: agent.id,
         });
       } catch {
         // No grant and denied agents are indistinguishable in this UI.
