@@ -1,3 +1,13 @@
+## DEV-01 — Chat-first workspace / voice / mail reader source checkpoint — 2026-10-18
+
+- Owner-directed design implemented directly on `main`: default Chat at `/`, Overview at `/overview`, Chat-first/Mail-expanded sidebar, duplicate desktop header margin eliminated, Clara voice view embedded from Chat, and tenant-scoped mail HTML body alias + opaque-CSP preview. Existing `/chat` and `/ai-voice` bookmarks preserved. Concurrent DEV-01 source changes to TopBar and mail preview were retained without override.
+- Security handoff FIX-01 [#36](https://github.com/Rilan-Dev/ai-comms-agent/issues/36): ingestion currently appears to store raw provider HTML under `html_body_sanitized`; sanitizer/backfill and runtime validation are not completed. OPS-01 remains CI/deploy/migrations owner.
+- Verification is **source-contract only**: 14/14 inspected GitHub invariants PASS; new Vitest suite authored, but full test/typecheck/build/browser/provider/production all NOT EXECUTED. Phase 4 remains implementation_in_progress.
+- Plan `docs/plans/CHAT-FIRST-VOICE-MAIL-UX-20261018.md`, session `docs/project-control/sessions/DEV01-CHAT-FIRST-VOICE-MAIL-20261018.md`. Exact continuation in `NEXT_ACTION.md`.
+
+
+---
+
 ## DEV-01 — Chat-first workspaces redesign implementation checkpoint (2026-10-18)
 
 - Source on `main`: Chat main route and first nav; Overview moved to its own route; expanded Mail folders; fixed extra navbar offset; embedded Clara voice panel launched by Chat action button, with unsafe parent toggle disabled; richer opaque/CSP sandbox HTML mail thread preview and initial persisted field mapping. No new architecture stack or authorization bypass.
