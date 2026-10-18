@@ -12,11 +12,13 @@ export function buildReadOnlyToolFinalMessages(history: readonly ToolChatMessage
   const lastUser = [...history].reverse().find((item) => item.role === "user");
   if (!lastUser?.content?.trim()) throw new Error("An original user request is required.");
   const declared = new Set<string>();
+  const seen = new Set<string>();
   const results: Array<{ tool: string; result: string }> = [];
   for (const item of history) {
     if (item.role === "assistant" && "tool_calls" in item) {
       for (const call of item.tool_calls ?? []) {
-        if (!call.id || declared.has(call.id)) throw new Error("Duplicate or missing host tool-call ID.");
+        if (!call.id || seen.has(call.id)) throw new Error("Duplicate or missing host tool-call ID.");
+        seen.add(call.id);
         declared.add(call.id);
       }
     }
