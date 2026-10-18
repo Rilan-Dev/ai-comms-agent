@@ -63,3 +63,5 @@ Fix actual DEV-01 regressions directly on main (no branches/PRs).
 4. **FIX-01** continues existing transport bug #26, sanitizer #36, WhatsApp source incidents; **OPS-01** current-head CI, approved migrations/deploy and Vercel/provider account/secret readiness. Avoid CI polling while independent coding exists.
 
 **Status:** source implemented, partial unit/module evidence. Full product E2E and production acceptance pending.
+
+- **Follow-up interruption cleanup:** `packages/clara-core/src/runtime.ts` now cancels the upstream OpenAI/Sarvam-compatible and Gemini reader in both model SSE generator finalizers when the host consumer returns early, instead of merely releasing its lock. Added source assertion in `apps/web/tests/verified-tool-streaming-contract.test.ts`. This was committed to `main` but is **not** yet provider/browser E2E tested.
