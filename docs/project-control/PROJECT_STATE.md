@@ -1,3 +1,10 @@
+## DEV-01 — Secure read-only tool final-answer stream checkpoint, 2026-10-18
+
+- Incremental UI SSE already existed for non-tool Chat and Voice. DEV-01 added bounded true provider token delivery to Chat/Voice **after** successful authorized read-only tool loops, prefix-verifying every chunk against the completed canonical answer. No model may fabricate action/approval changes; write/denial/approval paths remain canonical. Uses an extra model call and does **not** implement native streamed function-call decisions or early TTS.
+- Executed eight standalone Node runtime tests + isolated TypeScript and 16 GitHub source invariants; full pnpm/Next/worker/DB/browser/provider/CI acceptance not run. Phase 4 remains implementation in progress. Session `docs/project-control/sessions/DEV01-VERIFIED-TOOL-ANSWER-STREAMING-20261018.md`.
+
+---
+
 ## DEV-01 — Mail Threads and model-token streaming checkpoint — 2026-10-18
 
 - Real organization-scoped Mail Threads replaced placeholder with server-paginated search/unread/account view. Chat and embedded voice render SSE model tokens incrementally for non-tool prompts; Gemini provider now genuinely streams. Sensitive email/WhatsApp tool-completion text remains buffered while the bounded host-authorized loop executes, and TTS still starts after complete model answer. No side effects are bypassed for streaming.
