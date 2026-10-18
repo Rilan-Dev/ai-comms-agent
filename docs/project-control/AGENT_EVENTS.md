@@ -60,6 +60,22 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Suggested next action:** Pull latest main, rerun `bash scripts/update-and-up.sh`, then run focused voice transport test; capture actual output.
 - **Related records:** ISS-033; `docs/project-control/sessions/FIX01-VOICE-RESAMPLING-INDEX-20261018.md`.
 
+### EVT-DEV01-CATCHUP-ROUTINES-20261018 — 2026-10-18
+- **Agent/session:** DEV-01 / Forge — DEV01-CATCHUP-ROUTINES-20261018.
+- **Type:** REQUIREMENT_IMPACT / PROPOSED_DESIGN / ROLE_HANDOFF.
+- **Requirement:** Personal absence catch-up plus AI-managed time/event routines and optional WhatsApp digests. Owner selected once-approved exact mailbox/verified-recipient/timing/summary-limit scope with reconfirmation on change; this does not authorize sends or amend current runtime policy.
+- **Impact:** Extend shared email runtime, canonical summaries, personal grants/coverage and existing scheduler/rules. Preserve Chat-first UX and Phase 4 status. New role-correct source findings: recurring next-fire/recovery defects and missing mandatory event tenant comparison with trigger-key drift.
+- **Routing:** HOF-DEV01-FIX01-SCHEDULER-RELIABILITY-20261018; HOF-DEV01-FIX01-AUTOMATION-TENANCY-20261018; HOF-DEV01-OPS01-DIGEST-VALIDATION-20261018. Existing issues remain owned.
+- **Evidence:** Baseline main ba9e948b; production web build, workspace typechecks and 41 focused tests pass. No SQL/browser/provider/deploy acceptance. Two read-only design reviews incorporated.
+- **Next:** Review concrete design/two plans, then Catch-up C1 within reviewed scope; keep independent authorized work moving. Full record: sessions/DEV01-CATCHUP-ROUTINES-20261018.md.
+
+### EVT-DEV01-CATCHUP-INTEGRATED-VERIFICATION-20261018 — 2026-10-18
+- **Agent/session:** DEV-01 / DEV01-CATCHUP-ROUTINES-20261018.
+- **Type:** CONCURRENT_INTEGRATION / EXECUTABLE_FAILURE / ROLE_HANDOFF.
+- **Finding:** Preserved concurrent upstream source through 959ff5a6 and all ledger entries. Final typecheck/web build pass; focused tests 91 pass/1 fail. Failed duplicate-ID fixture rejects for a different reason, while direct helper probes accept completed-ID reuse and result-name mismatch. No live bypass demonstrated.
+- **Route:** FIX-01 HOF-DEV01-FIX01-TOOL-FINAL-REGRESSION-20261018; no source changes by this planning session. Plans remain reviewable proposals with 81 unchecked implementation steps; initial 41/41 belongs only to ba9e948b.
+- **Next:** Owner/architect design/implementation review then Catch-up C1; preserve concurrent streaming continuation and avoid CI polling. Local records only, no push/deployment.
+
 <!-- Append new events above this marker. -->
 
 ### EVT-FIX01-AUTH-20261009 — 2026-10-09

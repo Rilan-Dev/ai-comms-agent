@@ -448,3 +448,13 @@ If shared memory conflicts with current repository state or current requirements
 - Streaming tool-call **decisions** (OpenAI/Gemini) must still be fully assembled/validated before any host execution. After one successful audited host *read-only* batch, model final text can stream directly with **zero tool definitions**, using only the scoped authorized tool results as UNTRUSTED user data. Never send model-generated tool arguments to the final no-tools endpoint.
 - Guard against approval/write/denied calls, 4-tool safe batch cap, orphan and **previously consumed duplicate tool-call IDs**, oversized context, post-tool unsupported-provider fallback, cancellations and tool-output prompt injection. Source unit test caught duplicate-ID reuse and was repaired (now 7/7 Node).
 - This optimization trades multi-hop read discovery for first-batch final streaming; longer/denied/write flows continue old bounded tool loop. A streamed model can still hallucinate textual claims; real-provider/multi-agent acceptance is required. Source `DEV01-NATIVE-POSTTOOL-FINAL-STREAM-20261018`.
+
+### 2026-10-18 — Catch-up/routine planning lessons (DEV-01)
+- Personal visit/review, routine generation and provider delivery need separate ledgers; late mail cannot be excluded by a timestamp-only cursor. Different users/routines must not advance each other's coverage.
+- Derived summaries inherit every source's current access and content revision. Recheck all sources on reads and immediately before dispatch; a cache is not authority.
+- A scoped standing digest grant remains a proposal until reviewed and implemented; general WhatsApp send stays per-message approval. Template eligibility is separate from user consent. Unknown provider submission cannot be blindly retried.
+- Current main ba9e948b passes local typecheck/web build and 41 focused checks; many are source contracts, not proof of scheduler durability or tenant event safety. Newly found existing bugs are routed to FIX-01; infrastructure evidence to OPS-01. See DEV01-CATCHUP-ROUTINES-20261018.
+
+#### 2026-10-18 — Integrated source verification addendum
+- DEV01-CATCHUP-ROUTINES integrated concurrent main 959ff5a6 without changing product source. Typechecks/web build pass; latest focused tests are 91 passed/1 failed, superseding any current-green implication from initial ba9e948b's 41/41.
+- Final tool-prompt helper allows completed ID reuse and declared/result-name mismatch in unit probes; FIX-01 handoff HOF-DEV01-FIX01-TOOL-FINAL-REGRESSION-20261018. Do not weaken a failing test to hide validation gaps or claim an unobserved live bypass.

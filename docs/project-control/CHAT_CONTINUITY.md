@@ -1,5 +1,8 @@
 # CHAT_CONTINUITY.md — Fresh-Conversation Recovery Protocol
 
+> **Latest DEV-01 continuation (2026-10-18):** Start at [DEV01-CATCHUP-ROUTINES-20261018](sessions/DEV01-CATCHUP-ROUTINES-20261018.md) and the latest NEXT_ACTION checkpoint for the new personal catch-up/routines proposals, owner-selected consent, current baseline evidence and FIX-01/OPS-01 handoffs. Recover older active sessions without closing them. Planning is complete; feature implementation/acceptance remains pending the recorded review and dependency gates.
+
+
 This file is the canonical procedure a fresh ChatGPT (or Z.AI) conversation must follow to recover full project state from the repository alone. **No conversation history is required.** If the procedure fails, Phase 1 is not complete and `ISSUES.md` must be updated.
 
 ---

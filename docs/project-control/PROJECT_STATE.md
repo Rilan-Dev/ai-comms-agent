@@ -1,8 +1,18 @@
+## DEV-01 — Personal catch-up and assistant routines planning — 2026-10-18
+
+- **Main recovery:** initial audit ba9e948b; integrated concurrent upstream `959ff5a6c055baf9a1f14af5d29c5f51643b77c0`, preserving source and both sets of records. Existing checkout remains main. Phase 4 remains `implementation_in_progress`, not accepted.
+- **Delivered for review:** [Design](../superpowers/specs/2026-10-18-personal-catch-up-and-routines-design.md), [Catch-up plan](../superpowers/plans/2026-10-18-personal-mail-catch-up.md), [Routines plan](../superpowers/plans/2026-10-18-assistant-routines-and-digests.md). Continuous sync, personal review coverage, sourced priorities and one Routines experience; no second raw-mail store or scheduler.
+- **Owner preference:** Approve once for exact mailbox/verified-recipient/timing/summary-limit scope; reconfirm changes. This is a proposed narrow grant, not authorization to send or a change to existing general WhatsApp approval. Product code and runtime settings are unchanged.
+- **Final integrated verification:** All six package typechecks and web production build pass; focused tests **91 passed, 1 failed** (Clara duplicate-result validation). Earlier 41/41 belongs to ba9e948b. No full-suite, SQL/RLS/concurrency, authenticated browser, real provider or deployed acceptance.
+- **Routing:** Scheduler first-fire/recovery, automation tenant/trigger contract and new tool-final validation defect → FIX-01. Isolated runtime/provider evidence → OPS-01. Existing ISS-026, #36, #26 and ISS-037 remain owned/open; historical active sessions unchanged.
+- **Exact next:** Review the concrete spec/plans, then Catch-up C1 access/storage contracts and tests, off by default; recheck main/migration numbers. Concurrent native tool-streaming source is preserved; regression correction and live acceptance remain pending. [Full session](sessions/DEV01-CATCHUP-ROUTINES-20261018.md).
+
+---
+
 ## 2026-10-18 DEV-01 native post-tool final-token checkpoint
 
 - Chat and Voice now use **direct native provider final SSE** following one successful audited registered read-only tool batch (up to 4), eliminating the previous extra text-copy provider pass for eligible cases. Denied/mutating/approval/complex cases keep the bounded host loop and canonical response. Added lifetime tool-ID validation, untrusted-result prompt bounds, safe pre-tool-only unsupported-provider fallback.
 - Source unit tests 7/7 exact Node PASS, standalone strict TypeScript PASS; full application/provider/browser/migration/deployment acceptance **not verified**. Continue Phase 4 implementation. See `docs/project-control/sessions/DEV01-NATIVE-POSTTOOL-FINAL-STREAM-20261018.md`.
-
 
 ---
 

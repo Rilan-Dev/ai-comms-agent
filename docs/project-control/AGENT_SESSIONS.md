@@ -872,3 +872,20 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Start:** main `f623f512e8d55b044583faab955e725ed3081020`. **Done:** bounded completed tool-result prompt; same-org/agent native provider no-tool final SSE; Chat/Voice callback after 1–4 safe, audited read-only calls; no extra exact-copy request; host tool denial/approval/write paths preserved. Unsupported provider fallback only before tool execution; duplicate ID rejection.
 - **Actual:** exact-source Node 7/7 PASS, strict isolated TypeScript PASS, initial source checks 18/18 PASS. Full pnpm/Vitest/worker/db/Next and browser/provider/deploy not executed due unavailable full repo/pnpm/authenticated browser.
 - **Session:** `docs/project-control/sessions/DEV01-NATIVE-POSTTOOL-FINAL-STREAM-20261018.md`. **Next:** full named tests/build and real org A/B mailbox + voice provider QA. FIX-01 runtime/security and OPS-01 rollout scopes remain unchanged.
+
+### DEV01-CATCHUP-ROUTINES-20261018 — 2026-10-18
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Recover current main; plan personal catch-up, assistant-managed routines, scoped WhatsApp digests and friendly UI with phased test checklists.
+- **Started from:** GitHub main `ba9e948b4b58a4f270d5382f919957843e6eecb5`; existing checkout fast-forwarded, local label renamed to main; no new branch/PR/worktree.
+- **Scope:** Recovery, source audit, current-baseline checks, proposed design/plans and role-correct handoffs. Owner selected once-per-scope consent, not live delivery permission.
+- **Status:** COMPLETE — planning deliverables; implementation/review and runtime acceptance remain pending.
+- **Completed:** Design plus catch-up/routines implementation plans; independent reviews corrected coverage, source-read revalidation, grants, templates, quiet hours, evidence and test harness. Current build/typechecks and 41 focused tests passed.
+- **Pending:** Review proposed contracts; then Catch-up C1 access/storage slice. Existing tool-streaming work remains pending independently.
+- **Blockers:** New unattended execution depends on FIX-01 scheduler/automation corrections, ISS-026, reviewed consent contract and OPS-01 isolated runtime/provider evidence. No authenticated integration executed.
+- **Handoff:** HOF-DEV01-FIX01-SCHEDULER-RELIABILITY-20261018; HOF-DEV01-FIX01-AUTOMATION-TENANCY-20261018; HOF-DEV01-OPS01-DIGEST-VALIDATION-20261018.
+- **Next action:** Review concrete design/plans linked in `sessions/DEV01-CATCHUP-ROUTINES-20261018.md`; implement C1 only within reviewed scope. Other active sessions remain unchanged.
+
+#### DEV01-CATCHUP-ROUTINES-20261018 — final integration addendum
+- Integrated concurrent main `959ff5a6` while preserving all source and both agents' ledger additions. Native tool/final streaming is now source-implemented by the concurrent workstream; live acceptance remains pending.
+- Latest local evidence: workspace typechecks/web build pass; 91 focused tests pass and 1 Clara assertion fails. Unit triage found completed-ID reuse and result-name mismatch acceptance; routed HOF-DEV01-FIX01-TOOL-FINAL-REGRESSION-20261018. No source fix by DEV-01 in this planning slice.
+- Planning status remains COMPLETE; new feature implementation requires owner/architect approval of proposed scope. Next Catch-up C1 after that review. No push/deployment; records are in local commits.

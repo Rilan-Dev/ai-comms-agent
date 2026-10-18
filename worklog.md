@@ -1873,3 +1873,15 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 - PR #34 was already merged at `5413468` when user requested to proceed. Verified GitHub blob equals standalone tested TS adapter (SHA `47c427b77c2dffe4555451ede58fec28b4dfe941`); module-only TypeScript check 0 errors; 6/6 mocked provider tests, 13/13 source contract checks PASS.
 - Committed dependency-free Node test on `feature/dev01-live-model-offline-verification-20261018` (blob `35e1521a0619430a784a351d42e400b08c13cf5d`). Did not run full Vitest/Next build/typecheck or live credentials/browser/deployment.
 - Environment lacks pnpm/private clone due outbound DNS; Vercel status on PR merge commit indicates build-rate-limit and is routed OPS-01. FIX-01 retains substantial bugs. Next: full focused tests/build and provider/UI smoke tests in equipped checkout. Session `docs/project-control/sessions/DEV01-LIVE-MODEL-VERIFY-20261018.md`.
+
+### 2026-10-18 — DEV01-CATCHUP-ROUTINES-20261018
+- DEV-01 recovered main ba9e948b, architecture/authorization/phase/coordination/memory, then prepared a personal catch-up + routines design and two phased implementation/test plans using Superpowers. Owner's scoped one-time approval choice is captured as proposed digest policy; current general-send approval is unchanged.
+- Baseline frozen install, all workspace typechecks, web production build and 41 focused SSE/UI/scheduler/automation tests passed. No full-suite, SQL/RLS, authenticated browser, provider or deployment acceptance; no product source/migration/runtime changes.
+- Read-only reviews tightened late-mail and per-routine coverage, all-source read checks, grant administration, template consent, quiet-hours/submission boundaries, evidence, snooze/multiple obligations and test harness prerequisites.
+- Scheduler correctness/recovery and automation tenant/trigger defects routed to FIX-01; isolated validation prerequisites to OPS-01. Phase 4 remains implementation_in_progress; older active sessions and independent tool-streaming work preserved.
+- Exact next: review design/plans linked in docs/project-control/sessions/DEV01-CATCHUP-ROUTINES-20261018.md, then implement Catch-up C1 within reviewed scope. No new branch/PR or CI polling.
+
+#### DEV01-CATCHUP-ROUTINES-20261018 — final integrated verification
+- Preserved concurrent upstream main through 959ff5a6 and both agents' documentation entries. No product source changes in this planning slice.
+- Current typechecks/web production build PASS; focused tests 91 passed/1 failed. Clara final-prompt validation failure and two unit-level acceptance gaps routed to FIX-01; no live bypass claimed. Detailed commands/limits/handoff in the session. Earlier 41/41 applies only to ba9e948b.
+- Two independent plan reviews completed with no blocking contradictions. Planning/role records saved in local commits, no push/deploy. Next: owner/architect review of the proposed design/implementation scope, then Catch-up C1.

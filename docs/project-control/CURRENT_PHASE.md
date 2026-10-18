@@ -1,5 +1,8 @@
 # CURRENT_PHASE.md — Phase 4 Database Foundation and Migrations
 
+> **Latest product planning checkpoint (2026-10-18):** DEV01-CATCHUP-ROUTINES-20261018 recovered main ba9e948b and prepared personal catch-up/routine design plus phased implementation plans. Owner selected scoped one-time digest consent as a proposed requirement; no new runtime policy or feature activated. Phase 4 remains `implementation_in_progress`. After integrating concurrent upstream 959ff5a6, typechecks/web build pass and focused tests are 91 passed/1 failed; FIX-01 owns the final-tool validation regression. Live/integration acceptance remains pending. See [session](sessions/DEV01-CATCHUP-ROUTINES-20261018.md) and latest NEXT_ACTION. Older branch/PR or environment notes below are historical and do not override current direct-main owner instructions.
+
+
 > **Active product workstream update (2026-10-13):** EMAIL-OPS-01 is being developed on `feature/email-ops-e1-e3` / draft PR #15. Provider tool-call adapter and bounded worker loop are source-implemented but not transport-wired or verified. This note does not mark Phase 4 complete or change its historical phase acceptance. See the EMAIL-OPS-01 plan and DEV-01 self-review.
 
 ---

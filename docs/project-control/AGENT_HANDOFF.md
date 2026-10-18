@@ -141,3 +141,51 @@ Cross-agent handoff register. A handoff transfers context, not authority.
 - **Remaining FIX-01:** Robust parse-based sanitizer on every provider ingestion path, old-row quarantine/backfill plan, CSS/URL/image tracking tests, security review. **Do not** downgrade existing auth/mailbox grants. OPS-01 performs migration/deployment only after source acceptance.
 - **Status:** OPEN; DEV-01 continues independent UI work without polling or taking FIX-01 bug role.
 - **Evidence:** `docs/project-control/sessions/DEV01-CHAT-FIRST-VOICE-MAIL-20261018.md`, `docs/plans/CHAT-FIRST-VOICE-MAIL-UX-20261018.md`.
+
+### HOF-DEV01-FIX01-SCHEDULER-RELIABILITY-20261018 — 2026-10-18
+- **From:** DEV-01 / DEV01-CATCHUP-ROUTINES-20261018
+- **To:** FIX-01 / Sentinel
+- **Reason:** Existing recurring creation/update and execution recovery can prevent or strand scheduled work; new routines must not depend on these defects.
+- **Repository state:** main `ba9e948b4b58a4f270d5382f919957843e6eecb5`.
+- **Work completed:** Source audit: API omits `nextFireAt`; repository defaults recurring next fire to null; due query excludes null. Catch-up minutes unused; no reclaim lease; INSERT error catch does not restore aborted transaction; unconditional completion can overwrite pause/edit. Eleven focused scheduler/automation tests pass but do not prove these runtime invariants.
+- **Remaining work:** Reproduce recurring first-fire/PATCH defects and repair existing behavior; add isolated PostgreSQL duplicate/crash/concurrency/transaction tests. Establish revision-safe completion, lease/retry recovery and explicit recurrence/misfire contract before new activation. Coordinate proposed defaults with reviewed routine design instead of silently approving them.
+- **Evidence/records:** `packages/db/src/automation/repository.ts`; schedules API; worker scheduling directory; session and routines plan R1/R3.
+- **Authorization:** Owner instructed routing substantial bugs to FIX-01; receiving role must recover repair authorization. New feature/authorization design remains proposed. No production DB mutation authorized here.
+- **Stop condition:** Stop on unreviewed architecture/policy expansion or unavailable safe database target; report exact evidence and continue unaffected authorized work.
+- **Status:** OPEN — repository handoff, not a claim another agent accepted or implemented it.
+
+### HOF-DEV01-FIX01-AUTOMATION-TENANCY-20261018 — 2026-10-18
+- **From:** DEV-01 / DEV01-CATCHUP-ROUTINES-20261018
+- **To:** FIX-01 / Sentinel
+- **Reason:** Event evaluator loads all active rules and lacks a mandatory event/rule organization comparison; trigger key drift can also prevent intended matches.
+- **Repository state:** main `ba9e948b4b58a4f270d5382f919957843e6eecb5`.
+- **Work completed:** Read-only trace of `listActiveAutomationRules`, `automationMatches`, event payload dispatch and UI `trigger.event` versus worker `trigger.type`; no live exploit or external event replay.
+- **Remaining work:** Establish trusted ingestion organization/event identity; tenant-scope rule lookup, matching, dedup and dispatch. Deny missing/spoofed tenant identity. Correct trigger serialization compatibly without activating unrelated legacy rules. Add org A/B tests with generic matching events and SQL-backed run/payload assertions; retain idempotency and account checks.
+- **Evidence/records:** `apps/worker/src/automation/automation-engine.ts`; `packages/db/src/automation/repository.ts`; automations API/UI; session; routines plan R5.
+- **Authorization:** Owner requested substantial-bug routing; receiving role recovers repair scope. DEV-01 blocks new event-routine activation; this record does not grant production data access.
+- **Stop condition:** No tenant bypass or silent legacy-rule activation; route infrastructure separately and report blocked tests honestly.
+- **Status:** OPEN.
+
+### HOF-DEV01-OPS01-DIGEST-VALIDATION-20261018 — 2026-10-18
+- **From:** DEV-01 / DEV01-CATCHUP-ROUTINES-20261018
+- **To:** OPS-01 / Shipwright
+- **Reason:** Planned catch-up/routine acceptance needs isolated SQL/RLS/crash tests, authenticated browser fixtures and approved test-recipient delivery.
+- **Repository state:** main `ba9e948b4b58a4f270d5382f919957843e6eecb5`.
+- **Work completed:** Dependency installation, all workspace typechecks, web production build and 41 focused tests pass locally. No new product infrastructure/configuration or provider actions. Earlier current-host pnpm absence is no longer a blocker here; other hosts remain independently unverified.
+- **Remaining work:** Prepare disposable PostgreSQL roles/fixtures, isolated Redis/RabbitMQ namespaces as needed, approved test identities/recipients, secure provider bindings, Meta template/callback fixtures and artifact capture. Verify migration target identity (existing ISS-037 postgres/aca mismatch), TLS and upgrade/fresh chains before any application. Review new migrations only when authored; none exist in this planning slice. Keep live data out of tests.
+- **Evidence/records:** Session evidence table; Catch-up C4a harness; routines R3/R4/R6; existing HOF-FIX01-OPS01-MIGRATION-NETWORK-20261018 and HOF-DEV01-OPS-LIVE-MODEL-VERIFY-20261018.
+- **Authorization:** Owner routes infrastructure to OPS-01; preparation proposal only where runtime/credentials/deployment authorization is not already established. No secret values or live send/deploy authorization conveyed by this record.
+- **Stop condition:** Do not use a production database as a disposable target or claim provider acceptance without evidence. Recover target authorization before mutations; keep off-by-default flags until required review/tests.
+- **Status:** OPEN.
+
+### HOF-DEV01-FIX01-TOOL-FINAL-REGRESSION-20261018 — 2026-10-18
+- **From:** DEV-01 / DEV01-CATCHUP-ROUTINES-20261018
+- **To:** FIX-01 / Sentinel
+- **Reason:** Newly integrated main fails an executable final-prompt validation regression; direct helper probes expose completed-ID reuse and tool-name mismatch acceptance.
+- **Repository state:** Upstream source `959ff5a6c055baf9a1f14af5d29c5f51643b77c0`; integrated locally with documentation only.
+- **Work completed:** `pnpm --filter @ai-comms-agent/clara-core test` → 24 passed/1 failed. Minimal `node --experimental-strip-types --test packages/clara-core/tests/tool-result-final.test.mjs` → 5 passed/1 failed. Read-only triage: line 32 expects `/Duplicate/`, gets incomplete-batch rejection. The exact fixture fails closed; adding the reused ID's result makes the helper accept two completed pairs, and a result name different from its declaration is also accepted. No provider/network action or live bypass reproduced.
+- **Remaining work:** Track history-wide call ID uniqueness separately from outstanding calls, validate declaration/result name binding, add behavioral cases for completed duplicate pairs and mismatched names, and preserve orphan/incomplete/size protections. Inspect trusted-host construction impact without assuming exploitability. Do not weaken the existing assertion solely to get green output.
+- **Evidence/records:** `packages/clara-core/src/tool-result-final.ts:14`–`:30`; `packages/clara-core/tests/tool-result-final.test.mjs:29`; session final integration section; local `dev01-clara-integrated.log`.
+- **Authorization:** Owner explicitly routes substantial defects to FIX-01; receiving role recovers repair authority. DEV-01 preserved concurrent source and made no fix or deployment.
+- **Stop condition:** Stop on authorization-model changes or unapproved scope expansion; report actual unit/integration evidence and preserve host approvals.
+- **Status:** OPEN.

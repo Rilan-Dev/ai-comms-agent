@@ -292,3 +292,48 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Authorization:** Owner continuation of Chat and realtime Voice streaming on current main, without branches or PRs.
 - **Suggested next action:** With approved tests, stream the no-more-tools final provider response while preserving completed registered tool results and user/agent/tenant approvals; remove second model copy cost after measured fidelity/latency proof. Test denied mailbox, partial provider response, user disconnect, pending send approval and cross-organization account access.
 - **Related session/event/handoff:** DEV01-NATIVE-TOOL-SSE-20261018; `docs/project-control/sessions/DEV01-NATIVE-TOOL-SSE-20261018.md`; `NEXT_ACTION.md`.
+
+### BKL-DEV01-CATCHUP-ROUTINES-20261018 — 2026-10-18
+- **Work:** Personal mail catch-up, source-linked priority, unified assistant routines and narrow WhatsApp digest consent.
+- **Owner:** DEV-01 / Forge
+- **State:** READY — proposed design/plans ready for review; implementation not activated.
+- **Dependency:** Contract/authorization review; affected rollout needs FIX-01 ISS-026 and new scheduler/automation handoffs; OPS-01 isolated runtime evidence.
+- **Authorization:** Current owner explicitly requested phased plans and selected once-per-scope consent. This does not amend existing general send approval.
+- **Suggested next action:** Review spec and both `docs/superpowers/plans/2026-10-18-*` plans; start Catch-up C1 after review, keeping independent existing tool-streaming work pending.
+- **Related session/event/handoff:** DEV01-CATCHUP-ROUTINES-20261018; EVT-DEV01-CATCHUP-ROUTINES-20261018.
+
+### BKL-FIX01-SCHEDULER-RELIABILITY-20261018 — 2026-10-18
+- **Work:** Existing recurring first-fire/PATCH correctness, transactional claim recovery and revision-safe completion.
+- **Owner:** FIX-01
+- **State:** ROUTED
+- **Dependency:** Safe SQL test target; reviewed recurrence/misfire contract for material extensions.
+- **Authorization:** Owner requested substantial-bug routing; receiving role recovers remediation scope.
+- **Suggested next action:** Reproduce null recurring next-fire and crash/pause races with real DB fixtures; correct existing engine before DEV-01 routine activation.
+- **Related session/event/handoff:** HOF-DEV01-FIX01-SCHEDULER-RELIABILITY-20261018.
+
+### BKL-FIX01-AUTOMATION-TENANCY-20261018 — 2026-10-18
+- **Work:** Trusted tenant-scoped event evaluation and trigger.event/type compatibility.
+- **Owner:** FIX-01
+- **State:** ROUTED
+- **Dependency:** Trusted ingestion/event identity and isolated cross-tenant regression fixtures.
+- **Authorization:** Owner requested substantial-bug routing; no production replay authorized.
+- **Suggested next action:** Prove A's event cannot match/dispatch B's rule; repair matching/dedup/dispatch contract without silently activating old rules.
+- **Related session/event/handoff:** HOF-DEV01-FIX01-AUTOMATION-TENANCY-20261018.
+
+### BKL-OPS01-DIGEST-VALIDATION-20261018 — 2026-10-18
+- **Work:** Isolated database/browser/provider validation prerequisites for briefings and routines.
+- **Owner:** OPS-01
+- **State:** ROUTED
+- **Dependency:** Target authorization, securely bound test credentials, ISS-037 migration target resolution, opt-in provider recipients/templates.
+- **Authorization:** Owner role routing; this planning slice authorizes no deployment or external message.
+- **Suggested next action:** Provide reproducible disposable fixtures and evidence paths; coordinate upcoming migration/harness work without polling CI.
+- **Related session/event/handoff:** HOF-DEV01-OPS01-DIGEST-VALIDATION-20261018; preserve existing OPS backlog ownership.
+
+### BKL-FIX01-TOOL-FINAL-REGRESSION-20261018 — 2026-10-18
+- **Work:** Repair final-prompt helper completed-ID uniqueness and declared/result-name binding without weakening regression checks.
+- **Owner:** FIX-01
+- **State:** ROUTED
+- **Dependency:** Current source verification; no provider credentials needed for the reproduced unit cases.
+- **Authorization:** Owner's substantial-bug routing instruction; receiving role recovers repair scope.
+- **Suggested next action:** Reproduce `node --experimental-strip-types --test packages/clara-core/tests/tool-result-final.test.mjs`; add completed duplicate pair and wrong-name cases, then correct helper and rerun Clara/affected host tests.
+- **Related session/event/handoff:** HOF-DEV01-FIX01-TOOL-FINAL-REGRESSION-20261018; DEV01-CATCHUP-ROUTINES-20261018. Concurrent native SSE source is preserved, not assigned to this planning session.

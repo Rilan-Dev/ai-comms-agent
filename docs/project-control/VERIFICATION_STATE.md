@@ -1,10 +1,49 @@
+## 2026-10-18 — DEV01-CATCHUP-ROUTINES final integrated-source verification
+
+- **Upstream source:** `959ff5a6c055baf9a1f14af5d29c5f51643b77c0`, integrated without changing concurrent product source. This session changes documentation only.
+- **PASS:** all six workspace typechecks; production web build; web Vitest 31/31, worker focused 23/23, SSE/verified-answer Node 13/13.
+- **FAIL:** Clara package tests 24/25. Combined focused result **91 passed, 1 failed**; no full-suite claim.
+- **Defect:** `tool-result-final.test.mjs:32` expects duplicate rejection; exact fixture fails closed differently, but completed ID reuse and declared/result-name mismatch are accepted by the helper in direct unit probes. FIX-01 handoff `HOF-DEV01-FIX01-TOOL-FINAL-REGRESSION-20261018`; no live bypass demonstrated.
+- **NOT RUN:** DB/RLS/crash tests, authenticated browser, live provider/WhatsApp, full suite/lint, worker build, CI/deployment. New catch-up/routine tests are planned only.
+- **Documentation:** two independent reviews completed with no remaining blocking design contradictions; links/fences/scope/secret-pattern/whitespace checks passed. No push/deploy.
+- [Exact session/evidence](sessions/DEV01-CATCHUP-ROUTINES-20261018.md). The earlier 41/41 result below belongs to ba9e948b and must not be transferred to later source.
+
+---
+
+## 2026-10-18 — DEV-01 current-main baseline and catch-up/routines proposals
+
+```yaml
+session: DEV01-CATCHUP-ROUTINES-20261018
+baseline: ba9e948b4b58a4f270d5382f919957843e6eecb5
+scope: existing source verification plus documentation-only proposed design/plans
+frozen_dependency_install: passed
+workspace_typecheck: passed_all_six_script_bearing_packages
+web_production_build: passed
+focused_tests:
+  sse_node: 5_passed
+  web_vitest: 25_passed
+  worker_scheduler_automation: 11_passed
+  total: 41_passed
+full_suite: not_run
+lint: not_run
+worker_build: not_run
+database_migrations_rls_crash_tests: not_run
+authenticated_browser_and_live_providers: not_run
+ci_deployment: not_run
+new_feature_tests: planned_not_implemented
+phase_acceptance: unchanged_pending
+```
+
+Exact commands, local log paths, source-audit findings and limitations: [session](sessions/DEV01-CATCHUP-ROUTINES-20261018.md). Many selected tests assert source contracts; a pass does not establish scheduling recovery, event tenant safety or WhatsApp delivery. Earlier inability to run these selected checks is superseded for this checkout/baseline only. No new product source, dependencies or migrations changed. Plan review corrected independent routine coverage, all-source reads, grant/template scope, quiet hours, multiple obligations and browser harness requirements.
+
+---
+
 ## 2026-10-18 — DEV-01 direct final read-tool SSE (source done, full acceptance pending)
 
 - **Implementation on main:** `claraRuntime.streamAuthorizedReadOnlyToolAnswer` takes completed host tool history and outputs real provider tokens with no executable tools. Chat/Voice call it after 1–4 all-success registered and audited read-only calls; writes, denials, pending approval and legacy voice JSON unchanged. Removed the extra canonical exact-copy model request from Chat/Voice paths. Host parser native OpenAI/Gemini tool-decision validation remains unchanged.
 - **Actually executed:** Node v22 `--experimental-strip-types --test packages/clara-core/tests/tool-result-final.test.mjs` **7/7 PASS**, exact source blobs builder `f2c78e9a46b8449ff7b0b03b60c0da970c5b78f4` and test `d3a8ef1ce39de6682b7b7e771a3efadc0cf7ea2c`; global standalone strict TypeScript `--noUncheckedIndexedAccess` PASS with a minimal type-only stub. Initial 5/6 exposed a reused ID bug, now corrected and 7/7 passed. GitHub-source guard audit 18/18 PASS before final 4-tool cap/unsupported-fallback hardening (those fixes themselves committed).
 - **Not executed:** New web Vitest regression and worker email loop cases; complete pnpm dependencies/web/worker/Clara/DB typecheck/Next build; live Postgres email reads, provider Chat/Voice/token timing, browser cross-org/agent and approval flows, migrations, Vercel/prod deploy. No full checkout, pnpm, authenticated originating browser. Tests here do not prove production readiness.
 - **Evidence and commands:** `docs/project-control/sessions/DEV01-NATIVE-POSTTOOL-FINAL-STREAM-20261018.md` and `NEXT_ACTION.md`.
-
 
 ---
 
