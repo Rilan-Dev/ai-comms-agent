@@ -1,6 +1,7 @@
 import { decryptCredential, parseCredentialsMasterKey, query } from "@ai-comms-agent/db";
 import { readOpenAIToolCompletion } from "./tool-call-stream";
 import { readGeminiToolCompletion } from "./gemini-tool-stream";
+import { buildReadOnlyToolFinalMessages } from "./tool-result-final";
 import type {
   AIProvider,
   ChatMessage,
@@ -874,6 +875,35 @@ export const claraRuntime = {
    * completed canonical tool-loop response before showing it to the user.
    * Do not expose this generator directly to a client.
    */
+  /**
+   * Actual provider-generated final answer after the host's successful,
+   * audited read-only tool batch. Unlike streamCanonicalToolAnswer this is
+   * not an extra attempt to copy a fully generated canonical answer.
+   * This call carries NO available tool definitions or action capabilities.
+   */
+  async streamAuthorizedReadOnlyToolAnswer(
+    ctx: ClaraRuntimeContext, history: readonly ToolChatMessage[], signal?: AbortSignal,
+  ): Promise<AsyncGenerator<string, void, unknown>> {
+    if (!ctx.orgId || !ctx.agentId || signal?.aborted) {
+      throw new Error("A current organization and agent are required for a read-only response.");
+    }
+    const prompt = buildReadOnlyToolFinalMessages(history);
+    const configured = await organizationAIConfig(ctx.orgId, ctx.agentId);
+    const provider = configured?.provider ?? selectedProvider();
+    const settings = configured?.providerConfig ?? providerConfig(provider);
+    // The system message in prompt is host-owned and not copied from mail.
+    const messages: ChatMessage[] = [
+      ...(configured?.resolved.assistantConfig.systemPrompt
+        ? [{ role: "system" as const, content: configured.resolved.assistantConfig.systemPrompt }]
+        : []),
+      ...prompt,
+    ];
+    return chatStream(settings, messages, {
+      maxTokens: Math.min(1500, configured?.resolved.maxTokens ?? 1200),
+      temperature: configured?.resolved.temperature ?? 0.2,
+    }, signal);
+  },
+
   async streamCanonicalToolAnswer(ctx: ClaraRuntimeContext, canonical: string, signal?: AbortSignal): Promise<AsyncGenerator<string, void, unknown>> {
     if (!ctx.orgId || !ctx.agentId || !canonical || canonical.length > 6000) {
       throw new Error("A bounded authorized tool answer and organization/agent are required.");
