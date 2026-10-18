@@ -402,7 +402,8 @@ export async function POST(request: Request) {
       const fromUtc = new Date(windowEnd.getTime() - 24 * 60 * 60 * 1000).toISOString();
       const rows = await query<RollingMailRow>(
         `SELECT m.id, a.email_address AS account_email, m.from_email::text AS from_email,
-                m.from_name, m.subject, m.received_at, m.snippet, m.text_body,
+                m.from_name, m.subject, m.received_at,
+                LEFT(m.snippet, 600) AS snippet, LEFT(m.text_body, 1200) AS text_body,
                 COUNT(*) OVER ()::integer AS total_count
          FROM email_messages m
          JOIN email_accounts a ON a.id = m.email_account_id
