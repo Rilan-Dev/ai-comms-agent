@@ -22,12 +22,14 @@ export function ChatClient({
   initialAgentId,
   initialConversationId,
   initialMessages,
+  catchUpEnabled = false,
 }: {
   organizationId: string;
   agents: Agent[];
   initialAgentId: string;
   initialConversationId: string;
   initialMessages: Message[];
+  catchUpEnabled?: boolean;
 }) {
   const [agentId, setAgentId] = useState(initialAgentId);
   const [conversationId, setConversationId] = useState(initialConversationId);
@@ -208,6 +210,7 @@ export function ChatClient({
                 <h2 className="mt-4 text-lg font-semibold">Ask Clara anything</h2>
                 <p className="mt-1.5 text-sm text-muted-foreground">Summarize your inbox, find important emails, or ask about recent messages.</p>
                 <div className="mt-5 grid gap-2">
+                  {catchUpEnabled ? <a href="/catch-up" className="mb-3 inline-flex items-center rounded-lg border border-primary/25 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/10">Catch up on my mail →</a> : null}
                   {["What needs my attention today?", "Summarize my recent emails", "Show emails from the last hour"].map((prompt) =>
                     <button key={prompt} onClick={() => setDraft(prompt)} className="rounded-lg border bg-card px-3.5 py-2.5 text-left text-sm transition hover:border-primary/30 hover:bg-accent/5">{prompt}</button>
                   )}
