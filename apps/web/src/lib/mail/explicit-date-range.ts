@@ -72,7 +72,7 @@ export function parseExplicitMailDateRangeRequest(input: string): ExplicitMailDa
     firstDate: pair[1]!,
     lastDate: pair[2]!,
     fromUtc: new Date(from).toISOString(),
-    toUtc: new Date(until + 86400000 - 1).toISOString(),
+    // Exclusive upper bound includes every microsecond of the final date in PostgreSQL.\n    toUtc: new Date(until + 86400000).toISOString(),
     unreadOnly: /\bunread\b|\bnot\s+read\b/i.test(remaining),
     ...(sender ? { sender: sender.slice(0, 120) } : {}),
     ...(topic ? { topic } : {}),
