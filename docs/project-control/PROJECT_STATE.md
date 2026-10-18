@@ -1,3 +1,11 @@
+## FIX-01 — Email Agent last 24h unread-summary fix — 2026-10-19
+
+- Main now has a direct authenticated, agent-mailbox-scoped report for explicit rolling 24h mail summary requests. It enforces unread/date/sender/topic at query time, lists all matching synchronized messages up to 500, and explicitly states matched/included/partial and sync limitations. This avoids the legacy 20-item seven-day LLM summary mismatch for the reported request.
+- 8/8 exact Node tests and isolated TypeScript PASS; GitHub source contracts 15/15 PASS. Full pnpm/SQL/browser/provider/production acceptance **PENDING**. FIX-01 scoped change; OPS-01 remains CI/CD/deploy owner. Session `docs/project-control/sessions/FIX01-ROLLING-MAIL-20261019.md`.
+
+
+---
+
 ## DEV-01 — ElevenLabs TTS/STT configuration recovery UX (2026-10-19)
 
 - Production user's ElevenLabs TTS/STT model-catalog calls gave app-side `provider_configuration_required` (not provider-originated error). Implemented secure explicit per-organization reuse of enabled ElevenLabs Realtime credentials into missing enabled TTS/STT capability slots, with audit, model/key preservation, disabled-purpose protection, actionable UI and API diagnostics. No plaintext secret exposed or logged. Key-sharing across capability purposes is **never automatic**.
