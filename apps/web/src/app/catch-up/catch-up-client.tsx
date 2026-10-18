@@ -13,6 +13,12 @@ type Manifest = {
   period: { start: string; end: string } | null;
 };
 type Source = { messageId: string; mailboxId: string; threadId: string; contentRevision: string };
+type SummaryItem = {
+  id: string; sourceIds: string[]; priority: "high" | "medium" | "low";
+  title: string; summary: string; reason: string; deadline: string | null;
+  confidence: "supported" | "uncertain"; representation: "complete" | "partial";
+};
+
 
 const statusText: Record<Manifest["status"], string> = {
   pending: "Mail selection saved — AI summaries are not yet generated",
@@ -29,6 +35,8 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
   const [days, setDays] = useState(7);
   const [manifest, setManifest] = useState<Manifest | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
+  const [items, setItems] = useState<SummaryItem[]>([]);
+  const [reviewedItemIds, setReviewedItemIds] = useState<string[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -37,8 +45,36 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
   // metadata, never reuse stale mailbox IDs or an old manifest cursor.
   useEffect(() => {
     setMailboxIds(agents.find(a => a.agentId === agentId)?.mailboxes.map(m => m.id) ?? []);
-    setManifest(null); setSources([]); setNextCursor(null); setError("");
+    setManifest(null); setSources([]); setNextCursor(null); setItems([]); setReviewedItemIds([]); setError("");
   }, [agentId, agents]);
+
+  async function loadDetail(id: string) {
+    const params = new URLSearchParams({ agentId });
+    const response = await fetch(`/api/organizations/${organizationId}/briefings/${id}?${params}`, { cache: "no-store" });
+    const data = await response.json().catch(() => null) as {
+      manifest?: Manifest; items?: SummaryItem[]; reviewedItemIds?: string[]; message?: string;
+    } | null;
+    if (!response.ok || !data?.manifest) throw new Error(data?.message || "Summary details are not available.");
+    setManifest(data.manifest);
+    setItems(data.items ?? []);
+    setReviewedItemIds(data.reviewedItemIds ?? []);
+  }
+
+  async function markReviewed(itemId: string) {
+    if (!manifest || manifest.status !== "ready" || busy) return;
+    setBusy(true); setError("");
+    try {
+      const response = await fetch(`/api/organizations/${organizationId}/briefings/${manifest.id}/review`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          agentId, itemIds: [itemId], expectedScopeVersion: manifest.scope.scopeVersion,
+        }),
+      });
+      if (!response.ok) throw new Error("Review could not be saved. Reload to check permissions and source revisions.");
+      await loadDetail(manifest.id);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not save review."); }
+    finally { setBusy(false); }
+  }
 
   async function loadSources(id: string, cursor: string | null = null) {
     const params = new URLSearchParams({ agentId, limit: "200" });
@@ -66,6 +102,7 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
       const payload = await response.json().catch(() => null) as { manifest?: Manifest; message?: string } | null;
       if (!response.ok || !payload?.manifest) throw new Error(payload?.message || "Could not prepare this mail selection.");
       setManifest(payload.manifest);
+      await loadDetail(payload.manifest.id);
       if (payload.manifest.sourceCount) await loadSources(payload.manifest.id);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Catch-up could not start."); }
     finally { setBusy(false); }
@@ -118,7 +155,48 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
           <h2 className="text-lg font-semibold">Your selection</h2>
           <p role="status" className="mt-2 text-sm text-muted-foreground">{statusText[manifest.status]}</p>
           <p className="mt-1 text-sm">{manifest.sourceCount} source {manifest.sourceCount === 1 ? "email" : "emails"} selected from your current permitted scope.</p>
-          <p className="mt-3 text-xs text-muted-foreground">AI classification and grounded summaries require the separate C3 generation worker. No review progress has been recorded.</p>
+          <p className="mt-3 text-xs text-muted-foreground">C3 source-grounded AI generation is not yet running automatically. Only a complete, verified generated item can be explicitly marked reviewed; opening this page changes no review state.</p>
+          <button type="button" disabled={busy} onClick={() => { setBusy(true); void loadDetail(manifest.id)
+            .catch(e => setError(e instanceof Error ? e.message : "Could not refresh summary."))
+            .finally(() => setBusy(false)); }}
+            className="mt-4 rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary">
+            Refresh generated summary and review progress
+          </button>
+          {items.length > 0 ? (
+            <div className="mt-5 space-y-5" aria-label="Source-grounded summaries">
+              {(["high","medium","low"] as const).map(priority => {
+                const group = items.filter(item => item.priority === priority);
+                if (!group.length) return null;
+                return <section key={priority} aria-label={priority === "high" ? "Needs attention" : priority === "medium" ? "Worth reviewing" : "For reference"}>
+                  <h3 className="mb-3 text-base font-semibold">{priority === "high" ? "Needs attention" : priority === "medium" ? "Worth reviewing" : "For reference"}</h3>
+                  <ul className="space-y-3">{group.map(item => {
+                    const reviewed = reviewedItemIds.includes(item.id);
+                    return <li key={item.id} className="rounded-xl border border-border bg-background p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h4 className="font-semibold">{item.title}</h4>
+                        <span className="text-xs text-muted-foreground">{reviewed ? "Reviewed" : item.confidence === "uncertain" ? "Check original" : "Evidence linked"}</span>
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm">{item.summary}</p>
+                      <p className="mt-2 text-xs text-muted-foreground">{item.reason}</p>
+                      {item.deadline ? <p className="mt-2 text-xs">Evidence-linked date: {item.deadline}</p> : null}
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        {item.sourceIds.map(sourceId => {
+                          const source = sources.find(s => s.messageId === sourceId);
+                          return source ? <a key={sourceId} href={`/mail/thread/${encodeURIComponent(source.threadId)}`}
+                            className="text-xs font-medium text-primary underline">Open original email</a> : null;
+                        })}
+                        <button type="button" disabled={busy || reviewed || item.representation !== "complete" || manifest.status !== "ready"}
+                          onClick={() => { void markReviewed(item.id); }}
+                          className="rounded-md border border-border px-3 py-1.5 text-xs font-medium disabled:opacity-40">
+                          {reviewed ? "Reviewed" : "Mark this item reviewed"}
+                        </button>
+                      </div>
+                    </li>;
+                  })}</ul>
+                </section>;
+              })}
+            </div>
+          ) : null}
           {sources.length ? (
             <ul className="mt-4 divide-y divide-border" aria-label="Original source emails">
               {sources.map(source => (
