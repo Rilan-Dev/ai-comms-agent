@@ -1,3 +1,12 @@
+## DEV-01 — OpenAI/Gemini streamed tool-call assembly: 2026-10-18
+
+- **Comitted source on main:** `packages/clara-core/src/tool-call-stream.ts` and `gemini-tool-stream.ts`, native SSE selection in Clara `chatWithTools`, provider mock integration cases in worker tests, and `@ai-comms-agent/clara-core` Node test script.
+- **Actual executable evidence:** Exact Git SHA-matched parser + tests: OpenAI 10/10, Gemini 9/9, combined Node 19/19 PASS. Hashes: OpenAI source `57c2544a4ecb02642277dced07bdb3cbaab82e42`, tests `b41e8084acb83732579232806c1a5dd3025d9915`; Gemini source `a5a0ac5391302c48e14d174902c7b2451e698442`, tests `ca0fdf59e92427863788af3771aebf69d85da710`. Strict isolated `tsc --noEmit --strict --noUncheckedIndexedAccess` PASS using type-only stub.
+- **NOT EXECUTED:** New worker adapter tests, full pnpm Clara/web/worker/DB typechecks/build, real API, Gmail/WhatsApp/Voice agent authorized end-to-end and cross-org approval, database, browser, CI and prod. Isolated parser tests do NOT establish source build or production acceptance. `stream:true` function decisions remain fully buffered before authorized execution; verified post-tool UI delivery still uses optional extra model pass, not direct streaming final tool model output.
+- **Session:** `docs/project-control/sessions/DEV01-NATIVE-TOOL-SSE-20261018.md`; exact commands in `NEXT_ACTION.md`.
+
+---
+
 ## DEV-01 — Abort + approval streaming gates: follow-up 2026-10-18
 
 - **Current main source:** Optional abort `AbortSignal` passed to OpenAI/Sarvam and Gemini `fetch` from `streamCanonicalToolAnswer` through Chat/Voice requests; read-only stream eligibility rejected if tool output signals pending approval; new worker and Vitest regression cases committed.
