@@ -17,10 +17,13 @@ export interface EmailAgentTurnInput {
   toolContext: ToolContext;
   maxRounds?: number;
   maxToolCalls?: number;
+  /** Only invoked after a complete audited batch of successful read-only tools. */
+  onSafeReadOnlyFinal?: (history: ToolChatMessage[]) => Promise<string>;
 }
 
 export interface EmailAgentTurnResult {
   text: string;
+  streamed?: boolean;
   toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; durationMs: number; readOnly?: boolean }>;
   pendingApprovals: Array<{ actionId: string; actionType: string; message: string }>;
   finishReason: "completed" | "round_limit" | "tool_limit" | "invalid_tool_call" | "invalid_tool_arguments";
@@ -135,6 +138,14 @@ export async function runEmailAgentTurn(
         name: call.name,
         content: serializeUntrustedToolResult(result),
       });
+    }
+    // Resolve one permitted read-only batch directly with native provider
+    // tokens, not with a second model request that copies a buffered answer.
+    // Writes, denials, approvals and multi-round paths retain old semantics.
+    if (round === 0 && input.onSafeReadOnlyFinal && pendingApprovals.length === 0
+      && summaries.length > 0 && summaries.every((call) => call.ok && call.readOnly === true)) {
+      const text = await input.onSafeReadOnlyFinal(history);
+      return { text, streamed: true, toolCalls: summaries, pendingApprovals, finishReason: "completed" };
     }
   }
 
