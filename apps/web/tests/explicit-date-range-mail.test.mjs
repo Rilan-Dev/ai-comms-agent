@@ -4,17 +4,17 @@ import { parseExplicitMailDateRangeRequest, MAX_EXPLICIT_MAIL_DAYS } from "../sr
 import { formatRollingMailSummary } from "../src/lib/mail/rolling-summary.ts";
 
 const parse = parseExplicitMailDateRangeRequest;
-test("resolves complete calendar days with inclusive UTC end, not rolling 24h", () => {
+test("resolves complete calendar days with exclusive next-midnight UTC end", () => {
   assert.deepEqual(parse("summarize all unread emails from 2026-10-01 to 2026-10-19"), {
     kind: "valid", firstDate: "2026-10-01", lastDate: "2026-10-19",
-    fromUtc: "2026-10-01T00:00:00.000Z", toUtc: "2026-10-19T23:59:59.999Z",
+    fromUtc: "2026-10-01T00:00:00.000Z", toUtc: "2026-10-20T00:00:00.000Z",
     unreadOnly: true,
   });
 });
 test("supports explicit between-and format and leap-day across leap year", () => {
   const out = parse("list mail between 2024-02-28 and 2024-02-29");
   assert.equal(out?.kind, "valid");
-  assert.equal(out.toUtc, "2024-02-29T23:59:59.999Z");
+  assert.equal(out.toUtc, "2024-03-01T00:00:00.000Z");
   assert.equal(out.fromUtc, "2024-02-28T00:00:00.000Z");
 });
 test("preserves dotted sender domains and mailbox read scope", () => {
@@ -62,7 +62,7 @@ test("reuses complete counted local report without claiming live sync", () => {
       subject: "Invoice", received_at: "2026-10-18T09:00:00.000Z",
       snippet: "A", text_body: "An invoice", total_count: 1 },
   ];
-  const report = formatRollingMailSummary(rows, scope, scope.fromUtc, scope.toUtc, "explicit UTC calendar-date range");
+  const report = formatRollingMailSummary(rows, scope, scope.fromUtc, scope.toUtc, "explicit UTC calendar-date range (exclusive end)");
   assert.match(report, /explicit UTC calendar-date range/);
   assert.match(report, /Matched: 1\. Included: 1 of 1/);
   assert.match(report, /Invoice \| From: sender@example.com/);
