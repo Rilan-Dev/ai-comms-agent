@@ -1,3 +1,10 @@
+## DEV-01 — Native provider tool-call streaming decision checkpoint (2026-10-18)
+
+- Chat and Voice continue rendering incremental model tokens; upstream OpenAI/Gemini **tool-call decisions** now use streamed provider responses assembled, validated and bounded *before* the unchanged trusted host execution, approval and audit boundary. No speculative tool execution. 19/19 exact committed isolated parser Node tests and strict isolated TypeScript PASS; full workspace tests/build/browser/provider/deploy NOT run. Extra verified-copy final-answer model pass remains in place for eligible read-only calls, pending direct native final-response streaming integration.
+- Phase 4 implementation remains in progress. Session: `docs/project-control/sessions/DEV01-NATIVE-TOOL-SSE-20261018.md`.
+
+---
+
 ## DEV-01 — Secure read-only tool final-answer stream checkpoint, 2026-10-18
 
 - Incremental UI SSE already existed for non-tool Chat and Voice. DEV-01 added bounded true provider token delivery to Chat/Voice **after** successful authorized read-only tool loops, prefix-verifying every chunk against the completed canonical answer. No model may fabricate action/approval changes; write/denial/approval paths remain canonical. Uses an extra model call and does **not** implement native streamed function-call decisions or early TTS.
