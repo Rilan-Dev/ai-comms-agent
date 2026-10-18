@@ -1,3 +1,12 @@
+## DEV-01 — 2026-10-19 explicit UTC date-range mail reports
+
+- Direct-`main` source and tests for `YYYY-MM-DD to YYYY-MM-DD`, conservative fail-closed filters, 366-day max, tenant and agent read permissions, 500-message counted coverage, exclusive final UTC date and accurate local-sync caveat. Separate product slice from FIX-01's 24-hour incident repair; no branch/PR/deployment.
+- **EXECUTED:** Byte-matched current GitHub blobs `explicit-date-range.ts` `979dd2cca7e26bcc255e7c66a5566ada3b529d72`, `rolling-summary.ts` `d5e23f8649e5a1820bfd3db85ace0393108b576c` and Node tests `46f0cf9fdbb3492619a529b78160fdfea9c5647a`/`bd9cffc8264c11be06d495dc3dba024b21935494`: **16/16 Node PASS** (new 8 + old 8); both module global `tsc --noEmit` PASS; **19/19 source contracts** PASS. Date-range changes preserved existing 24-hour report byte output in tests.
+- **NOT executed:** Full Vitest/Next app/worker/Clara/db pnpm typecheck/build, actual SQL against PostgreSQL, provider sync, browser, multi-tenant runtime denial, microsecond last-day DB row, migration/deployment. No production acceptance. Previous credentials exposed by user remain owner-revoke/rotate action; none used.
+- Session `docs/project-control/sessions/DEV01-EXPLICIT-DATE-MAIL-20261019.md`; exact commands in `NEXT_ACTION.md`.
+
+---
+
 ## FIX-01 — 2026-10-19 rolling 24-hour mail summary correction
 
 - **Source:** `apps/web/src/lib/mail/rolling-summary.ts`, `apps/web/src/app/api/chat/stream/route.ts`, Node regression `apps/web/tests/rolling-mail-summary.test.mjs`, Vitest contract `apps/web/tests/chat-rolling-mail-summary.test.ts`. Direct main, no branch/PR, no deployment.
