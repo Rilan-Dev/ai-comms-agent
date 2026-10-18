@@ -617,7 +617,7 @@ export async function listMailThreadsForOrganization(
           PARTITION BY m.thread_id ORDER BY COALESCE(m.received_at, m.created_at) DESC, m.id DESC
         ) AS position,
         COUNT(*) OVER (PARTITION BY m.thread_id)::integer AS message_count,
-        COUNT(*) FILTER (WHERE NOT m.is_read AND NOT m.is_draft)
+        COUNT(*) FILTER (WHERE NOT m.is_read AND NOT m.is_draft AND NOT m.is_sent)
           OVER (PARTITION BY m.thread_id)::integer AS unread_count,
         MAX(CASE WHEN (
           $3::text IS NULL
