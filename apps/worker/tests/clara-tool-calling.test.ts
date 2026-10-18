@@ -118,3 +118,33 @@ test("OpenAI streaming adapter refuses partial or malformed function arguments",
   assert.equal(result?.finishReason, "invalid_tool_arguments");
   assert.deepEqual(result?.toolCalls, []);
 });
+
+test("Gemini tool adapter buffers streamed function calls until final STOP", async () => {
+  let requested = "";
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    requested = String(input);
+    const frame = (value: unknown) => "data: " + JSON.stringify(value) + "\n\n";
+    const sse = [
+      frame({ candidates: [{ content: { parts: [{ functionCall: { name: "email.accounts.list", args: { account_id: "a1" } } }] } }] }),
+      frame({ candidates: [{ finishReason: "STOP" }] }),
+    ].join("");
+    return new Response(sse, { status: 200, headers: { "content-type": "text/event-stream" } });
+  }) as typeof fetch;
+  const provider = createProvider({ provider: "gemini", apiKey: "test-key", baseUrl: "https://provider.test", chatModel: "test-model" });
+  const result = await provider.chatWithTools?.([{ role: "user", content: "List mailboxes" }], tools);
+  assert.match(requested, /:streamGenerateContent\?alt=sse/);
+  assert.equal(result?.finishReason, "STOP");
+  assert.deepEqual(result?.toolCalls.map(({ name, arguments: args }) => ({ name, arguments: args })),
+    [{ name: "email.accounts.list", arguments: { account_id: "a1" } }]);
+});
+
+test("Gemini malformed streamed arguments fail closed before host execution", async () => {
+  globalThis.fetch = (async () => new Response([
+    "data: " + JSON.stringify({ candidates: [{ content: { parts: [{ functionCall: { name: "email.accounts.list", args: [] } }] } }] }),
+    "data: " + JSON.stringify({ candidates: [{ finishReason: "STOP" }] }),
+  ].join("\n\n") + "\n\n", { status: 200, headers: { "content-type": "text/event-stream" } })) as typeof fetch;
+  const provider = createProvider({ provider: "gemini", apiKey: "test-key", baseUrl: "https://provider.test", chatModel: "test-model" });
+  const result = await provider.chatWithTools?.([{ role: "user", content: "List mailboxes" }], tools);
+  assert.equal(result?.finishReason, "invalid_tool_arguments");
+  assert.deepEqual(result?.toolCalls, []);
+});
