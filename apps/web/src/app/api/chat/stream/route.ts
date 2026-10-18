@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { appendConversationMessage, getChatConversation, getOrCreateChatConversation, listChatMessages, PostgresAgentRepository, query } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { formatRollingMailSummary, MAX_REPORT_MESSAGES, parseRollingMailSummaryRequest, type RollingMailRow } from "@/lib/mail/rolling-summary";
+import { parseExplicitMailDateRangeRequest } from "@/lib/mail/explicit-date-range";
 
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -377,8 +378,18 @@ export async function POST(request: Request) {
     // cannot truthfully call 20 arbitrary messages "all unread mail" or infer
     // the server clock from prior assistant turns. Query *only* the current
     // user's explicit scope and return coverage with every available match.
+    const explicitRange = parseExplicitMailDateRangeRequest(content);
+    if (explicitRange?.kind === "invalid") {
+      // A malformed/unsupported explicit time/filter scope must NOT fall back
+      // to the LLM and pretend it queried the user's requested date range.
+      return NextResponse.json({
+        error: "unsupported_mail_date_scope",
+        message: explicitRange.message,
+      }, { status: 422, headers: { "Cache-Control": "private, no-store" } });
+    }
     const rollingMail = parseRollingMailSummaryRequest(content);
-    if (rollingMail) {
+    const requestedMailScope = explicitRange?.kind === "valid" ? explicitRange : rollingMail;
+    if (requestedMailScope) {
       if (!subject.permissions.includes("email.read")) {
         return NextResponse.json({
           error: "forbidden",
@@ -398,8 +409,10 @@ export async function POST(request: Request) {
         }, { status: 403 });
       }
       const windowEnd = new Date();
-      const toUtc = windowEnd.toISOString();
-      const fromUtc = new Date(windowEnd.getTime() - 24 * 60 * 60 * 1000).toISOString();
+      const toUtc = explicitRange?.kind === "valid"
+        ? explicitRange.toUtc : windowEnd.toISOString();
+      const fromUtc = explicitRange?.kind === "valid"
+        ? explicitRange.fromUtc : new Date(windowEnd.getTime() - 24 * 60 * 60 * 1000).toISOString();
       const rows = await query<RollingMailRow>(
         `SELECT m.id, a.email_address AS account_email, m.from_email::text AS from_email,
                 m.from_name, m.subject, m.received_at,
@@ -426,10 +439,13 @@ export async function POST(request: Request) {
          ORDER BY m.received_at DESC, m.id DESC
          LIMIT $8`,
         [organizationId, agentId, fromUtc, toUtc,
-         rollingMail.sender ?? null, rollingMail.topic ?? null,
-         rollingMail.unreadOnly, MAX_REPORT_MESSAGES],
+         requestedMailScope.sender ?? null, requestedMailScope.topic ?? null,
+         requestedMailScope.unreadOnly, MAX_REPORT_MESSAGES],
       );
-      const report = formatRollingMailSummary(rows.rows, rollingMail, fromUtc, toUtc);
+      const report = formatRollingMailSummary(
+        rows.rows, requestedMailScope, fromUtc, toUtc,
+        explicitRange?.kind === "valid" ? "explicit UTC calendar-date range" : undefined,
+      );
       await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "user", content });
       await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "assistant", content: report });
       const encoder = new TextEncoder();
