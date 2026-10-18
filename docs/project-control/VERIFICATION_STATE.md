@@ -1,3 +1,13 @@
+## 2026-10-18 — DEV-01 direct final read-tool SSE (source done, full acceptance pending)
+
+- **Implementation on main:** `claraRuntime.streamAuthorizedReadOnlyToolAnswer` takes completed host tool history and outputs real provider tokens with no executable tools. Chat/Voice call it after 1–4 all-success registered and audited read-only calls; writes, denials, pending approval and legacy voice JSON unchanged. Removed the extra canonical exact-copy model request from Chat/Voice paths. Host parser native OpenAI/Gemini tool-decision validation remains unchanged.
+- **Actually executed:** Node v22 `--experimental-strip-types --test packages/clara-core/tests/tool-result-final.test.mjs` **7/7 PASS**, exact source blobs builder `f2c78e9a46b8449ff7b0b03b60c0da970c5b78f4` and test `d3a8ef1ce39de6682b7b7e771a3efadc0cf7ea2c`; global standalone strict TypeScript `--noUncheckedIndexedAccess` PASS with a minimal type-only stub. Initial 5/6 exposed a reused ID bug, now corrected and 7/7 passed. GitHub-source guard audit 18/18 PASS before final 4-tool cap/unsupported-fallback hardening (those fixes themselves committed).
+- **Not executed:** New web Vitest regression and worker email loop cases; complete pnpm dependencies/web/worker/Clara/DB typecheck/Next build; live Postgres email reads, provider Chat/Voice/token timing, browser cross-org/agent and approval flows, migrations, Vercel/prod deploy. No full checkout, pnpm, authenticated originating browser. Tests here do not prove production readiness.
+- **Evidence and commands:** `docs/project-control/sessions/DEV01-NATIVE-POSTTOOL-FINAL-STREAM-20261018.md` and `NEXT_ACTION.md`.
+
+
+---
+
 ## DEV-01 — OpenAI/Gemini streamed tool-call assembly: 2026-10-18
 
 - **Comitted source on main:** `packages/clara-core/src/tool-call-stream.ts` and `gemini-tool-stream.ts`, native SSE selection in Clara `chatWithTools`, provider mock integration cases in worker tests, and `@ai-comms-agent/clara-core` Node test script.
