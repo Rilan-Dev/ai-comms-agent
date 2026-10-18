@@ -84,3 +84,37 @@ test("Sarvam tool adapter is explicitly unavailable until its contract is verifi
     /not enabled for Sarvam/,
   );
 });
+
+test("OpenAI host tool adapter buffers SSE deltas before returning complete validated calls", async () => {
+  let requestBody: Record<string, unknown> | undefined;
+  const chunk = (value: unknown) => "data: " + JSON.stringify(value) + "\\n\\n";
+  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    const sse = [
+      chunk({ choices: [{ delta: { tool_calls: [{ index: 0, id: "call-2", type: "function", function: { name: "email.", arguments: "{\\\"acc" } }] } }] }),
+      chunk({ choices: [{ delta: { tool_calls: [{ index: 0, function: { name: "accounts.list", arguments: "ount_id\\\":\\\"a1\\\"}" } }] } }] }),
+      chunk({ choices: [{ delta: {}, finish_reason: "tool_calls" }] }),
+      "data: [DONE]\\n\\n",
+    ].join("").replaceAll("\\n", "\n");
+    return new Response(sse, { status: 200, headers: { "content-type": "text/event-stream" } });
+  }) as typeof fetch;
+  const provider = createProvider({ provider: "openai", apiKey: "test-key", baseUrl: "https://provider.test", chatModel: "test-model" });
+  const result = await provider.chatWithTools?.([{ role: "user", content: "List mailboxes" }], tools);
+  assert.equal(requestBody?.stream, true);
+  assert.equal(result?.finishReason, "tool_calls");
+  assert.deepEqual(result?.toolCalls, [{ id: "call-2", name: "email.accounts.list", arguments: { account_id: "a1" } }]);
+});
+
+test("OpenAI streaming adapter refuses partial or malformed function arguments", async () => {
+  globalThis.fetch = (async () => new Response(
+    'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"bad","function":{"name":"email.accounts.list","arguments":"{not-json"}}]}}]}\\n\\n'
+      .replaceAll("\\n", "\n")
+      + 'data: {"choices":[{"delta":{},"finish_reason":"tool_calls"}]}\\n\\n'.replaceAll("\\n", "\n")
+      + "data: [DONE]\n\n",
+    { status: 200, headers: { "content-type": "text/event-stream" } },
+  )) as typeof fetch;
+  const provider = createProvider({ provider: "openai", apiKey: "test-key", baseUrl: "https://provider.test", chatModel: "test-model" });
+  const result = await provider.chatWithTools?.([{ role: "user", content: "List mailboxes" }], tools);
+  assert.equal(result?.finishReason, "invalid_tool_arguments");
+  assert.deepEqual(result?.toolCalls, []);
+});
