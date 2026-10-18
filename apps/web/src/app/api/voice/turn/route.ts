@@ -111,7 +111,10 @@ export async function POST(request: Request) {
               const generation = await claraRuntime.createChatTurn({
                 orgId: organizationId, agentId, kbId, userId: subject.user.id,
                 sessionId, surface: "realtime", ragMode: "hybrid",
-                messages: [{ role: "user", content: transcript }],
+                messages: [
+                  { role: "system", content: "This streamed voice text is read-only. Never claim to have sent, approved, deleted, archived, moved or changed mail or other resources. Such actions require the host-authorized tool path." },
+                  { role: "user", content: transcript },
+                ],
               });
               for await (const token of generation.stream) {
                 if (request.signal.aborted) break;
