@@ -433,3 +433,13 @@ Append-only operational history for DEV-01. This is not the source of authorizat
 - Added model selection persistence in voice session, Sarvam relay honors selected supported model, resolver sanitizes unsupported labels, PUT rejects bad legacy ID; UX now describes relay mode. Added Node + Vitest/test assertions. Direct-main source commits documented in session `DEV01-REALTIME-VOICE-MODEL-CATALOG-20261018`.
 - Actual: updated catalog source and Node test hash-identical to GitHub; catalog 9/9, combined standalone 23/23, isolated TypeScript catalog PASS, GitHub integration/source checks 13/13 PASS. No web/worker full tests/build/migrations/browser/live API/deploy. Vercel build-rate-limit unresolved, OPS-01.
 - Next: equipped checkout runs full focused suites, Next/worker build, migrations and authenticated browser/model-save/relay audio; do not claim user screenshot resolved on deployed site until OPS-01 deploys matching main and retests. FIX-01 unrelated incidents.
+
+### DEV01-CHAT-FIRST-WORKSPACE-20261018 / 2026-10-18
+- **Task:** Continue authorized product development from current GitHub state; Chat-first UI with voice inside Chat, top sidebar, expanded Mail, navbar alignment, HTML previews.
+- **Authorization:** Current explicit owner requirements; direct `main` no-branch/no-PR preference; retained Phase 4 scope.
+- **Initial head:** `9081fb89932e44eaa4b6cfb217b1ee1346ba0010` (independent OPS-01 changes already present; main advanced throughout).
+- **Actions/files:** `app/page.tsx`, `app/overview/page.tsx`, `components/sidebar.tsx`, `components/top-bar.tsx`, `app/chat/chat-client.tsx`, `app/ai-voice/voice-workspace.tsx`, `app/mail/thread/[threadId]/thread-client.tsx`, `lib/email/html-preview-document.ts`, new tests `tests/chat-first-workspace.test.ts` and `tests/mail-html-preview.test.ts`. 2026-10-18 plan in `docs/plans/CHAT_FIRST_WORKSPACE_REDESIGN_20261018.md`.
+- **Evidence:** 13/13 current GitHub source assertions PASS. New Vitest tests not run; full pnpm build/typecheck, browser, live provider, security, deployment unverified. User CI run `39079140157` is older SHA failure routed to OPS.
+- **Known risk/handoff:** FIX-01 #36: `html_body_sanitized` may be assigned unsanitized provider HTML; no owner change, iframe defense in depth only. FIX-01 #26 owns voice end-state failures.
+- **Lesson:** Chat is one screen with two modes; parent UI cannot directly unmount active media; nav left margin belongs to one layout component; mail HTML renders only in opaque CSP frame after server sanitation acceptance.
+- **Next:** Focused Vitest + full web typecheck/build on current main, mobile/browser/voice/malicious HTML cases; improve remaining DEV-01 UX independently.
