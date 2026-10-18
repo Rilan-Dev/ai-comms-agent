@@ -37,7 +37,7 @@ async function validatedManifest(
   requireBriefingIds(principal.organizationId, principal.userId, principal.agentId, summaryId);
   await requireBriefingActor(client, principal);
   const r = await client.query<Record<string, unknown>>(
-    `SELECT * FROM summaries WHERE id=$1 AND organization_id=$2 AND owner_user_id=$3
+    `SELECT *, jsonb_array_length(selected_source_manifest)::int AS source_count FROM summaries WHERE id=$1 AND organization_id=$2 AND owner_user_id=$3
        AND agent_id=$4 AND summary_type='personal_briefing' FOR SHARE`,
     [summaryId, principal.organizationId, principal.userId, principal.agentId],
   );
@@ -121,12 +121,10 @@ export async function prepareBriefing(
       if (truncated || r.rows.length < PAGE_SIZE) break;
       after = r.rows.at(-1)?.id ?? null;
       if (selected.length === MAX_CANDIDATES) {
-        const more = await client.query<{ id: string }>(
-          `SELECT m.id FROM email_messages m WHERE m.organization_id=$1
-            AND m.email_account_id=ANY($2::uuid[]) AND m.id>$3::uuid LIMIT 1`,
-          [principal.organizationId, scope.mailboxIds, after],
-        );
-        truncated = more.rowCount > 0;
+        // Conservative continuation flag: 5,000 selected records are a
+        // bounded incomplete selection, not permission to claim every older
+        // obligation was considered.
+        truncated = true;
         break;
       }
     }
