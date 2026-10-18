@@ -76,7 +76,7 @@ export async function readGeminiToolCompletion(body: ReadableStream<Uint8Array>)
   };
   try {
     while (true) {
-      let result: ReadableStreamReadResult<Uint8Array>;
+      let result: Awaited<ReturnType<typeof reader.read>>;
       try {
         result = await reader.read();
         buffer += result.done ? decoder.decode() : decoder.decode(result.value, { stream: true });
@@ -99,7 +99,7 @@ export async function readGeminiToolCompletion(body: ReadableStream<Uint8Array>)
     return {
       text,
       toolCalls: calls.map((call, index) => ({
-        id: `gemini-call-${index}`, name: call.name, arguments: call.args,
+        id: `gemini-call-${crypto.randomUUID()}-${index}`, name: call.name, arguments: call.args,
       })),
       finishReason,
     };
