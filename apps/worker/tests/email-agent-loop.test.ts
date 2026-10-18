@@ -94,3 +94,27 @@ test("email agent loop stops before exceeding the per-turn tool-call limit", asy
   assert.equal(callCount, 1);
   assert.equal(result.finishReason, "tool_limit");
 });
+
+
+test("an approval-shaped result from a registered read tool cannot be marked safe to stream", async () => {
+  let round = 0;
+  const result = await runEmailAgentTurn({
+    organizationId: "org-1", agentId: "agent-1", messages: inputMessages, toolContext: context,
+  }, {
+    createRuntime: async () => fakeRuntime(),
+    completeWithTools: async () => {
+      round += 1;
+      return round === 1
+        ? { text: "", toolCalls: [{ id: "call-1", name: "email.accounts.list", arguments: {} }], finishReason: "tool_calls" }
+        : { text: "This operation requires approval.", toolCalls: [], finishReason: "stop" };
+    },
+    invoke: async () => ({
+      ...okResult(),
+      output: { status: "pending_approval", approval_required: true, action_id: "approval-1", action_type: "email.send" },
+    }),
+  });
+  assert.equal(result.toolCalls.length, 1);
+  assert.equal(result.toolCalls[0]?.readOnly, false);
+  assert.equal(result.pendingApprovals.length, 1);
+  assert.equal(result.pendingApprovals[0]?.actionId, "approval-1");
+});
