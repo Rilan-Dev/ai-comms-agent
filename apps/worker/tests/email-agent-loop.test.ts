@@ -61,6 +61,8 @@ test("email agent loop executes only registered, allowlisted tools and returns f
   assert.deepEqual(invoked, ["email.accounts.list"]);
   assert.equal(result.toolCalls.length, 1);
   assert.equal(result.toolCalls[0]?.ok, true);
+  // Derived from the registered host tool, never from provider-supplied names.
+  assert.equal(result.toolCalls[0]?.readOnly, true);
 });
 
 test("email agent loop rejects a mismatched trusted tenant/agent context before model invocation", async () => {
