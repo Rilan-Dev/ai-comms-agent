@@ -22,7 +22,14 @@ async function readBriefing(client: PoolClient, principal: TrustedBriefingPrinci
       AND m.organization_id=s.organization_id AND m.email_account_id=s.mailbox_id
     WHERE s.summary_id=$1 AND s.organization_id=$2 AND s.owner_user_id=$3 AND s.agent_id=$4`,
     [id, principal.organizationId, principal.userId, principal.agentId]);
-  if (!sources.rowCount || sources.rows.some(source => !scope.mailboxIds.includes(source.mailbox_id) || !source.id || !source.current_revision || source.content_revision !== source.current_revision)) return invalid();
+  const expectedSourceCount = Array.isArray(row.selected_source_manifest)
+    ? row.selected_source_manifest.length : null;
+  // A legitimate empty ready selection is a real "no new mail" result, not
+  // an invalidated briefing. Every nonempty manifest still requires exact,
+  // current, authorized provenance for every selected source.
+  if (expectedSourceCount === null || sources.rowCount !== expectedSourceCount
+    || sources.rows.some(source => !scope.mailboxIds.includes(source.mailbox_id) || !source.id
+      || !source.current_revision || source.content_revision !== source.current_revision)) return invalid();
   const permitted = new Map(sources.rows.map(source => [source.id, source.content_revision]));
   const items = row.content_json;
   if (!Array.isArray(items) || items.some(item => !item || !Array.isArray(item.sourceIds) || !item.sourceIds.length || item.sourceIds.some((source: unknown) => !permitted.has(source)))) return invalid();
