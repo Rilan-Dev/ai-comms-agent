@@ -129,10 +129,10 @@ export function ChatClient({
             </div>
           </div>
           <div className="flex min-w-0 items-center gap-2">
-            <button type="button" onClick={() => setVoiceOpen((open) => !open)} disabled={busy && !voiceOpen}
-              aria-pressed={voiceOpen} aria-label={voiceOpen ? "Return to text chat" : "Open live realtime voice conversation"}
+            <button type="button" onClick={() => setVoiceOpen(true)} disabled={busy || voiceOpen}
+              aria-pressed={voiceOpen} aria-label={voiceOpen ? "Voice conversation open; use Back to chat to end safely" : "Open live realtime voice conversation"}
               className="inline-flex shrink-0 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium transition hover:bg-secondary disabled:opacity-50">
-              <AudioLines size={15} /> {voiceOpen ? "Text chat" : "Live voice"}
+              <AudioLines size={15} /> {voiceOpen ? "Voice session open" : "Live voice"}
             </button>
             <label className="flex min-w-0 items-center gap-2 rounded-lg border bg-background px-2.5 py-1.5">
             <select aria-label="Choose agent" value={activeAgent?.id ?? ""} disabled={voiceOpen || busy} onChange={(e) => void switchAgent(e.target.value)} className="max-w-36 bg-transparent text-xs font-medium outline-none sm:max-w-48">
