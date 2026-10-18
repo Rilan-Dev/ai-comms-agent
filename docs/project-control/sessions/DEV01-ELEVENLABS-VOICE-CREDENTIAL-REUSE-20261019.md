@@ -25,7 +25,8 @@
 - **Exact main-checkout commands (DEV-01):**
 ```bash
 pnpm install --frozen-lockfile
-pnpm --filter @ai-comms-agent/web exec vitest run tests/elevenlabs-voice-credential-reuse.test.ts tests/live-model-catalog.test.ts tests/ai-provider-setup-safety.test.mjs
+pnpm --filter @ai-comms-agent/web exec vitest run tests/elevenlabs-voice-credential-reuse.test.ts tests/live-model-catalog.test.ts
+node --test apps/web/tests/ai-provider-setup-safety.test.mjs
 pnpm --filter @ai-comms-agent/web typecheck
 pnpm --filter @ai-comms-agent/web build
 pnpm --filter @ai-comms-agent/worker test
