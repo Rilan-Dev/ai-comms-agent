@@ -592,3 +592,7 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - Source update on `main` by DEV-01: organization-scoped persisted Threads UI/SQL/API and responsive voice→Chat focus; real incremental SSE token display for ordinary Chat and voice turns; Gemini streaming endpoint and OpenAI-compatible SSE EOF recovery.
 - **Security:** existing trusted agent/mailbox/voice session authorization and host-approved tool loop preserved. Tool-backed final text still buffered; avoid fake token streaming or bypass. FIX-01 #36 HTML sanitizer and voice transport unchanged; OPS-01 CI/deploy unchanged.
 - **Tests:** 5/5 exact Node SSE tests, isolated tsc and 23/23 static GitHub contracts PASS; full Vitest/Next/worker/DB/browser/providers/production NOT run. Session `DEV01-MAIL-THREADS-STREAMING-20261018`.
+
+### EVT-DEV01-VERIFIED-POSTTOOL-STREAM-20261018
+- DEV-01 main-only Chat/Voice product-source updates: registered host-safe read permissions and result status gate extra native model-token stream; every chunk must exactly prefix-match already authorized canonical answer. Provider error/hallucination/abort cannot introduce new claims; write and pending-approval results remain nonstreamed. No new branch, PR, provider deploy or CI changes.
+- Unit execution: exact Node helper 8/8, isolated tsc and 16/16 GitHub source invariants PASS; Vitest/full build/provider/browser not done. Further adapter needed for native function-call SSE; session `DEV01-VERIFIED-TOOL-ANSWER-STREAMING-20261018`.
