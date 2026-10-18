@@ -1,5 +1,6 @@
 import { decryptCredential, parseCredentialsMasterKey, query } from "@ai-comms-agent/db";
 import { readOpenAIToolCompletion } from "./tool-call-stream";
+import { readGeminiToolCompletion } from "./gemini-tool-stream";
 import type {
   AIProvider,
   ChatMessage,
@@ -399,10 +400,10 @@ async function chatWithTools(
       }
       return { role: message.role === "assistant" ? "model" : "user", parts: [{ text: message.content ?? "" }] };
     });
-    const url = `${config.baseUrl}/v1beta/models/${encodeURIComponent(config.chatModel ?? "gemini-2.0-flash")}:generateContent?key=${encodeURIComponent(config.apiKey)}`;
+    const url = `${config.baseUrl}/v1beta/models/${encodeURIComponent(config.chatModel ?? "gemini-2.0-flash")}:streamGenerateContent?alt=sse&key=${encodeURIComponent(config.apiKey)}`;
     const response = await fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", accept: "text/event-stream" },
       body: JSON.stringify({
         systemInstruction: system ? { parts: [{ text: system }] } : undefined,
         contents,
@@ -414,6 +415,11 @@ async function chatWithTools(
       const body = await response.text().catch(() => "");
       throw new Error(`Gemini tool request failed (${response.status}): ${body.slice(0, 300)}`);
     }
+    if (response.headers.get("content-type")?.includes("text/event-stream")) {
+      if (!response.body) throw new Error("Gemini returned an empty tool-call stream.");
+      return readGeminiToolCompletion(response.body);
+    }
+    // Some gateways still return validated JSON even for streamGenerateContent.
     const payload = await response.json() as {
       candidates?: Array<{ finishReason?: string; content?: { parts?: Array<{ text?: string; functionCall?: { name?: string; args?: Record<string, unknown> } }> } }>;
     };
