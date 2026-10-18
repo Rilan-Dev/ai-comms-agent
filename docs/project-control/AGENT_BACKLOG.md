@@ -271,3 +271,10 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Done:** Chat default, Overview alternate, Mail expanded, desktop header single offset, embedded voice entry, opaque HTML preview, source-contract tests.
 - **Next:** Full web Vitest/typecheck/Next build and real browser/responsive tests; then actual `/mail/threads` DB-scoped listing (currently placeholder), compact voice modal/panel focus/exit polish and mail metadata. See `docs/plans/CHAT-FIRST-VOICE-MAIL-UX-20261018.md`.
 - **Handoff:** FIX-01 issue #36 for server-side HTML sanitizer and historical data; OPS-01 migration/CI/deploy. No live provider/session/production verification.
+
+### BKL-DEV01-STREAMING-TOOL-ANSWERS-20261018 — Native tool-aware model-token streaming
+- **Owner:** DEV-01 / Forge; follow-on to `DEV01-MAIL-THREADS-STREAMING-20261018`.
+- **State:** OPEN / SOURCE-DESIGN NEXT. Non-tool Chat/Voice now uses genuine streamed LLM chunks. Existing email/WhatsApp tool-backed turns provide early status but must wait for the complete bounded provider/tool resolution before sending final text. Voice TTS begins after text completion.
+- **Goal:** Provider-specific tool-call SSE adapters (OpenAI/Gemini), incremental safe **final** assistant text after authorized tool results without leaking speculative tool actions or false success claims; accurate cancel/interruption, approval-required statuses and full SSE frame/error tests. Then sentence-level speech streaming over validated relay lifecycle. No provider-key leakage, cross-agent account bypass, fake typewriter animation or action before approval.
+- **Acceptance:** Real streamed first/second tokens during tool resolution's final model generation, proper tool-call delta aggregation and delayed execution until validated, no side effects before approval; regression for malformed tools, disconnect, partial text/error, cross-org/agent, provider API differences, and live STT/TTS latency.
+- **Next:** DEV-01 design/implement bounded native streaming with mocked vendor SSE and role review; FIX-01 retains existing realtime bugs, OPS-01 credentials/deploy.
