@@ -283,3 +283,12 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - Owner DEV-01, stage OPEN. Current main presents verified genuine model tokens for successful approved *read-only* tool answers using an extra provider stream with exact-prefix guard. Tool planning still nonstream and sensitive/denied outcomes stay canonical.
 - Next: implement OpenAI + Gemini native function-call SSE with complete argument buffering, correct indexed tool call delta assembly and validated finish semantics **before any host execution**; maintain agent/mailbox role allowlist, auditing and human approvals, bounded rounds/calls, abort handling, provider differences. Native final answer after results must itself stream; no extra copying request. Add mocked API tests, real provider sandbox and p95 latency/cost comparison; only retire old fallback after proven safe.
 - FIX-01 owns existing voice transport/HTML sanitization; OPS-01 provider credentials/CI/deploy. See `docs/project-control/sessions/DEV01-VERIFIED-TOOL-ANSWER-STREAMING-20261018.md`.
+
+### BKL-DEV01-STREAMING-FINAL-TOOL-ANSWER-20261018
+- **Work:** Replace the optional post-tool exact-copy provider pass with native streaming of the *final* model answer after the validated host tool results.
+- **Owner:** DEV-01 / Forge
+- **State:** READY (native OpenAI/Gemini streamed function-call **decision** assembly is SOURCE_IMPLEMENTED and isolated parser tests are 19/19 PASS; full app/provider validation pending).
+- **Dependency:** Run current-main full Clara/worker/web/DB typechecks, worker adapter mock integrations, authorization/approval E2E, and browser/provider streaming tests; retain FIX-01 voice/security and OPS-01 deployment ownership.
+- **Authorization:** Owner continuation of Chat and realtime Voice streaming on current main, without branches or PRs.
+- **Suggested next action:** With approved tests, stream the no-more-tools final provider response while preserving completed registered tool results and user/agent/tenant approvals; remove second model copy cost after measured fidelity/latency proof. Test denied mailbox, partial provider response, user disconnect, pending send approval and cross-organization account access.
+- **Related session/event/handoff:** DEV01-NATIVE-TOOL-SSE-20261018; `docs/project-control/sessions/DEV01-NATIVE-TOOL-SSE-20261018.md`; `NEXT_ACTION.md`.
