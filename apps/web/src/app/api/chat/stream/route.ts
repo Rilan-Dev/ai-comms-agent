@@ -314,7 +314,7 @@ async function runInteractiveHostToolLoop(args: {
     // before streaming is considered. Only a completed first batch of safe
     // read-only calls can go directly to a tool-free final model response.
     // Other flows retain their bounded multi-round approval-safe tool loop.
-    if (round === 0 && args.onSafeReadOnlyFinal && summaries.length > 0
+    if (round === 0 && args.onSafeReadOnlyFinal && summaries.length > 0 && summaries.length <= 4
         && summaries.every((summary) => summary.ok && summary.readOnly === true)) {
       const text = await args.onSafeReadOnlyFinal(history);
       return { text, streamed: true, toolCalls: summaries };
