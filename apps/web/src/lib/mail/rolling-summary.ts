@@ -36,6 +36,7 @@ export function parseRollingMailSummaryRequest(input: string): RollingMailSummar
   // Do not downgrade complex requests to an unfiltered broad report.
   const hasUnsupportedFilter = /\b(?:excluding|except|without|only from|labelled|tagged|folder|before|after|between|important|urgent|priority|flagged|starred|attachments?|containing)\b/i.test(message);
   if (hasUnsupportedFilter || (/(?:\bsender\b|\bsubject\b|\bregarding\b|\babout\b)/i.test(message) && !from && !subject)) return null;
+  if (subject && /^(?:the\s+)?(?:last|past|previous|within)\s+(?:24\s*(?:hours?|hrs?|h)|1\s*day|one\s+day)\b/i.test(subject)) return null;
   // If the user supplied an explicit filter but it could not be parsed,
   // never return all messages while pretending the filter was applied.
   if (/\bfrom\s+(?!last\b|past\b|previous\b|the\s+(?:last|past|previous)\b)/i.test(message) && !from) return null;
