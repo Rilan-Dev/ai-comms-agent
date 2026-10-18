@@ -415,3 +415,11 @@ If shared memory conflicts with current repository state or current requirements
 - **Remedy:** Launch voice by user action with existing Clara transport; make Chat header open-only and use VoiceWorkspace teardown to return; own desktop 248px inset in root layout only; render HTML in opaque CSP iframe as defense in depth.
 - **Prevention:** Explicit end-session response/lifecycle verification (FIX-01 #26), robust sanitizer before storage/backfill (FIX-01 #36), and user-visible privacy defaults / browser acceptance. Source checks 13/13 do not imply runtime/security acceptance.
 - **Next:** DEV-01 UI tests/polish, OPS-01 CI/deployment, FIX-01 significant runtime and sanitizer fixes. Plan `docs/plans/CHAT_FIRST_WORKSPACE_REDESIGN_20261018.md`.
+
+### DEV-01 — 2026-10-18 — Consistent shell offsets and untrusted HTML previews
+- **Issue:** Double desktop sidebar margin left a visible gap in navbar; default root landed on Overview instead of Chat; Mail child nav disappeared outside Mail routes; thread UI checked `html_body` despite DB returning `html_body_sanitized`.
+- **Root cause:** Parent layout and child topbar both applied `md:ml-[248px]`; nav display was tied to route activity; SQL column naming differed from UI contract.
+- **Remedy:** Parent owns layout offset once; Chat-first/Overview deep link; Mail defaults expanded with explicit button; keep backend tenant-scoped HTML alias in sync with UI. Embed provider voice by reusing existing authorized Clara transport instead of inventing a new one.
+- **Security prevention:** A DB field named `html_body_sanitized` is not proof: worker code was observed inserting raw provider HTML without a proper sanitizer. Keep opaque sandbox CSP and prevent remote tracking by default, but route ingest sanitizer + old data backfill to FIX-01 issue #36; OPS-01 owns deployment.
+- **Concurrency lesson:** Parallel direct-main agent edits can fix the same UI; always fetch exact latest file SHA, retain independent fixes and remove duplicate unused helpers instead of clobbering either implementation.
+- **Evidence:** DEV-01 source-check suite 14/14 current GitHub invariants PASS; full browser/build/provider acceptance pending. Session `docs/project-control/sessions/DEV01-CHAT-FIRST-VOICE-MAIL-20261018.md`.
