@@ -91,8 +91,8 @@ test("OpenAI host tool adapter buffers SSE deltas before returning complete vali
   globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
     requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
     const sse = [
-      chunk({ choices: [{ delta: { tool_calls: [{ index: 0, id: "call-2", type: "function", function: { name: "email.", arguments: "{\\\"acc" } }] } }] }),
-      chunk({ choices: [{ delta: { tool_calls: [{ index: 0, function: { name: "accounts.list", arguments: "ount_id\\\":\\\"a1\\\"}" } }] } }] }),
+      chunk({ choices: [{ delta: { tool_calls: [{ index: 0, id: "call-2", type: "function", function: { name: "email.", arguments: "{\"acc" } }] } }] }),
+      chunk({ choices: [{ delta: { tool_calls: [{ index: 0, function: { name: "accounts.list", arguments: "ount_id\":\"a1\"}" } }] } }] }),
       chunk({ choices: [{ delta: {}, finish_reason: "tool_calls" }] }),
       "data: [DONE]\\n\\n",
     ].join("").replaceAll("\\n", "\n");
