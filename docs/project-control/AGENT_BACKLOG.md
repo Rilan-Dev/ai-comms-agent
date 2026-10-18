@@ -263,3 +263,11 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Next:** Focused Vitest/typecheck/build; mobile/keyboard/voice/media/mail threaded integration and UX polish. Avoid waiting on OPS.
 - **Dependency routing:** FIX-01 #36 sanitization of provider HTML before storing and historical unsafe rows; FIX-01 #26 voice host end-state correctness. OPS-01 current-head CI, migrations/deploy/runtime. Do not duplicate ownership.
 - **Session:** `docs/project-control/sessions/DEV01-CHAT-FIRST-WORKSPACE-20261018.md`.
+
+### BKL-DEV01-CHAT-VOICE-MAIL-UX-20261018 — Chat-first shell and mail usability
+- **Owner:** DEV-01 / Forge
+- **Authorization:** Explicit 2026-10-18 owner redesign request; commit directly on main, no branch/PR.
+- **State:** SOURCE_IMPLEMENTED / ACCEPTANCE_PENDING.
+- **Done:** Chat default, Overview alternate, Mail expanded, desktop header single offset, embedded voice entry, opaque HTML preview, source-contract tests.
+- **Next:** Full web Vitest/typecheck/Next build and real browser/responsive tests; then actual `/mail/threads` DB-scoped listing (currently placeholder), compact voice modal/panel focus/exit polish and mail metadata. See `docs/plans/CHAT-FIRST-VOICE-MAIL-UX-20261018.md`.
+- **Handoff:** FIX-01 issue #36 for server-side HTML sanitizer and historical data; OPS-01 migration/CI/deploy. No live provider/session/production verification.
