@@ -408,3 +408,10 @@ If shared memory conflicts with current repository state or current requirements
 - Regression protection checks the Compose invocation, read-only migration mount, absence of host-side DSN translation, no URL logging, and retained failure policy.
 - Session `OPS01-MIGRATION-CONTAINER-20261018`; source `65a215151ecd14900fac3c9ba9a421fb7a777a77`; regression test `6cd93638bffa0e2f6a9e8d6ce2f3f2664b13341b`.
 - Verification: `bash -n` passed and the focused Node test passed 4/4 in an isolated harness using fetched source/test and a matching Compose env-file fixture. Actual project-checkout execution, database target confirmation, migration, and live health remain pending.
+
+### DEV-01 / Forge — 2026-10-18 — Chat/voice and HTML reader boundary lesson
+- **Session:** DEV01-CHAT-FIRST-WORKSPACE-20261018
+- **Issue:** A parent Chat voice-mode toggle can unmount a live microphone/WebSocket while host session persists; Navbar can be offset twice if both root shell and child header own sidebar spacing; an `html_body_sanitized` DB name can mislead the UI about whether ingestion actually sanitized email.
+- **Remedy:** Launch voice by user action with existing Clara transport; make Chat header open-only and use VoiceWorkspace teardown to return; own desktop 248px inset in root layout only; render HTML in opaque CSP iframe as defense in depth.
+- **Prevention:** Explicit end-session response/lifecycle verification (FIX-01 #26), robust sanitizer before storage/backfill (FIX-01 #36), and user-visible privacy defaults / browser acceptance. Source checks 13/13 do not imply runtime/security acceptance.
+- **Next:** DEV-01 UI tests/polish, OPS-01 CI/deployment, FIX-01 significant runtime and sanitizer fixes. Plan `docs/plans/CHAT_FIRST_WORKSPACE_REDESIGN_20261018.md`.
