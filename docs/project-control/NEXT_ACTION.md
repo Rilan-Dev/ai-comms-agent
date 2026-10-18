@@ -1,3 +1,15 @@
+## DEV-01 — Real Mail Threads + Chat/Voice model-token streaming — 2026-10-18
+
+- **Owner authorized continued DEV-01 product work, direct `main` only; no branch/PR.** Implemented real tenant-scoped Mail Threads repository/API/UI (search, per-mailbox, unread, safe pagination/abort, opening a thread), plus responsive Chat focus return after embedded voice.
+- **Streaming changes:** shared incremental browser SSE parser; Chat updates text for each model delta and sends status/done/errors; Chat now starts regular conversational model streaming without the blocking tool-loop preflight. Voice `/api/voice/turn` now opt-in streams actual Clara model tokens for non-tool conversations under existing session authorization, while preserving legacy JSON clients and the host-authorized email tool path. Gemini uses native `:streamGenerateContent?alt=sse`, OpenAI/Sarvam SSE reader handles EOF-split final events. Voice text renders partial deltas and retains partial transcript on failure. No fakely animated completed response.
+- **IMPORTANT NOT COMPLETE:** Tool-backed mail/WhatsApp final responses are still buffered until approved tool loop completes (but user sees early progress). Realtime TTS begins after final answer. Implement safe provider-native streaming function/tool completion as next DEV-01 AI task; do not bypass approval or show speculative tool claims. FIX-01 retains HTML sanitizer GitHub #36 and realtime transport defects. OPS-01 owns CI/deployment/migrations/secrets.
+- **Executed:** Exact GitHub SHA-matched standalone `sse.ts` and `sse-streaming.test.mjs` Node test **5/5 PASS**; same SSE module standalone `tsc --noEmit` **PASS**; 23/23 fresh GitHub source-contract invariants **PASS**. New Mail Threads and streaming Vitest suites **not run**. Full pnpm web/worker/DB typechecks/build, migrations, browser, provider calls and deployed version **not verified**.
+- **EXACT NEXT ACTION:** In dependency-equipped checkout of *current main*: `node --experimental-strip-types --test apps/web/tests/sse-streaming.test.mjs`; `pnpm --filter @ai-comms-agent/web exec vitest run tests/mail-threads-workspace.test.ts tests/streaming-conversations.test.ts tests/workspace-shell.test.ts tests/mail-html-preview.test.ts`; `pnpm --filter @ai-comms-agent/web typecheck`; `pnpm --filter @ai-comms-agent/web build`; `pnpm --filter @ai-comms-agent/db typecheck`; `pnpm --filter @ai-comms-agent/worker test`; `pnpm --filter @ai-comms-agent/worker typecheck`; `bash scripts/verify-migration-chain.sh`. Fix DEV-01 regressions directly on main. Then authenticated 320/390/768/1440px browser + real mail/voice/WebSocket SSE latency and cross-org denial. OPS-01 separately verifies/deploys and resolves host limits. 
+- **Session:** `docs/project-control/sessions/DEV01-MAIL-THREADS-STREAMING-20261018.md`; Phase 4 still `implementation_in_progress`.
+
+
+---
+
 ## DEV-01 — Chat-first workspace and embedded voice UX — 2026-10-18
 
 - **Owner authorization:** Explicit DEV-01/Forge UX redesign; direct edits on `main`, no branches/PRs. Phase 4 remains `implementation_in_progress`.
