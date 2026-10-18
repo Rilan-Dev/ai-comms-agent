@@ -1,3 +1,11 @@
+## DEV-01 — ElevenLabs TTS/STT configuration recovery UX (2026-10-19)
+
+- Production user's ElevenLabs TTS/STT model-catalog calls gave app-side `provider_configuration_required` (not provider-originated error). Implemented secure explicit per-organization reuse of enabled ElevenLabs Realtime credentials into missing enabled TTS/STT capability slots, with audit, model/key preservation, disabled-purpose protection, actionable UI and API diagnostics. No plaintext secret exposed or logged. Key-sharing across capability purposes is **never automatic**.
+- 29/29 live-GitHub source contracts pass; full Vitest/monorepo build, DB/provider/browser/deploy **not verified**. OPS-01 retains Vercel build-rate-limit deployment/infra gates, FIX-01 existing voice transport/email HTML security defects. Phase 4 remains implementation in progress. Session `DEV01-ELEVENLABS-VOICE-CREDENTIAL-REUSE-20261019`.
+
+
+---
+
 ## 2026-10-18 DEV-01 native post-tool final-token checkpoint
 
 - Chat and Voice now use **direct native provider final SSE** following one successful audited registered read-only tool batch (up to 4), eliminating the previous extra text-copy provider pass for eligible cases. Denied/mutating/approval/complex cases keep the bounded host loop and canonical response. Added lifetime tool-ID validation, untrusted-result prompt bounds, safe pre-tool-only unsupported-provider fallback.
