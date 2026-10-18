@@ -42,7 +42,7 @@ export async function GET(request: Request) {
       // STT capability rows. Offer an explicit, authenticated reuse path
       // instead of silently sharing credentials across purposes.
       const voiceCapability = provider === "elevenlabs" && (purpose === "tts" || purpose === "stt");
-      const realtime = voiceCapability && !saved
+      const realtime = voiceCapability && !saved?.hasApiKey && saved?.enabled !== false
         ? await getProviderConfig(organizationId, "elevenlabs", "realtime")
         : null;
       const reusable = Boolean(realtime?.enabled && realtime.hasApiKey);
