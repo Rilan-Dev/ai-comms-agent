@@ -587,3 +587,8 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Security handoff:** FIX-01 [#36](https://github.com/Rilan-Dev/ai-comms-agent/issues/36) — provider HTML is persisted without an observed robust sanitizer despite `html_body_sanitized` name; do not treat sandbox as server sanitization. OPS-01 owns backfill rollout/migrations, CI and deployment.
 - **Actual evidence:** 14/14 source contracts PASS, Vitest suite authored not executed, no full build/browser or production. Project phase 4 ongoing.
 - **Session:** `DEV01-CHAT-FIRST-VOICE-MAIL-20261018`; plan `docs/plans/CHAT-FIRST-VOICE-MAIL-UX-20261018.md`.
+
+### EVT-DEV01-MAIL-THREADS-STREAMING-20261018
+- Source update on `main` by DEV-01: organization-scoped persisted Threads UI/SQL/API and responsive voice→Chat focus; real incremental SSE token display for ordinary Chat and voice turns; Gemini streaming endpoint and OpenAI-compatible SSE EOF recovery.
+- **Security:** existing trusted agent/mailbox/voice session authorization and host-approved tool loop preserved. Tool-backed final text still buffered; avoid fake token streaming or bypass. FIX-01 #36 HTML sanitizer and voice transport unchanged; OPS-01 CI/deploy unchanged.
+- **Tests:** 5/5 exact Node SSE tests, isolated tsc and 23/23 static GitHub contracts PASS; full Vitest/Next/worker/DB/browser/providers/production NOT run. Session `DEV01-MAIL-THREADS-STREAMING-20261018`.
