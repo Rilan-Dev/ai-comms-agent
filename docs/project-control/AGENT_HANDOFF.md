@@ -131,3 +131,13 @@ Cross-agent handoff register. A handoff transfers context, not authority.
 - **Evidence:** `bash -n` passed; isolated focused Node test 4/4 passed. No actual project checkout test, Docker invocation, migration, or health result.
 - **Outstanding safety check:** Confirm intended DB name (`/postgres` in the user's URL vs Compose `POSTGRES_DB=aca`) before running migrations.
 - **Next:** Operator confirms DB target, runs focused test in checkout, then deploys and records migration completion separately from container health.
+
+### HOF-DEV01-FIX01-EMAIL-HTML-SANITIZER-20261018
+- **From:** DEV-01 / Forge (`DEV01-CHAT-FIRST-VOICE-MAIL-20261018`)
+- **To:** FIX-01 / Sentinel
+- **Reason:** During mail HTML preview work, found `apps/worker/src/email/mailbox-sync-worker.ts` inserts raw `message.html_body` into `email_messages.html_body_sanitized`. This conflicts with `docs/architecture/SECURITY.md §14` server-side HTML allowlist requirement; a sandboxed client iframe alone is insufficient defense.
+- **Repository state:** `main`, 2026-10-18; preserve concurrent DEV-01 UX work.
+- **Work completed:** Tenant-scoped query exposes HTML under reader field; opaque-origin CSP-restricted iframe UI written. Opened [issue #36](https://github.com/Rilan-Dev/ai-comms-agent/issues/36) with exact vulnerability/evidence, fix/tests/backfill requirements and Mailflow sanitizer reference.
+- **Remaining FIX-01:** Robust parse-based sanitizer on every provider ingestion path, old-row quarantine/backfill plan, CSS/URL/image tracking tests, security review. **Do not** downgrade existing auth/mailbox grants. OPS-01 performs migration/deployment only after source acceptance.
+- **Status:** OPEN; DEV-01 continues independent UI work without polling or taking FIX-01 bug role.
+- **Evidence:** `docs/project-control/sessions/DEV01-CHAT-FIRST-VOICE-MAIL-20261018.md`, `docs/plans/CHAT-FIRST-VOICE-MAIL-UX-20261018.md`.
