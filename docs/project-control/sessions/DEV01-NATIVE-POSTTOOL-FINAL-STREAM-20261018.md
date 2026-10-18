@@ -44,3 +44,10 @@ pnpm --filter @ai-comms-agent/db typecheck
 bash scripts/verify-migration-chain.sh
 ```
 Correct concrete DEV-01 failures directly on main. For browser acceptance, compare current deployed SHA, use nonproduction org A/B and two agent-bound mailboxes: normal inbox read showing first visible provider token while still generating, authorized WhatsApp history, denied cross-account read, provider-secret redaction, failed/malformed streamed decision, approval request (never stream/write), model tool output injection, reused call IDs, user cancellation mid-turn, malformed network SSE/EOF, multiple tool calls, old voice JSON client and new voice SSE text/TTS timing. Verify read-only one-batch sufficiency and cost/TTFT versus old exact-copy flow. FIX-01 and OPS-01 retain their scopes. Do not turn this source checkpoint into a production acceptance claim.
+
+## Continuation after first session commit — safety fixes and final test run
+
+- Additional Chat catch correction: in `runInteractiveHostToolLoop`, provider-native *tool selection* unsupported may revert to an ordinary model only at round 0 with zero executed calls. Once any tool executed, all subsequent errors, including native final stream failure, must surface as SSE errors and may never fall back to an unguarded request. Added source-contract regression.
+- New direct final eligibility is capped at **four** successful read-only tools (even though the builder can validate up to eight) to bound provider input and preserve existing loop semantics for complex/multi-hop cases.
+- Added actual 48 KB aggregate-context regression and reran the **exact committed** final source/test bytes locally: builder `f2c78e9a46b8449ff7b0b03b60c0da970c5b78f4`, test `d3a8ef1ce39de6682b7b7e771a3efadc0cf7ea2c`, **7/7 Node PASS**, strict isolated TypeScript **PASS**. The initial 5/6 result was resolved, no failed tests remain in the executed portable suite.
+- No new full pnpm suite, live provider/browser/tenant, production or migration evidence; host limitations are unchanged. This is source development awaiting complete integration acceptance.
