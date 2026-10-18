@@ -1,7 +1,6 @@
 import { listMailThreadsForOrganization, PostgresEmailAccountRepository } from "@ai-comms-agent/db";
 import { getAuthenticatedAppContext } from "@/lib/identity/repository";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { ThreadsClient } from "./threads-client";
 
 export const dynamic = "force-dynamic";
@@ -10,12 +9,12 @@ export default async function ThreadsPage() {
   if (!process.env.DATABASE_URL) {
     return <Status title="Mail needs PostgreSQL" description="Configure the database to browse your organization's actual messages." />;
   }
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get("aca-access-token")?.value;
-  const authHeaders = new Headers();
-  if (accessToken) authHeaders.set("cookie", `aca-access-token=${encodeURIComponent(accessToken)}`);
-  const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: authHeaders }));
-  if (!context) redirect("/login?reason=not_provisioned");
+  // Match the established Mail pages: preserve all request/session headers,
+  // rather than reconstructing one guessed auth cookie.
+  const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: await headers() }));
+  if (!context?.organizationId) {
+    return <Status title="Sign in to view conversations" description="Select an active organization and sign in to browse its mail threads." />;
+  }
 
   try {
     const organizationId = context.organizationId;
