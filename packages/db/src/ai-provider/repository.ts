@@ -548,7 +548,7 @@ function rowToProviderConfig(r: Row): ProviderConfigRow {
     model: r.model ? String(r.model) : null,
     enabled: Boolean(r.enabled),
     baseUrl: (config.baseUrl as string) ?? null,
-    hasApiKey: Boolean(r.has_api_key),
+    hasApiKey: Boolean(r.has_api_key) || Boolean(r.encrypted_api_key),
     config,
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
