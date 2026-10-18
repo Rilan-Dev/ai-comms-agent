@@ -1,3 +1,12 @@
+## DEV-01 — Follow-up: abort and approval-safe post-tool streaming — 2026-10-18
+
+- **Source committed on main, no branch/PR:** `claraRuntime.streamCanonicalToolAnswer` now accepts request abort and routes it through native OpenAI/Sarvam/Gemini `fetch`; Chat and Voice pass their actual client `request.signal`. The Chat host loop and shared email agent loop now refuse `readOnly` eligibility for `status:pending_approval` or `approval_required:true` even from a host-registered read tool. Added focused worker approval-shape regression plus web Vitest source-contract cases.
+- **Executed:** Reproduced source/test exact committed Git hashes for pure verification helper, `node --experimental-strip-types --test` **8/8 PASS**, standalone TypeScript **PASS**, 12/12 authenticated GitHub abort/approval source assertions **PASS**. **Not executed:** newly added web Vitest and worker tests, whole web/DB/worker typecheck/build, live provider/browser/migrations/deploy. No production acceptance.
+- **Exact next DEV-01 action:** On dependency-equipped current `main`: `pnpm --filter @ai-comms-agent/web exec vitest run tests/verified-tool-streaming-contract.test.ts tests/streaming-conversations.test.ts tests/mail-threads-workspace.test.ts`; `pnpm --filter @ai-comms-agent/web typecheck`; `pnpm --filter @ai-comms-agent/web build`; `pnpm --filter @ai-comms-agent/worker test`; `pnpm --filter @ai-comms-agent/worker typecheck`; `pnpm --filter @ai-comms-agent/db typecheck`; `bash scripts/verify-migration-chain.sh`. Fix DEV-01 source failures directly on main; independently implement native provider SSE tool-call assembly behind same auth/approval boundaries after executable test proof. Then verify actual browser/provider Chat+Voice cancellation and approval. FIX-01 issue #36 and realtime transport defects remain with FIX-01, and CI/deploy/provider credentials remain OPS-01.
+- **Session:** `docs/project-control/sessions/DEV01-VERIFIED-TOOL-ANSWER-STREAMING-20261018.md`.
+
+--- 
+
 - **Follow-up interruption cleanup:** `packages/clara-core/src/runtime.ts` now cancels the upstream OpenAI/Sarvam-compatible and Gemini reader in both model SSE generator finalizers when the host consumer returns early, instead of merely releasing its lock. Added source assertion in `apps/web/tests/verified-tool-streaming-contract.test.ts`. This was committed to `main` but is **not** yet provider/browser E2E tested.
 
 ## DEV-01 — Verified final model-token streaming after host-authorized read-only tools — 2026-10-18
