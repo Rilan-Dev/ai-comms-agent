@@ -1,3 +1,12 @@
+## DEV-01 — 2026-10-18 Chat-first and secure Mail preview source checkpoint
+
+- **Executed:** 13/13 authenticated GitHub source-structure assertions PASS: root Chat route + Overview retained; Chat first, Mail submenu default open; single sidebar offset; existing embedded/lazy VoiceWorkspace and no parent escape toggle; opaque/no-same-origin email iframe and restrictive CSP; new Vitest source present. Exact files checked and hashes recorded in `docs/project-control/sessions/DEV01-CHAT-FIRST-WORKSPACE-20261018.md`.
+- **Committed, NOT executed:** `apps/web/tests/chat-first-workspace.test.ts`, `apps/web/tests/mail-html-preview.test.ts`. No full Next/web/worker typecheck/build, real-browser/mobile/a11y, authenticated mail, voice transport/provider, CI or deployed validation in this turn.
+- **Known serious security blocker:** email `html_body_sanitized` ingestion may store raw HTML; FIX-01 #36 owns sanitizer and historical rows. Opaque iframe+CSP does not replace server sanitizer. FIX-01 #26 voice end-state correctness. OPS-01 old CI failure on unrelated historical SHA `2cf9a522`, not current main.
+- **Plan/session:** `docs/plans/CHAT_FIRST_WORKSPACE_REDESIGN_20261018.md` and `docs/project-control/sessions/DEV01-CHAT-FIRST-WORKSPACE-20261018.md`. Exact next commands in `NEXT_ACTION.md`.
+
+---
+
 ## DEV-01 — Verification rerun on current main; full CI still blocked — 2026-10-18
 
 - **Owner's request:** Proceed with selected pending focused model catalogue tests, TypeScript/web verification, authenticated provider save/reload validation. Work remains on existing `main` with no new branch/PR.
