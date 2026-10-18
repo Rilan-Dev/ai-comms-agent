@@ -11,11 +11,12 @@ type Transport = { transportMode?: "transcript_bridge" | "realtime" | "pipeline"
 type Turn = { id: string; role: "user" | "assistant"; text: string; state?: "thinking" | "streaming" | "done" };
 
 export function VoiceWorkspace({
-  organizationId, agents, initialAgentId, embedded = false, onReturnToChat,
+  organizationId, agents, initialAgentId, conversationId, embedded = false, onReturnToChat,
 }: {
   organizationId: string;
   agents: Agent[];
   initialAgentId?: string;
+  conversationId?: string;
   embedded?: boolean;
   onReturnToChat?: () => void;
 }) {
@@ -909,7 +910,7 @@ export function VoiceWorkspace({
       const response = await fetch("/api/voice/session", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ organizationId, agentId: agent.id }),
+        body: JSON.stringify({ organizationId, agentId: agent.id, conversationId }),
       });
       const payload = await response.json().catch(() => ({})) as { session?: VoiceSession; transport?: Transport; message?: string; error?: string };
       if (!response.ok || !payload.session || !payload.transport) throw new Error(payload.message ?? payload.error ?? "Voice session could not start.");
