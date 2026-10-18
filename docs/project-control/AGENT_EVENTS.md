@@ -596,3 +596,9 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 ### EVT-DEV01-VERIFIED-POSTTOOL-STREAM-20261018
 - DEV-01 main-only Chat/Voice product-source updates: registered host-safe read permissions and result status gate extra native model-token stream; every chunk must exactly prefix-match already authorized canonical answer. Provider error/hallucination/abort cannot introduce new claims; write and pending-approval results remain nonstreamed. No new branch, PR, provider deploy or CI changes.
 - Unit execution: exact Node helper 8/8, isolated tsc and 16/16 GitHub source invariants PASS; Vitest/full build/provider/browser not done. Further adapter needed for native function-call SSE; session `DEV01-VERIFIED-TOOL-ANSWER-STREAMING-20261018`.
+
+### EVT-DEV01-NATIVE-TOOL-SSE-20261018
+- **Type:** DEV-01 source implementation / executable isolated regression verification. Owner-authorized direct `main`.
+- **Change:** Real OpenAI/Gemini provider tool-call SSE assembled and validated to completion before host execution; malformed/partial/ambiguous tool args fail closed. Existing org/agent/read/write/approval/audit boundaries untouched.
+- **Evidence:** Git exact parser blob-matched combined Node tests 19/19 PASS and strict isolated TS PASS; full adapter/Next/worker/provider/browser/production not run.
+- **Follow-up:** `docs/project-control/sessions/DEV01-NATIVE-TOOL-SSE-20261018.md`; role ownership unchanged.
