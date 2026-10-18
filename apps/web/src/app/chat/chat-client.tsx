@@ -34,6 +34,19 @@ export function ChatClient({
   const [busy, setBusy] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const voiceWasOpen = useRef(false);
+
+  // After closing the embedded voice panel, return keyboard focus to the
+  // original text composer, preserving any unsent draft.
+  useEffect(() => {
+    if (voiceOpen) {
+      voiceWasOpen.current = true;
+    } else if (voiceWasOpen.current) {
+      voiceWasOpen.current = false;
+      composerRef.current?.focus();
+    }
+  }, [voiceOpen]);
 
   const activeAgent = useMemo(() => agents.find((agent) => agent.id === agentId) ?? agents[0], [agents, agentId]);
 
@@ -119,8 +132,8 @@ export function ChatClient({
 
   return (
     <main className="flex min-h-[calc(100vh-72px)] min-w-0 flex-col bg-background">
-      <header className="border-b bg-background/85 px-5 py-3 backdrop-blur sm:px-7">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+      <header className="border-b bg-background/85 px-4 py-3 backdrop-blur sm:px-7">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground"><Bot size={18} /></span>
             <div>
@@ -172,6 +185,7 @@ export function ChatClient({
         <div className="sticky bottom-0 bg-background pb-4 pt-2">
           <div className="rounded-2xl border border-border bg-card shadow-sm focus-within:border-primary/30 focus-within:ring-2 focus-within:ring-primary/10">
             <textarea
+              ref={composerRef}
               aria-label="Message"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
