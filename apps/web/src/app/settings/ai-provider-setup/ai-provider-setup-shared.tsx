@@ -285,8 +285,11 @@ export function AIProviderSetupShared({
 
   const current = visibleConfigs.find((c) => c.provider === provider && c.purpose === PURPOSE_FOR_TAB[tab]);
   const realtimeVoiceConfig = visibleConfigs.find((c) => c.provider === "elevenlabs" && c.purpose === "realtime");
-  const missingVoiceKey = ["tts", "stt"].some((purpose) => !visibleConfigs.find((c) =>
-    c.provider === "elevenlabs" && c.purpose === purpose)?.hasApiKey);
+  const missingVoiceKey = ["tts", "stt"].some((purpose) => {
+    const capability = visibleConfigs.find((config) =>
+      config.provider === "elevenlabs" && config.purpose === purpose);
+    return !capability || (capability.enabled && !capability.hasApiKey);
+  });
   const canReuseRealtimeKey = tab === "voice-chat" && provider === "elevenlabs"
     && realtimeVoiceConfig?.enabled === true && realtimeVoiceConfig.hasApiKey && missingVoiceKey;
   const inputCls = "mt-1 w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm";
