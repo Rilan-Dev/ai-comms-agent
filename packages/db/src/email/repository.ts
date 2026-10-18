@@ -581,3 +581,68 @@ export async function deleteLocalDraftForOrganization(organizationId: string, me
   );
   return r.rows.length > 0;
 }
+
+
+/** A page of real persisted email threads in the selected organization. */
+export interface MailThreadFilters {
+  accountId?: string;
+  search?: string;
+  unreadOnly?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export async function listMailThreadsForOrganization(
+  organizationId: string,
+  filters: MailThreadFilters = {},
+): Promise<{ threads: Array<Record<string, unknown>>; hasMore: boolean }> {
+  // Only the caller's organization can contribute messages. No preview body,
+  // secret, or credential content is returned to the list UI.
+  const limit = Number.isInteger(filters.limit) ? Math.min(Math.max(filters.limit!, 1), 50) : 25;
+  const offset = Number.isInteger(filters.offset) ? Math.min(Math.max(filters.offset!, 0), 10000) : 0;
+  const search = filters.search?.trim().slice(0, 120) || null;
+  const result = await query<Row>(
+    `WITH scoped AS (
+      SELECT
+        m.thread_id,
+        m.email_account_id,
+        a.email_address AS account_email,
+        a.display_name AS account_name,
+        COALESCE(m.subject, t.subject) AS subject,
+        COALESCE(m.from_name, m.from_email::text, a.email_address::text) AS sender,
+        m.snippet,
+        COALESCE(m.received_at, m.created_at) AS last_message_at,
+        m.is_draft,
+        ROW_NUMBER() OVER (
+          PARTITION BY m.thread_id ORDER BY COALESCE(m.received_at, m.created_at) DESC, m.id DESC
+        ) AS position,
+        COUNT(*) OVER (PARTITION BY m.thread_id)::integer AS message_count,
+        COUNT(*) FILTER (WHERE NOT m.is_read AND NOT m.is_draft)
+          OVER (PARTITION BY m.thread_id)::integer AS unread_count,
+        MAX(CASE WHEN (
+          $3::text IS NULL
+          OR COALESCE(m.subject, t.subject, '') ILIKE '%' || $3 || '%'
+          OR COALESCE(m.from_name, '') ILIKE '%' || $3 || '%'
+          OR COALESCE(m.from_email::text, '') ILIKE '%' || $3 || '%'
+          OR COALESCE(m.snippet, '') ILIKE '%' || $3 || '%'
+          OR COALESCE(m.text_body, '') ILIKE '%' || $3 || '%'
+          OR a.email_address::text ILIKE '%' || $3 || '%'
+        ) THEN 1 ELSE 0 END) OVER (PARTITION BY m.thread_id) AS search_match
+      FROM email_messages m
+      JOIN email_accounts a ON a.id = m.email_account_id AND a.organization_id = $1 AND a.deleted_at IS NULL
+      JOIN email_threads t ON t.id = m.thread_id AND t.organization_id = $1 AND t.email_account_id = a.id
+      WHERE m.organization_id = $1 AND ($2::uuid IS NULL OR m.email_account_id = $2::uuid)
+    )
+    SELECT thread_id, email_account_id, account_email, account_name, subject, sender, snippet,
+           last_message_at, is_draft, message_count, unread_count
+    FROM scoped
+    WHERE position = 1 AND search_match = 1 AND (NOT $4::boolean OR unread_count > 0)
+    ORDER BY last_message_at DESC NULLS LAST, thread_id DESC
+    LIMIT $5 OFFSET $6`,
+    [organizationId, filters.accountId || null, search, filters.unreadOnly === true, limit + 1, offset],
+  );
+  return {
+    threads: result.rows.slice(0, limit),
+    hasMore: result.rows.length > limit,
+  };
+}
