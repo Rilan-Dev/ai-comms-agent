@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository, activateVoiceSessionForOrganization, configureStartingVoiceSessionForOrganization, createVoiceSession, endVoiceSessionForOrganization, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, query, recordVoiceTelemetry } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, activateVoiceSessionForOrganization, configureStartingVoiceSessionForOrganization, createVoiceSession, getChatConversation, getOrCreateChatConversation, endVoiceSessionForOrganization, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, query, recordVoiceTelemetry } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -20,6 +20,16 @@ export async function POST(request: Request) {
     const subject = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
     const agent = await new PostgresAgentRepository().get(organizationId, agentId);
     if (!agent) return NextResponse.json({ error: "not_found", message: "Agent was not found in this organization." }, { status: 404 });
+
+    // Attach the voice session to the same authorized agent conversation as
+    // Chat. Never accept an arbitrary caller-supplied conversation foreign key.
+    const scopedConversation = conversationId
+      ? await getChatConversation(organizationId, conversationId, agentId)
+      : await getOrCreateChatConversation(organizationId, agentId);
+    if (!scopedConversation) {
+      return NextResponse.json({ error: "conversation_not_found" }, { status: 404 });
+    }
+    const safeConversationId = scopedConversation.id;
 
     // Read per-agent voice config (falls back to org-level settings when not set)
     const agentVoice = await query<{ voice_provider: string | null; voice_model: string | null; voice_id: string | null }>(
@@ -75,7 +85,7 @@ export async function POST(request: Request) {
 
     // Persist the lifecycle record before requesting realtime transport details,
     // so failures cannot leave an untracked session that the UI believes started.
-    const persisted = await createVoiceSession({ organizationId, agentId, userId: subject.user.id, conversationId });
+    const persisted = await createVoiceSession({ organizationId, agentId, userId: subject.user.id, conversationId: safeConversationId });
     try {
       const transport = await claraRuntime.startRealtimeSession({
         orgId: organizationId,
