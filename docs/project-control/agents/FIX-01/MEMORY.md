@@ -171,3 +171,9 @@ The authentication loop was traced to session issuance preceding active organiza
 - **Remedy/owner:** Routed deployment script and migration execution to OPS-01. Migration should run as a one-off Compose container; ensure `supabase/migrations` exists inside the runner (current Dockerfile does not copy it). Do not silently change the DB name.
 - **Evidence:** User output + source inspection; no post-fix tests or deployment verification.
 - **Prevention:** Verify the process network namespace and required migration files before changing URLs; separate source diagnosis from deployment PASS.
+
+### 2026-10-19 — Rolling 24h unread mail reports must not use context samples
+- User-visible bug: broad "summarize all unread emails last 24 hours" received unrelated old messages, then fabricated zero. `loadEmailContext` only loads 20 draft-first records from 7 days, no unread filter, and conflates previous AI text. Never claim `all` based on a sample or stale inferred date.
+- Remedy: use explicit current-user intent, fixed UTC rolling boundaries, read-entitled agent-mailbox JOIN/EXISTS, server-side unread/non-draft/non-sent and optional sender/topic, SQL total COUNT with cap and truthful partial/included counts. Display subject + available stored preview for every record; qualify local sync freshness and don't imply provider live verification. Only account-bound enabled tool + actor email.read can use direct report; original legacy context also now email.read gated.
+- Development failure: sender parsing regex stopped at a domain dot, first actual Node regression 7/8; fix email-domain punctuation and fail closed on unknown filters, rerun exact Node 8/8. No full pnpm/SQL/browser acceptance.
+- Never use, store or quote user's leaked host password or browser session; advise credential rotation. Details `FIX01-ROLLING-MAIL-20261019`.
