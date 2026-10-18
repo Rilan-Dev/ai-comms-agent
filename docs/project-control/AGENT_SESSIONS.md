@@ -845,3 +845,10 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Evidence:** 14/14 GitHub source checks PASS; Vitest/web/worker typecheck/build/browser/provider/migrations NOT RUN. CI run linked by user failed on stale SHA; no repeated CI polling.
 - **Session:** `docs/project-control/sessions/DEV01-CHAT-FIRST-VOICE-MAIL-20261018.md`; plan `docs/plans/CHAT-FIRST-VOICE-MAIL-UX-20261018.md`.
 - **Next:** Equipped checkout focused Vitest, web and worker checks/build/migration structure; responsive/browser/real provider QA; then actual tenant-scoped Threads list independent DEV-01 slice. FIX-01 HTML sanitizer #36, OPS-01 deployment/CI.
+
+### DEV01-MAIL-THREADS-STREAMING-20261018 — 2026-10-18
+- **Role:** DEV-01 / Forge; owner continuation and new user instruction for progressive AI-generated Chat and embedded voice text; direct main only, no branch/PR.
+- **Start:** main `94e238aef09ff4c1f266653459bfcabf24bc1aa4`; Phase 4 implementation_in_progress.
+- **Done:** Persisted real Mail Threads SQL/page/authorized API/search/unread/pagination/account filters with stale-fetch guards, improved voice→Chat composer focus and mobile header; shared SSE decoder, early Chat status + incremental delta rendering, non-tool voice model SSE with authorized session, Gemini native SSE, OpenAI-compatible final EOF parser. Secure tool loop retained and marked as non-token-streaming for tool-specific final text.
+- **Evidence:** Exact SHA-matched isolated Node SSE tests 5/5 PASS, module tsc PASS, 23/23 GitHub static source assertions PASS. Full Vitest/app build/Postgres/browser/provider TTS/production NOT RUN.
+- **Next:** Execute named tests/build/migration and browser acceptance; implement safe native streaming function/tool-call final responses; defer FIX-01 HTML/voice bugs and OPS-01 CI/deploy. Details `docs/project-control/sessions/DEV01-MAIL-THREADS-STREAMING-20261018.md`.
