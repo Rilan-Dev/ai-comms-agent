@@ -622,3 +622,9 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Test:** 8/8 real isolated Node, helper tsc and 15/15 current GitHub structural checks PASS; production unverified.
 - **Security:** Owner's pasted host password/session was not accessed/used/recorded; must rotate/revoke. OPS-01 owns deployment and live provider sync.
 - **Session:** `docs/project-control/sessions/FIX01-ROLLING-MAIL-20261019.md`.
+
+### EVT-DEV01-EXPLICIT-DATE-MAIL-20261019
+- Product feature on main: safe 1–366 day explicit UTC two-date mail reports, same actor/agent/account SQL grants and MAX_REPORT_MESSAGES as FIX-01 24h; inclusive calendar dates implemented via exclusive next-midnight SQL bound, unsupported filters rejected 422. Maintains local-synced caveat and avoids speculative AI count. No native semantic report/provider resync.
+- Exact executed Node 16/16 and standalone tsc PASS; 19/19 GitHub source contracts PASS. Full Vitest/database/runtime/browser/deployment NOT verified.
+- FIX-01 retains rolling 24h incident and HTML security #36; OPS-01 owns DB/CI/provider-synchronization/host credentials/Vercel. No branch/PR/prod deploy.
+- Session: `docs/project-control/sessions/DEV01-EXPLICIT-DATE-MAIL-20261019.md`.
