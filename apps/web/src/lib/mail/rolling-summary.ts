@@ -27,11 +27,11 @@ export const MAX_REPORT_MESSAGES = 500;
 export function parseRollingMailSummaryRequest(input: string): RollingMailSummaryRequest | null {
   const message = input.trim();
   const mentionsMail = /\b(?:email|emails|mail|mails|inbox|message|messages|mesaages)\b/i.test(message);
-  const pastDay = /\b(?:last|past|previous|within)\s+(?:the\s+)?(?:24\s*(?:hours?|hrs?)|1\s*day|one\s+day)\b/i.test(message);
+  const pastDay = /\b(?:last|past|previous|within)\s+(?:the\s+)?(?:24\s*(?:hours?|hrs?|h)|1\s*day|one\s+day)\b/i.test(message);
   const requestsReport = /\b(?:summar\w*|summery|summary|recap|review|list|show|check|find|count|all)\b|how many/i.test(message);
   if (!mentionsMail || !pastDay || !requestsReport) return null;
 
-  const from = /\bfrom\s+(?!last\b|past\b|previous\b|the\s+(?:last|past|previous)\b)(.+?)(?=\s+(?:during|within|over|in|for|last|past|previous)\b|[,.!?]|$)/i.exec(message)?.[1]?.trim();
+  const from = /\bfrom\s+(?!last\b|past\b|previous\b|the\s+(?:last|past|previous)\b)(.+?)(?=\s+(?:during|within|over|in|for|last|past|previous)\b|[,!?]|$)/i.exec(message)?.[1]?.trim().replace(/\.$/, "");
   const subject = /\b(?:about|regarding|with\s+subject|subject\s+(?:contains|is))\s+(.+?)(?=\s+(?:during|within|over|in|for|last|past|previous)\b|[,.!?]|$)/i.exec(message)?.[1]?.trim();
   // Do not downgrade complex requests to an unfiltered broad report.
   const hasUnsupportedFilter = /\b(?:excluding|except|without|only from|labelled|tagged|folder|before|after|between)\b/i.test(message);
