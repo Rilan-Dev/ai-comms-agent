@@ -1,3 +1,11 @@
+## 2026-10-18 DEV-01 native post-tool final-token checkpoint
+
+- Chat and Voice now use **direct native provider final SSE** following one successful audited registered read-only tool batch (up to 4), eliminating the previous extra text-copy provider pass for eligible cases. Denied/mutating/approval/complex cases keep the bounded host loop and canonical response. Added lifetime tool-ID validation, untrusted-result prompt bounds, safe pre-tool-only unsupported-provider fallback.
+- Source unit tests 7/7 exact Node PASS, standalone strict TypeScript PASS; full application/provider/browser/migration/deployment acceptance **not verified**. Continue Phase 4 implementation. See `docs/project-control/sessions/DEV01-NATIVE-POSTTOOL-FINAL-STREAM-20261018.md`.
+
+
+---
+
 ## DEV-01 — Native provider tool-call streaming decision checkpoint (2026-10-18)
 
 - Chat and Voice continue rendering incremental model tokens; upstream OpenAI/Gemini **tool-call decisions** now use streamed provider responses assembled, validated and bounded *before* the unchanged trusted host execution, approval and audit boundary. No speculative tool execution. 19/19 exact committed isolated parser Node tests and strict isolated TypeScript PASS; full workspace tests/build/browser/provider/deploy NOT run. Extra verified-copy final-answer model pass remains in place for eligible read-only calls, pending direct native final-response streaming integration.
