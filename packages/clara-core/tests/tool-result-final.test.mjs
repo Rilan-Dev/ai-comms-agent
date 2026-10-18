@@ -49,3 +49,12 @@ test("oversized, unbounded and multi-result tool history fails closed", () => {
   }
   assert.throws(() => buildReadOnlyToolFinalMessages(tooMany), /bounded, completed/);
 });
+
+test("large aggregated tool output is bounded before provider prompt construction", () => {
+  const rows = [{ role: "user", content: "Summarize" }];
+  for (let i = 0; i < 5; i++) {
+    rows.push({ role: "assistant", content: null, tool_calls: [{ id: "bulk-" + i, name: "email.search", arguments: {} }] });
+    rows.push({ role: "tool", tool_call_id: "bulk-" + i, name: "email.search", content: "A".repeat(10000) });
+  }
+  assert.throws(() => buildReadOnlyToolFinalMessages(rows), /exceeds the final-stream limit/);
+});
