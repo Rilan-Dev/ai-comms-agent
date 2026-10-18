@@ -4,6 +4,7 @@ import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { runEmailAgentTurn } from "@ai-comms-agent/email-agent-runtime";
+import { claraRuntime } from "@ai-comms-agent/clara-core";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +69,80 @@ export async function POST(request: Request) {
     const executionId = crypto.randomUUID();
     const role = subject.membership.role;
     const permissions = [...subject.permissions];
+    // Voice clients opt in to progressive text. The existing JSON contract
+    // remains compatible for older clients. Conversations without a mailbox
+    // or action intent use the same Clara token stream as Chat; tool-sensitive
+    // turns continue to use the bounded email tool executor and never skip
+    // approval/mailbox controls just to display speculative text.
+    if (request.headers.get("accept")?.includes("text/event-stream")) {
+      const needsAuthorizedTools = /\b(email|mail|inbox|draft|message|messages|sender|recipient|attachment|account|contact|whatsapp|send|reply|forward|archive|trash|delete|move|mark|read|unread|approve|schedule|appointment|thread|folder|those|them)\b/i.test(transcript);
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          const emit = (event: string, payload: Record<string, unknown>) => {
+            controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
+          };
+          try {
+            emit("status", { phase: needsAuthorizedTools ? "tools" : "generating" });
+            if (needsAuthorizedTools) {
+              const result = await runEmailAgentTurn({
+                organizationId, agentId, messages: [{ role: "user", content: transcript }], kbId,
+                toolContext: {
+                  organization_id: organizationId,
+                  agent_id: agentId,
+                  user_id: subject.user.id,
+                  conversation_id: typeof session.conversation_id === "string" && session.conversation_id.trim() ? session.conversation_id : sessionId,
+                  turn_id: executionId,
+                  correlation_id: executionId,
+                  channel: "voice",
+                  auth_subject: { user_id: subject.user.id, role, permissions },
+                },
+                maxRounds: 4, maxToolCalls: 8,
+              });
+              if (!request.signal.aborted) {
+                emit("delta", { text: result.text });
+                emit("done", {
+                  executionId, toolCalls: result.toolCalls, pendingApprovals: result.pendingApprovals,
+                  finishReason: result.finishReason, mode: "host-authorized-tools",
+                });
+              }
+            } else {
+              // Actual model-generated tokens arrive incrementally here.
+              const generation = await claraRuntime.createChatTurn({
+                orgId: organizationId, agentId, kbId, userId: subject.user.id,
+                sessionId, surface: "realtime", ragMode: "hybrid",
+                messages: [{ role: "user", content: transcript }],
+              });
+              for await (const token of generation.stream) {
+                if (request.signal.aborted) break;
+                emit("delta", { text: token });
+              }
+              if (!request.signal.aborted) {
+                emit("done", {
+                  executionId, toolCalls: [], pendingApprovals: [],
+                  finishReason: "completed", mode: "model-stream",
+                });
+              }
+            }
+          } catch (error) {
+            if (!request.signal.aborted) {
+              emit("error", { message: error instanceof Error ? error.message : "Voice generation failed." });
+            }
+          } finally {
+            controller.close();
+          }
+        },
+      });
+      return new Response(stream, {
+        status: 200,
+        headers: {
+          "content-type": "text/event-stream; charset=utf-8",
+          "cache-control": "no-cache, no-transform",
+          "x-accel-buffering": "no",
+        },
+      });
+    }
+
     const turn = await runEmailAgentTurn({
       organizationId,
       agentId,
