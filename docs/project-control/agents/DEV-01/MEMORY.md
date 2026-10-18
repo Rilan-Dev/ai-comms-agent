@@ -211,3 +211,7 @@ Secrets, tokens, passwords, private keys, or sensitive personal data.
 #### 2026-10-18 — Preserve concurrent source and bind evidence to its revision
 - During catch-up planning main advanced from ba9e948b to 959ff5a6 with native tool/final streaming. Preserve both agents' source/records; do not carry an earlier green result onto changed source. Latest focused checks: 91 passed/1 failed, typecheck/build pass.
 - A completed-tool ID removed from the outstanding set can be reused later; final-prompt validation needs history-wide uniqueness and declared/result-name binding. Unit acceptance is not proof of a live authorization bypass. FIX-01 owns HOF-DEV01-FIX01-TOOL-FINAL-REGRESSION-20261018.
+
+## 2026-10-19 — C1 private catch-up
+
+Implemented C1; session `sessions/DEV01-CATCHUP-C1-20261018.md` records evidence and limits. Next: C2 stable manifests/coverage. Read authorization must revalidate evidence IDs/revisions as well as top-level sources; forward only allowed output fields. Prove audit atomicity with forced failure, not only successful audit rows. Multiple permissive RLS policies combine with OR: private content needs restrictive isolation plus trusted application predicates. Strict real PostgreSQL migration execution and structural checker results are separate evidence. Never equate focused green checks with full-suite acceptance.

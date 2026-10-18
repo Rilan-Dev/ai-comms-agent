@@ -172,3 +172,7 @@
 - Files: vendor-live adapter, authorized /api/settings/ai-models, reusable select, org/agent/runtime UI, legacy endpoint cleanup and focused tests. See `docs/project-control/sessions/DEV01-LIVE-MODEL-CATALOG-20261018.md`.
 - Status: source-only; no tests, typecheck, build, provider connection or deployment verified. Phase 4 unchanged. FIX-01 and OPS-01 issues not assumed.
 - Next: focused Vitest/typecheck and live credential/UI validation, then architect review.
+
+## 2026-10-19 — C1 private catch-up
+
+Implemented C1; session `sessions/DEV01-CATCHUP-C1-20261018.md` records evidence and limits. Next: C2 stable manifests/coverage. Read authorization must revalidate evidence IDs/revisions as well as top-level sources; forward only allowed output fields. Prove audit atomicity with forced failure, not only successful audit rows. Multiple permissive RLS policies combine with OR: private content needs restrictive isolation plus trusted application predicates. Strict real PostgreSQL migration execution and structural checker results are separate evidence. Never equate focused green checks with full-suite acceptance.

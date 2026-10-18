@@ -889,3 +889,17 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Integrated concurrent main `959ff5a6` while preserving all source and both agents' ledger additions. Native tool/final streaming is now source-implemented by the concurrent workstream; live acceptance remains pending.
 - Latest local evidence: workspace typechecks/web build pass; 91 focused tests pass and 1 Clara assertion fails. Unit triage found completed-ID reuse and result-name mismatch acceptance; routed HOF-DEV01-FIX01-TOOL-FINAL-REGRESSION-20261018. No source fix by DEV-01 in this planning slice.
 - Planning status remains COMPLETE; new feature implementation requires owner/architect approval of proposed scope. Next Catch-up C1 after that review. No push/deployment; records are in local commits.
+
+### DEV01-CATCHUP-C1-20261018 — 2026-10-18
+- **Agent:** DEV-01 / Forge.
+- **Invocation:** Owner continued from reviewed catch-up/routines plans; implement the explicit next C1 slice.
+- **Started from:** main ad8fc701 plus local planning 69a80ec6; concurrent source/records preserved.
+- **Scope:** Private briefing storage/access, activity timestamps, grant administration, server feature gate and behavior/SQL tests; no rollout or external messaging.
+- **Status:** ACTIVE.
+- **Completed:** Recovery; current Clara 26/26 baseline PASS; OPS-01 disposable PG ready; C1 brief and test-first implementation dispatched.
+- **Pending:** C1 implementation, independent spec/quality review, isolated RLS/repository tests and broader checks.
+- **Blockers:** None for local development; live activation still depends on existing FIX-01/OPS-01 gates.
+- **Handoff:** Existing role handoffs retained; OPS-01 support prepared loopback test DB only.
+- **Next action:** Complete C1 tests/implementation and review before committing final evidence. Detailed session: sessions/DEV01-CATCHUP-C1-20261018.md.
+
+- DEV01-CATCHUP-C1-20261018: implementation complete; 17 SQL + 8 API checks pass; review corrections applied; next C2. Implementation support hit usage limit; DEV-01 parent took over. OPS test DB support completed; independent reviewer completed initial review. No production actions.

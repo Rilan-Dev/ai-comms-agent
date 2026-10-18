@@ -1,3 +1,15 @@
+## DEV-01 — C1 implementation checkpoint — 2026-10-19
+
+Private catch-up storage/access implemented; flag remains off. PostgreSQL 17/17 and focused web 8/8 pass; package typechecks pass and web build passed before the final evidence-read correction. Full worker/web suites still fail outside changed C1 areas; FIX-01 and OPS-01 handoffs are recorded. No deployment/push/provider use. See [C1 session](sessions/DEV01-CATCHUP-C1-20261018.md). **Exact next action:** C2 failing selection/coverage tests, then immutable manifests and explicit review progress. Existing phase remains implementation_in_progress; earlier active/planning entries are historical.
+
+---
+
+## DEV-01 — C1 private catch-up foundation underway — 2026-10-18
+
+Owner continued the reviewed plan; C1 storage/access implementation is now authorized and active. Current upstream ad8fc701 was integrated with concurrent source/records preserved. Existing Clara baseline now passes 26/26. OPS-01 prepared an isolated local PostgreSQL test target; DEV-01 is implementing private grants/scope/activity/storage/API with the feature off by default. No external rollout or messaging. Follow [session DEV01-CATCHUP-C1-20261018](sessions/DEV01-CATCHUP-C1-20261018.md) for exact implementation/test/review results. Next: complete C1 behavioral and SQL/RLS verification, independent review, then record the next slice. Earlier planning-only and failed-test entries below are historical, not current authority or evidence.
+
+---
+
 ## DEV-01 — Personal catch-up and assistant routines planning — 2026-10-18
 
 - **Main recovery:** initial audit ba9e948b; integrated concurrent upstream `959ff5a6c055baf9a1f14af5d29c5f51643b77c0`, preserving source and both sets of records. Existing checkout remains main. Phase 4 remains `implementation_in_progress`, not accepted.

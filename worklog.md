@@ -1885,3 +1885,7 @@ The earlier 42-migration chain had drift between the migration scripts and the r
 - Preserved concurrent upstream main through 959ff5a6 and both agents' documentation entries. No product source changes in this planning slice.
 - Current typechecks/web production build PASS; focused tests 91 passed/1 failed. Clara final-prompt validation failure and two unit-level acceptance gaps routed to FIX-01; no live bypass claimed. Detailed commands/limits/handoff in the session. Earlier 41/41 applies only to ba9e948b.
 - Two independent plan reviews completed with no blocking contradictions. Planning/role records saved in local commits, no push/deploy. Next: owner/architect review of the proposed design/implementation scope, then Catch-up C1.
+
+## 2026-10-19 — C1 private catch-up
+
+Implemented C1; session `sessions/DEV01-CATCHUP-C1-20261018.md` records evidence and limits. Next: C2 stable manifests/coverage. Read authorization must revalidate evidence IDs/revisions as well as top-level sources; forward only allowed output fields. Prove audit atomicity with forced failure, not only successful audit rows. Multiple permissive RLS policies combine with OR: private content needs restrictive isolation plus trusted application predicates. Strict real PostgreSQL migration execution and structural checker results are separate evidence. Never equate focused green checks with full-suite acceptance.

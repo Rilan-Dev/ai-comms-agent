@@ -139,3 +139,5 @@ export {
 } from "./ai-provider/repository";
 export { createEmailHybridRetriever, type EmailVectorCandidate, type EmailVectorSearch, type EmailHybridSearchInput, type EmailHybridSearchResult, type EmailHybridSource } from "./email/hybrid-retrieval";
 export { createClaraEmailVectorSearch } from "./email/clara-vector-search";
+export { resolveBriefingScope, recordForegroundActivity, assignBriefingMailboxGrant, revokeBriefingMailboxGrant, type BriefingActor } from './briefings/access';
+export { getBriefing, listBriefings } from './briefings/repository';

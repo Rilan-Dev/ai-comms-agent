@@ -189,3 +189,11 @@ Cross-agent handoff register. A handoff transfers context, not authority.
 - **Authorization:** Owner explicitly routes substantial defects to FIX-01; receiving role recovers repair authority. DEV-01 preserved concurrent source and made no fix or deployment.
 - **Stop condition:** Stop on authorization-model changes or unapproved scope expansion; report actual unit/integration evidence and preserve host approvals.
 - **Status:** OPEN.
+
+## HOF-DEV01-FIX01-C1-WORKSPACE-FAILURES-20261019
+
+Owner FIX-01. C1 full-suite validation found worker 13 failures and web 43 failed tests/21 failed files outside changed C1 areas; do not weaken tests. Worker areas: vector/source metadata, account purge/deletion, null metadata, HTTP mutation confirmation, privileged retrieval scope, provider registry, due mailbox publishing, and two WhatsApp test files unable to resolve Vitest. Web areas: auth boundary, provider registry/Gmail sync/webhook, email repository contracts, live models, Lovable UI, draft actions, RBAC persistence, realtime voice and WhatsApp approval/idempotency. Reproduce `pnpm test` and separately `pnpm --filter @ai-comms-agent/web test` in sanitized environment. Logs `/workspace/.onboarding/ai-comms-agent/c1/{workspace-tests,web-full-tests}.log`. Baseline attribution not fully proved; triage before fixing. C1 focused checks pass; this handoff is not full-product acceptance.
+
+## HOF-DEV01-OPS01-C1-VALIDATION-20261019
+
+Owner OPS-01. Reconcile `bash scripts/verify-migration-chain.sh` duplicate-canonical-object failure against strict native psql success on all 69 migrations, fresh and seeded upgrade. Triage test tooling/collection, manual-deployment migration host and migration-verification/lockfile failures with FIX-01. Verify actual deployment-role privileges and schema drift before eventual rollout; no deployment authorized here. Disposable container `ai-comms-c1-testdb` remains available on loopback 55432/tmpfs; no external services used. Evidence in C1 session and local artifact directory. This is a repository handoff, not an external notification.

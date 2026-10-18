@@ -110,6 +110,7 @@ export const PERMISSION_CATALOGUE = [
   // Settings
   { name: "settings.read", description: "View organization settings" },
   { name: "settings.manage", description: "Manage organization settings" },
+  { name: "briefing.access.manage", description: "Assign and revoke personal briefing mailbox access" },
   // WhatsApp feature permissions (added with the messaging feature phase).
   { name: "email.read", description: "Read connected email accounts and messages through agent tools" },
   { name: "whatsapp.read", description: "Read connected WhatsApp conversations and approval requests" },
@@ -133,6 +134,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission
     "audit.read",
     "settings.read",
     "settings.manage",
+    "briefing.access.manage",
     "email.read",
     "whatsapp.read",
     "whatsapp.send",
@@ -144,6 +146,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission
     "audit.read",
     "settings.read",
     "settings.manage",
+    "briefing.access.manage",
     "email.read",
     "whatsapp.read",
     "whatsapp.send",

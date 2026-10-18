@@ -458,3 +458,7 @@ If shared memory conflicts with current repository state or current requirements
 #### 2026-10-18 — Integrated source verification addendum
 - DEV01-CATCHUP-ROUTINES integrated concurrent main 959ff5a6 without changing product source. Typechecks/web build pass; latest focused tests are 91 passed/1 failed, superseding any current-green implication from initial ba9e948b's 41/41.
 - Final tool-prompt helper allows completed ID reuse and declared/result-name mismatch in unit probes; FIX-01 handoff HOF-DEV01-FIX01-TOOL-FINAL-REGRESSION-20261018. Do not weaken a failing test to hide validation gaps or claim an unobserved live bypass.
+
+## 2026-10-19 — C1 private catch-up
+
+Implemented C1; session `sessions/DEV01-CATCHUP-C1-20261018.md` records evidence and limits. Next: C2 stable manifests/coverage. Read authorization must revalidate evidence IDs/revisions as well as top-level sources; forward only allowed output fields. Prove audit atomicity with forced failure, not only successful audit rows. Multiple permissive RLS policies combine with OR: private content needs restrictive isolation plus trusted application predicates. Strict real PostgreSQL migration execution and structural checker results are separate evidence. Never equate focused green checks with full-suite acceptance.

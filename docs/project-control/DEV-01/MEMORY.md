@@ -10,3 +10,7 @@
 
 
 - 2026-10-09 — WhatsApp connection continuity: The visible /whatsapp route was a static mock while the real whatsapp-client.tsx was orphaned. Trace page-to-client wiring before inventing new APIs. Tenant-scoped server pages must pass the authenticated active organization; never fall back to the seeded dev org. A credential save is not Meta connectivity or webhook verification, so keep status pending until the real verifier confirms it.
+
+## 2026-10-19 — C1 private catch-up
+
+Implemented C1; session `sessions/DEV01-CATCHUP-C1-20261018.md` records evidence and limits. Next: C2 stable manifests/coverage. Read authorization must revalidate evidence IDs/revisions as well as top-level sources; forward only allowed output fields. Prove audit atomicity with forced failure, not only successful audit rows. Multiple permissive RLS policies combine with OR: private content needs restrictive isolation plus trusted application predicates. Strict real PostgreSQL migration execution and structural checker results are separate evidence. Never equate focused green checks with full-suite acceptance.
