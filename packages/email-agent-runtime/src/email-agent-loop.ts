@@ -21,7 +21,7 @@ export interface EmailAgentTurnInput {
 
 export interface EmailAgentTurnResult {
   text: string;
-  toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; durationMs: number }>;
+  toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; durationMs: number; readOnly?: boolean }>;
   pendingApprovals: Array<{ actionId: string; actionType: string; message: string }>;
   finishReason: "completed" | "round_limit" | "tool_limit" | "invalid_tool_call" | "invalid_tool_arguments";
 }
@@ -118,9 +118,13 @@ export async function runEmailAgentTurn(
           message: typeof toolOutput.message === "string" ? toolOutput.message : "This email action is awaiting explicit approval and has not been executed.",
         });
       }
+      const registeredTool = registered.find((entry) => entry.name === call.name);
+      const readOnly = result.ok && registeredTool?.sensitivity === "safe"
+        && registeredTool.required_permission === "email.read";
       summaries.push({
         name: call.name,
         ok: result.ok,
+        readOnly,
         ...(result.error ? { errorCode: result.error.code } : {}),
         durationMs: result.audit.duration_ms,
       });
