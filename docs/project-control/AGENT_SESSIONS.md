@@ -859,3 +859,10 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - Actual unit evidence: Node exact Git blobs 8/8 PASS, isolated tsc helper PASS, 16 GitHub static contract checks PASS; full repo Vitest/worker/typecheck/build/DB/provider/browser/deployment not run. No production acceptance.
 - Key limitation: not streaming function-call planning; no speculative or fake typed text, no early TTS. Next DEV-01 native provider tool-call SSE adapter and full verification; FIX-01 transport/HTML, OPS-01 CI/deploy.
 - Session `docs/project-control/sessions/DEV01-VERIFIED-TOOL-ANSWER-STREAMING-20261018.md`.
+
+### DEV01-NATIVE-TOOL-SSE-20261018
+- **Agent:** DEV-01 / Forge; authorized continuation of progressive Chat/Voice tool-aware streaming on current `main`. No branch/PR.
+- **Implemented:** Pure OpenAI stream:true fragmented Chat Completions tool-call decoder and Gemini streamGenerateContent functionCall assembler, hardened finish markers/type/limits, wired into existing Clara provider adapters while keeping JSON-compatible responses and host executor approval/account/audit policy. Worker mock integration tests and independent Node parser tests added; normal Clara package test command installed.
+- **Actual evidence:** Git-hash-verified exact committed source + test files OpenAI 10/10, Gemini 9/9; combined 19/19 Node PASS; strict isolated TypeScript PASS. Full web/worker/DB workspace, adapter mock integration, browser/provider/deployed E2E NOT VERIFIED.
+- **Next:** Full package test/typecheck/build on current main, then direct native final model token output after authorized tools with approvals and abort safety; browser real mailbox/voice consent/security tests. FIX-01 runtime/security #36 and OPS-01 infrastructure/deployment boundaries retained.
+- **Session:** `docs/project-control/sessions/DEV01-NATIVE-TOOL-SSE-20261018.md`.
