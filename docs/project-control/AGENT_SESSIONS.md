@@ -836,3 +836,12 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Blockers:** FIX-01 #36 untrusted email ingestion; FIX-01 #26 teardown; OPS-01 CI/deployment. Old Actions run `39079140157` from historical SHA not evidence for this head.
 - **Next action:** Execute focused Vitest, web typecheck/build on latest main and complete real-world UI scenario matrix without waiting on OPS work.
 - **Session:** `docs/project-control/sessions/DEV01-CHAT-FIRST-WORKSPACE-20261018.md`.
+
+### DEV01-CHAT-FIRST-VOICE-MAIL-20261018 — 2026-10-18
+- **Agent:** DEV-01 / Forge; **status:** source slice committed / verification pending.
+- **Invocation:** Owner explicitly asked to recover repo and redesign Chat as main, embedded realtime voice, sidebar/expanded Mail, navbar gap and HTML preview using Mailflow, with rigorous real-world tests and role scope.
+- **Started:** `main` `9081fb89932e44eaa4b6cfb217b1ee1346ba0010`; preserved concurrent changes, no branch/PR.
+- **Completed:** Root renders Chat and original Overview moved; Chat-first/Mail-expanded sidebar; fixed single navbar offset (concurrent source); Chat launches existing Clara voice panel and retains draft/agent, best-effort cleanup; mail thread SQL HTML body alias, opaque preview, HTML/Text/expand; Mailflow design patterns inspected. Opened FIX-01 #36 for ingest sanitizer gap. Wrote detailed plan and Vitest contract source.
+- **Evidence:** 14/14 GitHub source checks PASS; Vitest/web/worker typecheck/build/browser/provider/migrations NOT RUN. CI run linked by user failed on stale SHA; no repeated CI polling.
+- **Session:** `docs/project-control/sessions/DEV01-CHAT-FIRST-VOICE-MAIL-20261018.md`; plan `docs/plans/CHAT-FIRST-VOICE-MAIL-UX-20261018.md`.
+- **Next:** Equipped checkout focused Vitest, web and worker checks/build/migration structure; responsive/browser/real provider QA; then actual tenant-scoped Threads list independent DEV-01 slice. FIX-01 HTML sanitizer #36, OPS-01 deployment/CI.
