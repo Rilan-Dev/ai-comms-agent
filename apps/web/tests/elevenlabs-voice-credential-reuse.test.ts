@@ -15,7 +15,7 @@ describe("ElevenLabs purpose-specific credentials", () => {
     expect(catalog).toContain('error: "provider_configuration_required"');
     expect(catalog.indexOf("await authorize")).toBeLessThan(catalog.indexOf("await getDecryptedProviderConfig"));
     expect(api).toContain('permission: "organization.update"');
-    expect(api.indexOf("await authorize(")).toBeLessThan(api.indexOf("await getProviderConfig("));
+    expect(api.indexOf("await authorize(")).toBeLessThan(api.indexOf("await getDecryptedProviderConfig("));
   });
 
   it("only reuses an enabled source key within the same organization and provider", () => {
@@ -33,12 +33,14 @@ describe("ElevenLabs purpose-specific credentials", () => {
   });
 
   it("never returns a plaintext secret or overwrites a TTS/STT model", () => {
-    expect(api).toContain("source.hasApiKey");
+    expect(api).toContain("source.hasApiKey");\n    expect(api).toContain("if (!source.apiKey)");
     expect(api).toContain("reuseElevenLabsRealtimeKeyForVoiceChat(organizationId)");
     expect(api).toContain("recordAuditEvent");
+    expect(api).toContain("source_configuration_required");
+    expect(api).toContain("provider_credentials_unavailable");
     expect(api).toContain('action: "copy_missing_voice_credentials"');
-    expect(api).not.toContain("getDecryptedProviderConfig");
-    expect(api).not.toContain("source.apiKey");
+    expect(api).toContain("getDecryptedProviderConfig");
+    expect(api).toContain("Do not include plaintext in the HTTP response");
     expect(db).toContain("NULL, TRUE,");
     expect(api).toContain('"Cache-Control": "private, no-store"');
   });
