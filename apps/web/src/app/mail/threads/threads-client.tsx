@@ -54,7 +54,13 @@ export function ThreadsClient({
     inflight.current = controller;
     setError("");
     if (append) setLoadingMore(true);
-    else setLoading(true);
+    else {
+      // Never present rows from an earlier search as a matching result while
+      // the user's newly selected mailbox/search is loading or has failed.
+      setThreads([]);
+      setHasMore(false);
+      setLoading(true);
+    }
     try {
       const params = new URLSearchParams({
         organizationId,
@@ -151,6 +157,10 @@ export function ThreadsClient({
         </div>
         {loading ? (
           <div role="status" className="p-8 text-center text-sm text-muted-foreground">Loading conversations…</div>
+        ) : error && threads.length === 0 ? (
+          <div role="status" className="px-5 py-12 text-center text-sm text-muted-foreground">
+            Threads could not be loaded. Use Retry to try again.
+          </div>
         ) : threads.length === 0 ? (
           <div className="grid place-items-center gap-3 px-5 py-16 text-center">
             <Mail size={28} className="text-muted-foreground" />
