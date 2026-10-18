@@ -46,9 +46,21 @@ async function readBriefing(client: PoolClient, principal: TrustedBriefingPrinci
         contentRevision: e.contentRevision, start: e.start, end: e.end, quote: e.quote, supports: e.supports })),
       representation: item.representation, snoozedUntil: item.snoozedUntil });
   }
+  // Cross-device progress is keyed to the same personal source revisions.
+  // One of two outstanding obligations must not clear the other.
+  const ack = await client.query<{ item_id: string; message_id: string; content_revision: string }>(
+    `SELECT item_id,message_id,content_revision FROM mail_review_items
+     WHERE organization_id=$1 AND owner_user_id=$2 AND agent_id=$3
+       AND acknowledged_at IS NOT NULL AND message_id=ANY($4::uuid[])`,
+    [principal.organizationId,principal.userId,principal.agentId,sources.rows.map(source => source.id)],
+  );
+  const acknowledged = new Set(ack.rows.map(r => `${r.item_id}:${r.message_id}:${r.content_revision}`));
+  const reviewedItemIds = safeItems.filter(item => item.representation === 'complete'
+    && item.sourceIds.every(sourceId => acknowledged.has(`${item.id}:${sourceId}:${permitted.get(sourceId)}`)))
+    .map(item => item.id);
   return { manifest: { id, scope, mode: row.briefing_mode, period: row.period_start && row.period_end
     ? { start: new Date(row.period_start).toISOString(), end: new Date(row.period_end).toISOString() } : null,
-    sourceCount: sources.rowCount ?? 0, status: row.briefing_status }, items: safeItems };
+    sourceCount: sources.rowCount ?? 0, status: row.briefing_status }, items: safeItems, reviewedItemIds };
 }
 
 export function getBriefing(principal: TrustedBriefingPrincipal, id: string): Promise<BriefingRead> {
