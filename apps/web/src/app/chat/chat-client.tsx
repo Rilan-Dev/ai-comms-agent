@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AudioLines, Bot, Send, Sparkles, User } from "lucide-react";
 import dynamic from "next/dynamic";
 import { readSseEvents } from "@/lib/streaming/sse";
+import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "@/lib/ai/activity-progress";
 
 // Defer microphone and vendor transport code until the user requests voice.
 const VoiceWorkspace = dynamic(
@@ -35,6 +36,7 @@ export function ChatClient({
   const [busy, setBusy] = useState(false);
   const [responseStarted, setResponseStarted] = useState(false);
   const [activity, setActivity] = useState("");
+  const [activitySteps, setActivitySteps] = useState<AgentActivityPhase[]>([]);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -101,6 +103,7 @@ export function ChatClient({
     setBusy(true);
     setResponseStarted(false);
     setActivity("Preparing response…");
+    setActivitySteps(["preparing"]);
 
     const optimisticId = "local-" + Date.now();
     setMessages((current) => [...current, { id: optimisticId, conversationId, role: "user", content, createdAt: new Date().toISOString() }]);
@@ -122,12 +125,23 @@ export function ChatClient({
         };
         if (event.event === "error") throw new Error(payload.message || "AI generation failed.");
         if (payload.conversationId) setConversationId(payload.conversationId);
+        if (event.event === "progress") {
+          const phase = safeActivityPhase(payload.phase);
+          if (phase) {
+            setActivity(agentActivityLabel(phase));
+            setActivitySteps((steps) => steps.at(-1) === phase ? steps : [...steps, phase].slice(-10));
+          }
+          continue;
+        }
         if (event.event === "status") {
-          setActivity(payload.phase === "tools" ? "Checking authorized tools…" : "Generating response…");
+          const phase = payload.phase === "tools" ? "checking_permissions" : "generating";
+          setActivity(agentActivityLabel(phase));
+          setActivitySteps((steps) => steps.at(-1) === phase ? steps : [...steps, phase].slice(-10));
           continue;
         }
         if (event.event === "done") {
           completed = true;
+          setActivitySteps((steps) => [...steps, "completed"].slice(-10));
           break;
         }
         if (payload.text) {
@@ -203,6 +217,25 @@ export function ChatClient({
           ) : messages.map((message) => (
             <MessageBubble key={message.id} role={message.role} content={message.content} />
           ))}
+          {activitySteps.length > 0 ? (
+            <details className="max-w-2xl rounded-xl border border-border/70 bg-muted/25 px-4 py-3 text-sm" open={busy}>
+              <summary className="cursor-pointer list-none font-medium text-muted-foreground">
+                <span className="inline-flex items-center gap-2">
+                  <span aria-hidden="true" className={`size-2 rounded-full ${busy ? "animate-pulse bg-primary" : "bg-muted-foreground/50"}`} />
+                  {busy ? "Clara is working" : "How this answer was prepared"}
+                </span>
+              </summary>
+              <ol aria-label="Observed agent steps" className="mt-3 space-y-2 border-l border-border pl-4 text-xs text-muted-foreground">
+                {activitySteps.map((phase, index) => (
+                  <li key={`${phase}-${index}`} className="relative pl-1">
+                    <span aria-hidden="true" className="absolute -left-[21px] top-1.5 size-1.5 rounded-full bg-muted-foreground/60" />
+                    {agentActivityLabel(phase)}
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-3 text-[11px] text-muted-foreground">Activity steps reflect actual system events, not private AI reasoning.</p>
+            </details>
+          ) : null}
           {busy && !responseStarted && <TypingIndicator />}
           <div ref={bottomRef} />
         </div>
