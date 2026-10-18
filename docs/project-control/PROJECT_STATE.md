@@ -1,3 +1,11 @@
+## DEV-01 — Chat-first workspaces redesign implementation checkpoint (2026-10-18)
+
+- Source on `main`: Chat main route and first nav; Overview moved to its own route; expanded Mail folders; fixed extra navbar offset; embedded Clara voice panel launched by Chat action button, with unsafe parent toggle disabled; richer opaque/CSP sandbox HTML mail thread preview and initial persisted field mapping. No new architecture stack or authorization bypass.
+- **Evidence:** 13/13 source assertions PASS; added Vitest source is unexecuted. Full build/typecheck, real browser, mail provider/HTML security and voice provider, migrations, production deployment **not accepted**. Phase 4 implementation continues.
+- **Ownership:** DEV-01 UX; FIX-01 security sanitizer [#36](https://github.com/Rilan-Dev/ai-comms-agent/issues/36) and voice lifecycle [#26](https://github.com/Rilan-Dev/ai-comms-agent/issues/26); OPS-01 CI/CD, DB, deployments. Full plan `docs/plans/CHAT_FIRST_WORKSPACE_REDESIGN_20261018.md`; session `docs/project-control/sessions/DEV01-CHAT-FIRST-WORKSPACE-20261018.md`.
+
+---
+
 ## DEV-01 — Screenshot-specific realtime model catalog repair (2026-10-18)
 
 - Fixed Sarvam/ElevenLabs blank/unsupported realtime selector on `main` by presenting **vendor-documented streaming STT models** with explicit provenance, not falsely asserting a live catalog. Saved provider choice can reach the voice runtime/relay; legacy `elevenlabs-conversational` marker rejected as an upstream STT model. ElevenAgents native conversation integration is a distinct future feature.
