@@ -54,6 +54,6 @@ describe("ElevenLabs purpose-specific credentials", () => {
     expect(setup).toContain("Use saved Realtime key for missing TTS/STT");
     expect(setup).toContain("setCatalogVersion((version) => version + 1)");
     expect(setup).toContain("setLoadRetry((version) => version + 1)");
-    expect((setup.match(/const purposes = tab === "voice-chat" \? \["tts", "stt"\] :/g) ?? []).length).toBe(3);
+    expect((setup.match(/const purposes = tab === "voice-chat" \? \["tts", "stt"\] :/g) ?? []).length).toBe(2);
   });
 });
