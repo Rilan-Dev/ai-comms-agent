@@ -108,6 +108,7 @@ export async function POST(request: Request) {
           };
           try {
             emit("status", { phase: needsAuthorizedTools ? "tools" : "generating" });
+            emit("progress", { phase: needsAuthorizedTools ? "checking_permissions" : "generating" });
             if (needsAuthorizedTools) {
               const result = await runEmailAgentTurn({
                 organizationId, agentId, messages: [{ role: "user", content: transcript }], kbId,
@@ -122,6 +123,7 @@ export async function POST(request: Request) {
                   auth_subject: { user_id: subject.user.id, role, permissions },
                 },
                 maxRounds: 4, maxToolCalls: 8,
+                onProgress: (phase) => emit("progress", { phase }),
                 onSafeReadOnlyFinal: async (completedHistory) => {
                   emit("status", { phase: "generating" });
                   const finalStream = await claraRuntime.streamAuthorizedReadOnlyToolAnswer(
@@ -146,6 +148,7 @@ export async function POST(request: Request) {
                 // Writes/approvals/denials retain the canonical host answer.
                 if (!result.streamed) emit("delta", { text: result.text });
                 await saveAnswer(deliveredText);
+                emit("progress", { phase: "completed" });
                 emit("done", {
                   executionId, toolCalls: result.toolCalls, pendingApprovals: result.pendingApprovals,
                   finishReason: result.finishReason, mode: "host-authorized-tools",
