@@ -224,28 +224,41 @@ async function readSseStream(response: Response): Promise<AsyncGenerator<string,
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
 
+  function* textDeltas(frame: string): Generator<string> {
+    for (const line of frame.split(/\r?\n/)) {
+      if (!line.startsWith("data:")) continue;
+      const data = line.slice(5).trim();
+      if (!data || data === "[DONE]") continue;
+      // Provider keep-alives and auxiliary events are not chat tokens.
+      try {
+        const payload = JSON.parse(data) as StreamChunk;
+        const chunk = payload.choices?.[0]?.delta?.content;
+        if (chunk) yield chunk;
+      } catch {
+        // Ignore malformed auxiliary events without exposing raw provider data.
+      }
+    }
+  }
+
   async function* generator(): AsyncGenerator<string, void, unknown> {
     let buffer = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const events = buffer.split(/\r?\n\r?\n/);
-      buffer = events.pop() ?? "";
-      for (const event of events) {
-        for (const line of event.split(/\r?\n/)) {
-          if (!line.startsWith("data:")) continue;
-          const data = line.slice(5).trim();
-          if (!data || data === "[DONE]") continue;
-          try {
-            const payload = JSON.parse(data) as StreamChunk;
-            const chunk = payload.choices?.[0]?.delta?.content;
-            if (chunk) yield chunk;
-          } catch {
-            // Ignore provider keep-alives/non-JSON SSE lines.
-          }
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
+        let delimiter: RegExpExecArray | null;
+        while ((delimiter = /\r?\n\r?\n/.exec(buffer)) !== null) {
+          const frame = buffer.slice(0, delimiter.index);
+          buffer = buffer.slice(delimiter.index + delimiter[0].length);
+          yield* textDeltas(frame);
         }
+        if (done) break;
+        if (buffer.length > 1024 * 1024) throw new Error("AI provider returned an oversized streaming event.");
       }
+      // Not every compatible provider ends its final SSE frame with two LF's.
+      if (buffer.trim()) yield* textDeltas(buffer);
+    } finally {
+      reader.releaseLock();
     }
   }
 
