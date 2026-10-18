@@ -316,7 +316,10 @@ export async function listMailAttachmentsForOrganization(organizationId: string,
 }
 
 export async function getMailThreadForOrganization(organizationId: string, threadId: string): Promise<Array<Record<string, unknown>>> {
-  const r = await query<Row>(`SELECT m.*, a.email_address AS account_email, a.display_name AS account_name
+  // Match the thread UI's html_body field using the stored email preview column.
+  // The frame still treats every byte as untrusted; ingest sanitization is a
+  // separate FIX-01 gate (issue #36), not implied by the column's name.
+  const r = await query<Row>(`SELECT m.*, m.html_body_sanitized AS html_body, a.email_address AS account_email, a.display_name AS account_name
     FROM email_messages m JOIN email_accounts a ON a.id = m.email_account_id
     WHERE m.thread_id = $1 AND a.organization_id = $2 AND a.deleted_at IS NULL
     ORDER BY m.received_at ASC NULLS LAST`, [threadId, organizationId]);
