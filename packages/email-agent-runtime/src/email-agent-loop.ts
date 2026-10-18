@@ -143,7 +143,8 @@ export async function runEmailAgentTurn(
     // tokens, not with a second model request that copies a buffered answer.
     // Writes, denials, approvals and multi-round paths retain old semantics.
     if (round === 0 && input.onSafeReadOnlyFinal && pendingApprovals.length === 0
-      && summaries.length > 0 && summaries.every((call) => call.ok && call.readOnly === true)) {
+      && summaries.length > 0 && summaries.length <= 4
+      && summaries.every((call) => call.ok && call.readOnly === true)) {
       const text = await input.onSafeReadOnlyFinal(history);
       return { text, streamed: true, toolCalls: summaries, pendingApprovals, finishReason: "completed" };
     }
