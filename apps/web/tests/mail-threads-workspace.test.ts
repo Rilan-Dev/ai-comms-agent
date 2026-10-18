@@ -27,7 +27,7 @@ describe("persisted Mail Threads — tenant scoped source contracts", () => {
     expect(block).toContain("m.organization_id = $1");
     expect(block).toContain("($2::uuid IS NULL OR m.email_account_id = $2::uuid)");
     expect(block).toContain("PARTITION BY m.thread_id");
-    expect(block).toContain("NOT m.is_read AND NOT m.is_draft");
+    expect(block).toContain("NOT m.is_read AND NOT m.is_draft AND NOT m.is_sent");
     expect(block).toContain("ILIKE '%' || $3 || '%'");
     expect(block).toContain("LIMIT $5 OFFSET $6");
     expect(block).not.toContain("SELECT m.*");
