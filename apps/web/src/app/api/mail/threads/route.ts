@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50 ||
       !Number.isSafeInteger(offset) || offset < 0 || offset > 10000 ||
       search.length > 120 || !["true", "false"].includes(unread) ||
-      (accountId != null && accountId !== "" && !/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(accountId))) {
+      (accountId != null && accountId !== "" && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(accountId))) {
       return NextResponse.json({ error: "validation_error", message: "Invalid thread filters." }, { status: 422 });
     }
     const result = await listMailThreadsForOrganization(organizationId, {
