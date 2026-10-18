@@ -879,3 +879,11 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Source implemented:** Explicit authorized/admin-confirmed same-org ElevenLabs Realtime key reuse to missing enabled voice-chat TTS/STT using ciphertext SQL copy and audit, no overwrite of existing keys/models/disabled rows; decryptability checked, truthful purpose-specific diagnostics and UI status/reload. New Vitest contract suite.
 - **Evidence:** GitHub source-level authorization/no-secret/SQL/UI checks 29/29 PASS; full Vitest/TS/build/SQL/provider/browser/deploy not executed without checkout/pnpm/access. Vercel rate-limit remains OPS-01.
 - **Next:** Execute recorded exact suite; verify live org A/B and TTS/STT model endpoints on deployed revision after OPS-01 unblocks. Session file `docs/project-control/sessions/DEV01-ELEVENLABS-VOICE-CREDENTIAL-REUSE-20261019.md`.
+
+### FIX01-ROLLING-MAIL-20261019 — 2026-10-19
+- **Owner/role:** User explicitly invoked FIX-01/Sentinel to debug bad AI last24 unread summaries, requested minimal fix, tests and documented cause; main-only, no PR/branch, no server access.
+- **Starting SHA:** `3a1d9cf5052c4d66949b60dfa508b24f76340a99`, recent head commits primarily DEV-01 capability UI/docs.
+- **Root:** legacy 20-row, seven-day drafts-first, unread-agnostic email context; previous assistant text contaminates search terms; agent could confidently hallucinate timing/count.
+- **Changes:** Direct audited/authorized counted rolling query + conservative intent/filters and 500 cap, all returned rows individually described with UTC and sync caveat; email.read and registered agent tool gate; SSE delivery. Tests and session record.
+- **Evidence:** real Node 8/8, isolated tsc PASS, current GitHub source checks 15/15; no whole repo/db/browser/provider/deploy.
+- **Next:** focused suite/typecheck/build, seeded DB permission/coverage, live email UI after OPS-01 approval, compare counts. `docs/project-control/sessions/FIX01-ROLLING-MAIL-20261019.md`.
