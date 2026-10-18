@@ -12,6 +12,7 @@
     "./types": "./src/types.ts"
   },
   "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist .turbo"
   },
