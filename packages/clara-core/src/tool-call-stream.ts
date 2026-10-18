@@ -113,7 +113,7 @@ export async function readOpenAIToolCompletion(
 
   try {
     while (true) {
-      let result: ReadableStreamReadResult<Uint8Array>;
+      let result: Awaited<ReturnType<typeof reader.read>>;
       try {
         result = await reader.read();
         buffer += result.done ? decoder.decode() : decoder.decode(result.value, { stream: true });
@@ -142,7 +142,7 @@ export async function readOpenAIToolCompletion(
     const toolCalls: ChatToolCompletion["toolCalls"] = [];
     const entries = [...calls].sort(([a], [b]) => a - b);
     for (let index = 0; index < entries.length; index++) {
-      const [actualIndex, item] = entries[index];
+      const [actualIndex, item] = entries[index]!;
       if (actualIndex !== index || !item.id || !/^[\w-]{1,128}$/.test(item.id) ||
           !/^[A-Za-z_][A-Za-z0-9_.-]{0,127}$/.test(item.name)) {
         return invalid("invalid_tool_call");
