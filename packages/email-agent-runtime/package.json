@@ -12,7 +12,9 @@
     "./email-tool-runtime": "./src/email-tool-runtime.ts",
     "./email-tool-policy": "./src/email-tool-policy.ts",
     "./tool-executor": "./src/tool-executor.ts",
-    "./email-write-tools": "./src/email-write-tools.ts"
+    "./email-write-tools": "./src/email-write-tools.ts",
+    "./briefings/selection": "./src/briefings/selection.ts",
+    "./briefings/generation": "./src/briefings/generation.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
