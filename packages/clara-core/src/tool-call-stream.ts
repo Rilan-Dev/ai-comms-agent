@@ -64,7 +64,7 @@ export async function readOpenAIToolCompletion(
       bad = "invalid_tool_call";
       return;
     }
-    if (payload.error) {
+    if (!payload || typeof payload !== "object" || payload.error) {
       bad = "invalid_tool_call";
       return;
     }
@@ -161,7 +161,9 @@ export async function readOpenAIToolCompletion(
     if (new Set(toolCalls.map((call) => call.id)).size !== toolCalls.length) return invalid("invalid_tool_call");
     return { text, toolCalls, finishReason };
   } finally {
-    if (!sawDone) await reader.cancel().catch(() => undefined);
+    // A provider can send [DONE] before HTTP EOF. Cancel even on success
+    // so no paused upstream body keeps sockets or model generation alive.
+    await reader.cancel().catch(() => undefined);
     reader.releaseLock();
   }
 }
