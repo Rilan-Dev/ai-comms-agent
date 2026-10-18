@@ -1,3 +1,13 @@
+## 2026-10-19 — DEV-01 ElevenLabs missing TTS/STT capability credentials (source-only verified)
+
+- The reported production 409 `provider_configuration_required` was traced to per-purpose encrypted provider config rows. Existing Realtime key is **not** a valid TTS/STT config unless owner explicitly opts in to secure same-org reuse. This 409 is before the vendor call and does not prove real ElevenLabs availability or deployment SHA.
+- **Source on main:** auth-guarded, audit-recorded `POST /api/settings/ai-provider-configs/reuse-voice-key` using atomic encrypted DB copy only for missing enabled TTS/STT; no overwrite of saved secrets/models or disabled capabilities. Realtime metadata loaded only to show explicit Voice Chat reuse action. Missing/disabled/decrypt failure messages differentiated and no cross-purpose automatic fallback. Saved encrypted key detection fixed. New Vitest suite added.
+- **ACTUAL evidence:** 29/29 current authenticated GitHub source contract checks PASS, exact source SHAs recorded in session. **NOT ACTUALLY RUN:** new Vitest, full pnpm web/worker/DB/Clara typechecks/tests/builds, SQL against live Postgres, migration, vendor TTS/STT API, browser session, secure cross-tenant negative, deployment. Shell lacked full checkout/pnpm and failed GitHub DNS. GitHub HEAD Vercel `failure` target still build-rate-limit; this is not a compiler diagnosis.
+- **Session/next:** `docs/project-control/sessions/DEV01-ELEVENLABS-VOICE-CREDENTIAL-REUSE-20261019.md`, `NEXT_ACTION.md`. No branch/PR, no production deployment.
+
+
+---
+
 ## 2026-10-18 — DEV-01 direct final read-tool SSE (source done, full acceptance pending)
 
 - **Implementation on main:** `claraRuntime.streamAuthorizedReadOnlyToolAnswer` takes completed host tool history and outputs real provider tokens with no executable tools. Chat/Voice call it after 1–4 all-success registered and audited read-only calls; writes, denials, pending approval and legacy voice JSON unchanged. Removed the extra canonical exact-copy model request from Chat/Voice paths. Host parser native OpenAI/Gemini tool-decision validation remains unchanged.
