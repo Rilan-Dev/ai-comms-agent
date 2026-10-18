@@ -223,6 +223,7 @@ export async function acknowledgeBriefingItems(
     let reviewed = 0;
     for (const item of targets as BriefingItem[]) {
       if (!item.sourceIds.length || item.sourceIds.some(id => !permitted.has(id))) throw notAvailable();
+      let newlyReviewed = false;
       for (const sourceId of item.sourceIds) {
         const source = permitted.get(sourceId)!;
         const result = await client.query(
@@ -237,8 +238,11 @@ export async function acknowledgeBriefingItems(
             sourceId, source.content_revision, item.id],
         );
         if (!result.rowCount) throw new Error('Review item is not fully represented.');
-        if (result.rows[0]?.inserted) reviewed++;
+        if (result.rows[0]?.inserted) newlyReviewed = true;
       }
+      // Count user-facing obligations, not the number of contributing source
+      // rows; one multi-source item is one reviewed action.
+      if (newlyReviewed) reviewed++;
     }
     return { reviewed };
   });
@@ -329,7 +333,8 @@ export async function publishBriefingItems(
             content_revision,item_id,representation)
           VALUES($1,$2,$3,$4,$5,$6,$7,$8)
           ON CONFLICT(organization_id,owner_user_id,agent_id,message_id,content_revision,item_id)
-          DO NOTHING`,
+          DO UPDATE SET representation=EXCLUDED.representation
+          WHERE mail_review_items.acknowledged_at IS NULL`,
         [principal.organizationId, principal.userId, principal.agentId,
           record.source.mailbox_id, record.source.message_id, record.source.content_revision,
           record.itemId, record.representation],
