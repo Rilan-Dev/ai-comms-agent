@@ -288,6 +288,42 @@ export async function deleteProviderConfig(
   return r.rows.length > 0;
 }
 
+/**
+ * Explicit owner-authorized reuse of an already enabled ElevenLabs Realtime
+ * credential for unconfigured TTS/STT. One SQL statement keeps both copies
+ * atomic; ciphertext never leaves PostgreSQL or reaches the browser.
+ *
+ * Never override another saved key or a deliberately disabled capability.
+ * Models remain purpose-specific (Scribe must not become a TTS model).
+ */
+export async function reuseElevenLabsRealtimeKeyForVoiceChat(
+  organizationId: string,
+): Promise<("tts" | "stt")[]> {
+  const result = await query<{ purpose: "tts" | "stt" }>(
+    `WITH enabled_source AS (
+      SELECT encrypted_api_key
+        FROM ai_provider_configs
+       WHERE organization_id = $1
+         AND provider = 'elevenlabs' AND purpose = 'realtime'
+         AND enabled = TRUE AND encrypted_api_key IS NOT NULL
+    ),
+    target_purposes(purpose) AS (VALUES ('tts'), ('stt'))
+    INSERT INTO ai_provider_configs
+      (organization_id, provider, purpose, model, enabled, config, encrypted_api_key, updated_at)
+    SELECT $1, 'elevenlabs', target_purposes.purpose, NULL, TRUE,
+           '{}'::jsonb, enabled_source.encrypted_api_key, now()
+      FROM enabled_source CROSS JOIN target_purposes
+    ON CONFLICT (organization_id, provider, purpose)
+    DO UPDATE SET encrypted_api_key = EXCLUDED.encrypted_api_key,
+                  updated_at = now()
+      WHERE ai_provider_configs.encrypted_api_key IS NULL
+        AND ai_provider_configs.enabled = TRUE
+    RETURNING purpose`,
+    [organizationId],
+  );
+  return result.rows.map((row) => row.purpose);
+}
+
 // ─── organization_ai_runtime_settings CRUD ────────────────────────────────
 
 const ORG_AI_SETTINGS_COLUMNS = `
