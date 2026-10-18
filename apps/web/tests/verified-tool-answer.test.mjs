@@ -77,3 +77,9 @@ test("real provider model tokens may be split arbitrarily, but order stays canon
   assert.equal(result.text, content);
   assert.equal(result.mode, "verified-provider-tokens");
 });
+
+test("extra provider claims after the exact canonical answer are discarded and reported honestly", async () => {
+  const result = await capture("One message found.", ["One message found.", " I deleted all mail."]);
+  assert.equal(result.text, "One message found.");
+  assert.equal(result.mode, "canonical-fallback");
+});
