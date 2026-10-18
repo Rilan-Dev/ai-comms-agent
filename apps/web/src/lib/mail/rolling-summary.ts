@@ -56,9 +56,10 @@ function shortText(input: string | null | undefined, max = 360): string {
 
 export function formatRollingMailSummary(
   rows: RollingMailRow[],
-  scope: RollingMailSummaryRequest,
+  scope: Pick<RollingMailSummaryRequest, "unreadOnly" | "sender" | "topic">,
   fromUtc: string,
   toUtc: string,
+  windowLabel = "rolling 24-hour UTC window",
 ): string {
   const total = rows.length ? Number(rows[0]!.total_count) : 0;
   const included = rows.length;
@@ -69,7 +70,7 @@ export function formatRollingMailSummary(
     scope.topic ? `subject or content containing "${scope.topic}"` : null,
   ].filter(Boolean).join("; ");
   const parts = [
-    `Locally synchronized ${kind} in the rolling 24-hour UTC window ${fromUtc} to ${toUtc}.`,
+    `Locally synchronized ${kind} in the ${windowLabel} ${fromUtc} to ${toUtc}.`,
     `Matched: ${total}. Included: ${included} of ${total}.`,
     filters ? `Applied filters: ${filters}.` : "No sender or subject filter was requested.",
     complete
