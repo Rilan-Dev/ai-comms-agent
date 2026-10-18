@@ -1,3 +1,14 @@
+## DEV-01 — Chat-first navigation, embedded voice and Mail reader UX — 2026-10-18
+
+- **Owner-authorized next development slice committed to main:** Chat is the root landing workspace; Overview preserved at `/overview`; Chat first sidebar menu; Mail expanded by default to Inbox/Drafts/Threads/Accounts; single 248px layout offset fixes navbar gap. Voice workspace lazy-mounted inside Chat via action button with Chat header's voice-to-text toggle guarded to prevent bypass of session teardown. Mail thread now has formatted HTML iframe with strict opaque sandbox/CSP, privacy notice and expanded viewing control, plus persisted HTML field mapping. No branches/PRs created.
+- **Source checks:** 13/13 actual GitHub source contract checks PASS for home/nav/voice/HTML isolation/test existence. New `apps/web/tests/chat-first-workspace.test.ts` and `apps/web/tests/mail-html-preview.test.ts` written but **not run**; full pnpm web/worker typecheck/build, browser, auth, provider, CI or deployment **not verified**.
+- **Design/real-world failure matrix:** `docs/plans/CHAT_FIRST_WORKSPACE_REDESIGN_20261018.md`; session docs/project-control/sessions/DEV01-CHAT-FIRST-WORKSPACE-20261018.md.
+- **EXACT DEV-01 NEXT ACTION (on equipped current main):** `pnpm --filter @ai-comms-agent/web exec vitest run tests/chat-first-workspace.test.ts tests/mail-html-preview.test.ts tests/live-model-catalog.test.ts tests/voice-provider-relay.test.ts`; `pnpm --filter @ai-comms-agent/web typecheck`; `pnpm --filter @ai-comms-agent/web build`. Then test 320px/mobile/desktop nav focus, Chat text stream retention, voice start/mic denied/end/back with real transport, thread HTML vs plain text and malformed/tracking HTML. Fix only DEV-01-owned UI issues and continue polish.
+- **ROLE ROUTE:** FIX-01 issue [#36](https://github.com/Rilan-Dev/ai-comms-agent/issues/36) must sanitize untrusted provider HTML before storage (including old rows); FIX-01 #26 must verify voice session teardown errors. Neither fixed by UI alone. OPS-01 owns full CI, database migrations, deploying matching source SHA and live provider validation. User-linked [Actions run 39079140157](https://github.com/Rilan-Dev/ai-comms-agent/actions/runs/39079140157) is a failure on **older** head `2cf9a522`, not evidence against this new UI commit. No production acceptance.
+- **Phase:** Phase 4 still `implementation_in_progress`. Do not wait/poll CI; continue independent DEV-01 UI work.
+
+---
+
 ## OPS-01 — Verify containerized migration correction (ISS-037) — 2026-10-18
 
 - **Implementation:** Committed `scripts/manual-up.sh` change to run migrations via one-off Compose `web` container with `$PROJECT_ROOT/supabase` mounted read-only at `/workspace/supabase`. Application DB URLs remain on Docker internal DNS. Existing startup-on-migration-failure behavior is unchanged.
