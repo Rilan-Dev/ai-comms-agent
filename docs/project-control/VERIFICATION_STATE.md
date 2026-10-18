@@ -1,3 +1,12 @@
+## 2026-10-18 — DEV-01 verified post-tool provider streaming (partial tests only)
+
+- **Main-only source:** `claraRuntime.streamCanonicalToolAnswer` (no-tools model token delivery), new pure `emitVerifiedToolAnswer` literal prefix/abort/fallback, Chat host read-only metadata and guarded tool answers, Voice completed/approval-free email read-only gating with same mechanism, worker read-only summary metadata. This is a *second read-only model pass* after the original tool loop, not native streaming function-call execution.
+- **ACTUALLY EXECUTED:** Node v22.16.0 pure module regression **8/8 PASS** with exact source Git blobs `ab488dfa888066bf86399cae7227ba3c996d24df` and `33fae517247b47c5776796d4db83cfb5bb87965f`, isolated global tsc helper PASS, 16/16 current GitHub contract assertions PASS. No false completion on aborted requests, only canonical text displayed after provider hallucinations.
+- **NOT RUN:** Authored `apps/web/tests/verified-tool-streaming-contract.test.ts`, updated worker `email-agent-loop.test.ts`, complete web/worker/DB TypeScript, pnpm Vitest/Next build, PostgreSQL migration/tenant integration, provider stream HTTP, browser Chat/Voice mailbox/WhatsApp, TTS timing, CI/deployed version. Environment lacks pnpm/full private checkout and authorized browser session. **No production acceptance.**
+- Session: `docs/project-control/sessions/DEV01-VERIFIED-TOOL-ANSWER-STREAMING-20261018.md`, commands `NEXT_ACTION.md`.
+
+---
+
 ## 2026-10-18 — DEV-01 Mail Threads / progressive Chat+Voice text (LIMITED)
 
 - **Source directly on main:** org-scoped Mail Threads SQL/index export/authorized API/server page/filter UI, Chat focus; SSE decoder and Chat delta/status/complete parser; token streaming for non-tool Chat and voice, native Gemini SSE, OpenAI/Sarvam EOF correction. Tool-backed answers remain final-after-tool by design; no unsafe speculative or fake streaming.
