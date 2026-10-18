@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { PoolClient } from 'pg';
+import type { PoolClient, QueryResult } from 'pg';
 import {
   ForbiddenError, boundedSourcePage, resolveCatchUpPeriod, type BriefingManifest,
   type BriefingRequest, type BriefingSource, type BriefingItem,
@@ -9,7 +9,7 @@ import { withTransaction } from '../client';
 import { requireBriefingActor, requireBriefingIds, resolveBriefingScopeInTransaction } from './access';
 
 /** C2 selects immutable source revisions; user-facing text stays behind C3. */
-type Candidate = { id: string; mailbox_id: string; thread_id: string; revision: string };
+type Candidate = { id: string; mailbox_id: string; thread_id: string; revision: string | null };
 const notAvailable = () => new ForbiddenError('missing_permission', 'Briefing is not available for this scope.');
 const MAX_CANDIDATES = 5000;
 const PAGE_SIZE = 200;
@@ -93,7 +93,7 @@ export async function prepareBriefing(
     // Stable UUID keyset and a single MVCC snapshot; equal timestamps don't
     // collapse, and read-state/folder metadata don't determine coverage.
     while (true) {
-      const r = await client.query<Candidate>(
+      const r: QueryResult<Candidate> = await client.query<Candidate>(
         `SELECT m.id, m.email_account_id AS mailbox_id, m.thread_id,
              briefing_content_revision(m.id) AS revision
          FROM email_messages m JOIN email_threads t

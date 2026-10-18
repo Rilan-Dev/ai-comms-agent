@@ -48,7 +48,7 @@ async function readBriefing(client: PoolClient, principal: TrustedBriefingPrinci
   }
   return { manifest: { id, scope, mode: row.briefing_mode, period: row.period_start && row.period_end
     ? { start: new Date(row.period_start).toISOString(), end: new Date(row.period_end).toISOString() } : null,
-    sourceCount: sources.rowCount, status: row.briefing_status }, items: safeItems };
+    sourceCount: sources.rowCount ?? 0, status: row.briefing_status }, items: safeItems };
 }
 
 export function getBriefing(principal: TrustedBriefingPrincipal, id: string): Promise<BriefingRead> {
