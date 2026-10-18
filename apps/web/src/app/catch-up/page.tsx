@@ -16,7 +16,7 @@ export default async function CatchUpPage() {
   }
   try {
     const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: await headers() }));
-    if (!context?.organizationId || !context.userId) {
+    if (!context?.organizationId || !context.user?.id) {
       return <main className="mx-auto max-w-3xl p-8" role="status">Sign in and select an organization to view catch-up.</main>;
     }
     const agents = await new PostgresAgentRepository().list(context.organizationId);
