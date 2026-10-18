@@ -21,16 +21,20 @@ export async function emitVerifiedToolAnswer(
   if (signal?.aborted) return { completed: false, mode: "aborted" };
   let matched = 0;
   let providerComplete = false;
+  let drifted = false;
   try {
     const stream = await generate();
     for await (const chunk of stream) {
       if (signal?.aborted) return { completed: false, mode: "aborted" };
       if (!chunk) continue;
-      if (!canonical.startsWith(chunk, matched)) break;
+      if (!canonical.startsWith(chunk, matched)) {
+        drifted = true;
+        break;
+      }
       matched += chunk.length;
       emitDelta(chunk);
     }
-    providerComplete = matched === canonical.length;
+    providerComplete = !drifted && matched === canonical.length;
   } catch {
     // No generated words may leak. The canonical answer was already validated
     // by the host tool loop and is the only allowed user-visible fallback.
