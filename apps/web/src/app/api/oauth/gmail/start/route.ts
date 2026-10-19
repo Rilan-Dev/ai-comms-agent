@@ -36,6 +36,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const configId = url.searchParams.get("configId")?.trim() ?? "";
   const accountId = url.searchParams.get("accountId")?.trim() || undefined;
+  const initialLimit = [10, 50, 100].includes(Number(url.searchParams.get("initialLimit"))) ? Number(url.searchParams.get("initialLimit")) : 50;
   if (!configId) return NextResponse.json({ error: "oauth_configuration_required", message: "Choose a Gmail OAuth client in Settings before connecting an account." }, { status: 422 });
 
   const key = signingKey();
@@ -63,6 +64,7 @@ export async function GET(request: Request) {
     configId: config.id,
     redirectUri,
     ...(accountId ? { accountId } : {}),
+    initialLimit,
     nonce,
     exp: Date.now() + 10 * 60_000,
   });
