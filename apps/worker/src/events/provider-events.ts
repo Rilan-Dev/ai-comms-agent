@@ -27,6 +27,8 @@ export type ProviderEvent =
 export function providerEventToAutomationEvent(event: ProviderEvent) {
   return {
     type: event.type,
+    // Trusted provider event envelope, never caller-controlled metadata.
+    organizationId: event.organizationId,
     payload: {
       ...event.metadata,
       // Canonical routing/identity fields must win over provider metadata.
