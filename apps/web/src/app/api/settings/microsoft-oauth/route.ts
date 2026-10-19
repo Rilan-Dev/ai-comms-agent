@@ -11,6 +11,15 @@ export const dynamic = "force-dynamic";
 const validTenant = (value: string) => value === "common" || value === "organizations" ||
   value === "consumers" || /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(value);
 
+function validNotificationUrl(value: string): boolean {
+  if (!value) return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.pathname === "/api/webhooks/microsoft-graph"
+      && !url.username && !url.password && !url.search && !url.hash;
+  } catch { return false; }
+}
+
 async function requireAdmin(request: Request, organizationId: string) {
   return authorize(request, { organizationId: asOrganizationId(organizationId), role: "admin" }, getIdentityAdapter(), getIdentityRepository());
 }
@@ -21,12 +30,12 @@ export async function GET(request: Request) {
     if (!organizationId) return NextResponse.json({ error: "validation_error", message: "Organization is required." }, { status: 422 });
     await requireAdmin(request, organizationId);
     const result = await query<Record<string, unknown>>(
-      "SELECT id,label,client_id,tenant_id,enabled,created_at,updated_at FROM microsoft_oauth_configs WHERE organization_id=$1 ORDER BY created_at DESC",
+      "SELECT id,label,client_id,tenant_id,notification_url,enabled,created_at,updated_at FROM microsoft_oauth_configs WHERE organization_id=$1 ORDER BY created_at DESC",
       [organizationId],
     );
     return NextResponse.json({ configurations: result.rows.map((row) => ({
       id: String(row.id), label: String(row.label), clientId: String(row.client_id),
-      tenantId: String(row.tenant_id), enabled: row.enabled === true,
+      tenantId: String(row.tenant_id), notificationUrl: row.notification_url ? String(row.notification_url) : "", enabled: row.enabled === true,
       redirectUri: getOAuthRedirectUri(request, "microsoft"), secretConfigured: true,
       createdAt: row.created_at, updatedAt: row.updated_at,
     })) }, { headers: { "Cache-Control": "private, no-store" } });
@@ -42,8 +51,9 @@ export async function POST(request: Request) {
     const clientId = typeof body?.clientId === "string" ? body.clientId.trim().slice(0, 500) : "";
     const tenantId = typeof body?.tenantId === "string" ? body.tenantId.trim() : "common";
     const clientSecret = typeof body?.clientSecret === "string" ? body.clientSecret.trim() : "";
+    const notificationUrl = typeof body?.notificationUrl === "string" ? body.notificationUrl.trim() : "";
     const enabled = body?.enabled !== false;
-    if (!organizationId || !label || !clientId || !validTenant(tenantId) || (!id && !clientSecret)) {
+    if (!organizationId || !label || !clientId || !validTenant(tenantId) || !validNotificationUrl(notificationUrl) || (!id && !clientSecret)) {
       return NextResponse.json({ error: "validation_error", message: "Organization, label, client ID, valid Microsoft tenant and a secret for new clients are required." }, { status: 422 });
     }
     const subject = await requireAdmin(request, organizationId);
@@ -61,19 +71,19 @@ export async function POST(request: Request) {
       }, { status: 422 });
       if (clientSecret) {
         await query(
-          "UPDATE microsoft_oauth_configs SET label=$1, client_id=$2, tenant_id=$3, client_secret_ciphertext=$4, enabled=$5, updated_at=now() WHERE id=$6 AND organization_id=$7",
-          [label, clientId, tenantId, encryptCredential(clientSecret, key), enabled, id, organizationId],
+          "UPDATE microsoft_oauth_configs SET label=$1, client_id=$2, tenant_id=$3, client_secret_ciphertext=$4, enabled=$5, notification_url=$6, updated_at=now() WHERE id=$7 AND organization_id=$8",
+          [label, clientId, tenantId, encryptCredential(clientSecret, key), enabled, notificationUrl || null, id, organizationId],
         );
       } else {
         await query(
-          "UPDATE microsoft_oauth_configs SET label=$1, client_id=$2, tenant_id=$3, enabled=$4, updated_at=now() WHERE id=$5 AND organization_id=$6",
-          [label, clientId, tenantId, enabled, id, organizationId],
+          "UPDATE microsoft_oauth_configs SET label=$1, client_id=$2, tenant_id=$3, enabled=$4, notification_url=$5, updated_at=now() WHERE id=$6 AND organization_id=$7",
+          [label, clientId, tenantId, enabled, notificationUrl || null, id, organizationId],
         );
       }
     } else {
       await query(
-        "INSERT INTO microsoft_oauth_configs (id,organization_id,label,client_id,tenant_id,client_secret_ciphertext,enabled,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-        [randomUUID(), organizationId, label, clientId, tenantId, encryptCredential(clientSecret, key), enabled, subject.user.id],
+        "INSERT INTO microsoft_oauth_configs (id,organization_id,label,client_id,tenant_id,notification_url,client_secret_ciphertext,enabled,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+        [randomUUID(), organizationId, label, clientId, tenantId, notificationUrl || null, encryptCredential(clientSecret, key), enabled, subject.user.id],
       );
     }
     return NextResponse.json({ ok: true });
