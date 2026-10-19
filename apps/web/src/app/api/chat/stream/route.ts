@@ -390,7 +390,7 @@ export async function POST(request: Request) {
     const rollingMail = parseRollingMailSummaryRequest(content);
     const requestedMailScope = explicitRange?.kind === "valid" ? explicitRange : rollingMail;
     if (requestedMailScope) {
-      if (!subject.permissions.includes("email.read")) {
+      if (!subject.permissions.has("email.read")) {
         return NextResponse.json({
           error: "forbidden",
           message: "Email read permission is required for a mailbox summary.",
@@ -485,7 +485,7 @@ export async function POST(request: Request) {
       .slice(-6)
       .map(m => m.content);
     const combinedSearchContext = [...recentMessages, content].join(" ");
-    const emailContext = subject.permissions.includes("email.read")
+    const emailContext = subject.permissions.has("email.read")
       ? await loadEmailContext(organizationId, agentId, combinedSearchContext)
       : null;
     const whatsappContext = await loadWhatsAppContext(organizationId, agentId, combinedSearchContext);

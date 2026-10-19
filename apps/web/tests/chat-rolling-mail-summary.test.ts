@@ -17,10 +17,24 @@ describe("FIX-01 rolling 24-hour email report", () => {
     const start = route.indexOf("const rollingMail = parseRollingMailSummaryRequest(content)");
     const query = route.indexOf("const rows = await query<RollingMailRow>", start);
     const scope = route.slice(start, query);
-    expect(scope).toContain('subject.permissions.includes("email.read")');
+    expect(scope).toContain('subject.permissions.has("email.read")');
     expect(scope).toContain("createEmailToolRuntime(organizationId, agentId)");
     expect(scope).toContain("mailRuntime.registry.listForAgent(agentId)");
     expect(scope).toContain('tool.name === "email.search" || tool.name === "email.messages.list"');
+  });
+
+  it("evaluates both mail permission gates with real authorization Sets", () => {
+    // Execute the production expressions: the old Array.includes contract
+    // passed textual tests but threw for every real authenticated subject.
+    const gates = [...route.matchAll(/subject\.permissions\.[a-z]+\("email\.read"\)/g)];
+    expect(gates).toHaveLength(2);
+    for (const [expression] of gates) {
+      const allowed = new Function("subject", `return ${expression};`) as
+        (subject: { permissions: ReadonlySet<string> }) => boolean;
+      expect(allowed({ permissions: new Set(["email.read"]) })).toBe(true);
+      expect(allowed({ permissions: new Set() })).toBe(false);
+      expect(allowed({ permissions: new Set(["email.send"]) })).toBe(false);
+    }
   });
 
   it("uses exact server 24h boundaries, unread and incoming-only filters", () => {
@@ -68,7 +82,7 @@ describe("FIX-01 rolling 24-hour email report", () => {
       subject: `Subject ${i}`, received_at: "2026-10-18T18:00:00Z", snippet: "Sample",
       text_body: null, total_count: 37,
     }));
-    const result = formatRollingMailSummary(sample, { hours: 24, unreadOnly: true }, "2026-10-17T18:00:00Z", "2026-10-18T18:00:00Z");
+    const result = formatRollingMailSummary(sample, { unreadOnly: true }, "2026-10-17T18:00:00Z", "2026-10-18T18:00:00Z");
     expect(result).toContain("Matched: 37. Included: 37 of 37.");
     expect(result).toContain("Subject 36");
   });
