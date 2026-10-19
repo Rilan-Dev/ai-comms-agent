@@ -66,7 +66,7 @@ try {
   for (const version of plan.pending) console.log("PENDING", version);
   for (const version of plan.drift) console.error("CHECKSUM_MISMATCH", version);
   for (const version of plan.unknown) console.error("UNKNOWN_APPLIED", version);
-  assertMigrationSafe(plan, { verify: mode === "verify", allowFresh: mode === "preflight" && allowFresh });
+  assertMigrationSafe(plan, { verify: mode === "verify", allowFresh: mode === "plan" || (mode === "preflight" && allowFresh) });
   if (mode === "preflight" && !allowFresh && plan.applied.length === 0) {
     throw new Error("No recorded applied migrations. --allow-fresh is required to bootstrap a new database.");
   }
