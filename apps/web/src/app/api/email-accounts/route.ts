@@ -168,7 +168,8 @@ export async function POST(request: Request) {
             const masterKey = process.env.CREDENTIALS_MASTER_KEY ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY) : null;
       if (!masterKey) return NextResponse.json({ error: "provider_configuration_required", message: "Credential encryption is not configured on the server." }, { status: 503 });
       const repository = new PostgresEmailAccountRepository();
-      const connectionConfig = { imap_host: host, imap_port: port, smtp_host: smtpHost, smtp_port: smtpPort, tls: true };
+      const initialSyncLimit = [10, 50, 100].includes(Number(body?.initialLimit)) ? Number(body.initialLimit) : 50;
+      const connectionConfig = { imap_host: host, imap_port: port, smtp_host: smtpHost, smtp_port: smtpPort, tls: true, initialSyncLimit };
       const capabilities = { folders: true, labels: false, sync_incremental: false, sync_full: true, sync_webhook: false, sync_idle: true, search_server_side: true, search_client_side: true, drafts: false, reply: false, forward: false, mark_read: true, archive: false, move: false, threads: false, attachments_download: false, attachments_upload: false, send: false };
       const existing = await repository.findByOrganizationProviderAddress(organizationId, "imap_smtp", emailAddress);
       let account;
