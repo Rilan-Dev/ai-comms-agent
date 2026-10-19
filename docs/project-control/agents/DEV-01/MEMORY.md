@@ -271,3 +271,7 @@ C2 complete locally, final merge/push receipt in session.34SQL,25domain,37web,3i
 ## 2026-10-19 — owner-requested commit and recovery checkpoint
 
 Preserved concurrent main changes and both sides of eight documentation conflicts. Current status: C1/C2 focused implementation done; C3 integration then C4 browser acceptance next. Security and broad-suite follow-up remain FIX-01/OPS-01. See docs/project-control/sessions/DEV01-CURRENT-HANDOFF-20261019.md. Lesson: after a rejected push, inspect and integrate current upstream; never overwrite shared project memory or force push.
+
+
+## 2026-10-20 — DEV-01 C3 worker integration lesson
+GitHub main start `16d3fb6f`; added isolated unregistered C3 worker core at `7da1d2b5`. Bounded generation and canonical claim/heartbeat/completion existed but no worker glue. Never register before grant-checked canonical source loader + Clara provider adaptation and actual worker/typecheck tests. Lease heartbeats are advisory; fenced transactional completion must remain authoritative. No production feature activation. See `../../sessions/DEV01-C3-WORKER-CORE-20261020.md`.
