@@ -1,3 +1,13 @@
+## 2026-10-19 — Manual migration plan source preflight corrected, operator DB still UNVERIFIED
+
+- **User-reported BEFORE fix:** 14/14 migration tests PASS and Docker Compose web image built; `operator-migrate.sh plan` FAILED in `verify-migration-chain.sh` duplicate object grep. This occurred BEFORE any database connection from the wrapper; do not mark a migration as attempted.
+- **Patch source on main:** replaced erroneous duplicate `CREATE TABLE IF NOT EXISTS`/enum grep with Node checker for repeated unconditional DDL. Existing historical IF NOT EXISTS and guarded `DO` are permitted; SHA ledger drift/unknown/relation safety checks remain in `operator-migration-check.mjs`.
+- **ACTUALLY EXECUTED in assistant's isolated runtime:** Node v22.16 `--check` of new helper (exact committed blob SHA `e1518eff9be87adb9dc7dba633ce02c50958d149`), 3 direct parser fixtures PASS, equivalent source structural shell fixture (idempotent duplicates PASS; unsafe duplicate rejected). **70** repository migration files source-inspected via authenticated GitHub batches; bare DDL candidates had no duplicate names. Assistant's local shell copy not byte-identical to actual committed shell: this is limited fixture evidence, not full checkout integration test.
+- **NOT EXECUTED:** New complete Node test suite, full `verify-migration-chain.sh` over all 70 SQL files, `operator-migrate.sh plan` against operator's live DB, ledger checks/checksums, apply/verify, production app/deploy. Never count user pre-fix tests as post-fix acceptance. Await operator's redacted read-only plan output.
+- **Next:** See `NEXT_ACTION.md` and `docs/project-control/sessions/OPERATOR-MIGRATION-DUPLICATE-STATIC-CHECK-FIX-20261019.md`.
+
+---
+
 ## 2026-10-19 — operator migration scripts: source prepared / execution pending
 
 - Source added on direct main: `scripts/operator-migrate.sh` (read-only plan/verify, backup+database-target gated apply), `packages/db/operator-migration-check.mjs`, `packages/db/operator-migration-core.mjs`, tests and operator runbook. No new SQL migration is necessary solely for ElevenLabs TTS/STT 409; no silent encrypted API key copy.
