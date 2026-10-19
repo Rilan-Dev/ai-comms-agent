@@ -4,6 +4,7 @@ import { parseCredentialsMasterKey } from "@ai-comms-agent/db";
 import { authorize } from "@/lib/identity/authorization";
 import { getAuthenticatedAppContext, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { assertOAuthRedirectUriSecure, getOAuthPublicOrigin, getOAuthRedirectUri } from "@/lib/oauth/redirect-uri";
+import { loadMicrosoftOAuthConfiguration } from "@/lib/oauth/microsoft-config";
 
 export const dynamic = "force-dynamic";
 
@@ -39,15 +40,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "forbidden", message: "Organization admin access is required to connect Outlook." }, { status: 403 });
   }
 
-  const clientId = process.env.MICROSOFT_OAUTH_CLIENT_ID?.trim();
-  const tenantId = process.env.MICROSOFT_OAUTH_TENANT_ID?.trim() || "common";
   const key = signingKey();
-  if (!clientId || !process.env.MICROSOFT_OAUTH_CLIENT_SECRET?.trim()) {
-    return configurationError(request, "Configure MICROSOFT_OAUTH_CLIENT_ID and MICROSOFT_OAUTH_CLIENT_SECRET in server-side settings.");
-  }
-  if (!key) return configurationError(request, "The platform credential-encryption key is required before connecting Outlook.");
-
+  if (!key) return configurationError(request, "Platform encryption key is required before connecting Outlook.");
   const url = new URL(request.url);
+  const configId = url.searchParams.get("configId")?.trim() ?? "";
+  if (!configId) return configurationError(request, "Choose an enabled Microsoft OAuth client in Settings before connecting Outlook.", 422);
+  const config = await loadMicrosoftOAuthConfiguration(appContext.organizationId, configId);
+  if (!config) return configurationError(request, "The selected Microsoft OAuth client is unavailable or disabled.", 404);
+  const { clientId, tenantId } = config;
   const accountId = url.searchParams.get("accountId")?.trim() || undefined;
   let redirectUri: string;
   try {
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
     organizationId: appContext.organizationId,
     userId: appContext.user.id,
     tenantId,
-    clientId,
+    configId,
     redirectUri,
     ...(accountId ? { accountId } : {}),
     nonce: randomBytes(16).toString("base64url"),
