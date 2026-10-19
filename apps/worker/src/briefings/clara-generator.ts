@@ -23,7 +23,21 @@ export function createClaraBriefingGenerator(
   if (!Number.isFinite(timeoutMs) || timeoutMs < 1) throw new Error("Invalid provider deadline");
   return async input => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    // Aborting fetch alone is not enough: an upstream adapter or a streaming
+    // iterator can ignore AbortSignal and never settle. Race both stages
+    // against the same absolute deadline so the C2 lease can be reclaimed.
+    let rejectDeadline!: (error: Error) => void;
+    const deadline = new Promise<never>((_, reject) => {
+      rejectDeadline = reject;
+    });
+    const timeoutError = new Error("Briefing provider deadline exceeded");
+    const timer = setTimeout(() => {
+      rejectDeadline(timeoutError);
+      controller.abort();
+    }, timeoutMs);
+    const bounded = <T>(task: Promise<T>): Promise<T> =>
+      Promise.race([task, deadline]);
+    let iterator: AsyncIterator<string> | undefined;
     try {
       const request = {
         orgId: principal.organizationId,
@@ -51,20 +65,28 @@ export function createClaraBriefingGenerator(
           })),
         }) },
       ];
-      const result = await createTurn(request, messages, controller.signal);
+      const result = await bounded(createTurn(request, messages, controller.signal));
+      iterator = result.stream[Symbol.asyncIterator]();
       let output = "";
-      for await (const chunk of result.stream) {
-        if (controller.signal.aborted) throw new Error("Briefing provider deadline exceeded");
-        output += chunk;
+      for (;;) {
+        const next = await bounded(iterator.next());
+        if (next.done) break;
+        output += next.value;
         if (output.length > MAX_MODEL_OUTPUT) {
           controller.abort();
           throw new Error("Oversized briefing provider output");
         }
       }
-      if (controller.signal.aborted) throw new Error("Briefing provider deadline exceeded");
+      if (controller.signal.aborted) throw timeoutError;
       return output;
     } finally {
       clearTimeout(timer);
+      // Do not await iterator.return(): a broken provider may also ignore it.
+      // The upstream AbortSignal is still sent to terminate real transports.
+      if (controller.signal.aborted && iterator?.return) {
+        const stream = iterator;
+        void Promise.resolve().then(() => stream.return!()).catch(() => undefined);
+      }
     }
   };
 }

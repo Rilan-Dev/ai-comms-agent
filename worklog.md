@@ -1903,3 +1903,15 @@ Owner requested all latest changes committed and current/pending/next status ret
 ## GitHub push receipt — 2026-10-19
 
 Code and additive project-control handoff pushed to `main` at `b66dfe40df023b47142610c1d798c921efdae83d`. Independently verified with `git ls-remote origin refs/heads/main`; local HEAD matched and working tree was clean. This documentation receipt follows that verified code checkpoint. No force push, production migration or deployment command was used.
+
+
+## 2026-10-20 — FIX-01 C3 briefing provider deadline hang correction
+
+- **Role:** FIX-01 / Sentinel, error fixing only. The separately running DEV AI owns ongoing feature development.
+- **Repository continuity:** Read `docs/project-control/CHAT_CONTINUITY.md` and `NEXT_ACTION.md` from GitHub main. No changes to project-control documents.
+- **Bug:** `createClaraBriefingGenerator` used an AbortController and a 60-second timeout but awaited `createBriefingTurn` and then the provider's async stream directly. If an adapter ignored AbortSignal during initialization or in `iterator.next()`, neither wait would settle. The C3 worker could keep refreshing its fenced lease indefinitely, blocking recovery.
+- **Correction:** Both initial provider connection and each streaming `next()` now race against one absolute deadline. Preserve upstream abort propagation and best-effort nonblocking iterator cancellation; ensure stalled upstream code cannot block lease release.
+- **Changed source:** `apps/worker/src/briefings/clara-generator.ts`.
+- **Regression coverage:** Two cases appended to `apps/worker/tests/briefing-c3-wiring.test.ts`: provider ignores abort before first response, and provider stalls after an initial streamed chunk.
+- **Verification:** Not run in this connector-only FIX-01 session. User's earlier 29/29 C3 tests and four TypeScript checks were on the preceding source; they do not validate this correction. No GitHub Actions/Vercel waits, deployment, migrations, provider sends, new branches or pull requests.
+- **Next:** Other development continues independently. On host, run the focused briefing test files and worker typecheck when convenient; handle any resulting error as FIX-01. Feature remains disabled until the development owner authorizes activation.

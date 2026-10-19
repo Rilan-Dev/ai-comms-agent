@@ -123,7 +123,7 @@ test("Clara provider deadline aborts the model request", async () => {
     });
     throw new Error("unreachable");
   }, 5);
-  await assert.rejects(generator({ language: "en", instructions: "Strict", sources: [source] }), /aborted/);
+  await assert.rejects(generator({ language: "en", instructions: "Strict", sources: [source] }), /deadline exceeded|aborted/);
   assert.equal(observedSignal?.aborted, true);
 });
 
@@ -208,4 +208,29 @@ test("canonical loader fingerprints full manifest grant, never batch mailbox sub
   assert.doesNotMatch(canonical,
     /resolveBriefingScopeInTransaction\(client, principal, claim\.sources\.map/);
   assert.match(canonical, /requireClaimedMailboxScope\(claim\.sources, scope\.mailboxIds\)/);
+});
+
+
+test("Clara generator deadline rejects even when provider ignores AbortSignal", async () => {
+  let aborted = false;
+  const generator = createClaraBriefingGenerator(principal, async (_ctx, _messages, signal) => {
+    signal?.addEventListener("abort", () => { aborted = true; }, { once: true });
+    return new Promise<never>(() => {}); // Broken upstream adapter never settles.
+  }, 5);
+  await assert.rejects(generator({ language: "en", instructions: "Strict", sources: [source] }), /deadline exceeded/);
+  assert.equal(aborted, true);
+});
+
+test("Clara generator deadline rejects when provider stream stops yielding", async () => {
+  let aborted = false;
+  const generator = createClaraBriefingGenerator(principal, async (_ctx, _messages, signal) => {
+    signal?.addEventListener("abort", () => { aborted = true; }, { once: true });
+    async function* stream() {
+      yield '{"items":';
+      await new Promise<never>(() => {}); // Simulate stuck next() after initial data.
+    }
+    return { providerName: "test", model: "test", stream: stream() };
+  }, 5);
+  await assert.rejects(generator({ language: "en", instructions: "Strict", sources: [source] }), /deadline exceeded/);
+  assert.equal(aborted, true);
 });
