@@ -16,6 +16,7 @@ import type { EmailProvider } from "@ai-comms-agent/shared";
 import { publishEmailSync } from "../queues/email-sync-rabbitmq";
 import { deleteEmailKnowledge } from "../knowledge/email-knowledge-indexer";
 import { unavailableMessageIds, successfullyPersistedMessageIds } from "./mailbox-sync-checkpoint";
+import { parseInitialImportLimit, eligibleSyncMessageIds } from "./initial-import-limit";
 import type { EmailSyncPayload } from "../queues/email-sync-message";
 
 type Candidate = {
@@ -320,8 +321,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       );
     }
 
-    const initialLimit = [10, 50, 100].includes(Number(connectionConfig.initialSyncLimit))
-      ? Number(connectionConfig.initialSyncLimit) : 50;
+    const initialLimit = parseInitialImportLimit(connectionConfig.initialSyncLimit);
     const imported = await query<{ count: number }>(
       "SELECT COUNT(*)::int AS count FROM email_messages WHERE organization_id=$1 AND email_account_id=$2",
       [candidate.organization_id, candidate.id],
@@ -369,10 +369,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       // discard *incremental* events, including live incoming messages.
       // Providers without a direct history cursor may still scan older
       // metadata to establish their checkpoint; do not persist the backlog.
-      const remaining = Math.max(0, initialLimit - importedCount);
-      ids = state.sync_mode === "initial"
-        ? [...messageIds].slice(0, remaining)
-        : [...messageIds];
+      ids = eligibleSyncMessageIds([...messageIds], state.sync_mode, initialLimit, importedCount);
       stagedCursor = result.new_state.cursor ?? null;
       stagedHistory = result.new_state.history_token ?? null;
       stagedMode = result.new_state.sync_mode;
