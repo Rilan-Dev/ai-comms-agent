@@ -644,3 +644,9 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - Exact executed Node 16/16 and standalone tsc PASS; 19/19 GitHub source contracts PASS. Full Vitest/database/runtime/browser/deployment NOT verified.
 - FIX-01 retains rolling 24h incident and HTML security #36; OPS-01 owns DB/CI/provider-synchronization/host credentials/Vercel. No branch/PR/prod deploy.
 - Session: `docs/project-control/sessions/DEV01-EXPLICIT-DATE-MAIL-20261019.md`.
+
+### EVT-DEV01-ELEVENLABS-VOICE-PRESAVE-GUARD-20261019
+- **Observation:** Two separate enabled ElevenLabs `tts` and `stt` key rows are required to fetch respective vendor model catalogs. Existing opt-in Realtime key reuse already built, not deployed/verified; client two-PUT save still had partial-write risk when one key was missing.
+- **Correction:** Pure before-first-PUT completeness guard, whitespace-safe plaintext handling, PUT keepExistingKey existence check after authorization, retained read-only Realtime metadata during voice capabilities reload.
+- **Evidence:** 8/8 exact-helper isolated Node execution, isolated TypeScript and 10/10 authenticated GitHub source predicates PASS. Whole repo tests/build, live vendor APIs, migrations, browser/deploy NOT tested; no branch/PR. Sequential network failures still could partially commit.
+- **Handoff:** OPS-01 integration/deploy/Vercel; FIX-01 existing voice/security defects. Exact session `DEV01-ELEVENLABS-VOICE-PRESAVE-GUARD-20261019`.
