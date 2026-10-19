@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { validateCanonicalBriefingRows, requireClaimedMailboxScope } from "@ai-comms-agent/db";
+import { validateCanonicalBriefingRows, requireClaimedMailboxScope, validateClaimedBriefingSourceIds } from "@ai-comms-agent/db";
 import { readFileSync } from "node:fs";
 import { generateBriefingBatch, validateBriefingItems } from "@ai-comms-agent/email-agent-runtime/briefings/generation";
 import { createClaraBriefingGenerator } from "../src/briefings/clara-generator";
@@ -233,4 +233,19 @@ test("Clara generator deadline rejects when provider stream stops yielding", asy
   }, 5);
   await assert.rejects(generator({ language: "en", instructions: "Strict", sources: [source] }), /deadline exceeded/);
   assert.equal(aborted, true);
+});
+
+
+test("unthreaded canonical email is allowed, but missing or malformed claim IDs fail closed", () => {
+  const unthreaded = { ...source, threadId: null } as unknown as typeof source;
+  assert.doesNotThrow(() => validateClaimedBriefingSourceIds(unthreaded));
+  assert.throws(() => validateClaimedBriefingSourceIds({ ...source, threadId: "" }), /access denied/i);
+  assert.throws(() => validateClaimedBriefingSourceIds({
+    ...source, threadId: undefined,
+  } as unknown as typeof source), /access denied/i);
+  assert.throws(() => validateClaimedBriefingSourceIds({
+    ...source, messageId: "other-tenant", threadId: null,
+  } as unknown as typeof source), /access denied/i);
+  const rows = [{ ...row, thread_id: null }];
+  assert.equal(validateCanonicalBriefingRows([unthreaded], rows)[0]?.threadId, null);
 });

@@ -9,7 +9,7 @@ export type CanonicalBriefingMail = BriefingSource & {
   partial: boolean;
 };
 export type CanonicalBriefingRow = {
-  message_id: string; mailbox_id: string; thread_id: string;
+  message_id: string; mailbox_id: string; thread_id: string | null;
   content_revision: string; live_revision: string | null;
   subject: string | null; from_email: string | null;
   text_body: string | null; snippet: string | null;
@@ -52,6 +52,14 @@ export function requireClaimedMailboxScope(
   }
 }
 
+/** Thread identity may legitimately be NULL for an unthreaded email. */
+export function validateClaimedBriefingSourceIds(source: BriefingSource): void {
+  requireBriefingIds(source.messageId, source.mailboxId);
+  // The persisted C2 source_thread_id and email_messages.thread_id columns
+  // are nullable. Reject missing/invalid values, but preserve a real null.
+  if (source.threadId !== null) requireBriefingIds(source.threadId);
+}
+
 /**
  * Trusted worker-only read. The source IDs come from a fenced C2 claim, not
  * a model/user supplied list. Scope, lease and content revisions are rechecked
@@ -66,7 +74,7 @@ export async function loadCanonicalBriefingSources(
       !Array.isArray(claim.sources) || !claim.sources.length || claim.sources.length > 50) {
     throw new Error('Invalid briefing batch claim');
   }
-  for (const s of claim.sources) requireBriefingIds(s.messageId, s.mailboxId, s.threadId);
+  for (const s of claim.sources) validateClaimedBriefingSourceIds(s);
   return withTransaction(async client => {
     // A manifest can span several authorized mailboxes while an individual
     // immutable batch contains sources from only one. Scope fingerprinting

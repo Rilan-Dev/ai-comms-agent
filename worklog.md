@@ -1915,3 +1915,12 @@ Code and additive project-control handoff pushed to `main` at `b66dfe40df023b471
 - **Regression coverage:** Two cases appended to `apps/worker/tests/briefing-c3-wiring.test.ts`: provider ignores abort before first response, and provider stalls after an initial streamed chunk.
 - **Verification:** Not run in this connector-only FIX-01 session. User's earlier 29/29 C3 tests and four TypeScript checks were on the preceding source; they do not validate this correction. No GitHub Actions/Vercel waits, deployment, migrations, provider sends, new branches or pull requests.
 - **Next:** Other development continues independently. On host, run the focused briefing test files and worker typecheck when convenient; handle any resulting error as FIX-01. Feature remains disabled until the development owner authorizes activation.
+
+
+## 2026-10-20 — FIX-01 unthreaded email C3 source validation error
+
+- **Role/scope:** FIX-01 error correction only; other DEV agents retain feature ownership.
+- **Bug:** Email message `thread_id` and immutable C2 `source_thread_id` are nullable; canonical loader called `requireBriefingIds(..., s.threadId)` for every claimed message. An otherwise valid source without a thread was rejected as invalid UUID before any email body could be loaded, potentially leaving catch-up work repeatedly unprocessed.
+- **Fix:** In `packages/db/src/briefings/canonical-sources.ts`, validate message and mailbox UUIDs strictly and allow only explicit `null` for an unthreaded source. Undefined, empty strings and malformed IDs still fail closed. Export pure claim validator via `packages/db/src/index.ts`.
+- **Regression:** Added one `apps/worker/tests/briefing-c3-wiring.test.ts` case covering an unthreaded canonical source and invalid identifiers, without changing schema, provider credentials, deployment or scheduled delivery.
+- **Verification:** Authored, not executed in this connector-only session. No CI/Vercel polling; no project-control Markdown changed. Developer can run the focused worker tests at an independent convenient time.
