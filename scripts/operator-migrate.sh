@@ -24,7 +24,7 @@ Options:
                          An existing production database must have its ledger.
 Environment:
   ACA_COMPOSE_FILE        Compose file (default: ./docker-compose.yml)
-  ACA_ENV_FILE            Compose env file (default: ./.env)
+  The Compose env file is always ./.env to prevent split target configs.
   ACA_MIGRATION_SERVICE   Compose application service (default: web)
 Workflow: build the exact checkout's app image, plan, back up the target
 database independently, apply, verify, then deploy separately.
@@ -69,9 +69,8 @@ command -v docker >/dev/null 2>&1 || { echo "ERROR: Docker is required." >&2; ex
 docker compose version >/dev/null 2>&1 || { echo "ERROR: Docker Compose v2 is required." >&2; exit 1; }
 
 COMPOSE_FILE="${ACA_COMPOSE_FILE:-$ROOT/docker-compose.yml}"
-ENV_FILE="${ACA_ENV_FILE:-$ROOT/.env}"
+ENV_FILE="$ROOT/.env"
 [[ "$COMPOSE_FILE" = /* ]] || COMPOSE_FILE="$ROOT/$COMPOSE_FILE"
-[[ "$ENV_FILE" = /* ]] || ENV_FILE="$ROOT/$ENV_FILE"
 [[ -f "$COMPOSE_FILE" && -f "$ENV_FILE" ]] || {
   echo "ERROR: Compose file or .env missing. Never fall back to development DB credentials." >&2
   exit 1
@@ -83,7 +82,7 @@ SERVICE="${ACA_MIGRATION_SERVICE:-web}"
 # A static source check is separate from the live ledger/target check.
 bash "$ROOT/scripts/verify-migration-chain.sh"
 
-COMPOSE=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
+COMPOSE=(docker compose --project-directory "$ROOT" --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
 # The Compose network resolves service-only PostgreSQL names. The application
 # image must have been built at the current checkout revision before proceeding.
 RUN=("${COMPOSE[@]}" run --rm --no-deps
