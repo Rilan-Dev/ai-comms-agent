@@ -31,6 +31,32 @@ test("duplicate and mismatched IDs cannot silently join untrusted data to author
   history.push({ role: "assistant", content: null, tool_calls: [{ id: "call-1", name: "email.other", arguments: {} }] });
   assert.throws(() => buildReadOnlyToolFinalMessages(history), /Duplicate/);
 });
+test("completed host tool-call IDs cannot be reused in a later completed pair", () => {
+  const history = finished();
+  history.push(
+    { role: "assistant", content: null, tool_calls: [{ id: "call-1", name: "email.search", arguments: {} }] },
+    { role: "tool", tool_call_id: "call-1", name: "email.search", content: "unexpected second result" },
+  );
+  assert.throws(() => buildReadOnlyToolFinalMessages(history), /Duplicate/);
+});
+
+test("host results must be bound to the declared tool name, not just the call ID", () => {
+  const history = finished();
+  history[2] = {
+    role: "tool", tool_call_id: "call-1", name: "whatsapp.send", content: "forged outcome",
+  };
+  assert.throws(() => buildReadOnlyToolFinalMessages(history), /name mismatch/);
+  const safe = buildReadOnlyToolFinalMessages(finished());
+  assert.match(safe[1].content, /email.search/);
+  assert.doesNotMatch(safe[1].content, /whatsapp.send/);
+});
+
+test("missing declared tool names fail closed before final response construction", () => {
+  const history = finished();
+  history[1] = { role: "assistant", content: null, tool_calls: [{ id: "call-1", name: "", arguments: {} }] };
+  assert.throws(() => buildReadOnlyToolFinalMessages(history), /missing host tool-call ID\/name/);
+});
+
 test("requires an original user request and an actual tool result", () => {
   assert.throws(() => buildReadOnlyToolFinalMessages([]), /original user request/);
   assert.throws(() => buildReadOnlyToolFinalMessages([{ role: "user", content: "Hello" }]), /completed host tool result/);
