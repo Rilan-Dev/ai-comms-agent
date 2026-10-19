@@ -56,6 +56,16 @@ test("bundled development Compose cannot be used to release production Docker se
   assert.doesNotMatch(script, /ACA_RELEASE_TARGET:-docker/);
 });
 
+test("automated tests never inherit production Compose credentials or network access", () => {
+  assert.match(script, /docker build --target web --tag "\$WEB_IMAGE" "\$ROOT"/);
+  assert.match(script, /docker run --rm --network none/);
+  assert.match(script, /pnpm -r typecheck; pnpm -r test; pnpm --filter @ai-comms-agent\/worker build/);
+  assert.doesNotMatch(script, /web sh -euc 'pnpm -r typecheck/);
+  assert.match(script, /Run automated test suites inside the production Compose service/i.test(script)
+    ? /NEVER run automated test suites inside the production Compose service/
+    : /NO production environment and NO network access/);
+});
+
 test("Vercel must be linked and authenticated; health does not claim integration acceptance", () => {
   assert.match(script, /\.vercel\/project\.json/);
   assert.match(script, /vercel whoami/);
