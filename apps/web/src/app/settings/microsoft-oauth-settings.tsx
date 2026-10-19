@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 type Config = {
   id: string; label: string; clientId: string; tenantId: string;
-  enabled: boolean; redirectUri: string; secretConfigured: boolean;
+  enabled: boolean; redirectUri: string; notificationUrl: string; secretConfigured: boolean;
 };
 
 export function MicrosoftOAuthSettings({ organizationId }: { organizationId: string }) {
@@ -14,6 +14,7 @@ export function MicrosoftOAuthSettings({ organizationId }: { organizationId: str
   const [clientId, setClientId] = useState("");
   const [tenantId, setTenantId] = useState("common");
   const [clientSecret, setClientSecret] = useState("");
+  const [notificationUrl, setNotificationUrl] = useState("");
   const [enabled, setEnabled] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -48,6 +49,7 @@ export function MicrosoftOAuthSettings({ organizationId }: { organizationId: str
     setLabel(config?.label ?? "");
     setClientId(config?.clientId ?? "");
     setTenantId(config?.tenantId ?? "common");
+    setNotificationUrl(config?.notificationUrl ?? "");
     setEnabled(config?.enabled ?? true);
     setClientSecret(""); setNotice(""); setShowForm(true);
   }
@@ -57,7 +59,7 @@ export function MicrosoftOAuthSettings({ organizationId }: { organizationId: str
     try {
       const response = await fetch("/api/settings/microsoft-oauth", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ organizationId, id: editingId || undefined, label, clientId, tenantId, clientSecret, enabled }),
+        body: JSON.stringify({ organizationId, id: editingId || undefined, label, clientId, tenantId, clientSecret, notificationUrl, enabled }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || "Microsoft client could not be saved.");
@@ -113,6 +115,12 @@ export function MicrosoftOAuthSettings({ organizationId }: { organizationId: str
       <label className="text-xs font-medium">Client secret{editingId ? " (leave blank to retain)" : ""}
         <input type="password" required={!editingId} value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} autoComplete="new-password"
           className="mt-1 block h-11 w-full rounded-md border bg-background px-3 text-sm"/></label>
+      <label className="text-xs font-medium sm:col-span-2">Optional public HTTPS Graph notifications URL
+        <input type="url" value={notificationUrl} onChange={(event) => setNotificationUrl(event.target.value)}
+          placeholder="https://mail.example.com/api/webhooks/microsoft-graph"
+          className="mt-1 block h-11 w-full rounded-md border bg-background px-3 text-sm"/>
+        <span className="mt-1 block font-normal text-muted-foreground">Leave empty to use scheduled incremental polling. Real-time subscriptions require a working public webhook endpoint with the exact /api/webhooks/microsoft-graph path.</span>
+      </label>
       <div className="sm:col-span-2 text-xs text-muted-foreground">
         <p className="font-medium">Microsoft Entra web redirect URI:</p>
         <code className="mt-1 block break-all rounded bg-background p-2">{configs[0]?.redirectUri || "/api/oauth/microsoft/callback (resolved from the current public HTTPS origin)"}</code>
