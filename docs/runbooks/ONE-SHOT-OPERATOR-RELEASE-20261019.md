@@ -8,7 +8,7 @@ From a **clean checkout already on `main`**, on the deployment host, run this on
 git pull --ff-only origin main && bash scripts/operator-one-shot.sh
 ```
 
-The script asks for a target: `vercel`, `docker`, or `migration`. It then asks for the **actual PostgreSQL database name**, displays the read-only migration plan, asks for your independent restorable-backup reference, and requires you to type `APPLY <confirmed_database_name>` **before writing SQL**. This is *one invocation*, not an unsafe noninteractive migration. No token or password should be pasted into chat.
+The script asks for a target: **`1` or `vercel`**, **`2` or `docker`**, **`3` or `migration`**. When updating a host checkout, run `git pull --ff-only origin main` before using numbered choices. Selecting Docker will next request a separately approved production Compose file; the bundled development `docker-compose.yml` cannot be deployed as production. It then asks for the **actual PostgreSQL database name**, displays the read-only migration plan, asks for your independent restorable-backup reference, and requires you to type `APPLY <confirmed_database_name>` **before writing SQL**. This is *one invocation*, not an unsafe noninteractive migration. No token or password should be pasted into chat.
 
 ## Preconditions
 
