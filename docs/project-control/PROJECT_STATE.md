@@ -1,3 +1,10 @@
+## DEV-01 — 2026-10-19 ElevenLabs TTS/STT save guard checkpoint
+
+- Existing source already had explicit, authorized same-org encrypted Realtime→TTS/STT reuse. New DEV-01 direct-main slice checks missing TTS/STT credentials before sequential Save, fails closed on `keepExistingKey` without a saved secret, and retains Realtime status after Voice Chat reload. Purpose-specific independent model and key settings preserved.
+- Executed isolated 8/8 Node checks, isolated TypeScript check PASS; current GitHub 10/10 static source-contract checks PASS. Full pnpm suite, Postgres, browser/authenticated vendor endpoints and deployed source remain unverified. Phase 4 remains implementation_in_progress. Session `DEV01-ELEVENLABS-VOICE-PRESAVE-GUARD-20261019`.
+
+---
+
 ## DEV-01 — C1 implementation checkpoint — 2026-10-19
 
 Private catch-up storage/access implemented; flag remains off. PostgreSQL 17/17 and focused web 8/8 pass; package typechecks pass and web build passed before the final evidence-read correction. Full worker/web suites still fail outside changed C1 areas; FIX-01 and OPS-01 handoffs are recorded. No deployment/push/provider use. See [C1 session](sessions/DEV01-CATCHUP-C1-20261018.md). **Exact next action:** C2 failing selection/coverage tests, then immutable manifests and explicit review progress. Existing phase remains implementation_in_progress; earlier active/planning entries are historical.
