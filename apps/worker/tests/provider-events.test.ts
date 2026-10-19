@@ -15,6 +15,7 @@ test("provider event mapping preserves organization and correlation identity", (
 
   assert.deepEqual(mapped, {
     type: "email.action.failed",
+    organizationId: "org-1",
     payload: {
       organizationId: "org-1",
       actionId: "action-1",
@@ -40,6 +41,7 @@ test("WhatsApp provider event mapping preserves message identity and outcome met
   });
 
   assert.equal(mapped.type, "whatsapp.message.failed");
+  assert.equal(mapped.organizationId, "org-2");
   assert.equal(mapped.payload.organizationId, "org-2");
   assert.equal(mapped.payload.messageId, "message-2");
   assert.equal(mapped.payload.accountId, "wa-2");
@@ -85,6 +87,7 @@ test("provider metadata cannot override canonical routing or correlation identit
     },
   });
 
+  assert.equal(mapped.organizationId, "org-canonical");
   assert.equal(mapped.payload.organizationId, "org-canonical");
   assert.equal(mapped.payload.actionId, "action-canonical");
   assert.equal(mapped.payload.emailAccountId, "account-canonical");
