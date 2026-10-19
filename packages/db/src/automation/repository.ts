@@ -202,8 +202,12 @@ export async function failScheduledJobRun(runId:string,error:string){
   await query("UPDATE scheduled_job_runs SET status='failed',finished_at=now(),error=$2 WHERE id=$1",[runId,error]);
 }
 
-export async function listActiveAutomationRules(){
-  const r=await query<Row>("SELECT * FROM automation_rules WHERE status='active' ORDER BY created_at ASC");
+export async function listActiveAutomationRules(organizationId:string){
+  // Never enumerate active rules globally for a single tenant's event.
+  const r=await query<Row>(
+    "SELECT * FROM automation_rules WHERE organization_id=$1 AND status='active' ORDER BY created_at ASC",
+    [organizationId],
+  );
   return r.rows.map(automation);
 }
 export async function createAutomationRun(ruleId:string, result:Record<string,unknown>={}, triggerEventKey?:string|null){
