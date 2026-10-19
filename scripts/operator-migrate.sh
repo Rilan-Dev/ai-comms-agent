@@ -55,6 +55,10 @@ if [[ "$MODE" != "apply" && ( "$ALLOW_FRESH" -eq 1 || "$BACKUP_CONFIRMED" -eq 1 
 fi
 if [[ "$MODE" != "plan" && -z "$EXPECTED_DB" ]]; then
   echo "ERROR: --expect-db DATABASE is required for apply and verify." >&2
+  echo "HINT: Run 'bash scripts/operator-migrate.sh plan' first and read the DATABASE: name." >&2
+  echo "HINT: Then use 'bash scripts/operator-migrate.sh verify --expect-db CONFIRMED_NAME'." >&2
+  echo "HINT: A shell DATABASE_URL override does not replace --expect-db; the migration service uses Compose .env." >&2
+  echo "HINT: If PENDING migrations remain, verify will fail until an independently backed-up, approved apply completes." >&2
   exit 2
 fi
 if [[ "$MODE" == "apply" && "$BACKUP_CONFIRMED" -ne 1 ]]; then
