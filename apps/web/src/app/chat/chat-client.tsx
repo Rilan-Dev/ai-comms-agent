@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AudioLines, Bot, Send, Sparkles, User } from "lucide-react";
 import dynamic from "next/dynamic";
 import { readSseEvents } from "@/lib/streaming/sse";
+import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "@/lib/ai/activity-progress";
 
 // Defer microphone and vendor transport code until the user requests voice.
 const VoiceWorkspace = dynamic(
@@ -21,12 +22,14 @@ export function ChatClient({
   initialAgentId,
   initialConversationId,
   initialMessages,
+  catchUpEnabled = false,
 }: {
   organizationId: string;
   agents: Agent[];
   initialAgentId: string;
   initialConversationId: string;
   initialMessages: Message[];
+  catchUpEnabled?: boolean;
 }) {
   const [agentId, setAgentId] = useState(initialAgentId);
   const [conversationId, setConversationId] = useState(initialConversationId);
@@ -35,6 +38,7 @@ export function ChatClient({
   const [busy, setBusy] = useState(false);
   const [responseStarted, setResponseStarted] = useState(false);
   const [activity, setActivity] = useState("");
+  const [activitySteps, setActivitySteps] = useState<AgentActivityPhase[]>([]);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -72,6 +76,28 @@ export function ChatClient({
     }
   }
 
+  async function returnFromVoice() {
+    setVoiceOpen(false);
+    // Reload the same server-scoped agent conversation. Keep the unsent Chat
+    // draft intact; only host-confirmed transcript turns appear after reload.
+    try {
+      const params = new URLSearchParams({ organizationId, agentId });
+      const response = await fetch(`/api/chat/conversation?${params}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("Could not refresh the conversation.");
+      const data = await response.json() as { conversation?: { id: string }; messages?: Message[] };
+      if (data.conversation && Array.isArray(data.messages)) {
+        setConversationId(data.conversation.id);
+        setMessages(data.messages);
+      }
+    } catch {
+      setMessages(current => [...current, {
+        id: `voice-history-error-${Date.now()}`, conversationId, role: "system",
+        content: "Voice history could not be refreshed. Your unsent message is preserved; retry the chat page to load saved turns.",
+        createdAt: new Date().toISOString(),
+      }]);
+    }
+  }
+
   async function sendMessage() {
     const content = draft.trim();
     if (!content || busy || !activeAgent) return;
@@ -79,6 +105,7 @@ export function ChatClient({
     setBusy(true);
     setResponseStarted(false);
     setActivity("Preparing response…");
+    setActivitySteps(["preparing"]);
 
     const optimisticId = "local-" + Date.now();
     setMessages((current) => [...current, { id: optimisticId, conversationId, role: "user", content, createdAt: new Date().toISOString() }]);
@@ -100,12 +127,23 @@ export function ChatClient({
         };
         if (event.event === "error") throw new Error(payload.message || "AI generation failed.");
         if (payload.conversationId) setConversationId(payload.conversationId);
+        if (event.event === "progress") {
+          const phase = safeActivityPhase(payload.phase);
+          if (phase) {
+            setActivity(agentActivityLabel(phase));
+            setActivitySteps((steps) => steps.at(-1) === phase ? steps : [...steps, phase].slice(-10));
+          }
+          continue;
+        }
         if (event.event === "status") {
-          setActivity(payload.phase === "tools" ? "Checking authorized tools…" : "Generating response…");
+          const phase: AgentActivityPhase = payload.phase === "tools" ? "checking_permissions" : "generating";
+          setActivity(agentActivityLabel(phase));
+          setActivitySteps((steps) => steps.at(-1) === phase ? steps : [...steps, phase].slice(-10));
           continue;
         }
         if (event.event === "done") {
           completed = true;
+          setActivitySteps((steps) => [...steps, "completed" as AgentActivityPhase].slice(-10));
           break;
         }
         if (payload.text) {
@@ -161,7 +199,7 @@ export function ChatClient({
 
       {voiceOpen ? (
         <VoiceWorkspace organizationId={organizationId} agents={agents} initialAgentId={agentId}
-          embedded onReturnToChat={() => setVoiceOpen(false)} />
+          conversationId={conversationId} embedded onReturnToChat={() => { void returnFromVoice(); }} />
       ) : (
       <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
         <div role="log" aria-live="polite" className="min-w-0 flex-1 space-y-6 overflow-y-auto py-6">
@@ -172,6 +210,7 @@ export function ChatClient({
                 <h2 className="mt-4 text-lg font-semibold">Ask Clara anything</h2>
                 <p className="mt-1.5 text-sm text-muted-foreground">Summarize your inbox, find important emails, or ask about recent messages.</p>
                 <div className="mt-5 grid gap-2">
+                  {catchUpEnabled ? <a href="/catch-up" className="mb-3 inline-flex items-center rounded-lg border border-primary/25 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/10">Catch up on my mail →</a> : null}
                   {["What needs my attention today?", "Summarize my recent emails", "Show emails from the last hour"].map((prompt) =>
                     <button key={prompt} onClick={() => setDraft(prompt)} className="rounded-lg border bg-card px-3.5 py-2.5 text-left text-sm transition hover:border-primary/30 hover:bg-accent/5">{prompt}</button>
                   )}
@@ -181,6 +220,25 @@ export function ChatClient({
           ) : messages.map((message) => (
             <MessageBubble key={message.id} role={message.role} content={message.content} />
           ))}
+          {activitySteps.length > 0 ? (
+            <details className="max-w-2xl rounded-xl border border-border/70 bg-muted/25 px-4 py-3 text-sm" open={busy}>
+              <summary className="cursor-pointer list-none font-medium text-muted-foreground">
+                <span className="inline-flex items-center gap-2">
+                  <span aria-hidden="true" className={`size-2 rounded-full ${busy ? "animate-pulse bg-primary" : "bg-muted-foreground/50"}`} />
+                  {busy ? "Clara is working" : "How this answer was prepared"}
+                </span>
+              </summary>
+              <ol aria-label="Observed agent steps" className="mt-3 space-y-2 border-l border-border pl-4 text-xs text-muted-foreground">
+                {activitySteps.map((phase, index) => (
+                  <li key={`${phase}-${index}`} className="relative pl-1">
+                    <span aria-hidden="true" className="absolute -left-[21px] top-1.5 size-1.5 rounded-full bg-muted-foreground/60" />
+                    {agentActivityLabel(phase)}
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-3 text-[11px] text-muted-foreground">Activity steps reflect actual system events, not private AI reasoning.</p>
+            </details>
+          ) : null}
           {busy && !responseStarted && <TypingIndicator />}
           <div ref={bottomRef} />
         </div>

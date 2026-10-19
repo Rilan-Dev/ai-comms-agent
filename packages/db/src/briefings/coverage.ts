@@ -37,6 +37,8 @@ async function currentManifest(client: PoolClient, p: TrustedBriefingPrincipal, 
   const row = found.rows[0]; if (!row) throw conflict('unavailable manifest');
   const scope = await resolveBriefingScopeInTransaction(client, p, row.mailbox_ids);
   if (scope.scopeVersion !== row.scope_version) throw conflict();
+  const sourceCount = (await client.query('SELECT count(*)::int n FROM summary_sources WHERE summary_id=$1', [id])).rows[0].n;
+  if (!Array.isArray(row.selected_source_manifest) || row.selected_source_manifest.length !== sourceCount) throw conflict('missing provenance');
   const invalid = await client.query(`SELECT 1 FROM summary_sources s LEFT JOIN email_messages m ON m.id=s.email_message_id AND m.organization_id=s.organization_id AND m.email_account_id=s.mailbox_id
     WHERE s.summary_id=$1 AND (m.id IS NULL OR s.content_revision IS DISTINCT FROM briefing_content_revision(m.id)) LIMIT 1`, [id]);
   if (invalid.rowCount) throw conflict();
@@ -60,7 +62,9 @@ export async function prepareBriefing(p: TrustedBriefingPrincipal, request: Brie
       const count = await client.query('SELECT count(*)::int n FROM summary_sources WHERE summary_id=$1', [current.row.id]);
       return manifest(current.row, scope, count.rows[0].n);
     }
-    const now = iso((await client.query('SELECT now() value')).rows[0].value);
+    // Preserve PostgreSQL microseconds: truncating now() to JS milliseconds
+    // can omit a reply committed earlier in this same millisecond.
+    const now: string = (await client.query(`SELECT to_char(now() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') value`)).rows[0].value;
     const history = await client.query(`SELECT history_start FROM briefing_selection_scopes WHERE organization_id=$1 AND owner_user_id=$2 AND agent_id=$3 AND scope_version=$4`, [...params(p), scope.scopeVersion]);
     const period = briefingPeriod(request.period, now, history.rows[0] ? iso(history.rows[0].history_start) : null);
     let coverage: RoutineCoverageSnapshot | undefined;
@@ -75,6 +79,7 @@ export async function prepareBriefing(p: TrustedBriefingPrincipal, request: Brie
       VALUES($1,$2,$3,'personal_briefing','','[]',$4,$5,$6,'pending',$7,$8,$9) RETURNING *`, [...params(p), period.start, period.end, scope.mailboxIds, request.mode, scope.scopeVersion, JSON.stringify({ language: request.language, request })])).rows[0];
     const job = (await client.query(`INSERT INTO briefing_generation_jobs(organization_id,owner_user_id,agent_id,summary_id,request_key,scope_version,request_fingerprint) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id`, [...params(p), summary.id, request.requestKey, scope.scopeVersion, fingerprint])).rows[0];
     const selected: { id: string; estimatedTokens: number }[] = [];
+    const manifestSources: BriefingSource[] = [];
     let cursor: string | null = null;
     const start = request.mode === 'scheduled' && request.routine.window === 'since_previous_occurrence' ? coverage!.historyStart : period.start;
     // One repeatable-read snapshot for every200-row page. UUID keysets do not
@@ -84,7 +89,9 @@ export async function prepareBriefing(p: TrustedBriefingPrincipal, request: Brie
         briefing_content_revision(m.id) revision,
         greatest(1,ceil((octet_length(coalesce(m.text_body,m.html_body_sanitized,m.snippet,''))+octet_length(coalesce(m.subject,'')))/4.0))::int tokens
         FROM email_messages m WHERE m.organization_id=$1 AND m.email_account_id=ANY($4::uuid[])
-        AND coalesce(m.received_at,m.created_at)>=$5 AND coalesce(m.received_at,m.created_at)<$6 AND ($7::uuid IS NULL OR m.id>$7)
+        AND NOT m.is_draft AND NOT m.is_sent
+        AND ((coalesce(m.received_at,m.created_at)>=$5 AND coalesce(m.received_at,m.created_at)<$6)
+          OR (NOT $8 AND m.created_at >= $5 AND m.created_at < $6)) AND ($7::uuid IS NULL OR m.id>$7)
         AND ($8 OR NOT EXISTS(SELECT 1 FROM briefing_review_sources r WHERE r.organization_id=$1 AND r.owner_user_id=$2 AND r.agent_id=$3 AND r.scope_version=$9 AND r.message_id=m.id AND r.content_revision=briefing_content_revision(m.id) AND r.reviewed_at IS NOT NULL))
         ORDER BY m.id LIMIT 200`, [...params(p), scope.mailboxIds, start, period.end, cursor, request.mode === 'scheduled', scope.scopeVersion]);
       for (const source of page.rows) {
@@ -92,10 +99,12 @@ export async function prepareBriefing(p: TrustedBriefingPrincipal, request: Brie
         const saved = (await client.query(`INSERT INTO summary_sources(summary_id,organization_id,owner_user_id,agent_id,email_message_id,mailbox_id,content_revision,source_ordinal,source_thread_id,source_received_at,estimated_input_tokens)
           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`, [summary.id, ...params(p), source.id, source.email_account_id, source.revision, selected.length, source.thread_id, source.received_at, source.tokens])).rows[0];
         selected.push({ id: saved.id, estimatedTokens: source.tokens });
+        manifestSources.push({ messageId: source.id, mailboxId: source.email_account_id, threadId: source.thread_id, contentRevision: source.revision });
       }
       if (page.rows.length < 200) break;
       cursor = page.rows.at(-1).id;
     }
+    await client.query('UPDATE summaries SET selected_source_manifest=$2 WHERE id=$1', [summary.id, JSON.stringify(manifestSources)]);
     for (const [ordinal, batch] of planBriefingBatches(selected).entries()) {
       await client.query(`INSERT INTO briefing_generation_batches(organization_id,owner_user_id,agent_id,job_id,ordinal,source_count,estimated_input_tokens,source_ids,partial_representation)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [...params(p), job.id, ordinal, batch.sourceIds.length, batch.estimatedTokens, batch.sourceIds, batch.partial]);
@@ -111,12 +120,12 @@ export async function prepareBriefing(p: TrustedBriefingPrincipal, request: Brie
 }
 
 export async function listBriefingSources(p: TrustedBriefingPrincipal, id: string, cursor: string | null = null, limit = 200): Promise<{items: BriefingSource[]; nextCursor: string | null}> {
-  if (!Number.isInteger(limit) || limit < 1 || limit > 200 || (cursor !== null && !/^\d+$/.test(cursor))) throw new Error('Invalid source pagination');
+  if (!Number.isInteger(limit) || limit < 1 || limit > 200 || (cursor !== null && !/^[0-9a-f-]{36}$/i.test(cursor))) throw new Error('Invalid source pagination');
   return withTransaction(async client => {
     await currentManifest(client, p, id);
-    const rows = (await client.query(`SELECT email_message_id,mailbox_id,source_thread_id,content_revision,source_ordinal FROM summary_sources WHERE summary_id=$1 AND source_ordinal>$2 ORDER BY source_ordinal LIMIT $3`, [id, cursor === null ? -1 : Number(cursor), limit + 1])).rows;
+    const rows = (await client.query(`SELECT email_message_id,mailbox_id,source_thread_id,content_revision,source_ordinal FROM summary_sources WHERE summary_id=$1 AND ($2::uuid IS NULL OR email_message_id>$2::uuid) ORDER BY email_message_id LIMIT $3`, [id, cursor, limit + 1])).rows;
     const selected = rows.slice(0, limit);
-    return { items: selected.map(s => ({ messageId: s.email_message_id, mailboxId: s.mailbox_id, threadId: s.source_thread_id, contentRevision: s.content_revision })), nextCursor: rows.length > limit ? String(selected.at(-1).source_ordinal) : null };
+    return { items: selected.map(s => ({ messageId: s.email_message_id, mailboxId: s.mailbox_id, threadId: s.source_thread_id, contentRevision: s.content_revision })), nextCursor: rows.length > limit ? selected.at(-1).email_message_id : null };
   });
 }
 
@@ -182,12 +191,16 @@ export async function completeBriefingBatch(p: TrustedBriefingPrincipal, claim: 
     const identities = sources.map(s => ({ messageId: s.email_message_id, contentRevision: s.content_revision }));
     const items: BriefingItem[] = [];
     for (const item of input) {
+      const safeFallback = item?.representation === 'partial' && item.confidence === 'uncertain' && item.priority === 'low'
+        && item.suggestedAction === 'review' && item.deadline === null && item.title === 'Review original email'
+        && item.summary === 'An AI-generated summary is not available. Open this email for the complete information.'
+        && item.reason === 'Grounded generation was unavailable or did not validate.';
       if (!item || !Array.isArray(item.sourceIds) || !item.sourceIds.length || item.sourceIds.some(id => !sourceMap.has(id)) ||
         !['high','medium','low'].includes(item.priority) || !['supported','uncertain'].includes(item.confidence) ||
         !['reply','review','follow_up','none'].includes(item.suggestedAction) || !['complete','partial'].includes(item.representation) ||
         [item.title,item.summary,item.reason].some(s => typeof s !== 'string' || s.length > 12000) ||
         (item.deadline !== null && typeof item.deadline !== 'string') ||
-        !Array.isArray(item.evidence) || !item.evidence.length || item.evidence.some(e => !e || !item.sourceIds.includes(e.sourceId) ||
+        !Array.isArray(item.evidence) || (!item.evidence.length && !safeFallback) || item.evidence.some(e => !e || !item.sourceIds.includes(e.sourceId) ||
           e.contentRevision !== sourceMap.get(e.sourceId)?.content_revision || !Number.isInteger(e.start) || !Number.isInteger(e.end) || e.start < 0 || e.end <= e.start ||
           typeof e.quote !== 'string' || e.quote.length > 12000 || !['deadline','amount','priority_reason','summary'].includes(e.supports))) throw new Error('Invalid represented item');
       const id = stableBriefingItemId(item, identities);
@@ -201,6 +214,11 @@ export async function completeBriefingBatch(p: TrustedBriefingPrincipal, claim: 
     if (!incomplete && sources.some(s => !items.some(i => i.sourceIds.includes(s.email_message_id)))) throw new Error('Complete output must represent every source');
     if (row.briefing_mode === 'catch_up') {
       for (const source of sources) {
+        // A fully represented regeneration supersedes provisional fallback /
+        // truncated items, but never discards a previously complete obligation.
+        if (!incomplete) await client.query(`DELETE FROM mail_review_items WHERE organization_id=$1 AND owner_user_id=$2 AND agent_id=$3 AND scope_version=$4
+          AND message_id=$5 AND content_revision=$6 AND representation='partial' AND acknowledged_at IS NULL`,
+        [...params(p), scope.scopeVersion, source.email_message_id, source.content_revision]);
         await client.query(`INSERT INTO briefing_review_sources(organization_id,owner_user_id,agent_id,scope_version,mailbox_id,message_id,content_revision,representation_complete)
           VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(organization_id,owner_user_id,agent_id,scope_version,message_id,content_revision)
           DO UPDATE SET representation_complete=briefing_review_sources.representation_complete OR EXCLUDED.representation_complete`,

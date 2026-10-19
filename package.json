@@ -2,7 +2,7 @@
   "name": "ai-comms-agent",
   "version": "0.0.0",
   "private": true,
-  "description": "Multi-channel AI communications agent — monorepo root",
+  "description": "Multi-channel AI communications agent \u2014 monorepo root",
   "license": "MIT",
   "packageManager": "pnpm@12.8.1",
   "engines": {

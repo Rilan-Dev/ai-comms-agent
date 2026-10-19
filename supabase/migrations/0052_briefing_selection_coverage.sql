@@ -34,3 +34,22 @@ CREATE INDEX briefing_candidate_scope ON email_messages(organization_id,email_ac
 ALTER TABLE briefing_selection_scopes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE briefing_review_sources ENABLE ROW LEVEL SECURITY;
 -- No direct client policies: same trusted application boundary as migration0050.
+
+-- Preserve source navigation for private manifests created by the earlier C2
+-- publisher. Old review rows remain in the explicit legacy scope: never borrow
+-- their acknowledgement into a new grant version without proven ownership.
+WITH ranked AS (
+ SELECT id,row_number() OVER(PARTITION BY summary_id ORDER BY email_message_id,id)-1 ordinal
+ FROM summary_sources WHERE owner_user_id IS NOT NULL
+)
+UPDATE summary_sources s SET source_ordinal=r.ordinal FROM ranked r WHERE s.id=r.id;
+UPDATE summary_sources s SET source_thread_id=m.thread_id,
+ source_received_at=coalesce(m.received_at,m.created_at)
+ FROM email_messages m WHERE s.owner_user_id IS NOT NULL AND s.email_message_id=m.id
+ AND s.organization_id=m.organization_id AND s.mailbox_id=m.email_account_id;
+UPDATE summaries s SET selected_source_manifest=(
+ SELECT jsonb_agg(jsonb_build_object('messageId',p.email_message_id,'mailboxId',p.mailbox_id,
+   'threadId',p.source_thread_id,'contentRevision',p.content_revision) ORDER BY p.source_ordinal)
+ FROM summary_sources p WHERE p.summary_id=s.id
+) WHERE s.owner_user_id IS NOT NULL AND s.selected_source_manifest='[]'::jsonb
+ AND EXISTS(SELECT 1 FROM summary_sources p WHERE p.summary_id=s.id);

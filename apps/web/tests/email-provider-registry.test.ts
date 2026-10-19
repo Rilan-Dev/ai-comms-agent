@@ -15,7 +15,7 @@ describe("EmailProviderRegistry", () => {
 
   it("creates all currently implemented email adapters", () => {
     const registry = createEmailProviderRegistry();
-    expect(registry.list()).toEqual(["gmail", "imap_smtp", "zoho"]);
+    expect(registry.list()).toEqual(["gmail", "imap_smtp", "zoho", "microsoft_graph"]);
     expect(registry.create("gmail")).toBeInstanceOf(GmailAdapter);
     expect(registry.create("imap_smtp")).toBeInstanceOf(ImapSmtpAdapter);
     expect(registry.create("zoho")).toBeInstanceOf(ZohoAdapter);
@@ -36,11 +36,14 @@ describe("EmailProviderRegistry", () => {
     const imap = registry.create("imap_smtp").capabilities();
     const zoho = registry.create("zoho").capabilities();
 
-    expect(imap.send).toBe(false);
-    expect(imap.drafts).toBe(false);
-    expect(imap.reply).toBe(false);
-    expect(imap.forward).toBe(false);
+    // IMAP/SMTP now supports send, drafts, reply, forward (via SMTP)
+    expect(imap.send).toBe(true);
+    expect(imap.drafts).toBe(true);
+    expect(imap.reply).toBe(true);
+    expect(imap.forward).toBe(true);
+    expect(imap.attachments_download).toBe(false);
 
+    // Zoho does not support send, forward, or attachment download
     expect(zoho.send).toBe(false);
     expect(zoho.forward).toBe(false);
     expect(zoho.attachments_download).toBe(false);

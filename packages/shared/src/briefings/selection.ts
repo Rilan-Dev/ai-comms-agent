@@ -7,7 +7,7 @@ export function briefingPeriod(period: BriefingPeriod | null, now: string, histo
   const start = Date.parse(period?.start ?? historyStart ?? new Date(Date.parse(now) - 7 * DAY).toISOString());
   if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end || end > Date.parse(now)) throw new Error('Invalid briefing period');
   if (period && end - start > 90 * DAY) throw new Error('Initial range exceeds 90 days; use explicit continuation');
-  return { start: new Date(start).toISOString(), end: new Date(end).toISOString() };
+  return { start: new Date(start).toISOString(), end: period ? new Date(end).toISOString() : now };
 }
 export function planBriefingBatches(sources: { id: string; estimatedTokens: number }[]): { sourceIds: string[]; estimatedTokens: number; partial: boolean }[] {
   const batches: { sourceIds: string[]; estimatedTokens: number; partial: boolean }[] = [];
@@ -31,3 +31,5 @@ export function routineSourceEligible(source: { messageId: string; contentRevisi
   return received >= start && received < Date.parse(period.end) &&
     (window !== 'since_previous_occurrence' || !coverage.completedSourceKeys.has(`${source.messageId}:${source.contentRevision}`));
 }
+
+export * from './selection-rules';

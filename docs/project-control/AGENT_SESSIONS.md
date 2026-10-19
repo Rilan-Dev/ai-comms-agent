@@ -925,3 +925,15 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 - **Actual verification:** Exact GitHub SHA local Node tests new 8 + existing rolling 8 = **16/16 PASS**; both source module TS noEmit PASS; 19/19 current source contract checks PASS. Added Vitest SQL/auth contracts (not run). No full builds/connected PostgreSQL/browser/provider E2E/deploy.
 - **Next:** Full pnpm suites/DB microsecond cross-tenant negative, optional evidence-grounded semantic summary. Security user action: rotate exposed host password and revoke browser session; secrets never accessed.
 - **Session:** `docs/project-control/sessions/DEV01-EXPLICIT-DATE-MAIL-20261019.md`.
+
+### DEV01-ELEVENLABS-VOICE-PRESAVE-GUARD-20261019 — 2026-10-19
+- **Role/authorization:** DEV-01 / Forge, user-directed ElevenLabs voice credential follow-up, existing main only; no branch/PR/deployment. Phase 4 remains implementation_in_progress.
+- **Recovered:** main at `a7baa7fe9a4c276120b43102b2ea7d69c38e6209`, current `NEXT_ACTION` and prior ElevenLabs Realtime→TTS/STT encrypted key reuse flow; preserved concurrent C1 work/OPS and FIX roles.
+- **Changes:** Save preflights both TTS/STT key slots before first sequential PUT if no new key; API refuses keepExistingKey unless exact tenant/provider/purpose key exists; Voice Chat Save/Remove refreshes read-only Realtime metadata without changing Realtime secret. No automatic cross-purpose sharing.
+- **Evidence:** exact helper Git SHA verified against isolated execution; 8/8 Node behavioral PASS, standalone TS noEmit PASS, fresh 10/10 authenticated GitHub source checks PASS. New 10-case Node suite committed; full monorepo tests, provider, database, browser, deployment NOT RUN. Existing two-PUT sequence is not transaction-atomic.
+- **Security:** prior exposed session token was not used/copied; user advised to revoke. OPS-01 handles approved deploy/real org credentials/Vercel; FIX-01 unrelated runtime/HTML bugs.
+- **Session:** `docs/project-control/sessions/DEV01-ELEVENLABS-VOICE-PRESAVE-GUARD-20261019.md`; exact next commands in `NEXT_ACTION.md`.
+
+## 2026-10-19 — DEV01-CATCHUP-C2-20261019
+
+C2 complete locally, final merge/push receipt in session.34SQL,25domain,37web,3integrity checks pass; typechecks/build pass. Preserve source/review scoping and UUID cursor UI compatibility. Claim canonical sources, reauthorize scheduled mutations, retain precise server boundaries and compare manifest provenance counts. Prior C1 support sessions finished; independent C2 reviewer complete, FIX-01 compatibility/security support complete, OPS-01 restore/read-only incident assessment complete. No hidden active implementer task remains. Next C3 orchestration/grounding and C4 browser acceptance; security incident and broader suites retain role owners.

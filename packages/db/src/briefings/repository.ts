@@ -22,6 +22,7 @@ async function readBriefing(client: PoolClient, principal: TrustedBriefingPrinci
       AND m.organization_id=s.organization_id AND m.email_account_id=s.mailbox_id
     WHERE s.summary_id=$1 AND s.organization_id=$2 AND s.owner_user_id=$3 AND s.agent_id=$4`,
     [id, principal.organizationId, principal.userId, principal.agentId]);
+  if (!Array.isArray(row.selected_source_manifest) || row.selected_source_manifest.length !== sources.rows.length) return invalid();
   const validEmpty = row.briefing_status === 'ready' && Array.isArray(row.content_json) && row.content_json.length === 0;
   if ((!sources.rowCount && !validEmpty) || sources.rows.some(source => !scope.mailboxIds.includes(source.mailbox_id) || !source.id || !source.current_revision || source.content_revision !== source.current_revision)) return invalid();
   const permitted = new Map(sources.rows.map(source => [source.id, source.content_revision]));
@@ -49,9 +50,21 @@ async function readBriefing(client: PoolClient, principal: TrustedBriefingPrinci
   const snoozed = new Map(snoozes.rows.map(row => [row.item_id, row.snoozed_until]));
   const visibleItems = safeItems.filter(item => !snoozed.has(item.id) || snoozed.get(item.id)!.getTime() <= Date.now())
     .map(item => ({ ...item, snoozedUntil: snoozed.get(item.id)?.toISOString() ?? null }));
+  // Cross-device progress is keyed to the same personal source revisions.
+  // One of two outstanding obligations must not clear the other.
+  const ack = await client.query<{ item_id: string; message_id: string; content_revision: string }>(
+    `SELECT item_id,message_id,content_revision FROM mail_review_items
+     WHERE organization_id=$1 AND owner_user_id=$2 AND agent_id=$3
+       AND scope_version=$5 AND acknowledged_at IS NOT NULL AND message_id=ANY($4::uuid[])`,
+    [principal.organizationId,principal.userId,principal.agentId,sources.rows.map(source => source.id),scope.scopeVersion],
+  );
+  const acknowledged = new Set(ack.rows.map(r => `${r.item_id}:${r.message_id}:${r.content_revision}`));
+  const reviewedItemIds = safeItems.filter(item => item.representation === 'complete'
+    && item.sourceIds.every(sourceId => acknowledged.has(`${item.id}:${sourceId}:${permitted.get(sourceId)}`)))
+    .map(item => item.id);
   return { manifest: { id, scope, mode: row.briefing_mode, period: row.period_start && row.period_end
     ? { start: new Date(row.period_start).toISOString(), end: new Date(row.period_end).toISOString() } : null,
-    sourceCount: sources.rows.length, status: row.briefing_status }, items: visibleItems };
+    sourceCount: sources.rows.length, status: row.briefing_status }, items: visibleItems, reviewedItemIds };
 }
 
 export function getBriefing(principal: TrustedBriefingPrincipal, id: string): Promise<BriefingRead> {

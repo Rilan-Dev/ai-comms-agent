@@ -1,3 +1,57 @@
+## DEV-01 — C2 integrated and verified — 2026-10-19
+
+C2 immutable selection, scoped review, snooze and fenced batch recovery are implemented. Concurrent upstream catch-up UI/generation and OPS work preserved; canonical services reconciled, migration0052. Final34SQL/25domain/37web/3integrity checks pass; typechecks, web build and migration structure pass. Full worker/web suites still fail; see [C2 session](sessions/DEV01-CATCHUP-C2-20261019.md). Upstream obfuscated build hooks were removed; [security follow-up](sessions/FIX01-OPS01-BUILD-HOOK-INCIDENT-20261019.md) remains open because credential exposure is uncertain. **Exact next action:** complete C3 worker/grounding/recovery integration using existing generation helpers, then authenticated C4 UI acceptance. Feature remains off by default; no deployment or routine activation. Older checkpoints below are historical.
+
+---
+
+## 2026-10-19 — Manual migration plan source preflight corrected, operator DB still UNVERIFIED
+
+- **User-reported BEFORE fix:** 14/14 migration tests PASS and Docker Compose web image built; `operator-migrate.sh plan` FAILED in `verify-migration-chain.sh` duplicate object grep. This occurred BEFORE any database connection from the wrapper; do not mark a migration as attempted.
+- **Patch source on main:** replaced erroneous duplicate `CREATE TABLE IF NOT EXISTS`/enum grep with Node checker for repeated unconditional DDL. Existing historical IF NOT EXISTS and guarded `DO` are permitted; SHA ledger drift/unknown/relation safety checks remain in `operator-migration-check.mjs`.
+- **ACTUALLY EXECUTED in assistant's isolated runtime:** Node v22.16 `--check` of new helper (exact committed blob SHA `e1518eff9be87adb9dc7dba633ce02c50958d149`), 3 direct parser fixtures PASS, equivalent source structural shell fixture (idempotent duplicates PASS; unsafe duplicate rejected). **70** repository migration files source-inspected via authenticated GitHub batches; bare DDL candidates had no duplicate names. Assistant's local shell copy not byte-identical to actual committed shell: this is limited fixture evidence, not full checkout integration test.
+- **NOT EXECUTED:** New complete Node test suite, full `verify-migration-chain.sh` over all 70 SQL files, `operator-migrate.sh plan` against operator's live DB, ledger checks/checksums, apply/verify, production app/deploy. Never count user pre-fix tests as post-fix acceptance. Await operator's redacted read-only plan output.
+- **Next:** See `NEXT_ACTION.md` and `docs/project-control/sessions/OPERATOR-MIGRATION-DUPLICATE-STATIC-CHECK-FIX-20261019.md`.
+
+---
+
+## 2026-10-19 — operator migration scripts: source prepared / execution pending
+
+- Source added on direct main: `scripts/operator-migrate.sh` (read-only plan/verify, backup+database-target gated apply), `packages/db/operator-migration-check.mjs`, `packages/db/operator-migration-core.mjs`, tests and operator runbook. No new SQL migration is necessary solely for ElevenLabs TTS/STT 409; no silent encrypted API key copy.
+- **Actually checked:** 17/17 fresh GitHub source-contract checks for target validation, ledger version/checksum drift, no reset/deploy, Docker internal network, read-only SQL mount, backup and fresh-DB gates, fail-closed runner warnings. These are static assertions, not executable tests.
+- **NOT RUN:** new `node --test scripts/tests/operator-migration-core.test.mjs scripts/tests/operator-migrate-script.test.mjs` suites, actual `bash -n`/Node --check in checkout, Compose image build, PostgreSQL connection or ledger query, backup validation, SQL migration, web/worker/DB/Clara tests, deployment or authenticated ElevenLabs provider checks.
+- **Operator handoff:** `docs/runbooks/OPERATOR-MIGRATION-20261019.md`, `docs/project-control/sessions/OPERATOR-MIGRATION-SCRIPT-20261019.md`. OPS-01 owns deployment/migration execution. Do not assert live acceptance.
+
+---
+
+## 2026-10-19 — DEV-01 ElevenLabs TTS/STT 409 recovery (source implemented; deployment pending)
+
+- **Source committed on main, no branch/PR:** Explicit model-picker recovery for `provider_configuration_required` when eligible ElevenLabs Realtime secret exists (TTS/STT separately scoped), missing-purpose key remediation, distinct encrypted key failure. Existing explicit confirmed server key-reuse endpoint retained (organization.update, source decryptability, no overwrite of disabled/already saved target).
+- **ACTUALLY EXECUTED:** 8/8 isolated Node behavioral checks on helper whose bytes match GitHub SHA `3108547c5ebe73975fee37198e71a69afc1b21c5`; isolated TypeScript helper tsc PASS; 15/15 live GitHub source assertions PASS (auth-before-catalog, no silent credential copy, picker abort guard/reuse button, both purpose callbacks, explicit server permission/audit).
+- **NOT EXECUTED:** whole new Node regression file/complete repository tests, full web/worker/DB/Clara pnpm typecheck/build, migrations, real ElevenLabs API with live credentials, authenticated browser/tenant negatives, deployment. A 409 is still the correct return until an authorized admin saves or explicitly reuses an eligible TTS/STT credential. OPS-01 host/Vercel build-rate-limit remains; user-exposed session cookie should be revoked, never used.
+- **Session:** `docs/project-control/sessions/DEV01-ELEVENLABS-TTS-STT-CATALOG-RECOVERY-20261019.md`.
+
+---
+
+## DEV-01 — 2026-10-19 ElevenLabs Voice Chat purpose preflight (source PASS; deployment pending)
+
+- On direct main: `voice-credential-preflight.ts`, AI Provider Setup save preflight and read-only Realtime metadata retention, provider-config PUT explicit keep-key existence check. Previous Realtime→TTS/STT reuse endpoint unchanged; no hidden key or cross-tenant fallback.
+- ACTUAL executable isolated Node v22.16 tests 8/8 PASS (pure TTS/STT credential readiness cases); isolated TS noEmit PASS for exact file with Git SHA `5ff3d09e82186e0161807ade6d995bf54b9a1bd1`. Current authenticated GitHub source predicates 10/10 PASS. New `elevenlabs-voice-save-validation.test.mjs` complete test suite authored but not dynamically run against the full repo.
+- NOT RUN: full pnpm/Vitest, Next/worker/Clara/DB builds or migrations, live provider, browser, real organization secrets or deployment. Existing earlier `provider_configuration_required` response was at *local saved-purpose credential gate*, not proof of ElevenLabs provider model outage.
+- Recording `docs/project-control/sessions/DEV01-ELEVENLABS-VOICE-PRESAVE-GUARD-20261019.md`; next commands `NEXT_ACTION.md`. No new branch/PR. OPS-01 owns deployment/build-rate-limit; FIX-01 unrelated transport/runtime/security.
+
+
+---
+
+## 2026-10-19 — DEV-01 ElevenLabs TTS live / Scribe STT documented source (limited check)
+
+- **Committed directly to main (no branch/PR):** truthfully separate live TTS `/v1/models` from Scribe batch `scribe_v2` documented STT; return documented STT only after org authorization and saved enabled purpose-key gate, keep disabled/missing key 409, independent Realtime Scribe v2 WebSocket label, opt-in existing credential reuse. Updated selector UI and Node/Vitest tests.
+- **ACTUALLY CHECKED:** 15/15 deterministic current GitHub source assertions PASS (source/capability, credential gate ordering, no-store, selector validation, existing reuse, updated test code).
+- **NOT RUN:** Modified Node/Vitest dynamic suite, pnpm TypeScript/Next/worker/DB/Clara tests, PostgreSQL/migration, real TTS/STT provider account, browser and deployed production check. Previous C1/Postgres source verification was on a different revision, not automatically applicable here. Vercel build-rate-limit remains an OPS-01 rollout concern.
+- **User secret:** Pasted session token is potentially exposed; do not reproduce or reuse; user must invalidate session. Details/commands: `docs/project-control/sessions/DEV01-ELEVENLABS-STT-CATALOG-20261019.md`.
+
+
+---
+
 ## 2026-10-18 — DEV01-CATCHUP-ROUTINES final integrated-source verification
 
 - **Upstream source:** `959ff5a6c055baf9a1f14af5d29c5f51643b77c0`, integrated without changing concurrent product source. This session changes documentation only.

@@ -17,6 +17,7 @@ test('C2 persisted selection, review and crash recovery',async t=>{
     const access=await import('../src/briefings/access.ts');
     const api=await import('../src/briefings/coverage.ts');
     const reads=await import('../src/briefings/repository.ts');
+    const {publishBriefingItems}=await import('../src/briefings/selection.ts');
     app=await import('../src/client.ts');
     const p={organizationId:ids.orgA,userId:ids.userA,agentId:ids.agentA};
     const admin={organizationId:ids.orgA,userId:ids.adminA};
@@ -61,6 +62,32 @@ test('C2 persisted selection, review and crash recovery',async t=>{
         assert.equal(claim.sources[0].messageId,ids.messageA);
       } finally {await q('DELETE FROM aca.summaries WHERE id=$1',[m.id]);}
     });
+    await t.test('incoming selection excludes sent/draft mail but includes an old newly synced incoming message',async()=>{
+      const created=[];
+      for(const kind of ['draft','sent','late']) {
+        const thread=(await q('INSERT INTO aca.email_threads(organization_id,email_account_id) VALUES($1,$2) RETURNING id',[ids.orgA,ids.mailA])).rows[0].id;
+        const message=(await q("INSERT INTO aca.email_messages(organization_id,email_account_id,thread_id,text_body,is_draft,is_sent,received_at,created_at) VALUES($1,$2,$3,'new sync',$4,$5,now()-interval '60 days',now()-interval '1 second') RETURNING id",[ids.orgA,ids.mailA,thread,kind==='draft',kind==='sent'])).rows[0].id;
+        created.push({kind,id:message});
+      }
+      const m=await prepare('incoming-only');const selected=await sourceIds(m.id);
+      assert.ok(selected.includes(created.find(m=>m.kind==='late').id));
+      assert.ok(created.filter(m=>m.kind!=='late').every(m=>!selected.includes(m.id)));
+      await q('DELETE FROM aca.email_messages WHERE id=ANY($1::uuid[])',[created.map(m=>m.id)]);
+    });
+    await t.test('upstream publication compatibility registers grounded output through the lease boundary',async()=>{
+      const m=await prepare('compat-publication');const source=(await api.listBriefingSources(p,m.id)).items[0];
+      await assert.rejects(publishBriefingItems(p,m.id,m.scope.scopeVersion,[{...evidenceItem(source),evidence:[{...evidenceItem(source).evidence[0],quote:'fabricated'}]}]),/canonical mail/);
+      const published=await publishBriefingItems(p,m.id,m.scope.scopeVersion,[evidenceItem(source)]);
+      assert.equal(published.status,'ready');
+      const read=await reads.getBriefing(p,m.id);assert.equal(read.items.length,1);assert.equal(read.manifest.status,'ready');
+    });
+    await t.test('missing persisted provenance invalidates reads and prevents claiming work',async()=>{
+      const m=await prepare('missing-provenance');
+      await q('DELETE FROM aca.summary_sources WHERE summary_id=$1',[m.id]);
+      assert.equal((await reads.getBriefing(p,m.id)).manifest.status,'invalidated');
+      await assert.rejects(api.listBriefingSources(p,m.id),/conflict/i);
+      await assert.rejects(api.claimBriefingBatch(p,m.id,'missing-worker'),/conflict/i);
+    });
     let first,source,stableIds;
     await t.test('five-day absence selects mail; identical retries reuse immutable manifest',async()=>{
       first=await prepare('first');source=(await api.listBriefingSources(p,first.id,null,200)).items[0];
@@ -83,6 +110,7 @@ test('C2 persisted selection, review and crash recovery',async t=>{
       assert.deepEqual(await sourceIds((await prepare('one-reviewed')).id),[ids.messageA]);
       const answers=await Promise.all([1,2].map(()=>api.acknowledgeBriefingItems(p,first.id,[stableIds[1]],first.scope.scopeVersion)));
       assert.equal(answers.reduce((n,r)=>n+r.reviewed,0),1);
+      assert.deepEqual(new Set((await reads.getBriefing(p,first.id)).reviewedItemIds),new Set(stableIds));
       const empty=await prepare('both-reviewed');assert.equal(empty.sourceCount,0);
       assert.equal((await reads.getBriefing(p,empty.id)).manifest.status,'ready');
       assert.equal((await reads.listBriefings(p)).briefings.find(b=>b.manifest.id===empty.id).manifest.status,'ready');
@@ -120,6 +148,21 @@ test('C2 persisted selection, review and crash recovery',async t=>{
       await q("UPDATE aca.mail_review_items SET snoozed_until=now()-interval '1 second' WHERE item_id=$1",[item.id]);
       assert.equal((await reads.getBriefing(p,m.id)).items[0].id,item.id);
     });
+    await t.test('deterministic source-list fallback persists as partial and full regeneration replaces only partial coverage',async()=>{
+      const {generateBriefingBatch}=await import('../../email-agent-runtime/src/briefings/generation.ts');
+      const m=await prepare('fallback');const sources=(await api.listBriefingSources(p,m.id)).items;
+      const result=await generateBriefingBatch(sources.map(source=>({...source,text:'private body'})),async()=>{throw new Error('provider timeout');});
+      assert.equal(result.status,'partial');
+      const claim=await api.claimBriefingBatch(p,m.id,'fallback-worker');
+      await assert.rejects(api.completeBriefingBatch(p,claim,[{...result.items[0],summary:'invented private claim'}],true),/Invalid/);
+      await api.completeBriefingBatch(p,claim,result.items,true);
+      const read=await reads.getBriefing(p,m.id);assert.equal(read.items.length,sources.length);
+      assert.ok(read.items.every(item=>item.representation==='partial' && item.evidence.length===0));
+      const regenerated=await prepare('fallback-regenerated');
+      await finish(regenerated,sources.map(source=>evidenceItem(source)));
+      const pendingPartial=await q("SELECT count(*) FROM aca.mail_review_items WHERE organization_id=$1 AND scope_version=$2 AND representation='partial'",[p.organizationId,regenerated.scope.scopeVersion]);
+      assert.equal(pendingPartial.rows[0].count,'0');
+    });
     await t.test('expired leases resume unfinished sources; stale workers cannot complete or heartbeat',async()=>{
       const m=await prepare('lease');const a=await api.claimBriefingBatch(p,m.id,'worker-a');assert.ok(a);
       assert.equal(await api.claimBriefingBatch(p,m.id,'worker-b'),null);
@@ -151,6 +194,7 @@ test('C2 persisted selection, review and crash recovery',async t=>{
       assert.equal(seen.size,5000);assert.equal(pages,25);
       const counts=(await q('SELECT max(source_count) sources,max(estimated_input_tokens) tokens,sum(source_count) total FROM aca.briefing_generation_batches b JOIN aca.briefing_generation_jobs j ON j.id=b.job_id WHERE j.summary_id=$1',[m.id])).rows[0];
       assert.ok(counts.sources<=50 && counts.tokens<=12000);assert.equal(Number(counts.total),5000);
+      await assert.rejects(publishBriefingItems(who,m.id,m.scope.scopeVersion,[]),/batch API/);
       const claims=await Promise.all([1,2,3].map(i=>api.claimBriefingBatch(who,m.id,`parallel-${i}`)));
       assert.equal(claims.filter(Boolean).length,2);
       assert.equal(new Set(claims.filter(Boolean).flatMap(claim=>claim.sources.map(source=>source.messageId))).size,100);

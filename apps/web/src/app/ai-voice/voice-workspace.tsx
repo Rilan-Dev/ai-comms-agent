@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isCurrentVoiceSequence } from "@ai-comms-agent/shared";
 import { readSseEvents } from "@/lib/streaming/sse";
+import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "@/lib/ai/activity-progress";
 import { AudioLines, CheckCircle2, CircleStop, Mic, MicOff, Radio, ShieldCheck, Waves } from "lucide-react";
 
 type Agent = { id: string; name: string; status: string };
@@ -11,11 +12,12 @@ type Transport = { transportMode?: "transcript_bridge" | "realtime" | "pipeline"
 type Turn = { id: string; role: "user" | "assistant"; text: string; state?: "thinking" | "streaming" | "done" };
 
 export function VoiceWorkspace({
-  organizationId, agents, initialAgentId, embedded = false, onReturnToChat,
+  organizationId, agents, initialAgentId, conversationId, embedded = false, onReturnToChat,
 }: {
   organizationId: string;
   agents: Agent[];
   initialAgentId?: string;
+  conversationId?: string;
   embedded?: boolean;
   onReturnToChat?: () => void;
 }) {
@@ -32,6 +34,7 @@ export function VoiceWorkspace({
   const [micMuted, setMicMuted] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("Your voice session will connect through Clara's authorized runtime.");
+  const [voiceActivitySteps, setVoiceActivitySteps] = useState<AgentActivityPhase[]>([]);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const geminiSocketRef = useRef<WebSocket | null>(null);
   const providerSocketRef = useRef<WebSocket | null>(null);
@@ -240,6 +243,7 @@ export function VoiceWorkspace({
     const assistantTurn: Turn = { id: `assistant-${sequence}`, role: "assistant", text: "", state: "thinking" };
     setTurns((old) => [...old, userTurn, assistantTurn]);
     setNotice("Clara is processing your request through the authorized host runtime.");
+    setVoiceActivitySteps(["preparing"]);
     let streamedText = "";
     try {
       const response = await fetch("/api/voice/turn", {
@@ -262,6 +266,15 @@ export function VoiceWorkspace({
         if (!isCurrentVoiceSequence(turnSequenceRef.current, sequence) || controller.signal.aborted) return;
         const message = JSON.parse(event.data) as VoiceStreamDone & { text?: string; message?: string; phase?: string };
         if (event.event === "error") throw new Error(message.message || "Voice response failed.");
+        if (event.event === "progress") {
+          const phase = safeActivityPhase(message.phase);
+          if (phase) {
+            setNotice(agentActivityLabel(phase));
+            setVoiceActivitySteps((current) => current.at(-1) === phase
+              ? current : [...current, phase].slice(-10));
+          }
+          continue;
+        }
         if (event.event === "status") {
           setNotice(message.phase === "tools"
             ? "Checking authorized email tools and approvals…"
@@ -271,6 +284,7 @@ export function VoiceWorkspace({
         if (event.event === "done") {
           payload = message;
           complete = true;
+          setVoiceActivitySteps(current => [...current, "completed" as AgentActivityPhase].slice(-10));
           break;
         }
         if (event.event === "delta" && message.text) {
@@ -909,7 +923,7 @@ export function VoiceWorkspace({
       const response = await fetch("/api/voice/session", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ organizationId, agentId: agent.id }),
+        body: JSON.stringify({ organizationId, agentId: agent.id, conversationId }),
       });
       const payload = await response.json().catch(() => ({})) as { session?: VoiceSession; transport?: Transport; message?: string; error?: string };
       if (!response.ok || !payload.session || !payload.transport) throw new Error(payload.message ?? payload.error ?? "Voice session could not start.");
@@ -1071,6 +1085,15 @@ export function VoiceWorkspace({
                 </div>
                 <h2 className="mt-6 text-xl font-semibold">{connected ? speaking ? "Clara is speaking" : micMuted ? "Microphone muted" : "Listening to you" : busy ? "Establishing secure audio…" : session?.status === "starting" ? "Session initialized" : session?.status === "ended" ? "Conversation ended" : "Ready when you are"}</h2>
                 <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{notice}</p>
+                {voiceActivitySteps.length ? (
+                  <details className="mx-auto mt-4 max-w-lg rounded-xl border border-border/70 bg-muted/25 p-3 text-left" open={busy}>
+                    <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Agent activity</summary>
+                    <ol aria-label="Observed voice agent steps" className="mt-2 space-y-1.5 border-l border-border pl-4 text-xs text-muted-foreground">
+                      {voiceActivitySteps.map((phase, i) => <li key={`${phase}-${i}`}>{agentActivityLabel(phase)}</li>)}
+                    </ol>
+                    <p className="mt-2 text-[11px] text-muted-foreground">Only confirmed tool and generation events are shown, not private reasoning.</p>
+                  </details>
+                ) : null}
                 {error ? <p role="alert" className="mx-auto mt-4 max-w-lg rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-left text-sm text-destructive">{error}</p> : null}
                 <div className="mt-6 flex flex-wrap justify-center gap-3">
                   {!liveSession ? (

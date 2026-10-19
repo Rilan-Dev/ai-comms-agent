@@ -65,7 +65,7 @@ export async function GET(request: Request) {
   const [encoded, signature] = state.split(".");
   if (!encoded || !signature || !verify(encoded, signature)) return oauthError("Invalid Zoho OAuth state.", request);
 
-  let payload: { organizationId: string; userId: string; configId: string; redirectUri: string; accountId?: string; dataCenter: string; exp: number };
+  let payload: { organizationId: string; userId: string; configId: string; redirectUri: string; accountId?: string; initialLimit?: number; dataCenter: string; exp: number };
   try {
     payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
   } catch {
@@ -208,6 +208,7 @@ export async function GET(request: Request) {
             apiDomain,
             dataCenter: payload.dataCenter,
             remoteAccountId: String(remote.accountId),
+            initialSyncLimit: [10, 50, 100].includes(payload.initialLimit ?? 50) ? payload.initialLimit ?? 50 : 50,
           },
           status: "pending",
           capabilities,
@@ -221,6 +222,7 @@ export async function GET(request: Request) {
             apiDomain,
             dataCenter: payload.dataCenter,
             remoteAccountId: String(remote.accountId),
+            initialSyncLimit: [10, 50, 100].includes(payload.initialLimit ?? 50) ? payload.initialLimit ?? 50 : 50,
           },
           status: "pending",
           capabilities,

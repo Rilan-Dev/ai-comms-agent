@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   deleteProviderConfig,
+  getProviderConfig,
   listProviderConfigs,
   upsertProviderConfig,
 } from "@ai-comms-agent/db";
@@ -110,6 +111,18 @@ export async function PUT(request: Request) {
     const keepExistingKey = body.keepExistingKey === true;
     if (!suppliedKey && !keepExistingKey) {
       return NextResponse.json({ error: "validation_error", message: "Enter an API key or explicitly keep the existing saved key." }, { status: 422 });
+    }
+    if (!suppliedKey && keepExistingKey) {
+      // "Keep" is not permission to create a new enabled record without a
+      // credential. This check is especially important for TTS/STT, where
+      // the UI saves two distinct provider-purpose rows.
+      const existing = await getProviderConfig(organizationId, provider, purpose);
+      if (!existing?.hasApiKey) {
+        return NextResponse.json({
+          error: "provider_configuration_required",
+          message: `No saved ${provider} ${purpose.toUpperCase()} API key exists in this organization. Enter a key or explicitly reuse an eligible saved Realtime key.`,
+        }, { status: 409, headers: { "Cache-Control": "private, no-store" } });
+      }
     }
     const officialBase = OFFICIAL_BASE_URLS[provider] ?? "";
     if (baseUrl && officialBase && baseUrl !== officialBase) {

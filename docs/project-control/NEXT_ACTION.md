@@ -1,3 +1,62 @@
+## DEV-01 — C2 integrated and verified — 2026-10-19
+
+C2 immutable selection, scoped review, snooze and fenced batch recovery are implemented. Concurrent upstream catch-up UI/generation and OPS work preserved; canonical services reconciled, migration0052. Final34SQL/25domain/37web/3integrity checks pass; typechecks, web build and migration structure pass. Full worker/web suites still fail; see [C2 session](sessions/DEV01-CATCHUP-C2-20261019.md). Upstream obfuscated build hooks were removed; [security follow-up](sessions/FIX01-OPS01-BUILD-HOOK-INCIDENT-20261019.md) remains open because credential exposure is uncertain. **Exact next action:** complete C3 worker/grounding/recovery integration using existing generation helpers, then authenticated C4 UI acceptance. Feature remains off by default; no deployment or routine activation. Older checkpoints below are historical.
+
+---
+
+## 2026-10-19 — OPERATOR MIGRATION `plan` FALSE-POSITIVE FIX — USER ACTION REQUIRED (READ ONLY)
+
+- **Owner evidence:** earlier operator Node suites 14/14 PASS and `docker compose ... build web` PASS on main `ae01b335`, but `bash scripts/operator-migrate.sh plan` aborted during static `verify-migration-chain.sh` with `duplicate canonical table object(s): aca` + normal table names. This is a static parsing error, **not** a database migration failure; SQL was not run by this error path.
+- **Fixed on main, no branch/PR:** historical `CREATE TABLE IF NOT EXISTS` and `DO $$ ... EXCEPTION WHEN duplicate_object` enum reassertions are deliberately idempotent; prior grep collapsed qualified `aca.foo` to `aca` and rejected repeated safe declarations. New `scripts/check-migration-declarations.mjs` checks repeated **unguarded** table/enum declarations, respects comments/dollar bodies/schema names; `verify-migration-chain.sh` retains other checks. Added five regression tests to the same operator test suite; runbook and session updated. Existing SQL files/ledger untouched.
+- **Evidence:** Exact GitHub-matching new static-checker blob `e1518eff9be87adb9dc7dba633ce02c50958d149` passed Node syntax and three isolated local fixtures; a representative whole-chain fixture passed idempotent DDL and failed duplicated bare `aca.unsafe_table`. Checked declarations across 70 GitHub migration files; no repeated unguarded names observed. **Not run here:** complete checkout tests/chain, live PostgreSQL plan or apply, migration verification/deploy. Owner earlier 14/14 and Docker build precede patch.
+- **EXACT NEXT ACTION OPERATOR:** `git pull --ff-only origin main`; `node --test scripts/tests/operator-migration-core.test.mjs scripts/tests/operator-migrate-script.test.mjs`; `bash scripts/verify-migration-chain.sh`; `bash scripts/operator-migrate.sh plan`. **STOP** on any failure. Read actual `DATABASE:`, `LEDGER:`, `PENDING:`; never infer DB name from `aca.` schema; if existing DB has no ledger do not use `--allow-fresh`. Only after verified target, restorable backup, checked pending SQL and matching current image, operator may separately apply with `--expect-db CONFIRMED_DATABASE_NAME --backup-confirmed`, then verify. Actual live DB/migrations/deploy remain OPS-01/operator; not attempted here.
+- **Session:** `docs/project-control/sessions/OPERATOR-MIGRATION-DUPLICATE-STATIC-CHECK-FIX-20261019.md`; **runbook:** `docs/runbooks/OPERATOR-MIGRATION-20261019.md`.
+
+---
+
+## Owner-requested manual database migration scripts — 2026-10-19
+
+- **Owner request:** Create and commit migration scripts into GitHub; owner/operator will deploy and migrate. Direct commits on `main`, **no branches/PRs**. Phase 4 remains implementation_in_progress.
+- **Committed source:** `scripts/operator-migrate.sh` with `plan`, `apply` and `verify`; `packages/db/operator-migration-check.mjs` PostgreSQL target/ledger preflight; `packages/db/operator-migration-core.mjs` SHA256/checksum/unknown-version safeguards; offline Node/Bash regression tests and `docs/runbooks/OPERATOR-MIGRATION-20261019.md`. The manual wrapper reuses the existing `packages/db/migrate.js` for forward-only SQL, runs inside a one-off Compose web container and mounts `supabase` read-only; it does not reset DBs, deploy apps or copy provider keys.
+- **Explicit deployment gates:** `apply` requires `--expect-db` and `--backup-confirmed`, and refuses a fresh database without an extra `--allow-fresh`. Verifier stops on SHA drift, unknown applied versions, wrong target, missing migration files or missing ledger. Operator wrapper treats migration warnings/skipped statements as non-acceptance even if original runner prints success. Root Compose file is marked local-development-only; operator selects reviewed production configuration/environment. **No migration or deployment executed in this chat.**
+- **Evidence:** 17/17 deterministic assertions against the exact files committed to GitHub PASSED (source inspection). New Node/Bash regression suites **authored but not dynamically run**; no Docker, PostgreSQL, backup, full pnpm/typecheck/build/browser or live provider test. **Do not mark DB ready from a source commit.**
+- **Exact operator action:**
+  ```bash
+  git checkout main && git pull --ff-only origin main
+  docker compose --project-directory "$PWD" --env-file .env -f "${ACA_COMPOSE_FILE:-docker-compose.yml}" build web
+  node --test scripts/tests/operator-migration-core.test.mjs scripts/tests/operator-migrate-script.test.mjs
+  bash scripts/operator-migrate.sh plan
+  # Independently create and verify backup; use the exact DB name printed by plan:
+  bash scripts/operator-migrate.sh apply --expect-db YOUR_CONFIRMED_DATABASE_NAME --backup-confirmed
+  bash scripts/operator-migrate.sh verify --expect-db YOUR_CONFIRMED_DATABASE_NAME
+  ```
+  Deployment comes **after** verification. OPS-01 remains owner of host/migrations/CI/CD/deployment, FIX-01 runtime/security defects. Existing `0044_ai_provider_setup.sql` supports TTS/STT schema; **missing ElevenLabs purpose-specific API keys are not fixed by schema migrations**. After web deploy, an authorized admin explicitly configures TTS and STT or uses existing audited same-org Realtime key reuse in UI. Revoke previously exposed session cookie.
+- **Session:** `docs/project-control/sessions/OPERATOR-MIGRATION-SCRIPT-20261019.md`. **Runbook:** `docs/runbooks/OPERATOR-MIGRATION-20261019.md`.
+
+---
+
+## DEV-01 — Fix missing ElevenLabs TTS/STT model catalog credentials — 2026-10-19
+
+- **Reported:** Authenticated ElevenLabs TTS and STT live-model GET returned `409 provider_configuration_required`. This is an expected purpose-specific missing-key gate, not proof the ElevenLabs vendor catalogue is down. Realtime config does not implicitly activate TTS/STT. **Never use the session cookie pasted in the report; it must be revoked/replaced by the owner.**
+- **Fix committed directly on main, no branches/PR:** Both TTS/STT selectors now understand the structured 409 and offer an explicit, user-confirmed **Use saved Realtime key for TTS/STT** action when the server reports an eligible enabled same-org ElevenLabs Realtime key. Otherwise guide admin to configure/enable both purpose keys; undecryptable key gets separate admin warning. Existing `organization.update` gate, encrypted same-org copy, audit and no-overwrite constraints preserved; GET never silently reuses secrets. Source: `apps/web/src/lib/ai/model-catalog-recovery.ts`, `apps/web/src/components/live-model-select.tsx`, `apps/web/src/app/settings/ai-provider-setup/ai-provider-setup-shared.tsx`.
+- **Evidence:** Exact committed helper Git blob `3108547c5ebe73975fee37198e71a69afc1b21c5`; isolated Node behavior **8/8 PASS**, isolated `tsc --noEmit` PASS, **15/15** current GitHub source invariants PASS. New full source+behavior Node suite authored but **not run** in complete checkout. Full pnpm tests/typechecks/build, migrations, live ElevenLabs API, browser and production/deploy remain **UNVERIFIED**.
+- **Exact DEV-01 next:** From dependency-equipped current main run `node --experimental-strip-types --test apps/web/tests/elevenlabs-voice-catalog-recovery.test.mjs`, `node --experimental-strip-types --test apps/web/tests/elevenlabs-voice-save-validation.test.mjs`, `pnpm --filter @ai-comms-agent/web exec vitest run tests/elevenlabs-voice-credential-reuse.test.ts tests/live-model-catalog.test.ts`, web/worker/db/Clara typechecks/builds, `bash scripts/verify-migration-chain.sh`. Fix proven source failures directly on main. OPS-01 verifies current deployed SHA and operator-driven key reuse after revoking exposed session, live model listings/audio, Vercel build-rate-limit and deployment. FIX-01 unchanged on voice/HTML/WhatsApp runtime incidents.
+- **Session:** `docs/project-control/sessions/DEV01-ELEVENLABS-TTS-STT-CATALOG-RECOVERY-20261019.md`. Phase 4 still implementation in progress, no production acceptance.
+
+---
+
+## DEV-01 — ElevenLabs Voice Chat TTS/STT pre-save guard — 2026-10-19
+
+- **Owner request:** Continue the ElevenLabs purpose-credential/missing live-model catalog issue on existing `main`; Phase 4 remains implementation_in_progress. Previous opt-in same-org encrypted Realtime→TTS/STT reuse flow is **already present**; preserved.
+- **New source:** Voice Chat Save preflights both TTS and STT saved key presence before first PUT when no new key entered, preventing the predictable missing-STT partial commit. Whitespace-only key is treated as absent. Provider PUT now rejects `keepExistingKey: true` unless a real saved key exists for that exact authorized org/provider/purpose; does not create an enabled keyless config. Voice Chat refresh preserves Realtime *metadata* (Save/Remove still mutate TTS/STT only), keeping explicit credential-reuse discovery visible.
+- **Evidence:** Exact helper SHA `5ff3d09e82186e0161807ade6d995bf54b9a1bd1`, 8/8 **executed** isolated Node behavioral tests PASS, same isolated TypeScript noEmit PASS, and 10/10 **static** fresh GitHub source assertions PASS. New 10-test source+runtime regression suite committed but **not executed in whole repository**. Full pnpm web/worker/db/Clara checks, migration chain, browser/vendor/production calls and deployment **not verified**. No branches/PRs/deployment.
+- **Exact next action:** In dependency-equipped current-main checkout run `node --experimental-strip-types --test apps/web/tests/elevenlabs-voice-save-validation.test.mjs`, `pnpm --filter @ai-comms-agent/web exec vitest run tests/elevenlabs-voice-credential-reuse.test.ts tests/live-model-catalog.test.ts`, full web/worker/db/Clara tests+typechecks/build, `bash scripts/verify-migration-chain.sh`. Fix proven DEV-01 UI failures on main. OPS-01 deploys approved SHA and uses a fresh authenticated org session to confirm separate ElevenLabs TTS+STT keys, explicit reuse if wanted, live catalog requests/model selection/save/reload, then microphone/STT/TTS. FIX-01 retains voice/HTML/WhatsApp source defects. The previous user-exposed session cookie must be revoked, never reused in tests or tickets.
+- **Known limitation:** preflight avoids predictable missing-secret half-save, not two-request SQL atomicity; network failure between PUTs can still commit one purpose. Follow up with purpose-atomic save endpoint only if warranted by tests.
+- **Session:** `docs/project-control/sessions/DEV01-ELEVENLABS-VOICE-PRESAVE-GUARD-20261019.md`. Current C1 catch-up continuation and other agents' records below remain valid; don't overwrite concurrent project scope.
+
+
+---
+
 ## DEV-01 — C1 implementation checkpoint — 2026-10-19
 
 Private catch-up storage/access implemented; flag remains off. PostgreSQL 17/17 and focused web 8/8 pass; package typechecks pass and web build passed before the final evidence-read correction. Full worker/web suites still fail outside changed C1 areas; FIX-01 and OPS-01 handoffs are recorded. No deployment/push/provider use. See [C1 session](sessions/DEV01-CATCHUP-C1-20261018.md). **Exact next action:** C2 failing selection/coverage tests, then immutable manifests and explicit review progress. Existing phase remains implementation_in_progress; earlier active/planning entries are historical.
@@ -1618,3 +1677,11 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - Corrected both `docker-compose.yml` service `env_file` paths to repository-root `.env` (commit `5072621a66eab0016bf8c29e76df8683070baa14`) and added regression source (commit `2649466dd53f5a545bfaa2dd52ecaa9df959ba00`).
 - Exact next action: pull latest `main`; run `node --test scripts/tests/manual-up-compose-env.test.mjs`; then run `bash scripts/update-and-up.sh`. Capture Compose startup and `ps` results, and check service health before claiming deployment success. Do not share secrets or database URLs.
 - Verification status: source committed; test and post-fix startup not yet verified.
+
+## DEV-01 — ElevenLabs documented STT catalog correction — 2026-10-19
+
+- **Focused correction on main** after user's TTS/STT `provider_configuration_required` evidence. This response means no enabled capability-specific key was accessible at the local auth/key gate; it does **not** prove vendor model availability. Existing explicit confirmation-only reuse from a saved ElevenLabs Realtime key remains the correct setup path where eligible.
+- **Source updated:** `elevenlabs:tts` remains vendor-live `GET /v1/models`; `elevenlabs:stt` now offers **vendor-documented** batch `scribe_v2`, only after same org authorization and saved enabled STT key gate, labeled `source:documented`, `capability:batch_stt` (not fabricated live). Realtime WebSocket `scribe_v2_realtime` remains separate. UI and Node/Vitest model-catalog cases updated.
+- **Evidence:** 15/15 fresh GitHub source-contract checks PASS; new tests **not executed** in full checkout; live ElevenLabs HTTP/auth, database, Next builds, browser and production not verified. User-pasted cookie must be revoked; never replayed/stored.
+- **Exact next:** Execute `node --experimental-strip-types --test apps/web/tests/live-model-catalog-standalone.test.mjs`, web focused Vitest `tests/live-model-catalog.test.ts tests/elevenlabs-voice-credential-reuse.test.ts`, web typecheck/build, worker/Clara tests, DB typecheck and migration check in authenticated equipped main checkout; then validate Voice Chat TTS/STT key reuse/save/reload and vendor requests after OPS approved deployed revision. **Keep the C2 catch-up source-manifest/coverage selection plan at the top of this file as the primary DEV-01 project continuation**; this repair does not activate C1/C2.
+- **Session:** `docs/project-control/sessions/DEV01-ELEVENLABS-STT-CATALOG-20261019.md`. FIX-01 runtime/security, OPS-01 deployment/build-rate-limit boundaries unchanged.

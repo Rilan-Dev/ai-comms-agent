@@ -197,3 +197,7 @@ Owner FIX-01. C1 full-suite validation found worker 13 failures and web 43 faile
 ## HOF-DEV01-OPS01-C1-VALIDATION-20261019
 
 Owner OPS-01. Reconcile `bash scripts/verify-migration-chain.sh` duplicate-canonical-object failure against strict native psql success on all 69 migrations, fresh and seeded upgrade. Triage test tooling/collection, manual-deployment migration host and migration-verification/lockfile failures with FIX-01. Verify actual deployment-role privileges and schema drift before eventual rollout; no deployment authorized here. Disposable container `ai-comms-c1-testdb` remains available on loopback 55432/tmpfs; no external services used. Evidence in C1 session and local artifact directory. This is a repository handoff, not an external notification.
+
+## HOF-DEV01-FIX01-OPS01-C2-FINAL-20261019
+
+FIX-01: final merged worker13failures/web40failed tests (20files), exact names in docs/reviews/CATCHUP-C2-SUITE-FAILURES-20261019.md. Permission-Set bug fixed; canonical publication compatibility corrected. OPS migration structural checker now passes; no stale duplicate-DDL blocker claim. OPS-01/FIX-01: incident commit c99252a4 introduced executable obfuscated build hooks, now removed; see sessions/FIX01-OPS01-BUILD-HOOK-INCIDENT-20261019.md for exposure uncertainty, clean-environment and credential-rotation assessment. No external messages, deployment or rotations performed.

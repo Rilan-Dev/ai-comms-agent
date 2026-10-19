@@ -263,13 +263,20 @@ export class GmailAdapter implements EmailProvider {
     if (state.sync_mode === "initial" || state.cursor || !state.history_token) {
       const profile = state.history_token ? null : await this.request("/profile");
       const baselineHistoryId = state.history_token ?? profile?.historyId;
-      const params = new URLSearchParams({ maxResults: "100" });
+      const budget = state.initial_message_limit == null ? 100
+        : Math.max(1, Math.min(100, state.initial_message_limit - (state.initial_imported_count ?? 0)));
+      const params = new URLSearchParams({ maxResults: String(budget) });
       if (state.cursor) params.set("pageToken", state.cursor);
       const page = await this.request(`/messages?${params.toString()}`);
       const added = (page.messages ?? [])
         .filter((message: any) => typeof message.id === "string" && message.id.length > 0)
         .map((message: any) => ({ message_id: message.id, provider_message_id: message.id }));
-      const cursor = typeof page.nextPageToken === "string" ? page.nextPageToken : undefined;
+      // When an import limit was selected, stop after the newest bounded
+      // Gmail page. The historyId captured before listing becomes the
+      // incremental baseline, so arrivals during import are not lost.
+      const reachedBudget = state.initial_message_limit != null
+        && (state.initial_imported_count ?? 0) + added.length >= state.initial_message_limit;
+      const cursor = !reachedBudget && typeof page.nextPageToken === "string" ? page.nextPageToken : undefined;
       return {
         added,
         updated: [],

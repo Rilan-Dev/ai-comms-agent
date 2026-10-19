@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseCredentialsMasterKey } from "@ai-comms-agent/db";
-import { PostgresEmailAccountRepository, recordAuditEvent } from "@ai-comms-agent/db";
+import { PostgresEmailAccountRepository, recordAuditEvent, query } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { testImapSmtpConnection } from "@ai-comms-agent/db";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -39,7 +39,36 @@ export async function GET(request: Request) {
     );
 
     const accounts = await new PostgresEmailAccountRepository().listForOrganization(organizationId);
-    return NextResponse.json({ accounts });
+    const progress = await query<{
+      id: string; sync_status: string | null; sync_mode: string | null;
+      imported_count: number; initial_limit: string | null; last_success_at: string | null;
+      last_attempt_at: string | null; pending_count: number;
+    }>(
+      `SELECT a.id, s.status::text AS sync_status, s.sync_mode,
+          s.last_success_at::text, s.last_attempt_at::text,
+          CASE WHEN a.connection_config->>'initialSyncLimit' IN ('10','50','100')
+            THEN a.connection_config->>'initialSyncLimit' ELSE '50' END AS initial_limit,
+          COALESCE(jsonb_array_length(s.pending_message_ids),0)::int AS pending_count,
+          (SELECT count(*)::int FROM email_messages m
+           WHERE m.email_account_id=a.id AND m.organization_id=$1) AS imported_count
+       FROM email_accounts a
+       LEFT JOIN email_sync_states s ON s.email_account_id=a.id AND s.organization_id=$1
+       WHERE a.organization_id=$1 AND a.deleted_at IS NULL`,
+      [organizationId],
+    );
+    const byId = new Map(progress.rows.map((row) => [row.id, row]));
+    return NextResponse.json({ accounts: accounts.map((account) => ({
+      ...account,
+      syncProgress: byId.get(account.id) ? {
+        status: byId.get(account.id)!.sync_status ?? "idle",
+        mode: byId.get(account.id)!.sync_mode ?? "initial",
+        imported: byId.get(account.id)!.imported_count,
+        initialLimit: Number(byId.get(account.id)!.initial_limit),
+        pending: byId.get(account.id)!.pending_count,
+        lastSuccessAt: byId.get(account.id)!.last_success_at,
+        lastAttemptAt: byId.get(account.id)!.last_attempt_at,
+      } : null,
+    })) }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return authorizationErrorToResponse(error);
   }
@@ -168,7 +197,8 @@ export async function POST(request: Request) {
             const masterKey = process.env.CREDENTIALS_MASTER_KEY ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY) : null;
       if (!masterKey) return NextResponse.json({ error: "provider_configuration_required", message: "Credential encryption is not configured on the server." }, { status: 503 });
       const repository = new PostgresEmailAccountRepository();
-      const connectionConfig = { imap_host: host, imap_port: port, smtp_host: smtpHost, smtp_port: smtpPort, tls: true };
+      const initialSyncLimit = [10, 50, 100].includes(Number(body?.initialLimit)) ? Number(body.initialLimit) : 50;
+      const connectionConfig = { imap_host: host, imap_port: port, smtp_host: smtpHost, smtp_port: smtpPort, tls: true, initialSyncLimit };
       const capabilities = { folders: true, labels: false, sync_incremental: false, sync_full: true, sync_webhook: false, sync_idle: true, search_server_side: true, search_client_side: true, drafts: false, reply: false, forward: false, mark_read: true, archive: false, move: false, threads: false, attachments_download: false, attachments_upload: false, send: false };
       const existing = await repository.findByOrganizationProviderAddress(organizationId, "imap_smtp", emailAddress);
       let account;

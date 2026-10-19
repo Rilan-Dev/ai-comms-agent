@@ -106,6 +106,7 @@ test('C1 private storage and pooled application authorization', async t => {
       savedScope=await api.resolveBriefingScope(principal,[ids.mailA]);
       await q(`INSERT INTO aca.summaries(id,organization_id,agent_id,summary_type,period_start,period_end,content,owner_user_id,mailbox_ids,briefing_status,briefing_mode,scope_version,content_json) VALUES($1,$2,$3,'personal_briefing',now()-interval '7 days',now(),'secret',$4,$5,'ready','catch_up',$6,$7)`,[ids.summaryA,ids.orgA,ids.agentA,ids.userA,[ids.mailA],savedScope.scopeVersion,JSON.stringify([item])]);
       await q(`INSERT INTO aca.summary_sources(summary_id,organization_id,owner_user_id,agent_id,email_message_id,mailbox_id,content_revision,item_metadata) SELECT $1,$2,$3,$4,id,email_account_id,aca.briefing_content_revision(id),'{}' FROM aca.email_messages WHERE id=$5`,[ids.summaryA,ids.orgA,ids.userA,ids.agentA,ids.messageA]);
+      await q('UPDATE aca.summaries SET selected_source_manifest=$1 WHERE id=$2',[JSON.stringify([{messageId:ids.messageA}]),ids.summaryA]);
       assert.equal((await repo.getBriefing(principal,ids.summaryA)).items[0].title,'sensitive title');
       for(const p of [{...principal,userId:ids.userC},{...principal,organizationId:ids.orgB},{...principal,agentId:ids.agentB}]) await assert.rejects(repo.getBriefing(p,ids.summaryA));
       assert.equal((await repo.listBriefings(principal,{limit:1})).briefings.length,1);

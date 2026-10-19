@@ -1,5 +1,6 @@
 import {
   parseCredentialsMasterKey,
+  decryptCredential,
   PostgresEmailAccountRepository,
   PostgresEmailFolderLabelRepository,
   query,
@@ -15,6 +16,7 @@ import type { EmailProvider } from "@ai-comms-agent/shared";
 import { publishEmailSync } from "../queues/email-sync-rabbitmq";
 import { deleteEmailKnowledge } from "../knowledge/email-knowledge-indexer";
 import { unavailableMessageIds, successfullyPersistedMessageIds } from "./mailbox-sync-checkpoint";
+import { parseInitialImportLimit, eligibleSyncMessageIds } from "./initial-import-limit";
 import type { EmailSyncPayload } from "../queues/email-sync-message";
 
 type Candidate = {
@@ -282,6 +284,25 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       ...connectionConfig,
       credential_type: candidate.provider === "imap_smtp" ? ((stored as unknown as EmailCredentials).credential_type ?? "app_password") : "oauth_token",
     };
+    if (candidate.provider === "microsoft_graph") {
+      // Rotation of Microsoft OAuth client secrets happens in Platform
+      // Settings, without an application rebuild or mailbox reconnect.
+      // Reject missing/disabled client references instead of falling back to
+      // stale tokens or deployment environment variables.
+      const configId = typeof connectionConfig.oauthConfigId === "string" ? connectionConfig.oauthConfigId : "";
+      if (!configId) throw new Error("This Outlook mailbox must be reconnected to a Microsoft OAuth client from Platform Settings.");
+      const oauth = await query<{ client_id: string; tenant_id: string; client_secret_ciphertext: Buffer }>(
+        "SELECT client_id,tenant_id,client_secret_ciphertext FROM microsoft_oauth_configs WHERE id=$1 AND organization_id=$2 AND enabled=true LIMIT 1",
+        [configId, candidate.organization_id],
+      );
+      const selected = oauth.rows[0];
+      if (!selected) throw new Error("The Microsoft OAuth client is disabled or missing. Enable it in Platform Settings.");
+      credentials.microsoft_client_id = selected.client_id;
+      credentials.microsoft_tenant_id = selected.tenant_id;
+      credentials.microsoft_client_secret = decryptCredential(
+        selected.client_secret_ciphertext, parseCredentialsMasterKey(masterKey),
+      ).toString("utf8");
+    }
     await adapter.connect(credentials);
     const structure = await query<{ count: string }>(
       "SELECT count(*)::text AS count FROM email_folders WHERE email_account_id=$1",
@@ -300,7 +321,15 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       );
     }
 
+    const initialLimit = parseInitialImportLimit(connectionConfig.initialSyncLimit);
+    const imported = await query<{ count: number }>(
+      "SELECT COUNT(*)::int AS count FROM email_messages WHERE organization_id=$1 AND email_account_id=$2",
+      [candidate.organization_id, candidate.id],
+    );
+    const importedCount = Number(imported.rows[0]?.count ?? 0);
     const state: SyncState = {
+      initial_message_limit: initialLimit,
+      initial_imported_count: importedCount,
       cursor: claimed.rows[0].cursor ?? undefined,
       history_token: claimed.rows[0].history_id ?? undefined,
       last_sync_at: claimed.rows[0].last_success_at ?? new Date(0).toISOString(),
@@ -336,7 +365,11 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
         ...result.added.map((item) => item.provider_message_id),
         ...result.updated.map((item) => item.provider_message_id),
       ]);
-      ids = [...messageIds];
+      // Historical import is a one-time, configurable snapshot. Do not
+      // discard *incremental* events, including live incoming messages.
+      // Providers without a direct history cursor may still scan older
+      // metadata to establish their checkpoint; do not persist the backlog.
+      ids = eligibleSyncMessageIds([...messageIds], state.sync_mode, initialLimit, importedCount);
       stagedCursor = result.new_state.cursor ?? null;
       stagedHistory = result.new_state.history_token ?? null;
       stagedMode = result.new_state.sync_mode;

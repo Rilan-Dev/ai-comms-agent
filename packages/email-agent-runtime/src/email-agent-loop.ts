@@ -19,6 +19,8 @@ export interface EmailAgentTurnInput {
   maxToolCalls?: number;
   /** Only invoked after a complete audited batch of successful read-only tools. */
   onSafeReadOnlyFinal?: (history: ToolChatMessage[]) => Promise<string>;
+  /** Public lifecycle only: no model reasoning or tool arguments. */
+  onProgress?: (phase: "planning_tools" | "reading_email" | "checking_permissions" | "denied") => void;
 }
 
 export interface EmailAgentTurnResult {
@@ -78,6 +80,7 @@ export async function runEmailAgentTurn(
   let totalCalls = 0;
 
   for (let round = 0; round < maxRounds; round += 1) {
+    input.onProgress?.("planning_tools");
     const completion = await dependencies.completeWithTools(
       { orgId: input.organizationId, agentId: input.agentId, kbId: input.kbId ?? "" },
       history,
@@ -110,7 +113,10 @@ export async function runEmailAgentTurn(
       // allowlist, actor permission, account binding, capability, and audit.
       // Route even an unexpected provider-emitted name through the executor:
       // unknown-tool denials must be audited by the same durable audit sink.
+      const known = registered.find(entry => entry.name === call.name);
+      input.onProgress?.(known?.required_permission === "email.read" ? "reading_email" : "checking_permissions");
       const result = await dependencies.invoke(runtime, call.name, call.arguments, input.toolContext);
+      if (!result.ok) input.onProgress?.("denied");
       const toolOutput = result.output && typeof result.output === "object" && !Array.isArray(result.output)
         ? result.output as Record<string, unknown>
         : null;

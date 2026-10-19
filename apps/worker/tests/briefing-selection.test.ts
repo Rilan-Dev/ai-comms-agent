@@ -9,6 +9,7 @@ test('first use defaults to seven days; five-day absence never narrows retained 
   assert.equal(briefingPeriod(null,now,'2026-10-01T12:00:00.000Z').start,'2026-10-01T12:00:00.000Z');
   assert.throws(()=>briefingPeriod({start:'2026-01-01T00:00:00Z',end:now},now,null),/90/);
   assert.throws(()=>briefingPeriod({start:now,end:'invalid'},now,null));
+  assert.equal(briefingPeriod(null,'2026-10-18T12:00:00.123456Z',null).end,'2026-10-18T12:00:00.123456Z');
 });
 test('batch planning includes every source within both count and token bounds', () => {
   const sources=Array.from({length:5000},(_,i)=>({id:String(i),estimatedTokens:300}));

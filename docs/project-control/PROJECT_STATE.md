@@ -1,3 +1,32 @@
+## DEV-01 — C2 integrated and verified — 2026-10-19
+
+C2 immutable selection, scoped review, snooze and fenced batch recovery are implemented. Concurrent upstream catch-up UI/generation and OPS work preserved; canonical services reconciled, migration0052. Final34SQL/25domain/37web/3integrity checks pass; typechecks, web build and migration structure pass. Full worker/web suites still fail; see [C2 session](sessions/DEV01-CATCHUP-C2-20261019.md). Upstream obfuscated build hooks were removed; [security follow-up](sessions/FIX01-OPS01-BUILD-HOOK-INCIDENT-20261019.md) remains open because credential exposure is uncertain. **Exact next action:** complete C3 worker/grounding/recovery integration using existing generation helpers, then authenticated C4 UI acceptance. Feature remains off by default; no deployment or routine activation. Older checkpoints below are historical.
+
+---
+
+## 2026-10-19 — Operator migration source check repaired (database state unchanged)
+
+- User's manual `plan` failed on a **static** grep counting valid historical idempotent DDL as duplicate and the `aca.` schema name as a table. Fixed source in `scripts/verify-migration-chain.sh`, new Node declaration checker, and added five operator tests. No migration SQL file was rewritten. Existing ledger/target/checksum preflight remains authoritative. Source committed directly to `main`; no PR/branch, no database writes or deployment by assistant.
+- Isolated Node checker syntax and fixture tests PASS; 70 SQL files inspected for unguarded duplicates, no names repeated in that inspection. Full user checkout, PostgreSQL plan, apply, migrations, production acceptance pending. User/operator/OPS-01 executes safe plan and handles DB/deployment per `NEXT_ACTION.md`.
+- Session `docs/project-control/sessions/OPERATOR-MIGRATION-DUPLICATE-STATIC-CHECK-FIX-20261019.md`.
+
+---
+
+## Owner-provided deploy/migrate request: scripts prepared (2026-10-19)
+
+- Operator tools for checksum-safe `plan | apply | verify` migrations now committed on `main`; they reuse existing forward SQL, require explicit database+backup confirmation to apply, verify ledger and never start/reset app or transfer API secrets. No live migrations/deployment run. 17 source-contract checks passed; actual Node/shell/Docker/PostgreSQL tests remain pending. Documentation: `docs/runbooks/OPERATOR-MIGRATION-20261019.md`.
+- User's earlier ElevenLabs TTS/STT 409 represents per-purpose credential readiness, **not** a missing migration. Realtime→TTS/STT key reuse must be explicitly confirmed through authenticated org-admin app action after code deploy.
+- Phase 4 unchanged; OPS-01 executes migration and deployment. Session `docs/project-control/sessions/OPERATOR-MIGRATION-SCRIPT-20261019.md`.
+
+---
+
+## DEV-01 — 2026-10-19 ElevenLabs TTS/STT save guard checkpoint
+
+- Existing source already had explicit, authorized same-org encrypted Realtime→TTS/STT reuse. New DEV-01 direct-main slice checks missing TTS/STT credentials before sequential Save, fails closed on `keepExistingKey` without a saved secret, and retains Realtime status after Voice Chat reload. Purpose-specific independent model and key settings preserved.
+- Executed isolated 8/8 Node checks, isolated TypeScript check PASS; current GitHub 10/10 static source-contract checks PASS. Full pnpm suite, Postgres, browser/authenticated vendor endpoints and deployed source remain unverified. Phase 4 remains implementation_in_progress. Session `DEV01-ELEVENLABS-VOICE-PRESAVE-GUARD-20261019`.
+
+---
+
 ## DEV-01 — C1 implementation checkpoint — 2026-10-19
 
 Private catch-up storage/access implemented; flag remains off. PostgreSQL 17/17 and focused web 8/8 pass; package typechecks pass and web build passed before the final evidence-read correction. Full worker/web suites still fail outside changed C1 areas; FIX-01 and OPS-01 handoffs are recorded. No deployment/push/provider use. See [C1 session](sessions/DEV01-CATCHUP-C1-20261018.md). **Exact next action:** C2 failing selection/coverage tests, then immutable manifests and explicit review progress. Existing phase remains implementation_in_progress; earlier active/planning entries are historical.

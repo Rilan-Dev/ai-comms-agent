@@ -1,8 +1,8 @@
-# C2 broader-suite failures
+# C2 final merged-suite failures
 
-Commands executed: pnpm test; pnpm --filter @ai-comms-agent/web test. These suites are not green. Exact failing headings below are preserved from local logs; application/fixture attribution is a FIX-01/OPS-01 follow-up.
+Executed pnpm test and separately pnpm --filter @ai-comms-agent/web test. Worker166passed/13failed; web471passed/40failed with20failed files. These are not passing full suites. Headings below are preserved from final logs; FIX-01/OPS-01 retain triage ownership.
 
-## workspace-tests
+## final-workspace-tests
 
 - apps/worker test: ✖ Clara retrieval searches email chunks by query terms without requiring an exact full phrase
 - apps/worker test: ✖ worker vector adapter sends deterministic chunk and source metadata
@@ -15,16 +15,14 @@ Commands executed: pnpm test; pnpm --filter @ai-comms-agent/web test. These suit
 - apps/worker test: ✖ registry creates registered providers and rejects duplicates
 - apps/worker test: ✖ worker publishes due mailboxes and consumes account-scoped sync jobs
 - apps/worker test: ✖ Clara retrieval isolates shared knowledge from other agents
-- apps/web test: ✖ provider verification owns cleanup around live provider discovery
-- apps/web test: ✖ inbox source contains no escaped-newline literals and sender search remains parameterized
 - apps/worker test: ✖ tests/whatsapp-send-tool.test.ts
 - apps/worker test: ✖ tests/whatsapp-tool-runtime.test.ts
-- apps/worker test: ✖ failing tests:
 
-## web-full-tests
+## final-web-tests
 
 - ✖ provider verification owns cleanup around live provider discovery
 - ✖ inbox source contains no escaped-newline literals and sender search remains parameterized
+- ✖ Settings has keyboard-reachable anchors for each major settings group
 - ✖ agent detail keeps organization-scoped server loading and not-found state
 - FAIL  tests/agent-detail-page-contract.test.ts [ tests/agent-detail-page-contract.test.ts ]
 - FAIL  tests/email-accounts-lifecycle.test.ts [ tests/email-accounts-lifecycle.test.ts ]
@@ -34,8 +32,6 @@ Commands executed: pnpm test; pnpm --filter @ai-comms-agent/web test. These suit
 - FAIL  tests/auth-boundary.test.ts > production authentication boundary > has a public login page and auth endpoints
 - FAIL  tests/auth-boundary.test.ts > production authentication boundary > applies hierarchical minimum-role guards to members, admins, and owners
 - FAIL  tests/email-account-repository-contract.test.ts > Postgres email account repository contract > never returns soft-deleted accounts through normal account reads
-- FAIL  tests/email-provider-registry.test.ts > EmailProviderRegistry > creates all currently implemented email adapters
-- FAIL  tests/email-provider-registry.test.ts > EmailProviderRegistry > does not advertise unsupported IMAP/SMTP or Zoho operations
 - FAIL  tests/gmail-adapter.test.ts > GmailAdapter > returns refreshed credentials using the shared EmailCredentials contract
 - FAIL  tests/gmail-adapter.test.ts > GmailAdapter > advertises the provider capability matrix
 - FAIL  tests/gmail-mailbox-sync.test.ts > Gmail automatic mailbox synchronization > uses paginated initial sync before history-based incremental sync
@@ -65,13 +61,11 @@ Commands executed: pnpm test; pnpm --filter @ai-comms-agent/web test. These suit
 - FAIL  tests/lovable-ui-migration.test.ts > Lovable Agentic AI Studio UI adaptation > keeps the migrated workspace on compact responsive geometry and accessible interaction states
 - FAIL  tests/lovable-ui-migration.test.ts > Lovable Agentic AI Studio UI adaptation > provides keyboard-managed confirmation dialogs and accessible chat status
 - FAIL  tests/mail-draft-action-contract.test.ts > Mail draft and sensitive action contracts > injects only organization-scoped synchronized mail into email-related chat turns
+- FAIL  tests/mail-threads-workspace.test.ts > Mail Threads interaction and realtime Chat usability > restores keyboard focus after returning from a live conversation without losing the chat draft
 - FAIL  tests/manual-deploy-migration-host.test.ts > manual deployment migration host boundary > rewrites Docker-only hostname for host-side psql while preserving the container URL
 - FAIL  tests/migration-verification.test.ts > Manual deployment migration boundary > applies the PostgreSQL migration chain before starting the application
 - FAIL  tests/migration-verification.test.ts > pnpm workspace lockfile integrity > contains exactly one workspace lockfile document
 - FAIL  tests/product-completion-contract.test.ts > Activity/Audit/Operations product contracts > does not present fabricated Overview metrics
-- FAIL  tests/rbac-persistence-consistency.test.ts > RBAC persistence consistency (Option A: system roles, deferred custom-role tables) > PERMISSION_CATALOGUE contains only Phase 3 identity/RBAC foundation permissions
-- FAIL  tests/rbac-persistence-consistency.test.ts > RBAC persistence consistency (Option A: system roles, deferred custom-role tables) > Phase 3 does not reference deferred roles/role_permissions tables at runtime
-- FAIL  tests/voice-realtime-transport.test.ts > Clara realtime voice transport > routes final speech transcripts through the host-authorized turn route before speaking answers
 - FAIL  tests/whatsapp-idempotency-conflict-target.test.ts > WhatsApp outbound idempotency conflict target > keeps idempotency scoped to the organization and payload conflict handling
 - FAIL  tests/whatsapp-send-approval.test.ts > WhatsApp send approval safety boundary > registers whatsapp.send only as an approval-request tool
-
+- FAIL  tests/workspace-shell.test.ts > Embedded realtime voice in the chat workspace > opens voice from both the chat header and composer without route navigation

@@ -435,7 +435,8 @@ export class ImapSmtpAdapter implements EmailProvider {
 
   async sync(state: SyncState): Promise<SyncResult> {
     const { imap } = this.ensureConnected();
-    const folders = await this.listFolders();
+    const folders = (await this.listFolders()).sort((a, b) =>
+      Number(b.role === "inbox") - Number(a.role === "inbox"));
     const encoded = state.cursor?.startsWith("imap:") ? state.cursor.slice(5) : "";
     let folderIndex = 0;
     let lastUid = 0;
@@ -464,7 +465,16 @@ export class ImapSmtpAdapter implements EmailProvider {
       const lines = await this.command("UID SEARCH ALL");
       const uidLine = lines.find((line) => /^\* SEARCH(?:\s|$)/i.test(line)) ?? "";
       const uids = (uidLine.replace(/^\* SEARCH\s*/i, "").match(/\d+/g) ?? []).map(Number).filter((uid) => uid > 0).sort((a,b)=>a-b);
-      const fresh = uids.filter((uid) => uid > lastUid).slice(0, 50);
+      const available = uids.filter((uid) => uid > lastUid);
+      const historicalBudget = state.initial_message_limit == null ? 50
+        : Math.max(0, state.initial_message_limit - (state.initial_imported_count ?? 0) - added.length);
+      // Fresh connections import the newest bounded UIDs, never thousands of
+      // old full MIME bodies. The highest UID becomes the checkpoint for
+      // subsequent live polling; unselected old UIDs are deliberately skipped.
+      const recentInitial = state.sync_mode === "initial" && !encoded && !savedCheckpoint;
+      const fresh = recentInitial
+        ? available.slice(-Math.min(100, historicalBudget))
+        : available.slice(0, 50);
       for (const uid of fresh) {
         const fetched = await this.command(`UID FETCH ${uid} (UID FLAGS INTERNALDATE BODY.PEEK[])`);
         const start = fetched.findIndex((line) => /FETCH \(/i.test(line) && /BODY\[\]/i.test(line));
@@ -474,7 +484,7 @@ export class ImapSmtpAdapter implements EmailProvider {
         (state.sync_mode === "initial" ? added : updated).push({ message_id: message.id, provider_message_id: message.provider_message_id ?? message.id });
       }
       pages++;
-      if (fresh.length === 50 && (uids.find((uid) => uid > fresh[fresh.length - 1]!) !== undefined)) {
+      if (!recentInitial && fresh.length === 50 && (uids.find((uid) => uid > fresh[fresh.length - 1]!) !== undefined)) {
         lastUid = fresh[fresh.length - 1]!;
         checkpoints[folder.provider_folder_id] = { uid: lastUid, validity };
         return {

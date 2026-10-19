@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, query } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, appendConversationMessage, getChatConversation, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, query } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -67,6 +67,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "session_not_active", message: "Voice session ended before the turn could be recorded." }, { status: 409 });
     }
 
+    // Only host-mediated, validated voice turns are archived. Provider-native
+    // audio-only turns need a separately verified transcript contract before
+    // claiming persistent replay. Never trust a client conversation ID here.
+    const linkedConversation = typeof session.conversation_id === "string"
+      ? await getChatConversation(organizationId, session.conversation_id, agentId)
+      : null;
+    if (linkedConversation) {
+      await appendConversationMessage({
+        organizationId, conversationId: linkedConversation.id, role: "user",
+        content: `[Voice transcript] ${transcript}`,
+      });
+    }
+    const saveAnswer = async (answer: string): Promise<void> => {
+      if (linkedConversation && answer.trim()) {
+        await appendConversationMessage({
+          organizationId, conversationId: linkedConversation.id, role: "assistant",
+          content: answer,
+        });
+      }
+    };
+
     const executionId = crypto.randomUUID();
     const role = subject.membership.role;
     const permissions = [...subject.permissions];
@@ -80,11 +101,14 @@ export async function POST(request: Request) {
       const encoder = new TextEncoder();
       const stream = new ReadableStream<Uint8Array>({
         async start(controller) {
+          let deliveredText = "";
           const emit = (event: string, payload: Record<string, unknown>) => {
+            if (event === "delta" && typeof payload.text === "string") deliveredText += payload.text;
             controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
           };
           try {
             emit("status", { phase: needsAuthorizedTools ? "tools" : "generating" });
+            emit("progress", { phase: needsAuthorizedTools ? "checking_permissions" : "generating" });
             if (needsAuthorizedTools) {
               const result = await runEmailAgentTurn({
                 organizationId, agentId, messages: [{ role: "user", content: transcript }], kbId,
@@ -99,6 +123,7 @@ export async function POST(request: Request) {
                   auth_subject: { user_id: subject.user.id, role, permissions },
                 },
                 maxRounds: 4, maxToolCalls: 8,
+                onProgress: (phase) => emit("progress", { phase }),
                 onSafeReadOnlyFinal: async (completedHistory) => {
                   emit("status", { phase: "generating" });
                   const finalStream = await claraRuntime.streamAuthorizedReadOnlyToolAnswer(
@@ -122,6 +147,8 @@ export async function POST(request: Request) {
                 // The callback already streamed the provider's final tokens.
                 // Writes/approvals/denials retain the canonical host answer.
                 if (!result.streamed) emit("delta", { text: result.text });
+                await saveAnswer(deliveredText);
+                emit("progress", { phase: "completed" });
                 emit("done", {
                   executionId, toolCalls: result.toolCalls, pendingApprovals: result.pendingApprovals,
                   finishReason: result.finishReason, mode: "host-authorized-tools",
@@ -143,6 +170,7 @@ export async function POST(request: Request) {
                 emit("delta", { text: token });
               }
               if (!request.signal.aborted) {
+                await saveAnswer(deliveredText);
                 emit("done", {
                   executionId, toolCalls: [], pendingApprovals: [],
                   finishReason: "completed", mode: "model-stream",
@@ -191,6 +219,7 @@ export async function POST(request: Request) {
       maxToolCalls: 8,
     });
 
+    await saveAnswer(turn.text);
     return NextResponse.json({
       executionId,
       text: turn.text,

@@ -644,3 +644,26 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - Exact executed Node 16/16 and standalone tsc PASS; 19/19 GitHub source contracts PASS. Full Vitest/database/runtime/browser/deployment NOT verified.
 - FIX-01 retains rolling 24h incident and HTML security #36; OPS-01 owns DB/CI/provider-synchronization/host credentials/Vercel. No branch/PR/prod deploy.
 - Session: `docs/project-control/sessions/DEV01-EXPLICIT-DATE-MAIL-20261019.md`.
+
+### EVT-DEV01-ELEVENLABS-VOICE-PRESAVE-GUARD-20261019
+- **Observation:** Two separate enabled ElevenLabs `tts` and `stt` key rows are required to fetch respective vendor model catalogs. Existing opt-in Realtime key reuse already built, not deployed/verified; client two-PUT save still had partial-write risk when one key was missing.
+- **Correction:** Pure before-first-PUT completeness guard, whitespace-safe plaintext handling, PUT keepExistingKey existence check after authorization, retained read-only Realtime metadata during voice capabilities reload.
+- **Evidence:** 8/8 exact-helper isolated Node execution, isolated TypeScript and 10/10 authenticated GitHub source predicates PASS. Whole repo tests/build, live vendor APIs, migrations, browser/deploy NOT tested; no branch/PR. Sequential network failures still could partially commit.
+- **Handoff:** OPS-01 integration/deploy/Vercel; FIX-01 existing voice/security defects. Exact session `DEV01-ELEVENLABS-VOICE-PRESAVE-GUARD-20261019`.
+
+### EVT-OPERATOR-MIGRATION-SCRIPT-20261019
+- **Owner direction:** Prepare and commit migration scripts to GitHub main; user deploys/applies later; no branch/PR.
+- **Change:** Manual Compose-based, non-destructive `plan/apply/verify` operator wrapper + Postgres live target/ledger/checksum checks, exact backup and database-name gate, fresh DB opt-in, failure-on-skipped statements, offline Node/Bash tests and operator runbook.
+- **Evidence:** 17/17 fresh repository source-contract assertions PASS; full Node/bash/Docker/PG migration/backup/deployed validation NOT EXECUTED. No SQL row/key modifications.
+- **Handoff:** OPS-01 owns operator execution, backups, CI/CD/deployment. Existing ElevenLabs purpose-specific config 409 persists until an authorized admin explicitly saves/reuses keys; never auto-migrate secrets. Session `docs/project-control/sessions/OPERATOR-MIGRATION-SCRIPT-20261019.md`.
+
+### EVT-OPERATOR-MIGRATION-STATIC-CHECK-20261019
+- **Report:** operator ran tests 14/14 PASS, web Docker image build PASS, manual `plan` failed immediately on `duplicate canonical table object(s): aca`; no SQL applied.
+- **Cause:** historical idempotent `CREATE TABLE IF NOT EXISTS` was counted as duplicate; schema-qualified names were truncated to `aca`; enum `DO` guards ignored.
+- **Resolution/source:** direct-main `verify-migration-chain.sh` calls `scripts/check-migration-declarations.mjs`; allows historical guarded/idempotent DDL but flags repeated unguarded table/enum declarations; five regression tests added. Existing SQL and live migration ledger unchanged.
+- **Evidence:** exact checker Node syntax and fixture PASS, 70 source migration files reviewed for repeated bare names. Full Node test suite/current PostgreSQL `plan`/apply/verify **not run** by assistant.
+- **Handoff:** user/operator/OPS-01 reruns read-only test, structural check, plan; must confirm actual database and backup before separate migration. Details in `docs/project-control/sessions/OPERATOR-MIGRATION-DUPLICATE-STATIC-CHECK-FIX-20261019.md`.
+
+## 2026-10-19 — DEV01-CATCHUP-C2-20261019
+
+C2 complete locally, final merge/push receipt in session.34SQL,25domain,37web,3integrity checks pass; typechecks/build pass. Preserve source/review scoping and UUID cursor UI compatibility. Claim canonical sources, reauthorize scheduled mutations, retain precise server boundaries and compare manifest provenance counts. Prior C1 support sessions finished; independent C2 reviewer complete, FIX-01 compatibility/security support complete, OPS-01 restore/read-only incident assessment complete. No hidden active implementer task remains. Next C3 orchestration/grounding and C4 browser acceptance; security incident and broader suites retain role owners.

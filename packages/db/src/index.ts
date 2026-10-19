@@ -143,3 +143,5 @@ export { createClaraEmailVectorSearch } from "./email/clara-vector-search";
 export { resolveBriefingScope, recordForegroundActivity, assignBriefingMailboxGrant, revokeBriefingMailboxGrant, type BriefingActor } from './briefings/access';
 export { getBriefing, listBriefings } from './briefings/repository';
 export * from './briefings/coverage';
+
+export { listGrantedBriefingMailboxes, publishBriefingItems } from './briefings/selection';

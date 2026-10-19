@@ -2,6 +2,7 @@ import { PostgresAgentRepository, getOrCreateChatConversation, listChatMessages 
 import { getAuthenticatedAppContext } from "@/lib/identity/repository";
 import { headers } from "next/headers";
 import { ChatClient } from "./chat-client";
+import { briefingsEnabled } from "@/lib/briefings/config";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ export default async function ChatPage() {
         initialAgentId={agent.id}
         initialConversationId={conversation.id}
         initialMessages={messages as never[]}
+        catchUpEnabled={briefingsEnabled()}
       />
     );
   } catch (error) {

@@ -66,26 +66,14 @@ fi
 # those prefixes would make the verifier disagree with the committed migration
 # history and the migration runner.
 
-# Domain objects must have exactly one canonical CREATE migration.
-for kind in table enum; do
-  case "$kind" in
-    table) pattern='CREATE TABLE IF NOT EXISTS[[:space:]]+([a-zA-Z_][a-zA-Z0-9_]*)';;
-    enum) pattern='CREATE TYPE[[:space:]]+(IF[[:space:]]+NOT[[:space:]]+EXISTS[[:space:]]+)?([a-zA-Z_][a-zA-Z0-9_]*)[[:space:]]+AS ENUM';;
-  esac
-  if [[ "$kind" == "table" ]]; then
-    duplicates="$({
-      grep -RhoE "$pattern" "$MIGRATIONS_DIR" --include='*.sql' 2>/dev/null || true
-    } | sed -E 's/^.*CREATE TABLE IF NOT EXISTS[[:space:]]+([A-Za-z_][A-Za-z0-9_]*).*$/\1/' | sort | uniq -d)"
-  else
-    duplicates="$({
-      grep -RhoE "$pattern" "$MIGRATIONS_DIR" --include='*.sql' 2>/dev/null || true
-    } | sed -E 's/^.*CREATE TYPE[[:space:]]+(IF[[:space:]]+NOT[[:space:]]+EXISTS[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)[[:space:]]+AS ENUM.*$/\2/' | sort | uniq -d)"
-  fi
-  if [[ -n "$duplicates" ]]; then
-    echo "ERROR: duplicate canonical $kind object(s): $duplicates" >&2
-    exit 1
-  fi
-done
+# Historical and reconciliation migrations intentionally repeat idempotent
+# CREATE TABLE IF NOT EXISTS, sometimes with the aca. schema qualifier, and
+# exception-guarded CREATE TYPE within DO blocks. The previous grep counted
+# the qualifier "aca" as a table name and rejected these safe reassertions.
+# Check only repeated *non-idempotent* declarations instead. Applied-file
+# checksums, unknown versions and the live ledger are independently guarded
+# by operator-migration-check.mjs before any SQL is applied.
+node "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/check-migration-declarations.mjs" "$MIGRATIONS_DIR"
 
 # Migrations 0001-0008 must use the established can_* wrappers; the public
 # is_active_* helpers are introduced by later security-hardening migrations.
