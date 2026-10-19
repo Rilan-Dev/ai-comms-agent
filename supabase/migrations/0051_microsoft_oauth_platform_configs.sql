@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS microsoft_oauth_configs (
   label text NOT NULL,
   client_id text NOT NULL,
   tenant_id text NOT NULL DEFAULT 'common',
+  notification_url text,
   client_secret_ciphertext bytea NOT NULL,
   enabled boolean NOT NULL DEFAULT true,
   created_by uuid REFERENCES users(id) ON DELETE SET NULL,
