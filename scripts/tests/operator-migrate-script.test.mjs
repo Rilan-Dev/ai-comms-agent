@@ -53,3 +53,14 @@ test("read-only checker verifies exact target database and ledger integrity", ()
   assert.match(checker, /CHECKSUM_MISMATCH/);
   assert.doesNotMatch(checker, /console\.log\(.*DATABASE_URL/);
 });
+
+
+test("operator migration checker and core are valid Node modules", () => {
+  for (const file of [
+    "packages/db/operator-migration-check.mjs",
+    "packages/db/operator-migration-core.mjs",
+  ]) {
+    const result = spawnSync("node", ["--check", resolve(root, file)], { encoding: "utf8" });
+    assert.equal(result.status, 0, file + ": " + result.stderr);
+  }
+});
