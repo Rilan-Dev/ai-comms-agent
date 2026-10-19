@@ -1,3 +1,9 @@
+## DEV-01 C3 worker core checkpoint — 2026-10-20
+
+Source commit `7da1d2b5e153e9ee361a832d3535e103cb40f753`: unregistered worker orchestration and six regression test cases added. Tests/typechecks not run; no runtime feature activation, production SQL or deployment. **Exact next authorized task:** implement grant/revision-checked canonical source loader with existing Clara adapter (no competing provider), expand provider timeout/429/prompt injection/grounding/lease recovery tests, execute focused worker tests and typechecks, then register behind disabled-by-default server flag only after verification. See `sessions/DEV01-C3-WORKER-CORE-20261020.md`. Phase 4 remains implementation_in_progress. Historical entries below retained.
+
+---
+
 ## DEV-01 current handoff — 2026-10-19, final repository synchronization
 
 See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed, in-progress, pending and next work. C1/C2 focused implementation is complete; C3 worker/grounding integration is next, then C4 authenticated UX acceptance. Phase 4 remains implementation_in_progress. Latest upstream operator/vector fixes preserved; affected checks pass 35/35 and 11/11. Earlier full-suite counts are a pre-final-merge baseline. Security follow-up remains open. Existing entries retained as history.
