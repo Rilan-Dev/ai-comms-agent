@@ -151,3 +151,25 @@ test("complete migration structure check still rejects repeated unsafe DDL", (t)
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /non-idempotent table definition aca.unsafe_table/);
 });
+
+test("fresh-only bootstrap checks actual user relations after ledger validation", () => {
+  const core = readFileSync(resolve(root, "packages/db/operator-migration-core.mjs"), "utf8");
+  assert.match(checker, /mode === "preflight" && allowFresh && plan\.applied\.length === 0/);
+  assert.match(checker, /FROM pg_catalog\.pg_class AS relation/);
+  assert.match(checker, /JOIN pg_catalog\.pg_namespace AS ns/);
+  assert.match(checker, /relation\.relkind IN \('r', 'p', 'v', 'm', 'f', 'S'\)/);
+  assert.match(checker, /ns\.nspname NOT IN \('pg_catalog', 'information_schema'\)/);
+  assert.match(checker, /ns\.nspname = 'aca' AND relation\.relname = '_aca_schema_migrations'/);
+  assert.match(checker, /dep\.deptype = 'e'/);
+  assert.match(checker, /assertFreshDatabaseEmpty\(existing\.rows\[0\]\?\.has_user_relations\)/);
+  assert.match(core, /hasUserRelations !== false/);
+  assert.match(core, /Fresh migration refused/);
+  assert.ok(checker.indexOf("assertMigrationSafe(plan") < checker.indexOf("assertFreshDatabaseEmpty(existing.rows"));
+});
+
+test("fresh bootstrap safeguard does not modify schema or skip approved backup gate", () => {
+  assert.match(script, /--allow-fresh/);
+  assert.match(script, /--backup-confirmed/);
+  assert.match(script, /node packages\/db\/operator-migration-check\.mjs preflight/);
+  assert.doesNotMatch(checker, /DROP TABLE|DELETE FROM|TRUNCATE TABLE/i);
+});
