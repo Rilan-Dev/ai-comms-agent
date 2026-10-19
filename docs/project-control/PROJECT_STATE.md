@@ -1,3 +1,10 @@
+## 2026-10-19 — One-command operator migration + deploy orchestration (not executed)
+
+- Owner-requested single-command operator wrapper on `main` now orchestrates *guarded* source checks, Docker web build, package checks, DB plan, explicit backup/target confirmation, forward-only migration/ledger verify, and a chosen production Vercel or separately approved Docker release. Migration-only choice remains available. Development Compose is rejected for production startup. Existing operator migration script remains authoritative for checksums and unknown history.
+- Safety source checks 20/20 pass; new Node test authored, real shell/Docker/DB/Vercel execution unverified. Backup is **not** created by script; operator must independently create/restore-test. Vercel rate-limit not resolved, ElevenLabs TTS/STT credential configuration still separate. Phase 4 implementation in progress. Runbook `docs/runbooks/ONE-SHOT-OPERATOR-RELEASE-20261019.md`.
+
+---
+
 ## 2026-10-19 — Operator migration source check repaired (database state unchanged)
 
 - User's manual `plan` failed on a **static** grep counting valid historical idempotent DDL as duplicate and the `aca.` schema name as a table. Fixed source in `scripts/verify-migration-chain.sh`, new Node declaration checker, and added five operator tests. No migration SQL file was rewritten. Existing ledger/target/checksum preflight remains authoritative. Source committed directly to `main`; no PR/branch, no database writes or deployment by assistant.
