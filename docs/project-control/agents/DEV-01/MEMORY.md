@@ -279,3 +279,7 @@ GitHub main start `16d3fb6f`; added isolated unregistered C3 worker core at `7da
 
 ## 2026-10-20 — C3 source/Clara milestone
 Latest main source `464ab70d`. Source manifest grant/revision/lease revalidation implemented; Clara no-ambient-retrieval path; model partial/invented candidate prevention and provider 429/timeout retry via leased recovery. 11/11 source checks; new Node/TypeScript tests not run. Avoid `createChatTurn` RAG for private mail. Source and failure analysis: `../../sessions/DEV01-C3-CANONICAL-CLARA-20261020.md`. No feature activation.
+
+
+## 2026-10-20 — C3 multi-mailbox source-loading lesson
+A durable C2 manifest can span mailboxes A+B while a 50-source batch includes only A. The C1 scopeVersion hashes the complete mailbox set, so resolving the batch's subset and comparing to manifest scope rejects valid work. Corrected in `f036d6bf`: resolve the entire manifest grants then intersect claimed mailbox subset. User reported 27/27 C3 tests on earlier code, but the additional two post-fix tests and TypeScript are **not yet run**. See `../../sessions/DEV01-C3-MULTI-MAILBOX-BATCH-SCOPE-20261020.md`.

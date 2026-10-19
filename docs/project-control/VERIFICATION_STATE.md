@@ -1,3 +1,9 @@
+## DEV-01 — 2026-10-20, C3 host tests and multi-mailbox correction
+
+**PASSED per owner host console:** 27/27 existing focused worker C3 tests, no failures or skips (run SHA not shown). **PASSED as code inspection only:** corrected canonical loader uses full manifest mailbox set and requires claim subset; new two regression cases committed at `f036d6bf`. **NOT RUN after fix:** 29 expected focused tests, TypeScript, disposable PostgreSQL integration, full suite and C4 browser. Do not transfer the earlier pass to the new commit. [Session](sessions/DEV01-C3-MULTI-MAILBOX-BATCH-SCOPE-20261020.md). No product activation.
+
+---
+
 ## DEV-01 C3 integration source-only checkpoint — 2026-10-20
 
 C3 work on main `1bae80c8`, `8f382ead`, `464ab70d`: 11/11 read-only GitHub source contract assertions PASS for grants, lease, sources, Clara isolation, retry, partial coverage and unregistered status. **NOT RUN:** new 11 C3 wiring tests, prior six worker tests, TypeScript, full package tests, SQL fixtures, builds or authenticated browser. Shell GitHub DNS/checkout/pnpm missing. This is not production acceptance or a substitute for running the tests. Source record: [DEV01-C3-CANONICAL-CLARA-20261020](sessions/DEV01-C3-CANONICAL-CLARA-20261020.md).

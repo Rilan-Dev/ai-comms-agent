@@ -693,3 +693,13 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - Outcome: C3 code committed to main; 11/11 static source assertions; tests/typechecks NOT RUN; feature OFF and no production action
 - Next: execute focused TypeScript/worker tests and disposable-db grant/recovery verification before guarded registration
 - Session: `sessions/DEV01-C3-CANONICAL-CLARA-20261020.md`
+
+
+### EVT-DEV01-C3-MULTI-MAILBOX-SCOPE-20261020
+- **Agent:** DEV-01 / Forge
+- **Input:** User reports 27/27 focused briefing tests passed on development host (host SHA not shown)
+- **Finding:** Full-scope versus batch-subset grant fingerprint mismatch in C3 canonical source loader
+- **Remedy:** Source commit `f036d6bf434ee710aaa7e53d2444c18fa74bcb62`, two new tests, no activation
+- **Verification:** Existing 27 tests per user; new 29-test execution/typechecks/disposable DB **pending**
+- **Status:** Implementation in progress; feature off
+- **Evidence:** `sessions/DEV01-C3-MULTI-MAILBOX-BATCH-SCOPE-20261020.md`

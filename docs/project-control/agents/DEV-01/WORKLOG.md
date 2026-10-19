@@ -588,3 +588,11 @@ Preserved concurrent main changes and both sides of eight documentation conflict
 
 ## 2026-10-20 — DEV-01 C3 continued, code committed
 Start `23ceb97637e47b9326cb2df181f3c1f9208a6fbf`. Commits `1bae80c8` (canonical source + Clara adapter, 8 cases), `8f382ead` (provider retry, 2 cases), `464ab70d` (mixed invalid candidate prevents coverage, 1 case). No branches/PR/migrations/deploy. 11/11 static source checks PASS, no actual Node/tsc/browser/DB tests. Exact next: run 3 focused worker test files and worker/db/Clara typechecks on prepared host; fix failures, test grant revocation and restart, add safely disabled registration. Session `../../sessions/DEV01-C3-CANONICAL-CLARA-20261020.md`.
+
+
+## 2026-10-20 — C3 test evidence and multi-mailbox fix
+- Started `main` `202b58633d81a42c48ad97239406e5796cdd6d19`; owner-supplied focused host tests 27/27 passed (SHA not shown).
+- Found false-denial for full-manifest grant fingerprint when a bounded batch covers a mailbox subset. Fixed canonical loader and added two focused regression tests, commit `f036d6bf434ee710aaa7e53d2444c18fa74bcb62` on main; no branch/PR/migrations/activation.
+- Verification: code-path assertions only for fix; 29 post-fix tests, typechecks and disposable-db test NOT RUN.
+- Next: run focused tests + four package typechecks, fix failures and validate multi-mailbox/revocation on disposable PostgreSQL before disabled-by-default registration; then C4 browser.
+- Record `../../sessions/DEV01-C3-MULTI-MAILBOX-BATCH-SCOPE-20261020.md`.

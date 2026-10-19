@@ -1,3 +1,11 @@
+## DEV-01 — C3 multi-mailbox claim scope fix, 2026-10-20 (latest)
+
+Owner-host focused verification: 27/27 Node tests passed (console output provided, no commit SHA in output); this predates the latest corrective commit. GitHub source fix `f036d6bf434ee710aaa7e53d2444c18fa74bcb62` resolves an untested multi-mailbox failure: canonical batch loader now resolves full immutable manifest mailbox grants/scope before checking that batch sources are a permitted subset. Two regression cases added; **post-fix 29 focused tests, TypeScript, and disposable-DB integration NOT RUN**. Phase 4 remains `implementation_in_progress`; worker remains disabled/unregistered. Session [DEV01-C3-MULTI-MAILBOX-BATCH-SCOPE-20261020](sessions/DEV01-C3-MULTI-MAILBOX-BATCH-SCOPE-20261020.md).
+
+**Exact next authorized DEV-01 task:** fast-forward main, rerun all three briefing Node test files (expected 29 tests), run `pnpm --filter @ai-comms-agent/{db,clara-core,email-agent-runtime,worker} typecheck` as four separate invocations, then disposable PostgreSQL full-manifest/single-mailbox batch, revocation, deletion and lease tests. Fix any failures before feature registration. OPS-01 owns database/deployment; C4 browser acceptance comes after C3 verification. Historical instructions follow.
+
+---
+
 ## DEV-01 C3 canonical source + Clara — 2026-10-20 (latest)
 
 Commits `1bae80c8`, `8f382ead`, `464ab70d` on main: grant/lease/revision-checked C3 source loader, ambient-RAG-free existing Clara generation, partial source/grounding protection and durable lease retry. **11/11 static source assertions PASS; new Node tests/typechecks NOT RUN.** Worker remains unregistered/disabled; Phase 4 `implementation_in_progress`, no deployment or migration. Full checkpoint: [DEV01-C3-CANONICAL-CLARA-20261020](sessions/DEV01-C3-CANONICAL-CLARA-20261020.md).
