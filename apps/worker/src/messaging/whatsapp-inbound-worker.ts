@@ -61,6 +61,7 @@ export async function processRoutedWhatsAppInbound(limit = 10) {
       await completeWhatsAppInbound(messageId, "completed");
       await evaluateAutomationEvent({
         type: "whatsapp.received",
+        organizationId,
         payload: { messageId, organizationId, agentId, accountId, contactId, sender: from, body },
       });
       await recordAuditEvent({
