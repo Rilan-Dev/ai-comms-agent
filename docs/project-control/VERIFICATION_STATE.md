@@ -1,3 +1,12 @@
+## 2026-10-19 — operator migration scripts: source prepared / execution pending
+
+- Source added on direct main: `scripts/operator-migrate.sh` (read-only plan/verify, backup+database-target gated apply), `packages/db/operator-migration-check.mjs`, `packages/db/operator-migration-core.mjs`, tests and operator runbook. No new SQL migration is necessary solely for ElevenLabs TTS/STT 409; no silent encrypted API key copy.
+- **Actually checked:** 17/17 fresh GitHub source-contract checks for target validation, ledger version/checksum drift, no reset/deploy, Docker internal network, read-only SQL mount, backup and fresh-DB gates, fail-closed runner warnings. These are static assertions, not executable tests.
+- **NOT RUN:** new `node --test scripts/tests/operator-migration-core.test.mjs scripts/tests/operator-migrate-script.test.mjs` suites, actual `bash -n`/Node --check in checkout, Compose image build, PostgreSQL connection or ledger query, backup validation, SQL migration, web/worker/DB/Clara tests, deployment or authenticated ElevenLabs provider checks.
+- **Operator handoff:** `docs/runbooks/OPERATOR-MIGRATION-20261019.md`, `docs/project-control/sessions/OPERATOR-MIGRATION-SCRIPT-20261019.md`. OPS-01 owns deployment/migration execution. Do not assert live acceptance.
+
+---
+
 ## 2026-10-19 — DEV-01 ElevenLabs TTS/STT 409 recovery (source implemented; deployment pending)
 
 - **Source committed on main, no branch/PR:** Explicit model-picker recovery for `provider_configuration_required` when eligible ElevenLabs Realtime secret exists (TTS/STT separately scoped), missing-purpose key remediation, distinct encrypted key failure. Existing explicit confirmed server key-reuse endpoint retained (organization.update, source decryptability, no overwrite of disabled/already saved target).
