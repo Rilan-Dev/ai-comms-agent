@@ -66,19 +66,38 @@ export function EmailAccountsClient({
   async function refreshAccounts() { setRefreshing(true); try { const response = await fetch("/api/email-accounts?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" }); const data = await response.json(); if (!response.ok) throw new Error(data.message ?? "Could not refresh email accounts."); setAccounts(data.accounts ?? []); setNotice("Mailbox status refreshed."); } catch (error) { setNotice(error instanceof Error ? error.message : "Could not refresh email accounts."); } finally { setRefreshing(false); } }
 
   useEffect(() => {
-    void fetch("/api/settings/gmail-oauth?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" })
-      .then(async (response) => { const body = await response.json().catch(() => ({})); if (!response.ok) return; const configs = (body.configurations ?? []).filter((item: { enabled: boolean }) => item.enabled); setGmailConfigs(configs); setSelectedGmailConfig((current) => current || configs[0]?.id || ""); })
-      .catch(() => undefined);
-  }, [organizationId]);
-
-  useEffect(() => {
-    void fetch("/api/settings/zoho-oauth?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" })
-      .then(async (response) => { const body = await response.json().catch(() => ({})); if (!response.ok) return; const configs = (body.configurations ?? []).filter((item: { enabled: boolean }) => item.enabled); setZohoConfigs(configs); setSelectedZohoConfig((current) => current || configs[0]?.id || ""); })
-      .catch(() => undefined);
+    const controller = new AbortController();
+    setGmailConfigs([]); setSelectedGmailConfig("");
+    void fetch("/api/settings/gmail-oauth?organizationId=" + encodeURIComponent(organizationId), {
+      cache: "no-store", signal: controller.signal,
+    }).then(async (response) => {
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || controller.signal.aborted) return;
+      const configs = (body.configurations ?? []).filter((item: { enabled: boolean }) => item.enabled);
+      setGmailConfigs(configs);
+      setSelectedGmailConfig(configs[0]?.id || "");
+    }).catch(() => undefined);
+    return () => controller.abort();
   }, [organizationId]);
 
   useEffect(() => {
     const controller = new AbortController();
+    setZohoConfigs([]); setSelectedZohoConfig("");
+    void fetch("/api/settings/zoho-oauth?organizationId=" + encodeURIComponent(organizationId), {
+      cache: "no-store", signal: controller.signal,
+    }).then(async (response) => {
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || controller.signal.aborted) return;
+      const configs = (body.configurations ?? []).filter((item: { enabled: boolean }) => item.enabled);
+      setZohoConfigs(configs);
+      setSelectedZohoConfig(configs[0]?.id || "");
+    }).catch(() => undefined);
+    return () => controller.abort();
+  }, [organizationId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setGraphConfigs([]); setSelectedGraphConfig("");
     void fetch("/api/settings/microsoft-oauth?organizationId=" + encodeURIComponent(organizationId), {
       cache: "no-store", signal: controller.signal,
     }).then(async (response) => {
