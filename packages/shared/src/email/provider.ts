@@ -112,6 +112,10 @@ export interface SyncState {
   history_token?: string;
   last_sync_at: string;
   sync_mode: "initial" | "incremental";
+  /** Number of historical messages to import at connection time, not an
+   * ongoing incremental event limit. A signed, persisted account preference. */
+  initial_message_limit?: number;
+  initial_imported_count?: number;
 }
 
 export interface SyncResult {
