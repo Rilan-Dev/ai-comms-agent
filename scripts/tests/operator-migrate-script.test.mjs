@@ -23,6 +23,18 @@ test("apply fails before touching Docker without target and backup confirmation"
   }
 });
 
+test("verify rejects a shell DATABASE_URL without explicit --expect-db and gives safe guidance", () => {
+  const result = spawnSync("bash", [path, "verify"], {
+    encoding: "utf8",
+    env: { ...process.env, DATABASE_URL: "postgresql://operator:test-secret@invalid:5432/postgres" },
+  });
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /--expect-db DATABASE is required/);
+  assert.match(result.stderr, /operator-migrate\.sh plan/);
+  assert.match(result.stderr, /Compose \.env/);
+  assert.doesNotMatch(result.stderr, /test-secret/);
+});
+
 test("new-database switch never works for a read-only mode", () => {
   const result = spawnSync("bash", [path, "plan", "--allow-fresh"], { encoding: "utf8" });
   assert.equal(result.status, 2);
