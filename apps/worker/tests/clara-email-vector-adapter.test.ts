@@ -148,6 +148,8 @@ test("malformed cross-scope or partial identities never trigger privileged Clara
   const vectors = adapter();
   for (const invalid of [
     { organizationId: "" }, { organizationId: " org-1" },
+    { organizationId: "org-1\\u0000injected" }, { accountId: "account-1\\u007f" },
+    { providerMessageId: "message-1\\nsecond-line" },
     { accountId: "" }, { accountId: "account-1 " },
     { providerMessageId: "" }, { providerMessageId: "m".repeat(513) },
     { sourceIdentityHash: "" },
