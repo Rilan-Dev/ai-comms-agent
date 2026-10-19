@@ -48,7 +48,23 @@ bash scripts/operator-migrate.sh plan --expect-db YOUR_CONFIRMED_DATABASE_NAME
 
 The plan detects changed checksums, migrations that were applied by a newer/other checkout and unexpected `public`-schema migration-ledger drift. It does not copy or decrypt API keys.
 
-## 2a. If a previous `plan` reported duplicate canonical objects
+## 2a. Troubleshooting: `--expect-db DATABASE is required`
+
+The target-confirmation flag is intentionally mandatory for `verify` and `apply`. It is **not** inferred from a shell-level `DATABASE_URL` override. The wrapper starts the selected Compose service using the checkout's `.env`; a local inline connection string does not establish the container's actual PostgreSQL target.
+
+```bash
+# 1. Read-only inspection first; no --expect-db required for plan.
+bash scripts/operator-migrate.sh plan
+
+# 2. Only after checking the output line DATABASE: postgres:
+bash scripts/operator-migrate.sh verify --expect-db postgres
+```
+
+Replace `postgres` with the **actual database name** shown in your `DATABASE:` output. If `PENDING:` is nonzero, `verify` correctly reports incomplete migrations; do not mistake that for a connection failure. After checking the pending SQL and confirming a tested backup, use `apply --expect-db CONFIRMED_NAME --backup-confirmed`; perform `verify` again afterwards.
+
+Do not paste `.env`, connection strings, cookies or credentials into chat or issue logs. The example `aca_local_dev` password and `postgres` service name from a local Compose configuration are not evidence that the selected database is production.
+
+## 2b. If a previous `plan` reported duplicate canonical objects
 
 An earlier static verifier incorrectly treated historical `CREATE TABLE IF NOT EXISTS` declarations as a fatal duplicate, and misread `aca.` as if it were a table name. The corrected verifier preserves the real checks and permits historical idempotent declarations and guarded enums. This is a **source checker issue**, not proof that migration SQL was applied or that the live database is healthy.
 
