@@ -115,6 +115,7 @@ export async function generateBriefingBatch(
   sources: CanonicalBriefingSource[],
   generate: BriefingGenerator,
   language = "en",
+  options: { retryProviderErrors?: boolean } = {},
 ): Promise<BriefingGenerationResult> {
   if (!/^[a-z]{2,3}(?:-[A-Z]{2})?$/.test(language)) throw new Error("Invalid language");
   const chosen: CanonicalBriefingSource[] = [];
@@ -147,7 +148,10 @@ export async function generateBriefingBatch(
       items: [...items, ...fallbackItems(sources.filter(s => !covered.has(s.messageId)))],
       status: partial ? "partial" : "ready", considered: chosen.length, total: sources.length,
     };
-  } catch {
+  } catch (error) {
+    // Worker retries transient provider failures after its existing lease
+    // expires; an interactive caller may still use the safe partial fallback.
+    if (options.retryProviderErrors) throw error;
     return { items: fallbackItems(sources), status: "partial", considered: chosen.length, total: sources.length };
   }
 }

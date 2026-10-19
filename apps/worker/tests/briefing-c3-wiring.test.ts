@@ -125,3 +125,48 @@ test("Clara provider deadline aborts the model request", async () => {
   await assert.rejects(generator({ language: "en", instructions: "Strict", sources: [source] }), /aborted/);
   assert.equal(observedSignal?.aborted, true);
 });
+
+test("transient provider failure remains claimable after lease expiry; recovery cannot lose sources", async () => {
+  const { processBriefingBatch } = await import("../src/briefings/briefing-worker");
+  let attempts = 0;
+  let completed = 0;
+  let lastPartial: boolean | undefined;
+  const claim = {
+    batchId: "batch", manifestId: "manifest", leaseToken: "fresh-lease", workerId: "test-worker",
+    partial: false, sources: [source],
+  };
+  const deps = {
+    claim: async () => ({ ...claim, leaseToken: "lease-" + (++attempts) }),
+    heartbeat: async () => true,
+    complete: async (_p: unknown, _claim: unknown, items: Array<{sourceIds: string[]}>, partial: boolean) => {
+      completed++;
+      lastPartial = partial;
+      assert.deepEqual(items[0]?.sourceIds, [source.messageId]);
+    },
+    loadCanonicalSources: async () => [source],
+    generate: async () => {
+      if (attempts === 1) throw new Error("provider 429");
+      return "{invalid-json";
+    },
+  };
+  await assert.rejects(processBriefingBatch(principal, "manifest", "en", deps), /provider 429/);
+  assert.equal(completed, 0);
+  // The database may only issue the second fenced claim once the old 120s
+  // lease expires. The injected claim emulates that durable C2 handover.
+  assert.equal(await processBriefingBatch(principal, "manifest", "en", deps), "completed");
+  assert.equal(completed, 1);
+  assert.equal(lastPartial, true);
+});
+test("partial oversized message is linked rather than discarded by C3 worker", async () => {
+  const { processBriefingBatch } = await import("../src/briefings/briefing-worker");
+  const big = { ...source, text: "B".repeat(49_000) };
+  let represented: unknown;
+  await processBriefingBatch(principal, "manifest", "en", {
+    claim: async () => ({batchId: "batch",manifestId: "manifest",workerId: "worker",leaseToken: "token",partial: true,sources: [source]}),
+    heartbeat: async () => true,
+    complete: async (_p: unknown, _c: unknown, items: unknown) => { represented = items; },
+    loadCanonicalSources: async () => [big],
+    generate: async () => { throw new Error("must not call model for oversized source"); },
+  });
+  assert.equal((represented as Array<{sourceIds:string[]}>)[0]?.sourceIds[0], source.messageId);
+});

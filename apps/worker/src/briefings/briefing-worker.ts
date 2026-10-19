@@ -65,7 +65,7 @@ export async function processBriefingBatch(
       }) || new Set(sources.map(s => s.messageId)).size !== sources.length) {
       throw new Error("Canonical briefing source mismatch");
     }
-    const result = await generateBriefingBatch(sources, dependencies.generate, language);
+    const result = await generateBriefingBatch(sources, dependencies.generate, language, { retryProviderErrors: true });
     // The C2 manifest already partitions sources by 50 / 12k tokens. If
     // canonical text has grown beyond the estimate, do not publish a subset:
     // that would silently mark unprocessed mail as represented.
