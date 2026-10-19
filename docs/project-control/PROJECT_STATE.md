@@ -1,3 +1,11 @@
+## 2026-10-19 — Operator migration source check repaired (database state unchanged)
+
+- User's manual `plan` failed on a **static** grep counting valid historical idempotent DDL as duplicate and the `aca.` schema name as a table. Fixed source in `scripts/verify-migration-chain.sh`, new Node declaration checker, and added five operator tests. No migration SQL file was rewritten. Existing ledger/target/checksum preflight remains authoritative. Source committed directly to `main`; no PR/branch, no database writes or deployment by assistant.
+- Isolated Node checker syntax and fixture tests PASS; 70 SQL files inspected for unguarded duplicates, no names repeated in that inspection. Full user checkout, PostgreSQL plan, apply, migrations, production acceptance pending. User/operator/OPS-01 executes safe plan and handles DB/deployment per `NEXT_ACTION.md`.
+- Session `docs/project-control/sessions/OPERATOR-MIGRATION-DUPLICATE-STATIC-CHECK-FIX-20261019.md`.
+
+---
+
 ## Owner-provided deploy/migrate request: scripts prepared (2026-10-19)
 
 - Operator tools for checksum-safe `plan | apply | verify` migrations now committed on `main`; they reuse existing forward SQL, require explicit database+backup confirmation to apply, verify ledger and never start/reset app or transfer API secrets. No live migrations/deployment run. 17 source-contract checks passed; actual Node/shell/Docker/PostgreSQL tests remain pending. Documentation: `docs/runbooks/OPERATOR-MIGRATION-20261019.md`.
