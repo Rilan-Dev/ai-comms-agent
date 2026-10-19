@@ -275,3 +275,7 @@ Preserved concurrent main changes and both sides of eight documentation conflict
 
 ## 2026-10-20 — DEV-01 C3 worker integration lesson
 GitHub main start `16d3fb6f`; added isolated unregistered C3 worker core at `7da1d2b5`. Bounded generation and canonical claim/heartbeat/completion existed but no worker glue. Never register before grant-checked canonical source loader + Clara provider adaptation and actual worker/typecheck tests. Lease heartbeats are advisory; fenced transactional completion must remain authoritative. No production feature activation. See `../../sessions/DEV01-C3-WORKER-CORE-20261020.md`.
+
+
+## 2026-10-20 — C3 source/Clara milestone
+Latest main source `464ab70d`. Source manifest grant/revision/lease revalidation implemented; Clara no-ambient-retrieval path; model partial/invented candidate prevention and provider 429/timeout retry via leased recovery. 11/11 source checks; new Node/TypeScript tests not run. Avoid `createChatTurn` RAG for private mail. Source and failure analysis: `../../sessions/DEV01-C3-CANONICAL-CLARA-20261020.md`. No feature activation.

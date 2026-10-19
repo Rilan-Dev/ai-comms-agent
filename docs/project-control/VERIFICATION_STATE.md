@@ -1,3 +1,9 @@
+## DEV-01 C3 integration source-only checkpoint — 2026-10-20
+
+C3 work on main `1bae80c8`, `8f382ead`, `464ab70d`: 11/11 read-only GitHub source contract assertions PASS for grants, lease, sources, Clara isolation, retry, partial coverage and unregistered status. **NOT RUN:** new 11 C3 wiring tests, prior six worker tests, TypeScript, full package tests, SQL fixtures, builds or authenticated browser. Shell GitHub DNS/checkout/pnpm missing. This is not production acceptance or a substitute for running the tests. Source record: [DEV01-C3-CANONICAL-CLARA-20261020](sessions/DEV01-C3-CANONICAL-CLARA-20261020.md).
+
+---
+
 ## DEV-01 current handoff — 2026-10-19, final repository synchronization
 
 See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed, in-progress, pending and next work. C1/C2 focused implementation is complete; C3 worker/grounding integration is next, then C4 authenticated UX acceptance. Phase 4 remains implementation_in_progress. Latest upstream operator/vector fixes preserved; affected checks pass 35/35 and 11/11. Earlier full-suite counts are a pre-final-merge baseline. Security follow-up remains open. Existing entries retained as history.

@@ -1,3 +1,11 @@
+## DEV-01 C3 canonical source + Clara — 2026-10-20 (latest)
+
+Commits `1bae80c8`, `8f382ead`, `464ab70d` on main: grant/lease/revision-checked C3 source loader, ambient-RAG-free existing Clara generation, partial source/grounding protection and durable lease retry. **11/11 static source assertions PASS; new Node tests/typechecks NOT RUN.** Worker remains unregistered/disabled; Phase 4 `implementation_in_progress`, no deployment or migration. Full checkpoint: [DEV01-C3-CANONICAL-CLARA-20261020](sessions/DEV01-C3-CANONICAL-CLARA-20261020.md).
+
+**Exact next executable DEV-01 task:** from a clean current-main checkout run `cd apps/worker && node --import tsx --test tests/briefing-worker.test.ts tests/briefing-c3-wiring.test.ts tests/briefing-generation.test.ts`; worker/db/Clara typechecks; exercise scoped PostgreSQL fixture revocation/stale source/restart. Fix actual failures, then add **disabled-by-default** registered poller only after its authorization/retry gates are tested. Next C4 authenticated journey acceptance. OPS-01 owns real database/deploy and FIX-01 separate runtime/security incidents. All older checkpoints below are history.
+
+---
+
 ## DEV-01 C3 worker core checkpoint — 2026-10-20
 
 Source commit `7da1d2b5e153e9ee361a832d3535e103cb40f753`: unregistered worker orchestration and six regression test cases added. Tests/typechecks not run; no runtime feature activation, production SQL or deployment. **Exact next authorized task:** implement grant/revision-checked canonical source loader with existing Clara adapter (no competing provider), expand provider timeout/429/prompt injection/grounding/lease recovery tests, execute focused worker tests and typechecks, then register behind disabled-by-default server flag only after verification. See `sessions/DEV01-C3-WORKER-CORE-20261020.md`. Phase 4 remains implementation_in_progress. Historical entries below retained.

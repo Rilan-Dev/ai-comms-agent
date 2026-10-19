@@ -584,3 +584,7 @@ Preserved concurrent main changes and both sides of eight documentation conflict
 - Actual tests: NOT RUN (connector-only editing). No source loader, Clara model binding, worker scheduling, browser acceptance or production actions.
 - Next: build canonical read-only source loader and Clara adaptation, test provider/network and recovery cases, run worker test and typecheck then gate registration.
 - Session `../../sessions/DEV01-C3-WORKER-CORE-20261020.md`.
+
+
+## 2026-10-20 — DEV-01 C3 continued, code committed
+Start `23ceb97637e47b9326cb2df181f3c1f9208a6fbf`. Commits `1bae80c8` (canonical source + Clara adapter, 8 cases), `8f382ead` (provider retry, 2 cases), `464ab70d` (mixed invalid candidate prevents coverage, 1 case). No branches/PR/migrations/deploy. 11/11 static source checks PASS, no actual Node/tsc/browser/DB tests. Exact next: run 3 focused worker test files and worker/db/Clara typechecks on prepared host; fix failures, test grant revocation and restart, add safely disabled registration. Session `../../sessions/DEV01-C3-CANONICAL-CLARA-20261020.md`.

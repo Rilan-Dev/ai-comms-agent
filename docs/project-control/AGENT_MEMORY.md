@@ -502,3 +502,7 @@ C2 complete locally, final merge/push receipt in session.34SQL,25domain,37web,3i
 ## DEV-01 current handoff — 2026-10-19, final repository synchronization
 
 See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed, in-progress, pending and next work. C1/C2 focused implementation is complete; C3 worker/grounding integration is next, then C4 authenticated UX acceptance. Phase 4 remains implementation_in_progress. Latest upstream operator/vector fixes preserved; affected checks pass 35/35 and 11/11. Earlier full-suite counts are a pre-final-merge baseline. Security follow-up remains open. Existing entries retained as history.
+
+
+## Shared safety lesson — 2026-10-20 C3 DEV-01
+The generic Clara chat turn invokes ambient RAG/email search and must **not** be used for user-grant-scoped personal briefing generation. Use source-manifest-scoped, no-RAG model path, revalidate fresh C1 grant/revision and C2 fenced lease at load and commit, and retain incomplete items on every coverage mismatch. Zero-tool `completeWithTools` explicitly rejects empty tools; never add an unauthorized placeholder tool. Provider outages must not silently advance coverage. See `sessions/DEV01-C3-CANONICAL-CLARA-20261020.md`.

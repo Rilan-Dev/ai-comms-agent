@@ -1,3 +1,9 @@
+## DEV-01 source checkpoint — 2026-10-20
+
+C3 canonical source/Clara worker path committed and still unregistered. Phase 4 continues `implementation_in_progress`. No database, delivery, feature activation or deployment acceptance. See [C3 checkpoint](sessions/DEV01-C3-CANONICAL-CLARA-20261020.md); previous phase entries preserved.
+
+---
+
 ## DEV-01 current handoff — 2026-10-19, final repository synchronization
 
 See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed, in-progress, pending and next work. C1/C2 focused implementation is complete; C3 worker/grounding integration is next, then C4 authenticated UX acceptance. Phase 4 remains implementation_in_progress. Latest upstream operator/vector fixes preserved; affected checks pass 35/35 and 11/11. Earlier full-suite counts are a pre-final-merge baseline. Security follow-up remains open. Existing entries retained as history.
