@@ -48,6 +48,21 @@ bash scripts/operator-migrate.sh plan --expect-db YOUR_CONFIRMED_DATABASE_NAME
 
 The plan detects changed checksums, migrations that were applied by a newer/other checkout and unexpected `public`-schema migration-ledger drift. It does not copy or decrypt API keys.
 
+## 2a. If a previous `plan` reported duplicate canonical objects
+
+An earlier static verifier incorrectly treated historical `CREATE TABLE IF NOT EXISTS` declarations as a fatal duplicate, and misread `aca.` as if it were a table name. The corrected verifier preserves the real checks and permits historical idempotent declarations and guarded enums. This is a **source checker issue**, not proof that migration SQL was applied or that the live database is healthy.
+
+Pull current `main`, then rerun these **read-only/local** gates before any `apply`:
+
+```bash
+git pull --ff-only origin main
+node --test scripts/tests/operator-migration-core.test.mjs scripts/tests/operator-migrate-script.test.mjs
+bash scripts/verify-migration-chain.sh
+bash scripts/operator-migrate.sh plan
+```
+
+`Migration declaration safety: PASS` and `Migration chain structure: PASS` only validate the source files. The operator's `MIGRATION_PLAN: PASS` also checks the connected database, its ledger and exact SHA256 history. If the database has existing data/tables but no migration ledger, **stop** and reconcile history with OPS-01; `--allow-fresh` is not a recovery switch for existing deployments. An `aca` **schema name** does not prove the target PostgreSQL **database name** is `aca`. Do not proceed on checksum mismatches, unknown history, wrong target or missing ledger.
+
 ## 3. Backup, then apply explicitly
 
 After you have a restorable backup, and **only** when `YOUR_CONFIRMED_DATABASE_NAME` matches the name printed by the plan:
