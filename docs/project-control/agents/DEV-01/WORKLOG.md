@@ -544,3 +544,12 @@ Implemented C1; session `sessions/DEV01-CATCHUP-C1-20261018.md` records evidence
 - Implemented restricted `modelCatalogRecovery` helper, explicit actionable reuse button for eligible TTS/STT 409 after server authorization and abort guard, distinct no-source and encryption warnings, wired both pickers to existing confirmed/reload handler. No automatic credential copying or bypass of disabled target accounts.
 - Isolated exact-Git-SHA helper behavioral Node **8/8 PASS** and isolated TypeScript noEmit PASS; 15/15 current GitHub source checks PASS. Whole new regression suite, full monorepo Vitest/typecheck/Next/worker/DB, provider/browser/deploy NOT RUN.
 - Session `docs/project-control/sessions/DEV01-ELEVENLABS-TTS-STT-CATALOG-RECOVERY-20261019.md`. Next equipped current-main tests then OPS-01 deployed-SHA + credential recovery validation after new login, FIX-01 unrelated source incidents.
+
+### OWNER-OPERATOR-MIGRATION-SCRIPT-20261019
+- **Authorization:** Explicit user request to prepare and commit migration scripts; existing main-only/no-branch/PR rule.
+- **Task boundary:** Prepared source and tests for OPS-01 operator deployment; **did not run migrations or assume OPS-01's host/credential role**.
+- **Starting main:** `0f514b1d628b6a313237ade662ed211156d17c49`.
+- **Actions:** Added `scripts/operator-migrate.sh` (`plan|apply|verify`, Compose internal DNS, project-root `.env`, explicit backup/DB/allow-fresh safety flags), `packages/db/operator-migration-core.mjs` and `operator-migration-check.mjs` (ledger SHA256 drift, unknown version, live current_database, public shadow ledger guard), Node and Bash offline tests and copyable runbook. Reused existing forward-only migration runner without altering old migrations or copying encrypted AI keys.
+- **Evidence:** 17/17 fresh GitHub source-contract assertions PASSED; new executable tests authored **NOT RUN**; no live DB, backup, Docker, pnpm build, provider or deployment check.
+- **Lesson:** A missing provider-purpose credential is not schema drift; no SQL migration should copy encrypted keys without explicit authenticated org-admin consent. Existing manual startup may continue after a failed migration, so use a separate fail-closed, verified operator command before deploy.
+- **Next action:** OPS-01/user builds current main image, runs offline tests, plan, backup/restore-test, apply with --expect-db and --backup-confirmed, verify, then separately deploys. See `docs/runbooks/OPERATOR-MIGRATION-20261019.md` and session.
