@@ -19,6 +19,15 @@ const root = fileURLToPath(new URL('../../../../', import.meta.url));
 export async function migrateFixture({ seedUpgrade = true } = {}) {
   const url = testDatabaseUrl();
   const pool = new Pool({ connectionString: url, ssl: false });
+  // Hold a session lock for the fixture's whole lifetime, including tests.
+  // Parallel Node test files must not reset a schema another suite is using.
+  const fixtureLease = await pool.connect();
+  await fixtureLease.query("SELECT pg_advisory_lock(hashtextextended('briefing-disposable-fixture',0))");
+  const endPool = pool.end.bind(pool);
+  pool.end = async () => {
+    try { await fixtureLease.query("SELECT pg_advisory_unlock(hashtextextended('briefing-disposable-fixture',0))"); }
+    finally { fixtureLease.release(); await endPool(); }
+  };
   const identity = (await pool.query('select current_database() db')).rows[0];
   if (identity.db !== 'ai_comms_c1_test') throw new Error('Unexpected database identity');
   await pool.query('DROP SCHEMA IF EXISTS aca CASCADE; DROP SCHEMA IF EXISTS private CASCADE; CREATE SCHEMA aca; CREATE SCHEMA private; CREATE TABLE aca._aca_schema_migrations(version text PRIMARY KEY,checksum text NOT NULL,applied_at timestamptz DEFAULT now())');

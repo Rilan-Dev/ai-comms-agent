@@ -160,3 +160,4 @@ export {
 } from "./ai/model-catalog";
 
 export type { TrustedBriefingPrincipal, BriefingPeriod, BriefingRequest, EffectiveBriefingScope, BriefingSource, BriefingManifest, BriefingItem, BriefingRead, BriefingListOptions, BriefingList } from './briefings/types';
+export * from './briefings/selection';

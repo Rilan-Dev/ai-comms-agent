@@ -22,7 +22,8 @@ async function readBriefing(client: PoolClient, principal: TrustedBriefingPrinci
       AND m.organization_id=s.organization_id AND m.email_account_id=s.mailbox_id
     WHERE s.summary_id=$1 AND s.organization_id=$2 AND s.owner_user_id=$3 AND s.agent_id=$4`,
     [id, principal.organizationId, principal.userId, principal.agentId]);
-  if (!sources.rowCount || sources.rows.some(source => !scope.mailboxIds.includes(source.mailbox_id) || !source.id || !source.current_revision || source.content_revision !== source.current_revision)) return invalid();
+  const validEmpty = row.briefing_status === 'ready' && Array.isArray(row.content_json) && row.content_json.length === 0;
+  if ((!sources.rowCount && !validEmpty) || sources.rows.some(source => !scope.mailboxIds.includes(source.mailbox_id) || !source.id || !source.current_revision || source.content_revision !== source.current_revision)) return invalid();
   const permitted = new Map(sources.rows.map(source => [source.id, source.content_revision]));
   const items = row.content_json;
   if (!Array.isArray(items) || items.some(item => !item || !Array.isArray(item.sourceIds) || !item.sourceIds.length || item.sourceIds.some((source: unknown) => !permitted.has(source)))) return invalid();
@@ -39,9 +40,18 @@ async function readBriefing(client: PoolClient, principal: TrustedBriefingPrinci
         contentRevision: e.contentRevision, start: e.start, end: e.end, quote: e.quote, supports: e.supports })),
       representation: item.representation, snoozedUntil: item.snoozedUntil });
   }
+  // Snooze is personal presentation, never acknowledgement or routine coverage.
+  const snoozes = row.briefing_mode === 'catch_up' ? await client.query<{ item_id: string; snoozed_until: Date }>(
+    `SELECT item_id,max(snoozed_until) snoozed_until FROM mail_review_items
+     WHERE organization_id=$1 AND owner_user_id=$2 AND agent_id=$3 AND scope_version=$4
+       AND item_id=ANY($5::text[]) AND acknowledged_at IS NULL AND snoozed_until IS NOT NULL GROUP BY item_id`,
+    [principal.organizationId,principal.userId,principal.agentId,scope.scopeVersion,safeItems.map(item => item.id)]) : { rows: [] };
+  const snoozed = new Map(snoozes.rows.map(row => [row.item_id, row.snoozed_until]));
+  const visibleItems = safeItems.filter(item => !snoozed.has(item.id) || snoozed.get(item.id)!.getTime() <= Date.now())
+    .map(item => ({ ...item, snoozedUntil: snoozed.get(item.id)?.toISOString() ?? null }));
   return { manifest: { id, scope, mode: row.briefing_mode, period: row.period_start && row.period_end
     ? { start: new Date(row.period_start).toISOString(), end: new Date(row.period_end).toISOString() } : null,
-    sourceCount: sources.rowCount, status: row.briefing_status }, items: safeItems };
+    sourceCount: sources.rows.length, status: row.briefing_status }, items: visibleItems };
 }
 
 export function getBriefing(principal: TrustedBriefingPrincipal, id: string): Promise<BriefingRead> {
