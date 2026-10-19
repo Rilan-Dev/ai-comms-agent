@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import {
-  inspectMigrationChain, assertMigrationSafe, sanitizeDatabaseLabel,
+  inspectMigrationChain, assertMigrationSafe, sanitizeDatabaseLabel, assertFreshDatabaseEmpty,
 } from "../../packages/db/operator-migration-core.mjs";
 
 async function fixture(t) {
@@ -72,5 +72,13 @@ test("operator database label validation rejects URLs, secrets, and paths", () =
   assert.equal(sanitizeDatabaseLabel("aca"), "aca");
   for (const label of ["", "postgres://a:b@host/db", "aca;DROP TABLE", "db/name", " name", "a".repeat(64)]) {
     assert.throws(() => sanitizeDatabaseLabel(label), /database identifier/);
+  }
+});
+
+test("--allow-fresh permits only a positively verified empty database", () => {
+  assert.doesNotThrow(() => assertFreshDatabaseEmpty(false));
+  assert.throws(() => assertFreshDatabaseEmpty(true), /Fresh migration refused: user relations already exist/);
+  for (const unknown of [undefined, null, 0, "false", "f", {}]) {
+    assert.throws(() => assertFreshDatabaseEmpty(unknown), /emptiness could not be confirmed/);
   }
 });
