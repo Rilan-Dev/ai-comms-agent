@@ -31,7 +31,8 @@ MIGRATION_FILE="${ACA_COMPOSE_FILE:-docker-compose.yml}"
 [[ "$MIGRATION_FILE" = /* ]] || MIGRATION_FILE="$ROOT/$MIGRATION_FILE"
 [[ -f "$MIGRATION_FILE" ]] || die "Migration Compose file not found."
 MIGRATION_COMPOSE=(docker compose --project-directory "$ROOT" --env-file "$ROOT/.env" -f "$MIGRATION_FILE")
-"${MIGRATION_COMPOSE[@]}" config --services | grep -Fxq 'web' || die "Selected migration Compose must have web service."
+MIGRATION_SERVICES="$("${MIGRATION_COMPOSE[@]}" config --services)"
+grep -Fxq 'web' <<<"$MIGRATION_SERVICES" || die "Selected migration Compose must have web service."
 
 if [[ "$target" == vercel ]]; then
   command -v vercel >/dev/null 2>&1 || die "Install/authenticate Vercel CLI on this host first."
@@ -76,12 +77,13 @@ step "Build the production web image from this exact source and execute package 
   --volume "$ROOT/scripts:/workspace/scripts:ro" \
   --volume "$ROOT/docs:/workspace/docs:ro" \
   --volume "$ROOT/supabase:/workspace/supabase:ro" \
-  web sh -euc 'pnpm -r typecheck; pnpm --filter @ai-comms-agent/web test; pnpm --filter @ai-comms-agent/worker test'
+  web sh -euc 'pnpm -r typecheck; pnpm -r test'
 
 if [[ "$target" == docker ]]; then
   step "Build the separately approved production Compose images before database writes"
   services=(web)
-  if "${PRODUCTION_COMPOSE[@]}" config --services | grep -Fxq 'worker'; then services+=(worker); fi
+  PRODUCTION_SERVICES="$("${PRODUCTION_COMPOSE[@]}" config --services)"
+  if grep -Fxq 'worker' <<<"$PRODUCTION_SERVICES"; then services+=(worker); fi
   "${PRODUCTION_COMPOSE[@]}" build "${services[@]}"
 fi
 
