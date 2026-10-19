@@ -69,7 +69,11 @@ export async function processBriefingBatch(
     // The C2 manifest already partitions sources by 50 / 12k tokens. If
     // canonical text has grown beyond the estimate, do not publish a subset:
     // that would silently mark unprocessed mail as represented.
-    if (result.considered !== sources.length) throw new Error("Canonical briefing input budget changed");
+    if (result.considered !== sources.length && (result.status !== "partial" ||
+      sources.some(source => !result.items.some(item => item.sourceIds.includes(source.messageId) &&
+        item.representation === "partial")))) {
+      throw new Error("Canonical briefing input budget changed without partial source links");
+    }
     if (pendingHeartbeat) await pendingHeartbeat;
     if (lostLease) throw new Error("Briefing lease lost before completion", { cause: heartbeatFailure });
     // The C2 transaction rechecks live mailbox grants, content revisions,

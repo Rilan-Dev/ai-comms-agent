@@ -5,6 +5,7 @@ export type CanonicalBriefingSource = BriefingSource & {
   text: string;
   subject?: string | null;
   sender?: string | null;
+  partial?: boolean;
 };
 
 export type BriefingGenerator = (input: {
@@ -63,11 +64,19 @@ export function validateBriefingItems(
       || typeof e.quote !== "string" || !e.quote.trim()
       || e.contentRevision !== sourceMap.get(e.sourceId)?.contentRevision
       || sourceMap.get(e.sourceId)?.text.slice(e.start, e.end) !== e.quote)) continue;
+    const narrative = [c.title, c.summary, c.reason].join(" ");
+    const facts = narrative.match(/\b\d{4}-\d{2}-\d{2}\b|(?:[$€£₹]\s*\d[\d,.]*|\b(?:USD|EUR|GBP|INR)\s+\d[\d,.]*\b|\b\d[\d,.]*\s*(?:USD|EUR|GBP|INR)\b)/gi) ?? [];
+    if (facts.some(fact => !evidence.some(e =>
+      (e.supports === "deadline" || e.supports === "amount" || e.supports === "summary") &&
+      e.quote.includes(fact)))) continue;
+    const supportedPriority = c.priority === "low" ||
+      evidence.some(e => e.supports === "priority_reason");
+    const safePriority = supportedPriority ? c.priority : "low";
     const deadline = typeof c.deadline === "string" && c.deadline
       && evidence.some(e => e.supports === "deadline"
         && e.quote.includes(c.deadline!)) ? c.deadline : null;
     const safeConfidence: BriefingItem["confidence"] = confidence.has(String(c.confidence))
-      && c.confidence === "supported" && (c.deadline == null || deadline)
+      && c.confidence === "supported" && supportedPriority && (c.deadline == null || deadline)
       ? "supported" : "uncertain";
     const stableId = createHash("sha256").update(JSON.stringify([
       [...c.sourceIds].sort().map(id => [id, sourceMap.get(id)?.contentRevision]),
@@ -78,11 +87,11 @@ export function validateBriefingItems(
     seen.add(stableId);
     accepted.push({
       id: stableId, sourceIds: [...new Set(c.sourceIds)],
-      priority: c.priority as BriefingItem["priority"],
+      priority: safePriority as BriefingItem["priority"],
       title: c.title.trim(), summary: c.summary.trim(),
       reason: c.reason.trim(), deadline, confidence: safeConfidence,
       suggestedAction: c.suggestedAction as BriefingItem["suggestedAction"],
-      evidence, representation: incomplete || c.representation === "partial" ? "partial" : "complete",
+      evidence, representation: incomplete || c.representation === "partial" || c.sourceIds.some(id => sourceMap.get(id)?.partial) ? "partial" : "complete",
       snoozedUntil: null,
     });
   }
@@ -118,7 +127,7 @@ export async function generateBriefingBatch(
     chosen.push(source); tokens += estimate;
   }
   if (!chosen.length && sources.length) {
-    return { items: fallbackItems(sources.slice(0, 1)), status: "partial", considered: 0, total: sources.length };
+    return { items: fallbackItems(sources), status: "partial", considered: 0, total: sources.length };
   }
   if (!chosen.length) return { items: [], status: "ready", considered: 0, total: 0 };
   try {
@@ -128,17 +137,17 @@ export async function generateBriefingBatch(
       sources: chosen,
     });
     const items = validateBriefingItems(response, chosen, incomplete);
-    if (!items.length) return { items: fallbackItems(chosen), status: "partial", considered: chosen.length, total: sources.length };
+    if (!items.length) return { items: fallbackItems(sources), status: "partial", considered: chosen.length, total: sources.length };
     // If any selected source has no complete representation, it remains
     // available for another batch; one valid-looking item never clears it.
     const covered = new Set(items.flatMap(item => item.sourceIds));
     const partial = incomplete || chosen.some(source => !covered.has(source.messageId))
       || items.some(item => item.representation !== "complete");
     return {
-      items: [...items, ...fallbackItems(chosen.filter(s => !covered.has(s.messageId)))],
+      items: [...items, ...fallbackItems(sources.filter(s => !covered.has(s.messageId)))],
       status: partial ? "partial" : "ready", considered: chosen.length, total: sources.length,
     };
   } catch {
-    return { items: fallbackItems(chosen), status: "partial", considered: chosen.length, total: sources.length };
+    return { items: fallbackItems(sources), status: "partial", considered: chosen.length, total: sources.length };
   }
 }

@@ -145,3 +145,4 @@ export { getBriefing, listBriefings } from './briefings/repository';
 export * from './briefings/coverage';
 
 export { listGrantedBriefingMailboxes, publishBriefingItems } from './briefings/selection';
+export { loadCanonicalBriefingSources, validateCanonicalBriefingRows, type CanonicalBriefingMail, type CanonicalBriefingRow } from './briefings/canonical-sources';
