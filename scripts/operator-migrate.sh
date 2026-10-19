@@ -80,7 +80,7 @@ SERVICE="${ACA_MIGRATION_SERVICE:-web}"
 [[ "$SERVICE" =~ ^[a-zA-Z][a-zA-Z0-9_-]*$ ]] || { echo "ERROR: invalid Compose service name." >&2; exit 2; }
 
 # A static source check is separate from the live ledger/target check.
-bash "$ROOT/scripts/verify-migration-chain.sh"
+MIGRATIONS_DIR="$ROOT/supabase/migrations" bash "$ROOT/scripts/verify-migration-chain.sh"
 
 COMPOSE=(docker compose --project-directory "$ROOT" --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
 # The Compose network resolves service-only PostgreSQL names. The application
