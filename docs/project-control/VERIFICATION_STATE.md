@@ -1,3 +1,12 @@
+## 2026-10-19 — Operator single-command release wrapper — SOURCE ONLY
+
+- New direct-main `scripts/operator-one-shot.sh` (web build, full package tests/typechecks, migration read-only plan, external backup confirmation, guarded apply/ledger verify, opt-in Vercel or approved production Docker startup), regression suite `scripts/tests/operator-one-shot-script.test.mjs`, runbook `docs/runbooks/ONE-SHOT-OPERATOR-RELEASE-20261019.md`.
+- **ACTUALLY CHECKED:** 20/20 current authenticated GitHub source-contract safety assertions PASS. New committed Node suite checks Bash `-n`, non-interactive refusal, preflight ordering, database/backup prompts, Vercel and Docker dev identity guards.
+- **NOT EXECUTED:** New Node suite itself, exact Bash syntax in real shell, Docker web/worker builds, full pnpm, real DB plan/apply/verify, independent backup creation/restore test, Vercel CLI deploy, environment/prod health, authenticated provider or E2E. No production acceptance or target state asserted. OPS-01 operator executes; Vercel build-rate-limit remains external.
+- **Source:** `scripts/operator-one-shot.sh`; **operator runbook:** `docs/runbooks/ONE-SHOT-OPERATOR-RELEASE-20261019.md`.
+
+---
+
 ## 2026-10-19 — Manual migration plan source preflight corrected, operator DB still UNVERIFIED
 
 - **User-reported BEFORE fix:** 14/14 migration tests PASS and Docker Compose web image built; `operator-migrate.sh plan` FAILED in `verify-migration-chain.sh` duplicate object grep. This occurred BEFORE any database connection from the wrapper; do not mark a migration as attempted.
