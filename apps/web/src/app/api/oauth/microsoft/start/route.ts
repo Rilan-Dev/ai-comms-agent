@@ -49,6 +49,7 @@ export async function GET(request: Request) {
   if (!config) return configurationError(request, "The selected Microsoft OAuth client is unavailable or disabled.", 404);
   const { clientId, tenantId } = config;
   const accountId = url.searchParams.get("accountId")?.trim() || undefined;
+  const initialLimit = [10, 50, 100].includes(Number(url.searchParams.get("initialLimit"))) ? Number(url.searchParams.get("initialLimit")) : 50;
   let redirectUri: string;
   try {
     redirectUri = getOAuthRedirectUri(request, "microsoft");
@@ -66,6 +67,7 @@ export async function GET(request: Request) {
     configId,
     redirectUri,
     ...(accountId ? { accountId } : {}),
+    initialLimit,
     nonce: randomBytes(16).toString("base64url"),
     exp: Date.now() + 10 * 60_000,
   });
