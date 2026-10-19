@@ -1,3 +1,13 @@
+## 2026-10-19 — DEV-01 ElevenLabs TTS live / Scribe STT documented source (limited check)
+
+- **Committed directly to main (no branch/PR):** truthfully separate live TTS `/v1/models` from Scribe batch `scribe_v2` documented STT; return documented STT only after org authorization and saved enabled purpose-key gate, keep disabled/missing key 409, independent Realtime Scribe v2 WebSocket label, opt-in existing credential reuse. Updated selector UI and Node/Vitest tests.
+- **ACTUALLY CHECKED:** 15/15 deterministic current GitHub source assertions PASS (source/capability, credential gate ordering, no-store, selector validation, existing reuse, updated test code).
+- **NOT RUN:** Modified Node/Vitest dynamic suite, pnpm TypeScript/Next/worker/DB/Clara tests, PostgreSQL/migration, real TTS/STT provider account, browser and deployed production check. Previous C1/Postgres source verification was on a different revision, not automatically applicable here. Vercel build-rate-limit remains an OPS-01 rollout concern.
+- **User secret:** Pasted session token is potentially exposed; do not reproduce or reuse; user must invalidate session. Details/commands: `docs/project-control/sessions/DEV01-ELEVENLABS-STT-CATALOG-20261019.md`.
+
+
+---
+
 ## 2026-10-18 — DEV01-CATCHUP-ROUTINES final integrated-source verification
 
 - **Upstream source:** `959ff5a6c055baf9a1f14af5d29c5f51643b77c0`, integrated without changing concurrent product source. This session changes documentation only.
