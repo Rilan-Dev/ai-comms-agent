@@ -198,10 +198,13 @@ export class ZohoAdapter implements EmailProvider {
   }
 
   async sync(state: SyncState): Promise<SyncResult> {
-    const folders = await this.listFolders();
+    const folders = (await this.listFolders()).sort((a, b) =>
+      Number(b.role === "inbox") - Number(a.role === "inbox"));
     const added: SyncResult["added"] = [];
     const updated: SyncResult["updated"] = [];
     const pageSize = 100;
+    const initialRemaining = state.initial_message_limit == null ? Infinity
+      : Math.max(0, state.initial_message_limit - (state.initial_imported_count ?? 0));
 
     if (state.sync_mode === "incremental" && state.history_token === "zoho-full-v1") {
       // Zoho's REST API does not expose a stable mailbox-wide history cursor.
@@ -234,9 +237,11 @@ export class ZohoAdapter implements EmailProvider {
       start = 1;
     }
     let pagesRead = 0;
-    while (folderIndex < folders.length && pagesRead < 2) {
+    while (folderIndex < folders.length && pagesRead < 2 && added.length < initialRemaining) {
       const folder = folders[folderIndex]!;
-      const page = await this.listMessages(folder.provider_folder_id, { limit: pageSize, cursor: String(start) });
+      const page = await this.listMessages(folder.provider_folder_id, {
+        limit: Math.min(pageSize, initialRemaining - added.length), cursor: String(start),
+      });
       for (const message of page) {
         const id = message.provider_message_id || message.id;
         if (id) {
@@ -253,7 +258,7 @@ export class ZohoAdapter implements EmailProvider {
         start = 1;
       }
     }
-    const hasMore = folderIndex < folders.length;
+    const hasMore = folderIndex < folders.length && added.length < initialRemaining;
     return {
       added, updated, deleted: [],
       new_state: {
