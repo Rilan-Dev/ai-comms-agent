@@ -663,3 +663,8 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Resolution/source:** direct-main `verify-migration-chain.sh` calls `scripts/check-migration-declarations.mjs`; allows historical guarded/idempotent DDL but flags repeated unguarded table/enum declarations; five regression tests added. Existing SQL and live migration ledger unchanged.
 - **Evidence:** exact checker Node syntax and fixture PASS, 70 source migration files reviewed for repeated bare names. Full Node test suite/current PostgreSQL `plan`/apply/verify **not run** by assistant.
 - **Handoff:** user/operator/OPS-01 reruns read-only test, structural check, plan; must confirm actual database and backup before separate migration. Details in `docs/project-control/sessions/OPERATOR-MIGRATION-DUPLICATE-STATIC-CHECK-FIX-20261019.md`.
+
+### EVT-DEV01-OPERATOR-TEST-TRIAGE-20261019
+- Owner pasted terminal output of `ACA_RELEASE_TARGET=migration bash scripts/operator-one-shot.sh`: operator 29 pass; migration chain PASS; Docker web image build and six TypeScript checks PASS; Clara Core 26 pass; web Vitest external Ethereum RPC DNS error; concurrent worker SIGKILL. Migration never reached DB identity, backup, APPLY or deploy.
+- DEV-01 corrected two source/test defects directly on main (normal identifiers rejected by double-escaped control regex; stale Clara SQL placeholder $4 instead of $3) and added control-character regression cases. 6/6 GitHub source+real RegExp checks PASS, full updated worker suite not run.
+- OPS-01 [#38](https://github.com/Rilan-Dev/ai-comms-agent/issues/38) owns investigating unplanned network access from offline web tests, Docker/CI/release env. FIX-01 existing unrelated defects unchanged. Session `DEV01-OPERATOR-TEST-TRIAGE-20261019`.
