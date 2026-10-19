@@ -36,6 +36,7 @@ export function EmailAccountsClient({
   const [notice, setNotice] = useState<string | null>(null);
   const [zohoWebhookUrls, setZohoWebhookUrls] = useState<Record<string, string>>({});
   const [showAddProvider, setShowAddProvider] = useState(false);
+  const [initialSyncLimit, setInitialSyncLimit] = useState<10 | 50 | 100>(50);
   const [selectedProvider, setSelectedProvider] = useState<(typeof providers)[number]["id"] | "">("");
   const [graphConfigs, setGraphConfigs] = useState<Array<{ id: string; label: string; enabled: boolean }>>([]);
   const [selectedGraphConfig, setSelectedGraphConfig] = useState("");
@@ -278,7 +279,7 @@ export function EmailAccountsClient({
       {showImapForm && (
         <section className="rounded-md border border-border bg-card p-5 sm:p-7">
           <div className="flex items-start justify-between gap-4"><div><h2 className="font-semibold">Configure IMAP / SMTP</h2><p className="mt-1 text-sm text-muted-foreground">TLS is mandatory. Credentials are encrypted server-side and never returned to the browser after submission.</p></div><button type="button" onClick={()=>setShowImapForm(false)} className="text-sm font-semibold text-muted-foreground hover:text-foreground">Close</button></div>
-          <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={async(e)=>{e.preventDefault();setSavingImap(true);setNotice(null);setImapError(null);try{const response=await fetch("/api/email-accounts",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,action:"connect_imap_smtp",emailAddress:imap.email,displayName:imap.displayName,host:imap.host,port:Number(imap.port),username:imap.username,password:imap.password,smtpHost:imap.smtpHost||imap.host,smtpPort:Number(imap.smtpPort),tls:imap.tls})});const data=await response.json();if(!response.ok)throw new Error(data.message??Object.values(data.fieldErrors??{}).join(" "));setAccounts((current)=>[data.account,...current]);setNotice("Mailbox configuration saved securely. It is pending worker verification and mailbox structure discovery.");setShowImapForm(false);}catch(error){const message=error instanceof Error?error.message:"Could not save mailbox configuration.";setImapError(message);setNotice("Mailbox configuration could not be saved.");}finally{setSavingImap(false);}}}>
+          <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={async(e)=>{e.preventDefault();setSavingImap(true);setNotice(null);setImapError(null);try{const response=await fetch("/api/email-accounts",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,action:"connect_imap_smtp",initialLimit:initialSyncLimit,emailAddress:imap.email,displayName:imap.displayName,host:imap.host,port:Number(imap.port),username:imap.username,password:imap.password,smtpHost:imap.smtpHost||imap.host,smtpPort:Number(imap.smtpPort),tls:imap.tls})});const data=await response.json();if(!response.ok)throw new Error(data.message??Object.values(data.fieldErrors??{}).join(" "));setAccounts((current)=>[data.account,...current]);setNotice("Mailbox configuration saved securely. It is pending worker verification and mailbox structure discovery.");setShowImapForm(false);}catch(error){const message=error instanceof Error?error.message:"Could not save mailbox configuration.";setImapError(message);setNotice("Mailbox configuration could not be saved.");}finally{setSavingImap(false);}}}>
             <label className="text-sm font-medium">Email address<input required type="email" value={imap.email} onChange={e=>setImap({...imap,email:e.target.value})} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-ring/20" /></label>
             <label className="text-sm font-medium">Display name<input value={imap.displayName} onChange={e=>setImap({...imap,displayName:e.target.value})} className="mt-1 h-11 w-full rounded-md border px-3 text-sm" /></label>
             <label className="text-sm font-medium">IMAP host<input required value={imap.host} onChange={e=>setImap({...imap,host:e.target.value})} placeholder="imap.example.com" className="mt-1 h-11 w-full rounded-md border px-3 text-sm" /></label>
@@ -329,6 +330,19 @@ export function EmailAccountsClient({
         </section>
       )}
       {showAddProvider && selectedProvider && (
+      <div className="rounded-md border border-border bg-card px-5 py-4">
+        <label className="flex flex-wrap items-center gap-3 text-sm font-medium">
+          Import recent messages initially
+          <select aria-label="Initial email import limit" value={initialSyncLimit}
+            onChange={(event) => setInitialSyncLimit(Number(event.target.value) as 10 | 50 | 100)}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+            <option value={10}>Latest 10</option>
+            <option value={50}>Latest 50 (recommended)</option>
+            <option value={100}>Latest 100</option>
+          </select>
+        </label>
+        <p className="mt-2 text-xs text-muted-foreground">This limits the initial historical import, not new incoming messages. Providers may still scan older message metadata to establish a safe incremental sync checkpoint.</p>
+      </div>
       <section className="grid gap-5" aria-label="Selected email provider">
         {providers.filter((provider) => provider.id === selectedProvider).map((provider) => (
           <article key={provider.id} className="group rounded-md border border-border bg-card p-5 transition-colors hover:bg-secondary/30">
@@ -371,11 +385,11 @@ export function EmailAccountsClient({
             <button
               type="button"
               onClick={() => {
-                if (provider.id === "gmail") { if (!selectedGmailConfig) { setNotice("Add and enable a Gmail OAuth client in Settings before connecting Gmail."); return; } window.location.assign(`/api/oauth/gmail/start?configId=${encodeURIComponent(selectedGmailConfig)}`); }
-                if (provider.id === "zoho") { if (!selectedZohoConfig) { setNotice("Add and enable a Zoho OAuth client in Settings before connecting Zoho Mail."); return; } window.location.assign(`/api/oauth/zoho/start?configId=${encodeURIComponent(selectedZohoConfig)}`); }
+                if (provider.id === "gmail") { if (!selectedGmailConfig) { setNotice("Add and enable a Gmail OAuth client in Settings before connecting Gmail."); return; } window.location.assign(`/api/oauth/gmail/start?configId=${encodeURIComponent(selectedGmailConfig)}&initialLimit=${initialSyncLimit}`); }
+                if (provider.id === "zoho") { if (!selectedZohoConfig) { setNotice("Add and enable a Zoho OAuth client in Settings before connecting Zoho Mail."); return; } window.location.assign(`/api/oauth/zoho/start?configId=${encodeURIComponent(selectedZohoConfig)}&initialLimit=${initialSyncLimit}`); }
                 if (provider.id === "microsoft_graph") {
                   if (!selectedGraphConfig) { setNotice("Configure and enable a Microsoft OAuth client in Settings."); return; }
-                  window.location.assign("/api/oauth/microsoft/start?configId=" + encodeURIComponent(selectedGraphConfig));
+                  window.location.assign("/api/oauth/microsoft/start?configId=" + encodeURIComponent(selectedGraphConfig) + "&initialLimit=" + initialSyncLimit);
                 }
                 if (provider.id === "imap_smtp") setShowImapForm(true);
               }}
