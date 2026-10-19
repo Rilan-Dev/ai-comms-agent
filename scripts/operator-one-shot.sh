@@ -24,8 +24,15 @@ step "Choose the application release target"
 echo "  1) vercel       (Vercel CLI; build limits and authorization still apply)"
 echo "  2) docker       (requires a SEPARATE approved production Compose file)"
 echo "  3) migration    (apply and verify database only; deploy app separately)"
-target="${ACA_RELEASE_TARGET:-$(ask 'Target [vercel/docker/migration]: ')}"
-case "$target" in vercel|docker|migration) ;; *) die "Choose vercel, docker, or migration.";; esac
+target="${ACA_RELEASE_TARGET:-$(ask 'Target [1=vercel/2=docker/3=migration]: ')}"
+# Accept the displayed menu numbers as well as explicit names. Keep the
+# normalized, named target for every subsequent production-safety check.
+case "$target" in
+  1|vercel) target=vercel ;;
+  2|docker) target=docker ;;
+  3|migration) target=migration ;;
+  *) die "Choose 1 (vercel), 2 (docker), or 3 (migration)." ;;
+esac
 
 MIGRATION_FILE="${ACA_COMPOSE_FILE:-docker-compose.yml}"
 [[ "$MIGRATION_FILE" = /* ]] || MIGRATION_FILE="$ROOT/$MIGRATION_FILE"
