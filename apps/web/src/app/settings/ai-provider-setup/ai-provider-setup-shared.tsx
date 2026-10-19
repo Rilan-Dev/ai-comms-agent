@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, Loader2, Trash2 } from "lucide-react";
 import { LiveModelSelect, type ModelPurpose } from "@/components/live-model-select";
 import { providerConfigStatus } from "@/lib/ai/provider-config-status";
+import { voiceCredentialSaveError } from "@/lib/ai/voice-credential-preflight";
 
 
 
@@ -167,6 +168,19 @@ export function AIProviderSetupShared({
       setError("Load the selected organization's provider settings before saving.");
       return;
     }
+    // Both purpose-scoped records must already have a secret, or this form
+    // must provide a new key. Fail before the first PUT, not after a partial
+    // TTS save while STT is still missing a key.
+    const missingKeyError = voiceCredentialSaveError({
+      provider, isVoiceChat: tab === "voice-chat",
+      newKeySupplied: Boolean(apiKey.trim()),
+      saved: visibleConfigs,
+    });
+    if (missingKeyError) {
+      setError(missingKeyError);
+      setNotice("");
+      return;
+    }
     setSaving(true); setNotice(""); setError("");
     try {
       // Voice Chat stores distinct TTS/STT choices, not one model in two slots.
@@ -182,10 +196,10 @@ export function AIProviderSetupShared({
             purpose,
             provider,
             model: purpose === "stt" ? sttModel : model,
-            apiKey: apiKey || undefined,
+            apiKey: apiKey.trim() || undefined,
             baseUrl: baseUrl || undefined,
             enabled,
-            keepExistingKey: !apiKey && Boolean(existing?.hasApiKey),
+            keepExistingKey: !apiKey.trim() && Boolean(existing?.hasApiKey),
           }),
         });
         const body = await response.json();
@@ -194,8 +208,10 @@ export function AIProviderSetupShared({
       if (currentOrganizationId.current !== organizationId) return;
       setApiKey("");
       // Reload
+      // Realtime is read-only metadata on this tab. Preserve its status
+      // after Save/Remove so the explicit reuse action remains discoverable.
       const refreshed = await Promise.all(
-        purposes.map((p) =>
+        (tab === "voice-chat" ? [...purposes, "realtime"] : purposes).map((p) =>
           fetch(`/api/settings/ai-provider-configs?purpose=${p}&organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" })
             .then(async (r) => {
               const body = await r.json().catch(() => null) as { configs?: Config[]; message?: string } | null;
@@ -262,8 +278,10 @@ export function AIProviderSetupShared({
       if (currentOrganizationId.current !== organizationId) return;
       setNotice("Provider config removed.");
       setApiKey("");
+      // Realtime is read-only metadata on this tab. Preserve its status
+      // after Save/Remove so the explicit reuse action remains discoverable.
       const refreshed = await Promise.all(
-        purposes.map((p) =>
+        (tab === "voice-chat" ? [...purposes, "realtime"] : purposes).map((p) =>
           fetch(`/api/settings/ai-provider-configs?purpose=${p}&organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" })
             .then(async (r) => {
               const body = await r.json().catch(() => null) as { configs?: Config[]; message?: string } | null;
