@@ -1,3 +1,13 @@
+## 2026-10-19 — DEV-01 operator log verification (preflight successful, migration NOT RUN)
+
+- Operator-host log: 29/29 operator unit tests, migration structure check, cached Docker web image build, 6 project TypeScript checks, 26/26 Clara Core unit tests PASS. **Offline web Vitest DNS rejection** and worker parallel **SIGKILL** abort release before DB identification/backup/migration. Do not call this a TypeScript build failure or database migration failure.
+- DEV-01 repaired two independently confirmed source contract bugs on main: adapter control-character RegExp was double-escaped and falsely rejected normal IDs (source SHA `6e7dd84e5b3a3ddc745610662d6deffdeab62c6d`); knowledge SQL test expected `$4` where current runtime binds keyword query `$3` (test SHA `8a50d61e00163367beac977166535557c0f69d2f`). Added control regressions (test SHA `9e9904ae6ef55f0e016a85966d35eb2810bbb73d`).
+- Executed current GitHub source checks including actual JS RegExp evaluation: 6/6 PASS. **Not run after fixes:** actual Node/tsx worker test suite, full web Vitest, production build against updated SHA, live migrations, provider/browser acceptance. Environment cannot resolve private github.com through shell or access operator Docker host.
+- OPS-01 issue #38 for unexpected `eth-mainnet.public.blastapi.io` DNS while tests are intentionally isolated; no network/credential bypass. Session `docs/project-control/sessions/DEV01-OPERATOR-TEST-TRIAGE-20261019.md`; exact diagnostics in `NEXT_ACTION.md`.
+
+
+---
+
 ## 2026-10-19 — Operator single-command release wrapper — SOURCE ONLY
 
 - New direct-main `scripts/operator-one-shot.sh` (web build, full package tests/typechecks, migration read-only plan, external backup confirmation, guarded apply/ledger verify, opt-in Vercel or approved production Docker startup), regression suite `scripts/tests/operator-one-shot-script.test.mjs`, runbook `docs/runbooks/ONE-SHOT-OPERATOR-RELEASE-20261019.md`.
