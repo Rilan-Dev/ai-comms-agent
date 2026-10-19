@@ -75,28 +75,24 @@ test("Vercel must be linked and authenticated; health does not claim integration
 
 
 test("numbered release menu choices normalize to named targets without bypassing validation", () => {
-  const selection = script.match(/^case "\\$target" in[\\s\\S]*?^esac/m)?.[0];
+  const selection = script.match(/^case "\$target" in[\s\S]*?^esac/m)?.[0];
   assert.ok(selection, "release target normalization must remain an explicit case block");
+  const code = [
+    "set -Eeuo pipefail",
+    'die() { echo "ERROR: $*" >&2; exit 1; }',
+    'target="$1"',
+    selection,
+    'printf "%s" "$target"',
+  ].join("\n");
   for (const [entered, expected] of [
     ["1", "vercel"], ["2", "docker"], ["3", "migration"],
     ["vercel", "vercel"], ["docker", "docker"], ["migration", "migration"],
   ]) {
-    const check = spawnSync("bash", [
-      "-c", `set -Eeuo pipefail
-die() { echo "ERROR: \\$*" >&2; exit 1; }
-target="\\$1"
-${selection}
-printf '%s' "\\$target"`, "--", entered,
-    ], { encoding: "utf8" });
-    assert.equal(check.status, 0, `${entered}: ${check.stderr}`);
+    const check = spawnSync("bash", ["-c", code, "--", entered], { encoding: "utf8" });
+    assert.equal(check.status, 0, entered + ": " + check.stderr);
     assert.equal(check.stdout, expected);
   }
-  const invalid = spawnSync("bash", [
-    "-c", `set -Eeuo pipefail
-die() { echo "ERROR: \\$*" >&2; exit 1; }
-target="\\$1"
-${selection}`, "--", "4",
-  ], { encoding: "utf8" });
+  const invalid = spawnSync("bash", ["-c", code, "--", "4"], { encoding: "utf8" });
   assert.equal(invalid.status, 1);
-  assert.match(invalid.stderr, /Choose 1 \\(vercel\\), 2 \\(docker\\), or 3 \\(migration\\)/);
+  assert.match(invalid.stderr, /Choose 1 \(vercel\), 2 \(docker\), or 3 \(migration\)/);
 });
