@@ -1,3 +1,12 @@
+## 2026-10-19 — DEV-01 ElevenLabs TTS/STT 409 recovery (source implemented; deployment pending)
+
+- **Source committed on main, no branch/PR:** Explicit model-picker recovery for `provider_configuration_required` when eligible ElevenLabs Realtime secret exists (TTS/STT separately scoped), missing-purpose key remediation, distinct encrypted key failure. Existing explicit confirmed server key-reuse endpoint retained (organization.update, source decryptability, no overwrite of disabled/already saved target).
+- **ACTUALLY EXECUTED:** 8/8 isolated Node behavioral checks on helper whose bytes match GitHub SHA `3108547c5ebe73975fee37198e71a69afc1b21c5`; isolated TypeScript helper tsc PASS; 15/15 live GitHub source assertions PASS (auth-before-catalog, no silent credential copy, picker abort guard/reuse button, both purpose callbacks, explicit server permission/audit).
+- **NOT EXECUTED:** whole new Node regression file/complete repository tests, full web/worker/DB/Clara pnpm typecheck/build, migrations, real ElevenLabs API with live credentials, authenticated browser/tenant negatives, deployment. A 409 is still the correct return until an authorized admin saves or explicitly reuses an eligible TTS/STT credential. OPS-01 host/Vercel build-rate-limit remains; user-exposed session cookie should be revoked, never used.
+- **Session:** `docs/project-control/sessions/DEV01-ELEVENLABS-TTS-STT-CATALOG-RECOVERY-20261019.md`.
+
+---
+
 ## DEV-01 — 2026-10-19 ElevenLabs Voice Chat purpose preflight (source PASS; deployment pending)
 
 - On direct main: `voice-credential-preflight.ts`, AI Provider Setup save preflight and read-only Realtime metadata retention, provider-config PUT explicit keep-key existence check. Previous Realtime→TTS/STT reuse endpoint unchanged; no hidden key or cross-tenant fallback.
