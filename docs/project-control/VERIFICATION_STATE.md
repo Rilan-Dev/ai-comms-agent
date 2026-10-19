@@ -1,3 +1,13 @@
+## DEV-01 — 2026-10-19 ElevenLabs Voice Chat purpose preflight (source PASS; deployment pending)
+
+- On direct main: `voice-credential-preflight.ts`, AI Provider Setup save preflight and read-only Realtime metadata retention, provider-config PUT explicit keep-key existence check. Previous Realtime→TTS/STT reuse endpoint unchanged; no hidden key or cross-tenant fallback.
+- ACTUAL executable isolated Node v22.16 tests 8/8 PASS (pure TTS/STT credential readiness cases); isolated TS noEmit PASS for exact file with Git SHA `5ff3d09e82186e0161807ade6d995bf54b9a1bd1`. Current authenticated GitHub source predicates 10/10 PASS. New `elevenlabs-voice-save-validation.test.mjs` complete test suite authored but not dynamically run against the full repo.
+- NOT RUN: full pnpm/Vitest, Next/worker/Clara/DB builds or migrations, live provider, browser, real organization secrets or deployment. Existing earlier `provider_configuration_required` response was at *local saved-purpose credential gate*, not proof of ElevenLabs provider model outage.
+- Recording `docs/project-control/sessions/DEV01-ELEVENLABS-VOICE-PRESAVE-GUARD-20261019.md`; next commands `NEXT_ACTION.md`. No new branch/PR. OPS-01 owns deployment/build-rate-limit; FIX-01 unrelated transport/runtime/security.
+
+
+---
+
 ## 2026-10-19 — DEV-01 ElevenLabs TTS live / Scribe STT documented source (limited check)
 
 - **Committed directly to main (no branch/PR):** truthfully separate live TTS `/v1/models` from Scribe batch `scribe_v2` documented STT; return documented STT only after org authorization and saved enabled purpose-key gate, keep disabled/missing key 409, independent Realtime Scribe v2 WebSocket label, opt-in existing credential reuse. Updated selector UI and Node/Vitest tests.
