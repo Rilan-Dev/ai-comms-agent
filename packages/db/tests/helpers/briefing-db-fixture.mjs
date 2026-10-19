@@ -10,9 +10,23 @@ export function testDatabaseUrl() {
   if (!raw) throw new Error('BRIEFING_TEST_DATABASE_URL required; DATABASE_URL is never a fallback');
   const u = new URL(raw);
   if (u.protocol !== 'postgresql:' || u.hostname !== '127.0.0.1' || u.port !== '55432' || u.pathname !== '/ai_comms_c1_test' || u.username !== 'postgres' || u.password || u.search || u.hash) throw new Error('Refusing non-test target');
-  const inspect = JSON.parse(execFileSync('docker', ['inspect', 'ai-comms-c1-testdb'], { encoding: 'utf8' }))[0];
-  const binding=inspect.HostConfig.PortBindings['5432/tcp'][0];
-  if (!inspect.State.Running || binding.HostIp !== '127.0.0.1' || binding.HostPort !== '55432' || !inspect.HostConfig.Tmpfs['/var/lib/postgresql/data']) throw new Error('Expected disposable test container');
+  let inspect;
+  try {
+    inspect = JSON.parse(execFileSync(
+      'docker', ['inspect', 'ai-comms-c1-testdb'],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+    ))[0];
+  } catch {
+    // Do not silently create or target another DB; bootstrap is a separate,
+    // explicit, opt-in operation on the dedicated localhost test container.
+    throw new Error('Disposable briefing test container ai-comms-c1-testdb is missing or unavailable. Run BRIEFING_TEST_DATABASE_OPT_IN=disposable-local-c1 bash scripts/start-briefing-testdb.sh before the C3 DB tests.');
+  }
+  const binding = inspect?.HostConfig?.PortBindings?.['5432/tcp']?.[0];
+  if (!inspect?.State?.Running || binding?.HostIp !== '127.0.0.1' ||
+      binding?.HostPort !== '55432' ||
+      !inspect?.HostConfig?.Tmpfs?.['/var/lib/postgresql/data']) {
+    throw new Error('Refusing unsafe briefing test container; only running localhost:55432 tmpfs ai-comms-c1-testdb is permitted');
+  }
   return raw;
 }
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
