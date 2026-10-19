@@ -1,3 +1,24 @@
+## Owner-requested manual database migration scripts — 2026-10-19
+
+- **Owner request:** Create and commit migration scripts into GitHub; owner/operator will deploy and migrate. Direct commits on `main`, **no branches/PRs**. Phase 4 remains implementation_in_progress.
+- **Committed source:** `scripts/operator-migrate.sh` with `plan`, `apply` and `verify`; `packages/db/operator-migration-check.mjs` PostgreSQL target/ledger preflight; `packages/db/operator-migration-core.mjs` SHA256/checksum/unknown-version safeguards; offline Node/Bash regression tests and `docs/runbooks/OPERATOR-MIGRATION-20261019.md`. The manual wrapper reuses the existing `packages/db/migrate.js` for forward-only SQL, runs inside a one-off Compose web container and mounts `supabase` read-only; it does not reset DBs, deploy apps or copy provider keys.
+- **Explicit deployment gates:** `apply` requires `--expect-db` and `--backup-confirmed`, and refuses a fresh database without an extra `--allow-fresh`. Verifier stops on SHA drift, unknown applied versions, wrong target, missing migration files or missing ledger. Operator wrapper treats migration warnings/skipped statements as non-acceptance even if original runner prints success. Root Compose file is marked local-development-only; operator selects reviewed production configuration/environment. **No migration or deployment executed in this chat.**
+- **Evidence:** 17/17 deterministic assertions against the exact files committed to GitHub PASSED (source inspection). New Node/Bash regression suites **authored but not dynamically run**; no Docker, PostgreSQL, backup, full pnpm/typecheck/build/browser or live provider test. **Do not mark DB ready from a source commit.**
+- **Exact operator action:**
+  ```bash
+  git checkout main && git pull --ff-only origin main
+  docker compose --project-directory "$PWD" --env-file .env -f "${ACA_COMPOSE_FILE:-docker-compose.yml}" build web
+  node --test scripts/tests/operator-migration-core.test.mjs scripts/tests/operator-migrate-script.test.mjs
+  bash scripts/operator-migrate.sh plan
+  # Independently create and verify backup; use the exact DB name printed by plan:
+  bash scripts/operator-migrate.sh apply --expect-db YOUR_CONFIRMED_DATABASE_NAME --backup-confirmed
+  bash scripts/operator-migrate.sh verify --expect-db YOUR_CONFIRMED_DATABASE_NAME
+  ```
+  Deployment comes **after** verification. OPS-01 remains owner of host/migrations/CI/CD/deployment, FIX-01 runtime/security defects. Existing `0044_ai_provider_setup.sql` supports TTS/STT schema; **missing ElevenLabs purpose-specific API keys are not fixed by schema migrations**. After web deploy, an authorized admin explicitly configures TTS and STT or uses existing audited same-org Realtime key reuse in UI. Revoke previously exposed session cookie.
+- **Session:** `docs/project-control/sessions/OPERATOR-MIGRATION-SCRIPT-20261019.md`. **Runbook:** `docs/runbooks/OPERATOR-MIGRATION-20261019.md`.
+
+---
+
 ## DEV-01 — Fix missing ElevenLabs TTS/STT model catalog credentials — 2026-10-19
 
 - **Reported:** Authenticated ElevenLabs TTS and STT live-model GET returned `409 provider_configuration_required`. This is an expected purpose-specific missing-key gate, not proof the ElevenLabs vendor catalogue is down. Realtime config does not implicitly activate TTS/STT. **Never use the session cookie pasted in the report; it must be revoked/replaced by the owner.**
