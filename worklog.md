@@ -1944,3 +1944,15 @@ Code and additive project-control handoff pushed to `main` at `b66dfe40df023b471
 - **Issue status:** Previously missing disposable PostgreSQL container bootstrap error is **resolved on this development host**; this is observed operator evidence, not a claimed assistant-run test.
 - **Remaining verification:** Standalone `scripts/tests/start-briefing-testdb.test.mjs` tests and the later C3 code changes beyond this host commit were not executed in this operator receipt; this does not constitute complete worker/full-suite/browser/production acceptance.
 - **Coordination:** FIX-01 is error-fixing only. DEV-01 continues planned features independently. No other Markdown files, migrations, deployments, feature flags or external services changed as part of this verification receipt.
+
+
+## 2026-10-20 — FIX-01 tool-result finalization ID/name binding
+
+- **Scope:** FIX-01 / Sentinel source-error correction only. DEV-01 continues feature work independently; no changes to project-control Markdown files.
+- **Recovery:** Read the current `docs/project-control/CHAT_CONTINUITY.md`, `NEXT_ACTION.md`, shared FIX-01 backlog and role memory from GitHub main.
+- **Root cause:** `buildReadOnlyToolFinalMessages` checked whether a returned tool_call_id had been declared but did not bind the result's tool name to that declaration. A forged/misassociated result with a valid ID but a different name could be included in the final read-only model prompt.
+- **Correction:** Preserve the declared ID-to-name association until exactly one matching result arrives, reject an absent/blank declaration name and mismatched result name, and keep the lifetime `seen` IDs so completed calls cannot reuse identifiers. Read-only response policy and no-tool boundary remain unchanged.
+- **Source:** `packages/clara-core/src/tool-result-final.ts`, commit `5d0f89580f8c3c9ae114bdb5311a28ff1460569e`.
+- **Regression:** `packages/clara-core/tests/tool-result-final.test.mjs` now checks a reused completed ID, a result name not matching the declared name, and a missing declared name; commit `b101481a58829da9ef49a7937a29ec677fb77c69`.
+- **Verification boundary:** Code and tests committed on `main` through the GitHub connector; **no Node test execution, TypeScript typecheck, full suite, CI, provider/browser run, deployment, migration or runtime acceptance** observed in this session. No branches/PRs, CI/Vercel wait, or production actions.
+- **Exact next focused host check:** `node --experimental-strip-types --test packages/clara-core/tests/tool-result-final.test.mjs`, then `pnpm --filter @ai-comms-agent/clara-core typecheck`. Continue separate FIX-01 defects without blocking DEV-01 feature work.
