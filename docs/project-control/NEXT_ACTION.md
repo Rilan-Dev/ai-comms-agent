@@ -1,3 +1,12 @@
+## 2026-10-19 — One-shot release menu accepts 1/2/3 as well as target names
+
+- **Owner observed:** On a clean checked-out `main`, `operator-one-shot.sh` displayed `1) vercel; 2) docker; 3) migration`, but entering `2` failed `Choose vercel, docker, or migration`. Validation stopped before tests, migration, backup confirmation or deployment, so that attempt performed **no production change**.
+- **Source fix on existing main (no branch/PR):** `scripts/operator-one-shot.sh` now maps `1|vercel`, `2|docker`, and `3|migration` to the existing canonical target names before the existing Vercel/Docker/migration safety checks. `scripts/tests/operator-one-shot-script.test.mjs` adds a Bash-driven regression for all six valid choices and invalid `4`; runbook documents both forms. Existing approved production Compose requirement, backup gate, explicit database `APPLY` confirmation and separate OPS-01 production execution remain unchanged.
+- **Verified in this chat:** 11/11 current GitHub source-contract safety checks PASS (menu mapping, invalid-case rejection, Compose and backup protections, regression test presence, docs). The actual Node test/Bash execution, production Compose validation, build, SQL migration and deployment were **not run** here. OPS-01/owner executes on the host.
+- **Immediate operator action:** `git pull --ff-only origin main && ACA_HEALTH_URL=https://aca.starcitytechnical.com/api/health bash scripts/operator-one-shot.sh`. Enter `2` or `docker` **only if a separately reviewed production Compose file exists**; it will prompt for that path. Enter `3` or `migration` to verify/apply SQL without deploying the app. Run `node --test scripts/tests/operator-one-shot-script.test.mjs` before a live release if desired; stop on failures, do not bypass backups or substitute bundled dev Compose. Follow `docs/runbooks/ONE-SHOT-OPERATOR-RELEASE-20261019.md`.
+
+---
+
 ## 2026-10-19 — Owner single-command operator workflow committed (operator action needed)
 
 - **Owner request:** "Provide me single shot command to done eveything" after requesting migration scripts committed for personal deployment. **Committed directly to main**, no branch/PR: `scripts/operator-one-shot.sh`, offline fail-closed Bash/Node tests `scripts/tests/operator-one-shot-script.test.mjs`, and `docs/runbooks/ONE-SHOT-OPERATOR-RELEASE-20261019.md`. OPS-01/owner still owns live execution; no production change by assistant.
