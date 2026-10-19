@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import {
   parseCredentialsMasterKey,
+  decryptCredential,
   PostgresEmailAccountRepository,
   query,
 } from "@ai-comms-agent/db";
@@ -11,6 +12,10 @@ type Candidate = {
   id: string;
   organization_id: string;
   connection_config: Record<string, unknown> | null;
+  notification_url: string | null;
+  client_id: string;
+  tenant_id: string;
+  client_secret_ciphertext: Buffer;
 };
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
@@ -18,17 +23,13 @@ const RENEW_BEFORE_MS = 24 * 60 * 60 * 1000;
 const SUBSCRIPTION_LIFETIME_MS = 48 * 60 * 60 * 1000;
 let running = false;
 
-function notificationUrl(): string | null {
+function notificationUrl(configured: string): string | null {
   try {
-    const explicit = process.env.MICROSOFT_GRAPH_NOTIFICATION_URL?.trim();
-    const origin = process.env.APP_ORIGIN?.trim();
-    const candidate = explicit || (origin ? new URL("/api/webhooks/microsoft-graph", origin).toString() : "");
-    if (!candidate) return null;
-    const url = new URL(candidate);
-    return url.protocol === "https:" && url.pathname === "/api/webhooks/microsoft-graph" ? url.toString() : null;
-  } catch {
-    return null;
-  }
+    if (!configured) return null;
+    const url = new URL(configured);
+    return url.protocol === "https:" && url.pathname === "/api/webhooks/microsoft-graph"
+      && !url.username && !url.password && !url.search && !url.hash ? url.toString() : null;
+  } catch { return null; }
 }
 
 async function persistConfig(accountId: string, patch: Record<string, unknown>, remove: string[] = []) {
@@ -53,7 +54,13 @@ async function reconcileSubscription(candidate: Candidate, masterKey: Buffer, en
   // (access_token, refresh_token, expires_at, microsoft_*) so a missing
   // credential_type would not affect runtime behavior — but the cast still
   // needs to be type-safe against the discriminated union.
-  const credentials = { ...stored, credential_type: "oauth_token" } as unknown as EmailCredentials;
+  const credentials = {
+    ...stored,
+    credential_type: "oauth_token",
+    microsoft_client_id: candidate.client_id,
+    microsoft_tenant_id: candidate.tenant_id,
+    microsoft_client_secret: decryptCredential(candidate.client_secret_ciphertext, masterKey).toString("utf8"),
+  } as unknown as EmailCredentials;
   const clientState = credentials.microsoft_graph_client_state || randomBytes(32).toString("base64url");
   const adapter = new MicrosoftGraphAdapter();
   let createdSubscriptionId: string | undefined;
@@ -114,29 +121,36 @@ async function reconcileSubscription(candidate: Candidate, masterKey: Buffer, en
   }
 }
 
-async function tick(endpoint: string, stopped: () => boolean) {
+async function tick(stopped: () => boolean) {
   if (running || stopped() || !process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY) return;
   running = true;
   try {
     const due = await query<Candidate>(
-      `SELECT id, organization_id, connection_config
-         FROM email_accounts
-        WHERE provider='microsoft_graph' AND status='connected' AND deleted_at IS NULL
+      `SELECT a.id, a.organization_id, a.connection_config,
+              c.notification_url, c.client_id, c.tenant_id, c.client_secret_ciphertext
+         FROM email_accounts a
+         JOIN microsoft_oauth_configs c
+           ON c.id::text = a.connection_config->>'oauthConfigId'
+          AND c.organization_id=a.organization_id AND c.enabled=true
+        WHERE a.provider='microsoft_graph' AND a.status='connected' AND a.deleted_at IS NULL
+          AND c.notification_url IS NOT NULL
           AND (
-            connection_config->>'microsoftGraphSubscriptionRetryAt' IS NULL
-            OR (connection_config->>'microsoftGraphSubscriptionRetryAt')::timestamptz <= now()
+            a.connection_config->>'microsoftGraphSubscriptionRetryAt' IS NULL
+            OR (a.connection_config->>'microsoftGraphSubscriptionRetryAt')::timestamptz <= now()
           )
           AND (
-            connection_config->>'microsoftGraphSubscriptionExpiresAt' IS NULL
-            OR (connection_config->>'microsoftGraphSubscriptionExpiresAt')::timestamptz <= now() + interval '24 hours'
+            a.connection_config->>'microsoftGraphSubscriptionExpiresAt' IS NULL
+            OR (a.connection_config->>'microsoftGraphSubscriptionExpiresAt')::timestamptz <= now() + interval '24 hours'
           )
-        ORDER BY created_at ASC
+        ORDER BY a.created_at ASC
         LIMIT 50`,
     );
     const masterKey = parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY);
     for (const candidate of due.rows) {
       if (stopped()) break;
       try {
+        const endpoint = notificationUrl(candidate.notification_url ?? "");
+        if (!endpoint) continue;
         await reconcileSubscription(candidate, masterKey, endpoint);
       } catch (error) {
         const current = candidate.connection_config ?? {};
@@ -173,18 +187,20 @@ async function tick(endpoint: string, stopped: () => boolean) {
 }
 
 export function startMicrosoftGraphSubscriptionWorker() {
-  const endpoint = notificationUrl();
-  if (!process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY || !endpoint) {
+  if (!process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY) {
     console.log(JSON.stringify({
       timestamp: new Date().toISOString(),
       level: "warn",
       service: "worker.email-microsoft-subscription",
-      message: "Microsoft Graph subscriptions disabled: database, credential encryption, and HTTPS notification URL are required",
+      message: "Graph subscription worker requires database and platform encryption service",
     }));
     return () => undefined;
   }
+  // Each organization's subscription callback URL is read from its encrypted
+  // Platform Settings client. No MICROSOFT_GRAPH_* or APP_ORIGIN runtime
+  // environment value is read; no configured URL means safe polling only.
   let stopped = false;
-  void tick(endpoint, () => stopped);
-  const timer = setInterval(() => { void tick(endpoint, () => stopped); }, CHECK_INTERVAL_MS);
+  void tick(() => stopped);
+  const timer = setInterval(() => { void tick(() => stopped); }, CHECK_INTERVAL_MS);
   return () => { stopped = true; clearInterval(timer); };
 }
