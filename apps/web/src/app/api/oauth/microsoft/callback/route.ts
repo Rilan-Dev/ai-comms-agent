@@ -5,6 +5,7 @@ import type { CapabilitySet } from "@ai-comms-agent/shared";
 import { authorize } from "@/lib/identity/authorization";
 import { getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { assertOAuthRedirectUriSecure, getOAuthPublicOrigin } from "@/lib/oauth/redirect-uri";
+import { loadMicrosoftOAuthConfiguration } from "@/lib/oauth/microsoft-config";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ type MicrosoftOAuthState = {
   organizationId: string;
   userId: string;
   tenantId: string;
-  clientId: string;
+  configId: string;
   redirectUri: string;
   accountId?: string;
   exp: number;
@@ -63,12 +64,20 @@ export async function GET(request: Request) {
   try { payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")); }
   catch { return oauthError("Invalid Microsoft OAuth state.", request); }
 
-  const configuredClientId = process.env.MICROSOFT_OAUTH_CLIENT_ID?.trim();
-  const clientSecret = process.env.MICROSOFT_OAUTH_CLIENT_SECRET?.trim();
-  if (!configuredClientId || !clientSecret || payload.clientId !== configuredClientId) {
-    return oauthError("Microsoft OAuth configuration changed or is missing.", request, 503);
+  // Resolve the exact client approved in the signed state, bound to its org.
+  // Settings may change without a deployment or environment rebuild.
+  let config: Awaited<ReturnType<typeof loadMicrosoftOAuthConfiguration>>;
+  try {
+    config = await loadMicrosoftOAuthConfiguration(payload.organizationId, payload.configId);
+  } catch {
+    return oauthError("Could not resolve the organization's Microsoft OAuth configuration.", request, 503);
   }
-  if (!payload.organizationId || !payload.userId || !payload.tenantId || !payload.redirectUri
+  if (!config || config.tenantId !== payload.tenantId) {
+    return oauthError("The Microsoft OAuth client is disabled or changed. Restart the connection.", request, 409);
+  }
+  const configuredClientId = config.clientId;
+  const clientSecret = config.clientSecret;
+  if (!payload.organizationId || !payload.userId || !payload.tenantId || !payload.configId || !payload.redirectUri
     || typeof payload.exp !== "number" || payload.exp < Date.now()) {
     return oauthError("Microsoft OAuth state has expired.", request);
   }
@@ -146,7 +155,7 @@ export async function GET(request: Request) {
       ? await repository.updateConnection(existing.id, {
           emailAddress,
           displayName: profile.displayName || emailAddress,
-          connectionConfig: { tenantId: payload.tenantId, remoteAccountId: profile.id, oauthClientId: configuredClientId },
+          connectionConfig: { tenantId: payload.tenantId, remoteAccountId: profile.id, oauthClientId: configuredClientId, oauthConfigId: payload.configId },
           status: "pending",
           capabilities,
         })
