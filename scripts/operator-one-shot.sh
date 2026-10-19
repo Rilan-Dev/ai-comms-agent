@@ -77,6 +77,10 @@ step "Build the production web image from this exact source and execute package 
   --volume "$ROOT/scripts:/workspace/scripts:ro" \
   --volume "$ROOT/docs:/workspace/docs:ro" \
   --volume "$ROOT/supabase:/workspace/supabase:ro" \
+  --volume "$ROOT/infra:/workspace/infra:ro" \
+  --volume "$ROOT/.github:/workspace/.github:ro" \
+  --volume "$ROOT/README.md:/workspace/README.md:ro" \
+  --volume "$ROOT/.env.example:/workspace/.env.example:ro" \
   web sh -euc 'pnpm -r typecheck; pnpm -r test'
 
 if [[ "$target" == docker ]]; then
