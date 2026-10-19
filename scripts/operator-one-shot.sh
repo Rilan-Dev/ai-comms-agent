@@ -71,9 +71,15 @@ bash scripts/verify-migration-chain.sh
 
 step "Build the production web image from this exact source and execute package checks"
 "${MIGRATION_COMPOSE[@]}" build web
-# The Docker image includes the monorepo packages and pnpm. Mount the source
-# fixtures which Dockerfile intentionally omits; all mounts are read-only.
-"${MIGRATION_COMPOSE[@]}" run --rm --no-deps \
+# NEVER run automated test suites inside the production Compose service:
+# env_file: .env can contain live DB, messaging and model credentials.
+# Instead use the just-built immutable web image in an OFFLINE isolated Docker
+# container with NO production environment and NO network access. Integration
+# tests needing an external test database must run separately on a disposable
+# target under OPS-01; never point them at the live migration database.
+WEB_IMAGE="$("${MIGRATION_COMPOSE[@]}" images -q web)"
+[[ -n "$WEB_IMAGE" ]] || die "Could not identify the built web image for offline checks."
+docker run --rm --network none \
   --volume "$ROOT/scripts:/workspace/scripts:ro" \
   --volume "$ROOT/docs:/workspace/docs:ro" \
   --volume "$ROOT/supabase:/workspace/supabase:ro" \
@@ -81,7 +87,7 @@ step "Build the production web image from this exact source and execute package 
   --volume "$ROOT/.github:/workspace/.github:ro" \
   --volume "$ROOT/README.md:/workspace/README.md:ro" \
   --volume "$ROOT/.env.example:/workspace/.env.example:ro" \
-  web sh -euc 'pnpm -r typecheck; pnpm -r test'
+  "$WEB_IMAGE" sh -euc 'pnpm -r typecheck; pnpm -r test; pnpm --filter @ai-comms-agent/worker build'
 
 if [[ "$target" == docker ]]; then
   step "Build the separately approved production Compose images before database writes"
