@@ -35,6 +35,10 @@ export function EmailAccountsClient({
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [zohoWebhookUrls, setZohoWebhookUrls] = useState<Record<string, string>>({});
+  const [showAddProvider, setShowAddProvider] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<(typeof providers)[number]["id"] | "">("");
+  const [graphConfigs, setGraphConfigs] = useState<Array<{ id: string; label: string; enabled: boolean }>>([]);
+  const [selectedGraphConfig, setSelectedGraphConfig] = useState("");
   const [showImapForm, setShowImapForm] = useState(false);
   const [imap, setImap] = useState({email:"",displayName:"",host:"",port:"993",username:"",password:"",smtpHost:"",smtpPort:"465",tls:true});
   const [savingImap, setSavingImap] = useState(false);
@@ -62,6 +66,21 @@ export function EmailAccountsClient({
     void fetch("/api/settings/zoho-oauth?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" })
       .then(async (response) => { const body = await response.json().catch(() => ({})); if (!response.ok) return; const configs = (body.configurations ?? []).filter((item: { enabled: boolean }) => item.enabled); setZohoConfigs(configs); setSelectedZohoConfig((current) => current || configs[0]?.id || ""); })
       .catch(() => undefined);
+  }, [organizationId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/settings/microsoft-oauth?organizationId=" + encodeURIComponent(organizationId), {
+      cache: "no-store", signal: controller.signal,
+    }).then(async (response) => {
+      if (!response.ok) return;
+      const data = await response.json();
+      if (controller.signal.aborted) return;
+      const items = (data.configurations ?? []).filter((item: { enabled: boolean }) => item.enabled);
+      setGraphConfigs(items);
+      setSelectedGraphConfig((current) => items.some((item: { id: string }) => item.id === current) ? current : items[0]?.id ?? "");
+    }).catch(() => undefined);
+    return () => controller.abort();
   }, [organizationId]);
 
   useEffect(() => {
@@ -145,7 +164,8 @@ export function EmailAccountsClient({
       return;
     }
     if (account.provider === "microsoft_graph") {
-      window.location.assign(`/api/oauth/microsoft/start?accountId=${encodeURIComponent(account.id)}`);
+      if (!selectedGraphConfig) { setNotice("Configure and enable a Microsoft OAuth client in Settings before reconnecting."); return; }
+      window.location.assign(`/api/oauth/microsoft/start?configId=${encodeURIComponent(selectedGraphConfig)}&accountId=${encodeURIComponent(account.id)}`);
       return;
     }
     setBusy(account.id);
@@ -235,9 +255,16 @@ export function EmailAccountsClient({
             Connect the mailboxes your agents can work with. Credentials remain server-side and are never rendered into this UI.
           </p>
         </div>
-        <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm">
-          <span className="font-semibold">{accounts.length}</span>
-          <span className="ml-1 text-muted-foreground">mailboxes</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm">
+            <span className="font-semibold">{accounts.length}</span>
+            <span className="ml-1 text-muted-foreground">mailboxes</span>
+          </div>
+          <button type="button" aria-expanded={showAddProvider} aria-controls="add-email-provider-panel"
+            onClick={() => { setShowAddProvider((open) => !open); setSelectedProvider(""); }}
+            className="h-11 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:opacity-90">
+            {showAddProvider ? "Close provider picker" : "Add email account"}
+          </button>
         </div>
       </header>
 
@@ -282,8 +309,28 @@ export function EmailAccountsClient({
         </section>
       )}
 
-      <section className="grid gap-5 lg:grid-cols-3" aria-label="Email providers">
-        {providers.map((provider) => (
+      {showAddProvider && (
+        <section id="add-email-provider-panel" aria-label="Add email provider" className="rounded-lg border border-border bg-card p-5 sm:p-7">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><h2 className="text-lg font-semibold">Choose an email provider</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Select a provider to see only its connection options. Provider clients are managed in Settings, not environment variables.</p></div>
+            <a href="/settings#email-provider-clients" className="rounded-md border px-3 py-2 text-sm font-semibold hover:bg-secondary">Manage provider clients</a>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {providers.map((provider) => (
+              <button type="button" key={provider.id} aria-pressed={selectedProvider === provider.id}
+                onClick={() => setSelectedProvider(provider.id)}
+                className={`rounded-md border p-4 text-left transition hover:bg-secondary ${selectedProvider === provider.id ? "border-primary bg-primary/5" : "border-border"}`}>
+                <span className="text-sm font-semibold">{provider.name}</span>
+                <span className="mt-1 block text-xs text-muted-foreground">{provider.description}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      {showAddProvider && selectedProvider && (
+      <section className="grid gap-5" aria-label="Selected email provider">
+        {providers.filter((provider) => provider.id === selectedProvider).map((provider) => (
           <article key={provider.id} className="group rounded-md border border-border bg-card p-5 transition-colors hover:bg-secondary/30">
             <div className="flex items-start justify-between">
               <div className="grid size-11 place-items-center rounded-md bg-muted font-semibold">{provider.tone}</div>
@@ -304,16 +351,35 @@ export function EmailAccountsClient({
                   {zohoConfigs.length === 0 ? <option value="">No enabled clients — configure in Settings</option> : zohoConfigs.map((config) => <option key={config.id} value={config.id}>{config.label}</option>)}
                 </select>
               </label>
+            ) : provider.id === "microsoft_graph" ? (
+              <label className="mt-4 grid gap-1.5 text-xs font-medium text-muted-foreground">Microsoft OAuth client
+                <select aria-label="Microsoft OAuth client" value={selectedGraphConfig}
+                  onChange={(event) => setSelectedGraphConfig(event.target.value)}
+                  className="h-10 rounded-md border bg-background px-3 text-sm text-foreground">
+                  {graphConfigs.length === 0 ? <option value="">No enabled Microsoft client</option> : graphConfigs.map((config) =>
+                    <option key={config.id} value={config.id}>{config.label}</option>)}
+                </select>
+              </label>
             ) : null}
+            {((provider.id === "gmail" && !selectedGmailConfig) ||
+               (provider.id === "zoho" && !selectedZohoConfig) ||
+               (provider.id === "microsoft_graph" && !selectedGraphConfig)) && (
+              <p className="mt-3 text-xs text-amber-700">
+                An enabled OAuth client is required. <a className="font-semibold underline" href="/settings#email-provider-clients">Configure this provider in Settings</a>, then return to connect.
+              </p>
+            )}
             <button
               type="button"
               onClick={() => {
                 if (provider.id === "gmail") { if (!selectedGmailConfig) { setNotice("Add and enable a Gmail OAuth client in Settings before connecting Gmail."); return; } window.location.assign(`/api/oauth/gmail/start?configId=${encodeURIComponent(selectedGmailConfig)}`); }
                 if (provider.id === "zoho") { if (!selectedZohoConfig) { setNotice("Add and enable a Zoho OAuth client in Settings before connecting Zoho Mail."); return; } window.location.assign(`/api/oauth/zoho/start?configId=${encodeURIComponent(selectedZohoConfig)}`); }
-                if (provider.id === "microsoft_graph") window.location.assign("/api/oauth/microsoft/start");
+                if (provider.id === "microsoft_graph") {
+                  if (!selectedGraphConfig) { setNotice("Configure and enable a Microsoft OAuth client in Settings."); return; }
+                  window.location.assign("/api/oauth/microsoft/start?configId=" + encodeURIComponent(selectedGraphConfig));
+                }
                 if (provider.id === "imap_smtp") setShowImapForm(true);
               }}
-              disabled={(provider.id === "gmail" && !selectedGmailConfig) || (provider.id === "zoho" && !selectedZohoConfig)}
+              disabled={(provider.id === "gmail" && !selectedGmailConfig) || (provider.id === "zoho" && !selectedZohoConfig) || (provider.id === "microsoft_graph" && !selectedGraphConfig)}
               className="mt-5 h-10 w-full rounded-md border bg-muted/40 text-sm font-semibold transition hover:bg-muted disabled:opacity-50"
             >
               {provider.id === "gmail" ? "Connect with Google" : provider.id === "zoho" ? "Connect with Zoho" : provider.id === "microsoft_graph" ? "Connect with Microsoft" : "Configure mailbox"}
@@ -321,6 +387,7 @@ export function EmailAccountsClient({
           </article>
         ))}
       </section>
+      )}
 
       <section className="overflow-hidden rounded-md border border-border bg-card">
         <div className="border-b px-5 py-5 sm:px-6">
@@ -339,6 +406,8 @@ export function EmailAccountsClient({
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
               Provider setup is configuration-driven. OAuth accounts remain pending until the worker verifies credentials and discovers mailbox structure; IMAP/SMTP is tested before credentials are persisted.
             </p>
+            <button type="button" onClick={() => { setShowAddProvider(true); setSelectedProvider(""); }}
+              className="mt-5 rounded-md border border-border px-4 py-2.5 text-sm font-semibold hover:bg-secondary">Add your first email account</button>
           </div>
         ) : filteredAccounts.length === 0 ? (
           <div className="px-6 py-14 text-center"><h3 className="font-semibold">No matching mailboxes</h3><p className="mt-2 text-sm text-muted-foreground">Try a different search or status filter.</p><button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); }} className="mt-4 text-sm font-semibold underline underline-offset-4">Clear filters</button></div>
