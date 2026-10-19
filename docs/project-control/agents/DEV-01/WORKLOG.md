@@ -576,3 +576,11 @@ C2 complete locally, final merge/push receipt in session.34SQL,25domain,37web,3i
 ## 2026-10-19 — owner-requested commit and recovery checkpoint
 
 Preserved concurrent main changes and both sides of eight documentation conflicts. Current status: C1/C2 focused implementation done; C3 integration then C4 browser acceptance next. Security and broad-suite follow-up remain FIX-01/OPS-01. See docs/project-control/sessions/DEV01-CURRENT-HANDOFF-20261019.md. Lesson: after a rejected push, inspect and integrate current upstream; never overwrite shared project memory or force push.
+
+
+## 2026-10-20 — C3 checkpoint
+- Start `16d3fb6f`; source `7da1d2b5`; documentation `0370395c`.
+- Added `apps/worker/src/briefings/briefing-worker.ts`, six-test `apps/worker/tests/briefing-worker.test.ts` on main; no branch/PR.
+- Actual tests: NOT RUN (connector-only editing). No source loader, Clara model binding, worker scheduling, browser acceptance or production actions.
+- Next: build canonical read-only source loader and Clara adaptation, test provider/network and recovery cases, run worker test and typecheck then gate registration.
+- Session `../../sessions/DEV01-C3-WORKER-CORE-20261020.md`.
