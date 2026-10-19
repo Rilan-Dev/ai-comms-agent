@@ -156,7 +156,7 @@ export async function GET(request: Request) {
       ? await repository.updateConnection(existing.id, {
           emailAddress,
           displayName: profile.displayName || emailAddress,
-          connectionConfig: { tenantId: payload.tenantId, remoteAccountId: profile.id, oauthClientId: configuredClientId, oauthConfigId: payload.configId initialSyncLimit: [10, 50, 100].includes(payload.initialLimit ?? 50) ? payload.initialLimit ?? 50 : 50, },
+          connectionConfig: { tenantId: payload.tenantId, remoteAccountId: profile.id, oauthClientId: configuredClientId, oauthConfigId: payload.configId, initialSyncLimit: [10, 50, 100].includes(payload.initialLimit ?? 50) ? payload.initialLimit ?? 50 : 50, },
           status: "pending",
           capabilities,
         })
