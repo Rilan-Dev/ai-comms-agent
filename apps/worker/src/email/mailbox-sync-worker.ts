@@ -320,7 +320,16 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       );
     }
 
+    const initialLimit = [10, 50, 100].includes(Number(connectionConfig.initialSyncLimit))
+      ? Number(connectionConfig.initialSyncLimit) : 50;
+    const imported = await query<{ count: number }>(
+      "SELECT COUNT(*)::int AS count FROM email_messages WHERE organization_id=$1 AND email_account_id=$2",
+      [candidate.organization_id, candidate.id],
+    );
+    const importedCount = Number(imported.rows[0]?.count ?? 0);
     const state: SyncState = {
+      initial_message_limit: initialLimit,
+      initial_imported_count: importedCount,
       cursor: claimed.rows[0].cursor ?? undefined,
       history_token: claimed.rows[0].history_id ?? undefined,
       last_sync_at: claimed.rows[0].last_success_at ?? new Date(0).toISOString(),
@@ -356,7 +365,14 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
         ...result.added.map((item) => item.provider_message_id),
         ...result.updated.map((item) => item.provider_message_id),
       ]);
-      ids = [...messageIds];
+      // Historical import is a one-time, configurable snapshot. Do not
+      // discard *incremental* events, including live incoming messages.
+      // Providers without a direct history cursor may still scan older
+      // metadata to establish their checkpoint; do not persist the backlog.
+      const remaining = Math.max(0, initialLimit - importedCount);
+      ids = state.sync_mode === "initial"
+        ? [...messageIds].slice(0, remaining)
+        : [...messageIds];
       stagedCursor = result.new_state.cursor ?? null;
       stagedHistory = result.new_state.history_token ?? null;
       stagedMode = result.new_state.sync_mode;
