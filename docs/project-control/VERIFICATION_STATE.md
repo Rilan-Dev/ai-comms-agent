@@ -1,3 +1,13 @@
+## DEV-01 — 2026-10-19 operator fresh-migration safety (source-level only)
+
+- Started GitHub `main` `72732585895e44e8cac32b5fbc8146253dec4a5f`. Existing migration and release wrappers found; enhanced `--allow-fresh` to reject occupied or indeterminate databases via read-only PostgreSQL relation inspection. New core and wrapper regression tests authored; runbook updated. All changes committed on `main`, no branch/PR.
+- **Executed:** 18/18 read-only source-contract assertions on actual post-commit GitHub file content passed, including preflight-only scope, safe catalog SQL, unrelated extension exclusion, backup/DB/ledger checks preserved and test coverage.
+- **NOT EXECUTED:** New Node test suite, live PostgreSQL integration (including false-fresh occupied target), updated web/worker/Clara full suites, container build, migration `plan` with actual DB, backup/restore validation, apply/verify, provider tests, deployment. Source inspection is not migration acceptance.
+- Operator's earlier test attempt reported offline Vitest RPC DNS (issue #38) and worker SIGKILL; no production database was changed in this assistant session. Operator must rerun full suite and validate backed-up exact target before migration.
+- Session `docs/project-control/sessions/DEV01-MIGRATION-FRESH-TARGET-SAFETY-20261019.md`, runbook `docs/runbooks/OPERATOR-MIGRATION-20261019.md`, exact operator commands in `NEXT_ACTION.md`.
+
+---
+
 ## 2026-10-19 — DEV-01 operator log verification (preflight successful, migration NOT RUN)
 
 - Operator-host log: 29/29 operator unit tests, migration structure check, cached Docker web image build, 6 project TypeScript checks, 26/26 Clara Core unit tests PASS. **Offline web Vitest DNS rejection** and worker parallel **SIGKILL** abort release before DB identification/backup/migration. Do not call this a TypeScript build failure or database migration failure.
