@@ -338,6 +338,7 @@ export function EmailAccountsClient({
         </section>
       )}
       {showAddProvider && selectedProvider && (
+      <>
       <div className="rounded-md border border-border bg-card px-5 py-4">
         <label className="flex flex-wrap items-center gap-3 text-sm font-medium">
           Import recent messages initially
@@ -409,6 +410,7 @@ export function EmailAccountsClient({
           </article>
         ))}
       </section>
+      </>
       )}
 
       <section className="overflow-hidden rounded-md border border-border bg-card">
