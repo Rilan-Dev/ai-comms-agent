@@ -35,6 +35,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const configId = url.searchParams.get("configId")?.trim() ?? "";
   const accountId = url.searchParams.get("accountId")?.trim() || undefined;
+  const initialLimit = [10, 50, 100].includes(Number(url.searchParams.get("initialLimit"))) ? Number(url.searchParams.get("initialLimit")) : 50;
   if (!configId) return NextResponse.json({ error: "oauth_configuration_required", message: "Choose a Zoho OAuth client in Settings before connecting an account." }, { status: 422 });
   if (!signingKey()) return NextResponse.json({ error: "platform_encryption_key_required", message: "CREDENTIALS_MASTER_KEY is required to protect OAuth secrets and state." }, { status: 503 });
   const config = await loadZohoOAuthConfiguration(context.organizationId, configId);
@@ -50,7 +51,7 @@ export async function GET(request: Request) {
   }
   const verifier = randomBytes(32).toString("base64url");
   const nonce = randomBytes(16).toString("base64url");
-  const payload = JSON.stringify({ organizationId: context.organizationId, userId: context.user.id, configId: config.id, redirectUri, ...(accountId ? { accountId } : {}), nonce, dataCenter: config.dataCenter, exp: Date.now() + 10 * 60_000 });
+  const payload = JSON.stringify({ organizationId: context.organizationId, userId: context.user.id, configId: config.id, redirectUri, ...(accountId ? { accountId } : {}), initialLimit, nonce, dataCenter: config.dataCenter, exp: Date.now() + 10 * 60_000 });
   const encoded = Buffer.from(payload).toString("base64url");
   const state = `${encoded}.${sign(encoded)}`;
   const scope = "ZohoMail.accounts.READ,ZohoMail.folders.READ,ZohoMail.messages.ALL,ZohoMail.tags.READ";
