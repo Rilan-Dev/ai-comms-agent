@@ -42,6 +42,16 @@ export function validateCanonicalBriefingRows(expected: BriefingSource[], rows: 
   return validated;
 }
 
+/** A bounded batch may use a subset of the manifest's permitted mailboxes. */
+export function requireClaimedMailboxScope(
+  sources: BriefingSource[], manifestMailboxIds: string[],
+): void {
+  const permitted = new Set(manifestMailboxIds);
+  if (!permitted.size || !sources.length || sources.some(source => !permitted.has(source.mailboxId))) {
+    throw new Error('Briefing source scope changed');
+  }
+}
+
 /**
  * Trusted worker-only read. The source IDs come from a fenced C2 claim, not
  * a model/user supplied list. Scope, lease and content revisions are rechecked
@@ -58,7 +68,9 @@ export async function loadCanonicalBriefingSources(
   }
   for (const s of claim.sources) requireBriefingIds(s.messageId, s.mailboxId, s.threadId);
   return withTransaction(async client => {
-    const scope = await resolveBriefingScopeInTransaction(client, principal, claim.sources.map(s => s.mailboxId));
+    // A manifest can span several authorized mailboxes while an individual
+    // immutable batch contains sources from only one. Scope fingerprinting
+    // MUST use the full manifest mailbox set, not the batch's subset.
     const manifest = await client.query<{ scope_version: string; mailbox_ids: string[] }>(
       `SELECT scope_version,mailbox_ids FROM summaries
        WHERE id=$1 AND organization_id=$2 AND owner_user_id=$3 AND agent_id=$4
@@ -66,11 +78,18 @@ export async function loadCanonicalBriefingSources(
       [claim.manifestId, principal.organizationId, principal.userId, principal.agentId],
     );
     const row = manifest.rows[0];
-    if (!row || row.scope_version !== scope.scopeVersion ||
+    if (!row || !Array.isArray(row.mailbox_ids)) {
+      throw new Error('Briefing source scope changed');
+    }
+    // Resolve every mailbox in the immutable manifest. A revoked grant on
+    // any contributing mailbox invalidates the whole derived result.
+    const scope = await resolveBriefingScopeInTransaction(client, principal, row.mailbox_ids);
+    if (row.scope_version !== scope.scopeVersion ||
         row.mailbox_ids.length !== scope.mailboxIds.length ||
         row.mailbox_ids.some(id => !scope.mailboxIds.includes(id))) {
       throw new Error('Briefing source scope changed');
     }
+    requireClaimedMailboxScope(claim.sources, scope.mailboxIds);
     const lease = await client.query<{ source_ids: string[] }>(
       `SELECT b.source_ids FROM briefing_generation_batches b
        JOIN briefing_generation_jobs j ON j.id=b.job_id

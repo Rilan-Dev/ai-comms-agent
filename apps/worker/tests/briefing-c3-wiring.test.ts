@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { validateCanonicalBriefingRows } from "@ai-comms-agent/db";
+import { validateCanonicalBriefingRows, requireClaimedMailboxScope } from "@ai-comms-agent/db";
+import { readFileSync } from "node:fs";
 import { generateBriefingBatch, validateBriefingItems } from "@ai-comms-agent/email-agent-runtime/briefings/generation";
 import { createClaraBriefingGenerator } from "../src/briefings/clara-generator";
 
@@ -184,4 +185,27 @@ test("mixed valid and invented model candidates cannot complete source coverage"
   assert.equal(response.status, "partial");
   assert.equal(response.items.length, 1);
   assert.equal(response.items[0]?.representation, "partial");
+});
+
+test("a bounded single-mailbox batch can use a larger authorized manifest scope", () => {
+  const secondMailbox = "77777777-7777-4777-8777-777777777777";
+  assert.doesNotThrow(() => requireClaimedMailboxScope(
+    [source], [source.mailboxId, secondMailbox],
+  ));
+  assert.throws(() => requireClaimedMailboxScope(
+    [{ ...source, mailboxId: "88888888-8888-4888-8888-888888888888" }],
+    [source.mailboxId, secondMailbox],
+  ), /scope changed/);
+  assert.throws(() => requireClaimedMailboxScope([source], []), /scope changed/);
+});
+
+test("canonical loader fingerprints full manifest grant, never batch mailbox subset", () => {
+  const canonical = readFileSync(
+    new URL("../../../packages/db/src/briefings/canonical-sources.ts", import.meta.url), "utf8",
+  );
+  assert.match(canonical,
+    /resolveBriefingScopeInTransaction\(client, principal, row\.mailbox_ids\)/);
+  assert.doesNotMatch(canonical,
+    /resolveBriefingScopeInTransaction\(client, principal, claim\.sources\.map/);
+  assert.match(canonical, /requireClaimedMailboxScope\(claim\.sources, scope\.mailboxIds\)/);
 });
