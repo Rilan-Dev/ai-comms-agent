@@ -9,7 +9,7 @@
 import { Client } from "pg";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { assertMigrationSafe, inspectMigrationChain, sanitizeDatabaseLabel } from "./operator-migration-core.mjs";
+import { assertFreshDatabaseEmpty, assertMigrationSafe, inspectMigrationChain, sanitizeDatabaseLabel } from "./operator-migration-core.mjs";
 
 const modes = new Set(["plan", "preflight", "verify"]);
 const args = process.argv.slice(2);
@@ -70,6 +70,32 @@ try {
   if (mode === "preflight" && !allowFresh && plan.applied.length === 0) {
     throw new Error("No recorded applied migrations. --allow-fresh is required to bootstrap a new database.");
   }
+  // --allow-fresh is NOT a recovery switch for an existing database with an
+  // absent or empty ledger. Partial DDL may have committed before the runner
+  // could record its migration. Require an actually empty user schema.
+  // Exclude PostgreSQL internals and extension-owned relations; inspect all
+  // user schemas, not just "aca", to avoid accidentally importing an occupied
+  // database with unrecorded objects in "public".
+  if (mode === "preflight" && allowFresh && plan.applied.length === 0) {
+    const existing = await client.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM pg_catalog.pg_class AS relation
+        JOIN pg_catalog.pg_namespace AS ns ON ns.oid = relation.relnamespace
+        WHERE relation.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+          AND ns.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND ns.nspname NOT LIKE 'pg_toast%'
+          AND ns.nspname NOT LIKE 'pg_temp_%'
+          AND NOT (ns.nspname = 'aca' AND relation.relname = '_aca_schema_migrations')
+          AND NOT EXISTS (
+            SELECT 1 FROM pg_catalog.pg_depend AS dep
+            WHERE dep.classid = 'pg_catalog.pg_class'::regclass
+              AND dep.objid = relation.oid AND dep.deptype = 'e'
+          )
+      ) AS has_user_relations
+    `);
+    assertFreshDatabaseEmpty(existing.rows[0]?.has_user_relations);
+  }
+
   console.log(mode === "verify" ? "MIGRATION_VERIFICATION: PASS" : mode === "preflight" ? "MIGRATION_PREFLIGHT: PASS" : "MIGRATION_PLAN: PASS");
 } catch (error) {
   // Never print a connection string, password, token or PG environment.

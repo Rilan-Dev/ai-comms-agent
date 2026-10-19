@@ -492,3 +492,13 @@ Implemented C1; session `sessions/DEV01-CATCHUP-C1-20261018.md` records evidence
 ## 2026-10-19 — DEV01-CATCHUP-C2-20261019
 
 C2 complete locally, final merge/push receipt in session.34SQL,25domain,37web,3integrity checks pass; typechecks/build pass. Preserve source/review scoping and UUID cursor UI compatibility. Claim canonical sources, reauthorize scheduled mutations, retain precise server boundaries and compare manifest provenance counts. Prior C1 support sessions finished; independent C2 reviewer complete, FIX-01 compatibility/security support complete, OPS-01 restore/read-only incident assessment complete. No hidden active implementer task remains. Next C3 orchestration/grounding and C4 browser acceptance; security incident and broader suites retain role owners.
+
+### DEV-01 / 2026-10-19 — Fresh-migration safety is a database-state assertion
+- A missing/empty PostgreSQL migration ledger does **not** prove an empty database. The existing `migrate.js` auto-commits statements and writes each ledger row after a file; a prior failed run may have created data-bearing tables without history.
+- The owner-run `operator-migrate.sh --allow-fresh` preflight now checks `pg_catalog.pg_class` for non-extension user relations across all schemas, excluding only internal objects and the migration ledger. Fail closed on any relations or ambiguous inspection; never bypass checksums, expected database identity, tested backup or the operator's explicit apply confirmation.
+- The operator migration scripts were already present on main; avoid creating duplicate release/migrate scripts. Source evidence 18/18 contracts; no live database, full package tests, backup or deployment performed. OPS-01 owns running and accepting the host workflow; session `docs/project-control/sessions/DEV01-MIGRATION-FRESH-TARGET-SAFETY-20261019.md`.
+
+
+## DEV-01 current handoff — 2026-10-19, final repository synchronization
+
+See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed, in-progress, pending and next work. C1/C2 focused implementation is complete; C3 worker/grounding integration is next, then C4 authenticated UX acceptance. Phase 4 remains implementation_in_progress. Latest upstream operator/vector fixes preserved; affected checks pass 35/35 and 11/11. Earlier full-suite counts are a pre-final-merge baseline. Security follow-up remains open. Existing entries retained as history.

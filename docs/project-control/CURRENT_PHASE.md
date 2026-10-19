@@ -1,3 +1,9 @@
+## DEV-01 current handoff — 2026-10-19, final repository synchronization
+
+See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed, in-progress, pending and next work. C1/C2 focused implementation is complete; C3 worker/grounding integration is next, then C4 authenticated UX acceptance. Phase 4 remains implementation_in_progress. Latest upstream operator/vector fixes preserved; affected checks pass 35/35 and 11/11. Earlier full-suite counts are a pre-final-merge baseline. Security follow-up remains open. Existing entries retained as history.
+
+---
+
 # CURRENT_PHASE.md — Phase 4 Database Foundation and Migrations
 
 > **Latest product planning checkpoint (2026-10-18):** DEV01-CATCHUP-ROUTINES-20261018 recovered main ba9e948b and prepared personal catch-up/routine design plus phased implementation plans. Owner selected scoped one-time digest consent as a proposed requirement; no new runtime policy or feature activated. Phase 4 remains `implementation_in_progress`. After integrating concurrent upstream 959ff5a6, typechecks/web build pass and focused tests are 91 passed/1 failed; FIX-01 owns the final-tool validation regression. Live/integration acceptance remains pending. See [session](sessions/DEV01-CATCHUP-ROUTINES-20261018.md) and latest NEXT_ACTION. Older branch/PR or environment notes below are historical and do not override current direct-main owner instructions.

@@ -24,8 +24,15 @@ step "Choose the application release target"
 echo "  1) vercel       (Vercel CLI; build limits and authorization still apply)"
 echo "  2) docker       (requires a SEPARATE approved production Compose file)"
 echo "  3) migration    (apply and verify database only; deploy app separately)"
-target="${ACA_RELEASE_TARGET:-$(ask 'Target [vercel/docker/migration]: ')}"
-case "$target" in vercel|docker|migration) ;; *) die "Choose vercel, docker, or migration.";; esac
+target="${ACA_RELEASE_TARGET:-$(ask 'Target [1=vercel/2=docker/3=migration]: ')}"
+# Accept the displayed menu numbers as well as explicit names. Keep the
+# normalized, named target for every subsequent production-safety check.
+case "$target" in
+  1|vercel) target=vercel ;;
+  2|docker) target=docker ;;
+  3|migration) target=migration ;;
+  *) die "Choose 1 (vercel), 2 (docker), or 3 (migration)." ;;
+esac
 
 MIGRATION_FILE="${ACA_COMPOSE_FILE:-docker-compose.yml}"
 [[ "$MIGRATION_FILE" = /* ]] || MIGRATION_FILE="$ROOT/$MIGRATION_FILE"
@@ -71,13 +78,26 @@ bash scripts/verify-migration-chain.sh
 
 step "Build the production web image from this exact source and execute package checks"
 "${MIGRATION_COMPOSE[@]}" build web
-# The Docker image includes the monorepo packages and pnpm. Mount the source
-# fixtures which Dockerfile intentionally omits; all mounts are read-only.
-"${MIGRATION_COMPOSE[@]}" run --rm --no-deps \
+# NEVER run automated test suites inside the production Compose service:
+# env_file: .env can contain live DB, messaging and model credentials.
+# Instead use the just-built immutable web image in an OFFLINE isolated Docker
+# container with NO production environment and NO network access. Integration
+# tests needing an external test database must run separately on a disposable
+# target under OPS-01; never point them at the live migration database.
+# Compose's "images -q" only lists CREATED service containers on some Docker
+# versions. Build/tag an explicit same-source immutable verification image rather
+# than requiring a currently running production service or guessing its tag.
+WEB_IMAGE="aca-operator-verify:$(git rev-parse --short HEAD)"
+docker build --target web --tag "$WEB_IMAGE" "$ROOT"
+docker run --rm --network none \
   --volume "$ROOT/scripts:/workspace/scripts:ro" \
   --volume "$ROOT/docs:/workspace/docs:ro" \
   --volume "$ROOT/supabase:/workspace/supabase:ro" \
-  web sh -euc 'pnpm -r typecheck; pnpm -r test'
+  --volume "$ROOT/infra:/workspace/infra:ro" \
+  --volume "$ROOT/.github:/workspace/.github:ro" \
+  --volume "$ROOT/README.md:/workspace/README.md:ro" \
+  --volume "$ROOT/.env.example:/workspace/.env.example:ro" \
+  "$WEB_IMAGE" sh -euc 'pnpm -r typecheck; pnpm -r test; pnpm --filter @ai-comms-agent/worker build'
 
 if [[ "$target" == docker ]]; then
   step "Build the separately approved production Compose images before database writes"

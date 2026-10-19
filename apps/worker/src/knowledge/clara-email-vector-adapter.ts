@@ -39,7 +39,7 @@ function labelsField(metadata: Record<string, unknown>): string[] | undefined {
 
 /** Reject malformed source identities before sending a privileged API request. */
 function requireSourceIdentity(value: unknown, label: string, maxLength = 256): void {
-  if (typeof value !== "string" || !value.trim() || value !== value.trim() || value.length > maxLength || /[\\u0000-\\u001f\\u007f]/.test(value)) {
+  if (typeof value !== "string" || !value.trim() || value !== value.trim() || value.length > maxLength || /[\u0000-\u001f\u007f]/.test(value)) {
     throw new Error(`Clara email-vector API requires a valid ${label}.`);
   }
 }

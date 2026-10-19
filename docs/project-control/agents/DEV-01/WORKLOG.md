@@ -557,3 +557,22 @@ Implemented C1; session `sessions/DEV01-CATCHUP-C1-20261018.md` records evidence
 ## 2026-10-19 — DEV01-CATCHUP-C2-20261019
 
 C2 complete locally, final merge/push receipt in session.34SQL,25domain,37web,3integrity checks pass; typechecks/build pass. Preserve source/review scoping and UUID cursor UI compatibility. Claim canonical sources, reauthorize scheduled mutations, retain precise server boundaries and compare manifest provenance counts. Prior C1 support sessions finished; independent C2 reviewer complete, FIX-01 compatibility/security support complete, OPS-01 restore/read-only incident assessment complete. No hidden active implementer task remains. Next C3 orchestration/grounding and C4 browser acceptance; security incident and broader suites retain role owners.
+
+### DEV01-OPERATOR-TEST-TRIAGE-20261019
+- Recovered actual operator one-shot output after owner pasted it (main `6fdeb5a3`), keeping source-scope boundaries: 29/29 operator, migration structure, Docker web cached build, 6 TypeScript and 26/26 Clara Core tests pass; web Vitest unhandled `EAI_AGAIN eth-mainnet.public.blastapi.io`; worker killed after parallel failure. No DB migration or deployment.
+- Located real DEV-01 source defect in Clara vector adapter: control-character regex `/[\\u0000-\\u001f\\u007f]/` was accidentally double-escaped, so ordinary org/account/message IDs failed. Replaced with `/[\u0000-\u001f\u007f]/`, added actual NUL/DEL/newline negative tests. Fixed separate outdated keyword SQL contract assertion `$4`→`$3`, matching Clara runtime and not changing production query.
+- Direct main source commits `013a230c`, `05ace89c`, `cd0590f3`, `77aadf38`; no branch/PR. Actual JS regex evaluated against normal/control inputs plus source/test contract checks 6/6 PASS. Full worker/web suite after fix NOT run; no operator container access. OPS-01 issue #38 raised for external DNS and parallel failure, with exact safe isolated commands. Phase 4 not accepted.
+- Next: capture OPS-isolated tests, fix any actual own-scope failures, then proceed with independent AI/chat/voice product work. Session `docs/project-control/sessions/DEV01-OPERATOR-TEST-TRIAGE-20261019.md`.
+
+### DEV01-MIGRATION-FRESH-TARGET-SAFETY-20261019 — 2026-10-19
+- **Task/authorization:** Owner asked to create migration script committed to GitHub and said continue. Existing scripts were already delivered on main; user will perform deployment/migration. Developer source safety hardening only, no OPS role takeover.
+- **Started:** main `72732585895e44e8cac32b5fbc8146253dec4a5f`; recovered operator `NEXT_ACTION`, verification, migration scripts and current host failures.
+- **Implementation:** Added `assertFreshDatabaseEmpty(hasUserRelations)` to operator core (accept exact `false` only); `preflight --allow-fresh` now queries `pg_catalog.pg_class`/namespaces, excluding system/extension objects and migration ledger, to reject any occupied user schema before an unledgered fresh apply. Regression assertions added to Node tests; updated runbook. No schema SQL changed.
+- **Verification:** Actual GitHub source checks 18/18 passed. Full Node suites, Docker/TypeScript builds, live PostgreSQL, backups or production migration NOT performed.
+- **Lesson:** Absence of an application migration ledger does not imply the database is empty: previous partially auto-committed DDL may exist. `--allow-fresh` must prove emptiness and remain behind independently backed-up operator approval. Application provider-configuration errors cannot be fixed simply by migrating unrelated SQL.
+- **Next:** OPS-01/equipped operator reruns all named tests and static migration structure, builds source, resolves issue #38 blocking offline full tests; then explicit read-only `plan`, DB name confirm, backup+restore test, `apply`, `verify` per runbook. No branch/PR.
+
+
+## 2026-10-19 — owner-requested commit and recovery checkpoint
+
+Preserved concurrent main changes and both sides of eight documentation conflicts. Current status: C1/C2 focused implementation done; C3 integration then C4 browser acceptance next. Security and broad-suite follow-up remain FIX-01/OPS-01. See docs/project-control/sessions/DEV01-CURRENT-HANDOFF-20261019.md. Lesson: after a rejected push, inspect and integrate current upstream; never overwrite shared project memory or force push.

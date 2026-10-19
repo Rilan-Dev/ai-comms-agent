@@ -937,3 +937,15 @@ Multiple sessions may be ACTIVE simultaneously. Session records are coordination
 ## 2026-10-19 — DEV01-CATCHUP-C2-20261019
 
 C2 complete locally, final merge/push receipt in session.34SQL,25domain,37web,3integrity checks pass; typechecks/build pass. Preserve source/review scoping and UUID cursor UI compatibility. Claim canonical sources, reauthorize scheduled mutations, retain precise server boundaries and compare manifest provenance counts. Prior C1 support sessions finished; independent C2 reviewer complete, FIX-01 compatibility/security support complete, OPS-01 restore/read-only incident assessment complete. No hidden active implementer task remains. Next C3 orchestration/grounding and C4 browser acceptance; security incident and broader suites retain role owners.
+
+### DEV01-MIGRATION-FRESH-TARGET-SAFETY-20261019 — 2026-10-19
+- **Owner request:** Continue last GitHub migration-script task; the owner, not agent, will execute deployment and DB migration. Work directly on main only, no branches or PRs.
+- **Starting main:** `72732585895e44e8cac32b5fbc8146253dec4a5f`. Existing operator one-shot/migration wrapper + schema/ledger/runbook already implemented. No new SQL file needed for ElevenLabs `provider_configuration_required`; enabling capability-specific credentials is separate.
+- **Source fix:** Fresh DB safety: only allow `--allow-fresh` after a real live PostgreSQL catalog inspection proves no non-extension user relations across any user schema. Protect against existing tables from prior partial migration with missing ledger. Added Node regression cases, wrapper contracts, runbook explanation. Commits `65b3a1e5`, `a7025523`, `f4333c8c`, `03d8958f`, `2c8ac71b`. Session `docs/project-control/sessions/DEV01-MIGRATION-FRESH-TARGET-SAFETY-20261019.md`.
+- **Verification:** 18/18 GitHub source checks passed; runtime Node, full suites, live DB plan/apply, Docker build, migrations and deploy NOT RUN. Existing OPS-01 #38 separate offline web Vitest and worker SIGKILL blocker.
+- **Exact next:** OPS-01/operator executes named offline Node regression tests and full package preflight on updated main, then read-only `plan` against selected Compose .env and independently restores backup before approved `apply`/`verify`. DEV-01 no production access/authority.
+
+
+## DEV-01 current handoff — 2026-10-19, final repository synchronization
+
+See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed, in-progress, pending and next work. C1/C2 focused implementation is complete; C3 worker/grounding integration is next, then C4 authenticated UX acceptance. Phase 4 remains implementation_in_progress. Latest upstream operator/vector fixes preserved; affected checks pass 35/35 and 11/11. Earlier full-suite counts are a pre-final-merge baseline. Security follow-up remains open. Existing entries retained as history.

@@ -254,3 +254,20 @@ Implemented C1; session `sessions/DEV01-CATCHUP-C1-20261018.md` records evidence
 ## 2026-10-19 — DEV01-CATCHUP-C2-20261019
 
 C2 complete locally, final merge/push receipt in session.34SQL,25domain,37web,3integrity checks pass; typechecks/build pass. Preserve source/review scoping and UUID cursor UI compatibility. Claim canonical sources, reauthorize scheduled mutations, retain precise server boundaries and compare manifest provenance counts. Prior C1 support sessions finished; independent C2 reviewer complete, FIX-01 compatibility/security support complete, OPS-01 restore/read-only incident assessment complete. No hidden active implementer task remains. Next C3 orchestration/grounding and C4 browser acceptance; security incident and broader suites retain role owners.
+
+### 2026-10-19 — Operator preflight test logs and dangerous regex escaping
+- A JavaScript regex character class `/[\\u0000-\\u001f\\u007f]/` does NOT mean NUL-to-US+DEL: the doubled backslashes make it match ordinary letters and digits, breaking valid organization/account/message IDs. Use `/[\u0000-\u001f\u007f]/`, and execute both positive normal-ID and negative control-char tests. Catch the bug before claiming source-contract checks substitute for runtime.
+- Clara knowledge retrieval runtime `to_tsquery('simple', $3)` for `textQuery` and `LIMIT $4`; a worker source test had mistakenly expected `$4` for search. Keep the source assertion matched to actual bound SQL roles, not a stale placeholder.
+- `pnpm -r test` concurrent child failures may SIGKILL sibling tests: status lines marked failing without assertion details are not conclusive. Isolate failing suites on same source image. An offline web test attempting `eth-mainnet.public.blastapi.io` is an unexplained external dependency requiring OPS/source audit; NEVER remove network isolation or use production credentials just to pass.
+- Current host log passed 29 operator and 26 Clara Core tests and all TypeScript packages, but stopped prior to DB confirmation and migration. OPS-01 issue #38; source fixes on direct main, 6/6 source + actual regex check PASS, whole suite and deployment not verified. Session `DEV01-OPERATOR-TEST-TRIAGE-20261019`.
+
+### 2026-10-19 — Fresh migration target must be truly empty
+- Operator migration wrappers already exist on main: `scripts/operator-migrate.sh` for manual plan/apply/verify and `scripts/operator-one-shot.sh` for owner-triggered preflight/release. Do not create duplicate scripts or invent new SQL without an actual schema requirement.
+- **Critical safety lesson:** the migration runner executes separate SQL statements and records the ledger after a file; interrupted/failed execution can leave unledgered user tables. `--allow-fresh` must fail closed unless a live `pg_catalog` inspection confirms zero non-extension user relations, even when the `aca` ledger is absent/empty.
+- User (not DEV-01) deploys and migrates; OPS-01 owns migration host, test execution, tested backup/restoration, version-specific Compose/env, Vercel/Docker and CI. Earlier host verified several gates but full offline web Vitest and worker SIGKILL remain blocked under issue #38. Never infer production acceptance from source checks alone.
+- Latest session `docs/project-control/sessions/DEV01-MIGRATION-FRESH-TARGET-SAFETY-20261019.md`: 18/18 current GitHub static source checks passed; new Node tests/full Docker/connected Postgres not executed. No SQL schema changes, branch or PR.
+
+
+## 2026-10-19 — owner-requested commit and recovery checkpoint
+
+Preserved concurrent main changes and both sides of eight documentation conflicts. Current status: C1/C2 focused implementation done; C3 integration then C4 browser acceptance next. Security and broad-suite follow-up remain FIX-01/OPS-01. See docs/project-control/sessions/DEV01-CURRENT-HANDOFF-20261019.md. Lesson: after a rejected push, inspect and integrate current upstream; never overwrite shared project memory or force push.

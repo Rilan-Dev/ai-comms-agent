@@ -1,6 +1,17 @@
+## DEV-01 current handoff — 2026-10-19, final repository synchronization
+
+See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed, in-progress, pending and next work. C1/C2 focused implementation is complete; C3 worker/grounding integration is next, then C4 authenticated UX acceptance. Phase 4 remains implementation_in_progress. Latest upstream operator/vector fixes preserved; affected checks pass 35/35 and 11/11. Earlier full-suite counts are a pre-final-merge baseline. Security follow-up remains open. Existing entries retained as history.
+
+---
+
 ## DEV-01 — C2 integrated and verified — 2026-10-19
 
 C2 immutable selection, scoped review, snooze and fenced batch recovery are implemented. Concurrent upstream catch-up UI/generation and OPS work preserved; canonical services reconciled, migration0052. Final34SQL/25domain/37web/3integrity checks pass; typechecks, web build and migration structure pass. Full worker/web suites still fail; see [C2 session](sessions/DEV01-CATCHUP-C2-20261019.md). Upstream obfuscated build hooks were removed; [security follow-up](sessions/FIX01-OPS01-BUILD-HOOK-INCIDENT-20261019.md) remains open because credential exposure is uncertain. **Exact next action:** complete C3 worker/grounding/recovery integration using existing generation helpers, then authenticated C4 UI acceptance. Feature remains off by default; no deployment or routine activation. Older checkpoints below are historical.
+
+## 2026-10-19 — One-command operator migration + deploy orchestration (not executed)
+
+- Owner-requested single-command operator wrapper on `main` now orchestrates *guarded* source checks, Docker web build, package checks, DB plan, explicit backup/target confirmation, forward-only migration/ledger verify, and a chosen production Vercel or separately approved Docker release. Migration-only choice remains available. Development Compose is rejected for production startup. Existing operator migration script remains authoritative for checksums and unknown history.
+- Safety source checks 20/20 pass; new Node test authored, real shell/Docker/DB/Vercel execution unverified. Backup is **not** created by script; operator must independently create/restore-test. Vercel rate-limit not resolved, ElevenLabs TTS/STT credential configuration still separate. Phase 4 implementation in progress. Runbook `docs/runbooks/ONE-SHOT-OPERATOR-RELEASE-20261019.md`.
 
 ---
 

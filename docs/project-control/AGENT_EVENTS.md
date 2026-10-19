@@ -667,3 +667,19 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 ## 2026-10-19 — DEV01-CATCHUP-C2-20261019
 
 C2 complete locally, final merge/push receipt in session.34SQL,25domain,37web,3integrity checks pass; typechecks/build pass. Preserve source/review scoping and UUID cursor UI compatibility. Claim canonical sources, reauthorize scheduled mutations, retain precise server boundaries and compare manifest provenance counts. Prior C1 support sessions finished; independent C2 reviewer complete, FIX-01 compatibility/security support complete, OPS-01 restore/read-only incident assessment complete. No hidden active implementer task remains. Next C3 orchestration/grounding and C4 browser acceptance; security incident and broader suites retain role owners.
+
+### EVT-DEV01-OPERATOR-TEST-TRIAGE-20261019
+- Owner pasted terminal output of `ACA_RELEASE_TARGET=migration bash scripts/operator-one-shot.sh`: operator 29 pass; migration chain PASS; Docker web image build and six TypeScript checks PASS; Clara Core 26 pass; web Vitest external Ethereum RPC DNS error; concurrent worker SIGKILL. Migration never reached DB identity, backup, APPLY or deploy.
+- DEV-01 corrected two source/test defects directly on main (normal identifiers rejected by double-escaped control regex; stale Clara SQL placeholder $4 instead of $3) and added control-character regression cases. 6/6 GitHub source+real RegExp checks PASS, full updated worker suite not run.
+- OPS-01 [#38](https://github.com/Rilan-Dev/ai-comms-agent/issues/38) owns investigating unplanned network access from offline web tests, Docker/CI/release env. FIX-01 existing unrelated defects unchanged. Session `DEV01-OPERATOR-TEST-TRIAGE-20261019`.
+
+### EVT-DEV01-MIGRATION-FRESH-TARGET-SAFETY-20261019
+- **Owner authorization:** "Create migrate script and commit them into GitHub I will deploy and migrate using script" followed by "Please proceed where you left." Continue source on existing main only, no PR/branch.
+- **Existing release scripts recovered:** operator plan/apply/verify and one-shot menu already committed. No new SQL DDL needed for current schema; ElevenLabs missing enabled capability key is a separate runtime/configuration issue.
+- **New source safety:** `--allow-fresh` now requires a read-only live check proving no user relations in any schema; rejects interrupted-partial DDL/unknown occupied DB despite missing ledger. Added Node tests and runbook. Source contracts 18/18 passed; connected PostgreSQL/Node full suites/buildup/deployment not run.
+- **Handoff:** OPS-01/equipped owner must run revised tests, resolve existing offline-suite blocker #38, confirm exact database from `plan`, test independent backup restore, and manually `apply`/`verify` only on reviewed state. No agent production access used.
+
+
+## DEV-01 current handoff — 2026-10-19, final repository synchronization
+
+See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed, in-progress, pending and next work. C1/C2 focused implementation is complete; C3 worker/grounding integration is next, then C4 authenticated UX acceptance. Phase 4 remains implementation_in_progress. Latest upstream operator/vector fixes preserved; affected checks pass 35/35 and 11/11. Earlier full-suite counts are a pre-final-merge baseline. Security follow-up remains open. Existing entries retained as history.

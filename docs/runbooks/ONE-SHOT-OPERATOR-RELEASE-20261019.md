@@ -8,7 +8,7 @@ From a **clean checkout already on `main`**, on the deployment host, run this on
 git pull --ff-only origin main && bash scripts/operator-one-shot.sh
 ```
 
-The script asks for a target: `vercel`, `docker`, or `migration`. It then asks for the **actual PostgreSQL database name**, displays the read-only migration plan, asks for your independent restorable-backup reference, and requires you to type `APPLY <confirmed_database_name>` **before writing SQL**. This is *one invocation*, not an unsafe noninteractive migration. No token or password should be pasted into chat.
+The script asks for a target: **`1` or `vercel`**, **`2` or `docker`**, **`3` or `migration`**. When updating a host checkout, run `git pull --ff-only origin main` before using numbered choices. Selecting Docker will next request a separately approved production Compose file; the bundled development `docker-compose.yml` cannot be deployed as production. It then asks for the **actual PostgreSQL database name**, displays the read-only migration plan, asks for your independent restorable-backup reference, and requires you to type `APPLY <confirmed_database_name>` **before writing SQL**. This is *one invocation*, not an unsafe noninteractive migration. No token or password should be pasted into chat.
 
 ## Preconditions
 
@@ -16,6 +16,7 @@ The script asks for a target: `vercel`, `docker`, or `migration`. It then asks f
 - For **Vercel**: install and authenticate Vercel CLI, link the exact approved Vercel project first (`.vercel/project.json` required), ensure account has build allowance. **Vercel build-rate-limit remains an external blocker**; the script cannot bypass it. Vercel production env settings remain configured separately; no keys are migrated into Vercel.
 - For **Docker**: provide a separately reviewed production Compose file when prompted or set `ACA_PRODUCTION_COMPOSE_FILE`; the bundled `docker-compose.yml` is **development-only** and explicitly rejected for production startup because it enables development identity. The selected migration Compose file may still use the local-default file **only as a one-off build/test/migration container**, never as a production deployment.
 - For **migration** target: runs all source checks and applies/verifies migration ledger, then stops without deploying the application; suitable if web deployment will be performed separately.
+- **Tests must not access the production DB or provider accounts.** The one-shot script runs tests with no network and without service `.env` credentials; any integration suite that requires a database should be performed first against an explicitly disposable test database under OPS-01. A failing isolated test stops this release.
 - **Do not run against an existing data-bearing DB without a tested and restorable backup/snapshot.** The operator-supplied backup reference is an acknowledgement, not a backup the script made. Managed database snapshot/pg_dump and actual restore validation are external operator responsibilities.
 - Existing database migration ledger must be consistent. No `--allow-fresh`, reset, truncation, checksum overrides or silent SQL skip exceptions are available here. Fresh database bootstraps need the separate reviewed manual runbook.
 
@@ -23,7 +24,7 @@ The script asks for a target: `vercel`, `docker`, or `migration`. It then asks f
 
 1. Detect deployment mode and validate that a reviewed Vercel project or production Docker Compose configuration is available, **before** making SQL changes.
 2. Fast-forward `main` only; run the existing operator Node regression tests (including Bash syntax/fail-closed tests) and SQL chain verifier.
-3. Build current web image, which performs `next build`. Run workspace typechecks and **all** package test suites inside the image with read-only scripts/docs/SQL mounts. If Docker target, build reviewed production images before database writes.
+3. Build current web image, which performs `next build`. Build/tag a second exact-source verification image and run workspace typechecks, **all** package test suites and the worker build in `docker run --network none` **without Compose `.env` or production API credentials**, with read-only scripts/docs/SQL/infra mounts. Test suites requiring live PostgreSQL or outbound APIs must run separately on a disposable test environment; do not disable this isolation to force a pass. If Docker target, build reviewed production images before database writes.
 4. Read-only operator migration plan enforces a typed `--expect-db` name and existing ledger/checksums. Review `DATABASE:`, `LEDGER:`, `APPLIED:`, `PENDING:` and each planned migration; **do not approve an unexpected plan**.
 5. Operator independently confirms a restorable backup and approves typed `APPLY <database>`. `scripts/operator-migrate.sh apply` performs another preflight, forward-only migration runner and ledger verification; subsequent explicit verify must pass.
 6. Deploy only the requested target: Vercel CLI production deploy (subject to quota) or a specifically reviewed Docker Compose web/worker startup. Migration-only mode never starts services.

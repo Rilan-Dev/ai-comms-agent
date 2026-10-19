@@ -13,7 +13,7 @@ test("Clara email retrieval stays tenant-scoped and respects shared/agent docume
 });
 
 test("Clara retrieval searches email chunks by query terms without requiring an exact full phrase", () => {
-  assert.match(runtime, /to_tsvector\('simple', kc\.content\) @@ to_tsquery\('simple', \$4\)/);
+  assert.match(runtime, /to_tsvector\('simple', kc\.content\) @@ to_tsquery\('simple', \$3\)/);
   assert.match(runtime, /const textQuery = terms\.join\(" \| "\)/);
   assert.match(runtime, /terms\.length === 0/);
 });

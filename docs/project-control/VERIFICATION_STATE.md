@@ -1,6 +1,39 @@
+## DEV-01 current handoff — 2026-10-19, final repository synchronization
+
+See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed, in-progress, pending and next work. C1/C2 focused implementation is complete; C3 worker/grounding integration is next, then C4 authenticated UX acceptance. Phase 4 remains implementation_in_progress. Latest upstream operator/vector fixes preserved; affected checks pass 35/35 and 11/11. Earlier full-suite counts are a pre-final-merge baseline. Security follow-up remains open. Existing entries retained as history.
+
+---
+
 ## DEV-01 — C2 integrated and verified — 2026-10-19
 
 C2 immutable selection, scoped review, snooze and fenced batch recovery are implemented. Concurrent upstream catch-up UI/generation and OPS work preserved; canonical services reconciled, migration0052. Final34SQL/25domain/37web/3integrity checks pass; typechecks, web build and migration structure pass. Full worker/web suites still fail; see [C2 session](sessions/DEV01-CATCHUP-C2-20261019.md). Upstream obfuscated build hooks were removed; [security follow-up](sessions/FIX01-OPS01-BUILD-HOOK-INCIDENT-20261019.md) remains open because credential exposure is uncertain. **Exact next action:** complete C3 worker/grounding/recovery integration using existing generation helpers, then authenticated C4 UI acceptance. Feature remains off by default; no deployment or routine activation. Older checkpoints below are historical.
+
+## DEV-01 — 2026-10-19 operator fresh-migration safety (source-level only)
+
+- Started GitHub `main` `72732585895e44e8cac32b5fbc8146253dec4a5f`. Existing migration and release wrappers found; enhanced `--allow-fresh` to reject occupied or indeterminate databases via read-only PostgreSQL relation inspection. New core and wrapper regression tests authored; runbook updated. All changes committed on `main`, no branch/PR.
+- **Executed:** 18/18 read-only source-contract assertions on actual post-commit GitHub file content passed, including preflight-only scope, safe catalog SQL, unrelated extension exclusion, backup/DB/ledger checks preserved and test coverage.
+- **NOT EXECUTED:** New Node test suite, live PostgreSQL integration (including false-fresh occupied target), updated web/worker/Clara full suites, container build, migration `plan` with actual DB, backup/restore validation, apply/verify, provider tests, deployment. Source inspection is not migration acceptance.
+- Operator's earlier test attempt reported offline Vitest RPC DNS (issue #38) and worker SIGKILL; no production database was changed in this assistant session. Operator must rerun full suite and validate backed-up exact target before migration.
+- Session `docs/project-control/sessions/DEV01-MIGRATION-FRESH-TARGET-SAFETY-20261019.md`, runbook `docs/runbooks/OPERATOR-MIGRATION-20261019.md`, exact operator commands in `NEXT_ACTION.md`.
+
+---
+
+## 2026-10-19 — DEV-01 operator log verification (preflight successful, migration NOT RUN)
+
+- Operator-host log: 29/29 operator unit tests, migration structure check, cached Docker web image build, 6 project TypeScript checks, 26/26 Clara Core unit tests PASS. **Offline web Vitest DNS rejection** and worker parallel **SIGKILL** abort release before DB identification/backup/migration. Do not call this a TypeScript build failure or database migration failure.
+- DEV-01 repaired two independently confirmed source contract bugs on main: adapter control-character RegExp was double-escaped and falsely rejected normal IDs (source SHA `6e7dd84e5b3a3ddc745610662d6deffdeab62c6d`); knowledge SQL test expected `$4` where current runtime binds keyword query `$3` (test SHA `8a50d61e00163367beac977166535557c0f69d2f`). Added control regressions (test SHA `9e9904ae6ef55f0e016a85966d35eb2810bbb73d`).
+- Executed current GitHub source checks including actual JS RegExp evaluation: 6/6 PASS. **Not run after fixes:** actual Node/tsx worker test suite, full web Vitest, production build against updated SHA, live migrations, provider/browser acceptance. Environment cannot resolve private github.com through shell or access operator Docker host.
+- OPS-01 issue #38 for unexpected `eth-mainnet.public.blastapi.io` DNS while tests are intentionally isolated; no network/credential bypass. Session `docs/project-control/sessions/DEV01-OPERATOR-TEST-TRIAGE-20261019.md`; exact diagnostics in `NEXT_ACTION.md`.
+
+
+---
+
+## 2026-10-19 — Operator single-command release wrapper — SOURCE ONLY
+
+- New direct-main `scripts/operator-one-shot.sh` (web build, full package tests/typechecks, migration read-only plan, external backup confirmation, guarded apply/ledger verify, opt-in Vercel or approved production Docker startup), regression suite `scripts/tests/operator-one-shot-script.test.mjs`, runbook `docs/runbooks/ONE-SHOT-OPERATOR-RELEASE-20261019.md`.
+- **ACTUALLY CHECKED:** 20/20 current authenticated GitHub source-contract safety assertions PASS. New committed Node suite checks Bash `-n`, non-interactive refusal, preflight ordering, database/backup prompts, Vercel and Docker dev identity guards.
+- **NOT EXECUTED:** New Node suite itself, exact Bash syntax in real shell, Docker web/worker builds, full pnpm, real DB plan/apply/verify, independent backup creation/restore test, Vercel CLI deploy, environment/prod health, authenticated provider or E2E. No production acceptance or target state asserted. OPS-01 operator executes; Vercel build-rate-limit remains external.
+- **Source:** `scripts/operator-one-shot.sh`; **operator runbook:** `docs/runbooks/ONE-SHOT-OPERATOR-RELEASE-20261019.md`.
 
 ---
 

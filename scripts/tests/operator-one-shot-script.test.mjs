@@ -56,9 +56,43 @@ test("bundled development Compose cannot be used to release production Docker se
   assert.doesNotMatch(script, /ACA_RELEASE_TARGET:-docker/);
 });
 
+test("automated tests never inherit production Compose credentials or network access", () => {
+  assert.match(script, /docker build --target web --tag "\$WEB_IMAGE" "\$ROOT"/);
+  assert.match(script, /docker run --rm --network none/);
+  assert.match(script, /pnpm -r typecheck; pnpm -r test; pnpm --filter @ai-comms-agent\/worker build/);
+  assert.doesNotMatch(script, /web sh -euc 'pnpm -r typecheck/);
+  assert.match(script, /Run automated test suites inside the production Compose service/i.test(script)
+    ? /NEVER run automated test suites inside the production Compose service/
+    : /NO production environment and NO network access/);
+});
+
 test("Vercel must be linked and authenticated; health does not claim integration acceptance", () => {
   assert.match(script, /\.vercel\/project\.json/);
   assert.match(script, /vercel whoami/);
   assert.match(script, /vercel deploy --prod --yes/);
   assert.match(script, /not proof of provider or tenant E2E readiness/);
+});
+
+
+test("numbered release menu choices normalize to named targets without bypassing validation", () => {
+  const selection = script.match(/^case "\$target" in[\s\S]*?^esac/m)?.[0];
+  assert.ok(selection, "release target normalization must remain an explicit case block");
+  const code = [
+    "set -Eeuo pipefail",
+    'die() { echo "ERROR: $*" >&2; exit 1; }',
+    'target="$1"',
+    selection,
+    'printf "%s" "$target"',
+  ].join("\n");
+  for (const [entered, expected] of [
+    ["1", "vercel"], ["2", "docker"], ["3", "migration"],
+    ["vercel", "vercel"], ["docker", "docker"], ["migration", "migration"],
+  ]) {
+    const check = spawnSync("bash", ["-c", code, "--", entered], { encoding: "utf8" });
+    assert.equal(check.status, 0, entered + ": " + check.stderr);
+    assert.equal(check.stdout, expected);
+  }
+  const invalid = spawnSync("bash", ["-c", code, "--", "4"], { encoding: "utf8" });
+  assert.equal(invalid.status, 1);
+  assert.match(invalid.stderr, /Choose 1 \(vercel\), 2 \(docker\), or 3 \(migration\)/);
 });

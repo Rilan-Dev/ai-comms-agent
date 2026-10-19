@@ -97,6 +97,8 @@ bash scripts/operator-migrate.sh apply --expect-db YOUR_NEW_DATABASE_NAME --back
 
 Do not use `--allow-fresh` to paper over an old/unknown migration ledger on production.
 
+**Additional fail-closed safeguard (2026-10-19):** During `apply --allow-fresh`, the live preflight inspects PostgreSQL's system catalogue for any non-extension user tables, views, materialized views, sequences or foreign tables in **any user schema**. It refuses the fresh bootstrap if even one exists or the inspection cannot prove the database is empty. The migration ledger table itself is excluded from that check. This prevents mistakenly applying "fresh" SQL over partially migrated or existing application data that has no valid migration ledger. If this occurs, **stop**; reconcile with OPS-01 using your restorable backup and history instead of clearing tables, editing applied migration checksums, or overriding the guard. The read-only `plan` command does not require the database to be empty.
+
 ## 4. Verify, then perform your deployment
 
 ```bash
