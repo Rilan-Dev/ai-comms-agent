@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { modelCatalogRecovery, type CatalogRecovery } from "@/lib/ai/model-catalog-recovery";
 
 export type ModelPurpose = "chat" | "embedding" | "realtime" | "tts" | "stt";
 type ModelOption = { id: string; name: string };
@@ -9,6 +10,7 @@ type ModelOption = { id: string; name: string };
 export function LiveModelSelect({
   organizationId, provider, purpose, value, onChange,
   allowInherit = false, refreshKey = 0, className = "",
+  onReuseSavedRealtimeKey, reuseCredentialBusy = false,
 }: {
   organizationId: string;
   provider: string;
@@ -18,10 +20,14 @@ export function LiveModelSelect({
   allowInherit?: boolean;
   refreshKey?: number;
   className?: string;
+  /** Explicit administrator-initiated reuse; server authorizes the mutation. */
+  onReuseSavedRealtimeKey?: () => void;
+  reuseCredentialBusy?: boolean;
 }) {
   const [models, setModels] = useState<ModelOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [recovery, setRecovery] = useState<CatalogRecovery>(null);
   const [catalogNote, setCatalogNote] = useState("");
   const [catalogSource, setCatalogSource] = useState<"live" | "documented" | null>(null);
   const [retry, setRetry] = useState(0);
@@ -31,6 +37,7 @@ export function LiveModelSelect({
       setModels([]);
       setLoading(false);
       setMessage(!organizationId ? "Select an organization first." : "Select a provider first.");
+      setRecovery(null);
       setCatalogSource(null);
       setCatalogNote("");
       return;
@@ -38,6 +45,7 @@ export function LiveModelSelect({
     const controller = new AbortController();
     setLoading(true);
     setMessage("");
+    setRecovery(null);
     setCatalogNote("");
     setCatalogSource(null);
     setModels([]);
@@ -45,11 +53,17 @@ export function LiveModelSelect({
     void fetch(`/api/settings/ai-models?${params}`, {
       cache: "no-store", signal: controller.signal,
     }).then(async (response) => {
-      const body = await response.json() as { models?: ModelOption[]; message?: string; source?: string; capability?: string };
+      const body = await response.json() as {
+        models?: ModelOption[]; message?: string; error?: string;
+        canReuseRealtimeKey?: boolean; source?: string; capability?: string;
+      };
       // A previous organization's fulfilled response may arrive after its request was aborted.
       // Never display its model IDs in the newly selected organization's form.
       if (controller.signal.aborted) return;
-      if (!response.ok) throw new Error(body.message || "Live models could not be fetched.");
+      if (!response.ok) {
+        setRecovery(modelCatalogRecovery({ provider, purpose, error: body.error, canReuseRealtimeKey: body.canReuseRealtimeKey }));
+        throw new Error(body.message || "Live models could not be fetched.");
+      }
       if (body.source !== "live" && body.source !== "documented") throw new Error("The provider did not return a supported model catalogue.");
       if (body.source === "documented" && (purpose !== "realtime" || !["sarvam", "elevenlabs"].includes(provider) || body.capability !== "streaming_stt")) {
         throw new Error("The provider returned an unexpected documented capability.");
@@ -91,6 +105,27 @@ export function LiveModelSelect({
       ) : catalogSource === "documented" ? (
         <p className="text-xs text-muted-foreground">{models.length} vendor-documented streaming STT {models.length === 1 ? "model" : "models"} · not a live per-account model listing</p>
       ) : <p className="text-xs text-muted-foreground">{models.length} provider-advertised models · live API</p>}
+      {recovery === "reuse-realtime" ? (
+        <button
+          type="button"
+          disabled={reuseCredentialBusy || !onReuseSavedRealtimeKey}
+          onClick={onReuseSavedRealtimeKey}
+          className="rounded-md border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:bg-secondary disabled:opacity-50"
+        >
+          {reuseCredentialBusy ? "Configuring voice credentials…" : "Use saved Realtime key for TTS/STT"}
+        </button>
+      ) : null}
+      {recovery === "configure-capability" ? (
+        <p className="text-xs text-muted-foreground">
+          Configure and enable the ElevenLabs TTS and STT credentials in Voice Chat above, then retry.
+          A Realtime key is not automatically shared across capabilities.
+        </p>
+      ) : null}
+      {recovery === "contact-admin" ? (
+        <p className="text-xs text-muted-foreground">
+          The saved credential cannot be decrypted on the server. Ask an administrator to verify the encryption configuration.
+        </p>
+      ) : null}
       {catalogNote ? <p role="status" className="text-xs text-muted-foreground">{catalogNote}</p> : null}
       {savedId && !available && !loading ? (
         <p role="status" className="text-xs text-amber-700">
