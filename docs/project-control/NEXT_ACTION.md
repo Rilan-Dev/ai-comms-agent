@@ -1,3 +1,14 @@
+## DEV-01 — Operator migration release preflight: worker source fixes, OPS web test blocker (2026-10-19)
+
+- **Evidence supplied:** Operator used `ACA_RELEASE_TARGET=migration bash scripts/operator-one-shot.sh` on `main` `6fdeb5a3`. **29/29** operator tests PASS; migration declaration+chain PASS; Docker web build PASS; 6 workspace TypeScript checks PASS; Clara Core **26/26** tests PASS. Then web Vitest failed DNS lookup `EAI_AGAIN eth-mainnet.public.blastapi.io` in deliberately offline Docker, and the parallel worker suite was SIGKILLed with 9 displayed failed test names but without error stacks. **No DB plan, backup confirmation, migration or deploy occurred.**
+- **DEV-01 source fix direct main (no branch/PR):** Corrected erroneous double-escaped control-character regex in `apps/worker/src/knowledge/clara-email-vector-adapter.ts` that rejected ordinary org/account/message identifiers. Added real NUL/newline/DEL negative regression cases. Updated stale Clara knowledge SQL test expectation for text search parameter `$3` rather than `$4` (no production SQL change). Commits `013a230c`, `05ace89c`, `cd0590f3`, `77aadf38`. Current GitHub source regex/SQL regression checks **6/6 PASS**; full worker run still unverified.
+- **OPS-01 handoff [#38](https://github.com/Rilan-Dev/ai-comms-agent/issues/38):** Investigate external Ethereum RPC DNS during disconnected web Vitest and parallel test shutdown. Preserve `docker run --network none` and never inject production DB/AI credentials to pass tests.
+- **Next exact host check (nonproduction, diagnostics only):** `git pull --ff-only origin main && docker build --target web --tag "aca-operator-verify:$(git rev-parse --short HEAD)" .`; then run isolated worker test command `cd /workspace/apps/worker && node --import tsx --test tests/clara-email-knowledge-contract.test.ts tests/clara-email-vector-adapter.test.ts` and separately `cd /workspace/apps/web && pnpm exec vitest run --maxWorkers=1 --minWorkers=1 --reporter=verbose` inside new image with `--network none`, as documented in the [session](../sessions/DEV01-OPERATOR-TEST-TRIAGE-20261019.md). Only after actual full suite PASS proceed with approved operator script (exact DB, backup, `APPLY`).
+- **Status:** Phase 4 not accepted. Owner/OPS performs migration; FIX-01 retains voice transport and HTML ingest defects. No new PR, branch or production action.
+
+
+---
+
 ## 2026-10-19 — One-shot release menu accepts 1/2/3 as well as target names
 
 - **Owner observed:** On a clean checked-out `main`, `operator-one-shot.sh` displayed `1) vercel; 2) docker; 3) migration`, but entering `2` failed `Choose vercel, docker, or migration`. Validation stopped before tests, migration, backup confirmation or deployment, so that attempt performed **no production change**.
