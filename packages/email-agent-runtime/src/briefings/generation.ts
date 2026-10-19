@@ -139,6 +139,17 @@ export async function generateBriefingBatch(
     });
     const items = validateBriefingItems(response, chosen, incomplete);
     if (!items.length) return { items: fallbackItems(sources), status: "partial", considered: chosen.length, total: sources.length };
+    // A mixed model reply with an invalid/fabricated candidate is not a
+    // complete representation. Dropping that one item must not silently clear
+    // the source just because some other item with the same source validated.
+    let decoded: unknown = response;
+    if (typeof decoded === "string") {
+      try { decoded = JSON.parse(decoded); } catch { decoded = null; }
+    }
+    const candidates = decoded && typeof decoded === "object" && !Array.isArray(decoded)
+      ? (decoded as { items?: unknown }).items : null;
+    const rejected = !Array.isArray(candidates) || candidates.length !== items.length;
+    if (rejected) for (const item of items) item.representation = "partial";
     // If any selected source has no complete representation, it remains
     // available for another batch; one valid-looking item never clears it.
     const covered = new Set(items.flatMap(item => item.sourceIds));

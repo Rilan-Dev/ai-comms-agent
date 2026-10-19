@@ -170,3 +170,18 @@ test("partial oversized message is linked rather than discarded by C3 worker", a
   });
   assert.equal((represented as Array<{sourceIds:string[]}>)[0]?.sourceIds[0], source.messageId);
 });
+
+test("mixed valid and invented model candidates cannot complete source coverage", async () => {
+  const evidence = { sourceId: source.messageId, contentRevision: source.contentRevision,
+    start: 0, end: source.text.length, quote: source.text, supports: "summary" as const };
+  const valid = { sourceIds: [source.messageId], priority: "low", title: "Invoice",
+    summary: "Please pay USD 35", reason: "Payment request",
+    deadline: null, confidence: "supported", suggestedAction: "review",
+    evidence: [evidence], representation: "complete" };
+  const response = await generateBriefingBatch([source], async () => ({
+    items: [valid, { ...valid, title: "Invented amount", summary: "Please pay USD 9000" }],
+  }));
+  assert.equal(response.status, "partial");
+  assert.equal(response.items.length, 1);
+  assert.equal(response.items[0]?.representation, "partial");
+});
