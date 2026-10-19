@@ -77,8 +77,11 @@ step "Build the production web image from this exact source and execute package 
 # container with NO production environment and NO network access. Integration
 # tests needing an external test database must run separately on a disposable
 # target under OPS-01; never point them at the live migration database.
-WEB_IMAGE="$("${MIGRATION_COMPOSE[@]}" images -q web)"
-[[ -n "$WEB_IMAGE" ]] || die "Could not identify the built web image for offline checks."
+# Compose's "images -q" only lists CREATED service containers on some Docker
+# versions. Build/tag an explicit same-source immutable verification image rather
+# than requiring a currently running production service or guessing its tag.
+WEB_IMAGE="aca-operator-verify:$(git rev-parse --short HEAD)"
+docker build --target web --tag "$WEB_IMAGE" "$ROOT"
 docker run --rm --network none \
   --volume "$ROOT/scripts:/workspace/scripts:ro" \
   --volume "$ROOT/docs:/workspace/docs:ro" \
