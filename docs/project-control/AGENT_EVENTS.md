@@ -656,3 +656,10 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Change:** Manual Compose-based, non-destructive `plan/apply/verify` operator wrapper + Postgres live target/ledger/checksum checks, exact backup and database-name gate, fresh DB opt-in, failure-on-skipped statements, offline Node/Bash tests and operator runbook.
 - **Evidence:** 17/17 fresh repository source-contract assertions PASS; full Node/bash/Docker/PG migration/backup/deployed validation NOT EXECUTED. No SQL row/key modifications.
 - **Handoff:** OPS-01 owns operator execution, backups, CI/CD/deployment. Existing ElevenLabs purpose-specific config 409 persists until an authorized admin explicitly saves/reuses keys; never auto-migrate secrets. Session `docs/project-control/sessions/OPERATOR-MIGRATION-SCRIPT-20261019.md`.
+
+### EVT-OPERATOR-MIGRATION-STATIC-CHECK-20261019
+- **Report:** operator ran tests 14/14 PASS, web Docker image build PASS, manual `plan` failed immediately on `duplicate canonical table object(s): aca`; no SQL applied.
+- **Cause:** historical idempotent `CREATE TABLE IF NOT EXISTS` was counted as duplicate; schema-qualified names were truncated to `aca`; enum `DO` guards ignored.
+- **Resolution/source:** direct-main `verify-migration-chain.sh` calls `scripts/check-migration-declarations.mjs`; allows historical guarded/idempotent DDL but flags repeated unguarded table/enum declarations; five regression tests added. Existing SQL and live migration ledger unchanged.
+- **Evidence:** exact checker Node syntax and fixture PASS, 70 source migration files reviewed for repeated bare names. Full Node test suite/current PostgreSQL `plan`/apply/verify **not run** by assistant.
+- **Handoff:** user/operator/OPS-01 reruns read-only test, structural check, plan; must confirm actual database and backup before separate migration. Details in `docs/project-control/sessions/OPERATOR-MIGRATION-DUPLICATE-STATIC-CHECK-FIX-20261019.md`.
