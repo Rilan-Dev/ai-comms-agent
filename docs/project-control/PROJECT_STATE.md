@@ -1,3 +1,11 @@
+## Owner-provided deploy/migrate request: scripts prepared (2026-10-19)
+
+- Operator tools for checksum-safe `plan | apply | verify` migrations now committed on `main`; they reuse existing forward SQL, require explicit database+backup confirmation to apply, verify ledger and never start/reset app or transfer API secrets. No live migrations/deployment run. 17 source-contract checks passed; actual Node/shell/Docker/PostgreSQL tests remain pending. Documentation: `docs/runbooks/OPERATOR-MIGRATION-20261019.md`.
+- User's earlier ElevenLabs TTS/STT 409 represents per-purpose credential readiness, **not** a missing migration. Realtime→TTS/STT key reuse must be explicitly confirmed through authenticated org-admin app action after code deploy.
+- Phase 4 unchanged; OPS-01 executes migration and deployment. Session `docs/project-control/sessions/OPERATOR-MIGRATION-SCRIPT-20261019.md`.
+
+---
+
 ## DEV-01 — 2026-10-19 ElevenLabs TTS/STT save guard checkpoint
 
 - Existing source already had explicit, authorized same-org encrypted Realtime→TTS/STT reuse. New DEV-01 direct-main slice checks missing TTS/STT credentials before sequential Save, fails closed on `keepExistingKey` without a saved secret, and retains Realtime status after Voice Chat reload. Purpose-specific independent model and key settings preserved.
