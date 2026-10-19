@@ -47,3 +47,16 @@ export function sanitizeDatabaseLabel(value) {
   }
   return value;
 }
+
+/**
+ * --allow-fresh is ONLY a way to bootstrap an actually empty database.
+ * Missing/empty migration history is not proof of emptiness: a failed
+ * migration may already have created tables before recording the ledger.
+ * The live checker must inspect non-extension user relations before apply.
+ * Fail closed if the inspection result is missing or ambiguous.
+ */
+export function assertFreshDatabaseEmpty(hasUserRelations) {
+  if (hasUserRelations !== false) {
+    throw new Error("Fresh migration refused: user relations already exist or database emptiness could not be confirmed. Reconcile migration history and backup; do not use --allow-fresh on an existing database.");
+  }
+}
