@@ -1,5 +1,6 @@
 import {
   parseCredentialsMasterKey,
+  decryptCredential,
   PostgresEmailAccountRepository,
   PostgresEmailFolderLabelRepository,
   query,
@@ -282,6 +283,25 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       ...connectionConfig,
       credential_type: candidate.provider === "imap_smtp" ? ((stored as unknown as EmailCredentials).credential_type ?? "app_password") : "oauth_token",
     };
+    if (candidate.provider === "microsoft_graph") {
+      // Rotation of Microsoft OAuth client secrets happens in Platform
+      // Settings, without an application rebuild or mailbox reconnect.
+      // Reject missing/disabled client references instead of falling back to
+      // stale tokens or deployment environment variables.
+      const configId = typeof connectionConfig.oauthConfigId === "string" ? connectionConfig.oauthConfigId : "";
+      if (!configId) throw new Error("This Outlook mailbox must be reconnected to a Microsoft OAuth client from Platform Settings.");
+      const oauth = await query<{ client_id: string; tenant_id: string; client_secret_ciphertext: Buffer }>(
+        "SELECT client_id,tenant_id,client_secret_ciphertext FROM microsoft_oauth_configs WHERE id=$1 AND organization_id=$2 AND enabled=true LIMIT 1",
+        [configId, candidate.organization_id],
+      );
+      const selected = oauth.rows[0];
+      if (!selected) throw new Error("The Microsoft OAuth client is disabled or missing. Enable it in Platform Settings.");
+      credentials.microsoft_client_id = selected.client_id;
+      credentials.microsoft_tenant_id = selected.tenant_id;
+      credentials.microsoft_client_secret = decryptCredential(
+        selected.client_secret_ciphertext, parseCredentialsMasterKey(masterKey),
+      ).toString("utf8");
+    }
     await adapter.connect(credentials);
     const structure = await query<{ count: string }>(
       "SELECT count(*)::text AS count FROM email_folders WHERE email_account_id=$1",
