@@ -1,3 +1,11 @@
+## DEV-01 latest next action — 2026-10-20, C3 DB acceptance gate
+
+Focused C3 tests **29/29 PASS** and db/Clara/email-runtime/worker TypeScript checks **PASS** on owner host after fast-forward `daa89ffd`. GitHub source commit `4cda8ee5` adds a five-subtest disposable Postgres canonical source harness; it is **NOT RUN**. Do not activate or register worker yet. [Verification session](sessions/DEV01-C3-HOST-VERIFIED-DB-GATE-20261020.md).
+
+**Next:** on a fast-forwarded checkout with *the existing verified* loopback-only `ai-comms-c1-testdb` tmpfs Docker fixture, run `BRIEFING_TEST_DATABASE_OPT_IN=disposable-local-c1 BRIEFING_TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/ai_comms_c1_test node --test packages/db/tests/briefing-c3-canonical.integration.test.mjs`. The harness refuses any non-disposable configuration. DEV-01 to fix real integration errors and verify complete suites; only then add disabled-by-default registration, then C4 authenticated browser tests. OPS-01 owns production migration and deployment. Historical next actions retained below.
+
+---
+
 ## DEV-01 — C3 multi-mailbox claim scope fix, 2026-10-20 (latest)
 
 Owner-host focused verification: 27/27 Node tests passed (console output provided, no commit SHA in output); this predates the latest corrective commit. GitHub source fix `f036d6bf434ee710aaa7e53d2444c18fa74bcb62` resolves an untested multi-mailbox failure: canonical batch loader now resolves full immutable manifest mailbox grants/scope before checking that batch sources are a permitted subset. Two regression cases added; **post-fix 29 focused tests, TypeScript, and disposable-DB integration NOT RUN**. Phase 4 remains `implementation_in_progress`; worker remains disabled/unregistered. Session [DEV01-C3-MULTI-MAILBOX-BATCH-SCOPE-20261020](sessions/DEV01-C3-MULTI-MAILBOX-BATCH-SCOPE-20261020.md).

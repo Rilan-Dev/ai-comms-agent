@@ -283,3 +283,7 @@ Latest main source `464ab70d`. Source manifest grant/revision/lease revalidation
 
 ## 2026-10-20 — C3 multi-mailbox source-loading lesson
 A durable C2 manifest can span mailboxes A+B while a 50-source batch includes only A. The C1 scopeVersion hashes the complete mailbox set, so resolving the batch's subset and comparing to manifest scope rejects valid work. Corrected in `f036d6bf`: resolve the entire manifest grants then intersect claimed mailbox subset. User reported 27/27 C3 tests on earlier code, but the additional two post-fix tests and TypeScript are **not yet run**. See `../../sessions/DEV01-C3-MULTI-MAILBOX-BATCH-SCOPE-20261020.md`.
+
+
+## 2026-10-20 — C3 actual host verification and PostgreSQL boundary
+The user actually ran all 29 focused C3 Node tests and four package TypeScript checks successfully at main `daa89ffd`. This is stronger than earlier source-only assertions, but does not prove SQL security. Added a separate C3 DB integration file at `4cda8ee5` using the existing fail-closed disposable localhost/tmpfs fixture, not the production DATABASE_URL. Never register the catch-up worker until the DB test demonstrates real post-claim grant and revision authorization. Session `../../sessions/DEV01-C3-HOST-VERIFIED-DB-GATE-20261020.md`.

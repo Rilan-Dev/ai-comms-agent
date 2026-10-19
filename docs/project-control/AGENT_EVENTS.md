@@ -703,3 +703,13 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Verification:** Existing 27 tests per user; new 29-test execution/typechecks/disposable DB **pending**
 - **Status:** Implementation in progress; feature off
 - **Evidence:** `sessions/DEV01-C3-MULTI-MAILBOX-BATCH-SCOPE-20261020.md`
+
+
+### EVT-DEV01-C3-HOST-AND-DB-GATE-20261020
+- Agent: DEV-01 / Forge
+- Source: owner-provided terminal output, fast-forwarded main `daa89ffd`
+- Verified: 29/29 focused worker C3 tests passed; db, Clara, email-runtime, worker `tsc --noEmit` passed
+- Change: added five unexecuted guarded PostgreSQL integration subtests at `4cda8ee52e53c70b1dcf059377933e65f7ef7147`
+- Status: Phase 4 implementation in progress; feature disabled; DB/full-suite/build/C4 still pending
+- Next: run guarded localhost disposable DB test; do not point fixture at live infrastructure
+- Session: `sessions/DEV01-C3-HOST-VERIFIED-DB-GATE-20261020.md`

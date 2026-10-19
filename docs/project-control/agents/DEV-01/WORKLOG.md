@@ -596,3 +596,11 @@ Start `23ceb97637e47b9326cb2df181f3c1f9208a6fbf`. Commits `1bae80c8` (canonical 
 - Verification: code-path assertions only for fix; 29 post-fix tests, typechecks and disposable-db test NOT RUN.
 - Next: run focused tests + four package typechecks, fix failures and validate multi-mailbox/revocation on disposable PostgreSQL before disabled-by-default registration; then C4 browser.
 - Record `../../sessions/DEV01-C3-MULTI-MAILBOX-BATCH-SCOPE-20261020.md`.
+
+
+## 2026-10-20 — verified host gate / disposable DB acceptance harness
+- Host pulled main to `daa89ffd`, reported **29/29** C3 focused Node tests PASS and four package TypeScript checks PASS; no compile output errors; pnpm native binary fallback warning only.
+- Audited existing migration/schema plus strict local DB harness; authored `packages/db/tests/briefing-c3-canonical.integration.test.mjs` with five fixture subtests covering full multi-mailbox grants, C2 batch subset, user/tenant boundaries, post-claim revoke, stale content and lease fencing. Code commit `4cda8ee5` directly on main; no branch/PR.
+- **New DB tests NOT RUN** in connector-only development. Feature still OFF, no migrations/deploy/real provider sends.
+- Next: host run DB guarded fixture, repair failures, then full suites and disabled-by-default worker registration; C4 browser afterward.
+- Session `../../sessions/DEV01-C3-HOST-VERIFIED-DB-GATE-20261020.md`.

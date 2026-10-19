@@ -1,3 +1,9 @@
+## DEV-01 — C3 focused host checks PASS, disposable DB pending — 2026-10-20
+
+User-host at fast-forwarded `daa89ffd`: **29/29** C3 Node regression tests pass (0 failed/skipped/cancelled; ~774ms); four successful `tsc --noEmit` executions for db, clara-core, email-agent-runtime and worker; pnpm native binary notice only. New source commit `4cda8ee5` adds five **unexecuted** disposable PostgreSQL integration subtests for multi-mailbox manifest/batch, cross-user/tenant denial, grant revocation, content revision and stale lease. **DB tests, full suites, builds, production and C4 browser acceptance remain NOT RUN.** Source record: [C3 host verified and DB gate](sessions/DEV01-C3-HOST-VERIFIED-DB-GATE-20261020.md). No worker registration/activation.
+
+---
+
 ## DEV-01 — 2026-10-20, C3 host tests and multi-mailbox correction
 
 **PASSED per owner host console:** 27/27 existing focused worker C3 tests, no failures or skips (run SHA not shown). **PASSED as code inspection only:** corrected canonical loader uses full manifest mailbox set and requires claim subset; new two regression cases committed at `f036d6bf`. **NOT RUN after fix:** 29 expected focused tests, TypeScript, disposable PostgreSQL integration, full suite and C4 browser. Do not transfer the earlier pass to the new commit. [Session](sessions/DEV01-C3-MULTI-MAILBOX-BATCH-SCOPE-20261020.md). No product activation.
