@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Settings2 } from "lucide-react";
 import { GmailOAuthSettings } from "./gmail-oauth-settings";
 import { ZohoOAuthSettings } from "./zoho-oauth-settings";
+import { MicrosoftOAuthSettings } from "./microsoft-oauth-settings";
 import { AIRuntimeSettings } from "./ai-runtime-settings";
 import { AIProviderSettings } from "./ai-provider-settings";
 
@@ -129,14 +130,15 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section id="mail-provider-settings" className="scroll-mt-20 space-y-4">
+      <section id="email-provider-clients" className="scroll-mt-20 space-y-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Connected services</p>
           <h2 className="mt-1 font-display text-xl font-medium">Mail OAuth clients</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Manage the organization’s Google and Zoho OAuth clients. Client secrets remain encrypted on the server and are never displayed after saving.</p>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Manage the organization’s Google, Zoho and Microsoft Graph OAuth clients. Client secrets remain encrypted on the server and are never displayed after saving.</p>
         </div>
         <GmailOAuthSettings organizationId={organization?.id ?? ""} />
         <ZohoOAuthSettings organizationId={organization?.id ?? ""} />
+        <MicrosoftOAuthSettings organizationId={organization?.id ?? ""} />
       </section>
 
       <section id="ai-provider-settings" className="scroll-mt-20 space-y-4">
