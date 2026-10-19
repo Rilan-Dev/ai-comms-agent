@@ -45,7 +45,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const configId = url.searchParams.get("configId")?.trim() ?? "";
   if (!configId) return configurationError(request, "Choose an enabled Microsoft OAuth client in Settings before connecting Outlook.", 422);
-  const config = await loadMicrosoftOAuthConfiguration(appContext.organizationId, configId);
+  const config = await loadMicrosoftOAuthConfiguration(appContext.organizationId, configId).catch(() => null);
   if (!config) return configurationError(request, "The selected Microsoft OAuth client is unavailable or disabled.", 404);
   const { clientId, tenantId } = config;
   const accountId = url.searchParams.get("accountId")?.trim() || undefined;
