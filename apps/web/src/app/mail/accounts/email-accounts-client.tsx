@@ -3,6 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import type { EmailAccount } from "@ai-comms-agent/shared";
 
+type AccountWithSync = EmailAccount & {
+  syncProgress?: {
+    status: string; mode: "initial" | "incremental" | string;
+    imported: number; initialLimit: number; pending: number;
+    lastSuccessAt: string | null; lastAttemptAt: string | null;
+  } | null;
+};
+
 const providers = [
   { id: "gmail", name: "Gmail", description: "Google Workspace and Gmail", method: "OAuth 2.0", tone: "G" },
   { id: "zoho", name: "Zoho Mail", description: "Regional Zoho Mail endpoints", method: "OAuth 2.0", tone: "Z" },
@@ -25,9 +33,9 @@ export function EmailAccountsClient({
   initialAccounts,
 }: {
   organizationId: string;
-  initialAccounts: EmailAccount[];
+  initialAccounts: AccountWithSync[];
 }) {
-  const [accounts, setAccounts] = useState(initialAccounts);
+  const [accounts, setAccounts] = useState<AccountWithSync[]>(initialAccounts);
   const [gmailConfigs, setGmailConfigs] = useState<Array<{ id: string; label: string; enabled: boolean }>>([]);
   const [selectedGmailConfig, setSelectedGmailConfig] = useState("");
   const [zohoConfigs, setZohoConfigs] = useState<Array<{ id: string; label: string; enabled: boolean }>>([]);
@@ -443,6 +451,24 @@ export function EmailAccountsClient({
                   <p className="mt-2 text-xs text-muted-foreground">
                     Last sync: {account.last_sync_at ? new Date(account.last_sync_at).toLocaleString() : "Not synchronized"}
                   </p>
+                  {account.syncProgress ? (
+                    <div role="status" className="mt-2 rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+                      <p className="font-medium text-foreground">
+                        {account.syncProgress.status === "running" ? "Sync in progress" :
+                          account.syncProgress.mode === "initial" ? "Initial import pending or continuing" :
+                          "Incremental sync active"}
+                      </p>
+                      <p className="mt-1">
+                        {account.syncProgress.imported} messages imported
+                        {account.syncProgress.mode === "initial"
+                          ? ` · initial import limit: ${account.syncProgress.initialLimit}` : " · new mail will continue syncing"}
+                        {account.syncProgress.pending > 0 ? ` · ${account.syncProgress.pending} queued in the current provider page` : ""}
+                      </p>
+                      {account.syncProgress.lastAttemptAt ? <p className="mt-1">Last sync attempt: {new Date(account.syncProgress.lastAttemptAt).toLocaleString()}</p> : null}
+                    </div>
+                  ) : account.status === "pending" ? (
+                    <p role="status" className="mt-2 text-xs text-muted-foreground">Waiting for initial mailbox verification and synchronization. Status refreshes automatically.</p>
+                  ) : null}
                   {account.last_error && <p role="alert" className="mt-2 max-w-2xl text-xs text-destructive">{account.last_error}</p>}
                   {structure && (
                     <div className="mt-3 rounded-md border bg-muted/30 p-3">
