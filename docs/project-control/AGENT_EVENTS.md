@@ -650,3 +650,9 @@ Routine implementation details belong in the owning agent's WORKLOG.md.
 - **Correction:** Pure before-first-PUT completeness guard, whitespace-safe plaintext handling, PUT keepExistingKey existence check after authorization, retained read-only Realtime metadata during voice capabilities reload.
 - **Evidence:** 8/8 exact-helper isolated Node execution, isolated TypeScript and 10/10 authenticated GitHub source predicates PASS. Whole repo tests/build, live vendor APIs, migrations, browser/deploy NOT tested; no branch/PR. Sequential network failures still could partially commit.
 - **Handoff:** OPS-01 integration/deploy/Vercel; FIX-01 existing voice/security defects. Exact session `DEV01-ELEVENLABS-VOICE-PRESAVE-GUARD-20261019`.
+
+### EVT-OPERATOR-MIGRATION-SCRIPT-20261019
+- **Owner direction:** Prepare and commit migration scripts to GitHub main; user deploys/applies later; no branch/PR.
+- **Change:** Manual Compose-based, non-destructive `plan/apply/verify` operator wrapper + Postgres live target/ledger/checksum checks, exact backup and database-name gate, fresh DB opt-in, failure-on-skipped statements, offline Node/Bash tests and operator runbook.
+- **Evidence:** 17/17 fresh repository source-contract assertions PASS; full Node/bash/Docker/PG migration/backup/deployed validation NOT EXECUTED. No SQL row/key modifications.
+- **Handoff:** OPS-01 owns operator execution, backups, CI/CD/deployment. Existing ElevenLabs purpose-specific config 409 persists until an authorized admin explicitly saves/reuses keys; never auto-migrate secrets. Session `docs/project-control/sessions/OPERATOR-MIGRATION-SCRIPT-20261019.md`.
