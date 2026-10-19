@@ -122,7 +122,7 @@ export async function GET(request: Request) {
       ? await repository.updateConnection(existing.id, {
           emailAddress: profile.emailAddress,
           displayName: profile.emailAddress,
-          connectionConfig: { historyId: profile.historyId ?? null, oauthScope: tokens.scope ?? null, oauthConfigId: oauthConfig.id initialSyncLimit: [10, 50, 100].includes(payload.initialLimit ?? 50) ? payload.initialLimit ?? 50 : 50, },
+          connectionConfig: { historyId: profile.historyId ?? null, oauthScope: tokens.scope ?? null, oauthConfigId: oauthConfig.id, initialSyncLimit: [10, 50, 100].includes(payload.initialLimit ?? 50) ? payload.initialLimit ?? 50 : 50, },
           status: "pending",
           capabilities,
         })
@@ -131,7 +131,7 @@ export async function GET(request: Request) {
           provider: "gmail",
           emailAddress: profile.emailAddress,
           displayName: profile.emailAddress,
-          connectionConfig: { historyId: profile.historyId ?? null, oauthScope: tokens.scope ?? null, oauthConfigId: oauthConfig.id initialSyncLimit: [10, 50, 100].includes(payload.initialLimit ?? 50) ? payload.initialLimit ?? 50 : 50, },
+          connectionConfig: { historyId: profile.historyId ?? null, oauthScope: tokens.scope ?? null, oauthConfigId: oauthConfig.id, initialSyncLimit: [10, 50, 100].includes(payload.initialLimit ?? 50) ? payload.initialLimit ?? 50 : 50, },
           status: "pending",
           capabilities,
         });
@@ -183,7 +183,7 @@ export async function GET(request: Request) {
           connectionConfig: {
             historyId: profile.historyId ?? null,
             oauthScope: tokens.scope ?? null,
-            oauthConfigId: oauthConfig.id initialSyncLimit: [10, 50, 100].includes(payload.initialLimit ?? 50) ? payload.initialLimit ?? 50 : 50,,
+            oauthConfigId: oauthConfig.id, initialSyncLimit: [10, 50, 100].includes(payload.initialLimit ?? 50) ? payload.initialLimit ?? 50 : 50,,
             gmailWatchExpiresAt: new Date(Number(watch.expiration)).toISOString(),
             gmailWatchHistoryId: watch.historyId,
             gmailWatchRenewedAt: new Date().toISOString(),
