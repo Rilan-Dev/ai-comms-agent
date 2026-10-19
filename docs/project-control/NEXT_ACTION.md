@@ -1,3 +1,13 @@
+## 2026-10-19 — OPERATOR MIGRATION `plan` FALSE-POSITIVE FIX — USER ACTION REQUIRED (READ ONLY)
+
+- **Owner evidence:** earlier operator Node suites 14/14 PASS and `docker compose ... build web` PASS on main `ae01b335`, but `bash scripts/operator-migrate.sh plan` aborted during static `verify-migration-chain.sh` with `duplicate canonical table object(s): aca` + normal table names. This is a static parsing error, **not** a database migration failure; SQL was not run by this error path.
+- **Fixed on main, no branch/PR:** historical `CREATE TABLE IF NOT EXISTS` and `DO $$ ... EXCEPTION WHEN duplicate_object` enum reassertions are deliberately idempotent; prior grep collapsed qualified `aca.foo` to `aca` and rejected repeated safe declarations. New `scripts/check-migration-declarations.mjs` checks repeated **unguarded** table/enum declarations, respects comments/dollar bodies/schema names; `verify-migration-chain.sh` retains other checks. Added five regression tests to the same operator test suite; runbook and session updated. Existing SQL files/ledger untouched.
+- **Evidence:** Exact GitHub-matching new static-checker blob `e1518eff9be87adb9dc7dba633ce02c50958d149` passed Node syntax and three isolated local fixtures; a representative whole-chain fixture passed idempotent DDL and failed duplicated bare `aca.unsafe_table`. Checked declarations across 70 GitHub migration files; no repeated unguarded names observed. **Not run here:** complete checkout tests/chain, live PostgreSQL plan or apply, migration verification/deploy. Owner earlier 14/14 and Docker build precede patch.
+- **EXACT NEXT ACTION OPERATOR:** `git pull --ff-only origin main`; `node --test scripts/tests/operator-migration-core.test.mjs scripts/tests/operator-migrate-script.test.mjs`; `bash scripts/verify-migration-chain.sh`; `bash scripts/operator-migrate.sh plan`. **STOP** on any failure. Read actual `DATABASE:`, `LEDGER:`, `PENDING:`; never infer DB name from `aca.` schema; if existing DB has no ledger do not use `--allow-fresh`. Only after verified target, restorable backup, checked pending SQL and matching current image, operator may separately apply with `--expect-db CONFIRMED_DATABASE_NAME --backup-confirmed`, then verify. Actual live DB/migrations/deploy remain OPS-01/operator; not attempted here.
+- **Session:** `docs/project-control/sessions/OPERATOR-MIGRATION-DUPLICATE-STATIC-CHECK-FIX-20261019.md`; **runbook:** `docs/runbooks/OPERATOR-MIGRATION-20261019.md`.
+
+---
+
 ## Owner-requested manual database migration scripts — 2026-10-19
 
 - **Owner request:** Create and commit migration scripts into GitHub; owner/operator will deploy and migrate. Direct commits on `main`, **no branches/PRs**. Phase 4 remains implementation_in_progress.
