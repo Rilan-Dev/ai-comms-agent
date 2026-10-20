@@ -287,3 +287,10 @@ A durable C2 manifest can span mailboxes A+B while a 50-source batch includes on
 
 ## 2026-10-20 — C3 actual host verification and PostgreSQL boundary
 The user actually ran all 29 focused C3 Node tests and four package TypeScript checks successfully at main `daa89ffd`. This is stronger than earlier source-only assertions, but does not prove SQL security. Added a separate C3 DB integration file at `4cda8ee5` using the existing fail-closed disposable localhost/tmpfs fixture, not the production DATABASE_URL. Never register the catch-up worker until the DB test demonstrates real post-claim grant and revision authorization. Session `../../sessions/DEV01-C3-HOST-VERIFIED-DB-GATE-20261020.md`.
+
+## 2026-10-20 — R1a clock/consent and catch-up product lesson
+- Human-first inbox needs truthful **last-review/source coverage**, not a login timestamp or sample unread count. Continuous authorized provider sync must continue while a person is away; no duplicate raw-email store.
+- Daily 09:00 in a saved IANA zone is wall-clock/calendar time. Every 24 hours is UTC elapsed time. For nonexistent local hours skip and record; for repeated local hours choose the first UTC instant only. Preview must show next three instants and UTC offsets.
+- A pure preview (`nextRoutineOccurrences`) carries NO side-effect authority. Confirmed revision-bound host grants and real source/recipient/provider permissions are prerequisites for scheduled or WhatsApp delivery. Do not let a model's intent text activate a routine.
+- R1a code/tests at `2b2342f3`, `7b4a0d96`, `9eb4edc0` + three exports. Ten GitHub source invariants inspected; Node/TS tests **NOT RUN** on new code. Design extension `docs/superpowers/plans/2026-10-20-ai-email-command-center-ux-rollout.md` and session `../../sessions/DEV01-EMAIL-COMMAND-CENTER-R1A-20261020.md`.
+- Do not use historical migration IDs 0051/0052 from 2026-10-18 plans without checking latest main. No feature activation before runtime/security evidence.
