@@ -980,3 +980,15 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Artifacts:** [R1b focused plan](../superpowers/plans/2026-10-20-r1b-safe-routine-proposals-implementation.md) `7a6bc740`; [session with evidence](sessions/DEV01-EMAIL-COMMAND-CENTER-R1B-PLAN-20261020.md) `44b13bf3`; `NEXT_ACTION.md` `9ddcf7a0`. Existing plan/spec and other contributor work preserved.
 - **Status/evidence:** Proposed document work committed. No executable Node/TS/DB/browser tests in the connector-only session, no routine storage/registration, WhatsApp send, SQL apply or deployment. R1a tests and C3 current-tip acceptance remain open. Phase 4 unchanged.
 - **Next:** On sanitized equipped current-main host run `cd apps/worker && node --import tsx --test tests/routine-time.test.ts` plus root shared/email-runtime typechecks; review proposed R1b interface boundaries, then test-first pure proposal work if approved, while progressing C3/C4 independently. FIX-01 retains scheduler/tenant defects; OPS-01 retains environment/deployment/Meta and build-hook assessment.
+
+### FIX01-AGENT-MAIL-POLICY-UNBIND-20261020 — 2026-10-20
+- **Agent:** FIX-01 / Sentinel
+- **Invocation:** Fix chat 403 and failed email-account Remove for active Sarvam agent with connected primary Gmail.
+- **Started from:** main 6016cd5a; Phase 4 development in progress.
+- **Scope/authorization:** Owner-directed narrowly corrective source/testing only; no implicit policy grant, no DEV-01 product expansion or OPS-01 infra/deploy ownership.
+- **Status:** HANDOFF — source committed, runtime acceptance pending.
+- **Completed:** Traced independent persisted policy gate and malformed PostgreSQL DELETE USING join. Corrected SQL (9cf971b4), error explanation (61f819d0), admin Policy UI guidance (a4d7b72c), 4 regression cases (ca936db9). GitHub-source checks 16/16 pass.
+- **Pending:** Focused Vitest/web-db typecheck; live policy, mailbox role and actor read permission; seeded cross-tenant DELETE and browser summary and Remove after deployed head verified.
+- **Blockers:** No live database/deployed revision evidence or complete dependency-equipped checkout in FIX-01 connector context; cannot establish live policy or runtime PASS.
+- **Handoff:** OPS-01 only for deployment/current build, environment and live DB/browser verification; DEV-01 independent work unaffected. User's exposed access cookie must be revoked/rotated, never reused.
+- **Next action:** Authorize email.search or email.messages.list explicitly in agent Policy via admin for summaries, without deleting other allowed tools; test on approved current main, then OPS-01 verifies served revision and isolation after deployment.
