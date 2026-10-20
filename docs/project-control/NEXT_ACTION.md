@@ -1,3 +1,20 @@
+## DEV-01 current next action — 2026-10-20, human-first email command center and R1a preview
+
+**Phase:** Phase 4 `implementation_in_progress`. Owner invoked DEV-01 to continue on direct `main`, preserve independent FIX-01/OPS-01 work, and prioritize accurate five-day email catch-up with accessible action/importance cards and human-confirmed daily/hourly/weekly/one-off routines, optional narrowly consented WhatsApp briefings.
+
+**C3 updated evidence:** Owner-host earlier 29/29 focused Node + four TypeScript checks passed at `daa89ffd`. A later operator receipt in root `worklog.md` records **6/6 disposable localhost PostgreSQL C3 tests PASS** after fast-forward to `2789527a` (C3 bootstrap container fix included). This confirms that particular isolated host test only; no current-tip full-suite/provider/browser/production gate accepted. C3 worker still disabled/unregistered; C4 authenticated UX pending. Historical “C3 DB not run” lines below describe earlier checkpoints, not the newest host receipt.
+
+**R1a code authored on main, OFF:** Seven deterministic tests `apps/worker/tests/routine-time.test.ts`, typed `packages/shared/src/routines/types.ts`, pure `packages/email-agent-runtime/src/routines/time.ts` and exports. Code commits `2b2342f3`/`7b4a0d96`/`9eb4edc0`/`68f7a6af`/`7dd59584`/`7daccec7`. Ten current-source checks PASS; **tests/typechecks NOT RUN on these new commits**. This is preview-only, not scheduled execution or permission to send.
+
+**Exact next action:**
+1. From a dependency-equipped `main` checkout run `cd apps/worker && node --import tsx --test tests/routine-time.test.ts`, then `pnpm --filter @ai-comms-agent/shared typecheck` and `pnpm --filter @ai-comms-agent/email-agent-runtime typecheck` from repository root. Fix DEV-01-owned implementation issues from real output, do not claim source assertions are unit test proof.
+2. Continue the existing C3 worker grounding, source-grant/lease, provider error/retry verification and broader affected worker/web/db/Clara suites. Only after verified authorized behavior add **disabled-by-default** worker registration, and then authenticated C4 five-day/mobile/keyboard/source-link journeys.
+3. Independently plan R1b immutable proposals, revisions, permissions and migration tip; do not create/activate a second scheduler, reuse historical DDL numbers, or enable WhatsApp standing consent/delivery before reviewed authorization, FIX-01 runtime isolation proof and OPS-01 provider verification. The legacy R1/R2/R3/R4/R5 plans remain in scope, the new UX extensions remain proposed refinements.
+
+**Recovery:** [R1a current session](sessions/DEV01-EMAIL-COMMAND-CENTER-R1A-20261020.md); [Superpowers UX/phase supplement](../superpowers/plans/2026-10-20-ai-email-command-center-ux-rollout.md). FIX-01 owns significant runtime bugs/scheduler and tenant defects; OPS-01 owns CI/Vercel/migration/deployment, provider/WhatsApp evidence and build-hook security response. Do not wait or poll their work when independent development exists.
+
+---
+
 ## DEV-01 latest next action — 2026-10-20, C3 DB acceptance gate
 
 Focused C3 tests **29/29 PASS** and db/Clara/email-runtime/worker TypeScript checks **PASS** on owner host after fast-forward `daa89ffd`. GitHub source commit `4cda8ee5` adds a five-subtest disposable Postgres canonical source harness; it is **NOT RUN**. Do not activate or register worker yet. [Verification session](sessions/DEV01-C3-HOST-VERIFIED-DB-GATE-20261020.md).
