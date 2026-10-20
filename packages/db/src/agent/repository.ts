@@ -65,7 +65,7 @@ export class PostgresAgentRepository {
     const r=await query<Row>("INSERT INTO agent_email_accounts(agent_id,email_account_id,role) SELECT a.id,$3,$4 FROM agents a JOIN email_accounts ea ON ea.id=$3 AND ea.organization_id=a.organization_id WHERE a.organization_id=$1 AND a.id=$2 ON CONFLICT(agent_id,email_account_id) DO UPDATE SET role=EXCLUDED.role RETURNING *",[orgId,id,emailAccountId,role]);
     if(!r.rows[0]) throw new Error("Agent or email account not found in this organization"); return emailBinding(r.rows[0]);
   }
-  async unbindEmail(orgId:string,id:string,emailAccountId:string):Promise<void>{ await query("DELETE FROM agent_email_accounts b USING agents a JOIN email_accounts ea ON ea.id=b.email_account_id WHERE b.agent_id=a.id AND a.organization_id=$1 AND a.id=$2 AND ea.organization_id=$1 AND b.email_account_id=$3",[orgId,id,emailAccountId]); }
+  async unbindEmail(orgId:string,id:string,emailAccountId:string):Promise<void>{ await query("DELETE FROM agent_email_accounts b USING agents a, email_accounts ea WHERE b.agent_id=a.id AND b.email_account_id=ea.id AND a.organization_id=$1 AND a.id=$2 AND ea.organization_id=$1 AND b.email_account_id=$3",[orgId,id,emailAccountId]); }
   async whatsappAccounts(orgId:string):Promise<Array<{id:string;displayName:string|null;phoneNumberId:string;status:string}>> {
     const r=await query<Row>(
       "SELECT id,display_name,phone_number_id,status FROM whatsapp_accounts WHERE organization_id=$1 ORDER BY created_at ASC",
