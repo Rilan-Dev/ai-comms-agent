@@ -183,3 +183,8 @@ The authentication loop was traced to session issuance preceding active organiza
 - PostgreSQL DELETE target alias must not be referenced inside a USING JOIN ON that does not include it. Convert to comma-separated USING relations and target correlations in WHERE, retaining organization+agent+account checks.
 - User-provided session cookies are secrets; avoid replay, storage or commits; request revocation/rotation.
 - Source evidence: 9cf971b4 / 61f819d0 / a4d7b72c / ca936db9; GitHub-source 16/16 checks pass, native Vitest/Postgres/deployed checks not run. Session FIX01-AGENT-MAIL-POLICY-UNBIND-20261020.
+
+### FIX-01 / Sentinel — 2026-10-20 — Established TLS sockets need no handshake deadline
+- Worker IMAP `connectTls` may return a successfully negotiated TLS socket while its handshake timer is still armed. Destroying a healthy socket after ten seconds presents to the polling IMAP reader as an apparently unrelated `TLS response timeout`. The web connection test can pass because it correctly cancels the secureConnect deadline.
+- Cleanup handshake timers and listeners on EVERY settlement path; socket errors and closure during negotiation must reject immediately, while an established connection remains alive under its command-specific deadlines. Persistent response readers must track close separately from error. Keep `rejectUnauthorized:true` and public-host SSRF protection.
+- Source fix `91bc19b1`, regression cases `018f4fcd`, GitHub structural checks 14/14; node tests/full typecheck/live import not executed. Do not infer provider throttling or request user secrets. Session FIX01-IMAP-TLS-DEADLINE-20261020.
