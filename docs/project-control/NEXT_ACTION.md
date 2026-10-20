@@ -1,3 +1,15 @@
+## DEV-01 R1b Superpowers proposal handoff — 2026-10-20 (newest)
+
+**Scope:** Owner-requested human-first Email Command Center continuation. Current Phase 4 remains `implementation_in_progress`; C3 worker and all new routine delivery remain OFF. R1a routine time-preview source is committed but its new Node/TypeScript checks have not been run. C1/C2 implemented; current-tip C3 and C4 acceptance pending. Last observed migration filename `0052_briefing_selection_coverage.sql` — older routine plan `0051/0052` example filenames must not be reused.
+
+**Work in this continuation:** [Proposed focused R1b Superpowers implementation plan](../superpowers/plans/2026-10-20-r1b-safe-routine-proposals-implementation.md) and [DEV-01 recovery/product session](sessions/DEV01-EMAIL-COMMAND-CENTER-R1B-PLAN-20261020.md). Defines safe assistant-generated preview, source/grant-checked immutable proposal, exact user confirmation, reviewable statuses, paused/inactive persistence and deferred schedule/WhatsApp dispatch. The design/DB authorization boundary is **proposed for review**, not automatically approved or feature activated.
+
+**Exact next DEV-01 actions:** (1) In a sanitized dependency-equipped current-main checkout run `cd apps/worker && node --import tsx --test tests/routine-time.test.ts`; then from root `pnpm --filter @ai-comms-agent/shared typecheck` and `pnpm --filter @ai-comms-agent/email-agent-runtime typecheck`; record actual output and SHA. The GitHub connector-only session could not execute these. (2) Review R1b plan against parent spec, then implement test-first Task 1 pure proposal normalization/preview only when approved; R1b DB/confirmation requires explicit authorization and fresh migration-tip check, and worker remains off. (3) Independently continue approved C3 grounding/lease/retry and current-tip affected tests; disabled-by-default poller registration only after its safety tests, then C4 authenticated five-day/mobile/source-grounded priority journey.
+
+**Role routing:** FIX-01 retains scheduler correctness, cross-tenant event/routine proof, independent source defects and earlier broad suite failures. OPS-01 retains sanitized test host, migrations/CI/Vercel, WhatsApp templates/providers, security build-hook incident response and production deployment. Do not poll CI or wait for either agent to finish independent work. No recipient send/authorization, schema migration or live feature was performed here.
+
+---
+
 ## DEV-01 current next action — 2026-10-20, human-first email command center and R1a preview
 
 **Phase:** Phase 4 `implementation_in_progress`. Owner invoked DEV-01 to continue on direct `main`, preserve independent FIX-01/OPS-01 work, and prioritize accurate five-day email catch-up with accessible action/importance cards and human-confirmed daily/hourly/weekly/one-off routines, optional narrowly consented WhatsApp briefings.
