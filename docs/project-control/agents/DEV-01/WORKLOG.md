@@ -604,3 +604,13 @@ Start `23ceb97637e47b9326cb2df181f3c1f9208a6fbf`. Commits `1bae80c8` (canonical 
 - **New DB tests NOT RUN** in connector-only development. Feature still OFF, no migrations/deploy/real provider sends.
 - Next: host run DB guarded fixture, repair failures, then full suites and disabled-by-default worker registration; C4 browser afterward.
 - Session `../../sessions/DEV01-C3-HOST-VERIFIED-DB-GATE-20261020.md`.
+
+## DEV01-EMAIL-COMMAND-CENTER-R1A-20261020 / 2026-10-20
+- **Invocation:** Owner requested independent DEV-01 product work continuing current main; human-first 5-day mail catch-up, priority views, assistant-managed schedules/automations and consented WhatsApp digests. Superpowers-style task decomposition followed; standalone Superpowers subagent skill not installed.
+- **Recovery:** Current Phase 4; read CHAT_CONTINUITY/NEXT_ACTION/architecture, C3 session, DEV-01 memory/worklog, shared lessons, existing catch-up/routines Superpowers design/plans, runtime types and scheduler. Separate FIX-01/OPS-01 work preserved.
+- **Implementation:** Added seven schedule preview Node tests (commit `2b2342f3`); typed RoutineTrigger/preview contracts (`7b4a0d96`); pure UTC/zone/DST aware `nextRoutineOccurrences` (`9eb4edc0`); shared/runtime/package exports (`68f7a6af`, `7dd59584`, `7daccec7`); UX/roadmap extension (`e3a3a12b`).
+- **Evidence:** GitHub current-source inspection 10/10 targeted source invariants. **NOT RUN:** new Node tests, typechecks, runtime/browser/DB/provider; no features, routines, sends, migrations or worker enabled. Prior 29/29 C3 host and 6/6 DB receipts refer to older SHAs.
+- **Lessons:** User-facing visit is not review coverage; local 09:00 differs from elapsed 24h at DST; external digest = scoped personal-data export; proposed product ideas do not automatically change authorization.
+- **Blockers/dependencies:** C3 broader acceptance and registration; FIX-01 source/runtime scheduler and tenant proofs, older worker/web failures; OPS-01 test host/CI/migrations/provider/WhatsApp/build-hook response.
+- **Session:** `../../sessions/DEV01-EMAIL-COMMAND-CENTER-R1A-20261020.md`.
+- **Next:** Execute `cd apps/worker && node --import tsx --test tests/routine-time.test.ts`; shared and email-agent-runtime typechecks on current main; then continue C3 grounding/worker acceptance and C4 authenticated UX. Keep R1/R3/R4 disabled until relevant gates are verified, while drafting R1b bounded proposal contracts independently.
