@@ -415,7 +415,7 @@ export async function POST(request: Request) {
         && (tool.name === "email.search" || tool.name === "email.messages.list"))) {
         return NextResponse.json({
           error: "forbidden",
-          message: "This agent has no enabled mailbox list or search capability.",
+          message: "Mailbox summaries are disabled for this agent. Ask an organization administrator to add email.search or email.messages.list under Agent Policy > Allowed tools, then save the policy. Connecting an email account alone does not enable tools.",
         }, { status: 403 });
       }
       const windowEnd = new Date();
