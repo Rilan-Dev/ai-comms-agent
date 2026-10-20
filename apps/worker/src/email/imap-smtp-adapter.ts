@@ -59,17 +59,42 @@ async function resolvePublicHost(host: string): Promise<{ address: string; famil
   return { address: result.address, family: result.family };
 }
 
+/**
+ * The deadline applies ONLY to TLS negotiation. Once secureConnect fires, the
+ * socket belongs to the IMAP/SMTP command reader and must not be destroyed by
+ * an expired handshake timer during an otherwise healthy mailbox import.
+ */
+export function waitForTlsHandshake(socket: tls.TLSSocket, host: string, port: number, timeoutMs: number): Promise<tls.TLSSocket> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const onReady = () => settle();
+    const onError = (error: Error) => settle(error);
+    const onClose = () => settle(new Error(`TLS connection closed before handshake to ${host}:${port}`));
+    const timer = setTimeout(() => settle(new Error(`TLS connection timeout to ${host}:${port}`)), timeoutMs);
+    function settle(error?: Error) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      socket.off("secureConnect", onReady);
+      socket.off("error", onError);
+      socket.off("close", onClose);
+      if (error) {
+        socket.destroy();
+        reject(error);
+      } else {
+        resolve(socket);
+      }
+    }
+    socket.once("secureConnect", onReady);
+    socket.once("error", onError);
+    socket.once("close", onClose);
+  });
+}
+
 async function connectTls(host: string, port: number, timeoutMs = 10_000): Promise<tls.TLSSocket> {
   const resolved = await resolvePublicHost(host);
-  return new Promise((resolve, reject) => {
-    const socket = tls.connect({ host: resolved.address, port, servername: host, rejectUnauthorized: true }, () => resolve(socket));
-    const timer = setTimeout(() => {
-      socket.destroy();
-      reject(new Error(`TLS connection timeout to ${host}:${port}`));
-    }, timeoutMs);
-    socket.once("error", (error) => { clearTimeout(timer); reject(error); });
-    socket.once("close", () => clearTimeout(timer));
-  });
+  const socket = tls.connect({ host: resolved.address, port, servername: host, rejectUnauthorized: true });
+  return waitForTlsHandshake(socket, host, port, timeoutMs);
 }
 
 type SocketReader = {
@@ -89,6 +114,7 @@ function createReader(socket: tls.TLSSocket): SocketReader {
     reader.buffer = Buffer.concat([reader.buffer, Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)]);
   });
   socket.on("error", (error: Error) => { reader.error = error; });
+  socket.on("close", () => { reader.error ??= new Error("TLS socket closed before IMAP/SMTP response completed"); });
   return reader;
 }
 
