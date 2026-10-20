@@ -5,3 +5,5 @@ export * from "./email-tool-runtime";
 export * from "./email-tool-policy";
 export * from "./tool-executor";
 export * from './briefings/selection';
+
+export { nextRoutineOccurrences } from './routines/time';
