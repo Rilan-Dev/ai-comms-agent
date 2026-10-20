@@ -971,3 +971,12 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Blockers:** Separate FIX-01 failure inventory/scheduler correctness; OPS-01 Docker/CI/Vercel/migrations/provider/template and build-hook exposure. No CI polling.
 - **Handoff:** DEV-01 session `docs/project-control/sessions/DEV01-EMAIL-COMMAND-CENTER-R1A-20261020.md`. FIX-01/OPS-01 ownership unchanged.
 - **Next action:** Current-main `cd apps/worker && node --import tsx --test tests/routine-time.test.ts`; `pnpm --filter @ai-comms-agent/shared typecheck`; `pnpm --filter @ai-comms-agent/email-agent-runtime typecheck`; then independent C3 work and C4 browser validation. No activation until gates pass.
+
+
+### DEV01-EMAIL-COMMAND-CENTER-R1B-PLAN-20261020 — 2026-10-20
+- **Agent:** DEV-01 / Forge. **Mode:** owner-invoked direct-`main`, planning refinement; active independent C3/C4 product scope preserved.
+- **Recovered at:** GitHub `main` `36384bb0cb37202ff708cf9bfc48359ecc7c6075`; current project-control, latest R1a, two Superpowers parent plans, shared and DEV-01 memory/worklog, role handoffs, migration filenames and schedule source.
+- **Goal:** Human-first five-day mail catch-up and reviewable assistant routines, optional precisely consented WhatsApp digest; differentiate a visit from personal review and a proposal from delivery authorization.
+- **Artifacts:** [R1b focused plan](../superpowers/plans/2026-10-20-r1b-safe-routine-proposals-implementation.md) `7a6bc740`; [session with evidence](sessions/DEV01-EMAIL-COMMAND-CENTER-R1B-PLAN-20261020.md) `44b13bf3`; `NEXT_ACTION.md` `9ddcf7a0`. Existing plan/spec and other contributor work preserved.
+- **Status/evidence:** Proposed document work committed. No executable Node/TS/DB/browser tests in the connector-only session, no routine storage/registration, WhatsApp send, SQL apply or deployment. R1a tests and C3 current-tip acceptance remain open. Phase 4 unchanged.
+- **Next:** On sanitized equipped current-main host run `cd apps/worker && node --import tsx --test tests/routine-time.test.ts` plus root shared/email-runtime typechecks; review proposed R1b interface boundaries, then test-first pure proposal work if approved, while progressing C3/C4 independently. FIX-01 retains scheduler/tenant defects; OPS-01 retains environment/deployment/Meta and build-hook assessment.
