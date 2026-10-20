@@ -1,6 +1,46 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ImapSmtpAdapter, readImapResponse } from "../src/email/imap-smtp-adapter";
+import { EventEmitter } from "node:events";
+import type { TLSSocket } from "node:tls";
+import { ImapSmtpAdapter, readImapResponse, waitForTlsHandshake } from "../src/email/imap-smtp-adapter";
+
+class FakeTlsSocket extends EventEmitter {
+  destroyed = false;
+  destroy(): this {
+    this.destroyed = true;
+    this.emit("close");
+    return this;
+  }
+}
+
+test("a completed TLS handshake cancels its deadline and leaves the IMAP socket alive", async () => {
+  const socket = new FakeTlsSocket();
+  const pending = waitForTlsHandshake(socket as unknown as TLSSocket, "imap.gmail.com", 993, 20);
+  socket.emit("secureConnect");
+  assert.equal(await pending, socket);
+  // The former implementation destroyed every successfully connected socket
+  // after the 10-second handshake timer fired, interrupting initial imports.
+  await new Promise<void>((resolve) => setTimeout(resolve, 60));
+  assert.equal(socket.destroyed, false);
+  assert.equal(socket.listenerCount("close"), 0);
+  assert.equal(socket.listenerCount("error"), 0);
+});
+
+test("TLS handshake timeout still fails closed and destroys an unverified socket", async () => {
+  const socket = new FakeTlsSocket();
+  await assert.rejects(
+    () => waitForTlsHandshake(socket as unknown as TLSSocket, "imap.gmail.com", 993, 10),
+    /TLS connection timeout to imap\.gmail\.com:993/,
+  );
+  assert.equal(socket.destroyed, true);
+});
+
+test("an early TLS socket closure rejects immediately rather than waiting for response timeout", async () => {
+  const socket = new FakeTlsSocket();
+  const pending = waitForTlsHandshake(socket as unknown as TLSSocket, "imap.gmail.com", 993, 1_000);
+  socket.emit("close");
+  await assert.rejects(pending, /TLS connection closed before handshake to imap\.gmail\.com:993/);
+});
 
 test("IMAP/SMTP adapter advertises the implemented secure connection capabilities", () => {
   const provider = new ImapSmtpAdapter();
