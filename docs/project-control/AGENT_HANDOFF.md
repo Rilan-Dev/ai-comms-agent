@@ -215,3 +215,11 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **OPS-01 actions:** Verify serving source SHA before concluding deployment; run approved safe tenant A/B DELETE+role/security negatives with disposable/authorized DB; inspect sanitized actual agent policy enabled-tool list, organization membership email.read, binding role/status and synced mailbox rows; retest PATCH unbind and Chat SSE from an authorized session only. Route genuine source failures back to FIX-01. No credentials/cookies in logs or source.
 - **Security:** User-pasted authentication cookie must be revoked/rotated; do not replay it or copy it to reports.
 - **Stop condition:** Evidence obtained or a concrete infrastructure/runtime blocker documented; do not change application policy implicitly or auto-enable email tools.
+
+### HOF-FIX01-IMAP-TLS-DEADLINE-20261020-OPS — 2026-10-20
+- **From/to:** FIX-01 / Sentinel → OPS-01 / Shipwright.
+- **Issue:** Persisted IMAP/SMTP Gmail-address mailbox has 0 imported out of 50, `status=error`, no successful sync, last reported `TLS response timeout`.
+- **Source finding:** Worker TLS handshake timer survived successful negotiation and destroyed live sockets after 10 seconds, producing reader timeout. Commits `91bc19b1` and `018f4fcd`; 14/14 GitHub source checks. No claim of actual deployed fix or remote provider throttling.
+- **OPS-owned acceptance:** Verify running worker commit includes source fix; inspect sanitized worker logs and DNS/route/TCP/TLS reachability to configured IMAP 993 and SMTP 465 endpoints (without credentials/tokens); only after authorized rollout safely retry existing account via application Sync and confirm pending/error state clears, `lastSuccessAt` becomes non-null, messages import (bounded initial limit) and message queries work. Compare live network error and source timeout if failure persists.
+- **Scope boundary:** Do not disable certificate checks, copy/replay pasted auth cookie, expose stored credentials or recreate/delete mailbox to force sync. Source follow-up belongs to FIX-01, infrastructure/env to OPS-01, unrelated product development to DEV-01.
+- **Stop condition:** Record current deployed SHA and actual status/row count, or exact host/network blocker. Do not label an HTTP 202 queue response as completed import.
