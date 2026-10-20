@@ -992,3 +992,14 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Blockers:** No live database/deployed revision evidence or complete dependency-equipped checkout in FIX-01 connector context; cannot establish live policy or runtime PASS.
 - **Handoff:** OPS-01 only for deployment/current build, environment and live DB/browser verification; DEV-01 independent work unaffected. User's exposed access cookie must be revoked/rotated, never reused.
 - **Next action:** Authorize email.search or email.messages.list explicitly in agent Policy via admin for summaries, without deleting other allowed tools; test on approved current main, then OPS-01 verifies served revision and isolation after deployment.
+
+### FIX01-IMAP-TLS-DEADLINE-20261020 — 2026-10-20
+- **Agent:** FIX-01 / Sentinel.
+- **Invocation:** Follow-up IMAP/SMTP mailbox `Needs attention`, TLS response timeout, zero imported messages, initial import pending.
+- **Started from:** `main` at `0814a4f8ccc5dd531743519cecabaa6276e298ac`.
+- **Authorization/scope:** Owner-shared failure plus existing FIX-01 root-cause-first repair assignment. Worker TLS lifecycle only, tests and records; do not take OPS-01 network/CI/deployment or DEV-01 feature work.
+- **Status:** HANDOFF — source corrected, live confirmation pending.
+- **Completed:** Matched exact failure string to worker reader; identified stale connectTls ten-second timer destroying successful sockets. Fixed TLS lifecycle/closed-reader behavior (`91bc19b1`), added three regression tests (`018f4fcd`), checked 14/14 GitHub source invariants.
+- **Failed approaches avoided:** Changing server env, password, SMTP host, TLS trust, or arbitrary timeouts without evidence; never reused pasted session token.
+- **Pending:** Actual Node worker tests/typecheck, operator TLS/network logs, deployed SHA, initial 50-message import and ongoing sync.
+- **Handoff/next:** OPS-01 validates runtime and triggers safe re-sync of persisted account after corrected worker rollout; FIX-01 fixes any demonstrated additional source failures. No current proof of live remediation.
