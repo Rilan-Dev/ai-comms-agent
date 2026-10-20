@@ -713,3 +713,13 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - Status: Phase 4 implementation in progress; feature disabled; DB/full-suite/build/C4 still pending
 - Next: run guarded localhost disposable DB test; do not point fixture at live infrastructure
 - Session: `sessions/DEV01-C3-HOST-VERIFIED-DB-GATE-20261020.md`
+
+### EVT-FIX01-AGENT-MAIL-POLICY-UNBIND-20261020 — 2026-10-20
+- **Agent/session:** FIX-01 / Sentinel — FIX01-AGENT-MAIL-POLICY-UNBIND-20261020
+- **Type:** CORRECTION; explicit owner request, no scope expansion
+- **Symptom:** An active Sarvam agent with primary Gmail binding got summary 403 "no enabled mailbox list or search capability"; removing its email binding in Channels failed.
+- **Cause:** Summary requires separate actor email.read + persisted enabled email.search or email.messages.list; a binding/active status is not a policy grant. Exact live persisted allowlist not observed. Independent unbind SQL referenced DELETE target alias from USING JOIN ON, an invalid PostgreSQL reference.
+- **Failed approaches avoided:** No automatic tool grant, relaxed RBAC, speculative provider fix, token reuse or infrastructure change.
+- **Source remediation:** 9cf971b4 (SQL), 61f819d0 (clear denial), a4d7b72c (Policy guidance), ca936db9 (focused Vitest regression); 16/16 connector-source invariants pass, full Vitest/DB/runtime/deployed behavior not verified.
+- **Prevention:** Treat account binding and tool authorization independently; correlate DELETE target in WHERE, not USING join ON.
+- **Next:** FIX-01 test/typecheck in full checkout; OPS-01 verify deployed SHA, current policy and cross-tenant SQL/browser behavior. No CI/Vercel wait or deployment action.
