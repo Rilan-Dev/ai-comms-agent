@@ -959,3 +959,15 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - Work: canonical source loader, isolated Clara path, retry and source-coverage guards; 11/11 source assertions, compiled tests not run
 - Record: `docs/project-control/sessions/DEV01-C3-CANONICAL-CLARA-20261020.md`
 - Status: C3 implementation in progress; feature disabled
+
+### DEV01-EMAIL-COMMAND-CENTER-R1A-20261020 — 2026-10-20
+- **Agent:** DEV-01 / Forge
+- **Invocation:** Continue authorized main-branch feature work; build human-first 5-day catch-up and assistant-run daily/hourly/weekly/one-off routines, optional consented WhatsApp digest, product improvements with Superpowers-style planning.
+- **Started from:** `main` after FIX-01 `2cd1c945`; C3 host receipts referenced on earlier checked commits, not claimed new-tip pass.
+- **Scope:** R1a pure time/contract source plus tests and supplemental product plan; no scheduler activation, production, migration or model-provider architecture replacement.
+- **Status:** ACTIVE, source slice authored; runtime verification pending.
+- **Completed:** Seven test cases authored, shared trigger types, zone/DST-aware preview, public exports, supplemental UX/phase plan. Commits `2b2342f3`, `7b4a0d96`, `9eb4edc0`, `68f7a6af`, `7dd59584`, `7daccec7`, `e3a3a12b`. 10/10 GitHub source assertions pass, no Node/TS run.
+- **Pending:** Current-tip R1 preview tests + typechecks, C3 wider source/DB grounding verification and disabled-by-default registration, C4 authenticated journey, later reviewed R1b–R5 services/UI/consent/delivery.
+- **Blockers:** Separate FIX-01 failure inventory/scheduler correctness; OPS-01 Docker/CI/Vercel/migrations/provider/template and build-hook exposure. No CI polling.
+- **Handoff:** DEV-01 session `docs/project-control/sessions/DEV01-EMAIL-COMMAND-CENTER-R1A-20261020.md`. FIX-01/OPS-01 ownership unchanged.
+- **Next action:** Current-main `cd apps/worker && node --import tsx --test tests/routine-time.test.ts`; `pnpm --filter @ai-comms-agent/shared typecheck`; `pnpm --filter @ai-comms-agent/email-agent-runtime typecheck`; then independent C3 work and C4 browser validation. No activation until gates pass.
