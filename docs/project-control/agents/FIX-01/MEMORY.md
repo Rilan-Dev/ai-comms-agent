@@ -177,3 +177,9 @@ The authentication loop was traced to session issuance preceding active organiza
 - Remedy: use explicit current-user intent, fixed UTC rolling boundaries, read-entitled agent-mailbox JOIN/EXISTS, server-side unread/non-draft/non-sent and optional sender/topic, SQL total COUNT with cap and truthful partial/included counts. Display subject + available stored preview for every record; qualify local sync freshness and don't imply provider live verification. Only account-bound enabled tool + actor email.read can use direct report; original legacy context also now email.read gated.
 - Development failure: sender parsing regex stopped at a domain dot, first actual Node regression 7/8; fix email-domain punctuation and fail closed on unknown filters, rerun exact Node 8/8. No full pnpm/SQL/browser acceptance.
 - Never use, store or quote user's leaked host password or browser session; advise credential rotation. Details `FIX01-ROLLING-MAIL-20261019`.
+
+### FIX-01 / Sentinel — 2026-10-20 — Bound mailbox is not an agent tool grant
+- A connected primary/read_only agent email binding and an active agent do **not** imply the persisted policy allows email.search or email.messages.list. Rolling and explicit-date Chat summaries intentionally require both actor email.read and the agent allowlist; clarify disabled tooling in UI and 403 without silently changing policy.
+- PostgreSQL DELETE target alias must not be referenced inside a USING JOIN ON that does not include it. Convert to comma-separated USING relations and target correlations in WHERE, retaining organization+agent+account checks.
+- User-provided session cookies are secrets; avoid replay, storage or commits; request revocation/rotation.
+- Source evidence: 9cf971b4 / 61f819d0 / a4d7b72c / ca936db9; GitHub-source 16/16 checks pass, native Vitest/Postgres/deployed checks not run. Session FIX01-AGENT-MAIL-POLICY-UNBIND-20261020.
