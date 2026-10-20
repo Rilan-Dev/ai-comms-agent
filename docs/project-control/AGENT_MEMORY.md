@@ -506,3 +506,11 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 
 ## Shared safety lesson — 2026-10-20 C3 DEV-01
 The generic Clara chat turn invokes ambient RAG/email search and must **not** be used for user-grant-scoped personal briefing generation. Use source-manifest-scoped, no-RAG model path, revalidate fresh C1 grant/revision and C2 fenced lease at load and commit, and retain incomplete items on every coverage mismatch. Zero-tool `completeWithTools` explicitly rejects empty tools; never add an unauthorized placeholder tool. Provider outages must not silently advance coverage. See `sessions/DEV01-C3-CANONICAL-CLARA-20261020.md`.
+
+
+## 2026-10-20 — Cross-agent Email Command Center safety lessons (DEV-01 R1b)
+- A five-day absence briefing is a per-user **review-coverage** problem, not organizational employee attendance monitoring. Preserve coarse last-visited versus last-reviewed separation, current mailbox-grant intersection, ongoing background sync, and truthful partial/source freshness labels. No admin-wide mailbox access or inactivity leaderboards.
+- A routine preview, an AI-generated proposal, a confirmed inactive definition, a worker occurrence and external delivery are separate persisted facts with separate authorization. Neither model prose nor a successful preview grants scheduling, forwarding or WhatsApp-send authority.
+- Do not reuse migration placeholders from historical Superpowers plans: as of DEV-01 review, `supabase/migrations/` already ends at `0052_briefing_selection_coverage.sql`. Recheck GitHub current tip before any migration; OPS-01 applies production SQL.
+- Cross-role handoff: DEV-01 owns typed proposal/UX/C3/C4 feature scope; FIX-01 owns scheduler crash/lease/tenant source correction and negative A/B runtime assertions; OPS-01 owns provider/WhatsApp/CI/deployment and potentially contaminated build-host recovery. A test pass on older SHA is not evidence that a later git tip passes.
+- Proposal contract and exact task plan: `docs/superpowers/plans/2026-10-20-r1b-safe-routine-proposals-implementation.md`; DEV-01 session: `docs/project-control/sessions/DEV01-EMAIL-COMMAND-CENTER-R1B-PLAN-20261020.md`. No new feature enabled by that documentation.
