@@ -206,3 +206,12 @@ FIX-01: final merged worker13failures/web40failed tests (20files), exact names i
 ## DEV-01 current handoff — 2026-10-19, final repository synchronization
 
 See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed, in-progress, pending and next work. C1/C2 focused implementation is complete; C3 worker/grounding integration is next, then C4 authenticated UX acceptance. Phase 4 remains implementation_in_progress. Latest upstream operator/vector fixes preserved; affected checks pass 35/35 and 11/11. Earlier full-suite counts are a pre-final-merge baseline. Security follow-up remains open. Existing entries retained as history.
+
+### HOF-FIX01-OPS-AGENT-MAIL-RUNTIME-20261020 — 2026-10-20
+- **From/to:** FIX-01 / Sentinel → OPS-01 / Shipwright
+- **Reason:** Operational verification only after source correction to failed agent email unbind and clearer chat policy denial. No FIX-01 infrastructure or production mutation performed.
+- **Source commits:** 9cf971b4 (scoped SQL), 61f819d0 (chat diagnosis), a4d7b72c (agent UI), ca936db9 (regression). Audit: FIX-01 role WORKLOG and root worklog, central event/session.
+- **Evidence:** Source check 16/16; full Vitest/typecheck/PostgreSQL/live browser not run. The persisted agent Policy allowedTools value is unknown in this GitHub-only session; do not assume the production 403 is an infrastructure error.
+- **OPS-01 actions:** Verify serving source SHA before concluding deployment; run approved safe tenant A/B DELETE+role/security negatives with disposable/authorized DB; inspect sanitized actual agent policy enabled-tool list, organization membership email.read, binding role/status and synced mailbox rows; retest PATCH unbind and Chat SSE from an authorized session only. Route genuine source failures back to FIX-01. No credentials/cookies in logs or source.
+- **Security:** User-pasted authentication cookie must be revoked/rotated; do not replay it or copy it to reports.
+- **Stop condition:** Evidence obtained or a concrete infrastructure/runtime blocker documented; do not change application policy implicitly or auto-enable email tools.
