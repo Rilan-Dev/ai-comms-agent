@@ -723,3 +723,11 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Source remediation:** 9cf971b4 (SQL), 61f819d0 (clear denial), a4d7b72c (Policy guidance), ca936db9 (focused Vitest regression); 16/16 connector-source invariants pass, full Vitest/DB/runtime/deployed behavior not verified.
 - **Prevention:** Treat account binding and tool authorization independently; correlate DELETE target in WHERE, not USING join ON.
 - **Next:** FIX-01 test/typecheck in full checkout; OPS-01 verify deployed SHA, current policy and cross-tenant SQL/browser behavior. No CI/Vercel wait or deployment action.
+
+### EVT-FIX01-IMAP-TLS-DEADLINE-20261020 — 2026-10-20
+- **Role/session:** FIX-01 / Sentinel, FIX01-IMAP-TLS-DEADLINE-20261020.
+- **Symptom:** Stored IMAP/SMTP account in error; initial import 0/50, no successful sync, last failure "TLS response timeout" at 2026-10-20 13:30:58 UTC.
+- **Root cause/source:** Worker TLS handshake timer not cleared on successful secureConnect; it destroyed established socket after 10s and polling reader translated close to subsequent response timeout. Independent production network/provider cause cannot be ruled out without operator logs. Web connection test already cleared its handshake timer.
+- **Failed/unsafe approaches:** No TLS verification weakening, credential edits, fake imports, timer inflation, or secret-bearing curl replay.
+- **Remedy:** `91bc19b1` cancels handshake timer, handles closed sockets promptly; `018f4fcd` adds three Node tests. GitHub post-write source checks 14/14 pass, test runner/typecheck/live sync NOT run.
+- **Prevention/next:** Separate TLS negotiation deadlines from mailbox operation deadlines. OPS-01 verifies deployed SHA, sanitized TLS reachability and actual 1..50 imported rows; FIX-01 handles further source-only defects if reproduced.
