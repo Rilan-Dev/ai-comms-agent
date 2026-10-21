@@ -739,3 +739,11 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Failed approach:** TLS deadline fix alone, reassuring connected/worker-ready states; no bypass via TLS weakening, deleting account, or fabricated import confirmation.
 - **Remedy:** `1c1b5796, 06f9b14f, 1184576e, d3fa0af4, 53702ac8, a655ce4e, d43f16b7, 2e131fb8` on main. 13/13 latest source invariants pass; tests/typecheck/live inbox not run.
 - **Next:** OPS-01 runtime and deployment checks, revocation of exposed auth cookie; FIX-01 focused unit/type checks and follow-on only if runtime reveals new source defects. Preserve DEV-01 unrelated C3/R1 work.
+
+### EVT-FIX01-IMAP-UID-STAGING-20261022 — 2026-10-22
+- **Agent:** FIX-01/Sentinel; current owner-provided `Development` task, main/Development same starting SHA `2631bbaa`.
+- **Evidence:** IMAP connection labelled connected but initial 0/50, pending=0, running for minutes with health-only logs; worker RabbitMQ consumer ready and deployed `d0ded84d`, new source revision unverified in deployment.
+- **Source root cause:** IMAP adapter downloaded full MIME up to 50 times during discovery before staging any IDs, and worker fetched them again. Up to 25 fetched before persistence; exceptions returned null then unavailable helper incorrectly acknowledged transient failures.
+- **Correction:** `2a8c5933` UID-only discovery; `db3d629b` executable focused mock regression; `b0550e52` 5-message persisted batches/count-only progress; `631d96a2` preserve retryable fetch IDs; `2c0e3f8a` stage/retry source regression. Code on `Development`, not production.
+- **Checks:** 17/17 current Development source invariants pass; real tests, builds, integration, release/deployment and live synchronization remain pending. Health/queue ready/migration success are not successful import.
+- **Role routing:** OPS-01 deployed version, unhealthy host Redis/Qdrant, connectivity and runtime; DEV-01 unaffected. Never replay leaked session cookie.
