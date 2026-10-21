@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { EventEmitter } from "node:events";
 import type { TLSSocket } from "node:tls";
-import { ImapSmtpAdapter, readImapResponse, waitForTlsHandshake } from "../src/email/imap-smtp-adapter";
+import { ImapSmtpAdapter, parseSelectableImapFolder, readImapResponse, waitForTlsHandshake } from "../src/email/imap-smtp-adapter";
 
 class FakeTlsSocket extends EventEmitter {
   destroyed = false;
@@ -40,6 +40,21 @@ test("an early TLS socket closure rejects immediately rather than waiting for re
   const pending = waitForTlsHandshake(socket as unknown as TLSSocket, "imap.gmail.com", 993, 1_000);
   socket.emit("close");
   await assert.rejects(pending, /TLS connection closed before handshake to imap\.gmail\.com:993/);
+});
+
+test("Gmail hierarchy-only LIST entries cannot become sync SELECT targets", () => {
+  assert.equal(parseSelectableImapFolder(String.raw`* LIST (\\HasChildren \\Noselect) "/" "[Gmail]"`), null);
+  assert.equal(parseSelectableImapFolder(String.raw`* LIST (\\NonExistent \\HasChildren) "/" "Missing"`), null);
+  assert.equal(parseSelectableImapFolder(String.raw`* LIST (\\NOSELECT) "/" "Root"`), null);
+
+  const inbox = parseSelectableImapFolder(String.raw`* LIST (\\HasNoChildren) "/" "INBOX"`);
+  assert.equal(inbox?.provider_folder_id, "INBOX");
+  assert.equal(inbox?.role, "inbox");
+  const sent = parseSelectableImapFolder(String.raw`* LIST (\\HasNoChildren \\Sent) "/" "[Gmail]/Sent Mail"`);
+  assert.equal(sent?.provider_folder_id, "[Gmail]/Sent Mail");
+  const archive = parseSelectableImapFolder(String.raw`* LIST () "/" "Archive"`);
+  assert.equal(archive?.provider_folder_id, "Archive");
+  assert.equal(parseSelectableImapFolder(String.raw`* STATUS "INBOX" (MESSAGES 3)`), null);
 });
 
 test("IMAP/SMTP adapter advertises the implemented secure connection capabilities", () => {
