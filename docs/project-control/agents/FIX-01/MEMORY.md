@@ -198,3 +198,8 @@ The authentication loop was traced to session issuance preceding active organiza
 ### FIX01-IMAP-ESM-TEST-PATH-20261022 — Node ESM unit tests cannot access CommonJS __dirname
 - Worker `package.json` declares `"type":"module"`, and `node --import tsx --test` does not define `__dirname`. Four source-contract tests blocked before assertions ran; 19 other IMAP test cases passed. Avoid changing module type to hide tests.
 - Prefer `readFileSync(new URL("../src/file.ts", import.meta.url), "utf8")` for ESM-relative source fixtures. Corrected direct-main `9fbc1d19`; 7/7 source checks passed, host rerun after fix not yet observed. OPS-01 owns runtime deployment; FIX-01 owns follow-on test/source failures.
+
+### FIX01-IMAP-UID-STAGING-20261022 — IMAP UID discovery must not download MIME content
+- IMAP `sync()` can be a **discovery** operation: `SELECT` + `UID SEARCH` yields stable `folder:UID` IDs without full `BODY.PEEK[]`. Downloading each full MIME body before returning IDs kept `email_sync_states.pending_message_ids` at [] and imported count at zero for minutes, then `getMessage` fetched the same data again. Stage IDs durably FIRST and fetch once in small persisted batches.
+- Catching a transient `getMessage` error and returning `null` is NOT evidence an email vanished. Exclude those IDs from `unavailableMessageIds` acknowledgements and fail the attempt, preserving pending IDs and cursor for restart-safe retry.
+- Count-only claim/staging/batch logs are needed to distinguish a healthy queued worker from an active stalled import; never log message text, credentials or session cookies. Source `Development` commits `2a8c5933,db3d629b,b0550e52,631d96a2,2c0e3f8a`, 17/17 GitHub source checks, Node/live acceptance unverified.
