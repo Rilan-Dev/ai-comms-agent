@@ -66,10 +66,10 @@ describe("FIX-01 agent mailbox channels and summary authorization", () => {
   });
 
   it("only offers working mail tools as selectable options, not unregistered catalog contracts", () => {
-    const names = Array.from(details.matchAll(/\\{ name: "(email\\.[^"]+)", label: /g), (match) => match[1]);
+    const names = Array.from(details.matchAll(/\{ name: "(email\.[^"]+)", label: /g), (match) => match[1]);
     const registered = new Set([
-      ...Array.from(mailReadTools.matchAll(/readTool\\("(email\\.[^"]+)"/g), (match) => match[1]),
-      ...Array.from(mailWriteTools.matchAll(/makeTool\\("(email\\.[^"]+)"/g), (match) => match[1]),
+      ...Array.from(mailReadTools.matchAll(/readTool\("(email\.[^"]+)"/g), (match) => match[1]),
+      ...Array.from(mailWriteTools.matchAll(/makeTool\("(email\.[^"]+)"/g), (match) => match[1]),
     ]);
     expect(names.length).toBeGreaterThanOrEqual(10);
     expect(new Set(names).size).toBe(names.length);
