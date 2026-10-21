@@ -674,3 +674,14 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - The existing warning-and-continue startup policy remains unchanged.
 - **Not yet verified:** Actual target database, migration completion, Docker image/Compose execution, or runtime health. Prior user URL targets `/postgres`; local Compose default is `aca`. Operator must confirm the intended database before rerunning migrations.
 - **Next:** Confirm database target, run the focused test in the actual checkout, run deployment, and record migration outcome separately from container health.
+
+## ISS-FIX01-IMAP-GMAIL-SELECT-20261021 — IMAP initial sync selects Gmail nonselectable folder and IDLE rejects saved credentials
+- **Opened:** 2026-10-21
+- **Severity:** high — connected account cannot import any messages.
+- **Owner:** FIX-01 / Sentinel (source/regression); OPS-01 / Shipwright (test host, deployment and production acceptance).
+- **Status:** in_progress — source corrected, actual runtime not verified.
+- **Symptom/evidence:** Gmail `A0055 NO [NONEXISTENT] Unknown Mailbox: [Gmail]` during `SELECT`, initial 0/50, no last success; independent `Encrypted IMAP credentials have an invalid credential type` in IDLE worker.
+- **Root cause:** listFolders did not skip `\\Noselect` container; password credential type not serialized into encrypted payload; missing SQL RETURNING comma, incomplete sync_mode commit and concurrency on one IMAP socket.
+- **Remedy:** `1c1b5796,06f9b14f,1184576e,d3fa0af4,53702ac8,a655ce4e,d43f16b7,2e131fb8`. Source invariant checks 13/13; regression Node, typechecks and live import unexecuted.
+- **Failed approaches/prevention:** Earlier TLS handshake timer fix alone could not address protocol-level SELECT NO. Only selectable mailbox names reach SELECT; existing credentials must normalize narrowly and new encrypted saves retain discriminants; stage and commit durable sync state correctly; serialize IMAP commands.
+- **Next:** OPS-01 verify current deployed SHA and perform safe existing-account import + IDLE acceptance, record non-null lastSuccessAt and actual matching persisted row count. FIX-01 run focused tests/typechecks and fix any specific new source failure. Rotate leaked session.
