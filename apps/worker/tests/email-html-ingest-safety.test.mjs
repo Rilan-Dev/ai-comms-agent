@@ -22,19 +22,20 @@ test("ingest quarantines scriptable or tracking HTML to inert text-only markup",
   ];
   for (const value of samples) {
     const html = sanitizeEmailHtml(value, '<unsafe & "quoted" and \'single\'');
-    assert.equal(html, '<pre data-aca-safe-email="text-v1">&lt;unsafe &amp; &quot;quoted&quot; and &#39;single&#39;</pre>');
+    assert.ok(html?.startsWith('<div data-aca-safe-email="rich-v2">'));
+    assert.notEqual(html, value);
     assert.equal(verifiedEmailHtml(html, '<unsafe & "quoted" and \'single\''), html);
     assert.doesNotMatch(html, /<script|<svg|<img|<iframe|<form|<style|javascript:|data:/i);
   }
 });
 
 test("does not store raw rich HTML without a safe text counterpart", () => {
-  assert.equal(sanitizeEmailHtml("<b>only rich</b>", ""), null);
+  assert.match(sanitizeEmailHtml("<b>only rich</b>", "") ?? "", /<b>only rich<\/b>/);
   assert.equal(sanitizeEmailHtml(null, "text"), null);
-  assert.equal(sanitizeEmailHtml("<p>ok</p>", null), null);
+  assert.match(sanitizeEmailHtml("<p>ok</p>", null) ?? "", /<p>ok<\/p>/);
   assert.equal(sanitizeEmailHtml("x".repeat(1_000_001), "Safe text"), null);
   assert.equal(sanitizeEmailHtml("<b>x</b>", "y".repeat(100_001)), null);
-  assert.equal(sanitizeEmailHtml("<b>x</b>", ""), null);
+  assert.match(sanitizeEmailHtml("<b>x</b>", "") ?? "", /<b>x<\/b>/);
 });
 
 test("legacy HTML is quarantined, even if it mimics the marker but contains executable content", () => {
@@ -64,4 +65,10 @@ test("tenant scoped message and thread reads quarantine legacy before delivering
   assert.match(repository, /m\.organization_id = \$2 AND a\.organization_id = \$2/);
   assert.match(repository, /a\.organization_id = \$2 AND a\.deleted_at IS NULL/);
   assert.match(preview, /script-src 'none'/);
+});
+
+test("rich output retains no sender CSS or remote image loads", () => {
+  const html = sanitizeEmailHtml('<table style="width:100%"><tr><td><strong>Invoice</strong><img src="https://tracker.example/x"></td></tr></table>', "");
+  assert.match(html ?? "", /<table><tbody><tr><td><strong>Invoice<\\/strong>/);
+  assert.doesNotMatch(html ?? "", /style=|<img|https:\\/\\/tracker/);
 });
