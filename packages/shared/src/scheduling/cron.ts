@@ -3,7 +3,8 @@ const FIELD_RANGES: readonly [readonly [number, number], readonly [number, numbe
 function expandField(field:string,min:number,max:number):Set<number>{
   const out=new Set<number>();
   for(const part of field.split(",")){
-    const [base,stepRaw]=part.split("/"); const step=Number(stepRaw??1); if(!base) throw new Error("Invalid cron field");
+    const segments=part.split("/"); if(segments.length>2) throw new Error("Invalid cron field");
+    const [base,stepRaw]=segments; const step=Number(stepRaw??1); if(!base) throw new Error("Invalid cron field");
     if(!Number.isInteger(step)||step<1) throw new Error("Invalid cron step");
     let start=min,end=max;
     if(base==="*"){ /* full range */ }
