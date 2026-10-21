@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { EventEmitter } from "node:events";
 import type { TLSSocket } from "node:tls";
-import { ImapSmtpAdapter, parseSelectableImapFolder, readImapResponse, waitForTlsHandshake } from "../src/email/imap-smtp-adapter";
+import { ImapSmtpAdapter, extractImapRfc822Source, parseSelectableImapFolder, readImapResponse, waitForTlsHandshake } from "../src/email/imap-smtp-adapter";
 
 class FakeTlsSocket extends EventEmitter {
   destroyed = false;
@@ -192,6 +192,58 @@ test("IMAP RFC822 parser extracts identity, headers, recipients, body and draft 
   assert.equal(message.is_draft, true);
 });
 
+
+test("IMAP Gmail-style multipart email decodes UTF-8 QP and preserves formatted HTML", () => {
+  const raw = [
+    "From: Anthropic User Research <no-reply@research.anthropic.com>",
+    "To: Rilan <rilan@example.test>",
+    "Subject: The Anthropic Economic Index Survey closes on Friday",
+    "Message-ID: <survey-101@example.test>",
+    "Date: Wed, 21 Oct 2026 21:43:00 +0000",
+    'Content-Type: multipart/alternative; boundary="MixedCase_Boundary_42"',
+    "",
+    "--MixedCase_Boundary_42",
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: quoted-printable",
+    "",
+    "Share your perspective for a $15 reward =E2=80=87",
+    "Your interview is open through Friday, October 23.",
+    "--MixedCase_Boundary_42",
+    'Content-Type: text/html; charset="UTF-8"',
+    "Content-Transfer-Encoding: quoted-printable",
+    "",
+    '<html><body><table style=3D"width:100%; color:#333"><tr><td>',
+    '<strong>Claude</strong><p>Begin the study</p>',
+    "</td></tr></table></body></html>",
+    "--MixedCase_Boundary_42--",
+    "",
+  ].join("\r\n");
+  const response = `* 1 FETCH (UID 42 FLAGS (\\Seen) BODY[] {${Buffer.byteLength(raw, "utf8")}}\r\n${raw}\r\n)`;
+  assert.equal(extractImapRfc822Source(response), raw);
+  const adapter = new ImapSmtpAdapter() as unknown as {
+    parseRawMessage: (raw: string, folderId: string, uid: string, flags?: string) => {
+      subject: string; from_address: string; from_name?: string; text_body: string;
+      html_body?: string; snippet: string; provider_message_id?: string;
+    };
+  };
+  const message = adapter.parseRawMessage(response, "INBOX", "42", "* 1 FETCH (UID 42 FLAGS (\\Seen))");
+  assert.equal(message.subject, "The Anthropic Economic Index Survey closes on Friday");
+  assert.equal(message.from_address, "no-reply@research.anthropic.com");
+  assert.equal(message.from_name, "Anthropic User Research");
+  assert.equal(message.provider_message_id, "INBOX:42");
+  assert.match(message.text_body, /reward   /);
+  assert.match(message.text_body, /Friday, October 23/);
+  assert.doesNotMatch(message.text_body, /=E2=80=87|Content-Transfer-Encoding/);
+  assert.match(message.html_body ?? "", /<table style="width:100%; color:#333">/);
+  assert.match(message.html_body ?? "", /<strong>Claude<\/strong>/);
+  assert.match(message.html_body ?? "", /Begin the study/);
+  assert.doesNotMatch(message.html_body ?? "", /\r\n\)$/);
+  assert.doesNotMatch(message.snippet, /=E2=80=87|Content-Type/);
+});
+
+test("IMAP RFC822 extraction rejects truncated literal instead of persisting corrupted content", () => {
+  assert.throws(() => extractImapRfc822Source("* 7 FETCH (BODY[] {100}\\r\\nShort\\r\\n)"), /Incomplete IMAP RFC822 literal/);
+});
 
 function bufferedReader(response: string) {
   return {
