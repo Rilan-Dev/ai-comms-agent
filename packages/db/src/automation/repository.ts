@@ -200,6 +200,45 @@ export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise
   });
 }
 
+export type RecoveredScheduledJobRun = {
+  runId:string; jobId:string; organizationId:string; quarantined:boolean;
+};
+
+export async function recoverStaleScheduledJobRuns(
+  nowIso:string, limit=25, maxAgeMinutes=24*60,
+):Promise<RecoveredScheduledJobRun[]> {
+  const safeAge=Math.min(Math.max(Math.floor(maxAgeMinutes), 1), 24 * 60);
+  const safeLimit=Math.min(Math.max(Math.floor(limit), 1), 100);
+  const error="Worker execution interrupted; external side effects may have occurred. Manual verification required.";
+  return withTransaction(async client=>{
+    // Lock both the run and its parent. Never retry an unknown-outcome fire.
+    // A paused or reconfigured schedule is not reactivated by recovery.
+    const stale=await client.query<Row>(
+      "SELECT r.id AS run_id,r.fire_at,r.started_at,j.id AS job_id,j.organization_id FROM scheduled_job_runs r JOIN scheduled_jobs j ON j.id=r.scheduled_job_id WHERE r.status='running' AND r.started_at < $1::timestamptz - make_interval(mins => $2::int) ORDER BY r.started_at ASC LIMIT $3 FOR UPDATE OF r,j SKIP LOCKED",
+      [nowIso,safeAge,safeLimit],
+    );
+    const recovered:RecoveredScheduledJobRun[]=[];
+    for(const row of stale.rows){
+      const runId=String(row.run_id);
+      const jobId=String(row.job_id);
+      const organizationId=String(row.organization_id);
+      const fireAt=row.fire_at ? new Date(row.fire_at as string|Date).toISOString() : null;
+      const startedAt=new Date(row.started_at as string|Date).toISOString();
+      const result=await client.query<Row>(
+        "UPDATE scheduled_job_runs SET status='failed',finished_at=$2::timestamptz,error=$3,result=COALESCE(result,'{}'::jsonb) || $4::jsonb WHERE id=$1 AND status='running' RETURNING id",
+        [runId,nowIso,error,JSON.stringify({recoveredStaleExecution:true,providerOutcomeUnknown:true,manualVerificationRequired:true})],
+      );
+      if(!result.rows.length) continue;
+      const held=await client.query<Row>(
+        "UPDATE scheduled_jobs SET status='error',last_error=$4,updated_at=$5::timestamptz WHERE id=$1 AND organization_id=$2 AND status='active' AND next_fire_at=$3::timestamptz AND updated_at <= $6::timestamptz RETURNING id",
+        [jobId,organizationId,fireAt,error,nowIso,startedAt],
+      );
+      recovered.push({runId,jobId,organizationId,quarantined:held.rows.length>0});
+    }
+    return recovered;
+  });
+}
+
 export async function advanceScheduledJob(id:string,organizationId:string,expectedFireAt:string,nextFireAt:string|null,status:"active"|"archived"|"error",lastError:string|null){
   // A paused/archived schedule or a schedule edited after the claim must not
   // be resurrected by completion of the older in-flight occurrence.
@@ -211,10 +250,12 @@ export async function advanceScheduledJob(id:string,organizationId:string,expect
 }
 
 export async function completeScheduledJobRun(runId:string,result:Record<string,unknown>={}){
-  await query("UPDATE scheduled_job_runs SET status='completed',finished_at=now(),result=$2::jsonb,error=NULL WHERE id=$1",[runId,JSON.stringify(result)]);
+  const r=await query<{id:string}>("UPDATE scheduled_job_runs SET status='completed',finished_at=now(),result=$2::jsonb,error=NULL WHERE id=$1 AND status='running' RETURNING id",[runId,JSON.stringify(result)]);
+  return r.rows.length===1;
 }
 export async function failScheduledJobRun(runId:string,error:string){
-  await query("UPDATE scheduled_job_runs SET status='failed',finished_at=now(),error=$2 WHERE id=$1",[runId,error]);
+  const r=await query<{id:string}>("UPDATE scheduled_job_runs SET status='failed',finished_at=now(),error=$2 WHERE id=$1 AND status='running' RETURNING id",[runId,error]);
+  return r.rows.length===1;
 }
 
 export async function listActiveAutomationRules(organizationId:string){
