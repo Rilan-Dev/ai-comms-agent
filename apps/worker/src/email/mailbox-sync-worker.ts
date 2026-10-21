@@ -473,6 +473,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     for (let batchStart = 0; batchStart < ids.length; batchStart += BATCH_FETCH_SIZE) {
       const batchIds = ids.slice(batchStart, batchStart + BATCH_FETCH_SIZE);
       const messages: Array<{ id: string; message: EmailMessage | null }> = [];
+      const failedFetchIds = new Set<string>();
 
       if (isGmail && typeof (adapter as any).batchGetMessages === "function") {
         // Gmail: 1 HTTP request per 100 IDs.
@@ -491,6 +492,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
               try {
                 return { id, message: await adapter.getMessage(id) };
               } catch (getError) {
+                failedFetchIds.add(id);
                 console.error(JSON.stringify({
                   timestamp: new Date().toISOString(),
                   level: "error",
@@ -529,7 +531,9 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
 
       // Mark the un-fetched IDs (e.g., 404 from Gmail) as acked too —
       // they're gone from the server, retrying won't help.
-      const missedIds = unavailableMessageIds(messages);
+      // A transport/command error is retryable, not proof the message vanished.
+      // Never acknowledge failed IMAP/Zoho fetches or advance past their IDs.
+      const missedIds = unavailableMessageIds(messages.filter((entry) => !failedFetchIds.has(entry.id)));
       if (missedIds.length > 0) {
         await query(
           `UPDATE email_sync_states
@@ -551,6 +555,9 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
           processed_count: Math.min(batchStart + batchIds.length, ids.length),
           staged_count: ids.length,
         }));
+      }
+      if (failedFetchIds.size > 0) {
+        throw new Error(`Failed to fetch ${failedFetchIds.size} email message(s); pending IDs preserved for retry.`);
       }
       const failedInBatch = messages.filter((entry) => failedPersistIds.has(entry.id));
       if (failedInBatch.length > 0) {
