@@ -40,7 +40,8 @@ test("already indexed folder duplicates are reconciled, with document and vector
 });
 
 test("when the preferred folder copy disappears an existing survivor is reindexed", () => {
-  assert.match(indexer, /NOT c\.shadow_copy AND NOT EXISTS \(/);
+  assert.match(indexer, /NOT c\.shadow_copy AND c\.indexed_at IS NOT NULL/);
+  assert.match(indexer, /AND NOT EXISTS \(/);
   assert.match(indexer, /c\.is_draft=false/);
   assert.match(indexer, /c\.indexed_at IS NOT NULL/);
   assert.match(indexer, /INDEXER_CONCURRENCY/);
