@@ -707,3 +707,11 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Remedy:** Development commits `cce92f98,0cc16a77,7d94e1d2` apply scoped INBOX filter and per-account nonblank Message-ID read dedup, preserve actual separate message UUIDs and other provider behavior.
 - **Evidence:** 17/17 post-fix source invariants; host Vitest, production data, live provider and browser confirmation not run.
 - **Prevention/next:** Distinguish folder UID from logical mail identity. Verify focused tests, OPS-01 deploy, then confirm target thread and inbox each display one logical message. Investigate read-only DB IDs if duplicates remain.
+
+### ISS-FIX01-AGENT-SELF-SERVICE-POLICY-20261022 — agent setup requires developer-style policy entry and may bind unavailable mailboxes — 2026-10-22
+- **Severity/owner/status:** Medium-high self-service/access-reliability defect. FIX-01 code/regressions, OPS-01 live config/deployment, DEV-01 broader UX wizard. In progress; runtime acceptance pending.
+- **Symptom:** Agent setup asks user to type `email.search, email.messages.list` and JSON rather than select tools, and may show a connected channel as though policy and synchronization were satisfied.
+- **Root cause:** Raw agent policy form, non-validated disconnected email options and `bindEmail` SQL lacking status guard, simulate always marking optional email check as passing.
+- **Remedy:** Development `084f36ba,68b3ec81,e7735b4b,93fbc354,11c760c2,51134e6d,424d89c1` + tests `816d9558,787c8ca9,df860960`; registered tool toggles, setup checklist, connected-only binding, actionable 422, truthful policy/binding diagnostic.
+- **Evidence:** 24/24 GitHub source checks; no native tests, browser acceptance, server authentication or real agent config review because SSH TCP connection refused. Existing saved policy/role bindings not modified, no permission auto-grant.
+- **Next:** Operator rotates leaked server password, OPS-01 investigates SSH/inspects sanitized live state and deployment. Execute web regression/typechecks, validate user choosing a connected mailbox and explicitly saving `email.search`/`email.messages.list`, check agent configuration and live authorized summary. More comprehensive feature wizard belongs DEV-01.
