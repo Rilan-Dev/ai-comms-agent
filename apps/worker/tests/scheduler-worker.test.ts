@@ -20,3 +20,20 @@ test("scheduled execution failures are audit-correlated and fail closed", () => 
   assert.match(source, /correlationId:job\.runId/);
   assert.match(source, /await failScheduledJobRun\(job\.runId/);
 });
+
+
+test("post-execution audit failures do not reclassify completed scheduled runs", () => {
+  const helperStart = source.indexOf("async function recordScheduleAudit(");
+  const workerStart = source.indexOf("export async function processScheduledJobs");
+  assert.ok(helperStart >= 0 && workerStart > helperStart);
+  const helper = source.slice(helperStart, workerStart);
+  assert.match(helper, /try\s*\{\s*await recordAuditEvent\(event\)/);
+  assert.match(helper, /catch\s*\(/);
+  assert.match(helper, /console\.error\(/);
+  const worker = source.slice(workerStart);
+  assert.doesNotMatch(worker, /await recordAuditEvent\(/);
+  const persisted = worker.indexOf("await completeScheduledJobRun(job.runId");
+  const counted = worker.indexOf("completed+=1", persisted);
+  const optionalAudit = worker.indexOf("await recordScheduleAudit(", persisted);
+  assert.ok(persisted >= 0 && counted > persisted && optionalAudit > counted);
+});
