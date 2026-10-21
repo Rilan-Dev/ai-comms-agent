@@ -747,3 +747,11 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Correction:** `2a8c5933` UID-only discovery; `db3d629b` executable focused mock regression; `b0550e52` 5-message persisted batches/count-only progress; `631d96a2` preserve retryable fetch IDs; `2c0e3f8a` stage/retry source regression. Code on `Development`, not production.
 - **Checks:** 17/17 current Development source invariants pass; real tests, builds, integration, release/deployment and live synchronization remain pending. Health/queue ready/migration success are not successful import.
 - **Role routing:** OPS-01 deployed version, unhealthy host Redis/Qdrant, connectivity and runtime; DEV-01 unaffected. Never replay leaked session cookie.
+
+### EVT-FIX01-IMAP-MIME-RICH-BODY-20261022 — 2026-10-22
+- **Agent/authorization:** FIX-01 / Sentinel explicitly invoked against Development, current Phase 4 source-only defect; OPS-01 production and DEV-01 roadmap preserved.
+- **Symptom:** Same Anthropic email formatted correctly in Gmail, project thread shows repeated `=E2=80=87` QP and no HTML styling.
+- **Root cause:** IMAP parser bypassed canonical RFC822 multipart decoder, did not decode nested text/plain part transfer encoding, always discarded html_body, parsed protocol FETCH literal wrapper as RFC822; shared decoder QP UTF-8 byte handling and boundary case were also defective.
+- **Remedy:** `5add7d2a` QP bytes/boundaries, `83c77c6d` IMAP exact literal + shared MIME parser + HTML/text, `20d0b026,cbf403fa` regression/fixture corrections. Existing sandbox iframe and CSP unchanged; unsafe parent-DOM insertion rejected.
+- **Evidence/limitations:** 16/16 Development source checks PASS; actual tests/build/provider and stored-message backfill NOT run. HTML ingest sanitizer issue #36 unresolved.
+- **Next:** FIX-01 focus tests and typecheck; OPS-01 approved rollout and scoped re-fetch of already-corrupted records (do not delete account), verify visible output, no tracking/script privileges.
