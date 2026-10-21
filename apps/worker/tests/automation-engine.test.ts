@@ -96,7 +96,7 @@ test("malformed persisted match filters fail closed rather than firing a match-a
 test("malformed conditions and event payload cannot bypass automation constraints", () => {
   const input = event("email.received", { from: "outsider@example.test" });
   for (const conditions of [[], "wrong-type", 7, true]) {
-    assert.equal(automationMatches(rule({ type: "email.received" }, conditions as Record<string, unknown>), input), false);
+    assert.equal(automationMatches(rule({ type: "email.received" }, conditions as unknown as Record<string, unknown>), input), false);
   }
   assert.equal(automationMatches(rule({ type: "email.received" }), event("email.received", [] as unknown as Record<string, unknown>)), false);
   assert.equal(automationMatches(rule({ type: "email.received" }), event("email.received", null as unknown as Record<string, unknown>)), false);
