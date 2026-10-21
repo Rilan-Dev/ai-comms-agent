@@ -14,7 +14,7 @@ test("Gmail IMAP folder copies are ranked only within the same account and RFC82
   assert.match(canonical, /peer\.organization_id=m\.organization_id/);
   assert.match(canonical, /LOWER\(BTRIM\(peer\.internet_message_id\)\)=LOWER\(BTRIM\(m\.internet_message_id\)\)/);
   assert.match(canonical, /peer\.id<>m\.id/);
-  assert.match(canonical, /peer\.id\)\s*<\s*\(/);
+  assert.match(canonical, /peer\.id\s*\)\s*<\s*\(/);
   assert.match(canonical, /role='inbox'/);
   assert.match(canonical, /provider_folder_id\)='INBOX'/);
 });
