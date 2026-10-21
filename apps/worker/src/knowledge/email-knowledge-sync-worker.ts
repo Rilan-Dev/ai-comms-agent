@@ -1,6 +1,7 @@
 import { query } from "@ai-comms-agent/db";
 import { createEmailIndexHashes, createEmailVectorPointId } from "./email-index-identity";
 import { processEmailKnowledgeSyncJob } from "./email-index-lifecycle";
+import { IMAP_SHADOW_COPY_SQL } from "./email-knowledge-canonical";
 import type { EmailKnowledgeSyncDependencies, EmailKnowledgeSyncJob, EmailKnowledgeVectorAdapter, EmailKnowledgeVectorSnapshot } from "./email-index-lifecycle";
 
 const DEFAULT_BATCH_SIZE = 10;
@@ -63,10 +64,12 @@ async function loadCurrentMessage(job: EmailKnowledgeSyncJob): Promise<EmailKnow
     `SELECT d.id, d.sha256, d.metadata
        FROM email_accounts a
        JOIN email_messages m ON m.email_account_id=a.id AND m.organization_id=a.organization_id
+       LEFT JOIN email_folders f ON f.id=m.folder_id AND f.email_account_id=m.email_account_id
        JOIN knowledge_documents d ON d.organization_id=a.organization_id
         AND d.storage_bucket='email-account' AND d.storage_path=$4
       WHERE a.id=$1 AND a.organization_id=$2 AND a.provider=$3
         AND a.deleted_at IS NULL AND m.provider_message_id=$5 AND m.is_draft=false
+        AND NOT (${IMAP_SHADOW_COPY_SQL})
       LIMIT 1`,
     [job.account_id, job.organization_id, job.provider, storagePath, job.provider_message_id],
   );
