@@ -147,6 +147,9 @@ export function verifiedEmailHtml(storedHtml: unknown, textBody: unknown): strin
   if (typeof storedHtml !== "string" || storedHtml.length > MAX_OUTPUT_CHARS + RICH_OPEN.length + RICH_CLOSE.length) return null;
   if (storedHtml.startsWith(RICH_OPEN) && storedHtml.endsWith(RICH_CLOSE)) {
     const inner = storedHtml.slice(RICH_OPEN.length, -RICH_CLOSE.length);
+    // An empty canonical document can result from an image-only message.
+    // The complete, exactly matched wrapper contains no untrusted markup.
+    if (inner === "") return storedHtml;
     const rechecked = sanitizeEmailHtml(inner, textBody);
     return rechecked === storedHtml ? storedHtml : null;
   }
