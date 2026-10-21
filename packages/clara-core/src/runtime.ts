@@ -1,5 +1,6 @@
 import { decryptCredential, parseCredentialsMasterKey, query } from "@ai-comms-agent/db";
 import { readOpenAIToolCompletion } from "./tool-call-stream";
+import { createSarvamToolBridge } from "./sarvam-tool-bridge";
 import { readGeminiToolCompletion } from "./gemini-tool-stream";
 import { buildReadOnlyToolFinalMessages } from "./tool-result-final";
 import type {
@@ -372,8 +373,9 @@ async function chatStream(config: ProviderConfig, messages: ChatMessage[], optio
 
 /**
  * Non-streaming native function/tool call adapter.
- * OpenAI and Gemini have explicit request/response mappings; Sarvam is
- * deliberately rejected until its function-call contract is verified.
+ * OpenAI and Gemini have explicit request/response mappings. Sarvam Chat V1
+ * uses the documented OpenAI-compatible function calling wire contract,
+ * with registered host names mapped to provider-safe request-local aliases.
  */
 async function chatWithTools(
   config: ProviderConfig,
@@ -383,10 +385,7 @@ async function chatWithTools(
 ): Promise<ChatToolCompletion> {
   assertApiKey(config);
   if (tools.length === 0 || tools.length > 32) throw new Error("Tool calling requires between 1 and 32 registered tools.");
-  if (config.provider === "sarvam") {
-    throw new Error("Native tool calling is not enabled for Sarvam until provider function-call semantics are verified.");
-  }
-  if (config.provider !== "openai" && config.provider !== "gemini") {
+  if (config.provider !== "openai" && config.provider !== "gemini" && config.provider !== "sarvam") {
     throw new Error(`Native tool calling is not supported for provider ${config.provider}.`);
   }
 
@@ -434,9 +433,13 @@ async function chatWithTools(
     return { text: parts.map((part) => part.text ?? "").join(""), toolCalls, finishReason: candidate?.finishReason ?? null };
   }
 
+  const sarvam = config.provider === "sarvam";
+  const bridge = sarvam ? createSarvamToolBridge(tools.map((tool) => tool.name)) : null;
   const response = await fetch(`${config.baseUrl}/v1/chat/completions`, {
     method: "POST",
-    headers: { "content-type": "application/json", accept: "text/event-stream", authorization: `Bearer ${config.apiKey}` },
+    headers: sarvam
+      ? { "content-type": "application/json", accept: "application/json", "api-subscription-key": config.apiKey! }
+      : { "content-type": "application/json", accept: "text/event-stream", authorization: `Bearer ${config.apiKey}` },
     body: JSON.stringify({
       model: config.chatModel,
       messages: messages.map((message) => {
@@ -447,23 +450,29 @@ async function chatWithTools(
             tool_calls: message.tool_calls.map((call) => ({
               id: call.id,
               type: "function",
-              function: { name: call.name, arguments: JSON.stringify(call.arguments) },
+              function: { name: bridge ? bridge.toProvider(call.name) : call.name, arguments: JSON.stringify(call.arguments) },
             })),
           };
         }
+        if (message.role === "tool" && bridge) return { ...message, name: bridge.toProvider(message.name) };
         return message;
       }),
-      tools: tools.map((tool) => ({ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.parameters, strict: false } })),
+      tools: tools.map((tool) => ({ type: "function", function: {
+        name: bridge ? bridge.toProvider(tool.name) : tool.name,
+        description: sarvam ? `${tool.name}: ${tool.description}` : tool.description,
+        parameters: tool.parameters,
+        ...(sarvam ? {} : { strict: false }),
+      } })),
       tool_choice: "auto",
-      stream: true,
-      parallel_tool_calls: false,
+      stream: !sarvam,
+      ...(sarvam ? {} : { parallel_tool_calls: false }),
       temperature: options.temperature,
-      max_completion_tokens: options.maxTokens,
+      ...(sarvam ? { max_tokens: options.maxTokens } : { max_completion_tokens: options.maxTokens }),
     }),
   });
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    throw new Error(`OpenAI tool request failed (${response.status}): ${body.slice(0, 300)}`);
+    throw new Error(`${sarvam ? "Sarvam" : "OpenAI"} tool request failed (${response.status}): ${body.slice(0, 300)}`);
   }
   // A streamed provider response can split function names, JSON arguments
   // and UTF-8 bytes at arbitrary boundaries. The decoder buffers until
@@ -471,7 +480,11 @@ async function chatWithTools(
   // anything executable to the host authorization/audit loop.
   if (response.headers.get("content-type")?.includes("text/event-stream")) {
     if (!response.body) throw new Error("Provider returned an empty tool-call stream.");
-    return readOpenAIToolCompletion(response.body);
+    const decoded = await readOpenAIToolCompletion(response.body);
+    if (!bridge || !decoded.toolCalls.length) return decoded;
+    const translated = decoded.toolCalls.map((call) => ({ ...call, name: bridge.fromProvider(call.name) }));
+    if (translated.some((call) => !call.name)) return { text: "The provider returned an unknown tool.", toolCalls: [], finishReason: "invalid_tool_call" };
+    return { ...decoded, toolCalls: translated as ChatToolCompletion["toolCalls"] };
   }
   // Some compatible gateways still answer stream:true using JSON. Preserve
   // their existing validated non-streaming contract; never parse SSE as JSON.
@@ -497,7 +510,9 @@ async function chatWithTools(
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return { text: "I couldn't safely interpret the requested email operation, so I did not execute it. Please rephrase the request.", toolCalls: [], finishReason: "invalid_tool_arguments" };
     }
-    toolCalls.push({ id: call.id ?? `openai-call-${Date.now()}-${index}`, name: call.function.name, arguments: parsed as Record<string, unknown> });
+    const hostName = bridge ? bridge.fromProvider(call.function.name) : call.function.name;
+    if (!hostName) return { text: "The provider returned an unknown tool.", toolCalls: [], finishReason: "invalid_tool_call" };
+    toolCalls.push({ id: call.id ?? `provider-call-${Date.now()}-${index}`, name: hostName, arguments: parsed as Record<string, unknown> });
   }
   return { text: choice?.message?.content ?? "", toolCalls, finishReason: choice?.finish_reason ?? null };
 }
