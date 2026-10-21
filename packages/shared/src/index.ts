@@ -102,6 +102,9 @@ export { EMAIL_CAPABILITIES, emptyCapabilitySet, normalizeCapabilitySet, assertC
 // + handles multipart MIME + QP/Base64 decoding.
 export { parseRfc822, type ParsedEmail } from "./email/rfc822-parser";
 
+// Fail-closed email HTML ingest / legacy-row preview quarantine.
+export { sanitizeEmailHtml, verifiedEmailHtml } from "./email/html-sanitizer";
+
 export type { AgentStatus, DeploymentEnvironment, AgentEmailAccountRole, Agent, AgentVersion, AgentDeployment, AgentPolicy, AgentEmailBinding, AgentWhatsAppBinding } from "./agent/domain";
 
 export type { AgentExecutionSource, AgentExecutionRequest, AgentExecutionDispatchResult, ProductActionResult } from "./agent/execution";
