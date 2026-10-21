@@ -731,3 +731,11 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Failed/unsafe approaches:** No TLS verification weakening, credential edits, fake imports, timer inflation, or secret-bearing curl replay.
 - **Remedy:** `91bc19b1` cancels handshake timer, handles closed sockets promptly; `018f4fcd` adds three Node tests. GitHub post-write source checks 14/14 pass, test runner/typecheck/live sync NOT run.
 - **Prevention/next:** Separate TLS negotiation deadlines from mailbox operation deadlines. OPS-01 verifies deployed SHA, sanitized TLS reachability and actual 1..50 imported rows; FIX-01 handles further source-only defects if reproduced.
+
+### EVT-FIX01-IMAP-GMAIL-SELECT-IDLE-20261021 — 2026-10-21
+- **Role/session:** FIX-01 / Sentinel — FIX01-IMAP-GMAIL-SELECT-IDLE-20261021; `main` source-only correction.
+- **Symptom:** Existing IMAP/SMTP account connected but 0/50 imported, worker error `Unknown Mailbox: [Gmail]`, repeated queue retries; IMAP IDLE error invalid encrypted credential type.
+- **Source causes:** Unselectable `\\Noselect` hierarchy listed and selected; encrypted credential type silently omitted by repository save; worker claim RETURNING comma omitted, completion failed to persist sync_mode, and concurrent IMAP read commands shared one socket.
+- **Failed approach:** TLS deadline fix alone, reassuring connected/worker-ready states; no bypass via TLS weakening, deleting account, or fabricated import confirmation.
+- **Remedy:** `1c1b5796, 06f9b14f, 1184576e, d3fa0af4, 53702ac8, a655ce4e, d43f16b7, 2e131fb8` on main. 13/13 latest source invariants pass; tests/typecheck/live inbox not run.
+- **Next:** OPS-01 runtime and deployment checks, revocation of exposed auth cookie; FIX-01 focused unit/type checks and follow-on only if runtime reveals new source defects. Preserve DEV-01 unrelated C3/R1 work.
