@@ -163,4 +163,4 @@ export type { TrustedBriefingPrincipal, BriefingPeriod, BriefingRequest, Effecti
 export * from './briefings/selection';
 
 // Routines are preview contracts, not authority to execute or deliver.
-export type { RoutineTrigger, RoutineScheduleTrigger, DigestWindow, RoutineOccurrencePreview } from './routines/types';
+export type { RoutineTrigger, RoutineScheduleTrigger, DigestWindow, RoutineOccurrencePreview, RoutineDestination, RoutineDraft, RoutineProposalPreview } from './routines/types';
