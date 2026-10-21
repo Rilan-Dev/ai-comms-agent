@@ -15,7 +15,8 @@
     "./email-write-tools": "./src/email-write-tools.ts",
     "./briefings/selection": "./src/briefings/selection.ts",
     "./briefings/generation": "./src/briefings/generation.ts",
-    "./routines/time": "./src/routines/time.ts"
+    "./routines/time": "./src/routines/time.ts",
+    "./routines/proposals": "./src/routines/proposals.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
