@@ -1043,3 +1043,11 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Source diagnosis:** Gmail All Mail and INBOX folder copies persisted with different provider folder:UID identifiers; inbox query never filtered to real INBOX, thread messages/counters showed physical copies.
 - **Remedy:** `cce92f98` inbox filter and thread copy ranking, `0cc16a77` summary count, `7d94e1d2` regression. 17/17 source checks.
 - **Pending:** Actual Vitest, DB/host, production SHA and browser confirmation remain pending. OPS-01 owns release/deployment; FIX-01 responds only to reproducible new source defects.
+
+### FIX01-AGENT-SELF-SERVICE-POLICY-20261022 — 2026-10-22
+- **Agent:** FIX-01/Sentinel, direct authorized defect correction on Development.
+- **Recovered:** Development start SHA `14a6d476`, shared memory, role memory/worklog, central sessions/events/handoff, NEXT_ACTION, Phase 4 implementation-in-progress, issues and verification.
+- **Host:** User-provided SSH TCP port responded connection refused. No authenticated SSH, database/agent-policy inspection, password usage or production modifications.
+- **Source root cause:** Policy required internal manual tool/JSON editing; available accounts were not limited to connected status at either UI or bind DB; simulation failed to detect enabled read tools without connected readable bindings.
+- **Fixes/tests:** `084f36ba,816d9558,68b3ec81,e7735b4b,93fbc354,11c760c2,787c8ca9,51134e6d,424d89c1,df860960`. Selection-first agent tool policy and visible setup, status checks and truthfully failing read-readiness probe. GitHub source assertions 24/24.
+- **Pending:** Real Vitest/web/db typecheck, real user agent policy/connected accounts and browser, OPS-01 SSH/infra/deployment. No automatic grants; password rotation recommended. DEV-01 retains broader product UI scope.
