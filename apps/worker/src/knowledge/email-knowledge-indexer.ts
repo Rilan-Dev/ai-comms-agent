@@ -1,5 +1,6 @@
 import { query } from "@ai-comms-agent/db";
 import { createEmailIndexHashes, sha256 } from "./email-index-identity";
+import { IMAP_SHADOW_COPY_SQL } from "./email-knowledge-canonical";
 import type { EmailMessage } from "@ai-comms-agent/shared";
 
 export type EmailKnowledgeSource = {
@@ -91,15 +92,22 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
   if (!organizationId || !accountId || !providerMessageId) {
     throw new Error("Email knowledge indexing requires organization, account, and provider message IDs.");
   }
-  const activeAccount = await query<{ id: string }>(
-    `SELECT a.id FROM email_accounts a
+  // Revalidate logical ownership against the live DB before indexing. An
+  // INBOX copy might have arrived after the indexer selected an All Mail row.
+  // Never queue a second knowledge document for the same RFC822 Message-ID.
+  const activeAccount = await query<{ id: string; shadow_copy: boolean }>(
+    `SELECT a.id, (${IMAP_SHADOW_COPY_SQL}) AS shadow_copy
+       FROM email_accounts a
        JOIN email_messages m ON m.email_account_id=a.id AND m.organization_id=a.organization_id
+       LEFT JOIN email_folders f ON f.id=m.folder_id AND f.email_account_id=m.email_account_id
       WHERE a.id=$1 AND a.organization_id=$2 AND a.provider=$3 AND a.deleted_at IS NULL
         AND m.provider_message_id=$4
       LIMIT 1`,
     [accountId, organizationId, provider, providerMessageId],
   );
-  if (!activeAccount.rows[0]) {
+  if (!activeAccount.rows[0] || activeAccount.rows[0].shadow_copy) {
+    // The existing idempotent deletion path also queues the vector cleanup.
+    // Keep physical email_messages copies intact for provider folder actions.
     await deleteEmailKnowledge(organizationId, accountId, providerMessageId, provider);
     return;
   }
