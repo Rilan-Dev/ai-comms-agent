@@ -454,7 +454,10 @@ async function chatWithTools(
             })),
           };
         }
-        if (message.role === "tool" && bridge) return { ...message, name: bridge.toProvider(message.name) };
+        if (message.role === "tool" && bridge) {
+          bridge.toProvider(message.name); // Reject a stale or unregistered tool result.
+          return { role: "tool", tool_call_id: message.tool_call_id, content: message.content };
+        }
         return message;
       }),
       tools: tools.map((tool) => ({ type: "function", function: {
@@ -484,7 +487,7 @@ async function chatWithTools(
     if (!bridge || !decoded.toolCalls.length) return decoded;
     const translated = decoded.toolCalls.map((call) => ({ ...call, name: bridge.fromProvider(call.name) }));
     if (translated.some((call) => !call.name)) return { text: "The provider returned an unknown tool.", toolCalls: [], finishReason: "invalid_tool_call" };
-    return { ...decoded, toolCalls: translated as ChatToolCompletion["toolCalls"] };
+    return { ...decoded, toolCalls: translated.map((call) => ({ ...call, name: call.name! })) };
   }
   // Some compatible gateways still answer stream:true using JSON. Preserve
   // their existing validated non-streaming contract; never parse SSE as JSON.
@@ -493,6 +496,9 @@ async function chatWithTools(
   };
   const choice = payload.choices?.[0];
   const rawCalls = choice?.message?.tool_calls ?? [];
+  if (sarvam && rawCalls.length && choice?.finish_reason !== "tool_calls") {
+    return { text: "The provider did not complete a valid tool call.", toolCalls: [], finishReason: "invalid_tool_call" };
+  }
   if (choice?.finish_reason === "tool_calls" && rawCalls.length === 0) {
     return { text: "I couldn't safely interpret the requested email operation, so I did not execute it. Please rephrase the request.", toolCalls: [], finishReason: "invalid_tool_call" };
   }
