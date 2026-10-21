@@ -49,3 +49,20 @@ test("IMAP retrieval uses one command at a time on a shared socket", () => {
   assert.match(getMessages, /candidate.provider === "imap_smtp" \? 1 : PERSIST_CONCURRENCY/);
   assert.match(getMessages, /await Promise.all\(/);
 });
+
+test("IMAP import fetches five messages per durable persistence batch and logs progress", () => {
+  const sync = readFileSync(new URL("../src/email/mailbox-sync-worker.ts", import.meta.url), "utf8");
+  assert.match(sync, /BATCH_FETCH_SIZE = isGmail \? 50 : candidate\.provider === "imap_smtp" \? 5 : 25/);
+  assert.match(sync, /message: "Mailbox sync message IDs staged"/);
+  assert.match(sync, /message: "IMAP mailbox import batch processed"/);
+  assert.match(sync, /pending_message_ids=\$1::jsonb/);
+});
+
+test("a transient IMAP fetch error retains its staged ID for retry instead of acknowledging it as missing", () => {
+  const sync = readFileSync(new URL("../src/email/mailbox-sync-worker.ts", import.meta.url), "utf8");
+  assert.match(sync, /const failedFetchIds = new Set<string>\(\)/);
+  assert.match(sync, /failedFetchIds\.add\(id\)/);
+  assert.match(sync, /unavailableMessageIds\(messages\.filter\(\(entry\) => !failedFetchIds\.has\(entry\.id\)\)\)/);
+  assert.match(sync, /if \(failedFetchIds\.size > 0\) \{/);
+  assert.match(sync, /pending IDs preserved for retry/);
+});
