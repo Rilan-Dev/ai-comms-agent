@@ -1020,3 +1020,11 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Remedy commits:** `1c1b5796, 06f9b14f, 1184576e, d3fa0af4, 53702ac8, a655ce4e, d43f16b7, 2e131fb8`; parsed selectable IMAP folders, normalized historical password credentials, preserved future type, repaired claim/completion checkpoint and single-socket concurrency.
 - **Verification limits:** 13/13 latest source invariants, no actual Node/typecheck/DB/live provider or deployed-sha checks. No credentials reused; authentication cookie must be revoked.
 - **Next:** FIX-01 targeted worker tests/typecheck in full checkout; OPS-01 running image version, existing-account sync, error disappearance, imported count and lastSuccessAt, and IDLE connection evidence.
+
+### FIX01-IMAP-UID-STAGING-20261022 — 2026-10-22
+- **Role/authorization:** FIX-01/Sentinel, explicit owner bug-fix request against `Development`, direct branch edits; Phase 4 unchanged; no DEV-01 feature work or OPS-01 infra/deploy actions.
+- **Start:** Both `main` and `Development` initially at `2631bbaa7360d188167783e376937721fda5a12c`. Read shared/role memories, central agent records, issues, verification and mailbox implementation.
+- **Symptom:** Provider account says connected yet `email_sync_states` is running/initial, imported=0, pending=0, lastSuccessAt null; deployed worker logs only periodic health and ready consumer.
+- **Source diagnosis:** Double full-MIME download during UID discovery and later getMessage; no durable staging/progress until discovery finishes; caught transient fetch failures wrongly acked as missing, initial 25-body batch delays writes.
+- **Remedies:** `2a8c5933,db3d629b,b0550e52,631d96a2,2c0e3f8a` on Development. 17/17 source checks, actual Node/typecheck/DB/provider not run.
+- **Status/next:** SOURCE CORRECTED, OPS runtime acceptance pending. Execute focused IMAP tests and typechecks; OPS-01 merges/deploys from authorized branch, verifies deployed SHA, sync counts/state and any Redis/Qdrant/network blockers. No secrets recorded or reused.
