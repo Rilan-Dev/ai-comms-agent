@@ -238,7 +238,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
        SET status='running', last_attempt_at=now(), updated_at=now()
        WHERE email_sync_states.status <> 'running'
           OR email_sync_states.last_attempt_at < now()-interval '10 minutes'
-     RETURNING cursor_token AS cursor, history_id, last_success_at, sync_mode
+     RETURNING cursor_token AS cursor, history_id, last_success_at, sync_mode,
        pending_message_ids, pending_cursor_token, pending_history_id, pending_sync_mode,
        pending_push_at, last_attempt_at`,
     [candidate.id, candidate.organization_id],
