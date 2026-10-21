@@ -755,3 +755,9 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Remedy:** `5add7d2a` QP bytes/boundaries, `83c77c6d` IMAP exact literal + shared MIME parser + HTML/text, `20d0b026,cbf403fa` regression/fixture corrections. Existing sandbox iframe and CSP unchanged; unsafe parent-DOM insertion rejected.
 - **Evidence/limitations:** 16/16 Development source checks PASS; actual tests/build/provider and stored-message backfill NOT run. HTML ingest sanitizer issue #36 unresolved.
 - **Next:** FIX-01 focus tests and typecheck; OPS-01 approved rollout and scoped re-fetch of already-corrupted records (do not delete account), verify visible output, no tracking/script privileges.
+
+### EVT-FIX01-IMAP-FOLDER-COPY-DUPES-20261022 — 2026-10-22
+- **Role:** FIX-01/Sentinel; Development branch; user supplied duplicate inbox rows for one received Gmail test email, both linking to the same thread.
+- **Cause:** IMAP stores separate folder:UID entries from INBOX and All Mail; previous Inbox query had no folder filter and thread details/list counts reflected physical copies. No live account DB proof of exact duplicate pair.
+- **Source remedy:** `cce92f98` IMAP Inbox membership filter + thread per-account Message-ID dedup; `0cc16a77` thread summary counts dedup; `7d94e1d2` 5 source regressions. No storage deletion, no cross-provider/account merging.
+- **Verification:** 17/17 focused source checks, no actual Vitest, DB, deployment or browser acceptance. OPS-01 validates live result, DEV-01 unaffected.
