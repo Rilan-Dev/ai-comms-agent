@@ -40,7 +40,25 @@ describe("FIX-01 agent mailbox channels and summary authorization", () => {
     expect(details).toContain('role="status"');
     expect(details).toContain("Mailbox connection does not enable chat summaries.");
     expect(details).toContain('onClick={()=>setTab("policy")}');
-    expect(details).toContain('placeholder="email.search, email.messages.list"');
-    expect(details).toContain("allowedTools=String(form.get(\"allowedTools\")");
+    expect(details).toContain('name: "email.search", label: "Search mailbox"');
+    expect(details).toContain('name: "email.messages.list", label: "List emails"');
+    expect(details).toContain('const [selectedTools, setSelectedTools] = useState<string[]>(initialPolicy?.allowedTools ?? [])');
+    expect(details).toContain('const allowedTools = selectedTools');
+    expect(details).toContain('onChange={(event) => togglePolicyTool(choice.name, event.target.checked)}');
+    expect(details).toContain('setSelectedTools(p.policy.allowedTools)');
+    expect(details).not.toContain('name="allowedTools"');
   });
+  it("keeps existing special policy settings and grants until explicitly changed", () => {
+    expect(details).toContain('Nothing is enabled unless an administrator selects it and saves the policy.');
+    expect(details).toContain('KNOWN_EMAIL_POLICY_TOOLS.has(name)');
+    expect(details).toContain('Existing other permissions');
+    expect(details).toContain('checked onChange={() => togglePolicyTool(name, false)}');
+    expect(details).toContain('policy?.securityPolicy??{}');
+    expect(details).toContain('policy?.rateLimits??{}');
+    expect(details).toContain('role !== "send_only"');
+    expect(details).toContain("Binding a mailbox never grants tool access automatically.");
+    expect(details).toContain("Save selected permissions");
+    expect(channels).not.toContain("updatePolicy(");
+  });
+
 });
