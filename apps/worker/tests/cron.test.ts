@@ -45,3 +45,25 @@ test("rejects malformed cron segments with extra slash tokens", () => {
   assert.throws(() => matchesCron("0 0 * * */15/2", now, "UTC"), /Invalid cron field/);
   assert.equal(matchesCron("*/15 * * * *", now, "UTC"), true);
 });
+
+
+test("restricted day-of-month and day-of-week use standard cron OR matching", () => {
+  const cron = "0 8 1 * 4"; // At 08:00 on day 1 and on Thursdays.
+  assert.equal(matchesCron(cron, new Date("2026-10-22T08:00:00Z"), "UTC"), true); // Thursday, not day 1
+  assert.equal(matchesCron(cron, new Date("2026-11-01T08:00:00Z"), "UTC"), true); // Day 1, not Thursday
+  assert.equal(matchesCron(cron, new Date("2026-10-23T08:00:00Z"), "UTC"), false);
+});
+
+test("unrestricted cron day fields continue to require the restricted day", () => {
+  assert.equal(matchesCron("0 8 1 * *", new Date("2026-10-22T08:00:00Z"), "UTC"), false);
+  assert.equal(matchesCron("0 8 1 * *", new Date("2026-11-01T08:00:00Z"), "UTC"), true);
+  assert.equal(matchesCron("0 8 * * 4", new Date("2026-10-22T08:00:00Z"), "UTC"), true);
+  assert.equal(matchesCron("0 8 * * 4", new Date("2026-10-23T08:00:00Z"), "UTC"), false);
+});
+
+test("nextCronFire does not skip matching weekday when a day-of-month is specified", () => {
+  assert.equal(
+    nextCronFire("0 8 1 * 4", new Date("2026-10-21T08:00:00Z"), "UTC").toISOString(),
+    "2026-10-22T08:00:00.000Z",
+  );
+});
