@@ -245,6 +245,17 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
   );
   if (!claimed.rows[0]) return false;
 
+  console.log(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level: "info",
+    service: "worker.email-sync",
+    message: "Mailbox sync claim acquired",
+    organization_id: candidate.organization_id,
+    account_id: candidate.id,
+    provider: candidate.provider,
+    sync_mode: claimed.rows[0].sync_mode ?? "initial",
+  }));
+
   const accounts = new PostgresEmailAccountRepository();
   const adapter: EmailProvider & { getCredentialSnapshot?: () => EmailCredentials; listDraftIdsByMessage?: () => Promise<Map<string, string>> } = candidate.provider === "gmail" ? new GmailAdapter() : candidate.provider === "zoho" ? new ZohoAdapter() : candidate.provider === "microsoft_graph" ? new MicrosoftGraphAdapter() : new ImapSmtpAdapter();
 
@@ -381,6 +392,16 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
          WHERE email_account_id=$5`,
         [JSON.stringify(ids), stagedCursor, stagedHistory, stagedMode, candidate.id],
       );
+      console.log(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: "info",
+        service: "worker.email-sync",
+        message: "Mailbox sync message IDs staged",
+        organization_id: candidate.organization_id,
+        account_id: candidate.id,
+        provider: candidate.provider,
+        pending_count: ids.length,
+      }));
     }
 
     const refreshedCredentials = adapter.getCredentialSnapshot?.();
@@ -415,7 +436,9 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     // We use 4 for Gmail (leaves headroom for indexer/scheduler/whatsapp
     // ticks that may run concurrently) and 3 for Zoho/IMAP (which also
     // does an HTTP fetch per ID, so the persist path is the only DB pressure).
-    const BATCH_FETCH_SIZE = isGmail ? 50 : 25;          // HTTP batch size
+    // Stage IMAP UIDs cheaply, then persist five bodies at a time so large
+    // mailboxes show durable progress rather than remaining at 0/50.
+    const BATCH_FETCH_SIZE = isGmail ? 50 : candidate.provider === "imap_smtp" ? 5 : 25;
     const PERSIST_CONCURRENCY = isGmail ? 4 : 3;         // DB write concurrency
     const failedPersistIds = new Set<string>();
     const persistMessageSafe = async (id: string, message: EmailMessage | null): Promise<boolean> => {
@@ -515,6 +538,19 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
            WHERE email_account_id=$2`,
           [missedIds, candidate.id],
         );
+      }
+      if (candidate.provider === "imap_smtp") {
+        console.log(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level: "info",
+          service: "worker.email-sync",
+          message: "IMAP mailbox import batch processed",
+          organization_id: candidate.organization_id,
+          account_id: candidate.id,
+          imported_or_updated: saved,
+          processed_count: Math.min(batchStart + batchIds.length, ids.length),
+          staged_count: ids.length,
+        }));
       }
       const failedInBatch = messages.filter((entry) => failedPersistIds.has(entry.id));
       if (failedInBatch.length > 0) {
