@@ -1011,3 +1011,12 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Change:** Shared typed draft/proposal preview, strict pure runtime normalizer and stable SHA-256 material hash, side-effect-free preview, eight regression tests and package exports. Source and test commits recorded in [session](sessions/DEV01-R1B-INERT-PROPOSALS-20261021.md).
 - **Evidence:** Standalone isolated Node v22 RED 0/8 → GREEN 8/8, local shim-based tsc 0; **real source-tree Node/tsx, R1a DST suite, pnpm package typechecks, full suites, DB/browser/provider not run**, environment missing pnpm/private-clone network. No active routine or send, no migrations.
 - **Next:** sanitized current-main R1a/R1b tests + shared/email-runtime/worker typechecks; independent C3 safety/lease/grounding acceptance and later C4 UX. R1b Task 2+ persistence/standing WhatsApp consent requires review and isolated runtime proof. FIX-01 scheduler/tenant bugs, OPS-01 CI/Vercel/Meta/DB/deployment/build-hook incident.
+
+### FIX01-IMAP-GMAIL-SELECT-IDLE-20261021 — 2026-10-21
+- **Agent:** FIX-01 / Sentinel.
+- **Authorized scope:** Owner explicit root-cause-first source repair and regression. Started `main` ccd34672886b8ad1eb482be78ce20d4c4fd41e1d. Phase 4 implementation ongoing. No branch/PR/infra/production changes or DEV-01 features.
+- **Evidence:** User-supplied Gmail `SELECT "[Gmail]"` NO NONEXISTENT, separate missing encrypted IMAP type IDLE failure, 0/50 persisted, running/error transient state and queue retries.
+- **Status:** SOURCE CORRECTED / OPS RUNTIME ACCEPTANCE PENDING.
+- **Remedy commits:** `1c1b5796, 06f9b14f, 1184576e, d3fa0af4, 53702ac8, a655ce4e, d43f16b7, 2e131fb8`; parsed selectable IMAP folders, normalized historical password credentials, preserved future type, repaired claim/completion checkpoint and single-socket concurrency.
+- **Verification limits:** 13/13 latest source invariants, no actual Node/typecheck/DB/live provider or deployed-sha checks. No credentials reused; authentication cookie must be revoked.
+- **Next:** FIX-01 targeted worker tests/typecheck in full checkout; OPS-01 running image version, existing-account sync, error disappearance, imported count and lastSuccessAt, and IDLE connection evidence.
