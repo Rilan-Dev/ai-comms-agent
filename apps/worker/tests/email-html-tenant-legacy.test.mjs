@@ -28,7 +28,7 @@ test("thread reads preserve physical-copy dedupe and BOTH tenant boundaries befo
   const block = functionBlock("getMailThreadForOrganization", "updateMailReadStateForOrganization");
   assert.match(block, /m\.organization_id\s*=\s*\$2/);
   assert.match(block, /a\.organization_id\s*=\s*\$2/);
-  assert.match(block, /m\.email_account_id\s*=\s*a\.id/);
+  assert.match(block, /a\.id\s*=\s*m\.email_account_id/);
   assert.match(block, /duplicate_rank = 1/);
   assert.match(block, /r\.rows\.map\(\(row\) => quarantineMailHtmlRow\(row\)\)/);
 });
