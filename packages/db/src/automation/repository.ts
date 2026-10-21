@@ -1,4 +1,5 @@
 import { query, withTransaction } from "../client";
+import { nextCronFire } from "@ai-comms-agent/shared";
 
 type Row = Record<string, unknown>;
 
@@ -62,9 +63,14 @@ export async function createScheduledJob(input: {
   timezone: string;
   catchUpMinutes: number;
 }) {
+  // Persist the first actual fire for recurring jobs. A null next_fire_at
+  // makes an active cron schedule invisible to claimDueScheduledJobs.
+  const nextFireAt = input.nextFireAt ?? (input.cron
+    ? nextCronFire(input.cron, new Date(), input.timezone).toISOString()
+    : input.oneFireAt ?? null);
   const r = await query<Row>(
     "INSERT INTO scheduled_jobs (organization_id,agent_id,created_by,name,cron,one_fire_at,intent,params,next_fire_at,status,timezone,catch_up_minutes) SELECT a.organization_id,a.id,$3,$4,$5,$6,$7,$8::jsonb,$9,'active',$10,$11 FROM agents a WHERE a.organization_id=$1 AND a.id=$2 RETURNING *",
-    [input.organizationId, input.agentId, input.userId, input.name, input.cron ?? null, input.oneFireAt ?? null, input.intent, JSON.stringify(input.params ?? {}), input.nextFireAt ?? input.oneFireAt ?? null, input.timezone, input.catchUpMinutes],
+    [input.organizationId, input.agentId, input.userId, input.name, input.cron ?? null, input.oneFireAt ?? null, input.intent, JSON.stringify(input.params ?? {}), nextFireAt, input.timezone, input.catchUpMinutes],
   );
   return r.rows[0] ? schedule(r.rows[0]) : null;
 }
@@ -82,9 +88,14 @@ export async function updateScheduledJob(input: {
   timezone: string;
   catchUpMinutes: number;
 }) {
+  // Persist the first actual fire for recurring jobs. A null next_fire_at
+  // makes an active cron schedule invisible to claimDueScheduledJobs.
+  const nextFireAt = input.nextFireAt ?? (input.cron
+    ? nextCronFire(input.cron, new Date(), input.timezone).toISOString()
+    : input.oneFireAt ?? null);
   const r = await query<Row>(
     "UPDATE scheduled_jobs SET name=$3,cron=$4,one_fire_at=$5,intent=$6,params=$7::jsonb,next_fire_at=$8,status=$9,timezone=$10,catch_up_minutes=$11,last_error=NULL,updated_at=now() WHERE organization_id=$1 AND id=$2 RETURNING *",
-    [input.organizationId, input.id, input.name, input.cron ?? null, input.oneFireAt ?? null, input.intent, JSON.stringify(input.params ?? {}), input.nextFireAt ?? input.oneFireAt ?? null, input.status, input.timezone, input.catchUpMinutes],
+    [input.organizationId, input.id, input.name, input.cron ?? null, input.oneFireAt ?? null, input.intent, JSON.stringify(input.params ?? {}), nextFireAt, input.status, input.timezone, input.catchUpMinutes],
   );
   return r.rows[0] ? schedule(r.rows[0]) : null;
 }
