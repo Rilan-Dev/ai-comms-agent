@@ -761,3 +761,10 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Cause:** IMAP stores separate folder:UID entries from INBOX and All Mail; previous Inbox query had no folder filter and thread details/list counts reflected physical copies. No live account DB proof of exact duplicate pair.
 - **Source remedy:** `cce92f98` IMAP Inbox membership filter + thread per-account Message-ID dedup; `0cc16a77` thread summary counts dedup; `7d94e1d2` 5 source regressions. No storage deletion, no cross-provider/account merging.
 - **Verification:** 17/17 focused source checks, no actual Vitest, DB, deployment or browser acceptance. OPS-01 validates live result, DEV-01 unaffected.
+
+### EVT-FIX01-AGENT-SELF-SERVICE-POLICY-20261022 — 2026-10-22
+- **Role/scope:** FIX-01/Sentinel on Development. Explicit owner requested agent config+mailbox policy inspection, attempted SSH and selection-first setup correction.
+- **Access:** SSH TCP port refused from execution environment; no login, secrets usage, production data reading or host changes. User supplied server password must be rotated; do not log it.
+- **Root causes:** Agent policy forced comma-separated internal tool names and manual JSON; client/backend permitted selecting unavailable mailboxes; configuration test falsely passed mailbox readiness when mail-read tools enabled without a connected readable binding.
+- **Remedy:** UI selectable registered email-tool checkboxes and 3-step setup checklist, optional advanced JSON, connected-only account picker + server guard/clear 422, stored-config read-only simulation gate and error details. Commits `084f36ba,68b3ec81,e7735b4b,93fbc354,11c760c2,51134e6d,424d89c1`; tests `816d9558,787c8ca9,df860960`.
+- **Evidence/status:** 24/24 GitHub source invariants PASS; no native suite, browser, live policy/account or deployment verified. OPS-01 host/deploy, DEV-01 future broader wizard, FIX-01 follow-on source defects.
