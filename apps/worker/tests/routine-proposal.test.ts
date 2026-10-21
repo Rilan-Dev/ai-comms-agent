@@ -97,3 +97,13 @@ test("preview cannot confirm, schedule or assert WhatsApp delivery", () => {
     kind: "event", eventType: "email.received", conditions: { sender: "boss@example.com" }, debounceMinutes: 15,
   } }), "2026-10-21T00:00:00Z").nextOccurrences, []);
 });
+
+
+test("a past one-off has no valid future occurrence and cannot be proposed", () => {
+  const expired = valid({ trigger: {
+    kind: "once", fireAt: "2026-10-21T09:00:00+05:30", timeZone: "Asia/Kolkata",
+  } });
+  assert.throws(() => previewRoutineDraft(expired, "2026-10-22T00:00:00Z"), /future|past|expired/i);
+  const upcoming = previewRoutineDraft(expired, "2026-10-20T00:00:00Z");
+  assert.equal(upcoming.nextOccurrences[0]?.fireAt, "2026-10-21T03:30:00.000Z");
+});
