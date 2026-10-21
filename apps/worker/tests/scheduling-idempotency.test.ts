@@ -25,3 +25,21 @@ test("scheduled runs persist the fire timestamp and enforce one run per fire", (
   assert.match(migration, /WHERE fire_at IS NOT NULL/);
   assert.match(repository, /const fireAt = row.next_fire_at/);
 });
+
+
+test("new or edited recurring schedules receive a due timestamp from the shared cron engine", () => {
+  const shared = readFileSync(resolve(__dirname, "../../../packages/shared/src/index.ts"), "utf8");
+  const cron = readFileSync(resolve(__dirname, "../../../packages/shared/src/scheduling/cron.ts"), "utf8");
+  const workerCron = readFileSync(resolve(__dirname, "../src/scheduling/cron.ts"), "utf8");
+  assert.match(shared, /export \{ matchesCron, nextCronFire \} from "\.\/scheduling\/cron"/);
+  assert.match(workerCron, /export \{ matchesCron, nextCronFire \} from "@ai-comms-agent\/shared"/);
+  assert.match(cron, /export function nextCronFire\(/);
+
+  const create = repository.slice(repository.indexOf("export async function createScheduledJob"),
+    repository.indexOf("export async function updateScheduledJob"));
+  const update = repository.slice(repository.indexOf("export async function updateScheduledJob"),
+    repository.indexOf("export async function deleteScheduledJob"));
+  assert.match(repository, /import \{ nextCronFire \} from "@ai-comms-agent\/shared"/);
+  assert.match(create, /nextCronFire\(input\.cron,\s*new Date\(\),\s*input\.timezone\)\.toISOString\(\)/);
+  assert.match(update, /nextCronFire\(input\.cron,\s*new Date\(\),\s*input\.timezone\)\.toISOString\(\)/);
+});
