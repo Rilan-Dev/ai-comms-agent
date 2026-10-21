@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository, recordAuditEvent } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, PostgresEmailAccountRepository, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -35,6 +35,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       await recordAuditEvent({ organizationId: orgId, actorUserId: subject.user.id, agentId: id, eventType: "agent.email_binding_updated", targetType: "agent_email_account", action: "unbind", decision: "allowed", metadata: { emailAccountId: body.emailAccountId.trim() } });
     } else if (typeof body?.emailAccountId === "string" && body.emailAccountId.trim()) {
       const role = body?.emailRole === "read_only" || body?.emailRole === "send_only" ? body.emailRole : "primary";
+      const selectedAccount = await new PostgresEmailAccountRepository().getById(body.emailAccountId.trim());
+      if (!selectedAccount || selectedAccount.organization_id !== orgId || selectedAccount.status !== "connected") {
+        return NextResponse.json({ error: "validation_error", message: "Select a connected mailbox under Mailboxes before assigning it to this agent." }, { status: 422 });
+      }
       await repo.bindEmail(orgId, id, body.emailAccountId.trim(), role);
       await recordAuditEvent({ organizationId: orgId, actorUserId: subject.user.id, agentId: id, eventType: "agent.email_binding_updated", targetType: "agent_email_account", action: "bind", decision: "allowed", metadata: { emailAccountId: body.emailAccountId.trim(), role } });
     }
