@@ -36,6 +36,8 @@ test("Sarvam Chat V1 is wired to actual host tools without direct email sending"
   assert.match(runtime, /max_tokens: options\.maxTokens/);
   assert.match(runtime, /tool_choice: "auto"/);
   assert.match(runtime, /bridge\.fromProvider\(/);
+  assert.match(runtime, /choice\?\.finish_reason !== "tool_calls"/);
+  assert.match(runtime, /role: "tool", tool_call_id: message\.tool_call_id, content: message\.content/);
   assert.match(runtime, /readOpenAIToolCompletion\(/);
   assert.doesNotMatch(runtime, /Native tool calling is not enabled for Sarvam/);
   const chat = readChatRoute();
