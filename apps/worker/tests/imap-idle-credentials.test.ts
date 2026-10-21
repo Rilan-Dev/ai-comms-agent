@@ -36,3 +36,17 @@ test("the mailbox claim returns sync mode and staged IDs as separate columns", (
   assert.match(claim, /last_success_at, sync_mode,\s+pending_message_ids, pending_cursor_token/);
   assert.doesNotMatch(claim, /last_success_at, sync_mode\s+pending_message_ids/);
 });
+
+test("completed initial import commits the next mode instead of displaying initial forever", () => {
+  const sync = readFileSync(resolve(__dirname, "../src/email/mailbox-sync-worker.ts"), "utf8");
+  const completion = sync.slice(sync.indexOf("await removeDeletedMessages(candidate, providerDeleted);"), sync.indexOf("await accounts.updateSyncState(candidate.id"));
+  assert.match(completion, /SET cursor_token=\$1, history_id=\$2, sync_mode=\$5, status='idle'/);
+  assert.match(completion, /\[stagedCursor, stagedHistory, candidate.id, claimed.rows\[0\].last_attempt_at, stagedMode\]/);
+});
+
+test("IMAP retrieval uses one command at a time on a shared socket", () => {
+  const sync = readFileSync(resolve(__dirname, "../src/email/mailbox-sync-worker.ts"), "utf8");
+  const getMessages = sync.slice(sync.indexOf("// A single IMAP TLS socket cannot safely interleave"), sync.indexOf("messages.push(...settled);"));
+  assert.match(getMessages, /candidate.provider === "imap_smtp" \? 1 : PERSIST_CONCURRENCY/);
+  assert.match(getMessages, /await Promise.all\(/);
+});
