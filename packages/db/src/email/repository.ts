@@ -273,7 +273,13 @@ export interface MailInboxFilters {
 
 export async function listInboxMessages(organizationId: string, filters: MailInboxFilters = {}): Promise<Array<Record<string, unknown>>> {
   const values: unknown[] = [organizationId];
-  const conditions = ["a.organization_id = $1", "a.deleted_at IS NULL"];
+  // Gmail IMAP exposes INBOX and [Gmail]/All Mail as separate
+  // folder:UID copies. The Inbox page shows INBOX membership only.
+  const conditions = [
+    "a.organization_id = $1",
+    "a.deleted_at IS NULL",
+    "(a.provider <> 'imap_smtp' OR EXISTS (SELECT 1 FROM email_folders inbox_folder WHERE inbox_folder.id = m.folder_id AND inbox_folder.email_account_id = m.email_account_id AND (inbox_folder.role = 'inbox' OR UPPER(inbox_folder.provider_folder_id) = 'INBOX')))",
+  ];
   if (filters.accountId) { values.push(filters.accountId); conditions.push(`m.email_account_id = $${values.length}`); }
   if (filters.unreadOnly) conditions.push("m.is_read = false");
   if (filters.actionRequired) conditions.push("m.action_required = true");
@@ -319,10 +325,26 @@ export async function getMailThreadForOrganization(organizationId: string, threa
   // Match the thread UI's html_body field using the stored email preview column.
   // The frame still treats every byte as untrusted; ingest sanitization is a
   // separate FIX-01 gate (issue #36), not implied by the column's name.
-  const r = await query<Row>(`SELECT m.*, m.html_body_sanitized AS html_body, a.email_address AS account_email, a.display_name AS account_name
-    FROM email_messages m JOIN email_accounts a ON a.id = m.email_account_id
-    WHERE m.thread_id = $1 AND a.organization_id = $2 AND a.deleted_at IS NULL
-    ORDER BY m.received_at ASC NULLS LAST`, [threadId, organizationId]);
+  // Keep physical IMAP folder copies for provider operations, but display
+  // the same RFC822 Message-ID only once per account in a conversation.
+  // Rows with no Message-ID, and all other providers, stay independent.
+  const r = await query<Row>(`WITH ranked AS (
+      SELECT m.*, m.html_body_sanitized AS html_body, a.email_address AS account_email, a.display_name AS account_name,
+        ROW_NUMBER() OVER (
+          PARTITION BY m.email_account_id,
+            CASE WHEN a.provider = 'imap_smtp' AND NULLIF(BTRIM(m.internet_message_id), '') IS NOT NULL
+              THEN 'message:' || LOWER(BTRIM(m.internet_message_id))
+              ELSE 'row:' || m.id::text END
+          ORDER BY CASE WHEN f.role = 'inbox' OR UPPER(f.provider_folder_id) = 'INBOX' THEN 0 ELSE 1 END,
+            m.received_at DESC NULLS LAST, m.id
+        ) AS duplicate_rank
+      FROM email_messages m
+      JOIN email_accounts a ON a.id = m.email_account_id
+      LEFT JOIN email_folders f ON f.id = m.folder_id AND f.email_account_id = m.email_account_id
+      WHERE m.thread_id = $1 AND m.organization_id = $2 AND a.organization_id = $2 AND a.deleted_at IS NULL
+    )
+    SELECT * FROM ranked WHERE duplicate_rank = 1
+    ORDER BY received_at ASC NULLS LAST`, [threadId, organizationId]);
   return r.rows;
 }
 
