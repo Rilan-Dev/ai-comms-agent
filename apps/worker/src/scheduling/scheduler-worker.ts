@@ -39,7 +39,7 @@ export async function processScheduledJobs(limit=25,now=new Date()):Promise<{cla
       else { if(!(await completeScheduledJobRun(job.runId,{status:result.status,executionId:result.executionId,output:result.output??null,provider:result.provider??null,model:result.model??null}))){ console.error("[scheduler] run was already settled", {runId:job.runId}); continue; } completed+=1; await recordScheduleAudit({organizationId:job.organizationId,actorUserId:null,eventType:"schedule.execution.completed",targetType:"scheduled_run",targetId:job.runId,action:"execute",decision:"allowed",correlationId:job.runId,metadata:{jobId:job.id,agentId:job.agentId,executionId:result.executionId,provider:result.provider??null,model:result.model??null}}); }
       try {
         const next=job.cron ? nextCronFire(job.cron,now,job.timezone) : null;
-        await advanceScheduledJob(job.id,job.organizationId,job.nextFireAt,next?.toISOString()??null,job.cron ? "active" : "archived",null);
+        await advanceScheduledJob(job.id,job.organizationId,job.nextFireAt,job.revisionAt,next?.toISOString()??null,job.cron ? "active" : "archived",null);
       } catch (advanceError) {
         // Run completion was committed. A subsequent scheduler DB/cron error
         // must not overwrite that result with a fabricated execution failure.
@@ -49,7 +49,7 @@ export async function processScheduledJobs(limit=25,now=new Date()):Promise<{cla
         });
       }
     }catch(error){
-      const message=error instanceof Error?error.message:"Scheduled execution failed"; if(!(await failScheduledJobRun(job.runId,message))){ console.error("[scheduler] run was already settled", {runId:job.runId}); continue; } await recordScheduleAudit({organizationId:job.organizationId,actorUserId:null,eventType:"schedule.execution.failed",targetType:"scheduled_run",targetId:job.runId,action:"execute",decision:"denied",correlationId:job.runId,metadata:{jobId:job.id,agentId:job.agentId,error:message}}); await advanceScheduledJob(job.id,job.organizationId,job.nextFireAt,job.cron?job.nextFireAt:null,job.cron?"error":"archived",message); failed+=1;
+      const message=error instanceof Error?error.message:"Scheduled execution failed"; if(!(await failScheduledJobRun(job.runId,message))){ console.error("[scheduler] run was already settled", {runId:job.runId}); continue; } await recordScheduleAudit({organizationId:job.organizationId,actorUserId:null,eventType:"schedule.execution.failed",targetType:"scheduled_run",targetId:job.runId,action:"execute",decision:"denied",correlationId:job.runId,metadata:{jobId:job.id,agentId:job.agentId,error:message}}); await advanceScheduledJob(job.id,job.organizationId,job.nextFireAt,job.revisionAt,job.cron?job.nextFireAt:null,job.cron?"error":"archived",message); failed+=1;
     }
   }
   return {claimed:jobs.length,completed,failed};
