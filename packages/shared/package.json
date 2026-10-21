@@ -12,6 +12,9 @@
     "./email": "./src/email/index.ts",
     "./messaging": "./src/messaging/index.ts"
   },
+  "dependencies": {
+    "parse5": "7.3.0"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist .turbo"
