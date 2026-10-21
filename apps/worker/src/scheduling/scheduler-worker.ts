@@ -25,10 +25,10 @@ export async function processScheduledJobs(limit=25,now=new Date()):Promise<{cla
   for(const recovered of interrupted){
     await recordScheduleAudit({
       organizationId:recovered.organizationId,actorUserId:null,
-      eventType:"schedule.execution.interrupted",targetType:"scheduled_run",
+      eventType:recovered.runStatus==="running"?"schedule.execution.interrupted":"schedule.progression.interrupted",targetType:"scheduled_run",
       targetId:recovered.runId,action:"recover",decision:"denied",
       correlationId:recovered.runId,
-      metadata:{jobId:recovered.jobId,providerOutcomeUnknown:true,manualVerificationRequired:true,quarantined:recovered.quarantined},
+      metadata:{jobId:recovered.jobId,runStatus:recovered.runStatus,providerOutcomeUnknown:recovered.runStatus==="running",manualVerificationRequired:true,quarantined:recovered.quarantined},
     });
   }
   const jobs=await claimDueScheduledJobs(limit,nowIso); let completed=0,failed=0;
