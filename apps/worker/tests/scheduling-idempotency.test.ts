@@ -14,12 +14,14 @@ test("scheduled runs persist the fire timestamp and enforce one run per fire", (
   assert.match(migration, /scheduled_job_runs_job_fire_uniq/);
   assert.match(migration, /ON scheduled_job_runs\(scheduled_job_id, fire_at\)/);
   assert.match(repository, /scheduled_job_id,fire_at,status,result/);
-  // The claimDueScheduledJobs function uses try/catch around the INSERT
-  // instead of ON CONFLICT — some databases (e.g., Prisma Postgres with
-  // partial unique indexes) don't support ON CONFLICT inference. The
-  // try/catch catches the duplicate-key error and continues to the next job.
-  assert.match(repository, /try \{/);
-  assert.match(repository, /INSERT INTO scheduled_job_runs \(scheduled_job_id,fire_at,status,result\)/);
-  assert.match(repository, /Duplicate key/);
+  // A duplicate unique-key error inside an open PostgreSQL transaction
+  // aborts that transaction. Use conflict handling in the INSERT itself;
+  // the predicate is needed to infer migration 0021's partial unique index.
+  const claim = repository.slice(repository.indexOf("export async function claimDueScheduledJobs"),
+    repository.indexOf("export async function advanceScheduledJob"));
+  assert.match(claim, /INSERT INTO scheduled_job_runs \\(scheduled_job_id,fire_at,status,result\\)/);
+  assert.match(claim, /ON CONFLICT \\(scheduled_job_id,fire_at\\) WHERE fire_at IS NOT NULL DO NOTHING RETURNING id/);
+  assert.doesNotMatch(claim, /catch\\s*\\{/);
+  assert.match(migration, /WHERE fire_at IS NOT NULL/);
   assert.match(repository, /const fireAt = row.next_fire_at/);
 });
