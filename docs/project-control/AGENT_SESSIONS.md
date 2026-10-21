@@ -1028,3 +1028,10 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Source diagnosis:** Double full-MIME download during UID discovery and later getMessage; no durable staging/progress until discovery finishes; caught transient fetch failures wrongly acked as missing, initial 25-body batch delays writes.
 - **Remedies:** `2a8c5933,db3d629b,b0550e52,631d96a2,2c0e3f8a` on Development. 17/17 source checks, actual Node/typecheck/DB/provider not run.
 - **Status/next:** SOURCE CORRECTED, OPS runtime acceptance pending. Execute focused IMAP tests and typechecks; OPS-01 merges/deploys from authorized branch, verifies deployed SHA, sync counts/state and any Redis/Qdrant/network blockers. No secrets recorded or reused.
+
+### FIX01-IMAP-MIME-RICH-BODY-20261022 — 2026-10-22
+- **Role:** FIX-01/Sentinel; user-requested same-message Gmail-versus-ACA rendering defect, no DEV-01 wait, Development branch only.
+- **Start:** Development `780a41e`; recovered APCP shared and role-local memory, central events/sessions/handoffs, phase/authorization/ISSUES/VERIFICATION.
+- **Finding:** Broken IMAP MIME extraction (inner QP bytes left raw; HTML always undefined; FETCH wrapper retained), shared parser boundary case/QP UTF-8 mishandling, UI already supporting safe HTML iframe.
+- **Fix:** `5add7d2a,83c77c6d,20d0b026,cbf403fa` source and tests. 16/16 latest source checks.
+- **Status/next:** SOURCE FIX COMMITTED on Development; Node tests/typechecks, live provider/DB re-fetch, HTML sanitation and rendered browser acceptance unverified. OPS-01 rollout, account-scoped re-fetch of previously mangled messages. Preserve opaque iframe and CSP.
