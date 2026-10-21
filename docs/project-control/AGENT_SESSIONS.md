@@ -1035,3 +1035,11 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Finding:** Broken IMAP MIME extraction (inner QP bytes left raw; HTML always undefined; FETCH wrapper retained), shared parser boundary case/QP UTF-8 mishandling, UI already supporting safe HTML iframe.
 - **Fix:** `5add7d2a,83c77c6d,20d0b026,cbf403fa` source and tests. 16/16 latest source checks.
 - **Status/next:** SOURCE FIX COMMITTED on Development; Node tests/typechecks, live provider/DB re-fetch, HTML sanitation and rendered browser acceptance unverified. OPS-01 rollout, account-scoped re-fetch of previously mangled messages. Preserve opaque iframe and CSP.
+
+### FIX01-IMAP-FOLDER-COPY-DUPES-20261022 — 2026-10-22
+- **Agent:** FIX-01 / Sentinel on Development, scoped inbox duplication correction.
+- **Start:** Development `8ff6b5968e147314f4f255da24cde78fcd58c786`; shared/role records, authorization, issues, verification and relevant worker/DB/frontend code recovered.
+- **User symptom:** Single Gmail test email rendered twice in ACA Inbox with identical sender, recipient, snippet/time, same conversation link.
+- **Source diagnosis:** Gmail All Mail and INBOX folder copies persisted with different provider folder:UID identifiers; inbox query never filtered to real INBOX, thread messages/counters showed physical copies.
+- **Remedy:** `cce92f98` inbox filter and thread copy ranking, `0cc16a77` summary count, `7d94e1d2` regression. 17/17 source checks.
+- **Pending:** Actual Vitest, DB/host, production SHA and browser confirmation remain pending. OPS-01 owns release/deployment; FIX-01 responds only to reproducible new source defects.
