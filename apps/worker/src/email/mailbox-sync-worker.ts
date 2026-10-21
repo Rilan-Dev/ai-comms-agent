@@ -5,7 +5,7 @@ import {
   PostgresEmailFolderLabelRepository,
   query,
 } from "@ai-comms-agent/db";
-import type { EmailCredentials, EmailMessage, SyncState } from "@ai-comms-agent/shared";
+import { sanitizeEmailHtml, type EmailCredentials, type EmailMessage, type SyncState } from "@ai-comms-agent/shared";
 import { GmailAdapter } from "./gmail-adapter";
 import { ZohoAdapter } from "./zoho-adapter";
 import { ImapSmtpAdapter } from "./imap-smtp-adapter";
@@ -139,7 +139,7 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
       JSON.stringify(message.bcc_addresses ?? []),
       message.subject || "",
       message.text_body || "",
-      message.html_body || null,
+      sanitizeEmailHtml(message.html_body, message.text_body),
       message.snippet || "",
       JSON.stringify(labels),
       message.is_read,
