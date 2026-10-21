@@ -57,6 +57,19 @@ async function scheduleReconciliation(candidate: IdleCandidate): Promise<void> {
   }));
 }
 
+/**
+ * Old IMAP accounts saved a password but no credential_type: saveCredentials()
+ * accepted the separate type argument without including it in its payload.
+ * Support those persisted accounts only when they contain a usable password.
+ * Explicitly invalid types, and missing credentials, must still fail closed.
+ */
+export function resolveImapCredentialType(credentials: Record<string, unknown>): "oauth_token" | "password" | "app_password" {
+  const type = credentials.credential_type;
+  if (type === "oauth_token" || type === "password" || type === "app_password") return type;
+  if (type == null && typeof credentials.password === "string" && credentials.password.length > 0) return "password";
+  throw new Error("Encrypted IMAP credentials have an invalid credential type.");
+}
+
 async function watchAccount(candidate: IdleCandidate, masterKey: Buffer, stopped: () => boolean): Promise<void> {
   const adapter = new ImapSmtpAdapter();
   const controller = new AbortController();
@@ -65,10 +78,8 @@ async function watchAccount(candidate: IdleCandidate, masterKey: Buffer, stopped
     const accounts = new PostgresEmailAccountRepository();
     const credentials = await accounts.loadCredentials(candidate.id, masterKey);
     if (!credentials) throw new Error("Encrypted IMAP credentials are missing.");
-    if (credentials.credential_type !== "oauth_token" && credentials.credential_type !== "password" && credentials.credential_type !== "app_password") {
-      throw new Error("Encrypted IMAP credentials have an invalid credential type.");
-    }
-    await adapter.connect({ ...credentials, credential_type: credentials.credential_type });
+    const credentialType = resolveImapCredentialType(credentials);
+    await adapter.connect({ ...credentials, credential_type: credentialType });
 
     if (!(await adapter.supportsIdle())) {
       await updateIdleConfig(candidate.id, {
