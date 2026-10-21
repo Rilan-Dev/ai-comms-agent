@@ -624,7 +624,20 @@ export async function listMailThreadsForOrganization(
   const offset = Number.isInteger(filters.offset) ? Math.min(Math.max(filters.offset!, 0), 10000) : 0;
   const search = filters.search?.trim().slice(0, 120) || null;
   const result = await query<Row>(
-    `WITH scoped AS (
+    `WITH mailbox_copies AS (
+      SELECT m.id,
+        ROW_NUMBER() OVER (
+          PARTITION BY m.email_account_id,
+            CASE WHEN a.provider = 'imap_smtp' AND NULLIF(BTRIM(m.internet_message_id), '') IS NOT NULL
+              THEN 'message:' || LOWER(BTRIM(m.internet_message_id))
+              ELSE 'row:' || m.id::text END
+          ORDER BY CASE WHEN f.role = 'inbox' OR UPPER(f.provider_folder_id) = 'INBOX' THEN 0 ELSE 1 END, m.id
+        ) AS duplicate_rank
+      FROM email_messages m
+      JOIN email_accounts a ON a.id = m.email_account_id AND a.organization_id = $1 AND a.deleted_at IS NULL
+      LEFT JOIN email_folders f ON f.id = m.folder_id AND f.email_account_id = m.email_account_id
+      WHERE m.organization_id = $1 AND ($2::uuid IS NULL OR m.email_account_id = $2::uuid)
+    ), scoped AS (
       SELECT
         m.thread_id,
         m.email_account_id,
@@ -651,6 +664,7 @@ export async function listMailThreadsForOrganization(
           OR a.email_address::text ILIKE '%' || $3 || '%'
         ) THEN 1 ELSE 0 END) OVER (PARTITION BY m.thread_id) AS search_match
       FROM email_messages m
+      JOIN mailbox_copies copies ON copies.id = m.id AND copies.duplicate_rank = 1
       JOIN email_accounts a ON a.id = m.email_account_id AND a.organization_id = $1 AND a.deleted_at IS NULL
       JOIN email_threads t ON t.id = m.thread_id AND t.organization_id = $1 AND t.email_account_id = a.id
       WHERE m.organization_id = $1 AND ($2::uuid IS NULL OR m.email_account_id = $2::uuid)
