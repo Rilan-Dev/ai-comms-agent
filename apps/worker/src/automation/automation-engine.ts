@@ -23,7 +23,14 @@ export function automationMatches(rule:Pick<Rule,"organizationId"|"trigger"|"con
 }
 
 export function stableEventKey(event:Event){
-  const candidate = event.payload.eventId ?? event.payload.messageId ?? event.payload.actionId ?? event.payload.correlationId;
+  // Provider outcome events have trusted source-row identities. Generic eventId
+  // and messageId metadata must not override those identities or suppress
+  // unrelated actions through the automation_runs uniqueness constraint.
+  const candidate = event.type.startsWith("email.action.")
+    ? event.payload.actionId
+    : event.type.startsWith("whatsapp.message.")
+      ? event.payload.messageId
+      : event.payload.eventId ?? event.payload.messageId ?? event.payload.actionId ?? event.payload.correlationId;
   return typeof candidate === "string" && candidate.trim() ? event.type + ":" + candidate.trim() : null;
 }
 
