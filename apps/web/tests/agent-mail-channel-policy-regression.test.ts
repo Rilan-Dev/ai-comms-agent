@@ -9,6 +9,7 @@ const details = readFileSync(resolve(__dirname, "../src/app/agents/[id]/agent-de
 const policyRoute = readFileSync(resolve(__dirname, "../src/app/api/agents/[id]/policy/route.ts"), "utf8");
 const mailReadTools = readFileSync(resolve(__dirname, "../../../packages/email-agent-runtime/src/email-read-tools.ts"), "utf8");
 const mailWriteTools = readFileSync(resolve(__dirname, "../../../packages/email-agent-runtime/src/email-write-tools.ts"), "utf8");
+const simulate = readFileSync(resolve(__dirname, "../src/app/api/agents/[id]/simulate/route.ts"), "utf8");
 
 describe("FIX-01 agent mailbox channels and summary authorization", () => {
   it("removes a binding with a PostgreSQL-valid, organization- and agent-scoped DELETE", () => {
@@ -98,6 +99,18 @@ describe("FIX-01 agent mailbox channels and summary authorization", () => {
     expect(repoBind).toContain("ea.deleted_at IS NULL AND ea.status='connected'");
     expect(policyRoute).toContain('role: "admin"');
     expect(channels).toContain('role: "admin"');
+  });
+
+  it("reports mail-read readiness only for a connected readable account in the same organization", () => {
+    expect(simulate).toContain('name === "email.search" || name === "email.messages.list"');
+    expect(simulate).toContain("const readableMailbox = mailSummaryEnabled ? await query");
+    expect(simulate).toContain("ag.organization_id=$2 AND ea.organization_id=$2");
+    expect(simulate).toContain("ea.deleted_at IS NULL AND ea.status='connected'");
+    expect(simulate).toContain("b.role IN ('primary','read_only')");
+    expect(simulate).toContain('key: "mail_readiness"');
+    expect(simulate).toContain('ok: !mailSummaryEnabled || Boolean(readableMailbox?.rows[0])');
+    expect(simulate).not.toContain("updatePolicy(");
+    expect(details).toContain('{c.detail && <span');
   });
 
 });
