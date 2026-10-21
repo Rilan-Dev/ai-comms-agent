@@ -83,3 +83,30 @@ test("provider events without required canonical identity cannot use metadata to
   assert.equal(stableEventKey(event("email.action.failed", { eventId: "untrusted", messageId: "wrong-kind" })), null);
   assert.equal(stableEventKey(event("whatsapp.message.sent", { eventId: "untrusted", actionId: "wrong-kind" })), null);
 });
+
+test("malformed persisted match filters fail closed rather than firing a match-all rule", () => {
+  const input = event("email.received", { from: "outsider@example.test" });
+  for (const match of [[], "wrong-type", 7, true]) {
+    assert.equal(automationMatches(rule({ type: "email.received", match }), input), false);
+  }
+  assert.equal(automationMatches(rule(null as unknown as Record<string, unknown>), input), false);
+  assert.equal(automationMatches(rule({ type: "email.received", match: { from: "boss@example.test" } }), input), false);
+});
+
+test("malformed conditions and event payload cannot bypass automation constraints", () => {
+  const input = event("email.received", { from: "outsider@example.test" });
+  for (const conditions of [[], "wrong-type", 7, true]) {
+    assert.equal(automationMatches(rule({ type: "email.received" }, conditions as Record<string, unknown>), input), false);
+  }
+  assert.equal(automationMatches(rule({ type: "email.received" }), event("email.received", [] as unknown as Record<string, unknown>)), false);
+  assert.equal(automationMatches(rule({ type: "email.received" }), event("email.received", null as unknown as Record<string, unknown>)), false);
+});
+
+test("valid optional empty filters preserve matches and nonempty filters remain selective", () => {
+  assert.equal(automationMatches(rule({ type: "email.received" }), event("email.received", { from: "a@example.test" })), true);
+  assert.equal(automationMatches(rule({ type: "email.received", match: null }, {}), event("email.received")), true);
+  assert.equal(automationMatches(rule({ type: "email.received", match: { from: "a@example.test" } }, { flagged: true }),
+    event("email.received", { from: "a@example.test", flagged: true })), true);
+  assert.equal(automationMatches(rule({ type: "email.received", match: { from: "a@example.test" } }, { flagged: true }),
+    event("email.received", { from: "a@example.test", flagged: false })), false);
+});
