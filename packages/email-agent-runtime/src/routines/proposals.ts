@@ -149,6 +149,7 @@ export function routineConfigHash(draft: RoutineDraft): string {
 export function previewRoutineDraft(raw: unknown, after: string | Date): RoutineProposalPreview {
   const normalized = normalizeRoutineDraft(raw);
   const nextOccurrences = normalized.trigger.kind === 'event' ? [] : nextRoutineOccurrences(normalized.trigger, after);
+  if (normalized.trigger.kind === 'once' && nextOccurrences.length === 0) throw new Error('One-off routine must have a future fire time');
   const warnings: string[] = [];
   if (normalized.trigger.kind === 'event') warnings.push('Event triggers have no fixed scheduled time; event execution is not enabled.');
   if (normalized.destination.kind === 'whatsapp_digest') warnings.push('WhatsApp delivery requires separate verified recipient, policy, consent and provider approval.');
