@@ -164,3 +164,6 @@ export * from './briefings/selection';
 
 // Routines are preview contracts, not authority to execute or deliver.
 export type { RoutineTrigger, RoutineScheduleTrigger, DigestWindow, RoutineOccurrencePreview, RoutineDestination, RoutineDraft, RoutineProposalPreview } from './routines/types';
+
+// Shared schedule-time calculation for API persistence and worker dispatch.
+export { matchesCron, nextCronFire } from "./scheduling/cron";
