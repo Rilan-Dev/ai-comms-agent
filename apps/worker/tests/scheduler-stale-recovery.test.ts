@@ -63,3 +63,21 @@ test("late executor cannot overwrite recovered terminal outcome or advance its s
   assert.match(running, /if\(!\(await completeScheduledJobRun\(/);
   assert.match(running, /if\(!\(await failScheduledJobRun\(/);
 });
+
+
+test("durable completed or failed runs with a stale parent fire are reconciled without replay", () => {
+  const recover = db.slice(db.indexOf("export async function recoverStaleScheduledJobRuns"),
+    db.indexOf("export async function advanceScheduledJob"));
+  assert.match(recover, /r\.status IN \('completed','failed'\)/);
+  assert.match(recover, /r\.fire_at=j\.next_fire_at/);
+  assert.match(recover, /j\.status='active'/);
+  assert.match(recover, /j\.updated_at <= r\.started_at/);
+  assert.match(recover, /runStatus==='running'/);
+  assert.match(recover, /runStatus==='completed'/);
+  assert.match(recover, /schedule advancement did not finish/);
+  assert.match(recover, /result=COALESCE\(result,'\{\}'::jsonb\)/);
+  const execution = worker.slice(worker.indexOf("const interrupted=await recoverStaleScheduledJobRuns"),
+    worker.indexOf("const jobs=await claimDueScheduledJobs"));
+  assert.match(execution, /schedule\.progression\.interrupted/);
+  assert.match(execution, /providerOutcomeUnknown:recovered\.runStatus==="running"/);
+});
