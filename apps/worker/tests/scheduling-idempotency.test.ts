@@ -43,3 +43,16 @@ test("new or edited recurring schedules receive a due timestamp from the shared 
   assert.match(create, /nextCronFire\(input\.cron,\s*new Date\(\),\s*input\.timezone\)\.toISOString\(\)/);
   assert.match(update, /nextCronFire\(input\.cron,\s*new Date\(\),\s*input\.timezone\)\.toISOString\(\)/);
 });
+
+
+test("advancing an occurrence cannot reactivate paused or edited schedules", () => {
+  const advance = repository.slice(repository.indexOf("export async function advanceScheduledJob"),
+    repository.indexOf("export async function completeScheduledJobRun"));
+  assert.match(advance, /WHERE id=\$1 AND organization_id=\$2 AND next_fire_at=\$3::timestamptz AND status='active'/);
+  assert.match(advance, /\[id,organizationId,expectedFireAt,nextFireAt,status,lastError\]/);
+  assert.match(advance, /RETURNING id/);
+
+  const scheduler = readFileSync(resolve(__dirname, "../src/scheduling/scheduler-worker.ts"), "utf8");
+  assert.match(scheduler, /advanceScheduledJob\(job\.id,job\.organizationId,job\.nextFireAt,/);
+  assert.match(repository, /nextFireAt:string; timezone:string; catchUpMinutes:number/);
+});
