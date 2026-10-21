@@ -233,7 +233,7 @@ export class PostgresEmailAccountRepository {
     payload: Record<string, unknown>,
     masterKey: Buffer,
   ): Promise<void> {
-    const encrypted = encryptCredential(JSON.stringify(payload), masterKey);
+    const encrypted = encryptCredential(JSON.stringify({ ...payload, credential_type: credentialType }), masterKey);
     await query(
       `INSERT INTO email_account_credentials
        (email_account_id, organization_id, ciphertext, key_reference, updated_at)
