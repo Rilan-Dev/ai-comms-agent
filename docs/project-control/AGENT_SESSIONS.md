@@ -1003,3 +1003,11 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Failed approaches avoided:** Changing server env, password, SMTP host, TLS trust, or arbitrary timeouts without evidence; never reused pasted session token.
 - **Pending:** Actual Node worker tests/typecheck, operator TLS/network logs, deployed SHA, initial 50-message import and ongoing sync.
 - **Handoff/next:** OPS-01 validates runtime and triggers safe re-sync of persisted account after corrected worker rollout; FIX-01 fixes any demonstrated additional source failures. No current proof of live remediation.
+
+
+### DEV01-R1B-INERT-PROPOSALS-20261021 — 2026-10-21
+- **Agent / authority:** DEV-01 / Forge; owner-directed next items on direct `main`. Current Phase 4 `implementation_in_progress`. Previous R1b Superpowers plan's pure Task 1 only; excludes new DB/scheduled execution/WhatsApp authorization.
+- **Recovered from:** GitHub main `45ef5a825a9a094e9e75a16b84c30e6887f42cf9`, prior R1a/R1b handoffs and latest `NEXT_ACTION.md`. Prior DEV-01 head comparison had 18 intervening non-routine files, preserved without modification.
+- **Change:** Shared typed draft/proposal preview, strict pure runtime normalizer and stable SHA-256 material hash, side-effect-free preview, eight regression tests and package exports. Source and test commits recorded in [session](sessions/DEV01-R1B-INERT-PROPOSALS-20261021.md).
+- **Evidence:** Standalone isolated Node v22 RED 0/8 → GREEN 8/8, local shim-based tsc 0; **real source-tree Node/tsx, R1a DST suite, pnpm package typechecks, full suites, DB/browser/provider not run**, environment missing pnpm/private-clone network. No active routine or send, no migrations.
+- **Next:** sanitized current-main R1a/R1b tests + shared/email-runtime/worker typechecks; independent C3 safety/lease/grounding acceptance and later C4 UX. R1b Task 2+ persistence/standing WhatsApp consent requires review and isolated runtime proof. FIX-01 scheduler/tenant bugs, OPS-01 CI/Vercel/Meta/DB/deployment/build-hook incident.
