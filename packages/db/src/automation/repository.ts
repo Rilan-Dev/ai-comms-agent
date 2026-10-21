@@ -165,7 +165,7 @@ export async function listAutomationRuns(organizationId: string, ruleId: string)
 
 export type ScheduledJobClaim = {
   runId:string; id:string; agentId:string; organizationId:string; intent:string; params:Record<string,unknown>;
-  cron:string|null; nextFireAt:string|null; timezone:string; catchUpMinutes:number;
+  cron:string|null; nextFireAt:string; timezone:string; catchUpMinutes:number;
 };
 
 export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise<ScheduledJobClaim[]> {
@@ -197,8 +197,14 @@ export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise
   });
 }
 
-export async function advanceScheduledJob(id:string,nextFireAt:string|null,status:"active"|"archived"|"error",lastError:string|null){
-  await query("UPDATE scheduled_jobs SET next_fire_at=$2::timestamptz,last_fire_at=now(),status=$3,last_error=$4,updated_at=now() WHERE id=$1",[id,nextFireAt,status,lastError]);
+export async function advanceScheduledJob(id:string,organizationId:string,expectedFireAt:string,nextFireAt:string|null,status:"active"|"archived"|"error",lastError:string|null){
+  // A paused/archived schedule or a schedule edited after the claim must not
+  // be resurrected by completion of the older in-flight occurrence.
+  const r=await query<{id:string}>(
+    "UPDATE scheduled_jobs SET next_fire_at=$4::timestamptz,last_fire_at=now(),status=$5,last_error=$6,updated_at=now() WHERE id=$1 AND organization_id=$2 AND next_fire_at=$3::timestamptz AND status='active' RETURNING id",
+    [id,organizationId,expectedFireAt,nextFireAt,status,lastError],
+  );
+  return r.rows.length===1;
 }
 
 export async function completeScheduledJobRun(runId:string,result:Record<string,unknown>={}){
