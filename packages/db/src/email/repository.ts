@@ -305,7 +305,7 @@ export async function listInboxMessages(organizationId: string, filters: MailInb
 export async function getMailMessageForOrganization(organizationId: string, messageId: string): Promise<Record<string, unknown> | null> {
   const r = await query<Row>(`SELECT m.*, COALESCE(m.from_email, m.from_name, '') AS from_address, m.to_recipients AS to_addresses, m.text_body, m.html_body_sanitized AS html_body, EXISTS (SELECT 1 FROM email_attachments ea WHERE ea.message_id = m.id) AS has_attachments, a.email_address AS account_email, a.display_name AS account_name
     FROM email_messages m JOIN email_accounts a ON a.id = m.email_account_id
-    WHERE m.id = $1 AND a.organization_id = $2 AND a.deleted_at IS NULL LIMIT 1`, [messageId, organizationId]);
+    WHERE m.id = $1 AND m.organization_id = $2 AND a.organization_id = $2 AND a.deleted_at IS NULL LIMIT 1`, [messageId, organizationId]);
   return r.rows[0] ? quarantineMailHtmlRow(r.rows[0]) : null;
 }
 
