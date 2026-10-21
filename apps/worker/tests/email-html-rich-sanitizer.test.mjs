@@ -38,7 +38,7 @@ test("treats malformed, encoded tags as data; unwraps unknown markup without tru
 });
 
 test("rejects unsafe link protocols and allowlists only bounded table attributes", () => {
-  const output=sanitizeEmailHtml('<a href="JaVaScRiPt:alert(1)">bad</a><a href="mailto:friend@example.org">Email</a><td colspan="999" rowspan="2" style="position:fixed">Cell</td>',"");
+  const output=sanitizeEmailHtml('<a href="JaVaScRiPt:alert(1)">bad</a><a href="mailto:friend@example.org">Email</a><table><tr><td colspan="999" rowspan="2" style="position:fixed">Cell</td></tr></table>',"");
   assert.ok(output);
   assert.doesNotMatch(output, /javascript:|colspan="999"|style=/);
   assert.match(output, /href="mailto:friend@example.org"/);
