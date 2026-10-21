@@ -41,5 +41,7 @@ test("rejects malformed cron segments with extra slash tokens", () => {
   for (const cron of ["*/15/2 * * * *", "5/15/2 * * * *", "*/15/ * * * *"]) {
     assert.throws(() => matchesCron(cron, now, "UTC"), /Invalid cron field/);
   }
+  // Validation must not short-circuit when an earlier time field does not match.
+  assert.throws(() => matchesCron("0 0 * * */15/2", now, "UTC"), /Invalid cron field/);
   assert.equal(matchesCron("*/15 * * * *", now, "UTC"), true);
 });
