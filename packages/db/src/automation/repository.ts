@@ -170,8 +170,11 @@ export type ScheduledJobClaim = {
 
 export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise<ScheduledJobClaim[]> {
   return withTransaction(async client=>{
+    // Filter already-claimed occurrences before LIMIT: after an interruption,
+    // existing run rows may remain due. They must not starve unrelated jobs.
+    // Never re-dispatch an interrupted fire without an explicit recovery policy.
     const jobs=await client.query<Row>(
-      "SELECT * FROM scheduled_jobs WHERE status='active' AND next_fire_at IS NOT NULL AND next_fire_at <= $1::timestamptz ORDER BY next_fire_at ASC FOR UPDATE SKIP LOCKED LIMIT $2",
+      "SELECT j.* FROM scheduled_jobs j WHERE j.status='active' AND j.next_fire_at IS NOT NULL AND j.next_fire_at <= $1::timestamptz AND NOT EXISTS (SELECT 1 FROM scheduled_job_runs r WHERE r.scheduled_job_id=j.id AND r.fire_at=j.next_fire_at) ORDER BY j.next_fire_at ASC LIMIT $2 FOR UPDATE OF j SKIP LOCKED",
       [nowIso,limit],
     );
     const claims:ScheduledJobClaim[]=[];
