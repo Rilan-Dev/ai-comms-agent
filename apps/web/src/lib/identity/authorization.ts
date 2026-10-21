@@ -166,7 +166,14 @@ export function authorizationErrorToResponse(error: unknown): NextResponse {
   // Unexpected errors: return 500 without leaking internal details.
   // In production, this includes the DevIdentityAdapter production guard
   // throw (which signals a configuration error — dev adapter used in production).
-  console.error("[authorization] unexpected error:", error);
+  // PostgreSQL Error objects may carry detail/where/parameters including
+  // "Failing row contains" with message bodies, recipient phone numbers or IDs.
+  // Never pass the raw exception to console.*; log only a validated SQLSTATE.
+  const rawCode = error && typeof error === "object" && "code" in error
+    ? (error as { code?: unknown }).code : null;
+  const code = typeof rawCode === "string" && /^[A-Z0-9]{5}$/.test(rawCode)
+    ? rawCode : null;
+  console.error("[authorization] unexpected error", code ? { sqlstate: code } : { kind: "server_error" });
   return NextResponse.json(
     { error: "internal_server_error" },
     { status: 500 },
