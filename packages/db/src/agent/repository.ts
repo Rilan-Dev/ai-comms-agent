@@ -62,8 +62,8 @@ export class PostgresAgentRepository {
 
   async emailBindings(orgId:string,id:string):Promise<AgentEmailBinding[]>{ const r=await query<Row>("SELECT b.* FROM agent_email_accounts b JOIN agents a ON a.id=b.agent_id WHERE a.organization_id=$1 AND a.id=$2 ORDER BY b.created_at ASC",[orgId,id]); return r.rows.map(emailBinding); }
   async bindEmail(orgId:string,id:string,emailAccountId:string,role:AgentEmailAccountRole):Promise<AgentEmailBinding>{
-    const r=await query<Row>("INSERT INTO agent_email_accounts(agent_id,email_account_id,role) SELECT a.id,$3,$4 FROM agents a JOIN email_accounts ea ON ea.id=$3 AND ea.organization_id=a.organization_id WHERE a.organization_id=$1 AND a.id=$2 ON CONFLICT(agent_id,email_account_id) DO UPDATE SET role=EXCLUDED.role RETURNING *",[orgId,id,emailAccountId,role]);
-    if(!r.rows[0]) throw new Error("Agent or email account not found in this organization"); return emailBinding(r.rows[0]);
+    const r=await query<Row>("INSERT INTO agent_email_accounts(agent_id,email_account_id,role) SELECT a.id,$3,$4 FROM agents a JOIN email_accounts ea ON ea.id=$3 AND ea.organization_id=a.organization_id AND ea.deleted_at IS NULL AND ea.status='connected' WHERE a.organization_id=$1 AND a.id=$2 ON CONFLICT(agent_id,email_account_id) DO UPDATE SET role=EXCLUDED.role RETURNING *",[orgId,id,emailAccountId,role]);
+    if(!r.rows[0]) throw new Error("A connected email account and agent in this organization are required."); return emailBinding(r.rows[0]);
   }
   async unbindEmail(orgId:string,id:string,emailAccountId:string):Promise<void>{ await query("DELETE FROM agent_email_accounts b USING agents a, email_accounts ea WHERE b.agent_id=a.id AND b.email_account_id=ea.id AND a.organization_id=$1 AND a.id=$2 AND ea.organization_id=$1 AND b.email_account_id=$3",[orgId,id,emailAccountId]); }
   async whatsappAccounts(orgId:string):Promise<Array<{id:string;displayName:string|null;phoneNumberId:string;status:string}>> {
