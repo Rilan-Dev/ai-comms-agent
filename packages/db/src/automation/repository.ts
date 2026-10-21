@@ -165,7 +165,7 @@ export async function listAutomationRuns(organizationId: string, ruleId: string)
 
 export type ScheduledJobClaim = {
   runId:string; id:string; agentId:string; organizationId:string; intent:string; params:Record<string,unknown>;
-  cron:string|null; nextFireAt:string; timezone:string; catchUpMinutes:number;
+  cron:string|null; nextFireAt:string; revisionAt:string; timezone:string; catchUpMinutes:number;
 };
 
 export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise<ScheduledJobClaim[]> {
@@ -184,6 +184,7 @@ export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise
       // produces "Mon Oct 12 2026 ..." which PostgreSQL rejects (error 22007).
       const fireAt = row.next_fire_at ? new Date(row.next_fire_at as string | Date).toISOString() : null;
       if (!fireAt) continue;
+      const revisionAt=new Date(row.updated_at as string|Date).toISOString();
       // Both migration 0021's partial unique index and migration 0043's
       // fallback full unique constraint support this conflict target.
       // A caught duplicate INSERT error would abort the PostgreSQL transaction;
@@ -194,7 +195,7 @@ export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise
       );
       const runId = run.rows[0]?.id ? String(run.rows[0].id) : null;
       if (!runId) continue;
-      claims.push({runId,id:String(row.id),agentId:String(row.agent_id),organizationId:String(row.organization_id),intent:String(row.intent),params:(row.params??{}) as Record<string,unknown>,cron:row.cron?String(row.cron):null,nextFireAt:fireAt,timezone:String(row.timezone??"UTC"),catchUpMinutes:Number(row.catch_up_minutes??60)});
+      claims.push({runId,id:String(row.id),agentId:String(row.agent_id),organizationId:String(row.organization_id),intent:String(row.intent),params:(row.params??{}) as Record<string,unknown>,cron:row.cron?String(row.cron):null,nextFireAt:fireAt,revisionAt,timezone:String(row.timezone??"UTC"),catchUpMinutes:Number(row.catch_up_minutes??60)});
     }
     return claims;
   });
@@ -246,12 +247,12 @@ export async function recoverStaleScheduledJobRuns(
   });
 }
 
-export async function advanceScheduledJob(id:string,organizationId:string,expectedFireAt:string,nextFireAt:string|null,status:"active"|"archived"|"error",lastError:string|null){
+export async function advanceScheduledJob(id:string,organizationId:string,expectedFireAt:string,expectedUpdatedAt:string,nextFireAt:string|null,status:"active"|"archived"|"error",lastError:string|null){
   // A paused/archived schedule or a schedule edited after the claim must not
   // be resurrected by completion of the older in-flight occurrence.
   const r=await query<{id:string}>(
-    "UPDATE scheduled_jobs SET next_fire_at=$4::timestamptz,last_fire_at=now(),status=$5,last_error=$6,updated_at=now() WHERE id=$1 AND organization_id=$2 AND next_fire_at=$3::timestamptz AND status='active' RETURNING id",
-    [id,organizationId,expectedFireAt,nextFireAt,status,lastError],
+    "UPDATE scheduled_jobs SET next_fire_at=$5::timestamptz,last_fire_at=now(),status=$6,last_error=$7,updated_at=now() WHERE id=$1 AND organization_id=$2 AND next_fire_at=$3::timestamptz AND status='active' AND updated_at=$4::timestamptz RETURNING id",
+    [id,organizationId,expectedFireAt,expectedUpdatedAt,nextFireAt,status,lastError],
   );
   return r.rows.length===1;
 }
