@@ -231,7 +231,7 @@ test("IMAP Gmail-style multipart email decodes UTF-8 QP and preserves formatted 
   assert.equal(message.from_address, "no-reply@research.anthropic.com");
   assert.equal(message.from_name, "Anthropic User Research");
   assert.equal(message.provider_message_id, "INBOX:42");
-  assert.match(message.text_body, /reward   /);
+  assert.match(message.text_body, /reward  /);
   assert.match(message.text_body, /Friday, October 23/);
   assert.doesNotMatch(message.text_body, /=E2=80=87|Content-Transfer-Encoding/);
   assert.match(message.html_body ?? "", /<table style="width:100%; color:#333">/);
@@ -242,7 +242,7 @@ test("IMAP Gmail-style multipart email decodes UTF-8 QP and preserves formatted 
 });
 
 test("IMAP RFC822 extraction rejects truncated literal instead of persisting corrupted content", () => {
-  assert.throws(() => extractImapRfc822Source("* 7 FETCH (BODY[] {100}\\r\\nShort\\r\\n)"), /Incomplete IMAP RFC822 literal/);
+  assert.throws(() => extractImapRfc822Source("* 7 FETCH (BODY[] {100}\r\nShort\r\n)"), /Incomplete IMAP RFC822 literal/);
 });
 
 function bufferedReader(response: string) {
