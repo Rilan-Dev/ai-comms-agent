@@ -1,8 +1,18 @@
 import { query } from "../client";
 import { decryptCredential, encryptCredential } from "../security";
 import type { CapabilitySet, EmailAccount, EmailProviderType } from "@ai-comms-agent/shared";
+import { verifiedEmailHtml } from "@ai-comms-agent/shared";
 
 type Row = Record<string, unknown>;
+
+// Legacy rows may have raw HTML in html_body_sanitized. Never return such
+// bytes to an email preview: compare against byte-exact canonical text-only
+// HTML generated from this row's text_body. This guard is independent of
+// tenant scoping; callers must retain their account/org predicates.
+function quarantineMailHtmlRow(row: Row): Row {
+  const safeHtml = verifiedEmailHtml(row.html_body_sanitized, row.text_body);
+  return { ...row, html_body_sanitized: safeHtml, html_body: safeHtml };
+}
 
 function decodeBytea(value: unknown): Buffer {
   if (Buffer.isBuffer(value)) return value;
@@ -296,7 +306,7 @@ export async function getMailMessageForOrganization(organizationId: string, mess
   const r = await query<Row>(`SELECT m.*, COALESCE(m.from_email, m.from_name, '') AS from_address, m.to_recipients AS to_addresses, m.text_body, m.html_body_sanitized AS html_body, EXISTS (SELECT 1 FROM email_attachments ea WHERE ea.message_id = m.id) AS has_attachments, a.email_address AS account_email, a.display_name AS account_name
     FROM email_messages m JOIN email_accounts a ON a.id = m.email_account_id
     WHERE m.id = $1 AND a.organization_id = $2 AND a.deleted_at IS NULL LIMIT 1`, [messageId, organizationId]);
-  return r.rows[0] ?? null;
+  return r.rows[0] ? quarantineMailHtmlRow(r.rows[0]) : null;
 }
 
 export async function getMailAttachmentForOrganization(organizationId: string, attachmentId: string): Promise<Record<string, unknown> | null> {
@@ -345,7 +355,7 @@ export async function getMailThreadForOrganization(organizationId: string, threa
     )
     SELECT * FROM ranked WHERE duplicate_rank = 1
     ORDER BY received_at ASC NULLS LAST`, [threadId, organizationId]);
-  return r.rows;
+  return r.rows.map((row) => quarantineMailHtmlRow(row));
 }
 
 export async function updateMailReadStateForOrganization(
