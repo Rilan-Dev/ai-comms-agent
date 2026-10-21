@@ -2047,3 +2047,11 @@ Code and additive project-control handoff pushed to `main` at `b66dfe40df023b471
 - **Remedy:** `1c1b5796` selectable folder parser, `06f9b14f` Gmail/INBOX regression, `1184576e` SQL claim comma, `d3fa0af4` IDLE legacy type fallback, `53702ac8` encrypted credential type preservation, `a655ce4e` regression, `d43f16b7` single-socket sequencing and completed sync_mode, `2e131fb8` regression.
 - **Evidence:** 13/13 current GitHub source invariants passed; actual Node, full typecheck/build, live Gmail/DB E2E and deployment acceptance not run. Live user logs substantiate symptoms only.
 - **Lesson/next:** SELECT only LIST entries without `\\Noselect`/`\\NonExistent`, persist credential discriminants and sync transitions, serialize stateful IMAP commands. FIX-01 focused Node tests/typecheck; OPS-01 rebuild/deploy/verify current image and retry original account via normal Sync, observe imported rows, lastSuccessAt, no protocol error. Revoke exposed session token; no token used.
+
+### FIX01-IMAP-ESM-TEST-PATH-20261022 — FIX-01 IMAP focused tests blocked by CommonJS __dirname in ESM — 2026-10-22
+- **Observed:** User ran `git pull --ff-only` to `df6284b1`, IMAP tests: 23 total, 19 pass, 4 fail, all four `ReferenceError: __dirname is not defined` at new source-contract tests; worker/db typechecks returned to prompt with no TypeScript errors (pnpm native-binary warning independent).
+- **Root cause:** Worker package is ESM; `node --import tsx --test` does not supply CommonJS `__dirname`. Assertions never read source; no evidence these four target behaviors are broken.
+- **Unsuccessful approaches avoided:** No changing module system, disabling tests, modifying IMAP production behavior or treating test-run failures as a live-provider diagnosis.
+- **Remedy:** `9fbc1d19e546614843dafdbc9021a6f998a8db8c` fixes all four test paths using `new URL(relativePath, import.meta.url)` accepted by `readFileSync`.
+- **Evidence:** 7/7 GitHub source/path checks pass at corrected blobs; host-run Node tests AFTER fix, live inbox sync/deployment still not verified.
+- **Lesson/next:** Use ESM-safe test fixtures; rerun the same two node test suites on latest main, then OPS-01 owns worker deployment and existing-account IMAP sync acceptance (actual non-null lastSuccessAt, count). FIX-01 scoped to source/test remediation; no credentials or runtime changes.
