@@ -19,9 +19,9 @@ test("scheduled runs persist the fire timestamp and enforce one run per fire", (
   // the predicate is needed to infer migration 0021's partial unique index.
   const claim = repository.slice(repository.indexOf("export async function claimDueScheduledJobs"),
     repository.indexOf("export async function advanceScheduledJob"));
-  assert.match(claim, /INSERT INTO scheduled_job_runs \\(scheduled_job_id,fire_at,status,result\\)/);
-  assert.match(claim, /ON CONFLICT \\(scheduled_job_id,fire_at\\) WHERE fire_at IS NOT NULL DO NOTHING RETURNING id/);
-  assert.doesNotMatch(claim, /catch\\s*\\{/);
+  assert.match(claim, /INSERT INTO scheduled_job_runs \(scheduled_job_id,fire_at,status,result\)/);
+  assert.match(claim, /ON CONFLICT \(scheduled_job_id,fire_at\) WHERE fire_at IS NOT NULL DO NOTHING RETURNING id/);
+  assert.doesNotMatch(claim, /catch\s*\{/);
   assert.match(migration, /WHERE fire_at IS NOT NULL/);
   assert.match(repository, /const fireAt = row.next_fire_at/);
 });
