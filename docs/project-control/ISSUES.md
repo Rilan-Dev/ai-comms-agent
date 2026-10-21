@@ -685,3 +685,10 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Remedy:** `1c1b5796,06f9b14f,1184576e,d3fa0af4,53702ac8,a655ce4e,d43f16b7,2e131fb8`. Source invariant checks 13/13; regression Node, typechecks and live import unexecuted.
 - **Failed approaches/prevention:** Earlier TLS handshake timer fix alone could not address protocol-level SELECT NO. Only selectable mailbox names reach SELECT; existing credentials must normalize narrowly and new encrypted saves retain discriminants; stage and commit durable sync state correctly; serialize IMAP commands.
 - **Next:** OPS-01 verify current deployed SHA and perform safe existing-account import + IDLE acceptance, record non-null lastSuccessAt and actual matching persisted row count. FIX-01 run focused tests/typechecks and fix any specific new source failure. Rotate leaked session.
+
+### Follow-up to ISS-FIX01-IMAP-GMAIL-SELECT-20261021 — FIX01-IMAP-UID-STAGING-20261022, 2026-10-22
+- **Status:** in_progress — additional source correction on `Development`, operator/live acceptance pending.
+- **New symptom:** After deploy at `d0ded84d`, account `running`/initial, imported and pending both zero, lastSuccessAt null; worker emits only ready/health logs. Builds and migrations report success, not ingestion.
+- **New root cause:** `ImapSmtpAdapter.sync()` fetched full MIME data for up to 50 UIDs before it returned identifiers; `processAccount` staged none until this expensive work completed and later fetched bodies again. 25-message IMAP fetch batches delayed first DB writes; failed transport reads were acked as permanently missing.
+- **Remedy:** `2a8c5933` stage UIDs only, `db3d629b` tests, `b0550e52` five-message commits + progress logs, `631d96a2` preserve failed fetch IDs, `2c0e3f8a` regression. Source checks 17/17 PASS; actual package tests/production mailbox not checked.
+- **Next:** OPS-01 verify deployed SHA, merge/deploy through approved workflow, actual imported rows and state; separately inspect unhealthy Redis/Qdrant; FIX-01 further bug only with reproduced source evidence. No credentials copied.
