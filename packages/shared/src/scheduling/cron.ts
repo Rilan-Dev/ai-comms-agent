@@ -8,7 +8,7 @@ function expandField(field:string,min:number,max:number):Set<number>{
     let start=min,end=max;
     if(base==="*"){ /* full range */ }
     else if(base.includes("-")){ const range=base.split("-"); if(range.length!==2) throw new Error("Invalid cron range"); const a=Number(range[0]); const b=Number(range[1]); if(!Number.isInteger(a)||!Number.isInteger(b)) throw new Error("Invalid cron range"); start=a; end=b; }
-    else { const n=Number(base); if(!Number.isInteger(n)) throw new Error("Invalid cron value"); start=n; end=n; }
+    else { const n=Number(base); if(!Number.isInteger(n)) throw new Error("Invalid cron value"); start=n; end=stepRaw===undefined?n:max; }
     if(start<min||end>max||start>end) throw new Error("Cron value out of range");
     for(let n=start;n<=end;n+=step) out.add(n);
   }
