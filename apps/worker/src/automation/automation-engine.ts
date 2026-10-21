@@ -4,22 +4,30 @@ import { dispatchAgentExecution } from "../agent/execution-dispatcher";
 type Event={organizationId:string;type:string;payload:Record<string,unknown>};
 type Rule={id:string;agentId:string;organizationId:string;trigger:Record<string,unknown>;conditions:Record<string,unknown>;actions:unknown[]};
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 function objectEqualsSubset(payload:Record<string,unknown>, expected:Record<string,unknown>){
   return Object.entries(expected).every(([key,value])=>payload[key]===value);
 }
 
 /** A trigger can use the legacy worker "type" key or the web UI "event" key. */
 export function automationMatches(rule:Pick<Rule,"organizationId"|"trigger"|"conditions">,event:Event){
-  // Only the trusted event envelope is authoritative. A payload-supplied
-  // organizationId must never retarget work to another tenant's rules.
-  if(!event.organizationId || rule.organizationId!==event.organizationId) return false;
+  // A bad JSON rule must never become a match-all rule. An event payload
+  // must also be an object before any policy filters are evaluated.
+  if(!event.organizationId || rule.organizationId!==event.organizationId ||
+     !isRecord(rule.trigger) || !isRecord(event.payload)) return false;
   const {type, event: legacyEvent} = rule.trigger;
   if(typeof type==="string" && typeof legacyEvent==="string" && type!==legacyEvent) return false;
   const triggerType=typeof type==="string"?type:typeof legacyEvent==="string"?legacyEvent:null;
   if(!triggerType||triggerType!==event.type) return false;
   const match=rule.trigger.match;
-  if(match && typeof match==="object" && !Array.isArray(match) && !objectEqualsSubset(event.payload,match as Record<string,unknown>)) return false;
-  return !rule.conditions || Object.keys(rule.conditions).length===0 || objectEqualsSubset(event.payload,rule.conditions);
+  // Missing/null filters are historically optional. Present filters must
+  // be objects, not strings, lists or numbers that silently match all.
+  if(match!=null && (!isRecord(match) || !objectEqualsSubset(event.payload,match))) return false;
+  const conditions=rule.conditions;
+  return conditions==null || (isRecord(conditions) && objectEqualsSubset(event.payload,conditions));
 }
 
 export function stableEventKey(event:Event){
