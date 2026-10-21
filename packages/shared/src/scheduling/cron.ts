@@ -29,15 +29,15 @@ export function matchesCron(cron:string,date:Date,timeZone:string):boolean{
   const hour=get("hour");
   const day=get("day");
   const month=get("month");
-  return allowedFields.every((allowed, index) => {
-    switch(index){
-      case 0: return allowed.has(minute);
-      case 1: return allowed.has(hour);
-      case 2: return allowed.has(day);
-      case 3: return allowed.has(month);
-      default: return allowed.has(weekday);
-    }
-  });
+  // Standard crontab: when BOTH day fields are restricted, match either.
+  // When either contains a wildcard, only the other restriction applies.
+  const dayOfMonthMatches=allowedFields[2]!.has(day);
+  const dayOfWeekMatches=allowedFields[4]!.has(weekday);
+  const wildcardDayField=fields[2]!.includes("*") || fields[4]!.includes("*");
+  return allowedFields[0]!.has(minute)
+    && allowedFields[1]!.has(hour)
+    && allowedFields[3]!.has(month)
+    && (wildcardDayField ? dayOfMonthMatches && dayOfWeekMatches : dayOfMonthMatches || dayOfWeekMatches);
 }
 
 export function nextCronFire(cron:string,after:Date,timeZone:string):Date{
