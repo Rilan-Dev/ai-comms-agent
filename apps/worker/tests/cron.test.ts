@@ -34,3 +34,12 @@ test("bare numeric cron fields stay single values and ranges retain their steps"
   assert.equal(matchesCron("5-20/7 * * * *", at(19), "UTC"), true);
   assert.equal(matchesCron("*/15 * * * *", at(45), "UTC"), true);
 });
+
+
+test("rejects malformed cron segments with extra slash tokens", () => {
+  const now = new Date("2026-10-22T08:15:00.000Z");
+  for (const cron of ["*/15/2 * * * *", "5/15/2 * * * *", "*/15/ * * * *"]) {
+    assert.throws(() => matchesCron(cron, now, "UTC"), /Invalid cron field/);
+  }
+  assert.equal(matchesCron("*/15 * * * *", now, "UTC"), true);
+});
