@@ -7,6 +7,29 @@ import type { Agent, AgentEmailBinding, AgentPolicy, AgentVersion, AgentWhatsApp
 import { useNotifications } from "@/components/notifications";
 import { AgentAISettingsPanel } from "./agent-ai-settings-panel";
 
+// Only tools registered by the current email runtime are selectable here.
+// The shared catalog also includes unimplemented contracts: showing those
+// as working toggles would mislead admins about actual agent capabilities.
+const EMAIL_POLICY_CHOICES = [
+  { name: "email.search", label: "Search mailbox", detail: "Find matching emails and support natural-language summaries.", group: "read" },
+  { name: "email.messages.list", label: "List emails", detail: "Retrieve recent or filtered message lists.", group: "read" },
+  { name: "email.message.get", label: "Read an email", detail: "Open an authorized message by ID.", group: "read" },
+  { name: "email.thread.get", label: "Read a conversation", detail: "Retrieve an existing email thread.", group: "read" },
+  { name: "email.accounts.list", label: "List connected mailboxes", detail: "Discover the mailboxes assigned to this agent.", group: "read" },
+  { name: "email.folders.list", label: "List mail folders", detail: "Read available folders on a connected mailbox.", group: "read" },
+  { name: "email.labels.list", label: "List labels", detail: "Read labels on supported providers.", group: "read" },
+  { name: "email.capabilities.get", label: "Check mailbox capabilities", detail: "Check which operations the provider supports.", group: "read" },
+  { name: "email.sync.status", label: "Check synchronization", detail: "Read the mailbox sync status.", group: "read" },
+  { name: "email.draft.create", label: "Create drafts", detail: "Prepare a new email without sending it.", group: "write" },
+  { name: "email.draft.update", label: "Edit drafts", detail: "Edit existing saved drafts.", group: "write" },
+  { name: "email.draft_reply", label: "Draft replies", detail: "Prepare a reply without sending.", group: "write" },
+  { name: "email.draft_forward", label: "Draft forwards", detail: "Prepare a forwarded message without sending.", group: "write" },
+  { name: "email.send.request", label: "Request sending approval", detail: "Request authorization to send a draft; does not send automatically.", group: "write" },
+  { name: "email.reply.request", label: "Request reply approval", detail: "Request authorization to reply; does not send automatically.", group: "write" },
+  { name: "email.forward.request", label: "Request forward approval", detail: "Request authorization to forward; does not send automatically.", group: "write" },
+] as const;
+const KNOWN_EMAIL_POLICY_TOOLS = new Set<string>(EMAIL_POLICY_CHOICES.map((choice) => choice.name));
+
 type Check = { key: string; label: string; ok: boolean; detail?: string };
 type AuditEvent = { id:string; eventType:string; action:string|null; decision:string|null; createdAt:string; metadata:Record<string,unknown> };
 
@@ -16,6 +39,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   const [agent, setAgent] = useState(initialAgent);
   const [versions, setVersions] = useState(initialVersions);
   const [policy, setPolicy] = useState(initialPolicy);
+  const [selectedTools, setSelectedTools] = useState<string[]>(initialPolicy?.allowedTools ?? []);
   const [emailBindings, setEmailBindings] = useState(initialEmailBindings);
   const [whatsappBinding, setWhatsappBinding] = useState(initialWhatsAppBinding);
   const [tab, setTab] = useState<"overview"|"versions"|"policy"|"channels"|"ai-settings"|"test"|"activity">("overview");
@@ -176,17 +200,23 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
     } catch(e) { notify({kind:"error",title:"Channels could not be saved",message:e instanceof Error?e.message:"Unknown error"}); }
     finally { setBusy(false); }
   }
+  function togglePolicyTool(toolName: string, checked: boolean) {
+    setSelectedTools((current) => checked
+      ? (current.includes(toolName) ? current : [...current, toolName])
+      : current.filter((name) => name !== toolName));
+  }
   async function savePolicy(event:React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true);
     const form=new FormData(event.currentTarget);
-    const allowedTools=String(form.get("allowedTools")??"").split(",").map((v)=>v.trim()).filter(Boolean);
+    // Selection is explicit; never auto-enable tools when a mailbox is bound.
+    const allowedTools = selectedTools;
     const allowedSenders=String(form.get("allowedSenders")??"").split(",").map((v)=>v.trim()).filter(Boolean);
     const blockedSenders=String(form.get("blockedSenders")??"").split(",").map((v)=>v.trim()).filter(Boolean);
     let securityPolicy: unknown;
     let rateLimits: unknown;
     try { securityPolicy=JSON.parse(String(form.get("securityPolicy")??"{}")); rateLimits=JSON.parse(String(form.get("rateLimits")??"{}")); } catch { notify({kind:"error",title:"Invalid policy JSON",message:"Security policy and rate limits must be valid JSON objects."}); setBusy(false); return; }
     if (!securityPolicy || typeof securityPolicy !== "object" || Array.isArray(securityPolicy) || !rateLimits || typeof rateLimits !== "object" || Array.isArray(rateLimits)) { notify({kind:"error",title:"Invalid policy JSON",message:"Security policy and rate limits must be JSON objects."}); setBusy(false); return; }
-    try { const p=await call(`/api/agents/${agent.id}/policy`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,securityPolicy,allowedTools,allowedSenders,blockedSenders,rateLimits})}); setPolicy(p.policy); notify({kind:"success",title:"Policy saved"}); } catch(e){notify({kind:"error",title:"Policy could not be saved",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
+    try { const p=await call(`/api/agents/${agent.id}/policy`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,securityPolicy,allowedTools,allowedSenders,blockedSenders,rateLimits})}); setPolicy(p.policy); setSelectedTools(p.policy.allowedTools); notify({kind:"success",title:"Policy saved"}); } catch(e){notify({kind:"error",title:"Policy could not be saved",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
 
   return <main className="mx-auto max-w-[1500px] space-y-6 p-5 sm:p-7 lg:p-9">
@@ -212,7 +242,43 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
       </form>
       <div className="grid gap-4 lg:grid-cols-3"><div className="rounded-md border bg-background p-6 shadow-sm lg:col-span-2"><h2 className="font-semibold">Configuration</h2><p className="mt-1 text-sm text-muted-foreground">Versioned runtime configuration is stored with the agent.</p><div className="mt-6 grid gap-3 sm:grid-cols-3"><div className="rounded-md bg-muted/50 p-4"><p className="text-xs text-muted-foreground">Versions</p><p className="mt-1 text-xl font-semibold">{versions.length}</p></div><div className="rounded-md bg-muted/50 p-4"><p className="text-xs text-muted-foreground">Policy</p><p className="mt-1 text-xl font-semibold">{policy ? "Ready" : "Missing"}</p></div><div className="rounded-md bg-muted/50 p-4"><p className="text-xs text-muted-foreground">Deployment</p><p className="mt-1 text-xl font-semibold">{agent.status==="active" ? "Live" : "Draft"}</p></div></div></div></div><div className="rounded-md border bg-background p-6 shadow-sm"><h2 className="font-semibold">Channels</h2><p className="mt-1 text-sm text-muted-foreground">Connect email and WhatsApp accounts from the channel configuration.</p><div className="mt-5 space-y-2"><button type="button" onClick={()=>setTab("channels")} className="flex w-full items-center justify-between rounded-md border p-3 text-left text-sm hover:bg-muted/30">Email <span className="text-xs font-semibold text-primary">{emailBindings.length ? `${emailBindings.length} connected` : "Configure →"}</span></button><button type="button" onClick={()=>setTab("channels")} className="flex w-full items-center justify-between rounded-md border p-3 text-left text-sm hover:bg-muted/30">WhatsApp <span className="text-xs font-semibold text-primary">{whatsappBinding ? "Connected" : "Configure →"}</span></button></div></div></section>}
     {tab==="versions" && <section className="space-y-4"><div className="rounded-md border bg-background p-6 shadow-sm"><div><h2 className="font-semibold">Version configuration</h2><p className="mt-1 text-xs text-muted-foreground">Edit the draft JSON and create an immutable snapshot. Deployed versions are never mutated.</p><p className="mt-2 text-xs text-muted-foreground">Selected version: {versions.find((v)=>v.id===selectedVersionId)?.versionNumber ?? "none"} · Deploy uses the selected version.</p></div><textarea value={versionConfig} onChange={(e)=>setVersionConfig(e.target.value)} spellCheck={false} className="mt-5 min-h-56 w-full rounded-md border bg-muted/20 p-4 font-mono text-xs outline-none focus:ring-2 focus:ring-primary/20" aria-label="Version configuration JSON" /><div className="mt-3 flex justify-end"><button type="button" disabled={busy} onClick={createVersion} className="h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Creating…":"Create version"}</button></div></div><div className="rounded-md border bg-background shadow-sm"><div className="border-b p-5"><h3 className="font-semibold">History</h3></div><div className="divide-y">{versions.length===0?<p className="p-6 text-sm text-muted-foreground">No versions yet.</p>:versions.map((v)=><button type="button" key={v.id} onClick={()=>{setSelectedVersionId(v.id); setVersionConfig(JSON.stringify(v.config ?? {},null,2));}} className="flex w-full items-center justify-between p-5 text-left hover:bg-muted/30"><div><p className="text-sm font-semibold">Version {v.versionNumber}</p><p className="text-xs text-muted-foreground">{new Date(v.createdAt).toLocaleString()}</p></div><span className="flex items-center gap-2"><span className="rounded-full bg-muted px-2.5 py-1 text-[11px]">{v.id===agent.currentVersionId?"Current":"Draft"}</span>{selectedVersionId===v.id && <span className="text-[11px] font-semibold text-primary">Selected</span>}</span></button>)}</div></div></section>}
-    {tab==="policy" && <section className="rounded-md border bg-background p-6 shadow-sm"><h2 className="flex items-center gap-2 font-semibold"><ShieldCheck size={16} className="text-primary" /> Agent safety policy</h2><p className="mt-1 text-sm text-muted-foreground">Control tool and sender boundaries before deployment.</p><form onSubmit={savePolicy} className="mt-6 space-y-5"><label className="block text-sm font-medium">Allowed tools<input name="allowedTools" defaultValue={policy?.allowedTools.join(", ")??""} className="mt-1 h-11 w-full rounded-md border px-3 text-sm font-normal" placeholder="email.search, email.messages.list" /></label><label className="block text-sm font-medium">Allowed senders<input name="allowedSenders" defaultValue={policy?.allowedSenders.join(", ")??""} className="mt-1 h-11 w-full rounded-md border px-3 text-sm font-normal" placeholder="finance@example.com" /></label><label className="block text-sm font-medium">Blocked senders<input name="blockedSenders" defaultValue={policy?.blockedSenders.join(", ")??""} className="mt-1 h-11 w-full rounded-md border px-3 text-sm font-normal" placeholder="spam@example.com" /></label><div className="grid gap-4 lg:grid-cols-2"><label className="block text-sm font-medium">Security policy<textarea name="securityPolicy" defaultValue={JSON.stringify(policy?.securityPolicy??{},null,2)} spellCheck={false} rows={7} className="mt-1 w-full rounded-md border bg-muted/20 p-3 font-mono text-xs font-normal" aria-label="Security policy JSON" /></label><label className="block text-sm font-medium">Rate limits<textarea name="rateLimits" defaultValue={JSON.stringify(policy?.rateLimits??{},null,2)} spellCheck={false} rows={7} className="mt-1 w-full rounded-md border bg-muted/20 p-3 font-mono text-xs font-normal" aria-label="Rate limits JSON" /></label></div><button disabled={busy} className="h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">Save policy</button></form></section>}
+    {tab==="policy" && <section className="rounded-md border bg-background p-6 shadow-sm">
+      <h2 className="flex items-center gap-2 font-semibold"><ShieldCheck size={16} className="text-primary" /> Agent safety policy</h2>
+      <p className="mt-1 text-sm text-muted-foreground">Select what this agent may do. Nothing is enabled unless an administrator selects it and saves the policy.</p>
+      <div className="mt-4 rounded-md border bg-muted/30 p-4 text-sm">
+        <p className="font-semibold">Mail setup checklist</p>
+        <p className="mt-1 text-muted-foreground">{emailBindings.some((b) => b.role !== "send_only") ? "✓ A mailbox is assigned for reading." : "1. Select a readable mailbox in Channels."} {selectedTools.includes("email.search") || selectedTools.includes("email.messages.list") ? "✓ Mail search/list permission selected (save to apply)." : "2. Select Search mailbox or List emails below to allow mail summaries."}</p>
+        <button type="button" onClick={() => setTab("channels")} className="mt-2 text-sm font-semibold text-primary underline">Choose connected mailbox →</button>
+        <p className="mt-2 text-xs text-muted-foreground">Binding a mailbox never grants tool access automatically. The account must also be connected, and the signed-in user must have email.read. Sending always follows its separate approval rules.</p>
+      </div>
+      <form onSubmit={savePolicy} className="mt-6 space-y-5">
+        {(["read", "write"] as const).map((group) => <fieldset key={group} className="rounded-md border p-4">
+          <legend className="px-1 text-sm font-semibold">{group === "read" ? "Read and search mail" : "Drafting and approval requests (optional)"}</legend>
+          <p className="mb-3 text-xs text-muted-foreground">{group === "read" ? "Select only the information this agent needs. No mailbox is accessible unless separately connected." : "These actions do not bypass provider capabilities, administrator consent, or send approvals."}</p>
+          <div className="grid gap-3 sm:grid-cols-2">{EMAIL_POLICY_CHOICES.filter((choice) => choice.group === group).map((choice) => <label key={choice.name} className="flex items-start gap-3 rounded-md border p-3 text-sm hover:bg-muted/30">
+            <input type="checkbox" checked={selectedTools.includes(choice.name)} onChange={(event) => togglePolicyTool(choice.name, event.target.checked)} className="mt-1 size-4 shrink-0" />
+            <span><span className="block font-medium">{choice.label}</span><span className="mt-1 block text-xs text-muted-foreground">{choice.detail}</span></span>
+          </label>)}</div>
+        </fieldset>)}
+        {selectedTools.filter((name) => !KNOWN_EMAIL_POLICY_TOOLS.has(name)).length > 0 && <fieldset className="rounded-md border p-4">
+          <legend className="px-1 text-sm font-semibold">Existing other permissions</legend>
+          <p className="mb-3 text-xs text-muted-foreground">These were already saved. They are preserved until you explicitly remove them; this page cannot confirm whether each has a registered handler.</p>
+          {selectedTools.filter((name) => !KNOWN_EMAIL_POLICY_TOOLS.has(name)).map((name) => <label key={name} className="mb-2 flex items-center gap-2 text-sm"><input type="checkbox" checked onChange={() => togglePolicyTool(name, false)} />{name}</label>)}
+        </fieldset>}
+        <details className="rounded-md border p-4"><summary className="cursor-pointer text-sm font-semibold">Advanced sender rules and existing custom policy (optional)</summary>
+          <p className="mt-2 text-xs text-muted-foreground">The saved security and rate-limit rules stay unchanged unless you edit them here. Leave these fields as provided unless an administrator has specific restrictions.</p>
+          <div className="mt-4 space-y-4">
+            <label className="block text-sm font-medium">Allowed senders<input name="allowedSenders" defaultValue={policy?.allowedSenders.join(", ")??""} className="mt-1 h-11 w-full rounded-md border px-3 text-sm font-normal" placeholder="Optional email addresses" /></label>
+            <label className="block text-sm font-medium">Blocked senders<input name="blockedSenders" defaultValue={policy?.blockedSenders.join(", ")??""} className="mt-1 h-11 w-full rounded-md border px-3 text-sm font-normal" placeholder="Optional email addresses" /></label>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <label className="block text-sm font-medium">Security policy<textarea name="securityPolicy" defaultValue={JSON.stringify(policy?.securityPolicy??{},null,2)} spellCheck={false} rows={7} className="mt-1 w-full rounded-md border bg-muted/20 p-3 font-mono text-xs font-normal" aria-label="Security policy JSON" /></label>
+              <label className="block text-sm font-medium">Rate limits<textarea name="rateLimits" defaultValue={JSON.stringify(policy?.rateLimits??{},null,2)} spellCheck={false} rows={7} className="mt-1 w-full rounded-md border bg-muted/20 p-3 font-mono text-xs font-normal" aria-label="Rate limits JSON" /></label>
+            </div>
+          </div>
+        </details>
+        <button disabled={busy} className="h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Saving…":"Save selected permissions"}</button>
+      </form>
+    </section>}
     {tab==="channels" && <section className="grid gap-4 lg:grid-cols-2"><div className="rounded-md border bg-background p-6 shadow-sm"><h2 className="font-semibold">Email accounts</h2><p className="mt-1 text-sm text-muted-foreground">An agent can use multiple email accounts. Select a persisted mailbox below.</p>{!policy?.allowedTools.some((tool)=>tool==="email.search"||tool==="email.messages.list") && <p className="mt-3 text-xs text-muted-foreground" role="status">Mailbox connection does not enable chat summaries. An administrator must add <code>email.search</code> or <code>email.messages.list</code> under <button type="button" className="font-semibold underline" onClick={()=>setTab("policy")}>Agent Policy</button> and save it.</p>}<div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
   <select aria-label="Email account to connect" value={emailAccountId} onChange={(e)=>setEmailAccountId(e.target.value)} className="h-11 rounded-md border bg-background px-3 text-sm">
     <option value="">Select a persisted email account</option>
