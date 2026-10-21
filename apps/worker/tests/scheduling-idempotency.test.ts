@@ -56,3 +56,21 @@ test("advancing an occurrence cannot reactivate paused or edited schedules", () 
   assert.match(scheduler, /advanceScheduledJob\(job\.id,job\.organizationId,job\.nextFireAt,/);
   assert.match(repository, /nextFireAt:string; timezone:string; catchUpMinutes:number/);
 });
+
+
+test("duplicate durable occurrences do not consume the due-claim batch limit", () => {
+  // After a worker interruption the scheduled job can remain due even
+  // though its fire_at already has a durable running/completed/failed run.
+  // Such blocked rows must be filtered BEFORE LIMIT, not skipped after it.
+  const claim = repository.slice(repository.indexOf("export async function claimDueScheduledJobs"),
+    repository.indexOf("export async function advanceScheduledJob"));
+  assert.match(claim, /SELECT j\.\* FROM scheduled_jobs j/);
+  assert.match(claim, /NOT EXISTS \(SELECT 1 FROM scheduled_job_runs r WHERE r\.scheduled_job_id=j\.id AND r\.fire_at=j\.next_fire_at\)/);
+  const duplicateFilter = claim.indexOf("NOT EXISTS (SELECT 1 FROM scheduled_job_runs");
+  const orderBy = claim.indexOf("ORDER BY j.next_fire_at");
+  const limit = claim.indexOf("LIMIT $2");
+  assert.ok(duplicateFilter >= 0 && orderBy > duplicateFilter && limit > orderBy,
+    "existing run occurrences must be excluded before limiting due jobs");
+  assert.match(claim, /FOR UPDATE OF j SKIP LOCKED/);
+  assert.match(claim, /ON CONFLICT \(scheduled_job_id,fire_at\) WHERE fire_at IS NOT NULL DO NOTHING RETURNING id/);
+});
