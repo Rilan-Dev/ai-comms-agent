@@ -49,7 +49,7 @@ test("advancing an occurrence cannot reactivate paused or edited schedules", () 
   const advance = repository.slice(repository.indexOf("export async function advanceScheduledJob"),
     repository.indexOf("export async function completeScheduledJobRun"));
   assert.match(advance, /WHERE id=\$1 AND organization_id=\$2 AND next_fire_at=\$3::timestamptz AND status='active'/);
-  assert.match(advance, /\[id,organizationId,expectedFireAt,nextFireAt,status,lastError\]/);
+  assert.match(advance, /\[id,organizationId,expectedFireAt,expectedUpdatedAt,nextFireAt,status,lastError\]/);
   assert.match(advance, /RETURNING id/);
 
   const scheduler = readFileSync(resolve(__dirname, "../src/scheduling/scheduler-worker.ts"), "utf8");
@@ -73,4 +73,20 @@ test("duplicate durable occurrences do not consume the due-claim batch limit", (
     "existing run occurrences must be excluded before limiting due jobs");
   assert.match(claim, /FOR UPDATE OF j SKIP LOCKED/);
   assert.match(claim, /ON CONFLICT \(scheduled_job_id,fire_at\) WHERE fire_at IS NOT NULL DO NOTHING RETURNING id/);
+});
+
+
+test("an in-flight run cannot overwrite same-fire schedule edits, even if status stays active", () => {
+  const claim = repository.slice(repository.indexOf("export async function claimDueScheduledJobs"),
+    repository.indexOf("export type RecoveredScheduledJobRun"));
+  assert.match(claim, /revisionAt:/);
+  assert.match(claim, /row\.updated_at/);
+  assert.match(claim, /toISOString\(\)/);
+  const advance = repository.slice(repository.indexOf("export async function advanceScheduledJob"),
+    repository.indexOf("export async function completeScheduledJobRun"));
+  assert.match(advance, /AND status='active' AND updated_at=\$4::timestamptz RETURNING id/);
+  assert.match(advance, /next_fire_at=\$5::timestamptz/);
+  assert.match(advance, /\[id,organizationId,expectedFireAt,expectedUpdatedAt,nextFireAt,status,lastError\]/);
+  const worker = readFileSync(resolve(__dirname, "../src/scheduling/scheduler-worker.ts"), "utf8");
+  assert.equal((worker.match(/advanceScheduledJob\(job\.id,job\.organizationId,job\.nextFireAt,job\.revisionAt,/g)??[]).length, 2);
 });
