@@ -57,6 +57,53 @@ test("Gmail hierarchy-only LIST entries cannot become sync SELECT targets", () =
   assert.equal(parseSelectableImapFolder(String.raw`* STATUS "INBOX" (MESSAGES 3)`), null);
 });
 
+function mockImapUidDiscovery(uids: number[]) {
+  const adapter = new ImapSmtpAdapter();
+  const commands: string[] = [];
+  const stub = adapter as unknown as {
+    ensureConnected: () => { imap: Record<string, never> };
+    listFolders: () => Promise<Array<{ id: string; email_account_id: string; provider_folder_id: string; name: string; role: "inbox"; unread_count: number }>>;
+    command: (command: string) => Promise<string[]>;
+  };
+  stub.ensureConnected = () => ({ imap: {} });
+  stub.listFolders = async () => [{ id: "INBOX", email_account_id: "imap_smtp", provider_folder_id: "INBOX", name: "INBOX", role: "inbox", unread_count: 0 }];
+  stub.command = async (command: string) => {
+    commands.push(command);
+    if (command === 'SELECT "INBOX"') return ["* OK [UIDVALIDITY 123]"];
+    if (command === "UID SEARCH ALL") return [`* SEARCH ${uids.join(" ")}`];
+    throw new Error(`Unnecessary IMAP body fetch during UID discovery: ${command}`);
+  };
+  return { adapter, commands };
+}
+
+test("initial IMAP import stages the newest 50 UIDs without downloading any bodies", async () => {
+  const { adapter, commands } = mockImapUidDiscovery(Array.from({ length: 60 }, (_, i) => i + 1));
+  const result = await adapter.sync({
+    last_sync_at: new Date(0).toISOString(), sync_mode: "initial",
+    initial_message_limit: 50, initial_imported_count: 0,
+  });
+  assert.equal(result.added.length, 50);
+  assert.equal(result.updated.length, 0);
+  assert.deepEqual(result.added[0], { message_id: "INBOX:11", provider_message_id: "INBOX:11" });
+  assert.deepEqual(result.added[49], { message_id: "INBOX:60", provider_message_id: "INBOX:60" });
+  assert.deepEqual(commands, ['SELECT "INBOX"', "UID SEARCH ALL"]);
+  assert.equal(result.new_state.sync_mode, "incremental");
+});
+
+test("incremental IMAP sync stages only new UID references without fetching MIME bodies", async () => {
+  const { adapter, commands } = mockImapUidDiscovery([58, 59, 60]);
+  const result = await adapter.sync({
+    last_sync_at: new Date(0).toISOString(), sync_mode: "incremental",
+    history_token: `imap-v1:${encodeURIComponent(JSON.stringify({ INBOX: { uid: 58, validity: "123" } }))}`,
+  });
+  assert.equal(result.added.length, 0);
+  assert.deepEqual(result.updated, [
+    { message_id: "INBOX:59", provider_message_id: "INBOX:59" },
+    { message_id: "INBOX:60", provider_message_id: "INBOX:60" },
+  ]);
+  assert.deepEqual(commands, ['SELECT "INBOX"', "UID SEARCH ALL"]);
+});
+
 test("IMAP/SMTP adapter advertises the implemented secure connection capabilities", () => {
   const provider = new ImapSmtpAdapter();
   const capabilities = provider.capabilities();
