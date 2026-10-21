@@ -458,8 +458,9 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
           messages.push({ id, message: batchMap.get(id) ?? null });
         }
       } else {
-        // Zoho / IMAP: limited Promise.all concurrency (no native batch endpoint).
-        const concurrency = PERSIST_CONCURRENCY;
+        // A single IMAP TLS socket cannot safely interleave SELECT/FETCH command replies.
+        // Keep Zoho parallelism, but issue each IMAP getMessage sequentially.
+        const concurrency = candidate.provider === "imap_smtp" ? 1 : PERSIST_CONCURRENCY;
         for (let i = 0; i < batchIds.length; i += concurrency) {
           const slice = batchIds.slice(i, i + concurrency);
           const settled = await Promise.all(
@@ -524,7 +525,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     await removeDeletedMessages(candidate, providerDeleted);
 
     await query(
-      `UPDATE email_sync_states SET cursor_token=$1, history_id=$2, status='idle',
+      `UPDATE email_sync_states SET cursor_token=$1, history_id=$2, sync_mode=$5, status='idle',
          pending_message_ids='[]'::jsonb, pending_cursor_token=NULL,
          pending_history_id=NULL, pending_sync_mode=NULL,
          pending_push_at=CASE
@@ -538,7 +539,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
          END,
          error_count=0, last_error=NULL, updated_at=now()
        WHERE email_account_id=$3`,
-      [stagedCursor, stagedHistory, candidate.id, claimed.rows[0].last_attempt_at],
+      [stagedCursor, stagedHistory, candidate.id, claimed.rows[0].last_attempt_at, stagedMode],
     );
     await accounts.updateSyncState(candidate.id, new Date().toISOString());
     console.log(JSON.stringify({
