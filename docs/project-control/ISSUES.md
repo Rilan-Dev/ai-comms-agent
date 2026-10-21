@@ -698,3 +698,12 @@ Statuses: `open`, `in_progress`, `blocked`, `resolved`, `wont_fix`.
 - **Root cause:** Inline IMAP parser mishandled nested transfer encoding and discarded html_body; shared parseRfc822 mishandled QP UTF-8 byte order and MIME boundary case; original BODY[] protocol literal framing leaked into parsing.
 - **Remedy:** `5add7d2a,83c77c6d,20d0b026,cbf403fa` on Development. Preserve untrusted HTML isolation in existing sandboxed CSP iframe. HTML ingestion sanitizer security gate #36 **still open**; never claim database `html_body_sanitized` actually sanitizes source.
 - **Evidence/next:** 16/16 source checks; real Node, typecheck, live MIME/browser acceptance and scoped re-fetch of previously imported mangled rows pending. OPS-01 owns rollout and authorized scoped repair; FIX-01 addresses further reproduced MIME or sanitation failures. Never delete/recreate account merely to refresh mail.
+
+### ISS-FIX01-IMAP-FOLDER-COPY-DUPES-20261022 — duplicate Gmail IMAP folder copies displayed as separate Inbox mail — 2026-10-22
+- **Severity/owner/status:** medium-high; FIX-01 source and regression, OPS-01 runtime/deployment; in_progress, live acceptance pending.
+- **Symptom:** One test email in Gmail appears twice in ACA Inbox, both linking to same thread.
+- **Root cause (repository):** IMAP folder-qualified UID records from INBOX/All Mail are legitimately distinct provider rows, but `listInboxMessages` had no folder condition; thread details/counts returned physical copies.
+- **Failed options:** Repeating sync, deleting duplicated provider records or global subject dedup risks lost mail/folder actions; avoid.
+- **Remedy:** Development commits `cce92f98,0cc16a77,7d94e1d2` apply scoped INBOX filter and per-account nonblank Message-ID read dedup, preserve actual separate message UUIDs and other provider behavior.
+- **Evidence:** 17/17 post-fix source invariants; host Vitest, production data, live provider and browser confirmation not run.
+- **Prevention/next:** Distinguish folder UID from logical mail identity. Verify focused tests, OPS-01 deploy, then confirm target thread and inbox each display one logical message. Investigate read-only DB IDs if duplicates remain.
