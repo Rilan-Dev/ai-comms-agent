@@ -197,6 +197,22 @@ async function smtpCommand(reader: SocketReader, command: string): Promise<strin
   return line;
 }
 
+/**
+ * IMAP LIST can include hierarchy-only containers (for example Gmail's
+ * `[Gmail]` with \\Noselect). These must never be passed to SELECT/FETCH.
+ * Preserve the original selectable folder name for subsequent UID commands.
+ */
+export function parseSelectableImapFolder(line: string): EmailFolder | null {
+  const match = line.match(/^\* LIST \(([^)]*)\) (?:"[^"]*"|NIL) (.+)$/i);
+  if (!match) return null;
+  if (/\\(?:Noselect|NonExistent)(?:\s|$)/i.test(match[1] ?? "")) return null;
+  const rawName = match[2]?.replace(/^"|"$/g, "");
+  if (!rawName || rawName === "NIL") return null;
+  const lower = rawName.toLowerCase();
+  const role = lower === "inbox" ? "inbox" : lower === "sent" ? "sent" : lower === "drafts" ? "drafts" : lower === "trash" ? "trash" : lower === "spam" ? "spam" : "custom";
+  return { id: rawName, email_account_id: "imap_smtp", provider_folder_id: rawName, name: rawName, role, unread_count: 0 };
+}
+
 export class ImapSmtpAdapter implements EmailProvider {
   readonly providerId = "imap_smtp" as const;
   private credentials?: EmailCredentials;
@@ -373,14 +389,8 @@ export class ImapSmtpAdapter implements EmailProvider {
       const line = await readImapResponse(imap.reader);
       if (line.startsWith(`${tag} OK`)) return folders;
       if (line.startsWith(`${tag} NO`) || line.startsWith(`${tag} BAD`)) throw new Error(`IMAP LIST failed: ${line}`);
-      const match = line.match(/^\* LIST \([^)]*\) "[^"]*" (.+)$/);
-      if (match) {
-        const rawName = match[1]?.replace(/^"|"$/g, "");
-        if (!rawName) continue;
-        const lower = rawName.toLowerCase();
-        const role = lower === "inbox" ? "inbox" : lower === "sent" ? "sent" : lower === "drafts" ? "drafts" : lower === "trash" ? "trash" : lower === "spam" ? "spam" : "custom";
-        folders.push({ id: rawName, email_account_id: "imap_smtp", provider_folder_id: rawName, name: rawName, role, unread_count: 0 });
-      }
+      const folder = parseSelectableImapFolder(line);
+      if (folder) folders.push(folder);
     }
   }
 
