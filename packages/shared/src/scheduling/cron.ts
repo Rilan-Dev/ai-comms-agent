@@ -18,6 +18,10 @@ function expandField(field:string,min:number,max:number):Set<number>{
 
 export function matchesCron(cron:string,date:Date,timeZone:string):boolean{
   const fields=cron.trim().split(/\s+/); if(fields.length!==5) throw new Error("Cron must contain five fields");
+  const allowedFields=fields.map((field,index)=>{
+    const bounds=FIELD_RANGES[index]; if(!bounds) throw new Error("Invalid cron field");
+    return expandField(field,bounds[0],bounds[1]);
+  });
   const parts=new Intl.DateTimeFormat("en-US",{timeZone,hour12:false,minute:"numeric",hour:"numeric",day:"numeric",month:"numeric",weekday:"short"}).formatToParts(date);
   const get=(type:string)=>Number(parts.find(p=>p.type===type)?.value);
   const weekday=new Map([["Sun",0],["Mon",1],["Tue",2],["Wed",3],["Thu",4],["Fri",5],["Sat",6]]).get(parts.find(p=>p.type==="weekday")?.value??"Sun")??0;
@@ -25,13 +29,13 @@ export function matchesCron(cron:string,date:Date,timeZone:string):boolean{
   const hour=get("hour");
   const day=get("day");
   const month=get("month");
-  return fields.every((field, index) => {
+  return allowedFields.every((allowed, index) => {
     switch(index){
-      case 0: return expandField(field,0,59).has(minute);
-      case 1: return expandField(field,0,23).has(hour);
-      case 2: return expandField(field,1,31).has(day);
-      case 3: return expandField(field,1,12).has(month);
-      default: return expandField(field,0,6).has(weekday);
+      case 0: return allowed.has(minute);
+      case 1: return allowed.has(hour);
+      case 2: return allowed.has(day);
+      case 3: return allowed.has(month);
+      default: return allowed.has(weekday);
     }
   });
 }
