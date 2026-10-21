@@ -470,7 +470,7 @@ export class ImapSmtpAdapter implements EmailProvider {
   }
 
   async sync(state: SyncState): Promise<SyncResult> {
-    const { imap } = this.ensureConnected();
+    this.ensureConnected();
     const folders = (await this.listFolders()).sort((a, b) =>
       Number(b.role === "inbox") - Number(a.role === "inbox"));
     const encoded = state.cursor?.startsWith("imap:") ? state.cursor.slice(5) : "";
@@ -511,13 +511,14 @@ export class ImapSmtpAdapter implements EmailProvider {
       const fresh = recentInitial
         ? available.slice(-Math.min(100, historicalBudget))
         : available.slice(0, 50);
+      // UID SEARCH is sufficient to stage work. Fetching complete MIME bodies
+      // here blocks all checkpointing (and duplicates getMessage() downloads).
+      // The mailbox worker fetches/persists each staged UID separately.
       for (const uid of fresh) {
-        const fetched = await this.command(`UID FETCH ${uid} (UID FLAGS INTERNALDATE BODY.PEEK[])`);
-        const start = fetched.findIndex((line) => /FETCH \(/i.test(line) && /BODY\[\]/i.test(line));
-        if (start < 0) continue;
-        const raw = fetched.slice(start).join("\r\n");
-        const message = this.parseRawMessage(raw, folder.provider_folder_id, String(uid), fetched[start] ?? "");
-        (state.sync_mode === "initial" ? added : updated).push({ message_id: message.id, provider_message_id: message.provider_message_id ?? message.id });
+        const messageId = `${folder.provider_folder_id}:${uid}`;
+        (state.sync_mode === "initial" ? added : updated).push({
+          message_id: messageId, provider_message_id: messageId,
+        });
       }
       pages++;
       if (!recentInitial && fresh.length === 50 && (uids.find((uid) => uid > fresh[fresh.length - 1]!) !== undefined)) {
