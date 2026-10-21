@@ -194,3 +194,7 @@ The authentication loop was traced to session issuance preceding active organiza
 - `saveCredentials(credentialType,payload)` previously dropped `credentialType`; an old password account can sync via defaulted type but fail IDLE's strict typed check. Persist discriminant in encrypted saves and narrowly infer missing legacy password type ONLY when non-empty password exists; reject explicitly malformed types. Avoid forcing users to reveal/reenter app passwords.
 - IMAP command stream is one stateful TLS socket: do not interleave concurrent SELECT/FETCH commands on that same connection. Do not alias adjacent SQL RETURNING columns by missing comma; persist `sync_mode` when committing a completed import.
 - Fix source commits `1c1b5796,1184576e,d3fa0af4,53702ac8,d43f16b7`; regression `06f9b14f,a655ce4e,2e131fb8`. GitHub source invariants 13/13; runtime tests/deployment not run. Session FIX01-IMAP-GMAIL-SELECT-IDLE-20261021.
+
+### FIX01-IMAP-ESM-TEST-PATH-20261022 — Node ESM unit tests cannot access CommonJS __dirname
+- Worker `package.json` declares `"type":"module"`, and `node --import tsx --test` does not define `__dirname`. Four source-contract tests blocked before assertions ran; 19 other IMAP test cases passed. Avoid changing module type to hide tests.
+- Prefer `readFileSync(new URL("../src/file.ts", import.meta.url), "utf8")` for ESM-relative source fixtures. Corrected direct-main `9fbc1d19`; 7/7 source checks passed, host rerun after fix not yet observed. OPS-01 owns runtime deployment; FIX-01 owns follow-on test/source failures.
