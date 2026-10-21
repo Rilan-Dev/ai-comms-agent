@@ -6,6 +6,9 @@ const repo = readFileSync(resolve(__dirname, "../../../packages/db/src/agent/rep
 const channels = readFileSync(resolve(__dirname, "../src/app/api/agents/[id]/channels/route.ts"), "utf8");
 const chat = readFileSync(resolve(__dirname, "../src/app/api/chat/stream/route.ts"), "utf8");
 const details = readFileSync(resolve(__dirname, "../src/app/agents/[id]/agent-detail-client.tsx"), "utf8");
+const policyRoute = readFileSync(resolve(__dirname, "../src/app/api/agents/[id]/policy/route.ts"), "utf8");
+const mailReadTools = readFileSync(resolve(__dirname, "../../../packages/email-agent-runtime/src/email-read-tools.ts"), "utf8");
+const mailWriteTools = readFileSync(resolve(__dirname, "../../../packages/email-agent-runtime/src/email-write-tools.ts"), "utf8");
 
 describe("FIX-01 agent mailbox channels and summary authorization", () => {
   it("removes a binding with a PostgreSQL-valid, organization- and agent-scoped DELETE", () => {
@@ -59,6 +62,42 @@ describe("FIX-01 agent mailbox channels and summary authorization", () => {
     expect(details).toContain("Binding a mailbox never grants tool access automatically.");
     expect(details).toContain("Save selected permissions");
     expect(channels).not.toContain("updatePolicy(");
+  });
+
+  it("only offers working mail tools as selectable options, not unregistered catalog contracts", () => {
+    const names = Array.from(details.matchAll(/\\{ name: "(email\\.[^"]+)", label: /g), (match) => match[1]);
+    const registered = new Set([
+      ...Array.from(mailReadTools.matchAll(/readTool\\("(email\\.[^"]+)"/g), (match) => match[1]),
+      ...Array.from(mailWriteTools.matchAll(/makeTool\\("(email\\.[^"]+)"/g), (match) => match[1]),
+    ]);
+    expect(names.length).toBeGreaterThanOrEqual(10);
+    expect(new Set(names).size).toBe(names.length);
+    for (const name of names) expect(registered.has(name)).toBe(true);
+    expect(names).toContain("email.search");
+    expect(names).toContain("email.messages.list");
+    expect(names).not.toContain("email.summarize");
+  });
+
+  it("includes a click-through setup sequence and does not require ordinary users to edit JSON", () => {
+    expect(details).toContain("Get your agent ready");
+    expect(details).toContain("1. Choose a mailbox");
+    expect(details).toContain("2. Select permissions");
+    expect(details).toContain("3. Check readiness");
+    expect(details).toContain("Advanced: edit technical version JSON (optional)");
+    expect(details).toContain("Advanced sender rules and existing custom policy (optional)");
+    expect(details).toContain("The checklist reflects saved configuration, not a live connection or successful mail import.");
+  });
+
+  it("refuses unavailable mailbox bindings both in UI and at the tenant-scoped server boundary", () => {
+    expect(details).toContain('disabled={account.status !== "connected"}');
+    expect(details).toContain("Only connected mailboxes can be assigned.");
+    expect(channels).toContain("const selectedAccount = await new PostgresEmailAccountRepository().getById");
+    expect(channels).toContain('selectedAccount.organization_id !== orgId || selectedAccount.status !== "connected"');
+    expect(channels).toContain('status: 422');
+    const repoBind = repo.slice(repo.indexOf("async bindEmail("), repo.indexOf("async unbindEmail("));
+    expect(repoBind).toContain("ea.deleted_at IS NULL AND ea.status='connected'");
+    expect(policyRoute).toContain('role: "admin"');
+    expect(channels).toContain('role: "admin"');
   });
 
 });
