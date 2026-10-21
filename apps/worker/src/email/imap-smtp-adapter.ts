@@ -5,6 +5,7 @@ import type {
   CapabilitySet, DraftParams, DraftRef, EmailCredentials, EmailFolder, EmailLabel,
   EmailMessage, EmailProvider, ListOptions, SearchQuery, SentMessageRef, SyncResult, SyncState,
 } from "@ai-comms-agent/shared";
+import { parseRfc822 } from "@ai-comms-agent/shared";
 
 const CAPABILITIES: CapabilitySet = {
   folders: true, labels: false, sync_incremental: true, sync_full: true,
@@ -213,6 +214,25 @@ export function parseSelectableImapFolder(line: string): EmailFolder | null {
   return { id: rawName, email_account_id: "imap_smtp", provider_folder_id: rawName, name: rawName, role, unread_count: 0 };
 }
 
+/**
+ * UID FETCH responses wrap the RFC822 message in an IMAP literal:
+ *   * 1 FETCH (BODY[] {N}\r\n<RFC822 N octets>\r\n)
+ * Parsing the wrapper as message headers leaks transport framing into the
+ * body; use the declared octet length to exclude the closing IMAP tokens.
+ */
+export function extractImapRfc822Source(response: string): string {
+  const literal = /BODY\[\] \{(\d+)\+?\}\r\n/i.exec(response);
+  if (!literal) return response;
+  const length = Number(literal[1]);
+  if (!Number.isSafeInteger(length) || length < 0 || length > 50 * 1024 * 1024) {
+    throw new Error("Invalid IMAP RFC822 literal length");
+  }
+  const start = literal.index + literal[0].length;
+  const bytes = Buffer.from(response.slice(start), "utf8");
+  if (bytes.length < length) throw new Error("Incomplete IMAP RFC822 literal");
+  return bytes.subarray(0, length).toString("utf8");
+}
+
 export class ImapSmtpAdapter implements EmailProvider {
   readonly providerId = "imap_smtp" as const;
   private credentials?: EmailCredentials;
@@ -410,62 +430,48 @@ export class ImapSmtpAdapter implements EmailProvider {
   }
 
   private parseRawMessage(raw: string, folderId: string, uid: string, flagsLine = ""): EmailMessage {
-    const split = raw.search(/\r?\n\r?\n/);
-    const headerText = split >= 0 ? raw.slice(0, split) : raw;
-    const body = split >= 0 ? raw.slice(split).replace(/^\r?\n\r?\n/, "") : "";
-    const unfolded = headerText.replace(/\r?\n[ \t]+/g, " ");
-    const headers = new Map<string, string>();
-    for (const line of unfolded.split(/\r?\n/)) {
-      const colon = line.indexOf(":");
-      if (colon > 0) headers.set(line.slice(0, colon).trim().toLowerCase(), line.slice(colon + 1).trim());
-    }
-    const decodeHeader = (value: string) => value.replace(/=\?([^?]+)\?([bq])\?([^?]*)\?=/gi, (match, charset: string, encoding: string, encoded: string) => {
-      try {
-        const normalizedCharset = charset.toLowerCase().replace("-", "");
-        if (encoding.toLowerCase() === "b") {
-          const bytes = Buffer.from(encoded, "base64");
-          return normalizedCharset === "utf8" ? bytes.toString("utf8") : bytes.toString("latin1");
-        }
-        const bytes = encoded.replace(/_/g, " ").replace(/=([0-9a-f]{2})/gi, (_hexMatch: string, hex: string) => String.fromCharCode(parseInt(hex, 16)));
-        return Buffer.from(bytes, "latin1").toString(normalizedCharset === "utf8" ? "utf8" : "latin1");
-      } catch {
-        return match;
-      }
-    });
-    const addressList = (value: string | undefined) => (value ?? "").split(",").map((item) => item.match(/<([^>]+)>/)?.[1] ?? item.trim()).filter((item) => /^[^\s@]+@[^\s@]+$/.test(item));
-    const from = headers.get("from") ?? "";
-    const contentType = headers.get("content-type") ?? "text/plain";
-    let textBody = body;
-    const transfer = (headers.get("content-transfer-encoding") ?? "").toLowerCase();
-    if (transfer === "base64") {
-      try { textBody = Buffer.from(body.replace(/\s/g, ""), "base64").toString("utf8"); } catch { /* retain raw body */ }
-    } else if (transfer === "quoted-printable") {
-      textBody = body.replace(/=\r?\n/g, "").replace(/=([0-9A-F]{2})/gi, (_m, hex: string) => String.fromCharCode(parseInt(hex, 16)));
-    }
-    if (/multipart\//i.test(contentType)) {
-      const boundary = contentType.match(/boundary="?([^";]+)"?/i)?.[1];
-      if (boundary) {
-        const plainPart = body.split(`--${boundary}`).find((part) => /content-type:\s*text\/plain/i.test(part));
-        if (plainPart) textBody = plainPart.replace(/^.*?\r?\n\r?\n/s, "").replace(/\r?\n--?\s*$/s, "");
-      }
-    }
-    const fromAddress = addressList(from)[0] ?? from.replace(/^.*<([^>]+)>.*$/, "$1").trim();
-    const date = headers.get("date");
-    const received = date ? new Date(date) : new Date();
+    // Shared MIME parser handles multipart/alternative, nested MIME parts,
+    // quoted-printable UTF-8, base64, and sender names. The former inline
+    // parser returned undecoded part headers and discarded text/html entirely.
+    const parsed = parseRfc822(extractImapRfc822Source(raw));
+    const messageId = parsed.message_id ? `<${parsed.message_id}>` : "";
+    const references = parsed.references.map((id) => `<${id}>`);
+    const received = parsed.date ? new Date(parsed.date) : new Date();
     const safeDate = Number.isNaN(received.getTime()) ? new Date() : received;
-    const subject = decodeHeader(headers.get("subject") ?? "");
-    const messageId = headers.get("message-id") ?? "";
     const uidMatch = flagsLine.match(/UID\s+(\d+)/i);
     const flags = flagsLine.match(/FLAGS\s+\(([^)]*)\)/i)?.[1] ?? "";
+    const textBody = parsed.text_body;
     return {
-      id: `${folderId}:${uid}`, email_account_id: "imap_smtp", thread_id: headers.get("references")?.split(/\s+/).filter(Boolean)[0] || messageId || `${folderId}:${uid}`,
-      folder_id: folderId, provider_message_id: `${folderId}:${uidMatch?.[1] ?? uid}`, message_id_header: messageId,
-      in_reply_to: headers.get("in-reply-to"), references: (headers.get("references") ?? "").split(/\s+/).filter(Boolean),
-      from_address: fromAddress, to_addresses: addressList(headers.get("to")), cc_addresses: addressList(headers.get("cc")), bcc_addresses: addressList(headers.get("bcc")),
-      subject, text_body: textBody.slice(0, 100_000), html_body: undefined, snippet: textBody.replace(/\s+/g, " ").slice(0, 240),
-      received_at: safeDate.toISOString(), is_read: /\\Seen/i.test(flags), is_starred: /\\Flagged/i.test(flags),
-      is_draft: /drafts/i.test(folderId), is_outbound: /sent/i.test(folderId), importance_score: 0.3, action_required: false,
-      has_attachments: /content-disposition:\s*attachment/i.test(body), embedding_status: "pending",
+      id: `${folderId}:${uid}`,
+      email_account_id: "imap_smtp",
+      thread_id: references[0] || messageId || `${folderId}:${uid}`,
+      folder_id: folderId,
+      provider_message_id: `${folderId}:${uidMatch?.[1] ?? uid}`,
+      message_id_header: messageId,
+      in_reply_to: parsed.in_reply_to ? `<${parsed.in_reply_to}>` : undefined,
+      references,
+      from_address: parsed.from,
+      from_name: parsed.from_name || undefined,
+      to_addresses: parsed.to,
+      cc_addresses: parsed.cc,
+      bcc_addresses: parsed.bcc,
+      subject: parsed.subject,
+      text_body: textBody.slice(0, 100_000),
+      // Raw sender HTML is UNTRUSTED; never render it in React's DOM.
+      // The existing mail reader uses an opaque-origin iframe with a strict
+      // no-script/no-network CSP. Ingestion sanitization remains a separate
+      // FIX-01 security gate and is not implied by the DB column name.
+      html_body: parsed.html_body ? parsed.html_body.slice(0, 1_000_000) : undefined,
+      snippet: textBody.replace(/\s+/g, " ").slice(0, 240),
+      received_at: safeDate.toISOString(),
+      is_read: /\\Seen/i.test(flags),
+      is_starred: /\\Flagged/i.test(flags),
+      is_draft: /drafts/i.test(folderId),
+      is_outbound: /sent/i.test(folderId),
+      importance_score: 0.3,
+      action_required: false,
+      has_attachments: /content-disposition:\s*attachment/i.test(raw),
+      embedding_status: "pending",
     };
   }
 
