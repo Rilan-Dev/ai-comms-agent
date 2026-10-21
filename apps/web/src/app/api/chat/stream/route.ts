@@ -280,7 +280,12 @@ async function runInteractiveHostToolLoop(args: {
       // ONLY before any host tool was executed. A failure during native final
       // streaming after a tool result must instead terminate the SSE turn.
       if (round === 0 && totalCalls === 0 && error instanceof Error
-        && /(?:not supported|not enabled for Sarvam|unsupported native tool)/i.test(error.message)) return null;
+        && /(?:not supported|not enabled for Sarvam|unsupported native tool)/i.test(error.message)) {
+        return {
+          text: "The selected AI provider could not execute this agent's tools. No email was sent or queued for approval. Ask an administrator to check the selected chat model's function-calling support and the agent's saved tool permissions.",
+          toolCalls: [],
+        };
+      }
       throw error;
     }
     if (completion.toolCalls.length === 0) {
