@@ -210,7 +210,7 @@ export function startEmailKnowledgeIndexerLoop() {
           timestamp: new Date().toISOString(),
           level: "info",
           service: "worker.email-knowledge-indexer",
-          message: "Indexed email knowledge batch",
+          message: "Processed email knowledge indexing/reconciliation batch",
           processed: result.processed,
         }));
       }
