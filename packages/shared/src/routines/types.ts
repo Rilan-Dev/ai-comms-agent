@@ -23,3 +23,47 @@ export type RoutineOccurrencePreview = {
   /** Minutes east of UTC at the intended occurrence. */
   offsetMinutes: number;
 };
+
+
+/**
+ * Preview-only routine data supplied by a user or a model.
+ * This never includes a trusted actor, access grant, standing delivery consent,
+ * executable job status or permission to send external communications.
+ */
+export type RoutineDestination =
+  | { kind: "in_app" }
+  | {
+      kind: "whatsapp_digest";
+      accountId: string;
+      recipientId: string;
+      deliveryPolicy: "text_in_window_template_outside" | "template_only";
+      template: {
+        providerId: string;
+        name: string;
+        language: string;
+        contentHash: string;
+        parameterSchemaHash: string;
+      } | null;
+    };
+
+export type RoutineDraft = {
+  name: string;
+  mailboxIds: string[];
+  trigger: RoutineTrigger;
+  task: { kind: "email_digest"; language: string; window: DigestWindow };
+  destination: RoutineDestination;
+  limits: {
+    maxCodePoints: number;
+    emptyBehavior: "skip" | "check_in";
+    catchUpMinutes: number;
+  };
+  quietHours: { start: string; end: string; timeZone: string } | null;
+};
+
+export type RoutineProposalPreview = {
+  status: "preview_only";
+  normalized: RoutineDraft;
+  configHash: string;
+  nextOccurrences: RoutineOccurrencePreview[];
+  warnings: string[];
+};
