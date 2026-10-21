@@ -205,7 +205,7 @@ function extractBodies(
   const ctParts = contentType.toLowerCase();
   const isMultipart = ctParts.startsWith("multipart/");
   if (!isMultipart) {
-    const decoded = decodeBody(body, cte);
+    const decoded = decodeBody(body, cte, contentType);
     if (ctParts.includes("text/html")) {
       return { textBody: htmlToText(decoded), htmlBody: decoded };
     }
@@ -213,7 +213,8 @@ function extractBodies(
     return { textBody: decoded, htmlBody: "" };
   }
   // Multipart — find the boundary and recurse.
-  const boundaryMatch = ctParts.match(/boundary\s*=\s*"?([^";\s]+)"?/i);
+  // MIME boundaries are case-sensitive; lowercasing Content-Type corrupts them.
+  const boundaryMatch = contentType.match(/boundary\s*=\s*"?([^";\s]+)"?/i);
   if (!boundaryMatch) {
     return { textBody: "", htmlBody: "" };
   }
@@ -253,29 +254,41 @@ function splitMultipart(body: string, boundary: string): string[] {
   return parts;
 }
 
-/** Decode a body based on its Content-Transfer-Encoding. */
-function decodeBody(body: string, cte: string): string {
+/** Decode transfer-encoded body octets using the declared MIME charset. */
+function decodeBody(body: string, cte: string, contentType: string): string {
   if (!body) return "";
-  const trimmed = body.trim();
-  switch (cte.toLowerCase()) {
+  const charset = contentType.match(/charset\s*=\s*(?:"([^"]+)"|([^;\s]+))/i)?.[1]
+    ?? contentType.match(/charset\s*=\s*(?:"([^"]+)"|([^;\s]+))/i)?.[2]
+    ?? "utf-8";
+  const decode = (bytes: Uint8Array): string => {
+    try { return new TextDecoder(charset).decode(bytes); }
+    catch { return new TextDecoder("utf-8").decode(bytes); }
+  };
+  switch (cte.trim().toLowerCase()) {
     case "base64": {
-      try {
-        const buf = Buffer.from(trimmed.replace(/\s+/g, ""), "base64");
-        return buf.toString("utf-8");
-      } catch {
-        return trimmed;
-      }
+      return decode(Buffer.from(body.replace(/\s+/g, ""), "base64"));
     }
     case "quoted-printable":
-    case "quotedprintable":
-      return trimmed
-        .replace(/=\r?\n/g, "")  // soft line break
-        .replace(/=([0-9A-Fa-f]{2})/g, (_, hex) =>
-          String.fromCharCode(parseInt(hex, 16)),
-        )
-        .replace(/_/, " ");  // QP variant for text
+    case "quotedprintable": {
+      // QP =XX is a BYTE, not a Unicode character. Decoding each =E2, =80,
+      // =87 separately as Latin-1 produced mojibake; leaving part headers
+      // undecoded displayed the literal =E2=80=87 in the mail reader.
+      const unfolded = body.replace(/=\r?\n/g, "");
+      const bytes: number[] = [];
+      for (let i = 0; i < unfolded.length; i++) {
+        const pair = unfolded.slice(i + 1, i + 3);
+        if (unfolded[i] === "=" && /^[0-9a-fA-F]{2}$/.test(pair)) {
+          bytes.push(parseInt(pair, 16));
+          i += 2;
+          continue;
+        }
+        const cp = unfolded.codePointAt(i)!;
+        for (const octet of Buffer.from(String.fromCodePoint(cp), "utf8")) bytes.push(octet);
+        if (cp > 0xffff) i++;
+      }
+      return decode(Uint8Array.from(bytes));
+    }
     default:
-      // 7bit, 8bit, binary, identity — body is already a string
       return body;
   }
 }
