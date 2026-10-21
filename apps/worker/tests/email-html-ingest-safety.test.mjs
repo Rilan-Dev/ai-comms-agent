@@ -46,7 +46,8 @@ test("legacy HTML is quarantined, even if it mimics the marker but contains exec
   assert.equal(verifiedEmailHtml("<script>evil</script>", null), null);
   const safe = sanitizeEmailHtml("<b>Original</b>", "Bounded text");
   assert.equal(verifiedEmailHtml(safe, "Bounded text"), safe);
-  assert.equal(verifiedEmailHtml(safe, "Changed"), null);
+  // rich-v2 acceptance is canonical HTML revalidation, not text_body equality.
+  assert.equal(verifiedEmailHtml(safe, "Changed"), safe);
 });
 
 test("all mailbox sync providers use the one safe HTML write boundary", () => {
@@ -69,6 +70,6 @@ test("tenant scoped message and thread reads quarantine legacy before delivering
 
 test("rich output retains no sender CSS or remote image loads", () => {
   const html = sanitizeEmailHtml('<table style="width:100%"><tr><td><strong>Invoice</strong><img src="https://tracker.example/x"></td></tr></table>', "");
-  assert.match(html ?? "", /<table><tbody><tr><td><strong>Invoice<\\/strong>/);
-  assert.doesNotMatch(html ?? "", /style=|<img|https:\\/\\/tracker/);
+  assert.match(html ?? "", /<table><tbody><tr><td><strong>Invoice<\/strong>/);
+  assert.doesNotMatch(html ?? "", /style=|<img|https:\/\/tracker/);
 });
