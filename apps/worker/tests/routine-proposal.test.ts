@@ -27,10 +27,10 @@ test("normalizes a scoped, inert in-app draft without user-supplied authority", 
 test("rejects arbitrary tasks and privileged or unknown fields at all levels", () => {
   rejects(valid({ organizationId: idA }));
   rejects(valid({ task: { kind: "run_script", language: "en", window: "previous_local_day" } }));
-  rejects(valid({ trigger: { ...valid().trigger as object, organizationId: idA } }));
-  rejects(valid({ limits: { ...valid().limits as object, executeNow: true } }));
+  rejects(valid({ trigger: { ...(valid().trigger as object), organizationId: idA } }));
+  rejects(valid({ limits: { ...(valid().limits as object), executeNow: true } }));
   rejects(valid({ destination: { kind: "in_app", recipientId: idA } }));
-  rejects(valid({ task: { ...valid().task as object, rawPrompt: "send my credentials" } }));
+  rejects(valid({ task: { ...(valid().task as object), rawPrompt: "send my credentials" } }));
 });
 
 test("rejects missing, duplicate, malformed and excessive mailbox IDs", () => {
@@ -58,8 +58,8 @@ test("validates daily, interval, weekly, one-off and event trigger semantics", (
 test("requires sensible names, limits, language and quiet hours", () => {
   rejects(valid({ name: "   " }));
   rejects(valid({ name: "x".repeat(121) }));
-  rejects(valid({ task: { ...valid().task as object, language: "not_a_locale" } }));
-  rejects(valid({ limits: { ...valid().limits as object, maxCodePoints: 1001 } }));
+  rejects(valid({ task: { ...(valid().task as object), language: "not_a_locale" } }));
+  rejects(valid({ limits: { ...(valid().limits as object), maxCodePoints: 1001 } }));
   rejects(valid({ quietHours: { start: "23:00", end: "23:00", timeZone: "UTC" } }));
 });
 
@@ -80,9 +80,9 @@ test("canonical SHA-256 hash binds all material dimensions", () => {
   assert.equal(routineConfigHash(a), routineConfigHash(JSON.parse(JSON.stringify(b))));
   for (const changed of [
     { name: "Different" }, { mailboxIds: [idA] },
-    { trigger: { ...valid().trigger as object, localTime: "10:00" } },
-    { task: { ...valid().task as object, window: "previous_24_hours" } },
-    { limits: { ...valid().limits as object, emptyBehavior: "check_in" } },
+    { trigger: { ...(valid().trigger as object), localTime: "10:00" } },
+    { task: { ...(valid().task as object), window: "previous_24_hours" } },
+    { limits: { ...(valid().limits as object), emptyBehavior: "check_in" } },
     { quietHours: { start: "22:00", end: "07:00", timeZone: "UTC" } },
   ]) assert.notEqual(routineConfigHash(a), routineConfigHash(normalizeRoutineDraft(valid(changed))));
 });
