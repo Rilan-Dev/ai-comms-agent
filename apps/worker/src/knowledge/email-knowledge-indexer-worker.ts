@@ -15,6 +15,7 @@
 
 import { query } from "@ai-comms-agent/db";
 import { indexEmailKnowledge } from "./email-knowledge-indexer";
+import { IMAP_SHADOW_COPY_SQL } from "./email-knowledge-canonical";
 
 const INDEXER_INTERVAL_MS = 5_000;
 const INDEXER_BATCH_SIZE = 15;     // messages per tick (lowered from 25 to reduce per-tick DB pressure)
@@ -104,36 +105,51 @@ export async function processEmailKnowledgeIndexingBatch(limit = INDEXER_BATCH_S
   running = true;
   try {
     const result = await query<PendingMessage>(
-      `SELECT email_messages.id AS id,
-              email_messages.organization_id AS organization_id,
-              email_messages.email_account_id AS email_account_id,
-              email_messages.provider_message_id AS provider_message_id,
-              email_messages.message_id_header AS message_id_header,
-              email_messages.in_reply_to AS in_reply_to,
-              email_messages.thread_id AS thread_id,
-              email_messages.folder_id AS folder_id,
-              email_messages.from_email AS from_address,
-              email_messages.to_recipients AS to_addresses,
-              email_messages.cc_recipients AS cc_addresses,
-              email_messages.bcc_recipients AS bcc_addresses,
-              email_messages.subject AS subject,
-              email_messages.text_body AS text_body,
-              email_messages.snippet AS snippet,
-              email_messages.is_read AS is_read,
-              email_messages.is_starred AS is_starred,
-              email_messages.is_draft AS is_draft,
-              email_messages.is_sent AS is_outbound,
-              email_messages.received_at AS received_at,
-              email_messages.importance_score AS importance_score,
-              email_messages.action_required AS action_required,
-              email_messages.has_attachments AS has_attachments,
-              email_accounts.provider AS provider
-         FROM email_messages
-         JOIN email_accounts ON email_accounts.id = email_messages.email_account_id
-        WHERE email_messages.indexed_at IS NULL
-          AND email_accounts.deleted_at IS NULL
-          AND email_accounts.organization_id = email_messages.organization_id
-        ORDER BY email_messages.received_at ASC
+      `WITH classified AS (
+         SELECT m.*, a.provider,
+                (${IMAP_SHADOW_COPY_SQL}) AS shadow_copy
+           FROM email_messages m
+           JOIN email_accounts a ON a.id=m.email_account_id
+           LEFT JOIN email_folders f ON f.id=m.folder_id AND f.email_account_id=m.email_account_id
+          WHERE a.deleted_at IS NULL AND a.organization_id=m.organization_id
+       )
+       SELECT c.id, c.organization_id, c.email_account_id, c.provider_message_id,
+              c.internet_message_id AS message_id_header, c.in_reply_to, c.thread_id,
+              c.folder_id, c.from_email AS from_address,
+              c.to_recipients AS to_addresses, c.cc_recipients AS cc_addresses,
+              c.bcc_recipients AS bcc_addresses, c.subject, c.text_body, c.snippet,
+              c.is_read, c.is_starred, c.is_draft, c.is_sent AS is_outbound,
+              c.received_at, c.importance_score, c.action_required, c.has_attachments,
+              c.provider
+         FROM classified c
+        WHERE c.indexed_at IS NULL
+           OR (c.provider='imap_smtp' AND (
+             -- Retire already-indexed All Mail / INBOX duplicates after a
+             -- previously completed import, without deleting mailbox rows.
+             (c.shadow_copy AND EXISTS (
+               SELECT 1 FROM knowledge_documents d
+                WHERE d.organization_id=c.organization_id
+                  AND d.storage_bucket='email-account'
+                  AND d.metadata->>'email_account_id'=c.email_account_id::text
+                  AND d.metadata->>'provider_message_id'=c.provider_message_id
+             ))
+             OR
+             -- If the preferred copy was deleted/moved, promote the surviving
+             -- folder copy even if its indexed_at flag is already populated.
+             (NOT c.shadow_copy AND c.indexed_at IS NOT NULL AND c.is_draft=false
+              AND (c.received_at IS NOT NULL OR NULLIF(BTRIM(COALESCE(c.subject,'')), '') IS NOT NULL
+                   OR NULLIF(BTRIM(COALESCE(c.from_email,'')), '') IS NOT NULL
+                   OR NULLIF(BTRIM(COALESCE(c.text_body,'')), '') IS NOT NULL
+                   OR NULLIF(BTRIM(COALESCE(c.snippet,'')), '') IS NOT NULL)
+              AND NOT EXISTS (
+               SELECT 1 FROM knowledge_documents d
+                WHERE d.organization_id=c.organization_id
+                  AND d.storage_bucket='email-account'
+                  AND d.metadata->>'email_account_id'=c.email_account_id::text
+                  AND d.metadata->>'provider_message_id'=c.provider_message_id
+              ))
+           ))
+        ORDER BY c.indexed_at ASC NULLS FIRST, c.received_at ASC
         LIMIT $1`,
       [limit],
     );
