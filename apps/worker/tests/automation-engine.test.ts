@@ -57,3 +57,29 @@ test("prefers message identity for inbound events", () => {
 test("returns null when an event has no durable identity", () => {
   assert.equal(stableEventKey(event("scheduled.time")), null);
 });
+
+
+test("email action deduplication is bound to canonical action ID, not metadata event or message IDs", () => {
+  const first = event("email.action.completed", {
+    actionId: "action-1", eventId: "shared-untrusted", messageId: "shared-provider-message", correlationId: "shared-correlation",
+  });
+  const second = event("email.action.completed", {
+    actionId: "action-2", eventId: "shared-untrusted", messageId: "shared-provider-message", correlationId: "shared-correlation",
+  });
+  assert.equal(stableEventKey(first), "email.action.completed:action-1");
+  assert.equal(stableEventKey(second), "email.action.completed:action-2");
+  assert.notEqual(stableEventKey(first), stableEventKey(second));
+});
+
+test("WhatsApp outbound deduplication uses canonical message ID even if metadata event ID changes", () => {
+  const first = event("whatsapp.message.sent", { messageId: "wa-row-1", eventId: "untrusted-1", correlationId: "corr-1" });
+  const duplicate = event("whatsapp.message.sent", { messageId: "wa-row-1", eventId: "untrusted-2", correlationId: "corr-2" });
+  assert.equal(stableEventKey(first), "whatsapp.message.sent:wa-row-1");
+  assert.equal(stableEventKey(duplicate), "whatsapp.message.sent:wa-row-1");
+  assert.equal(stableEventKey(first), stableEventKey(duplicate));
+});
+
+test("provider events without required canonical identity cannot use metadata to select another dedupe key", () => {
+  assert.equal(stableEventKey(event("email.action.failed", { eventId: "untrusted", messageId: "wrong-kind" })), null);
+  assert.equal(stableEventKey(event("whatsapp.message.sent", { eventId: "untrusted", actionId: "wrong-kind" })), null);
+});
