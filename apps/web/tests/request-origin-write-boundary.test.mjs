@@ -88,3 +88,30 @@ test("every direct mail draft and mailbox mutation checks origin before touching
     }
   }
 });
+
+
+test("agent management, policy, mailbox bindings and new chat writes also enforce first-party Origin", () => {
+  const specs = [
+    ["../src/app/api/agents/route.ts", ["POST"]],
+    ["../src/app/api/agents/[id]/route.ts", ["PATCH", "DELETE"]],
+    ["../src/app/api/agents/[id]/ai-settings/route.ts", ["PUT"]],
+    ["../src/app/api/agents/[id]/channels/route.ts", ["PATCH"]],
+    ["../src/app/api/agents/[id]/policy/route.ts", ["PATCH"]],
+    ["../src/app/api/agents/[id]/deploy/route.ts", ["POST"]],
+    ["../src/app/api/agents/[id]/versions/route.ts", ["POST"]],
+    ["../src/app/api/chat/conversation/route.ts", ["POST"]],
+  ];
+  for (const [file, methods] of specs) {
+    const source = readFileSync(new URL(file, import.meta.url), "utf8");
+    for (const method of methods) {
+      const begin = source.indexOf("export async function " + method + "(request: Request");
+      assert.ok(begin >= 0, file + " must have a " + method + " handler");
+      const next = source.indexOf("export async function ", begin + 20);
+      const handler = source.slice(begin, next < 0 ? undefined : next);
+      assert.match(handler, /assertSameOrigin\(request\)/, file + ": " + method);
+      assert.match(handler, /error: "invalid_origin"/, file + ": " + method);
+      assert.match(handler, /status: 403/);
+      assert.ok(handler.indexOf("assertSameOrigin(request)") < handler.indexOf("await ensureDevSeed()"), file + ": no DB before origin gate");
+    }
+  }
+});
