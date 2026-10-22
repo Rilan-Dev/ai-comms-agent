@@ -489,7 +489,7 @@ export async function updateLocalDraftForOrganization(
   const r = await query<Row>(
     `UPDATE email_messages m SET ${sets.join(", ")}, provider_draft_sync_status = 'pending', provider_draft_last_error = NULL, updated_at = now()
      FROM email_accounts a
-     WHERE m.id = $${values.length - 1} AND m.email_account_id = a.id AND a.organization_id = $${values.length} AND m.is_draft = true AND a.deleted_at IS NULL
+     WHERE m.id = ${values.length - 1} AND m.organization_id = ${values.length} AND m.email_account_id = a.id AND a.organization_id = ${values.length} AND m.is_draft = true AND a.deleted_at IS NULL
      RETURNING m.*`,
     values,
   );
@@ -516,6 +516,7 @@ export async function listDraftsPendingProviderSync(limit = 25): Promise<Array<{
     `SELECT m.id, m.organization_id
      FROM email_messages m
      JOIN email_accounts a ON a.id = m.email_account_id
+       AND a.organization_id = m.organization_id
      WHERE m.is_draft = true
        AND m.provider_draft_sync_status = 'syncing'
        AND a.deleted_at IS NULL
