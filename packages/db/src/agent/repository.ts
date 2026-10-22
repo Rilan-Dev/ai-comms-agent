@@ -49,8 +49,43 @@ export class PostgresAgentRepository {
   }
   async retire(orgId:string,id:string):Promise<Agent|null>{ const r=await query<Row>("UPDATE agents SET status='paused' WHERE organization_id=$1 AND id=$2 RETURNING *",[orgId,id]); return r.rows[0]?agent(r.rows[0]):null; }
   async policy(orgId:string,id:string):Promise<AgentPolicy|null>{ const r=await query<Row>("SELECT p.* FROM agent_policies p JOIN agents a ON a.id=p.agent_id WHERE a.organization_id=$1 AND a.id=$2",[orgId,id]); return r.rows[0]?policy(r.rows[0]):null; }
-  async updatePolicy(orgId:string,id:string,i:Pick<AgentPolicy,"securityPolicy"|"allowedTools"|"allowedSenders"|"blockedSenders"|"rateLimits">):Promise<AgentPolicy|null>{
-    const r=await query<Row>("INSERT INTO agent_policies (agent_id,security_policy,allowed_tools,allowed_senders,blocked_senders,rate_limits) SELECT a.id,$3::jsonb,$4::text[],$5::text[],$6::text[],$7::jsonb FROM agents a WHERE a.organization_id=$1 AND a.id=$2 ON CONFLICT(agent_id) DO UPDATE SET security_policy=EXCLUDED.security_policy,allowed_tools=EXCLUDED.allowed_tools,allowed_senders=EXCLUDED.allowed_senders,blocked_senders=EXCLUDED.blocked_senders,rate_limits=EXCLUDED.rate_limits RETURNING *",[orgId,id,JSON.stringify(i.securityPolicy),i.allowedTools,i.allowedSenders,i.blockedSenders,JSON.stringify(i.rateLimits)]); return r.rows[0]?policy(r.rows[0]):null;
+  async updatePolicy(
+    orgId: string,
+    id: string,
+    i: Pick<AgentPolicy, "securityPolicy" | "allowedTools" | "allowedSenders" | "blockedSenders" | "rateLimits">,
+    expected?: Pick<AgentPolicy, "securityPolicy" | "allowedTools" | "allowedSenders" | "blockedSenders" | "rateLimits">,
+  ): Promise<AgentPolicy | null> {
+    const inputs = [orgId, id, JSON.stringify(i.securityPolicy), i.allowedTools, i.allowedSenders, i.blockedSenders, JSON.stringify(i.rateLimits)];
+    if (expected) {
+      // Atomic compare-and-set: another admin's newer policy must never be
+      // overwritten by a stale chat/settings preview, including custom rules.
+      const result = await query<Row>(
+        `UPDATE agent_policies p SET security_policy=$3::jsonb, allowed_tools=$4::text[],
+          allowed_senders=$5::text[], blocked_senders=$6::text[], rate_limits=$7::jsonb,
+          updated_at=now()
+          FROM agents a
+         WHERE a.id=p.agent_id AND a.organization_id=$1 AND a.id=$2
+           AND p.security_policy=$8::jsonb AND p.allowed_tools=$9::text[]
+           AND p.allowed_senders=$10::text[] AND p.blocked_senders=$11::text[]
+           AND p.rate_limits=$12::jsonb RETURNING p.*`,
+        [...inputs, JSON.stringify(expected.securityPolicy), expected.allowedTools,
+          expected.allowedSenders, expected.blockedSenders, JSON.stringify(expected.rateLimits)],
+      );
+      return result.rows[0] ? policy(result.rows[0]) : null;
+    }
+    // Legacy callers without a saved snapshot retain their existing admin-only
+    // API contract. First-party policy editors always send a snapshot.
+    const result = await query<Row>(
+      `INSERT INTO agent_policies (agent_id,security_policy,allowed_tools,allowed_senders,blocked_senders,rate_limits)
+       SELECT a.id,$3::jsonb,$4::text[],$5::text[],$6::text[],$7::jsonb
+         FROM agents a WHERE a.organization_id=$1 AND a.id=$2
+       ON CONFLICT(agent_id) DO UPDATE SET security_policy=EXCLUDED.security_policy,
+         allowed_tools=EXCLUDED.allowed_tools,allowed_senders=EXCLUDED.allowed_senders,
+         blocked_senders=EXCLUDED.blocked_senders,rate_limits=EXCLUDED.rate_limits,updated_at=now()
+       RETURNING *`,
+      inputs,
+    );
+    return result.rows[0] ? policy(result.rows[0]) : null;
   }
   async agentsForEmailAccount(orgId:string,emailAccountId:string):Promise<Array<{id:string;name:string;slug:string;role:AgentEmailAccountRole}>>{
     const r=await query<Row>(
