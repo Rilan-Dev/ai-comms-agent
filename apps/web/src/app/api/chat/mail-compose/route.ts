@@ -5,6 +5,7 @@ import type { ToolContext } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { createEmailToolRuntime, invokeEmailReadTool } from "../../../../../../../apps/worker/src/agent/email-tool-runtime";
+import { mailComposeReadiness } from "@/lib/mail/compose-readiness";
 
 export const dynamic = "force-dynamic";
 
@@ -48,10 +49,20 @@ export async function GET(request: Request) {
     if (!trusted) return NextResponse.json({ error: "not_found" }, { status: 404 });
     const runtime = await createEmailToolRuntime(organizationId, agentId);
     const allowed = runtime.registry.listForAgent(agentId);
+    const mailboxes = await primaryMailboxes(organizationId, agentId);
+    // These are diagnostics, not grants. The POST tool executor independently
+    // rechecks the actor, saved policy, account binding and provider capabilities.
+    const readiness = mailComposeReadiness({
+      actorCanWrite: trusted.subject.permissions.has("email.write"),
+      draftToolEnabled: allowed.some(tool => tool.name === "email.draft.create"),
+      sendRequestToolEnabled: allowed.some(tool => tool.name === "email.send.request"),
+      hasBoundPrimaryMailbox: mailboxes.length > 0,
+    });
     return NextResponse.json({
-      mailboxes: await primaryMailboxes(organizationId, agentId),
-      canDraft: trusted.subject.permissions.has("email.write") && allowed.some(tool => tool.name === "email.draft.create"),
-      canRequestApproval: trusted.subject.permissions.has("email.write") && allowed.some(tool => tool.name === "email.send.request"),
+      mailboxes,
+      canDraft: readiness.canDraft,
+      canRequestApproval: readiness.canRequestApproval,
+      blockers: readiness.blockers,
     }, { headers: { "cache-control": "private, no-store" } });
   } catch (error) { return authorizationErrorToResponse(error); }
 }
