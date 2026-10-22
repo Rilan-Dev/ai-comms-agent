@@ -26,7 +26,7 @@ export interface EmailAgentTurnInput {
 export interface EmailAgentTurnResult {
   text: string;
   streamed?: boolean;
-  toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; durationMs: number; readOnly?: boolean }>;
+  toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; durationMs: number; readOnly?: boolean; status?: string }>;
   pendingApprovals: Array<{ actionId: string; actionType: string; message: string }>;
   finishReason: "completed" | "round_limit" | "tool_limit" | "invalid_tool_call" | "invalid_tool_arguments";
 }
@@ -134,10 +134,13 @@ export async function runEmailAgentTurn(
       const approvalRequested = toolOutput?.status === "pending_approval" || toolOutput?.approval_required === true;
       const readOnly = result.ok && !approvalRequested && registeredTool?.sensitivity === "safe"
         && registeredTool.required_permission === "email.read";
+      const verifiedStatus = toolOutput?.status === "draft_created" || toolOutput?.status === "draft_updated"
+        || toolOutput?.status === "pending_approval" ? toolOutput.status : undefined;
       summaries.push({
         name: call.name,
         ok: result.ok,
         readOnly,
+        status: verifiedStatus,
         ...(result.error ? { errorCode: result.error.code } : {}),
         durationMs: result.audit.duration_ms,
       });
