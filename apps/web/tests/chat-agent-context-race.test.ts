@@ -28,6 +28,19 @@ describe("FIX-01: agent conversation and email compose context races", () => {
     expect(source).toContain("if (agentSwitchInFlightRef.current) return;");
   });
 
+  it("requires consent before an agent switch discards an unsent draft, never leaking it to another agent", () => {
+    const confirmation = switcher.indexOf('if (draft.trim() && !window.confirm("Switch agents and discard your unsent message?")) return;');
+    const network = switcher.indexOf('await fetch("/api/chat/conversation?organizationId="');
+    const success = switcher.indexOf("setAgentId(nextAgentId)");
+    const clear = switcher.indexOf('setDraft("")');
+    const failure = switcher.indexOf("} catch (error)");
+    expect(confirmation).toBeGreaterThan(0);
+    expect(confirmation).toBeLessThan(network);
+    expect(clear).toBeGreaterThan(success);
+    expect(clear).toBeLessThan(failure);
+    expect(switcher.slice(failure)).not.toContain('setDraft("")');
+  });
+
   it("discards stale voice refreshes instead of replacing the newly selected agent history", () => {
     expect(voiceReturn).toContain("const epoch = agentContextEpochRef.current");
     expect(voiceReturn).toContain("if (epoch !== agentContextEpochRef.current) return;");
