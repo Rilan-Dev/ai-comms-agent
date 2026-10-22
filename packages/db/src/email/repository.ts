@@ -1,4 +1,4 @@
-import { query } from "../client";
+import { query, withTransaction } from "../client";
 import { decryptCredential, encryptCredential } from "../security";
 import type { CapabilitySet, EmailAccount, EmailProviderType } from "@ai-comms-agent/shared";
 import { verifiedEmailHtml } from "@ai-comms-agent/shared";
@@ -450,19 +450,23 @@ export interface CreateLocalDraftInput {
 }
 
 export async function createLocalDraft(input: CreateLocalDraftInput): Promise<Record<string, unknown>> {
-  const accountResult = await query<Row>(
-    "SELECT id, email_address FROM email_accounts WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL LIMIT 1",
+  // The draft thread must never persist without its message when an insert
+  // fails. Lock the validated tenant account through the transaction so a
+  // concurrent account deletion or reconnection cannot race these writes.
+  return withTransaction(async (client) => {
+  const accountResult = await client.query<Row>(
+    "SELECT id, email_address FROM email_accounts WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL LIMIT 1 FOR SHARE",
     [input.emailAccountId, input.organizationId],
   );
   if (!accountResult.rows[0]) throw new Error("Email account was not found in this organization.");
-  const threadResult = await query<Row>(
+  const threadResult = await client.query<Row>(
     `INSERT INTO email_threads (email_account_id, organization_id, subject, normalized_subject, participant_emails)
      VALUES ($1, $2, $3, lower(regexp_replace(coalesce($3,''), '^([[:space:]]*(re|fwd):[[:space:]]*)+', '', 'gi')), $4::citext[])
      RETURNING id`,
     [input.emailAccountId, input.organizationId, input.subject?.trim() || null, [...input.to, String(accountResult.rows[0].email_address)]],
   );
   const threadId = String(requiredRow(threadResult.rows[0], "draft thread").id);
-  const messageResult = await query<Row>(
+  const messageResult = await client.query<Row>(
     `INSERT INTO email_messages
       (email_account_id, organization_id, thread_id, provider_message_id, from_email, to_recipients, cc_recipients, bcc_recipients, subject, text_body, snippet, is_read, is_draft, is_sent, received_at)
      VALUES ($1, $2, $3, 'local-draft:' || gen_random_uuid()::text, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8, $9, left($9, 240), true, true, false, now())
@@ -470,6 +474,7 @@ export async function createLocalDraft(input: CreateLocalDraftInput): Promise<Re
     [input.emailAccountId, input.organizationId, threadId, accountResult.rows[0].email_address, JSON.stringify(input.to), JSON.stringify(input.cc ?? []), JSON.stringify(input.bcc ?? []), input.subject?.trim() || null, input.bodyText ?? ""],
   );
   return requiredRow(messageResult.rows[0], "draft message");
+  });
 }
 
 export async function updateLocalDraftForOrganization(
