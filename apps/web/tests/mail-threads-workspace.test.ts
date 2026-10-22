@@ -46,7 +46,7 @@ describe("persisted Mail Threads — tenant scoped source contracts", () => {
 
   it("checks organization permissions before querying and validates limit/account filters", () => {
     expect(api).toContain("await authorize(request");
-    expect(api).toContain('permission: "organization.read"');
+    expect(api).toContain('permission: "email.read"');
     expect(api.indexOf("await authorize(request")).toBeLessThan(api.indexOf("await listMailThreadsForOrganization"));
     expect(api).toContain("limit > 50");
     expect(api).toContain("offset > 10000");
