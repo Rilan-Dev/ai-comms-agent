@@ -1868,3 +1868,9 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Not verified:** Test not run from a complete repository checkout; no Docker image build, real Compose invocation, migration execution, or service health check was performed. No deployment PASS is claimed.
 - **Safety dependency:** Confirm whether `DATABASE_URL` should target `/postgres` or `/aca` before applying migrations; do not infer/change the database.
 - **Next:** Operator confirms database target, pulls latest main, runs focused test in checkout, then runs deployment and records migration completion separately from container health.
+
+### DEV-01 — DEV01-AGENT-PERMISSION-PRESETS-20261022 — 2026-10-22
+- **Repo:** Development initial `9bd01878`; current code committed incrementally. Quick presets + existing chat panel reused; new scoped CAS, stale 409, readable per-tool confirmation, safe Off and unsaved reload consent implemented.
+- **Actual evidence:** Re-fetched six fresh source/test blobs after commits; **22/22** explicit source invariants passed for 16 registered tool labels, 4 presets, individual checkbox retention, explicit confirmations, five-field same-org SQL compare-and-set, admin-only policy API and action-safe semantics.
+- **NOT RUN:** `pnpm --filter @ai-comms-agent/web exec vitest run tests/email-permission-presets.test.ts tests/agent-mail-channel-policy-regression.test.ts`; web/db `tsc --noEmit`; PostgreSQL 2-admin race; browser accessibility/permission persistence; build, deployment and production.
+- **Next:** Run focused tests/typechecks at matching SHA, then authenticated two-tab stale-policy 409 check, no loss of old policy, no mail send and chat preset/checkbox use. OPS owns deploy, no CI/Vercel wait. See `sessions/DEV01-AGENT-PERMISSION-PRESETS-20261022.md`.
