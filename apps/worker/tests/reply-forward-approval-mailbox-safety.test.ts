@@ -19,13 +19,13 @@ test("reply/forward requests reject malformed source sender and every invalid re
 });
 
 test("batch reply and forward never pass local UUID to remote provider and require same mailbox", () => {
-  const area = batch.slice(batch.indexOf('if (action.actionType === "reply_email")'), batch.indexOf("providerResult = result.value"));
+  const area = batch.slice(batch.indexOf('const messageId = String(snapshot.messageId ?? "")'), batch.indexOf("providerResult = result.value"));
   assert.match(batch, /getMailMessageForOrganization/);
   assert.match(area, /getMailMessageForOrganization\(action.organizationId, messageId\)/);
   assert.match(area, /String\(source.email_account_id\) !== action.emailAccountId/);
   assert.match(area, /source.provider_message_id/);
   assert.match(area, /paramsFromApprovedEmailSnapshot\(snapshot\)/);
-  assert.match(area, /connected.reply\(providerMessageId, params\)/);
+  assert.match(area, /connected.reply\(providerMessageId, replyParams\)/);
   assert.match(area, /connected.forward\(providerMessageId, params.to\)/);
   assert.doesNotMatch(area, /connected\.reply\(messageId,/);
   assert.doesNotMatch(area, /connected\.forward\(messageId,/);
@@ -38,6 +38,6 @@ test("one-shot reply/forward applies identical source mailbox and immutable reci
   assert.match(area, /const providerMessageId = String\(source.provider_message_id\)/);
   assert.match(area, /paramsFromApprovedEmailSnapshot\(snapshot\)/);
   assert.match(area, /connected.reply\(providerMessageId, params\)/);
-  assert.match(area, /connected.forward\(providerMessageId, params.to\)/);
+  assert.match(area, /connected.forward\(providerMessageId, reviewedParams.to\)/);
   assert.doesNotMatch(area, /snapshot\.to\.map\(String\)/);
 });
