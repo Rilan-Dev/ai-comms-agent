@@ -35,7 +35,7 @@ test("IMAP reconnect cannot mark stale all-false capabilities as connected after
   assert.match(reconnect, /repository\.updateStatus\(accountId, "pending"\)/);
   assert.doesNotMatch(reconnect, /repository\.updateStatus\(accountId, "connected"\)/);
   assert.match(reconnect, /pending_worker_verification/);
-  assert.match(reconnect, /role: "admin"/);
+  assert.match(route.slice(route.indexOf("export async function POST("), start), /role: "admin"/);
 });
 
 test("web UI describes capability rediscovery honestly, not as already ready", () => {
