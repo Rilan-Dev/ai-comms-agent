@@ -966,21 +966,35 @@ export function VoiceWorkspace({
     await submitHostTurn(text, false);
   }
 
-  async function endSession() {
-    if (!session || busy) return;
+  async function endSession(): Promise<boolean> {
+    if (!session || busy) return false;
     setBusy(true);
     abortRef.current?.abort();
+    // Immediately stop local audio and the provider connection, independent of
+    // whether the authorized host can persist the termination.
     stopMedia();
     try {
-      await fetch("/api/voice/session", {
+      const response = await fetch("/api/voice/session", {
         method: "DELETE",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ organizationId, sessionId: session.id, reason: "user_ended" }),
       });
+      const payload = await response.json().catch(() => null) as { session?: VoiceSession } | null;
+      if (!response.ok || payload?.session?.status !== "ended" || payload.session.id !== session.id) {
+        setError("Could not confirm the voice session ended on the server. Retry End session.");
+        setNotice("Microphone audio stopped, but host session termination is not confirmed.");
+        return false;
+      }
       setSession((current) => current ? { ...current, status: "ended" } : null);
       sessionRef.current = null;
       setTransport(null);
+      setError("");
       setNotice("Voice session ended and microphone resources released.");
+      return true;
+    } catch {
+      setError("Could not reach the voice host to end this session. Retry End session.");
+      setNotice("Microphone audio stopped, but host session termination is not confirmed.");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -1027,7 +1041,7 @@ export function VoiceWorkspace({
         {embedded && onReturnToChat ? (
           <button type="button" onClick={() => {
             if (liveSession) {
-              void endSession().then(onReturnToChat).catch(() => setError("Could not end the voice session. Use End session and retry."));
+              void endSession().then((ended) => { if (ended) onReturnToChat(); });
             } else {
               onReturnToChat();
             }
