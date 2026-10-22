@@ -503,8 +503,13 @@ export async function updateLocalDraftForOrganization(
            AND ea.draft_id = m.id
            AND ea.email_account_id = m.email_account_id
            AND ea.action_type = 'send_email'
-           AND ea.status IN ('pending_approval', 'approved', 'executing')
-           AND (ea.expires_at IS NULL OR ea.expires_at > now())
+           AND (
+             ea.status = 'executing'
+             OR (
+               ea.status IN ('pending_approval', 'approved')
+               AND (ea.expires_at IS NULL OR ea.expires_at > now())
+             )
+           )
        )
      RETURNING m.*`,
     values,
@@ -631,8 +636,13 @@ export async function deleteLocalDraftForOrganization(organizationId: string, me
            AND ea.draft_id = m.id
            AND ea.email_account_id = m.email_account_id
            AND ea.action_type = 'send_email'
-           AND ea.status IN ('pending_approval', 'approved', 'executing')
-           AND (ea.expires_at IS NULL OR ea.expires_at > now())
+           AND (
+             ea.status = 'executing'
+             OR (
+               ea.status IN ('pending_approval', 'approved')
+               AND (ea.expires_at IS NULL OR ea.expires_at > now())
+             )
+           )
        )
      RETURNING m.id`,
     [messageId, organizationId],
