@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const organizationId = url.searchParams.get("organizationId") ?? "";
     const messageId = url.searchParams.get("messageId") ?? "";
     if (!organizationId || !messageId) return NextResponse.json({ error: "validation_error", message: "organizationId and messageId are required." }, { status: 422 });
-    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "email.read" }, getIdentityAdapter(), getIdentityRepository());
     const attachments = await listMailAttachmentsForOrganization(organizationId, messageId);
     return NextResponse.json({ attachments: attachments.map(a => ({ ...a, download_available: a.scan_status === "clean" && Boolean(a.storage_bucket && a.storage_path) })) });
   } catch (error) {
