@@ -4,8 +4,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 const NAV_ITEMS = [
-  { label: "Chat", href: "/", icon: "sparkles" },
   { label: "Overview", href: "/overview", icon: "grid" },
+  { label: "Chat", href: "/chat", icon: "sparkles" },
   { label: "Agents", href: "/agents", icon: "bot" },
   { label: "Mail", href: "/mail/inbox", icon: "mail", children: [
     { label: "Inbox", href: "/mail/inbox" }, { label: "Drafts", href: "/mail/drafts" },
@@ -99,7 +99,7 @@ export function Sidebar() {
     {mobileOpen && <button aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-foreground/30 md:hidden" />}
     <aside ref={sidebarRef} id="workspace-sidebar" role={mobileOpen ? "dialog" : undefined} aria-modal={mobileOpen ? true : undefined} aria-label={mobileOpen ? "Workspace navigation" : undefined} tabIndex={mobileOpen ? -1 : undefined} className={`fixed inset-y-0 left-0 z-50 flex w-[248px] shrink-0 flex-col border-r border-border bg-sidebar transition-transform duration-200 md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
       <div className="flex h-[76px] items-center justify-between px-6">
-        <a href="/" className="flex items-center gap-2.5" aria-label="Comms Agent home" onClick={() => setMobileOpen(false)}>
+        <a href="/overview" className="flex items-center gap-2.5" aria-label="Comms Agent home" onClick={() => setMobileOpen(false)}>
           <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground"><NavIcon name="audio" /></span>
           <span className="text-[18px] font-semibold tracking-tight">comms<span className="text-muted-foreground">/</span>agent</span>
         </a>
@@ -114,7 +114,7 @@ export function Sidebar() {
         <p className="px-3 pb-3 text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">Workspace</p>
         <ul className="space-y-0.5">
           {NAV_ITEMS.map((item) => {
-            const active = pathname === item.href || (item.href === "/" && pathname === "/chat") || (item.href !== "/" && pathname.startsWith(item.href + "/")) || ("children" in item && item.children?.some((child) => pathname === child.href || pathname.startsWith(child.href + "/")));
+            const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/")) || ("children" in item && item.children?.some((child) => pathname === child.href || pathname.startsWith(child.href + "/")));
             return <li key={item.href}>
               <div className="flex min-w-0 items-center gap-1">
                 <a href={item.href} aria-current={active ? "page" : undefined} onClick={() => setMobileOpen(false)} className={`flex h-10 min-w-0 flex-1 items-center gap-3 rounded-md px-3 text-[13px] font-medium transition-colors ${active ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
