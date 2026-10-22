@@ -154,8 +154,8 @@ export async function POST(request: Request) {
                 // The callback already streamed the provider's final tokens.
                 // Writes/approvals/denials retain the canonical host answer.
                 const verifiedSummary = verifiedEmailToolSummary(result.toolCalls);
-                // A model answer is not evidence that a provider action was
-                // delivered. Append only the host-verified outcome.
+                // A model answer is not evidence of delivery. Display the
+                // verified host result instead of unconfirmed send claims.
                 if (!result.streamed) emit("delta", { text: verifiedSummary || result.text });
                 await saveAnswer(deliveredText);
                 emit("progress", { phase: "completed" });
