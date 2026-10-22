@@ -1051,3 +1051,10 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Source root cause:** Policy required internal manual tool/JSON editing; available accounts were not limited to connected status at either UI or bind DB; simulation failed to detect enabled read tools without connected readable bindings.
 - **Fixes/tests:** `084f36ba,816d9558,68b3ec81,e7735b4b,93fbc354,11c760c2,787c8ca9,51134e6d,424d89c1,df860960`. Selection-first agent tool policy and visible setup, status checks and truthfully failing read-readiness probe. GitHub source assertions 24/24.
 - **Pending:** Real Vitest/web/db typecheck, real user agent policy/connected accounts and browser, OPS-01 SSH/infra/deployment. No automatic grants; password rotation recommended. DEV-01 retains broader product UI scope.
+
+
+### DEV01-CHAT-EMAIL-APPROVAL-PRESETS-20261022 — 2026-10-22
+- **Role/authorization:** DEV-01 / Forge, owner-explicit product task, direct Development. Recovered APCP shared and DEV local records, issue/verification/phase, previous FIX-01 Sarvam fix and relevant mail/chat/voice source.
+- **Delivered:** Agent-scoped authenticated draft+send-approval review in chat, quick permission presets with fine-tuning and admin-confirmed chat policy editing; bounded test-email intent opening a preview, voice host tool definition RBAC filter, realtime host reuse, voice handoff. No send, no automatic approval.
+- **Evidence:** 4 isolated helper functional tests, 2 standalone TS helper checks, 20 GitHub structural checks; actual repo Vitest/tsx, DB, provider, live SHA and deployment unverified. Full details root `worklog.md`.
+- **Status/next:** Source implementation committed; OPS-01 separately validate/deploy and test exact draft→pending approval→human approval→worker send. DEV-01 resolve current-tip source test/type errors when equipped, without gating independent work or activating C3/routines.
