@@ -33,3 +33,13 @@ test("no existing system role silently acquires email.write from this fix", () =
   assert.doesNotMatch(block, /"email\.write"/);
   assert.match(runtime, /context\.auth_subject\.permissions\.includes\(tool\.required_permission\)/);
 });
+
+
+test("remote provider draft synchronization is also a write and requires email.write", () => {
+  const sync = readFileSync(new URL("../src/app/api/mail/drafts/sync/route.ts", import.meta.url), "utf8");
+  const gate = 'authorize(request, { organizationId: asOrganizationId(organizationId), permission: "email.write" }';
+  assert.ok(sync.includes(gate), "provider sync must not accept an ordinary member without email.write");
+  assert.ok(sync.indexOf(gate) < sync.indexOf("await queueLocalDraftProviderSyncForOrganization("));
+  assert.match(sync, /account\.organization_id !== organizationId/);
+  assert.match(sync, /account\.capabilities\.drafts/);
+});
