@@ -15,11 +15,11 @@ test("an active send-approval action fences every change to its draft", () => {
   assert.match(update, /ea\.draft_id = m\.id/);
   assert.match(update, /ea\.email_account_id = m\.email_account_id/);
   assert.match(update, /ea\.action_type = 'send_email'/);
-  assert.match(update, /ea\.status IN \('pending_approval', 'approved', 'executing'\)/);
+  assert.match(update, /ea\.status IN \('pending_approval', 'approved'\)/);
   assert.match(update, /ea\.expires_at IS NULL OR ea\.expires_at > now\(\)/);
   assert.match(update, /m\.is_draft = true/);
   assert.match(update, /m\.organization_id = /);
-  assert.match(deletion, /ea\.status IN \('pending_approval', 'approved', 'executing'\)/);
+  assert.match(deletion, /ea\.status IN \('pending_approval', 'approved'\)/);
 });
 
 test("draft edit route distinguishes a locked draft from a missing draft without bypassing the repository", () => {
