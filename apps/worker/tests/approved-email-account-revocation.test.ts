@@ -44,3 +44,15 @@ test("no automatic send/role escalation or manual-approval bypass was added to t
   assert.match(guard, /status === "connected"/);
   assert.match(guard, /organization_id === organizationId/);
 });
+
+test("account guard narrows a nullable repository account for credential access", () => {
+  const maybeAccount: { organization_id: string; status: string } | null =
+    { organization_id: "org-A", status: "connected" };
+  if (!isApprovedEmailActionAccountUsable(maybeAccount, "org-A")) {
+    throw new Error("Expected connected account");
+  }
+  const narrowed: { organization_id: string; status: string } = maybeAccount;
+  assert.equal(narrowed.status, "connected");
+  const guard = readFileSync(new URL("../src/email/action-account-guard.ts", import.meta.url), "utf8");
+  assert.match(guard, /account is T/);
+});
