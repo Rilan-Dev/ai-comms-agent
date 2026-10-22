@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { mailComposeReadiness } from "../src/lib/mail/compose-readiness.ts";
+import { mailComposeReadiness, selectPreferredComposeMailbox } from "../src/lib/mail/compose-readiness.ts";
 
 test("connected mailbox plus enabled agent tools never overrides missing actor email.write", () => {
   const state = mailComposeReadiness({
@@ -78,4 +78,27 @@ test("readiness is specific to the selected bound mailbox, never true for every 
   assert.match(chat, /setComposeCanDraft\(selectedMailbox\?\.canDraft === true\)/);
   assert.match(chat, /setComposeCanApprove\(selectedMailbox\?\.canRequestApproval === true\)/);
   assert.match(chat, /setComposeBlockers\(selectedMailbox\?\.blockers \?\? \[\]\)/);
+});
+
+
+test("prefer a mailbox capable of both drafting and send approval over earlier draft-only choices", () => {
+  const accounts = [
+    { id: "draft-only", canDraft: true, canRequestApproval: false },
+    { id: "complete", canDraft: true, canRequestApproval: true },
+    { id: "blocked", canDraft: false, canRequestApproval: false },
+  ];
+  assert.equal(selectPreferredComposeMailbox(accounts)?.id, "complete");
+  assert.equal(selectPreferredComposeMailbox([accounts[0], accounts[2]])?.id, "draft-only");
+  assert.equal(selectPreferredComposeMailbox([accounts[2]])?.id, "blocked");
+  assert.equal(selectPreferredComposeMailbox([]), undefined);
+});
+
+test("GET readiness and chat default mailbox selection share the full-workflow preference", () => {
+  const route = readFileSync(new URL("../src/app/api/chat/mail-compose/route.ts", import.meta.url), "utf8");
+  const chat = readFileSync(new URL("../src/app/chat/chat-client.tsx", import.meta.url), "utf8");
+  assert.match(route, /selectPreferredComposeMailbox\(choices\)/);
+  assert.match(chat, /selectPreferredComposeMailbox\(mailboxes\)/);
+  assert.match(chat, /setComposeCanDraft\(selectedMailbox\?\.canDraft === true\)/);
+  assert.match(chat, /setComposeCanApprove\(selectedMailbox\?\.canRequestApproval === true\)/);
+  assert.match(route, /canRequestApproval: preferred\?\.canRequestApproval \?\? empty\.canRequestApproval/);
 });
