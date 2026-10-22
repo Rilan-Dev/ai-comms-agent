@@ -1085,3 +1085,11 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Recovery:** Initial `93d7e536`; CHAT_CONTINUITY, NEXT_ACTION, AGENT_MEMORY, phase/state, central sessions/events/handoff/issues/verification/backlog, DEV-01 role-local memory/worklog.
 - **Progress:** Complete source slice for new chat, recent history, old-session deep-link, newest 100 messages, exact voice return; 7 regression cases and detailed plan `docs/plans/CHAT_CONVERSATION_SESSIONS_20261023.md`.
 - **Evidence/next:** Source 18/18 + 26 literal matches, actual tests/typechecks/DB/browser unrun. `sessions/DEV01-MULTI-CHAT-SESSIONS-20261023.md` has exact commands and legacy privacy decision. Do not activate routines, alter external provider grants, or wait on CI/Vercel; OPS deployment, FIX other bugs.
+
+### DEV01-CHAT-PERSISTENT-CONTROLS-SIDEBAR-20261023 — 2026-10-23
+- **Agent:** DEV-01 / Forge, owner-authorized persistent Chat controls and conversation-sidebar UX on Development.
+- **Start:** HEAD `cf97fae76cd4adb3ab82ee88d35a2665d482af67`, Phase 4 implementation_in_progress; recovered project control, DEV-01 logs and current Chat client/tests.
+- **Finding:** Growing min-height Chat document hides agent controls on long-message page scroll; conversation history was an unsuitable horizontal top strip.
+- **Source:** `273799e7` independent scroll regions + visible controls + vertical history, `6b5839f7` accessible mobile drawer focus, `454d2d7b` 6 regression tests. No data/authorization/voice/agent behavior change.
+- **Evidence:** 19/19 source contracts; actual tests/typecheck/browser/deployment not executed.
+- **Next:** focused web tests + tsc; long-session browser scroll/mobile navigation acceptance. OPS deployment and FIX substantial source bugs separate. Full record `sessions/DEV01-CHAT-PERSISTENT-CONTROLS-SIDEBAR-20261023.md`.
