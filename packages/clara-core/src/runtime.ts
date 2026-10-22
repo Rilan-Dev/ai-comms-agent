@@ -769,8 +769,21 @@ export const claraRuntime = {
   async resolveVoice(ctx: ClaraRuntimeContext) {
     const organizationConfig = await organizationAIConfig(ctx.orgId, ctx.agentId);
     const provider = ctx.voiceOverride?.provider ?? organizationConfig?.voice?.provider ?? env("REALTIME_VOICE_PROVIDER") ?? selectedProvider();
-    const model = ctx.voiceOverride?.model || organizationConfig?.voice?.model || env("OPENAI_REALTIME_MODEL") || "gpt-realtime-2.1-mini";
-    const voiceId = ctx.voiceOverride?.voiceId || organizationConfig?.voice?.voiceId || env("OPENAI_DEFAULT_VOICE") || "alloy";
+    // A provider override must not inherit a model/speaker from a different
+    // organization's default voice provider (typically OpenAI).
+    const sameOrganizationVoice = organizationConfig?.voice?.provider === provider;
+    const model = ctx.voiceOverride?.model?.trim()
+      || (sameOrganizationVoice ? organizationConfig?.voice?.model?.trim() : "")
+      || (provider === "sarvam" ? "saaras:v3-realtime"
+        : provider === "elevenlabs" ? "scribe_v2_realtime"
+        : provider === "gemini" ? "gemini-3.5-transcribe-live"
+        : env("OPENAI_REALTIME_MODEL") || "gpt-realtime-2.1-mini");
+    const voiceId = ctx.voiceOverride?.voiceId?.trim()
+      || (sameOrganizationVoice ? organizationConfig?.voice?.voiceId?.trim() : "")
+      || (provider === "sarvam" ? env("SARVAM_DEFAULT_VOICE") || "shubh"
+        : provider === "elevenlabs" ? env("ELEVENLABS_VOICE_ID") || ""
+        : provider === "gemini" ? env("GEMINI_VOICE_ID") || ""
+        : env("OPENAI_DEFAULT_VOICE") || "alloy");
 
     // Provider-specific session negotiation: OpenAI uses server-side SDP
     // exchange; Gemini uses a single-use constrained Live API token. Providers
