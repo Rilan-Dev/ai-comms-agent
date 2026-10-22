@@ -48,3 +48,21 @@ test("both email executors settle the durable action before best-effort draft re
     assert.match(code, /providerAccepted\s*=\s*true/);
   }
 });
+
+
+test("unknown provider outcome remains immutable, while ordinary failed attempts can be reviewed", () => {
+  const scopes = [
+    named("updateLocalDraftForOrganization", "listLocalDraftsForOrganization"),
+    named("deleteLocalDraftForOrganization", "listMailThreadsForOrganization"),
+    named("queueLocalDraftProviderSyncForOrganization", "claimQueuedProviderDraftSyncForOrganization"),
+    named("claimQueuedProviderDraftSyncForOrganization", "markDraftProviderSyncedForOrganization"),
+  ];
+  for (const scope of scopes) {
+    assert.match(scope, /ea.status = 'failed'/);
+    assert.match(scope, /ea.result->>'providerOutcomeUnknown' = 'true'/);
+    // Do not indiscriminately lock ordinary, definitively failed sends.
+    assert.doesNotMatch(scope, /ea.status IN \('executing', 'completed', 'failed'\)/);
+  }
+  const actions = readFileSync(new URL("../../../packages/db/src/email/actions.ts", import.meta.url), "utf8");
+  assert.match(actions, /'providerOutcomeUnknown', true/);
+});
