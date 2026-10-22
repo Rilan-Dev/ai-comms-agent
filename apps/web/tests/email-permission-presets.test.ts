@@ -32,6 +32,7 @@ describe("agent permission presets and consent", () => {
     expect(approvals).toContain("whatsapp.read");
     expect(approvals).toContain("custom.audit");
     expect(emailPermissionPresetSelection(approvals, "off")).toEqual(initial);
+    expect(emailPermissionPresetSelection([...approvals, "email.legacy_unknown"], "off")).toEqual(initial);
     expect(emailPermissionPresetSelection(approvals, "approval")).toEqual(approvals);
   });
 
