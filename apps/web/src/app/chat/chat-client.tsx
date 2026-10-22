@@ -63,6 +63,21 @@ export function ChatClient({
   const bottomRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const voiceWasOpen = useRef(false);
+  const [agentSwitchBusy, setAgentSwitchBusy] = useState(false);
+  const [agentSwitchNotice, setAgentSwitchNotice] = useState("");
+  // Keep agent selection and server-scoped message history atomic.
+  const agentSwitchInFlightRef = useRef(false);
+  const agentContextEpochRef = useRef(0);
+  // A returned draft/action ID may only be attached to the same review revision.
+  const composeRevisionRef = useRef(0);
+  const composeInFlightRef = useRef(false);
+
+  function invalidateComposeReview() {
+    composeRevisionRef.current += 1;
+    setComposeDraftId(null);
+    setComposeActionId(null);
+    setComposeNotice("");
+  }
 
   // After closing the embedded voice panel, return keyboard focus to the
   // original text composer, preserving any unsent draft.
@@ -83,27 +98,57 @@ export function ChatClient({
   }, [messages.length, busy]);
 
   async function switchAgent(nextAgentId: string) {
-    setMailComposerOpen(false);
-    setComposeDraftId(null);
-    setComposeActionId(null);
-    setMailPermissionOpen(false);
-    setMailPolicy(null);
-    setMailToolSelection([]);
-    setMailPermissionNotice("");
-    if (busy || nextAgentId === agentId) return;
-    setAgentId(nextAgentId);
+    if (busy || voiceOpen || mailPermissionBusy || composeInFlightRef.current
+        || agentSwitchInFlightRef.current || nextAgentId === agentId) return;
+    if (!agents.some(agent => agent.id === nextAgentId)) return;
+    agentSwitchInFlightRef.current = true;
+    setAgentSwitchBusy(true);
+    setAgentSwitchNotice("");
+    const epoch = ++agentContextEpochRef.current;
     try {
-      const response = await fetch(`/api/chat/conversation?organizationId=${encodeURIComponent(organizationId)}&agentId=${encodeURIComponent(nextAgentId)}`, { cache: "no-store" });
-      if (!response.ok) throw new Error("Could not load the selected agent conversation");
-      const payload = await response.json() as { conversation: { id: string }; messages: Message[] };
+      const response = await fetch("/api/chat/conversation?organizationId=" + encodeURIComponent(organizationId)
+        + "&agentId=" + encodeURIComponent(nextAgentId), { cache: "no-store" });
+      if (!response.ok) throw new Error("Could not load the selected agent conversation.");
+      const payload = await response.json() as { conversation?: { id: string }; messages?: Message[] };
+      if (!payload.conversation?.id || !Array.isArray(payload.messages)
+          || payload.messages.some(message => message.conversationId !== payload.conversation?.id)) {
+        throw new Error("The selected agent's conversation response was invalid.");
+      }
+      if (epoch !== agentContextEpochRef.current) return;
+      // Do not show a new agent with an old agent's history, even momentarily.
+      setAgentId(nextAgentId);
       setConversationId(payload.conversation.id);
       setMessages(payload.messages);
+      composeRevisionRef.current += 1;
+      setMailComposerOpen(false);
+      setComposeMailboxes([]);
+      setComposeAccount("");
+      setComposeDraftId(null);
+      setComposeActionId(null);
+      setComposeCanDraft(false);
+      setComposeCanApprove(false);
+      setComposeNotice("");
+      setMailPermissionOpen(false);
+      setMailPolicy(null);
+      setMailToolSelection([]);
+      setMailPermissionNotice("");
+      setActivitySteps([]);
+      setResponseStarted(false);
     } catch (error) {
-      setMessages([{ id: "switch-error-" + Date.now(), conversationId, role: "system", content: error instanceof Error ? error.message : "Could not switch agent", createdAt: new Date().toISOString() }]);
+      // Failed navigation must retain the original valid agent + conversation.
+      if (epoch === agentContextEpochRef.current) {
+        setAgentSwitchNotice(error instanceof Error ? error.message : "Could not switch agent.");
+      }
+    } finally {
+      if (epoch === agentContextEpochRef.current) {
+        agentSwitchInFlightRef.current = false;
+        setAgentSwitchBusy(false);
+      }
     }
   }
 
   async function returnFromVoice() {
+    const epoch = agentContextEpochRef.current;
     setVoiceOpen(false);
     // Reload the same server-scoped agent conversation. Keep the unsent Chat
     // draft intact; only host-confirmed transcript turns appear after reload.
@@ -112,11 +157,14 @@ export function ChatClient({
       const response = await fetch(`/api/chat/conversation?${params}`, { cache: "no-store" });
       if (!response.ok) throw new Error("Could not refresh the conversation.");
       const data = await response.json() as { conversation?: { id: string }; messages?: Message[] };
-      if (data.conversation && Array.isArray(data.messages)) {
+      if (epoch !== agentContextEpochRef.current) return;
+      if (data.conversation && Array.isArray(data.messages)
+          && data.messages.every(message => message.conversationId === data.conversation?.id)) {
         setConversationId(data.conversation.id);
         setMessages(data.messages);
       }
     } catch {
+      if (epoch !== agentContextEpochRef.current) return;
       setMessages(current => [...current, {
         id: `voice-history-error-${Date.now()}`, conversationId, role: "system",
         content: "Voice history could not be refreshed. Your unsent message is preserved; retry the chat page to load saved turns.",
