@@ -782,3 +782,8 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Recovered:** Current Development start `9bd01878`, role/central control and Phase 4 authorization; existing 4 preset UI + 16 checkboxes + chat permission panel. New code fixes stale full-policy overwrites, unreadable confirmations and incomplete Off behavior rather than reimplementing existing presets.
 - **Code:** `7516c766,d45dc168,b158b082,2945ad31,e6c9b6c0,e2bfea37,7119ef1c,4f443813`; tests `82d9206d,4a5a4ec8,d8417107`. No automatic granting, direct send, policy escalation, infra/CI/deployment or other agents' bug ownership.
 - **Evidence:** 22/22 Development source invariants; native test/typecheck and PostgreSQL/browser 409 acceptance pending. Details/next in `sessions/DEV01-AGENT-PERMISSION-PRESETS-20261022.md`.
+
+### EVT-FIX01-SARVAM-AGENT-VOICE-OVERRIDE-20261022
+- FIX-01/Sentinel owner-authorized direct `Development` fix for Sarvam agent realtime override resolving as OpenAI and failing SDP 503 `realtime_not_configured`.
+- Source mismatch: Agent AI Settings writes `agent_ai_settings` but voice/session read legacy `agents.voice_provider`; missing legacy/org value selected OpenAI default. Commits `ae1f92e0,505e9e8d,13b44a8a` correct same-org override precedence and add seven regression cases.
+- Re-fetched GitHub source invariants 16/16; native tests/browser/Sarvam relay not run. OPS-01 deployed SHA/secret-safe provider setup and live connection; DEV-01 unaffected. Do not repeat exposed cookie.
