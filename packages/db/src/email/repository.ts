@@ -494,7 +494,7 @@ export async function updateLocalDraftForOrganization(
   const draftIdParam = "$" + (values.length - 1);
   const organizationParam = "$" + values.length;
   const r = await query<Row>(
-    `UPDATE email_messages m SET ${sets.join(", ")}, provider_draft_sync_status = 'pending', provider_draft_last_error = NULL, updated_at = now()
+    `UPDATE email_messages m SET ${sets.join(", ")}, provider_draft_sync_status = 'local_only', provider_draft_sync_token = NULL, provider_draft_last_error = NULL, updated_at = now()
      FROM email_accounts a
      WHERE m.id = ${draftIdParam} AND m.organization_id = ${organizationParam} AND m.email_account_id = a.id AND a.organization_id = ${organizationParam} AND m.is_draft = true AND a.deleted_at IS NULL
        AND NOT EXISTS (
@@ -532,15 +532,15 @@ export async function listLocalDraftsForOrganization(organizationId: string): Pr
 }
 
 export async function listDraftsPendingProviderSync(limit = 25): Promise<Array<{ id: string; organization_id: string }>> {
-  const safeLimit = Math.min(Math.max(limit, 1), 100);
+  const safeLimit = Math.min(Math.max(Math.floor(limit), 1), 100);
   const r = await query<Row>(
     `SELECT m.id, m.organization_id
      FROM email_messages m
      JOIN email_accounts a ON a.id = m.email_account_id
        AND a.organization_id = m.organization_id
      WHERE m.is_draft = true
-       AND m.provider_draft_sync_status = 'syncing'
-       AND a.deleted_at IS NULL
+       AND m.provider_draft_sync_status = 'queued'
+       AND a.status = 'connected' AND a.deleted_at IS NULL
      ORDER BY m.updated_at ASC
      LIMIT $1`,
     [safeLimit],
@@ -548,13 +548,49 @@ export async function listDraftsPendingProviderSync(limit = 25): Promise<Array<{
   return r.rows.map(row => ({ id: String(row.id), organization_id: String(row.organization_id) }));
 }
 
-export async function markDraftProviderSyncingForOrganization(organizationId: string, messageId: string) {
+/** Only an explicit user action queues remote draft synchronization. */
+export async function queueLocalDraftProviderSyncForOrganization(organizationId: string, messageId: string) {
   const r = await query<Row>(
     `UPDATE email_messages m
-     SET provider_draft_sync_status = 'syncing', provider_draft_last_error = NULL, updated_at = now()
+     SET provider_draft_sync_status = 'queued',
+         provider_draft_sync_token = NULL, provider_draft_last_error = NULL, updated_at = now()
      FROM email_accounts a
      WHERE m.id = $1 AND m.organization_id = $2 AND m.email_account_id = a.id
-       AND a.organization_id = $2 AND a.deleted_at IS NULL AND m.is_draft = true
+       AND a.organization_id = $2 AND a.status = 'connected' AND a.deleted_at IS NULL AND m.is_draft = true
+       AND m.provider_draft_sync_status IN ('local_only', 'synced', 'error')
+       AND NOT EXISTS (
+         SELECT 1 FROM email_actions ea
+         WHERE ea.organization_id = m.organization_id AND ea.draft_id = m.id
+           AND ea.email_account_id = m.email_account_id AND ea.action_type = 'send_email'
+           AND (ea.status = 'executing'
+                OR (ea.status IN ('pending_approval', 'approved')
+                    AND (ea.expires_at IS NULL OR ea.expires_at > now())))
+       )
+     RETURNING m.*`,
+    [messageId, organizationId],
+  );
+  return r.rows[0] ?? null;
+}
+
+/** At most one worker wins a queued draft, obtaining its immutable attempt token
+ * and the current row contents atomically. */
+export async function claimQueuedProviderDraftSyncForOrganization(organizationId: string, messageId: string) {
+  const r = await query<Row>(
+    `UPDATE email_messages m
+     SET provider_draft_sync_status = 'syncing',
+         provider_draft_sync_token = gen_random_uuid(), provider_draft_last_error = NULL, updated_at = now()
+     FROM email_accounts a
+     WHERE m.id = $1 AND m.organization_id = $2 AND m.email_account_id = a.id
+       AND a.organization_id = $2 AND a.status = 'connected' AND a.deleted_at IS NULL AND m.is_draft = true
+       AND m.provider_draft_sync_status = 'queued'
+       AND NOT EXISTS (
+         SELECT 1 FROM email_actions ea
+         WHERE ea.organization_id = m.organization_id AND ea.draft_id = m.id
+           AND ea.email_account_id = m.email_account_id AND ea.action_type = 'send_email'
+           AND (ea.status = 'executing'
+                OR (ea.status IN ('pending_approval', 'approved')
+                    AND (ea.expires_at IS NULL OR ea.expires_at > now())))
+       )
      RETURNING m.*`,
     [messageId, organizationId],
   );
@@ -565,15 +601,18 @@ export async function markDraftProviderSyncedForOrganization(
   organizationId: string,
   messageId: string,
   providerDraftId: string,
+  lease: string,
 ) {
   const r = await query<Row>(
     `UPDATE email_messages m
-     SET provider_draft_id = $1, provider_draft_sync_status = 'synced', provider_draft_synced_at = now(), provider_draft_last_error = NULL, updated_at = now()
+     SET provider_draft_id = $1, provider_draft_sync_status = 'synced',
+         provider_draft_sync_token = NULL, provider_draft_synced_at = now(), provider_draft_last_error = NULL, updated_at = now()
      FROM email_accounts a
      WHERE m.id = $2 AND m.organization_id = $3 AND m.email_account_id = a.id
        AND a.organization_id = $3 AND a.deleted_at IS NULL AND m.is_draft = true
+       AND m.provider_draft_sync_status = 'syncing' AND m.provider_draft_sync_token = $4::uuid
      RETURNING m.*`,
-    [providerDraftId, messageId, organizationId],
+    [providerDraftId, messageId, organizationId, lease],
   );
   return r.rows[0] ?? null;
 }
@@ -582,18 +621,41 @@ export async function markDraftProviderSyncErrorForOrganization(
   organizationId: string,
   messageId: string,
   error: string,
+  lease: string,
 ) {
   const r = await query<Row>(
     `UPDATE email_messages m
-     SET provider_draft_sync_status = 'error', provider_draft_last_error = left($1, 2000), updated_at = now()
+     SET provider_draft_sync_status = 'error', provider_draft_last_error = left($1, 2000),
+         provider_draft_sync_token = NULL, updated_at = now()
      FROM email_accounts a
      WHERE m.id = $2 AND m.organization_id = $3 AND m.email_account_id = a.id
        AND a.organization_id = $3 AND a.deleted_at IS NULL AND m.is_draft = true
+       AND m.provider_draft_sync_status = 'syncing' AND m.provider_draft_sync_token = $4::uuid
      RETURNING m.*`,
-    [error, messageId, organizationId],
+    [error, messageId, organizationId, lease],
   );
   return r.rows[0] ?? null;
 }
+
+/** Interrupted attempts are held for manual requeue rather than automatically
+ * replaying an unknown provider mutation. */
+export async function recoverStaleProviderDraftSyncs(maxAgeMinutes = 30) {
+  const age = Math.min(Math.max(Math.floor(maxAgeMinutes), 5), 1440);
+  const r = await query<Row>(
+    `UPDATE email_messages m
+     SET provider_draft_sync_status = 'error', provider_draft_sync_token = NULL,
+         provider_draft_last_error = 'Provider draft sync timed out; review and requeue manually.',
+         updated_at = now()
+     FROM email_accounts a
+     WHERE m.email_account_id = a.id AND a.organization_id = m.organization_id
+       AND m.is_draft = true AND m.provider_draft_sync_status = 'syncing'
+       AND m.updated_at < now() - make_interval(mins => $1)
+     RETURNING m.id`,
+    [age],
+  );
+  return r.rows.length;
+}
+
 
 export async function getLocalDraftForOrganization(organizationId: string, messageId: string) {
   const r = await query<Row>(
