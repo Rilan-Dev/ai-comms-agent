@@ -5,24 +5,25 @@ import { resolve } from "node:path";
 const source = (relative: string) =>
   readFileSync(resolve(__dirname, "../src", relative), "utf8");
 
-describe("Chat-first workspace navigation", () => {
-  it("makes Chat the home page while retaining Overview and the /chat route", () => {
+describe("Overview-first workspace navigation", () => {
+  it("makes Overview the home page while retaining the /chat route", () => {
     const home = source("app/page.tsx");
     const overview = source("app/overview/page.tsx");
     const chatPage = source("app/chat/page.tsx");
-    expect(home).toContain('from "./chat/page"');
+    expect(home).toContain('redirect("/overview")');
+    expect(home).not.toContain('from "./chat/page"');
     expect(overview).toContain("export default function HomePage");
     expect(chatPage).toContain("export default async function ChatPage");
   });
 
-  it("puts Chat first, defaults Mail open and exposes daily folders", () => {
+  it("puts Overview first, keeps Chat direct and defaults Mail open", () => {
     const sidebar = source("components/sidebar.tsx");
-    const chat = sidebar.indexOf('{ label: "Chat", href: "/"');
     const overview = sidebar.indexOf('{ label: "Overview", href: "/overview"');
+    const chat = sidebar.indexOf('{ label: "Chat", href: "/chat"');
     const mail = sidebar.indexOf('{ label: "Mail", href: "/mail/inbox"');
-    expect(chat).toBeGreaterThan(-1);
-    expect(overview).toBeGreaterThan(chat);
-    expect(mail).toBeGreaterThan(overview);
+    expect(overview).toBeGreaterThan(-1);
+    expect(chat).toBeGreaterThan(overview);
+    expect(mail).toBeGreaterThan(chat);
     expect(sidebar).toContain("useState(true)");
     expect(sidebar).toContain('aria-expanded={mailExpanded}');
     expect(sidebar).toContain('aria-controls="mail-navigation"');
