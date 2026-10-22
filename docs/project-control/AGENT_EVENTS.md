@@ -776,3 +776,9 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Change:** Authenticated same-org agent-primary-bound chat compose GET/POST routed through audited read/write tool runtime; separate saved draft and idempotent request for human send approval; reviewable UI; quick read/draft/approval/off presets with individual toggles and admin-confirmed in-chat policy edits; voice actor tool filter and safe conversation handoff. No permission, provider send or human approval bypass.
 - **Verification:** Four isolated helper functional tests and two standalone TS checks PASS; GitHub source checks 20/20; exact installed workspace tests, real DB/provider/browser/production NOT RUN. Full evidence root worklog + DEV role log.
 - **Next:** OPS-01 live deployment/provider and policy/runtime confirmation, DEV-01 focused current-HEAD tests/bugfixes when runner available. No CI/Vercel polling or migration.
+
+### EVT-DEV01-AGENT-PERMISSION-PRESETS-20261022 — 2026-10-22
+- **DEV-01 / Forge:** Product owner requested quick AI-CLI-style agent permission modes with fine-grained checkboxes and chat-surface consent to override saved policy.
+- **Recovered:** Current Development start `9bd01878`, role/central control and Phase 4 authorization; existing 4 preset UI + 16 checkboxes + chat permission panel. New code fixes stale full-policy overwrites, unreadable confirmations and incomplete Off behavior rather than reimplementing existing presets.
+- **Code:** `7516c766,d45dc168,b158b082,2945ad31,e6c9b6c0,e2bfea37,7119ef1c,4f443813`; tests `82d9206d,4a5a4ec8,d8417107`. No automatic granting, direct send, policy escalation, infra/CI/deployment or other agents' bug ownership.
+- **Evidence:** 22/22 Development source invariants; native test/typecheck and PostgreSQL/browser 409 acceptance pending. Details/next in `sessions/DEV01-AGENT-PERMISSION-PRESETS-20261022.md`.
