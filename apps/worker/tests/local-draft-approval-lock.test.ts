@@ -31,3 +31,14 @@ test("draft edit route distinguishes a locked draft from a missing draft without
   assert.match(patch, /status: 409/);
   assert.match(patch, /status: 404/);
 });
+
+test("executing sends freeze their drafts even after the approval timestamp has expired", () => {
+  // The worker claims a valid approval BEFORE expiry but may still be
+  // executing AFTER it. Both edits and deletes must stay forbidden.
+  for (const sql of [update, deletion]) {
+    assert.match(sql, /ea\.status = 'executing'/);
+    assert.match(sql, /ea\.status IN \('pending_approval', 'approved'\)/);
+    assert.match(sql, /ea\.expires_at IS NULL OR ea\.expires_at > now\(\)/);
+    assert.doesNotMatch(sql, /ea\.status IN \('pending_approval', 'approved', 'executing'\)\s+AND \(ea\.expires_at/);
+  }
+});
