@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { isNavigationPathActive } from "@/lib/navigation-path";
 
 const NAV_ITEMS = [
   { label: "Overview", href: "/overview", icon: "grid" },
@@ -114,7 +115,7 @@ export function Sidebar() {
         <p className="px-3 pb-3 text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">Workspace</p>
         <ul className="space-y-0.5">
           {NAV_ITEMS.map((item) => {
-            const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/")) || ("children" in item && item.children?.some((child) => pathname === child.href || pathname.startsWith(child.href + "/")));
+            const active = isNavigationPathActive(pathname, item.href) || ("children" in item && item.children?.some((child) => isNavigationPathActive(pathname, child.href)));
             return <li key={item.href}>
               <div className="flex min-w-0 items-center gap-1">
                 <a href={item.href} aria-current={active ? "page" : undefined} onClick={() => setMobileOpen(false)} className={`flex h-10 min-w-0 flex-1 items-center gap-3 rounded-md px-3 text-[13px] font-medium transition-colors ${active ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
@@ -127,7 +128,7 @@ export function Sidebar() {
                 ) : null}
               </div>
               {"children" in item && item.children && mailExpanded && <ul id="mail-navigation" className="ml-[21px] mt-1 space-y-0.5 border-l border-border pl-3">{item.children.map((child) => {
-                const childActive = pathname === child.href;
+                const childActive = isNavigationPathActive(pathname, child.href);
                 return <li key={child.href}><a href={child.href} aria-current={childActive ? "page" : undefined} onClick={() => setMobileOpen(false)} className={`block rounded-md px-3 py-2 text-xs transition-colors ${childActive ? "bg-accent/60 font-semibold text-accent-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>{child.label}</a></li>;
               })}</ul>}
             </li>;
