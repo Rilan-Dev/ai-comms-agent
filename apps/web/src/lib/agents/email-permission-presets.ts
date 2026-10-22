@@ -4,7 +4,7 @@ export const EMAIL_PERMISSION_PRESETS = [
   { id: "read", label: "Read mail", description: "Search, list and inspect assigned mailboxes." },
   { id: "draft", label: "Draft mail", description: "Read mail and create or edit drafts; no send approval request." },
   { id: "approval", label: "Request sending", description: "Draft mail and request explicit human send approval; never auto-send." },
-  { id: "off", label: "No mail tools", description: "Disable registered email tools, preserving unrelated permissions." },
+  { id: "off", label: "No mail tools", description: "Disable every email permission; preserve non-email permissions." },
 ] as const;
 export type EmailPermissionPreset = typeof EMAIL_PERMISSION_PRESETS[number]["id"];
 
@@ -18,7 +18,10 @@ export const REGISTERED_EMAIL_POLICY_NAMES = [...READ, ...DRAFT, ...APPROVAL] as
  * unimplemented permissions for individual administrative review. */
 export function emailPermissionPresetSelection(current: readonly string[], preset: EmailPermissionPreset): string[] {
   const known = new Set<string>(REGISTERED_EMAIL_POLICY_NAMES);
-  const extras = current.filter((name) => !known.has(name));
+  // "No mail tools" also disables legacy/unrecognized email.* grants.
+  // A broad deny must not silently preserve a future email permission.
+  const extras = current.filter((name) => !known.has(name)
+    && (preset !== "off" || !name.startsWith("email.")));
   const selected = preset === "off" ? [] : preset === "read" ? READ
     : preset === "draft" ? [...READ, ...DRAFT] : [...READ, ...DRAFT, ...APPROVAL];
   return [...new Set([...extras, ...selected])];
