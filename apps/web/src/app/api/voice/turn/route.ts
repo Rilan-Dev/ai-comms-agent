@@ -3,6 +3,7 @@ import { PostgresAgentRepository, appendConversationMessage, getChatConversation
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
+import { assertSameOrigin } from "@/lib/identity/local-auth";
 import { runEmailAgentTurn } from "@ai-comms-agent/email-agent-runtime";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation, verifiedEmailToolSummary } from "@/lib/mail/action-feedback";
@@ -15,6 +16,8 @@ function text(value: unknown, max = 4000): string {
 }
 
 export async function POST(request: Request) {
+  try { assertSameOrigin(request); }
+  catch { return NextResponse.json({ error: "invalid_origin" }, { status: 403 }); }
   try {
     if (!process.env.DATABASE_URL) {
       return NextResponse.json({ error: "database_not_configured", message: "PostgreSQL is required for voice turns." }, { status: 503 });
@@ -190,7 +193,7 @@ export async function POST(request: Request) {
             }
           } catch (error) {
             if (!request.signal.aborted) {
-              emit("error", { message: error instanceof Error ? error.message : "Voice generation failed." });
+              emit("error", { message: "Voice turn failed. No further action was confirmed. Review saved drafts and pending approvals before retrying." });
             }
           } finally {
             controller.close();
