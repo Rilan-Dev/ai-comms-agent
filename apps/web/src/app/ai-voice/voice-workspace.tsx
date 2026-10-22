@@ -160,6 +160,7 @@ export function VoiceWorkspace({
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.message ?? payload.error ?? "Voice session state could not be updated.");
+    if (sessionRef.current?.id !== current.id) throw new Error("Voice session changed while host state was updating.");
     if (body.action === "activate" && expectedDisconnectRef.current) throw new Error("Voice transport closed before activation was confirmed.");
     if (payload.session) {
       const updated = payload.session as VoiceSession;
