@@ -1,5 +1,6 @@
 import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
+import { isTrustedRequestOrigin } from "./same-origin-policy";
 import type { IdentityAdapter, User } from "@ai-comms-agent/shared";
 import { asUserId } from "@ai-comms-agent/shared";
 import { PostgresAuthRepository, PostgresIdentityRepository } from "@ai-comms-agent/db";
@@ -223,30 +224,13 @@ function parseCookie(header: string | null, name: string): string | null {
 }
 
 export function assertSameOrigin(request: Request): void {
-  const origin = request.headers.get("origin");
-  if (!origin) return;
-  const expected = process.env.APP_ORIGIN;
-  if (expected) {
-    if (origin === expected) return;
-    // Accept any *.vercel.app subdomain when APP_ORIGIN is a vercel.app URL.
-    // Vercel assigns multiple automatic aliases (project-name.vercel.app,
-    // project-name-git-main-*.vercel.app, deployment-specific *.vercel.app)
-    // and the user may also add a custom project alias. All of these are
-    // first-party origins and should pass the same-origin check.
-    if (expected.endsWith(".vercel.app") && origin.endsWith(".vercel.app")) {
-      return;
-    }
-    // Also accept the host-based origin (protocol://host) as a fallback
-    // for Vercel previews where APP_ORIGIN is a different alias.
-    const host = request.headers.get("host");
-    const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-    const protocol = forwardedProto || (process.env.NODE_ENV === "production" ? "https" : "http");
-    if (host && origin === `${protocol}://${host}`) return;
+  if (!isTrustedRequestOrigin({
+    origin: request.headers.get("origin"),
+    expectedOrigin: process.env.APP_ORIGIN ?? null,
+    host: request.headers.get("host"),
+    forwardedProto: request.headers.get("x-forwarded-proto"),
+    production: process.env.NODE_ENV === "production",
+  })) {
     throw new ValidationError("Invalid request origin.");
-    return;
   }
-  const host = request.headers.get("host");
-  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-  const protocol = forwardedProto || (process.env.NODE_ENV === "production" ? "https" : "http");
-  if (host && origin !== `${protocol}://${host}`) throw new ValidationError("Invalid request origin.");
 }
