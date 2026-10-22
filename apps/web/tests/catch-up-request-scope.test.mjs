@@ -68,6 +68,7 @@ test("UI fences every async source, summary and review path before state mutatio
   assert.match(source, /if \(!requestScopeRef\.current\.isCurrent\(token\)\) return/);
   assert.match(source, /agentId: token\.agentId/);
   assert.match(source, /onChange=\{e => changeAgent\(e\.target\.value\)\}/);
-  assert.match(source, /disabled=\{busy\}\/\>/);
+  assert.match(source, /<input type="checkbox" checked=\{mailboxIds\.includes\(m\.id\)\}[\s\S]{0,60}disabled=\{busy\}/);
+  assert.match(source, /<select value=\{days\} disabled=\{busy\}/);
   assert.doesNotMatch(source, /setAgentId\(e\.target\.value\)/);
 });
