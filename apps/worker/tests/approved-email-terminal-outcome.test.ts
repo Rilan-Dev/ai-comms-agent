@@ -38,3 +38,23 @@ test("approved sends still require provider verification and a separately claime
   assert.match(executor, /verifyEmailProviderConnection\(/);
   assert.doesNotMatch(executor, /decideEmailAction\(/);
 });
+
+test("batch worker does not mark a successfully accepted provider send failed if disconnect rejects", () => {
+  const catchBlock = worker.slice(worker.indexOf("} catch (error) {", worker.indexOf("export async function processApprovedEmailActions")),
+    worker.indexOf('bestEffortEmailOutcome("failed_event"'));
+  assert.match(worker, /let providerAccepted = false;/);
+  assert.match(worker, /providerAccepted = true;/);
+  assert.match(catchBlock, /if \(providerAccepted\) \{/);
+  assert.match(catchBlock, /manualVerificationRequired: true/);
+  assert.match(catchBlock, /continue;/);
+  const failureSettlement = catchBlock.indexOf('completeEmailAction(action.id, action.organizationId, "failed"');
+  assert.ok(failureSettlement > catchBlock.indexOf("if (providerAccepted)"),
+    "once the provider accepts an action it must bypass the failure settlement");
+  for (const invoke of ["connected.sendDraft(", "connected.reply(", "connected.forward("]) {
+    const pos = worker.indexOf(invoke);
+    const nextReturn = worker.indexOf("return { kind:", pos);
+    const ack = worker.indexOf("providerAccepted = true;", pos);
+    assert.ok(pos >= 0 && nextReturn > pos && ack > pos && ack < nextReturn,
+      invoke + " must record provider acceptance before any disconnect can fail");
+  }
+});
