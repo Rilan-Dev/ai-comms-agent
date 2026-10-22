@@ -5,7 +5,7 @@ import type { ToolContext } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { createEmailToolRuntime, invokeEmailReadTool } from "../../../../../../../apps/worker/src/agent/email-tool-runtime";
-import { mailComposeReadiness } from "@/lib/mail/compose-readiness";
+import { mailComposeReadiness, selectPreferredComposeMailbox } from "@/lib/mail/compose-readiness";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +77,7 @@ export async function GET(request: Request) {
     const empty = mailComposeReadiness({
       ...baseline, hasBoundPrimaryMailbox: false, providerCanDraft: false, providerCanSend: false,
     });
-    const preferred = choices.find(choice => choice.canDraft) ?? choices[0];
+    const preferred = selectPreferredComposeMailbox(choices);
     // These are read-only hints, not grants. POST rechecks authorization and
     // provider capabilities even if they change after this response.
     return NextResponse.json({
