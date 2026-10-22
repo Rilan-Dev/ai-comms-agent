@@ -66,7 +66,12 @@ export function CatchUpClient({ organizationId, agents, initialDays = 7 }: { org
   }
 
   function changeMailbox(mailboxId: string, checked: boolean) {
-    if (busy) return;
+    // setBusy(true) is deferred by React; the request token locks input
+    // immediately, before a second click can change the approved scope.
+    if (busy || requestScopeRef.current.isBusy()) return;
+    if (!agent?.mailboxes.some(mailbox => mailbox.id === mailboxId)) return;
+    if (mailboxIds.includes(mailboxId) === checked) return;
+    requestScopeRef.current.invalidateSelection();
     setMailboxIds(ids => checked
       ? (ids.includes(mailboxId) ? ids : [...ids, mailboxId])
       : ids.filter(id => id !== mailboxId));
@@ -75,7 +80,8 @@ export function CatchUpClient({ organizationId, agents, initialDays = 7 }: { org
   }
 
   function changeDays(nextDays: CatchUpDays) {
-    if (busy) return;
+    if (busy || requestScopeRef.current.isBusy() || nextDays === days) return;
+    requestScopeRef.current.invalidateSelection();
     setDays(nextDays);
     clearSelectionResults();
   }
