@@ -9,7 +9,7 @@ import {
 } from "@ai-comms-agent/db";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
-import { hasEmailToolCapabilities } from "./email-tool-policy";
+import { canUseEmailAccountBinding, hasEmailToolCapabilities } from "./email-tool-policy";
 
 type Input = Record<string, unknown>;
 type Row = Record<string, unknown>;
@@ -72,7 +72,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       [context.agent_id, context.organization_id, accountId],
     );
     const role = binding.rows[0]?.role;
-    if (!role || (role === "send_only" && !allowSendOnly)) {
+    if (!canUseEmailAccountBinding(role, "email.write") || !(allowSendOnly || role === "primary")) {
       throw new EmailWriteFailure("account_not_available", "This mailbox is not available for the requested operation.");
     }
     const account = await accounts.getForAgent(context.organization_id, context.agent_id, accountId);
