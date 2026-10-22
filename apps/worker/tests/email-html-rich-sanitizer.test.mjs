@@ -45,6 +45,24 @@ test("rejects unsafe link protocols and allowlists only bounded table attributes
   assert.match(output, /rowspan="2"/);
 });
 
+test("blocks encoded mailto header injection and ambiguous recipients while preserving simple addresses", () => {
+  const inputs = [
+    "mailto:friend@example.org%0d%0aSubject:Injected",
+    "mailto:friend@example.org%0aX-Test:injected",
+    "mailto:friend@example.org%3fsubject%3dinjected",
+    "mailto:friend@example.org%250d%250aSubject:Injected",
+    "mailto:friend@example.org,attacker@example.net",
+    "mailto:friend@example.org?bcc=attacker@example.net",
+  ];
+  for (const href of inputs) {
+    const output = sanitizeEmailHtml('<a href="' + href + '">Write</a>', "");
+    assert.equal(output, '<div data-aca-safe-email="rich-v2"><a>Write</a></div>');
+  }
+  const safe = sanitizeEmailHtml('<a href="mailto:friend+tag@example.org">Email</a>', "");
+  assert.match(safe ?? "", /href="mailto:friend\+tag@example\.org"/);
+  assert.equal(verifiedEmailHtml(safe, ""), safe);
+});
+
 test("retains v1 canonical text rows but rejects legacy raw HTML and spoofed v2 markup", () => {
   const text="Stored & plain";
   assert.equal(verifiedEmailHtml('<pre data-aca-safe-email="text-v1">Stored &amp; plain</pre>',text),'<pre data-aca-safe-email="text-v1">Stored &amp; plain</pre>');
