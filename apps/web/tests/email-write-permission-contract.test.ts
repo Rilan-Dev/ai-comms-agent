@@ -17,10 +17,23 @@ describe("email.write identity permission contract", () => {
     }
   });
 
-  it("does not implicitly grant email.write when users choose agent tool presets", () => {
-    for (const permissions of Object.values(SYSTEM_ROLE_PERMISSIONS)) {
-      expect(permissions).not.toContain("email.write");
+  it("grants draft and approval-request authority to trusted owner/admin roles by default", () => {
+    expect(SYSTEM_ROLE_PERMISSIONS.owner).toContain("email.write");
+    expect(SYSTEM_ROLE_PERMISSIONS.admin).toContain("email.write");
+    expect(SYSTEM_ROLE_PERMISSIONS.member).not.toContain("email.write");
+    expect(SYSTEM_ROLE_PERMISSIONS.viewer).not.toContain("email.write");
+    for (const role of ["owner", "admin"] as const) {
+      expect(SYSTEM_ROLE_PERMISSIONS[role]).toContain("email.read");
     }
+  });
+
+  it("role permission alone does not bypass agent policy, mailbox binding, or send approval", () => {
+    expect(route).toContain('trusted.subject.permissions.has("email.write")');
+    expect(route).toContain('runtime.registry.listForAgent(agentId)');
+    expect(route).toContain("const bound = await primaryMailboxes(organizationId, agentId)");
+    expect(route).toContain("invokeEmailReadTool(runtime, toolName, input, context)");
+    expect(route).toContain('action === "draft" ? "draft_created" : "pending_approval"');
+    expect(route).not.toContain("sendDraft(");
   });
 
   it("the compose UI preflight checks the actual authenticated user and registered tools", () => {
