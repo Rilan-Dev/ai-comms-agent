@@ -363,19 +363,32 @@ export async function updateMailReadStateForOrganization(
   messageIds: string[],
   isRead: boolean,
 ): Promise<number> {
-  if (messageIds.length === 0) return 0;
-  const r = await query<{ id: string }>(
-    `UPDATE email_messages m
-     SET is_read = $1, updated_at = now()
-     FROM email_accounts a
-     WHERE m.email_account_id = a.id
-       AND a.organization_id = $2
-       AND a.deleted_at IS NULL
-       AND m.id = ANY($3::uuid[])
-     RETURNING m.id`,
-    [isRead, organizationId, messageIds],
-  );
-  return r.rows.length;
+  if (!messageIds.length || new Set(messageIds.map(id => id.toLowerCase())).size !== messageIds.length) return 0;
+  // A single mixed-tenant or missing ID must not mark the valid subset read.
+  // Lock the exact tenant-owned selection before changing any of their flags.
+  return withTransaction(async (client) => {
+    const selected = await client.query<{ id: string }>(
+      `SELECT m.id FROM email_messages m
+       JOIN email_accounts a ON a.id = m.email_account_id
+       WHERE m.organization_id = $2 AND a.organization_id = $2
+         AND a.deleted_at IS NULL AND m.id = ANY($3::uuid[])
+       ORDER BY m.id FOR UPDATE OF m FOR SHARE OF a`,
+      [isRead, organizationId, messageIds],
+    );
+    if (selected.rows.length !== messageIds.length) return 0;
+
+    const update = await client.query<{ id: string }>(
+      `UPDATE email_messages m
+       SET is_read = $1, updated_at = now()
+       WHERE m.organization_id = $2 AND m.id = ANY($3::uuid[])
+       RETURNING m.id`,
+      [isRead, organizationId, messageIds],
+    );
+    if (update.rows.length !== messageIds.length) {
+      throw new Error("Mail read-state batch update was incomplete; transaction rolled back.");
+    }
+    return update.rows.length;
+  });
 }
 
 /**
