@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { query } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
+import { briefingsEnabled } from "@/lib/briefings/config";
 import { getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       organizationId: rawId,
       role: subject.membership?.role ?? null,
+      catchUpAvailable: briefingsEnabled(),
       metrics: Object.fromEntries(Object.entries(row).map(([key,value]) => [key, Number(value)])),
       activity: activity.rows.map(event => ({
         id: String(event.id),
