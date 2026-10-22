@@ -34,3 +34,15 @@ test("chat draft API rejects overlong values and passes the unmodified body to t
   assert.match(route, /invokeEmailReadTool\(runtime, toolName, input, context\)/);
   assert.doesNotMatch(route, /const bodyText = bounded\(body\?\.bodyText, 100000\)/);
 });
+
+
+test("forward draft does not trim or silently slice quoted original content", () => {
+  const source = readFileSync(new URL("../../../packages/email-agent-runtime/src/email-write-tools.ts", import.meta.url), "utf8");
+  const forward = source.slice(source.indexOf('const forwardDraft = makeTool("email.draft_forward"'), source.indexOf('const requestSend = makeTool("email.send.request"'));
+  assert.match(forward, /const originalBody = preserveEmailBody\(source\.text_body\)/);
+  assert.match(forward, /const forwardedBody =/);
+  assert.match(forward, /if \(forwardedBody\.length > 100000\)/);
+  assert.match(forward, /bodyText: forwardedBody/);
+  assert.doesNotMatch(forward, /text\(source\.text_body, 90000\)/);
+  assert.doesNotMatch(forward, /\.trim\(\),/);
+});
