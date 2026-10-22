@@ -9,6 +9,7 @@ import {
 } from "@ai-comms-agent/db";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
+import { canUseEmailAccountBinding } from "./email-tool-policy";
 
 type Input = Record<string, unknown>;
 type Row = Record<string, unknown>;
@@ -101,7 +102,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
       [context.agent_id, context.organization_id, accountId],
     );
     const role = binding.rows[0]?.role;
-    if (!role || role === "send_only") throw new EmailToolFailure("account_not_available", "This agent is not allowed to read that mailbox.");
+    if (!canUseEmailAccountBinding(role, "email.read")) throw new EmailToolFailure("account_not_available", "This agent is not allowed to read that mailbox.");
     const account = await accounts.getForAgent(context.organization_id, context.agent_id, accountId);
     if (!account) throw new EmailToolFailure("account_not_available", "This mailbox is not bound to this agent in the active organization.");
     if (requireConnected && account.status !== "connected") throw new EmailToolFailure("account_not_connected", "This mailbox is not connected.");
@@ -146,7 +147,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
     const bindings = await agents.emailBindings(context.organization_id, context.agent_id);
     const visible = [];
     for (const binding of bindings) {
-      if (binding.role === "send_only") continue;
+      if (!canUseEmailAccountBinding(binding.role, "email.read")) continue;
       const account = await accounts.getForAgent(context.organization_id, context.agent_id, binding.emailAccountId);
       if (!account) continue;
       visible.push({
