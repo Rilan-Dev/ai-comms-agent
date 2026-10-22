@@ -95,8 +95,11 @@ export default function HomePage() {
             <p role="status" className="text-sm text-muted-foreground">{error ? "Private catch-up availability could not be checked. Please try again later." : "Checking private catch-up availability…"}</p>
           ) : data?.catchUpAvailable ? (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm leading-6"><strong>Private catch-up preview available.</strong> Select permitted mailboxes and a review window; AI-generated results may still be pending.</p>
-              <a href="/catch-up" className="inline-flex min-h-10 shrink-0 items-center font-semibold text-sm underline underline-offset-4">Open catch-up preview ↗</a>
+              <p className="text-sm leading-6"><strong>Private catch-up preview available.</strong> Review sources from the last 5 days or choose another window. This is your selected lookback, not a measurement of how long you were away. AI summaries may still be pending.</p>
+              <div className="flex flex-wrap gap-4">
+                <a href="/catch-up?days=5" className="inline-flex min-h-10 shrink-0 items-center font-semibold text-sm underline underline-offset-4">Review last 5 days ↗</a>
+                <a href="/catch-up" className="inline-flex min-h-10 shrink-0 items-center font-semibold text-sm underline underline-offset-4">Other catch-up windows ↗</a>
+              </div>
             </div>
           ) : (
             <p className="text-sm leading-6 text-muted-foreground"><strong className="text-foreground">Private catch-up is not enabled yet.</strong> Continue with your inbox while source-grounded summaries and access checks are verified.</p>
