@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const organizationId = typeof body?.organizationId === "string" ? body.organizationId : "";
     const messageId = typeof body?.messageId === "string" ? body.messageId : "";
     if (!organizationId || !messageId) return NextResponse.json({ error: "validation_error", message: "Organization and draft are required." }, { status: 422 });
-    const actor = await authorize(request, { organizationId: asOrganizationId(organizationId), role: "member" }, getIdentityAdapter(), getIdentityRepository());
+    const actor = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "email.write" }, getIdentityAdapter(), getIdentityRepository());
     const draft = await getLocalDraftForOrganization(organizationId, messageId);
     if (!draft) return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization." }, { status: 404 });
     const account = await new PostgresEmailAccountRepository().getById(String(draft.email_account_id));
