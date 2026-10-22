@@ -486,10 +486,12 @@ export async function updateLocalDraftForOrganization(
   if (input.bodyText !== undefined) { values.push(input.bodyText); sets.push(`text_body = $${values.length}, snippet = left($${values.length}, 240)`); }
   if (!sets.length) return getMailMessageForOrganization(organizationId, messageId);
   values.push(messageId, organizationId);
+  const draftIdParam = "$" + (values.length - 1);
+  const organizationParam = "$" + values.length;
   const r = await query<Row>(
     `UPDATE email_messages m SET ${sets.join(", ")}, provider_draft_sync_status = 'pending', provider_draft_last_error = NULL, updated_at = now()
      FROM email_accounts a
-     WHERE m.id = ${values.length - 1} AND m.organization_id = ${values.length} AND m.email_account_id = a.id AND a.organization_id = ${values.length} AND m.is_draft = true AND a.deleted_at IS NULL
+     WHERE m.id = ${draftIdParam} AND m.organization_id = ${organizationParam} AND m.email_account_id = a.id AND a.organization_id = ${organizationParam} AND m.is_draft = true AND a.deleted_at IS NULL
      RETURNING m.*`,
     values,
   );
