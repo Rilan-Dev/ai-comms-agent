@@ -212,14 +212,15 @@ export function VoiceWorkspace({
         body: JSON.stringify({ organizationId, sessionId: active.id, reason: "transport_lost" }),
       });
       const payload = await response.json().catch(() => null) as { session?: VoiceSession } | null;
-      if (!response.ok || payload?.session?.id !== active.id || payload.session.status !== "ended") {
+      const ended = payload?.session;
+      if (!response.ok || !ended || ended.id !== active.id || ended.status !== "ended") {
         throw new Error("Host voice termination is not confirmed.");
       }
       // A delayed teardown for a previous transport cannot terminate or
       // overwrite a different voice session started in the meantime.
       if (sessionRef.current?.id === active.id) {
-        sessionRef.current = payload.session;
-        setSession(payload.session);
+        sessionRef.current = ended;
+        setSession(ended);
         setTransport(null);
       }
       setNotice("Voice transport disconnected and host session ended. You can reconnect.");
@@ -997,12 +998,13 @@ export function VoiceWorkspace({
           body: JSON.stringify({ organizationId, sessionId: current.id, reason: "transport_start_failed" }),
         }).then(async (response) => {
           const payload = await response.json().catch(() => null) as { session?: VoiceSession } | null;
-          if (!response.ok || payload?.session?.id !== current.id || payload.session.status !== "ended") {
+          const ended = payload?.session;
+          if (!response.ok || !ended || ended.id !== current.id || ended.status !== "ended") {
             throw new Error("Host voice termination is not confirmed.");
           }
           if (sessionRef.current?.id === current.id) {
-            sessionRef.current = payload.session;
-            setSession(payload.session);
+            sessionRef.current = ended;
+            setSession(ended);
             setTransport(null);
           }
         }).catch(() => {
