@@ -71,11 +71,53 @@ test("UI fences every async source, summary and review path before state mutatio
   assert.match(source, /<input type="checkbox" checked=\{mailboxIds\.includes\(m\.id\)\}[\s\S]{0,60}disabled=\{busy\}/);
   assert.match(source, /<select value=\{days\} disabled=\{busy\}/);
   assert.match(source, /function changeMailbox\(mailboxId: string, checked: boolean\)/);
-  assert.match(source, /function changeDays\(nextDays: number\)/);
+  assert.match(source, /function changeDays\(nextDays: CatchUpDays\)/);
   assert.match(source, /onChange=\{e => changeMailbox\(m\.id, e\.target\.checked\)\}/);
-  assert.match(source, /onChange=\{e => changeDays\(Number\(e\.target\.value\)\)\}/);
+  assert.match(source, /onChange=\{e => changeDays\(parseCatchUpDays\(e\.target\.value\)\)\}/);
   const edits = source.slice(source.indexOf("function changeMailbox("), source.indexOf("// All four read/write UI operations"));
   assert.equal((edits.match(/clearSelectionResults\(\)/g) ?? []).length, 2);
   assert.match(source, /function clearSelectionResults\(\)/);
   assert.doesNotMatch(source, /setAgentId\(e\.target\.value\)/);
+});
+
+test("selection edits invalidate tokens and never release another request", () => {
+  const scope = new CatchUpRequestScope("agent-A");
+  const stale = scope.begin("agent-A");
+  assert.ok(stale);
+  assert.equal(scope.isBusy(), true);
+  scope.invalidateSelection();
+  assert.equal(scope.isBusy(), false);
+  assert.equal(scope.isCurrent(stale), false);
+  const next = scope.begin("agent-A");
+  assert.ok(next);
+  assert.notEqual(stale.version, next.version);
+  assert.equal(scope.finish(stale), false);
+  assert.equal(scope.isCurrent(next), true);
+  assert.equal(scope.finish(next), true);
+});
+
+test("mailbox and days handlers consult the synchronous scope lock, not just React busy state", () => {
+  const source = readFileSync(new URL("../src/app/catch-up/catch-up-client.tsx", import.meta.url), "utf8");
+  const edits = source.slice(source.indexOf("function changeMailbox("),
+    source.indexOf("// All four read/write UI operations"));
+  const mailbox = edits.slice(edits.indexOf("function changeMailbox("), edits.indexOf("function changeDays("));
+  const days = edits.slice(edits.indexOf("function changeDays("));
+  for (const handler of [mailbox, days]) {
+    assert.match(handler, /requestScopeRef\.current\.isBusy\(\)/);
+    assert.match(handler, /requestScopeRef\.current\.invalidateSelection\(\)/);
+  }
+  assert.match(source, /const token = requestScopeRef\.current\.begin\(agentId\)/);
+  assert.match(source, /if \(!requestScopeRef\.current\.isCurrent\(token\)\) return/);
+});
+
+test("an agent change invalidates an in-flight operation even before the busy setter renders", () => {
+  const scope = new CatchUpRequestScope("agent-A");
+  const token = scope.begin("agent-A");
+  assert.ok(token);
+  scope.switchAgent("agent-B");
+  assert.equal(scope.isBusy(), false);
+  const newToken = scope.begin("agent-B");
+  assert.ok(newToken);
+  assert.equal(scope.finish(token), false);
+  assert.equal(scope.isCurrent(newToken), true);
 });
