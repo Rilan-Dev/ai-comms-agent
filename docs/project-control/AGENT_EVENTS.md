@@ -795,3 +795,8 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Source:** `3fa0fbbd,aed56cd3,65ada232,2ed12305,33f15503,fe498178,8ada8025`. Plan `docs/superpowers/plans/2026-10-23-overview-first-mail-command-center.md`.
 - **Evidence:** 10/10 repo-source invariants; installed Vitest/typechecks/identity/browser/deploy NOT RUN. No auth elevation, mailbox data read, worker registration, provider send, or scheduled job created.
 - **Owners:** DEV-01 continues C3/C4 and authorized R1b pure tests/UX. FIX-01 retains source errors and scheduler/tenant defects; OPS-01 retains CI/host/migration, credentials, provider and deployment verification. NEXT_ACTION updated without CI polling.
+
+### EVT-DEV01-MULTI-CHAT-SESSIONS-20261023 — 2026-10-23
+- **DEV-01 Forge:** User-authorized fresh chat/continuable history feature on Development; current Phase 4. Start SHA `93d7e536`, repo-first control recovery, preserve concurrent FIX/OPS/DEV work.
+- **Delivered:** New per-agent persisted conversation, recent chat links, deep-link and newest-history API, first-message title, draft confirmation and selected voice-return session; commits `791ca44d,a88fbb81,578bba58,b998561f,1ecb994f,b1f42c69,11b42a67`. Tests and plan committed.
+- **Acceptance:** 18/18 static contracts; no executed Vitest/TypeScript/PostgreSQL/browser/deploy. Current org+agent shared access retained; per-user privacy design separately pending. Exact next action in `sessions/DEV01-MULTI-CHAT-SESSIONS-20261023.md`.
