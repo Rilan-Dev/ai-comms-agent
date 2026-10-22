@@ -768,3 +768,11 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Root causes:** Agent policy forced comma-separated internal tool names and manual JSON; client/backend permitted selecting unavailable mailboxes; configuration test falsely passed mailbox readiness when mail-read tools enabled without a connected readable binding.
 - **Remedy:** UI selectable registered email-tool checkboxes and 3-step setup checklist, optional advanced JSON, connected-only account picker + server guard/clear 422, stored-config read-only simulation gate and error details. Commits `084f36ba,68b3ec81,e7735b4b,93fbc354,11c760c2,51134e6d,424d89c1`; tests `816d9558,787c8ca9,df860960`.
 - **Evidence/status:** 24/24 GitHub source invariants PASS; no native suite, browser, live policy/account or deployment verified. OPS-01 host/deploy, DEV-01 future broader wizard, FIX-01 follow-on source defects.
+
+
+### EVT-DEV01-CHAT-EMAIL-APPROVAL-20261022 — 2026-10-22
+- **Owner:** DEV-01 / Forge, owner-authorized email/voice chat UX and permission preset feature on Development.
+- **Symptom:** Sarvam agent claimed text-only and offered a copyable draft, while a working saved draft/send-approval review and simple mail policy presets were missing in chat. Prior FIX-01 Sarvam source remediation on Development not verified deployed; live policy and actor email.write remain unknown.
+- **Change:** Authenticated same-org agent-primary-bound chat compose GET/POST routed through audited read/write tool runtime; separate saved draft and idempotent request for human send approval; reviewable UI; quick read/draft/approval/off presets with individual toggles and admin-confirmed in-chat policy edits; voice actor tool filter and safe conversation handoff. No permission, provider send or human approval bypass.
+- **Verification:** Four isolated helper functional tests and two standalone TS checks PASS; GitHub source checks 20/20; exact installed workspace tests, real DB/provider/browser/production NOT RUN. Full evidence root worklog + DEV role log.
+- **Next:** OPS-01 live deployment/provider and policy/runtime confirmation, DEV-01 focused current-HEAD tests/bugfixes when runner available. No CI/Vercel polling or migration.
