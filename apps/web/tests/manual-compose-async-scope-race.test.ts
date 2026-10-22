@@ -30,9 +30,13 @@ describe("FIX-01 manual mail composer async scope and review guards", () => {
   it("cannot save or approve the previous draft while new navigation is pending", () => {
     expect(src).toContain("scopeValid &&");
     expect(save).toContain("if (!scopeValid");
-    expect(save).toContain("scopeRef.current !== scopeKey");
+    expect(src).toContain("scopeRevisionRef.current += 1");
+    expect(src).toContain("formRevision === scopeRevisionRef.current");
+    expect(save).toContain("scopeRevisionRef.current !== operationRevision");
     expect(approval).toContain("if (!canRequestApproval");
-    expect(approval).toContain("scopeRef.current !== scopeKey");
+    expect(approval).toContain("scopeRevisionRef.current !== operationRevision");
+    expect(save).toContain("draftOperationRef.current?.revision === operationRevision");
+    expect(approval).toContain("draftOperationRef.current?.revision === operationRevision");
     expect(src).toContain("disabled={busy || loadingDraft || !scopeValid");
   });
 });
