@@ -60,3 +60,17 @@ test("public archive and move functions call the common atomic path and no indep
   assert.match(segment, /return changeMailFoldersAtomically\(organizationId, messageIds, folderId\)/);
   assert.equal((segment.match(/UPDATE email_messages m/g) ?? []).length, 1);
 });
+
+test("move destination row is explicitly present before its account ID is accessed (TS2532 regression)", () => {
+  const repo = read("../../../packages/db/src/email/repository.ts");
+  const start = repo.indexOf("async function changeMailFoldersAtomically(");
+  const end = repo.indexOf("export async function archiveMailMessagesForOrganization(", start);
+  assert.ok(start >= 0 && end > start);
+  const move = repo.slice(start, end);
+  assert.match(move, /const destinationRow = destination\.rows\[0\];/);
+  assert.match(move, /if \(!destinationRow \|\| destination\.rows\.length !== 1/);
+  assert.match(move, /destinationRow\.email_account_id !== accounts\[0\]/);
+  assert.match(move, /targets = \[destinationRow\];/);
+  assert.doesNotMatch(move, /destination\.rows\[0\]\.email_account_id/);
+  assert.ok(move.indexOf("if (!destinationRow") < move.indexOf("destinationRow.email_account_id"));
+});
