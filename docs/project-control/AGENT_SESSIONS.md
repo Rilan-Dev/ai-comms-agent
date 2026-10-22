@@ -1065,3 +1065,9 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Delivered:** Friendly 16-tool labels/diffs, safe Off legacy `email.*` removal, automatic bundled selection with individual overrides, chat and agent-details confirmed saves, server-authorized atomic five-field stale policy compare-and-set returning 409, explicit unsaved reload confirmation. Preserved send approval gate and admin-only policy endpoint.
 - **Checks:** 22/22 targeted GitHub source invariants pass; no native web/db typecheck/Vitest, database concurrency or authenticated browser/deployment acceptance run. Session `sessions/DEV01-AGENT-PERMISSION-PRESETS-20261022.md`.
 - **Next:** Focused Vitest + web/db typecheck on current exact SHA; two-admin stale UI 409 acceptance; follow with independent authorized C3/R1b. No CI/Vercel wait.
+
+### FIX01-SARVAM-AGENT-VOICE-OVERRIDE-20261022
+- FIX-01 / Sentinel; 2026-10-22; direct `Development` source correction authorized. Recovered shared/role memory, events/sessions/handoffs/issues, current phase, next action and verification.
+- RED: user live `/api/voice/session` responded with OpenAI despite per-agent Sarvam; `/api/voice/realtime` then returned missing OpenAI credential 503. Source independently confirms settings table mismatch.
+- Correction: `ae1f92e0` precedence helper, `505e9e8d` session route consumes saved agent AI settings, `13b44a8a` seven Vitest tests. All 16 inspected source invariants PASS; native and production acceptance NOT RUN.
+- Preserve authenticated session/user/agent checks, Sarvam relay/pipeline separation; existing #26 stays open. OPS-01 deploy/relay prerequisites and real active audio test, FIX-01 next source failure, DEV-01 features separate. Never reuse pasted session cookie.
