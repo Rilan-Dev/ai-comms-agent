@@ -25,6 +25,18 @@ export class CatchUpRequestScope {
     this.inFlight = false;
   }
 
+  /** React setBusy schedules a render; handlers need a synchronous lock. */
+  isBusy(): boolean {
+    return this.inFlight;
+  }
+
+  /** Any changed mailbox/window selection makes earlier responses obsolete.
+   * This is also safe if a caller explicitly abandons an in-flight request. */
+  invalidateSelection(): void {
+    this.version += 1;
+    this.inFlight = false;
+  }
+
   begin(agentId: string): CatchUpScopeToken | null {
     if (!agentId || agentId !== this.agentId || this.inFlight) return null;
     this.inFlight = true;
