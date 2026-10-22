@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const subject = typeof body?.subject === "string" ? body.subject : "";
     const bodyText = typeof body?.bodyText === "string" ? body.bodyText : "";
     const subjectRef = asOrganizationId(organizationId);
-    const subjectUser = await authorize(request, { organizationId: subjectRef, role: "member" }, getIdentityAdapter(), getIdentityRepository());
+    const subjectUser = await authorize(request, { organizationId: subjectRef, permission: "email.write" }, getIdentityAdapter(), getIdentityRepository());
     const draft = await createLocalDraft({ organizationId, emailAccountId, to, cc: Array.isArray(body?.cc) ? body.cc : [], bcc: Array.isArray(body?.bcc) ? body.bcc : [], subject, bodyText });
     await recordAuditEvent({ organizationId, actorUserId: subjectUser.user.id, eventType: "email.draft.created", targetType: "email_message", targetId: String(draft.id), action: "create", decision: "allowed" });
     return NextResponse.json({ draft }, { status: 201 });
@@ -35,7 +35,7 @@ export async function PATCH(request: Request) {
     const organizationId = typeof body?.organizationId === "string" ? body.organizationId : "";
     const messageId = typeof body?.messageId === "string" ? body.messageId : "";
     if (!organizationId || !messageId) return NextResponse.json({ error: "validation_error", message: "Organization and draft are required." }, { status: 422 });
-    const subjectUser = await authorize(request, { organizationId: asOrganizationId(organizationId), role: "member" }, getIdentityAdapter(), getIdentityRepository());
+    const subjectUser = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "email.write" }, getIdentityAdapter(), getIdentityRepository());
     const draft = await updateLocalDraftForOrganization(organizationId, messageId, { to: Array.isArray(body?.to) ? body.to : undefined, cc: Array.isArray(body?.cc) ? body.cc : undefined, bcc: Array.isArray(body?.bcc) ? body.bcc : undefined, subject: typeof body?.subject === "string" ? body.subject : undefined, bodyText: typeof body?.bodyText === "string" ? body.bodyText : undefined });
     if (!draft) {
       // Do not report a live, approved/queued draft as missing. Mutation is
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
     const organizationId = params.get("organizationId") ?? "";
     const messageId = params.get("draftId") ?? "";
     if (!organizationId) return NextResponse.json({ error: "validation_error", message: "Organization is required." }, { status: 422 });
-    await authorize(request, { organizationId: asOrganizationId(organizationId), role: "member" }, getIdentityAdapter(), getIdentityRepository());
+    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "email.read" }, getIdentityAdapter(), getIdentityRepository());
     if (messageId) {
       const draft = await getLocalDraftForOrganization(organizationId, messageId);
       if (!draft) return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization." }, { status: 404 });
@@ -80,7 +80,7 @@ export async function DELETE(request: Request) {
     const organizationId = typeof body?.organizationId === "string" ? body.organizationId : "";
     const messageId = typeof body?.messageId === "string" ? body.messageId : "";
     if (!organizationId || !messageId) return NextResponse.json({ error: "validation_error", message: "Organization and draft are required." }, { status: 422 });
-    const subjectUser = await authorize(request, { organizationId: asOrganizationId(organizationId), role: "member" }, getIdentityAdapter(), getIdentityRepository());
+    const subjectUser = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "email.write" }, getIdentityAdapter(), getIdentityRepository());
     const deleted = await deleteLocalDraftForOrganization(organizationId, messageId);
     if (!deleted) {
       const existing = await getLocalDraftForOrganization(organizationId, messageId);
