@@ -177,13 +177,18 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     if (!recipients.length) throw new EmailWriteFailure("recipient_required", "At least one forward recipient is required.");
     const originalSubject = text(source.subject, 998);
     const subject = /^fwd?:/i.test(originalSubject) ? originalSubject : `Fwd: ${originalSubject}`;
-    const originalBody = text(source.text_body, 90000);
+    const originalBody = preserveEmailBody(source.text_body);
+    const note = preserveEmailBody(input.body_text, 10000);
+    const forwardedBody = `${note ? note + "\n\n" : ""}---------- Forwarded message ----------\n${originalBody}`;
+    if (forwardedBody.length > 100000) {
+      throw new EmailWriteFailure("draft_body_too_long", "The forwarded email exceeds the maximum draft size. Reduce the quoted content before saving.");
+    }
     const draft = await createLocalDraft({
       organizationId: context.organization_id,
       emailAccountId: account.id,
       to: recipients,
       subject,
-      bodyText: `${preserveEmailBody(input.body_text, 10000)}\n\n---------- Forwarded message ----------\n${originalBody}`.trim(),
+      bodyText: forwardedBody,
     });
     return { status: "forward_draft_created", draft_id: String(draft.id), account_id: account.id, subject };
   });
