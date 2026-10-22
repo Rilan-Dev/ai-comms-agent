@@ -66,3 +66,25 @@ test("compose, send-approval and model tool-loop writes reject mismatched explic
     assert.ok(handler.indexOf("assertSameOrigin(request)") < handler.indexOf("await ensureDevSeed()"));
   }
 });
+
+
+test("every direct mail draft and mailbox mutation checks origin before touching the DB", () => {
+  const specs = [
+    ["../src/app/api/mail/drafts/route.ts", ["POST", "PATCH", "DELETE"]],
+    ["../src/app/api/mail/drafts/sync/route.ts", ["POST"]],
+    ["../src/app/api/mail/messages/read-state/route.ts", ["PATCH"]],
+    ["../src/app/api/mail/messages/folder/route.ts", ["PATCH"]],
+  ];
+  for (const [file, methods] of specs) {
+    const source = readFileSync(new URL(file, import.meta.url), "utf8");
+    for (const method of methods) {
+      const begin = source.indexOf("export async function " + method + "(request: Request)");
+      assert.ok(begin >= 0, file + " must have a " + method + " handler");
+      const next = source.indexOf("export async function ", begin + 20);
+      const handler = source.slice(begin, next < 0 ? undefined : next);
+      assert.match(handler, /assertSameOrigin\(request\)/, file + ": " + method);
+      assert.match(handler, /error: "invalid_origin"/, file + ": " + method);
+      assert.ok(handler.indexOf("assertSameOrigin(request)") < handler.indexOf("await ensureDevSeed()"), file + ": reject before DB work");
+    }
+  }
+});
