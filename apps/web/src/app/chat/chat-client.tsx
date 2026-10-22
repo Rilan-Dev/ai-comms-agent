@@ -171,7 +171,12 @@ export function ChatClient({
   }
 
   async function reloadMailPermissions() {
-    if (!activeAgent) return;
+    if (!activeAgent || mailPermissionBusy) return;
+    if (mailPolicy) {
+      const changes = summarizeEmailPermissionChanges(mailPolicy.allowedTools, mailToolSelection);
+      if ((changes.added.length || changes.removed.length)
+          && !window.confirm("Discard unsaved permission selections and reload the saved policy?")) return;
+    }
     setMailPermissionBusy(true);
     setMailPermissionNotice("");
     try {
