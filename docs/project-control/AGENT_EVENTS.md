@@ -805,3 +805,9 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - DEV-01 implemented owner-requested persistent chat controls and relocated New chat/recent conversations to a left-side scrollable list, retaining small-screen Chats drawer. Root cause: unbounded min-height page and horizontal top history.
 - Development commits `273799e7,6b5839f7,454d2d7b`. Source regression checks 19/19; native Vitest/TS/browser and live deployment pending.
 - No changes to scoped conversation persistence, organization/agent privacy, email policy/write/send approval, actual voice provider or C3/routine activation. See `sessions/DEV01-CHAT-PERSISTENT-CONTROLS-SIDEBAR-20261023.md`.
+
+### EVT-DEV01-ADMIN-EMAIL-WRITE-DEFAULT-20261023 — 2026-10-23
+- **DEV-01/Forge:** Owner reported Sarvam Chat draft blocked by `missing_email_write` despite 16 selected tools and signed-in platform admin. Traced actual typed permission and immutable role mapping.
+- **Cause:** `SYSTEM_ROLE_PERMISSIONS.owner/admin` excluded email.write though runtime executor required it. Production and in-memory repos both read that static mapping.
+- **Fix:** `61eb507d` grants owner/admin only; `a5123f59,7f8b4457` test privileged/nonprivileged roles, runtime and provider gates; `145d2629` fixes misleading blocker wording. No implicit send or new tenant model.
+- **Evidence:** 16/16 GitHub source checks, full test/typecheck and live deployed role/provider acceptance pending. `sessions/DEV01-ADMIN-EMAIL-WRITE-DEFAULT-20261023.md`.
