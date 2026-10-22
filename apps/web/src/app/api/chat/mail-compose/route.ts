@@ -7,6 +7,7 @@ import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/
 import { assertSameOrigin } from "@/lib/identity/local-auth";
 import { createEmailToolRuntime, invokeEmailReadTool } from "../../../../../../../apps/worker/src/agent/email-tool-runtime";
 import { mailComposeReadiness, selectPreferredComposeMailbox } from "@/lib/mail/compose-readiness";
+import { mayDiscoverComposeMailboxes, mayWriteComposeDraft } from "@/lib/mail/compose-access";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,11 @@ export async function GET(request: Request) {
     if (!organizationId || !agentId) return NextResponse.json({ error: "validation_error" }, { status: 422 });
     const trusted = await trustedContext(request, organizationId, agentId);
     if (!trusted) return NextResponse.json({ error: "not_found" }, { status: 404 });
+    if (!mayDiscoverComposeMailboxes(trusted.subject.permissions)) {
+      return NextResponse.json({
+        error: "forbidden", message: "Email mailbox access requires the authenticated user's email.read or email.write permission.",
+      }, { status: 403 });
+    }
     const runtime = await createEmailToolRuntime(organizationId, agentId);
     const allowed = runtime.registry.listForAgent(agentId);
     const mailboxes = await primaryMailboxes(organizationId, agentId);
@@ -105,6 +111,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "validation_error", message: "Agent, connected mailbox and supported action are required." }, { status: 422 });
     const trusted = await trustedContext(request, organizationId, agentId);
     if (!trusted) return NextResponse.json({ error: "not_found" }, { status: 404 });
+    // Do not disclose which mailbox belongs to which agent to a caller who
+    // cannot create a draft. The host executor independently rechecks this.
+    if (!mayWriteComposeDraft(trusted.subject.permissions)) {
+      return NextResponse.json({
+        error: "forbidden", message: "The signed-in user requires email.write to create drafts or request sending approval.",
+      }, { status: 403 });
+    }
     // Fail closed: an agent-bound, connected, primary mailbox is mandatory.
     // The tool executor independently revalidates policy, schema and capability.
     const bound = await primaryMailboxes(organizationId, agentId);
