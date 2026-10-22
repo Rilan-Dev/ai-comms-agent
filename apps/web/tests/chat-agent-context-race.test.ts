@@ -53,7 +53,7 @@ describe("FIX-01: agent conversation and email compose context races", () => {
     expect(source).toContain("setComposeDraftId(null)");
     expect(source).toContain("setComposeActionId(null)");
     expect(composeUI.match(/invalidateComposeReview\(\)/g)).toHaveLength(4);
-    expect(composeUI.match(/disabled=\{composeBusy/g)).toHaveLength(4);
+    expect(composeUI.match(/disabled=\{composeBusy\}/g)).toHaveLength(4);
     expect(source).toContain('if (mailComposerOpen) { composeRevisionRef.current += 1; setMailComposerOpen(false); }');
   });
 });
