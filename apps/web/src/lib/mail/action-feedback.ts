@@ -10,10 +10,27 @@
  */
 export function isExplicitEmailMutationRequest(text: string): boolean {
   const prompt = text.trim();
-  const command = prompt.match(/^(?:(?:please|kindly)\s+)?(?:(?:can|could|would|will)\s+you\s+|i\s+(?:(?:need|want)\s+you\s+to|would\s+like\s+you\s+to)\s+)?(send|draft|write|compose|forward|reply\s+to|request\s+(?:send|email)\s+approval)\b/i);
-  if (!command || !/\b(?:e-?mail|message|draft|reply)\b/i.test(prompt)) return false;
-  if (command[1]?.toLowerCase() === "send"
-    && !/\bsend\s+(?:(?:me|a|an|the|this|that|test|new|another)\s+){0,4}(?:e-?mail|message)\b/i.test(prompt)) return false;
+  const command = prompt.match(
+    /^(?:(?:please|kindly)\s+)?(?:(?:can|could|would|will)\s+you\s+|i\s+(?:(?:need|want)\s+you\s+to|would\s+like\s+you\s+to)\s+)?(send|draft|write|compose|forward|reply\s+to|respond\s+to|email|e-mail|request\s+(?:send|email)\s+approval)\b/i,
+  );
+  if (!command) return false;
+  const verb = command[1]?.toLowerCase() ?? "";
+  const addressedRecipient = /\bto\s+[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b/i.test(prompt);
+  const emailContext = /\b(?:e-?mails?|messages?|drafts?|repl(?:y|ies))\b/i.test(prompt)
+    || addressedRecipient || verb === "email" || verb === "e-mail";
+  if (!emailContext) return false;
+
+  if (verb === "send") {
+    // "Send me the emails from yesterday" is often a request to *read* or
+    // list mail. Unlike a command with an explicit outgoing recipient, it
+    // must not be mistaken for permission to create an outbound message.
+    if (!addressedRecipient &&
+        /\bsend\s+me\s+(?:(?:the|all|those|these|my)\s+)?(?:e-?mails?|messages?)\b/i.test(prompt)) {
+      return false;
+    }
+    const directEmail = /\bsend\s+(?:(?:me|a|an|the|this|that|these|those|test|new|another|some|several)\s+){0,4}(?:e-?mails?|messages?)\b/i.test(prompt);
+    return directEmail || addressedRecipient;
+  }
   return true;
 }
 
