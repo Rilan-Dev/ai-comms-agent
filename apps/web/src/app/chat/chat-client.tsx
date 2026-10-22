@@ -83,6 +83,9 @@ export function ChatClient({
   // Keep agent selection and server-scoped message history atomic.
   const agentSwitchInFlightRef = useRef(false);
   const newChatInFlightRef = useRef(false);
+  // React busy state renders later; this synchronous fence blocks a duplicate
+  // Send and cross-conversation navigation in the same event turn.
+  const chatTurnInFlightRef = useRef(false);
   const agentContextEpochRef = useRef(0);
   // A returned draft/action ID may only be attached to the same review revision.
   const composeRevisionRef = useRef(0);
@@ -151,7 +154,7 @@ export function ChatClient({
   }, [chatHistoryOpen]);
 
   async function switchAgent(nextAgentId: string) {
-    if (busy || newChatBusy || newChatInFlightRef.current || voiceOpen || mailPermissionBusy || composeInFlightRef.current
+    if (busy || chatTurnInFlightRef.current || newChatBusy || newChatInFlightRef.current || voiceOpen || mailPermissionBusy || composeInFlightRef.current
         || agentSwitchInFlightRef.current || nextAgentId === agentId) return;
     if (!agents.some(agent => agent.id === nextAgentId)) return;
     if (draft.trim() && !window.confirm("Switch agents and discard your unsent message?")) return;
@@ -212,7 +215,7 @@ export function ChatClient({
 
   // A fresh chat is a distinct persisted session, not a reset of prior history.
   async function startNewChat() {
-    if (!activeAgent || busy || newChatBusy || newChatInFlightRef.current || voiceOpen || agentSwitchBusy
+    if (!activeAgent || busy || chatTurnInFlightRef.current || newChatBusy || newChatInFlightRef.current || voiceOpen || agentSwitchBusy
       || agentSwitchInFlightRef.current || composeBusy || mailPermissionBusy || composeInFlightRef.current) return;
     if (draft.trim() && !window.confirm("Start a new chat and discard your unsent message?")) return;
     // Set the fence synchronously: the state update below is not immediate.
@@ -430,11 +433,15 @@ export function ChatClient({
 
   async function sendMessage() {
     if (agentSwitchInFlightRef.current) return;
+    if (chatTurnInFlightRef.current || newChatInFlightRef.current || voiceOpen || composeInFlightRef.current || mailPermissionBusy) return;
     const content = draft.trim();
     // Chat instructions, including test-email requests, always pass through
     // the hosted AI turn. The separate compose button remains an explicit
     // human-reviewed draft and approval workflow.
     if (!content || busy || newChatBusy || !activeAgent) return;
+    // Claim before React sees setBusy(true): Enter and button clicks can
+    // otherwise submit twice, or race a newly requested conversation.
+    chatTurnInFlightRef.current = true;
     setDraft("");
     setBusy(true);
     setResponseStarted(false);
@@ -503,6 +510,7 @@ export function ChatClient({
     } catch (error) {
       setMessages((current) => [...current, { id: "error-" + Date.now(), conversationId, role: "system", content: error instanceof Error ? error.message : "Chat failed", createdAt: new Date().toISOString() }]);
     } finally {
+      chatTurnInFlightRef.current = false;
       setBusy(false);
       setResponseStarted(false);
       setActivity("");
@@ -563,7 +571,7 @@ export function ChatClient({
                 <a key={session.id}
                   href={"/chat?" + new URLSearchParams({ agentId, conversationId: session.id }).toString()}
                   onClick={event => {
-                    if (busy || newChatBusy || agentSwitchBusy || voiceOpen || composeBusy || mailPermissionBusy
+                    if (busy || chatTurnInFlightRef.current || newChatBusy || newChatInFlightRef.current || agentSwitchBusy || voiceOpen || composeBusy || mailPermissionBusy
                       || composeInFlightRef.current) { event.preventDefault(); return; }
                     if (session.id !== conversationId && draft.trim()
                       && !window.confirm("Open this chat and discard your unsent message?")) event.preventDefault();
