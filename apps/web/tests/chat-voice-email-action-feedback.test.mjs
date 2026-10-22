@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { deniedEmailWriteExplanation, verifiedEmailToolSummary } from "../src/lib/mail/action-feedback.ts";
+import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation, verifiedEmailToolSummary } from "../src/lib/mail/action-feedback.ts";
 
 const read = (relative) => readFileSync(new URL(relative, import.meta.url), "utf8");
 
@@ -75,4 +75,44 @@ test("voice SSE and JSON use the same authoritative actor permission denial", ()
   assert.match(source, /toolCalls: \[\], pendingApprovals: \[\]/);
   assert.match(source, /runEmailAgentTurn\(/);
   assert.match(source, /voiceAnswer = verifiedSummary \|\| turn\.text/);
+});
+
+test("explicit email mutation intents include natural requests but not requests for information", () => {
+  for (const phrase of [
+    "send email to test@example.com for test email",
+    "can you send an email to test@example.com",
+    "I need you to send a test email to test@example.com",
+    "I want you to draft an email to test@example.com",
+    "please forward this email to the team",
+    "could you reply to this message",
+  ]) {
+    assert.equal(isExplicitEmailMutationRequest(phrase), true, phrase);
+    assert.match(deniedEmailWriteExplanation(phrase, new Set(["email.read"])) ?? "", /No email was sent/);
+  }
+  for (const phrase of [
+    "send me a summary of emails",
+    "send me the list of messages",
+    "what is the process to send email?",
+    "how can I forward an email?",
+    "read emails from last week",
+  ]) {
+    assert.equal(isExplicitEmailMutationRequest(phrase), false, phrase);
+  }
+  assert.match(unverifiedEmailActionExplanation(), /No email was sent/);
+  assert.match(unverifiedEmailActionExplanation(), /no .*approval request/i);
+});
+
+test("a send request without a host-confirmed mutation never displays a speculative model success", () => {
+  const chat = read("../src/app/api/chat/stream/route.ts");
+  const voice = read("../src/app/api/voice/turn/route.ts");
+  const client = read("../src/app/chat/chat-client.tsx");
+  assert.match(chat, /const explicitEmailAction = isExplicitEmailMutationRequest\(content\)/);
+  assert.match(chat, /onSafeReadOnlyFinal: explicitEmailAction \? undefined : async/);
+  assert.match(chat, /verifiedSummary \|\| \(explicitEmailAction \? unverifiedEmailActionExplanation\(\) : toolTurn\.text\)/);
+  assert.match(chat, /if \(explicitEmailAction\) \{[\s\S]*?unverifiedEmailActionExplanation\(\)/);
+  assert.match(voice, /const explicitEmailAction = isExplicitEmailMutationRequest\(transcript\)/);
+  assert.match(voice, /onSafeReadOnlyFinal: explicitEmailAction \? undefined : async/);
+  assert.match(voice, /verifiedSummary \|\| \(explicitEmailAction \? unverifiedEmailActionExplanation\(\) : turn\.text\)/);
+  assert.match(voice, /verifiedSummary \|\| \(explicitEmailAction \? unverifiedEmailActionExplanation\(\) : result\.text\)/);
+  assert.match(client, /fetch\("\/api\/chat\/stream"/);
 });
