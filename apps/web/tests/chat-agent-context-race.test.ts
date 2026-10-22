@@ -24,7 +24,7 @@ describe("FIX-01: agent conversation and email compose context races", () => {
     expect(switcher).toContain("setMessages(payload.messages)");
     expect(switcher).toContain("if (epoch === agentContextEpochRef.current)");
     expect(switcher).toContain("setAgentSwitchNotice(");
-    expect(source).toContain("disabled={voiceOpen || busy || agentSwitchBusy || composeBusy || mailPermissionBusy}");
+    expect(source).toContain("disabled={voiceOpen || busy || agentSwitchBusy || newChatBusy || composeBusy || mailPermissionBusy}");
     expect(source).toContain("if (agentSwitchInFlightRef.current) return;");
   });
 
