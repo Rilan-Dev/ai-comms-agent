@@ -8,6 +8,7 @@ import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { assertSameOrigin } from "@/lib/identity/local-auth";
+import { isValidFolderBatchIds, isValidFolderId } from "@/lib/mail/folder-batch-validation";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +33,10 @@ export async function PATCH(request: Request) {
     await ensureDevSeed();
     const body = await request.json().catch(() => null);
     const organizationId = typeof body?.organizationId === "string" ? body.organizationId : "";
-    const messageIds = Array.isArray(body?.messageIds) ? body.messageIds.filter((id: unknown): id is string => typeof id === "string" && id.trim().length > 0) : [];
+    const messageIds: unknown = body?.messageIds;
     const action = body?.action;
-    if (!organizationId || !messageIds.length || !["archive", "move"].includes(action)) {
-      return NextResponse.json({ error: "validation_error", message: "organizationId, messageIds, and a supported action are required." }, { status: 400 });
+    if (!isValidFolderId(organizationId) || !isValidFolderBatchIds(messageIds) || !["archive", "move"].includes(action)) {
+      return NextResponse.json({ error: "validation_error", message: "A valid organization, 1–100 unique message UUIDs, and a supported action are required." }, { status: 400 });
     }
     const subject = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.update" }, getIdentityAdapter(), getIdentityRepository());
     let updated = 0;
@@ -43,7 +44,7 @@ export async function PATCH(request: Request) {
       updated = await archiveMailMessagesForOrganization(organizationId, messageIds);
     } else {
       const folderId = typeof body?.folderId === "string" ? body.folderId.trim() : "";
-      if (!folderId) return NextResponse.json({ error: "validation_error", message: "folderId is required for move." }, { status: 400 });
+      if (!isValidFolderId(folderId)) return NextResponse.json({ error: "validation_error", message: "A valid folder UUID is required for move." }, { status: 400 });
       updated = await moveMailMessagesForOrganization(organizationId, messageIds, folderId);
     }
     if (updated !== messageIds.length) return NextResponse.json({ error: "not_found", message: "One or more messages are not accessible in this organization or the requested folder is invalid.", updated }, { status: 404 });
