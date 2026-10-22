@@ -1920,3 +1920,10 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 
 #### DEV01-HUMAN-FIRST-FIVE-DAY-CATCHUP-20261023 — corrected source inspection
 - After recording the initial harness mismatch, fetched exact current GitHub `Development` blobs for helper, Overview, private C4 page, C4 client, four-case regression and project-control checkpoints. **15/15 corrected source checks PASS**, including the original general `/catch-up` link and new feature-gated `/catch-up?days=5`; this removes the **checker-only** 13/14 failure, not a product code defect. Isolated pure-helper Node **4/4 PASS** and strict TypeScript exit zero remain the only executed behavioral/compile evidence. **Full committed test/Next.js build/database/browser and production remain NOT RUN.** No worker/routine/WhatsApp activation.
+
+### DEV01-ADMIN-EMAIL-WRITE-DEFAULT-20261023 — 2026-10-23
+- **Owner incident:** Sarvam Chat GET composer reported `email.write` missing for claimed platform-admin login even with 16 tool selections. The backend's current login role was not available to connector-only source inspection.
+- **Before:** Shared `PermissionName` included email.write, but no role mapping granted it. The authenticated role resolver returns immutable static grants in both PostgreSQL and in-memory repositories.
+- **After Development commits:** `61eb507d` owner/admin defaults; `a5123f59,7f8b4457` permission/executor/readiness regression; `145d2629` truthful nonadmin error message. **16/16 source checks PASS** against fetched current files.
+- **NOT RUN:** new native Vitest, full shared/web/db/email-agent-runtime TypeScript, owner/admin effective live session, actual draft, pending human approval, provider send and deployment. No production state changed and no user identity was read.
+- **Next:** Run focused `email-write-permission-contract.test.ts`, `rbac-persistence-consistency.test.ts` and `chat-mail-compose.test.mjs`, web/shared typechecks, then authenticated owner/admin and member/viewer/suspended/cross-org browser negatives on exact deployed SHA. `sessions/DEV01-ADMIN-EMAIL-WRITE-DEFAULT-20261023.md`.
