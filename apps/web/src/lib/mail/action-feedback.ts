@@ -3,20 +3,33 @@
  * report verified authorization and tool outcomes, not model predictions.
  * This module never grants a permission or executes a provider operation.
  */
+/**
+ * Distinguish a command to mutate email from a request to read mail or learn
+ * how sending works. This classifier is for safe host feedback only, never
+ * permission or provider-operation authorization.
+ */
+export function isExplicitEmailMutationRequest(text: string): boolean {
+  const prompt = text.trim();
+  const command = prompt.match(/^(?:(?:please|kindly)\s+)?(?:(?:can|could|would|will)\s+you\s+|i\s+(?:(?:need|want)\s+you\s+to|would\s+like\s+you\s+to)\s+)?(send|draft|write|compose|forward|reply\s+to|request\s+(?:send|email)\s+approval)\b/i);
+  if (!command || !/\b(?:e-?mail|message|draft|reply)\b/i.test(prompt)) return false;
+  if (command[1]?.toLowerCase() === "send"
+    && !/\bsend\s+(?:(?:me|a|an|the|this|that|test|new|another)\s+){0,4}(?:e-?mail|message)\b/i.test(prompt)) return false;
+  return true;
+}
+
 export function deniedEmailWriteExplanation(
   text: string,
   permissions: ReadonlySet<string>,
 ): string | null {
-  if (permissions.has("email.write")) return null;
-  const prompt = text.trim();
-  const command = prompt.match(/^(?:(?:please|kindly)\s+)?(?:(?:can|could|would)\s+you\s+)?(send|draft|write|compose|forward|reply\s+to|request\s+(?:send|email)\s+approval)\b/i);
-  if (!command || !/\b(?:e-?mail|message|draft|reply)\b/i.test(prompt)) return null;
-  // "Send me a summary of emails" is a read request, not an outbound
-  // message. Match the payload immediately after 'send', not a keyword
-  // somewhere in the rest of the prompt.
-  if (command[1]?.toLowerCase() === "send"
-    && !/^(?:(?:please|kindly)\s+)?(?:(?:can|could|would)\s+you\s+)?send\s+(?:(?:me|an?|the|this|that|test|new)\s+){0,4}(?:e-?mail|message)\b/i.test(prompt)) return null;
+  if (permissions.has("email.write") || !isExplicitEmailMutationRequest(text)) return null;
   return "I cannot create an email draft or request send approval because your signed-in organization role lacks email.write. The agent's saved tool choices and assigned mailboxes do not grant that user permission. No draft or send-approval request was created. No email was sent. An authorized administrator must arrange a separately approved role-permission change before you retry. Even with that access, sending requires explicit human approval.";
+}
+
+/** An explicit email command needs a verified mutation tool result. A model
+ * completion (including a tool-free answer or read-only search) cannot prove
+ * that anything was drafted, approved or sent. */
+export function unverifiedEmailActionExplanation(): string {
+  return "No email draft or send-approval request was confirmed by an authorized email tool. No email was sent. Please check this agent's saved email tools, assigned primary mailbox, provider capabilities, and your organization's email.write permission, then retry. Actual sending remains subject to explicit human approval.";
 }
 
 type VerifiedEmailToolCall = Readonly<{
