@@ -5,7 +5,7 @@ import {
   PostgresEmailFolderLabelRepository,
   query,
 } from "@ai-comms-agent/db";
-import { sanitizeEmailHtml, type EmailCredentials, type EmailMessage, type SyncState } from "@ai-comms-agent/shared";
+import { EMAIL_CAPABILITIES, normalizeCapabilitySet, sanitizeEmailHtml, type CapabilitySet, type EmailCredentials, type EmailMessage, type SyncState } from "@ai-comms-agent/shared";
 import { GmailAdapter } from "./gmail-adapter";
 import { ZohoAdapter } from "./zoho-adapter";
 import { ImapSmtpAdapter } from "./imap-smtp-adapter";
@@ -24,6 +24,7 @@ type Candidate = {
   organization_id: string;
   email_address: string;
   provider: "gmail" | "zoho" | "imap_smtp" | "microsoft_graph";
+  capabilities: Partial<CapabilitySet> | null;
   sync_cursor: string | null;
   history_id: string | null;
   last_success_at: string | null;
@@ -315,6 +316,13 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
       ).toString("utf8");
     }
     await adapter.connect(credentials);
+    // First successful sync must replace pending/legacy conservative capability
+    // flags before marking the account connected. The same provider adapter
+    // supplies actual discovered support: no inferred grants or send attempts.
+    const discoveredCapabilities = normalizeCapabilitySet(await adapter.discoverCapabilities());
+    if (EMAIL_CAPABILITIES.some(capability => candidate.capabilities?.[capability] !== discoveredCapabilities[capability])) {
+      await accounts.updateCapabilities(candidate.id, discoveredCapabilities);
+    }
     const structure = await query<{ count: string }>(
       "SELECT count(*)::text AS count FROM email_folders WHERE email_account_id=$1",
       [candidate.id],
@@ -704,7 +712,7 @@ export async function processMailboxSyncMessage(payload: EmailSyncPayload): Prom
     throw new Error("PostgreSQL and credential encryption must be configured for email sync.");
   }
   const result = await query<Candidate>(
-    `SELECT a.id, a.organization_id, a.email_address, a.provider,
+    `SELECT a.id, a.organization_id, a.email_address, a.provider, a.capabilities,
        s.cursor_token AS sync_cursor, s.history_id, s.last_success_at
      FROM email_accounts a
      LEFT JOIN email_sync_states s ON s.email_account_id=a.id
@@ -750,7 +758,7 @@ export async function processMailboxSyncMessage(payload: EmailSyncPayload): Prom
 async function enqueueDueMailboxSyncs(limit = BATCH_SIZE): Promise<number> {
   if (!process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY || !process.env.RABBITMQ_URL) return 0;
   const result = await query<Candidate>(
-    `SELECT a.id, a.organization_id, a.email_address, a.provider,
+    `SELECT a.id, a.organization_id, a.email_address, a.provider, a.capabilities,
        s.cursor_token AS sync_cursor, s.history_id, s.last_success_at
      FROM email_accounts a
      LEFT JOIN email_sync_states s ON s.email_account_id=a.id
@@ -825,7 +833,7 @@ export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ att
   let succeeded = 0;
   try {
     const candidates = await query<Candidate>(
-      `SELECT a.id, a.organization_id, a.email_address, a.provider,
+      `SELECT a.id, a.organization_id, a.email_address, a.provider, a.capabilities,
          s.cursor_token AS sync_cursor, s.history_id, s.last_success_at
        FROM email_accounts a
        LEFT JOIN email_sync_states s ON s.email_account_id=a.id
