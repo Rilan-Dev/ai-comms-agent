@@ -952,7 +952,8 @@ export function VoiceWorkspace({
   }
 
   async function start() {
-    if (!agent || busy) return;
+    if (!agent || busy || transportFailureInFlightRef.current
+        || (sessionRef.current && sessionRef.current.status !== "ended" && sessionRef.current.status !== "error")) return;
     setBusy(true);
     setError("");
     setTurns([]);
@@ -986,14 +987,30 @@ export function VoiceWorkspace({
       setError(message);
       setNotice("Session startup failed; no live connection is claimed.");
       const current = sessionRef.current;
-      if (current && current.status !== "ended") {
+      if (current && current.status !== "ended" && !transportFailureInFlightRef.current) {
+        // A failed negotiation is not evidence that the host session ended.
+        // Keep the End session retry path visible until DELETE confirms it.
         void fetch("/api/voice/session", {
           method: "DELETE",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ organizationId, sessionId: current.id, reason: "transport_start_failed" }),
-        }).catch(() => undefined);
+        }).then(async (response) => {
+          const payload = await response.json().catch(() => null) as { session?: VoiceSession } | null;
+          if (!response.ok || payload?.session?.id !== current.id || payload.session.status !== "ended") {
+            throw new Error("Host voice termination is not confirmed.");
+          }
+          if (sessionRef.current?.id === current.id) {
+            sessionRef.current = payload.session;
+            setSession(payload.session);
+            setTransport(null);
+          }
+        }).catch(() => {
+          if (sessionRef.current?.id === current.id) {
+            setError(message + " Host voice termination is not confirmed; retry End session.");
+            setNotice("Microphone stopped. Host voice session termination is not confirmed.");
+          }
+        });
       }
-      setSession((current) => current ? { ...current, status: "error" } : null);
     } finally {
       setBusy(false);
     }
