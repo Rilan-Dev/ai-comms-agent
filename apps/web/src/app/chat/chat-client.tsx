@@ -48,6 +48,7 @@ export function ChatClient({
   const [composeActionId, setComposeActionId] = useState<string | null>(null);
   const [composeCanDraft, setComposeCanDraft] = useState(false);
   const [composeCanApprove, setComposeCanApprove] = useState(false);
+  const [composeBlockers, setComposeBlockers] = useState<Array<{code:string;message:string}>>([]);
   const [composeBusy, setComposeBusy] = useState(false);
   const [composeNotice, setComposeNotice] = useState("");
   const [mailPermissionOpen, setMailPermissionOpen] = useState(false);
@@ -180,6 +181,7 @@ export function ChatClient({
     const epoch = agentContextEpochRef.current;
     setComposeBusy(true);
     setComposeNotice("");
+    setComposeBlockers([]);
     setComposeDraftId(null);
     setComposeActionId(null);
     try {
@@ -194,7 +196,18 @@ export function ChatClient({
       setComposeAccount(data.mailboxes[0]?.id ?? "");
       setComposeCanDraft(data.canDraft === true);
       setComposeCanApprove(data.canRequestApproval === true);
-      if (recipient) setComposeTo(recipient);
+      setComposeBlockers(Array.isArray(data.blockers)
+        ? data.blockers.filter((entry: unknown): entry is {code:string;message:string} =>
+            Boolean(entry && typeof entry === "object" && "code" in entry && "message" in entry
+              && typeof entry.code === "string" && typeof entry.message === "string"))
+        : []);
+      if (recipient) {
+        setComposeTo(recipient);
+        // Do not discard the original request if the readiness GET fails.
+        // A GET only opens a preview; it never saves a draft.
+        setDraft(current => parseTestEmailComposeRequest(current) === recipient ? "" : current);
+      }
+      setComposeNotice("Review only: No draft has been saved and no email was sent. Select Save email draft after authorization is available.");
       setMailComposerOpen(true);
     } catch (error) {
       if (revision === composeRevisionRef.current && epoch === agentContextEpochRef.current) {
@@ -326,7 +339,8 @@ export function ChatClient({
     // preview. Never interpret prose as permission to send or approve.
     const testEmailRequest = parseTestEmailComposeRequest(content);
     if (testEmailRequest && !busy) {
-      setDraft("");
+      // This shortcut opens a review, NOT a draft or a send. Preserve text
+      // until a successful readiness request so failures can be retried.
       void openMailComposer(testEmailRequest);
       return;
     }
@@ -435,7 +449,11 @@ export function ChatClient({
         <section aria-label="Compose an email using this agent" className="mx-auto w-full max-w-3xl border-b px-4 py-4">
           <h2 className="text-sm font-semibold">Review an email draft</h2>
           <p className="mt-1 text-xs text-muted-foreground">The host executes only authorized agent tools. Saving a draft or requesting approval never sends it.</p>
-          {!composeCanDraft && <p role="alert" className="mt-2 text-xs text-destructive">Draft creation is unavailable. Ask an admin to enable Draft mail and confirm your email.write permission.</p>}
+          {composeBlockers.length > 0 && <div role="alert" className="mt-3 rounded-md border border-destructive/30 p-3 text-xs text-destructive">
+            <p className="font-semibold">Email tools are not ready; no draft or approval was created.</p>
+            <ul className="mt-2 list-disc space-y-1 pl-4">{composeBlockers.map(blocker => <li key={blocker.code}>{blocker.message}</li>)}</ul>
+          </div>}
+          {!composeCanDraft && composeBlockers.length === 0 && <p role="alert" className="mt-2 text-xs text-destructive">Draft creation is unavailable. Check saved agent permissions and your email.write grant.</p>}
           {!composeMailboxes.length && <p role="alert" className="mt-2 text-xs text-destructive">No connected primary mailbox is assigned to this agent. Assign one in Agent Channels.</p>}
           <div className="mt-3 grid gap-3">
             <label className="text-xs font-medium">From mailbox<select aria-label="Sending mailbox" value={composeAccount} disabled={composeBusy} onChange={e => { setComposeAccount(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2">{composeMailboxes.map(account => <option key={account.id} value={account.id}>{account.address}</option>)}</select></label>
