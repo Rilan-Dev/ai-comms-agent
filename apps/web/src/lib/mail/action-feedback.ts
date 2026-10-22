@@ -11,7 +11,7 @@
 export function isExplicitEmailMutationRequest(text: string): boolean {
   const prompt = text.trim();
   const command = prompt.match(
-    /^(?:(?:please|kindly)\s+)?(?:(?:can|could|would|will)\s+you\s+|i\s+(?:(?:need|want)\s+you\s+to|would\s+like\s+you\s+to)\s+)?(send|draft|write|compose|forward|reply\s+to|respond\s+to|email|e-mail|request\s+(?:send|email)\s+approval)\b/i,
+    /^(?:(?:please|kindly)\s+)?(?:(?:(?:can|could|would|will)\s+you\s+(?:(?:please|kindly)\s+)?)|(?:i\s+(?:(?:need|want)\s+(?:you\s+to|to)|would\s+like\s+(?:you\s+to|to))\s+)|(?:i['’]d\s+like\s+(?:you\s+to|to)\s+))?(send|draft|write|compose|forward|reply\s+to|respond\s+to|email|e-mail|request\s+(?:send|email)\s+approval)\b/i,
   );
   if (!command) return false;
   const verb = command[1]?.toLowerCase() ?? "";
