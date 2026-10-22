@@ -44,6 +44,7 @@ export function ChatClient({
   const [conversations, setConversations] = useState<ChatSession[]>(initialConversations);
   const [newChatBusy, setNewChatBusy] = useState(false);
   const [chatHistoryNotice, setChatHistoryNotice] = useState("");
+  const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [mailComposerOpen, setMailComposerOpen] = useState(false);
   const [composeMailboxes, setComposeMailboxes] = useState<Array<{
@@ -71,7 +72,9 @@ export function ChatClient({
   const [activity, setActivity] = useState("");
   const [activitySteps, setActivitySteps] = useState<AgentActivityPhase[]>([]);
   const [voiceOpen, setVoiceOpen] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const messageScrollRef = useRef<HTMLDivElement>(null);
+  const historyTriggerRef = useRef<HTMLButtonElement>(null);
+  const historyCloseRef = useRef<HTMLButtonElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const voiceWasOpen = useRef(false);
   const [agentSwitchBusy, setAgentSwitchBusy] = useState(false);
@@ -104,10 +107,27 @@ export function ChatClient({
 
   const activeAgent = useMemo(() => agents.find((agent) => agent.id === agentId) ?? agents[0], [agents, agentId]);
 
-  // Auto-scroll to bottom when messages change
+  // Scroll the message pane, not the entire document (the controls and
+  // conversation sidebar must stay visible even for long sessions).
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const pane = messageScrollRef.current;
+    if (pane) pane.scrollTo({ top: pane.scrollHeight, behavior: "smooth" });
   }, [messages.length, busy]);
+
+  // The mobile history drawer is keyboard accessible without affecting the
+  // permanent desktop list or the workspace's own navigation sidebar.
+  useEffect(() => {
+    if (!chatHistoryOpen) return;
+    historyCloseRef.current?.focus();
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setChatHistoryOpen(false);
+    }
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+      historyTriggerRef.current?.focus();
+    };
+  }, [chatHistoryOpen]);
 
   async function switchAgent(nextAgentId: string) {
     if (busy || newChatBusy || newChatInFlightRef.current || voiceOpen || mailPermissionBusy || composeInFlightRef.current
@@ -469,9 +489,9 @@ export function ChatClient({
   }
 
   return (
-    <main className="flex min-h-[calc(100vh-72px)] min-w-0 flex-col bg-background">
-      <header className="border-b bg-background/85 px-4 py-3 backdrop-blur sm:px-7">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3">
+    <main className="flex h-[calc(100dvh-64px)] min-h-0 min-w-0 flex-col overflow-hidden bg-background">
+      <header className="relative z-10 shrink-0 border-b bg-background/95 px-3 py-3 backdrop-blur sm:px-5">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground"><Bot size={18} /></span>
             <div>
@@ -479,7 +499,10 @@ export function ChatClient({
               <p className="text-[11px] text-muted-foreground">{busy ? (activity || "Thinking…") : "Ready"}</p>
             </div>
           </div>
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <button ref={historyTriggerRef} type="button" className="rounded-md border px-3 py-2 text-xs font-semibold hover:bg-secondary lg:hidden"
+              aria-label="Show conversations" aria-controls="chat-conversation-sidebar" aria-expanded={chatHistoryOpen}
+              onClick={() => setChatHistoryOpen(true)}>Chats</button>
             <button type="button" onClick={() => { if (mailComposerOpen) { composeRevisionRef.current += 1; setMailComposerOpen(false); } else void openMailComposer(); }} disabled={busy || composeBusy || agentSwitchBusy || voiceOpen} className="rounded-md border px-3 py-2 text-xs font-medium hover:bg-secondary disabled:opacity-50" aria-expanded={mailComposerOpen}>Compose email</button>
             <button type="button" onClick={() => void openMailPermissions()} disabled={busy || mailPermissionBusy || agentSwitchBusy || voiceOpen} className="rounded-md border px-3 py-2 text-xs font-medium hover:bg-secondary disabled:opacity-50" aria-expanded={mailPermissionOpen}>Mail permissions</button>
             <button type="button" onClick={() => setVoiceOpen(true)} disabled={busy || agentSwitchBusy || composeBusy || mailPermissionBusy || voiceOpen}
@@ -496,36 +519,49 @@ export function ChatClient({
         </div>
       </header>
 
-      <nav aria-label="Chat history" className="border-b bg-background px-4 py-2 sm:px-7">
-        <div className="mx-auto flex max-w-3xl items-center gap-2">
-          <button type="button" onClick={() => void startNewChat()}
-            disabled={busy || newChatBusy || agentSwitchBusy || composeBusy || mailPermissionBusy || voiceOpen}
-            className="shrink-0 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-50">
-            {newChatBusy ? "Creating…" : "+ New chat"}
-          </button>
-          <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1" aria-label="Recent conversations">
-            {conversations.map(session => (
-              <a key={session.id}
-                href={"/chat?" + new URLSearchParams({ agentId, conversationId: session.id }).toString()}
-                onClick={event => {
-                  if (busy || newChatBusy || agentSwitchBusy || voiceOpen || composeBusy || mailPermissionBusy
-                    || composeInFlightRef.current) { event.preventDefault(); return; }
-                  if (session.id !== conversationId && draft.trim()
-                    && !window.confirm("Open this chat and discard your unsent message?")) event.preventDefault();
-                }}
-                aria-current={session.id === conversationId ? "page" : undefined}
-                aria-disabled={busy || newChatBusy || agentSwitchBusy || voiceOpen}
-                className={"max-w-44 shrink-0 truncate rounded-lg border px-3 py-2 text-xs hover:bg-secondary " +
-                  (session.id === conversationId ? "border-primary/50 bg-primary/10 font-semibold" : "text-muted-foreground")}
-                title={session.subject || "Untitled chat"}>
-                {session.subject || "Untitled chat"}
-              </a>
-            ))}
-          </div>
-        </div>
-        {chatHistoryNotice && <p role="alert" className="mx-auto mt-1 max-w-3xl text-xs text-destructive">{chatHistoryNotice}</p>}
-      </nav>
-
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+        <aside id="chat-conversation-sidebar"
+          role={chatHistoryOpen ? "dialog" : undefined} aria-modal={chatHistoryOpen ? true : undefined}
+          aria-label={chatHistoryOpen ? "Conversations" : undefined}
+          className={`${chatHistoryOpen ? "flex" : "hidden"} absolute inset-0 z-30 w-full flex-col border-r bg-background lg:relative lg:inset-auto lg:z-auto lg:flex lg:w-56 lg:shrink-0 xl:w-64`}>
+          <nav aria-label="Chat history" className="flex min-h-0 w-full flex-1 flex-col">
+            <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
+              <h2 className="text-sm font-semibold">Conversations</h2>
+              <button ref={historyCloseRef} type="button" className="rounded-md border px-2 py-1 text-xs lg:hidden"
+                onClick={() => setChatHistoryOpen(false)} aria-label="Close conversations">Close</button>
+            </div>
+            <div className="shrink-0 px-3 pt-3">
+              <button type="button" onClick={() => void startNewChat()}
+                disabled={busy || newChatBusy || agentSwitchBusy || composeBusy || mailPermissionBusy || voiceOpen}
+                className="w-full rounded-lg border border-primary/25 bg-primary/5 px-3 py-2.5 text-left text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-50">
+                {newChatBusy ? "Creating…" : "+ New chat"}
+              </button>
+            </div>
+            <div aria-label="Recent conversations" className="mt-3 min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-2 pb-4">
+              {conversations.map(session => (
+                <a key={session.id}
+                  href={"/chat?" + new URLSearchParams({ agentId, conversationId: session.id }).toString()}
+                  onClick={event => {
+                    if (busy || newChatBusy || agentSwitchBusy || voiceOpen || composeBusy || mailPermissionBusy
+                      || composeInFlightRef.current) { event.preventDefault(); return; }
+                    if (session.id !== conversationId && draft.trim()
+                      && !window.confirm("Open this chat and discard your unsent message?")) event.preventDefault();
+                  }}
+                  aria-current={session.id === conversationId ? "page" : undefined}
+                  aria-disabled={busy || newChatBusy || agentSwitchBusy || voiceOpen}
+                  className={"block min-w-0 truncate rounded-lg px-3 py-2.5 text-left text-sm transition hover:bg-secondary " +
+                    (session.id === conversationId ? "bg-primary/10 font-semibold text-foreground" : "text-muted-foreground")}
+                  title={session.subject || "Untitled chat"}>
+                  {session.subject || "Untitled chat"}
+                </a>
+              ))}
+              {conversations.length === 0 && <p className="px-3 py-4 text-xs text-muted-foreground">No saved conversations yet.</p>}
+            </div>
+            {chatHistoryNotice && <p role="alert" className="shrink-0 border-t p-3 text-xs text-destructive">{chatHistoryNotice}</p>}
+          </nav>
+        </aside>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="max-h-[45%] shrink-0 overflow-y-auto overscroll-contain">
       {agentSwitchNotice && <p role="alert" className="mx-auto w-full max-w-3xl px-4 py-2 text-xs text-destructive">{agentSwitchNotice}</p>}
       {composeNotice && <p role="status" className="mx-auto w-full max-w-3xl px-4 py-2 text-xs text-muted-foreground">{composeNotice}</p>}
       {mailComposerOpen && !voiceOpen && !agentSwitchBusy && (
@@ -582,12 +618,15 @@ export function ChatClient({
           <button type="button" disabled={mailPermissionBusy || busy || agentSwitchBusy} onClick={() => void saveMailPermissions()} className="mt-3 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">Confirm and save permissions</button>
         </section>
       )}
+          </div>
       {voiceOpen ? (
-        <VoiceWorkspace organizationId={organizationId} agents={agents} initialAgentId={agentId}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <VoiceWorkspace organizationId={organizationId} agents={agents} initialAgentId={agentId}
           conversationId={conversationId} embedded onReturnToChat={() => { void returnFromVoice(); }} />
+        </div>
       ) : (
-      <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
-        <div role="log" aria-live="polite" className="min-w-0 flex-1 space-y-6 overflow-y-auto py-6">
+      <section className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
+        <div ref={messageScrollRef} role="log" aria-live="polite" className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto overscroll-contain py-6">
           {messages.length === 0 ? (
             <div className="grid min-h-[50vh] place-items-center text-center">
               <div className="max-w-md">
@@ -625,10 +664,10 @@ export function ChatClient({
             </details>
           ) : null}
           {busy && !responseStarted && <TypingIndicator />}
-          <div ref={bottomRef} />
+
         </div>
 
-        <div className="sticky bottom-0 bg-background pb-4 pt-2">
+        <div className="shrink-0 bg-background pb-4 pt-2">
           <div className="rounded-2xl border border-border bg-card shadow-sm focus-within:border-primary/30 focus-within:ring-2 focus-within:ring-primary/10">
             <textarea
               ref={composerRef}
@@ -659,6 +698,8 @@ export function ChatClient({
         </div>
       </section>
       )}
+        </div>
+      </div>
     </main>
   );
 }
