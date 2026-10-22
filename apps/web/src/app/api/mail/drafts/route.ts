@@ -4,7 +4,7 @@ import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { assertSameOrigin } from "@/lib/identity/local-auth";
-import { hasDraftChanges } from "@/lib/mail/draft-update-validation";
+import { validateDraftWrite } from "@/lib/mail/draft-write-validation";
 
 export const dynamic = "force-dynamic";
 
@@ -17,13 +17,13 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => null);
     const organizationId = typeof body?.organizationId === "string" ? body.organizationId : "";
     const emailAccountId = typeof body?.emailAccountId === "string" ? body.emailAccountId : "";
-    const to = Array.isArray(body?.to) ? body.to.filter((v: unknown): v is string => typeof v === "string" && v.includes("@")) : [];
-    if (!organizationId || !emailAccountId || to.length === 0) return NextResponse.json({ error: "validation_error", message: "Organization, sending mailbox and at least one recipient are required." }, { status: 422 });
-    const subject = typeof body?.subject === "string" ? body.subject : "";
-    const bodyText = typeof body?.bodyText === "string" ? body.bodyText : "";
+    if (!organizationId || !emailAccountId) return NextResponse.json({ error: "validation_error", message: "Organization and sending mailbox are required." }, { status: 422 });
+    const validated = validateDraftWrite(body, "create");
+    if (!validated.ok) return NextResponse.json({ error: "invalid_draft_payload", message: validated.message }, { status: 422 });
+    const { to = [], cc = [], bcc = [], subject = "", bodyText = "" } = validated.fields;
     const subjectRef = asOrganizationId(organizationId);
     const subjectUser = await authorize(request, { organizationId: subjectRef, permission: "email.write" }, getIdentityAdapter(), getIdentityRepository());
-    const draft = await createLocalDraft({ organizationId, emailAccountId, to, cc: Array.isArray(body?.cc) ? body.cc : [], bcc: Array.isArray(body?.bcc) ? body.bcc : [], subject, bodyText });
+    const draft = await createLocalDraft({ organizationId, emailAccountId, to, cc, bcc, subject, bodyText });
     await recordAuditEvent({ organizationId, actorUserId: subjectUser.user.id, eventType: "email.draft.created", targetType: "email_message", targetId: String(draft.id), action: "create", decision: "allowed" });
     return NextResponse.json({ draft }, { status: 201 });
   } catch (error) {
@@ -41,9 +41,10 @@ export async function PATCH(request: Request) {
     const organizationId = typeof body?.organizationId === "string" ? body.organizationId : "";
     const messageId = typeof body?.messageId === "string" ? body.messageId : "";
     if (!organizationId || !messageId) return NextResponse.json({ error: "validation_error", message: "Organization and draft are required." }, { status: 422 });
-    if (!hasDraftChanges(body)) return NextResponse.json({ error: "no_draft_changes", message: "Choose at least one editable draft field." }, { status: 422 });
+    const validated = validateDraftWrite(body, "patch");
+    if (!validated.ok) return NextResponse.json({ error: "invalid_draft_payload", message: validated.message }, { status: 422 });
     const subjectUser = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "email.write" }, getIdentityAdapter(), getIdentityRepository());
-    const draft = await updateLocalDraftForOrganization(organizationId, messageId, { to: Array.isArray(body?.to) ? body.to : undefined, cc: Array.isArray(body?.cc) ? body.cc : undefined, bcc: Array.isArray(body?.bcc) ? body.bcc : undefined, subject: typeof body?.subject === "string" ? body.subject : undefined, bodyText: typeof body?.bodyText === "string" ? body.bodyText : undefined });
+    const draft = await updateLocalDraftForOrganization(organizationId, messageId, validated.fields);
     if (!draft) {
       // Do not report a live, approved/queued draft as missing. Mutation is
       // blocked by the atomic repository SQL while human approval is active.
