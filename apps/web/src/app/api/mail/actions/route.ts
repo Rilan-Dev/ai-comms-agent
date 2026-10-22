@@ -17,11 +17,8 @@ export const dynamic = "force-dynamic";
 
 function validRecipients(value: unknown): string[] {
   return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.trim())).map(item => item.trim().toLowerCase())
-    : [];
-}
-
-export async function POST(request: Request) {
+    ? value.filter((item): item is string => typeof item === "string" && /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(item.trim())).map(item => item.trim().toLowerCase())
+ export async function POST(request: Request) {
   try { assertSameOrigin(request); }
   catch { return NextResponse.json({ error: "invalid_origin" }, { status: 403 }); }
   try {
@@ -37,7 +34,7 @@ export async function POST(request: Request) {
 
     const subject = await authorize(
       request,
-      { organizationId: asOrganizationId(organizationId), permission: "organization.update" },
+      { organizationId: asOrganizationId(organizationId), permission: "email.write" },
       getIdentityAdapter(),
       getIdentityRepository(),
     );
@@ -51,10 +48,22 @@ export async function POST(request: Request) {
       if (!draft || !Boolean(draft.is_draft) || String(draft.email_account_id) !== emailAccountId) {
         return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization/mailbox." }, { status: 404 });
       }
+      const to = validRecipients(draft.to_recipients);
+      const cc = validRecipients(draft.cc_recipients);
+      const bcc = validRecipients(draft.bcc_recipients);
+      // Never silently drop persisted recipients from a human-reviewed action.
+      if (to.length === 0 || to.length !== (Array.isArray(draft.to_recipients) ? draft.to_recipients.length : 0)
+          || cc.length !== (Array.isArray(draft.cc_recipients) ? draft.cc_recipients.length : 0)
+          || bcc.length !== (Array.isArray(draft.bcc_recipients) ? draft.bcc_recipients.length : 0)) {
+        return NextResponse.json({
+          error: "invalid_draft_recipients",
+          message: "The saved draft contains missing or invalid recipients. Correct and resave it before requesting approval.",
+        }, { status: 422 });
+      }
       snapshot = {
-        to: draft.to_recipients ?? [],
-        cc: draft.cc_recipients ?? [],
-        bcc: draft.bcc_recipients ?? [],
+        to,
+        cc,
+        bcc,
         subject: draft.subject ?? "",
         bodyText: draft.text_body ?? "",
       };
@@ -113,6 +122,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "email_action_conflict", message: error.message }, { status: 409 });
     }
     return authorizationErrorToResponse(error);
+  }
+}
+
+or);
   }
 }
 
