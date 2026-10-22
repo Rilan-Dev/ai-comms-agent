@@ -37,7 +37,13 @@ export async function PATCH(request: Request) {
     if (!organizationId || !messageId) return NextResponse.json({ error: "validation_error", message: "Organization and draft are required." }, { status: 422 });
     const subjectUser = await authorize(request, { organizationId: asOrganizationId(organizationId), role: "member" }, getIdentityAdapter(), getIdentityRepository());
     const draft = await updateLocalDraftForOrganization(organizationId, messageId, { to: Array.isArray(body?.to) ? body.to : undefined, cc: Array.isArray(body?.cc) ? body.cc : undefined, bcc: Array.isArray(body?.bcc) ? body.bcc : undefined, subject: typeof body?.subject === "string" ? body.subject : undefined, bodyText: typeof body?.bodyText === "string" ? body.bodyText : undefined });
-    if (!draft) return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization." }, { status: 404 });
+    if (!draft) {
+      // Do not report a live, approved/queued draft as missing. Mutation is
+      // blocked by the atomic repository SQL while human approval is active.
+      const existing = await getLocalDraftForOrganization(organizationId, messageId);
+      if (existing) return NextResponse.json({ error: "draft_approval_locked", message: "This draft is awaiting send approval or execution. Reject or finish the action before editing it." }, { status: 409 });
+      return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization." }, { status: 404 });
+    }
     await recordAuditEvent({ organizationId, actorUserId: subjectUser.user.id, eventType: "email.draft.updated", targetType: "email_message", targetId: messageId, action: "update", decision: "allowed" });
     return NextResponse.json({ draft });
   } catch (error) {
@@ -76,7 +82,11 @@ export async function DELETE(request: Request) {
     if (!organizationId || !messageId) return NextResponse.json({ error: "validation_error", message: "Organization and draft are required." }, { status: 422 });
     const subjectUser = await authorize(request, { organizationId: asOrganizationId(organizationId), role: "member" }, getIdentityAdapter(), getIdentityRepository());
     const deleted = await deleteLocalDraftForOrganization(organizationId, messageId);
-    if (!deleted) return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization." }, { status: 404 });
+    if (!deleted) {
+      const existing = await getLocalDraftForOrganization(organizationId, messageId);
+      if (existing) return NextResponse.json({ error: "draft_approval_locked", message: "This draft is awaiting send approval or execution. Reject or finish the action before deleting it." }, { status: 409 });
+      return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization." }, { status: 404 });
+    }
     await recordAuditEvent({ organizationId, actorUserId: subjectUser.user.id, eventType: "email.draft.deleted", targetType: "email_message", targetId: messageId, action: "delete", decision: "allowed" });
     return NextResponse.json({ deleted: true });
   } catch (error) {
