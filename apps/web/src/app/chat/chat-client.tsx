@@ -6,6 +6,8 @@ import { AudioLines, Bot, Send, Sparkles, User } from "lucide-react";
 import dynamic from "next/dynamic";
 import { readSseEvents } from "@/lib/streaming/sse";
 import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "@/lib/ai/activity-progress";
+import { EMAIL_PERMISSION_PRESETS, REGISTERED_EMAIL_POLICY_NAMES, emailPermissionPresetSelection } from "@/lib/agents/email-permission-presets";
+import type { AgentPolicy } from "@ai-comms-agent/shared";
 
 // Defer microphone and vendor transport code until the user requests voice.
 const VoiceWorkspace = dynamic(
@@ -35,6 +37,11 @@ export function ChatClient({
   const [conversationId, setConversationId] = useState(initialConversationId);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState("");
+  const [mailPermissionOpen, setMailPermissionOpen] = useState(false);
+  const [mailPolicy, setMailPolicy] = useState<AgentPolicy | null>(null);
+  const [mailToolSelection, setMailToolSelection] = useState<string[]>([]);
+  const [mailPermissionBusy, setMailPermissionBusy] = useState(false);
+  const [mailPermissionNotice, setMailPermissionNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [responseStarted, setResponseStarted] = useState(false);
   const [activity, setActivity] = useState("");
@@ -63,6 +70,10 @@ export function ChatClient({
   }, [messages.length, busy]);
 
   async function switchAgent(nextAgentId: string) {
+    setMailPermissionOpen(false);
+    setMailPolicy(null);
+    setMailToolSelection([]);
+    setMailPermissionNotice("");
     if (busy || nextAgentId === agentId) return;
     setAgentId(nextAgentId);
     try {
@@ -96,6 +107,53 @@ export function ChatClient({
         createdAt: new Date().toISOString(),
       }]);
     }
+  }
+
+  async function openMailPermissions() {
+    if (!activeAgent) return;
+    if (mailPermissionOpen) { setMailPermissionOpen(false); return; }
+    setMailPermissionBusy(true);
+    setMailPermissionNotice("");
+    try {
+      const response = await fetch("/api/agents/" + encodeURIComponent(activeAgent.id) + "/policy?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message ?? "Administrator access is required to change agent permissions.");
+      setMailPolicy(data.policy);
+      setMailToolSelection(data.policy.allowedTools);
+      setMailPermissionOpen(true);
+    } catch (error) {
+      setMailPermissionNotice(error instanceof Error ? error.message : "Permissions are unavailable.");
+    } finally { setMailPermissionBusy(false); }
+  }
+  async function saveMailPermissions() {
+    if (!activeAgent || !mailPolicy) return;
+    const previous = new Set(mailPolicy.allowedTools);
+    const adds = mailToolSelection.filter(name => !previous.has(name));
+    const removes = mailPolicy.allowedTools.filter(name => !mailToolSelection.includes(name));
+    if (!adds.length && !removes.length) { setMailPermissionNotice("No changes to save."); return; }
+    if (!window.confirm(`Change this agent's permissions? Add ${adds.length}, remove ${removes.length}. This affects future chat and voice tool access. Email sending will STILL require separate human approval.`)) return;
+    setMailPermissionBusy(true);
+    setMailPermissionNotice("");
+    try {
+      const response = await fetch("/api/agents/" + encodeURIComponent(activeAgent.id) + "/policy", {
+        method: "PATCH", headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          organizationId,
+          securityPolicy: mailPolicy.securityPolicy,
+          rateLimits: mailPolicy.rateLimits,
+          allowedTools: mailToolSelection,
+          allowedSenders: mailPolicy.allowedSenders,
+          blockedSenders: mailPolicy.blockedSenders,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message ?? "Policy could not be saved; administrator access is required.");
+      setMailPolicy(data.policy);
+      setMailToolSelection(data.policy.allowedTools);
+      setMailPermissionNotice("Permissions saved. New turns use the updated agent policy. No email has been sent.");
+    } catch (error) {
+      setMailPermissionNotice(error instanceof Error ? error.message : "Permissions could not be saved.");
+    } finally { setMailPermissionBusy(false); }
   }
 
   async function sendMessage() {
@@ -183,6 +241,7 @@ export function ChatClient({
             </div>
           </div>
           <div className="flex min-w-0 items-center gap-2">
+            <button type="button" onClick={() => void openMailPermissions()} disabled={busy || mailPermissionBusy || voiceOpen} className="rounded-md border px-3 py-2 text-xs font-medium hover:bg-secondary disabled:opacity-50" aria-expanded={mailPermissionOpen}>Mail permissions</button>
             <button type="button" onClick={() => setVoiceOpen(true)} disabled={busy || voiceOpen}
               aria-pressed={voiceOpen} aria-label={voiceOpen ? "Voice conversation open; use Back to chat to end safely" : "Open live realtime voice conversation"}
               className="inline-flex shrink-0 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium transition hover:bg-secondary disabled:opacity-50">
@@ -197,6 +256,25 @@ export function ChatClient({
         </div>
       </header>
 
+      {mailPermissionNotice && <p role="status" className="mx-auto w-full max-w-3xl px-4 py-2 text-xs text-muted-foreground">{mailPermissionNotice}</p>}
+      {mailPermissionOpen && mailPolicy && !voiceOpen && (
+        <section aria-label="Agent mail permissions" className="mx-auto w-full max-w-3xl border-b px-4 py-4">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">Agent mail permissions</h2>
+            <a href={`/agents/${agentId}?tab=policy`} className="text-xs underline">Full policy and mailbox setup</a>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">Administrator-only. Choose a preset, adjust individual tools if needed, then confirm to save. Mailboxes and user permissions are separate requirements.</p>
+          <div className="mt-3 flex flex-wrap gap-2">{EMAIL_PERMISSION_PRESETS.map(preset => <button type="button" key={preset.id} disabled={mailPermissionBusy} title={preset.description}
+            onClick={() => setMailToolSelection(current => emailPermissionPresetSelection(current, preset.id))}
+            className="rounded-md border bg-background px-3 py-2 text-xs hover:border-primary disabled:opacity-50">{preset.label}</button>)}</div>
+          <details className="mt-3 rounded-md border p-3">
+            <summary className="cursor-pointer text-xs font-semibold">Fine-tune email tool permissions</summary>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">{REGISTERED_EMAIL_POLICY_NAMES.map(name => <label key={name} className="flex items-center gap-2 text-xs"><input type="checkbox" checked={mailToolSelection.includes(name)} onChange={event => setMailToolSelection(current => event.target.checked ? [...new Set([...current, name])] : current.filter(n => n !== name))} />{name}</label>)}</div>
+          </details>
+          <p className="mt-2 text-xs text-muted-foreground">{mailToolSelection.filter(name => REGISTERED_EMAIL_POLICY_NAMES.some(registered => registered === name)).length} email tools selected. Unrelated custom permissions are preserved. No permission changes take effect before saving.</p>
+          <button type="button" disabled={mailPermissionBusy} onClick={() => void saveMailPermissions()} className="mt-3 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">Confirm and save permissions</button>
+        </section>
+      )}
       {voiceOpen ? (
         <VoiceWorkspace organizationId={organizationId} agents={agents} initialAgentId={agentId}
           conversationId={conversationId} embedded onReturnToChat={() => { void returnFromVoice(); }} />
