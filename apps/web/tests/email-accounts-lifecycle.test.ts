@@ -67,7 +67,7 @@ test("OAuth callbacks return provider failures to the account UI without exposin
 
 test("email account API enforces organization authorization and never returns credentials", () => {
   const source = readFileSync(accountsRoutePath, "utf8");
-  assert.match(source, /permission: "organization\.read"/);
+  assert.match(source, /permission: "email\.read"/);
   assert.match(source, /role: "admin"/);
   assert.match(source, /account\.organization_id !== organizationId/);
   assert.doesNotMatch(source, /loadCredentials\([^\n]+\).*NextResponse/);
