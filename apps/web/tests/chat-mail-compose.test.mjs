@@ -19,7 +19,7 @@ test("draft and send requests go through registered policy, permission and audit
   const s=route();
   assert.match(s, /createEmailToolRuntime\(organizationId, agentId\)/);
   assert.match(s, /invokeEmailReadTool\(/);
-  assert.match(s, /toolContext\.auth_subject/);
+  assert.match(s, /auth_subject:/);
   assert.match(s, /"email.draft.create"/);
   assert.match(s, /"email.send.request"/);
   assert.match(s, /subject\.membership/);
