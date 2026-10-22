@@ -8,8 +8,14 @@ export function deniedEmailWriteExplanation(
   permissions: ReadonlySet<string>,
 ): string | null {
   if (permissions.has("email.write")) return null;
-  if (!/^(?:(?:please|kindly)\s+)?(?:(?:can|could|would)\s+you\s+)?(?:send|draft|write|compose|forward|reply\s+to|request\s+(?:send|email)\s+approval)\b/i.test(text.trim())) return null;
-  if (!/\b(?:e-?mail|message|draft|reply)\b/i.test(text)) return null;
+  const prompt = text.trim();
+  const command = prompt.match(/^(?:(?:please|kindly)\s+)?(?:(?:can|could|would)\s+you\s+)?(send|draft|write|compose|forward|reply\s+to|request\s+(?:send|email)\s+approval)\b/i);
+  if (!command || !/\b(?:e-?mail|message|draft|reply)\b/i.test(prompt)) return null;
+  // "Send me a summary of emails" is a read request, not an outbound
+  // message. Match the payload immediately after 'send', not a keyword
+  // somewhere in the rest of the prompt.
+  if (command[1]?.toLowerCase() === "send"
+    && !/^(?:(?:please|kindly)\s+)?(?:(?:can|could|would)\s+you\s+)?send\s+(?:(?:me|an?|the|this|that|test|new)\s+){0,4}(?:e-?mail|message)\b/i.test(prompt)) return null;
   return "I cannot create an email draft or request send approval because your signed-in organization role lacks email.write. The agent's saved tool choices and assigned mailboxes do not grant that user permission. No draft or send-approval request was created. No email was sent. An authorized administrator must arrange a separately approved role-permission change before you retry. Even with that access, sending requires explicit human approval.";
 }
 
