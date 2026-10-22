@@ -3,6 +3,7 @@ import { appendConversationMessage, getChatConversation, getOrCreateChatConversa
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { formatRollingMailSummary, MAX_REPORT_MESSAGES, parseRollingMailSummaryRequest, type RollingMailRow } from "@/lib/mail/rolling-summary";
 import { parseExplicitMailDateRangeRequest } from "@/lib/mail/explicit-date-range";
+import { canSupplyAmbientContext } from "@/lib/ai/ambient-context-access";
 
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -501,10 +502,23 @@ export async function POST(request: Request) {
       .slice(-6)
       .map(m => m.content);
     const combinedSearchContext = [...recentMessages, content].join(" ");
-    const emailContext = subject.permissions.has("email.read")
-      ? await loadEmailContext(organizationId, agentId, combinedSearchContext)
-      : null;
-    const whatsappContext = await loadWhatsAppContext(organizationId, agentId, combinedSearchContext);
+    // Ambient context is injected into model system messages, so it MUST
+    // satisfy both the actor's read permission and the agent's current
+    // registered read-tool allowlist. A bound account by itself is not consent.
+    let emailContext: string | null = null;
+    if (subject.permissions.has("email.read") && asksAboutEmail(combinedSearchContext)) {
+      const emailRuntime = await createEmailToolRuntime(organizationId, agentId);
+      if (canSupplyAmbientContext("email", subject.permissions, emailRuntime.registry.listForAgent(agentId))) {
+        emailContext = await loadEmailContext(organizationId, agentId, combinedSearchContext);
+      }
+    }
+    let whatsappContext: string | null = null;
+    if (subject.permissions.has("whatsapp.read") && asksAboutWhatsApp(combinedSearchContext)) {
+      const whatsappRuntime = await createWhatsAppToolRuntime(organizationId, agentId);
+      if (canSupplyAmbientContext("whatsapp", subject.permissions, whatsappRuntime.registry.listForAgent(agentId))) {
+        whatsappContext = await loadWhatsAppContext(organizationId, agentId, combinedSearchContext);
+      }
+    }
     await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "user", content });
 
     // Message ordering for the LLM:
