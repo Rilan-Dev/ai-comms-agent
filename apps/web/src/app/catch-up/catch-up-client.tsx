@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { ArrowRight, Inbox, RefreshCw, ShieldCheck } from "lucide-react";
 import { CatchUpRequestScope, type CatchUpScopeToken } from "./request-scope";
+import { catchUpPeriodUtc, parseCatchUpDays, type CatchUpDays } from "@/lib/briefings/catch-up-window";
 
 type AgentChoice = {
   agentId: string; name: string;
@@ -29,11 +30,11 @@ const statusText: Record<Manifest["status"], string> = {
   invalidated: "Some selected sources changed or access was revoked",
 };
 
-export function CatchUpClient({ organizationId, agents }: { organizationId: string; agents: AgentChoice[] }) {
+export function CatchUpClient({ organizationId, agents, initialDays = 7 }: { organizationId: string; agents: AgentChoice[]; initialDays?: CatchUpDays }) {
   const [agentId, setAgentId] = useState(agents[0]?.agentId ?? "");
   const agent = useMemo(() => agents.find(a => a.agentId === agentId), [agents, agentId]);
   const [mailboxIds, setMailboxIds] = useState<string[]>(agents[0]?.mailboxes.map(a => a.id) ?? []);
-  const [days, setDays] = useState(7);
+  const [days, setDays] = useState<CatchUpDays>(initialDays);
   const [manifest, setManifest] = useState<Manifest | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
   const [items, setItems] = useState<SummaryItem[]>([]);
@@ -73,8 +74,8 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
     clearSelectionResults();
   }
 
-  function changeDays(nextDays: number) {
-    if (busy || ![1, 7, 30].includes(nextDays)) return;
+  function changeDays(nextDays: CatchUpDays) {
+    if (busy) return;
     setDays(nextDays);
     clearSelectionResults();
   }
@@ -137,7 +138,7 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
       const request = {
         agentId: token.agentId, mailboxIds: selectedMailboxes,
         language: "en", mode: "catch_up", requestKey: crypto.randomUUID(),
-        period: { start: new Date(now.getTime() - selectedDays * 86400000).toISOString(), end: now.toISOString() },
+        period: catchUpPeriodUtc(selectedDays, now),
       };
       const response = await fetch(`/api/organizations/${organizationId}/briefings`, {
         method: "POST", headers: { "content-type": "application/json" },
@@ -180,11 +181,11 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
 
   return (
     <main className="mx-auto min-w-0 max-w-5xl px-4 py-7 sm:px-8">
-      <a href="/chat" className="text-sm text-muted-foreground hover:text-foreground">← Back to Chat</a>
+      <a href="/overview" className="text-sm text-muted-foreground hover:text-foreground">← Back to Overview</a>
       <header className="mt-5 border-b border-border pb-6">
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground"><ShieldCheck size={16} /> Private catch-up</p>
         <h1 className="mt-2 font-display text-3xl font-semibold">Catch up on my mail</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">Choose your permitted mailboxes and a date window. Preparing a selection does not mark messages read or reviewed.</p>
+        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">Choose your permitted mailboxes and a date window. This is a selected lookback window, not automatically detected absence. Preparing a selection does not mark messages read or reviewed.</p>
       </header>
       <section aria-label="Catch-up scope" className="mt-6 grid gap-4 rounded-xl border border-border bg-card p-5">
         <label className="grid gap-1.5 text-sm font-medium">Agent
@@ -207,9 +208,10 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
           </div>}
         </fieldset>
         <label className="grid gap-1.5 text-sm font-medium">Catch-up window
-          <select value={days} disabled={busy} onChange={e => changeDays(Number(e.target.value))}
+          <select value={days} disabled={busy} onChange={e => changeDays(parseCatchUpDays(e.target.value))}
             className="h-11 rounded-md border border-input bg-background px-3">
             <option value={1}>Last 1 day</option>
+            <option value={5}>Last 5 days</option>
             <option value={7}>Last 7 days (default)</option>
             <option value={30}>Last 30 days</option>
           </select>
@@ -225,6 +227,7 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
           <h2 className="text-lg font-semibold">Your selection</h2>
           <p role="status" className="mt-2 text-sm text-muted-foreground">{statusText[manifest.status]}</p>
           <p className="mt-1 text-sm">{manifest.sourceCount} source {manifest.sourceCount === 1 ? "email" : "emails"} selected from your current permitted scope.</p>
+          {manifest.period ? <p className="mt-1 text-xs text-muted-foreground">Selected UTC window: <time dateTime={manifest.period.start}>{manifest.period.start}</time> to <time dateTime={manifest.period.end}>{manifest.period.end}</time>. This is not an automatic absence or read-state measurement.</p> : null}
           <p className="mt-3 text-xs text-muted-foreground">C3 source-grounded AI generation is not yet running automatically. Only a complete, verified generated item can be explicitly marked reviewed; opening this page changes no review state.</p>
           <button type="button" disabled={busy} onClick={() => refreshDetail(manifest.id)}
             className="mt-4 rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary">
