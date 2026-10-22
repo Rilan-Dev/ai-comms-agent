@@ -344,3 +344,8 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Next product work:** Define a securely bounded read-only model synthesis layer over a COMPLETE authorized counted row set, with per-message IDs, citations, source count, date/agent account scope, explicit partial/empty abstention and prompt-injection-resilient serialization. Do not show one LLM-summarized sample as the whole inbox, invent messages, fabricate provider freshness or bypass mailbox permissions/tool allowlists. If count exceeds 500, require paginated evidence retrieval before claiming full coverage; no native provider-sync guarantee.
 - **Verification gate:** Full pnpm/Vitest/web/Clara/worker/DB builds, PostgreSQL seeded boundary/role/tenant negatives, browser and real source sync status after OPS-01 environment readiness. FIX-01 retains previous 24h summary incidents, HTML sanitizer #36 and transport bugs; OPS-01 owns credentials/CI/Vercel/migrations/sync integration.
 - **Session:** `docs/project-control/sessions/DEV01-EXPLICIT-DATE-MAIL-20261019.md`.
+
+### BKL-DEV01-MULTI-CHAT-SESSIONS-20261023 — chat session history follow-up
+- **Owner:** DEV-01 product feature/source, OPS-01 runtime/DB/deploy, FIX-01 independently reproduced bugs.
+- **State:** SOURCE_IMPLEMENTED; NATIVE_TEST/DB/BROWSER_ACCEPTANCE_PENDING; PRIVATE_OWNER_SCOPE_REVIEW_REQUIRED.
+- **Work/next:** Run 4 focused web tests, web/db TypeScript; two-session PostgreSQL/auth/browser and voice-return acceptance. Decide organization-shared versus creator-private ownership and migration for legacy chats before expanding visibility; pagination/search/rename/archive require separate approval. Plan `docs/plans/CHAT_CONVERSATION_SESSIONS_20261023.md`. No message deletion or routine activation.
