@@ -11,6 +11,7 @@ import type { DraftParams, EmailCredentials } from "@ai-comms-agent/shared";
 import { createEmailProviderRegistry } from "./registry";
 import { verifyEmailProviderConnection } from "./provider-verification";
 import { isApprovedEmailActionAccountUsable } from "./action-account-guard";
+import { paramsFromApprovedEmailSnapshot } from "./approved-email-draft";
 
 function credentialsFor(
   encrypted: Record<string, unknown>,
@@ -50,23 +51,23 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
     const provider = createEmailProviderRegistry().create(account.provider);
 
     const snapshot = claimed.recipientSnapshot;
-    const result = await verifyEmailProviderConnection(provider, credentials, async ({ provider: connected }) => {
-      if (claimed.actionType === "send_email") {
+    const result = await verifyEmailProvi      if (claimed.actionType === "send_email") {
         const draftId = claimed.draftId;
         if (!draftId) throw new Error("Approved send action has no draft");
         const draft = await getMailMessageForOrganization(organizationId, draftId);
-        if (!draft || !Boolean(draft.is_draft)) throw new Error("Approved draft is no longer available");
-        const params: DraftParams = {
-          to: Array.isArray(snapshot.to) ? snapshot.to.map(String) : [],
-          cc: Array.isArray(snapshot.cc) ? snapshot.cc.map(String) : [],
-          bcc: Array.isArray(snapshot.bcc) ? snapshot.bcc.map(String) : [],
-          subject: String(snapshot.subject ?? ""),
-          body_text: String(snapshot.bodyText ?? ""),
-        };
-        const providerDraftId = draft.provider_draft_id
-          ? String(draft.provider_draft_id)
-          : (await connected.createDraft(params)).draft_id;
+        if (!draft || !Boolean(draft.is_draft) || String(draft.email_account_id) !== claimed.emailAccountId) {
+          throw new Error("Approved draft is no longer available in the selected mailbox");
+        }
+        const params = paramsFromApprovedEmailSnapshot(snapshot);
+        // A remote draft may have changed since approval. Create an isolated
+        // provider draft with the immutable approved recipients and content.
+        const providerDraftId = (await connected.createDraft(params)).draft_id;
         const sent = await connected.sendDraft(providerDraftId);
+        providerAccepted = true;
+        return sent;
+      }
+
+rDraftId);
         providerAccepted = true;
         return sent;
       }
