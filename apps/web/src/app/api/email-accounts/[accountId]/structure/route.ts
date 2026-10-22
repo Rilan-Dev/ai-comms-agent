@@ -30,7 +30,7 @@ export async function GET(
 
     await authorize(
       request,
-      { organizationId: asOrganizationId(organizationId), permission: "organization.read" },
+      { organizationId: asOrganizationId(organizationId), permission: "email.read" },
       getIdentityAdapter(),
       getIdentityRepository(),
     );
