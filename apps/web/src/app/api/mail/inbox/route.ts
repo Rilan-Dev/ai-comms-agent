@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const organizationId = url.searchParams.get("organizationId") ?? "";
     if (!organizationId) return NextResponse.json({ error: "validation_error", message: "Organization is required." }, { status: 400 });
-    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "email.read" }, getIdentityAdapter(), getIdentityRepository());
     const messageId = url.searchParams.get("messageId");
     if (messageId) {
       const message = await getMailMessageForOrganization(organizationId, messageId);
