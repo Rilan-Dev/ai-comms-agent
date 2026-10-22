@@ -4,6 +4,7 @@ import {
   completeEmailAction,
   listApprovedEmailActions,
   getLocalDraftForOrganization,
+  getMailMessageForOrganization,
   markLocalDraftSentForOrganization,
   PostgresEmailAccountRepository,
   parseCredentialsMasterKey,
@@ -77,26 +78,29 @@ export async function processApprovedEmailActions(limit = 10) {
           providerAccepted = true;
           return { kind: "send", ref: sent };
         }
+        if (action.actionType === "reply_email" && !account.capabilities.reply) {
+          throw new CapabilityNotSupported(account.provider, "reply");
+        }
+        if (action.actionType === "forward_email" && !account.capabilities.forward) {
+          throw new CapabilityNotSupported(account.provider, "forward");
+        }
+        const messageId = String(snapshot.messageId ?? "");
+        const source = messageId ? await getMailMessageForOrganization(action.organizationId, messageId) : null;
+        if (!source || Boolean(source.is_draft)
+            || String(source.email_account_id) !== action.emailAccountId
+            || typeof source.provider_message_id !== "string"
+            || !source.provider_message_id.trim() || source.provider_message_id.startsWith("local-draft:")) {
+          throw new Error("Approved reply/forward source is not available in the selected mailbox");
+        }
+        const providerMessageId = String(source.provider_message_id);
+        const params = paramsFromApprovedEmailSnapshot(snapshot);
         if (action.actionType === "reply_email") {
-          if (!account.capabilities.reply) throw new CapabilityNotSupported(account.provider, "reply");
-          const messageId = String(snapshot.messageId ?? "");
-          if (!messageId) throw new Error("Approved reply action has no source message");
-          const params: DraftParams = {
-            to: Array.isArray(snapshot.to) ? snapshot.to.map(String) : [],
-            cc: Array.isArray(snapshot.cc) ? snapshot.cc.map(String) : [],
-            bcc: Array.isArray(snapshot.bcc) ? snapshot.bcc.map(String) : [],
-            subject: String(snapshot.subject ?? ""),
-            body_text: String(snapshot.bodyText ?? ""),
-          };
-          const replied = await connected.reply(messageId, params);
+          const replyParams: DraftParams = { ...params, reply_to_message_id: providerMessageId };
+          const replied = await connected.reply(providerMessageId, replyParams);
           providerAccepted = true;
           return { kind: "reply", ref: replied };
         }
-        if (!account.capabilities.forward) throw new CapabilityNotSupported(account.provider, "forward");
-        const messageId = String(snapshot.messageId ?? "");
-        const recipients = Array.isArray(snapshot.to) ? snapshot.to.map(String) : [];
-        if (!messageId || recipients.length === 0) throw new Error("Approved forward action is incomplete");
-        const forwarded = await connected.forward(messageId, recipients);
+        const forwarded = await connected.forward(providerMessageId, params.to);
         providerAccepted = true;
         return { kind: "forward", ref: forwarded };
       });
