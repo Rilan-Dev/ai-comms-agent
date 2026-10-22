@@ -1,3 +1,14 @@
+## DEV01-HUMAN-FIRST-FIVE-DAY-CATCHUP-20261023 — exact source-vs-runtime evidence
+
+- **Branch:** Development; source commits `b45ed5e7,7785e189,ed11d533,3622c0e4,a727a086`; plan `a63b2745`. Phase 4 `implementation_in_progress`.
+- **Source covered:** Pure exact 1/5/7/30-day lookback presets, default 7 days, controlled server query from `/catch-up?days=5`, five-day link gated by Overview `catchUpAvailable`, authorized per-user/agent mailbox grants and explicit review buttons; no last-visit inference, no C3 worker registration, no WhatsApp.
+- **PASS (narrow):** Isolated Node 22 tests of the exact small pure lookback module mirrored from source: 4/4; isolated `tsc --strict --noEmit --target ES2022 --module ESNext` exit 0. GitHub source inspected 13/14 checks; the sole failed checker incorrectly expected literal Overview link text inside the legacy Vitest file (actual Overview contains the original link), not an app failure.
+- **NOT RUN:** Newly committed `catch-up-five-day-entry.test.mjs`, web Vitest/types/build, DB/tenant/authenticated browser/mobile, real C3 generator, feature toggle environment, external provider, CI/deploy.
+- **Exact next:** Run committed Node regression and web `overview-first-entry`, `briefing-c2-c4-contract`, `briefing-access-route`, `chat-conversation-sidebar-layout` Vitest plus web typecheck at an exact fresh SHA; authenticated fake tenant browser 5-day and invalid days, no-grant/flag-off, pagination/review negative. Preserve gate and separately route OPS CI/runtime and FIX bugs.
+- **Session:** `docs/project-control/sessions/DEV01-HUMAN-FIRST-FIVE-DAY-CATCHUP-20261023.md`.
+
+---
+
 ## DEV01-OVERVIEW-FIRST-EMAIL-COMMAND-CENTER-20261023 — source-only evidence
 
 - **Branch/baseline:** Owner-invoked DEV-01, `Development` started `205821395f2d855d66a73cb58b0142b6bfbde6ac`. Feature source/test commits are listed in the [session](sessions/DEV01-OVERVIEW-FIRST-EMAIL-COMMAND-CENTER-20261023.md).
