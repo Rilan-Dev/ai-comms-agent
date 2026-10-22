@@ -27,7 +27,7 @@ export function mailComposeReadiness(input: {
   const blockers: MailComposeBlocker[] = [];
   if (!input.actorCanWrite) blockers.push({
     code: "missing_email_write",
-    message: "Your signed-in organization role does not grant email.write. Selecting agent tool permissions cannot grant this user permission; a separately authorized role-permission change is required.",
+    message: "Email drafting and send-approval requests are available to active workspace owners and administrators. Your current sign-in does not have that role. Agent tool checkboxes cannot change user access.",
   });
   if (!input.draftToolEnabled) blockers.push({
     code: "draft_tool_disabled",
