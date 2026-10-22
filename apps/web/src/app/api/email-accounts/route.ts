@@ -157,9 +157,13 @@ export async function POST(request: Request) {
           smtpPort: Number(credentials.smtp_port ?? 465),
           tls: credentials.tls === true,
         });
-        const updated = await repository.updateStatus(accountId, "connected");
-        await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: "email.account.reconnected", targetType: "email_account", targetId: accountId, action: "reconnect", decision: "allowed", metadata: { provider: "imap_smtp" } });
-        return NextResponse.json({ account: updated, ok: true });
+        // Testing IMAP/SMTP sockets is not a capability-discovery pass.
+        // Leave the account pending so the mailbox worker can discover and
+        // persist real provider features before marking it connected.
+        const updated = await repository.updateStatus(accountId, "pending");
+        if (!updated) return NextResponse.json({ error: "not_found", message: "Email account was not found." }, { status: 404 });
+        await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: "email.account.reconnected", targetType: "email_account", targetId: accountId, action: "reconnect", decision: "allowed", metadata: { provider: "imap_smtp", status: "pending_worker_verification" } });
+        return NextResponse.json({ account: updated, ok: true, discoveryPending: true });
       } catch (error) {
         const message = error instanceof Error ? error.message : "IMAP/SMTP connection failed.";
         await repository.updateStatus(accountId, "error", message);
