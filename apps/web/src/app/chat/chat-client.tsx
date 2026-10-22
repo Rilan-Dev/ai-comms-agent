@@ -37,6 +37,18 @@ export function ChatClient({
   const [conversationId, setConversationId] = useState(initialConversationId);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState("");
+  const [mailComposerOpen, setMailComposerOpen] = useState(false);
+  const [composeMailboxes, setComposeMailboxes] = useState<Array<{id:string;address:string}>>([]);
+  const [composeAccount, setComposeAccount] = useState("");
+  const [composeTo, setComposeTo] = useState("");
+  const [composeSubject, setComposeSubject] = useState("Test Email");
+  const [composeBody, setComposeBody] = useState("Hi,\n\nThis is a test email from my workspace.\n\nPlease let me know if you receive this correctly.\n\nBest regards");
+  const [composeDraftId, setComposeDraftId] = useState<string | null>(null);
+  const [composeActionId, setComposeActionId] = useState<string | null>(null);
+  const [composeCanDraft, setComposeCanDraft] = useState(false);
+  const [composeCanApprove, setComposeCanApprove] = useState(false);
+  const [composeBusy, setComposeBusy] = useState(false);
+  const [composeNotice, setComposeNotice] = useState("");
   const [mailPermissionOpen, setMailPermissionOpen] = useState(false);
   const [mailPolicy, setMailPolicy] = useState<AgentPolicy | null>(null);
   const [mailToolSelection, setMailToolSelection] = useState<string[]>([]);
@@ -70,6 +82,9 @@ export function ChatClient({
   }, [messages.length, busy]);
 
   async function switchAgent(nextAgentId: string) {
+    setMailComposerOpen(false);
+    setComposeDraftId(null);
+    setComposeActionId(null);
     setMailPermissionOpen(false);
     setMailPolicy(null);
     setMailToolSelection([]);
@@ -107,6 +122,51 @@ export function ChatClient({
         createdAt: new Date().toISOString(),
       }]);
     }
+  }
+
+  async function openMailComposer(recipient = "") {
+    if (!activeAgent) return;
+    setComposeBusy(true);
+    setComposeNotice("");
+    setComposeDraftId(null);
+    setComposeActionId(null);
+    try {
+      const response = await fetch("/api/chat/mail-compose?organizationId=" + encodeURIComponent(organizationId) + "&agentId=" + encodeURIComponent(activeAgent.id), { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message ?? "The bound mailbox could not be loaded.");
+      setComposeMailboxes(data.mailboxes ?? []);
+      setComposeAccount(data.mailboxes?.[0]?.id ?? "");
+      setComposeCanDraft(data.canDraft === true);
+      setComposeCanApprove(data.canRequestApproval === true);
+      if (recipient) setComposeTo(recipient);
+      setMailComposerOpen(true);
+    } catch (error) {
+      setComposeNotice(error instanceof Error ? error.message : "Draft setup failed.");
+    } finally { setComposeBusy(false); }
+  }
+  async function submitMailCompose(action: "draft"|"request_approval") {
+    if (!activeAgent || !composeAccount || composeBusy) return;
+    if (action === "request_approval") {
+      if (!composeDraftId) return;
+      if (!window.confirm(`Request approval to send the saved draft to ${composeTo} from ${composeMailboxes.find(mail => mail.id === composeAccount)?.address ?? "the selected mailbox"}? No email will be sent until a person approves.`)) return;
+    }
+    setComposeBusy(true);
+    setComposeNotice("");
+    try {
+      const response = await fetch("/api/chat/mail-compose", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          organizationId, agentId: activeAgent.id, conversationId, accountId: composeAccount,
+          action, to: composeTo, subject: composeSubject, bodyText: composeBody, draftId: composeDraftId,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message ?? "The email tool was denied. Check your saved permissions.");
+      if (action === "draft" && typeof data.draftId === "string") setComposeDraftId(data.draftId);
+      if (action === "request_approval" && data.status === "pending_approval" && typeof data.actionId === "string") setComposeActionId(data.actionId);
+      setComposeNotice(data.message ?? "The authorized tool completed.");
+    } catch (error) { setComposeNotice(error instanceof Error ? error.message : "The operation failed."); }
+    finally { setComposeBusy(false); }
   }
 
   async function openMailPermissions() {
@@ -158,6 +218,14 @@ export function ChatClient({
 
   async function sendMessage() {
     const content = draft.trim();
+    // Recognize an explicit, bounded test-email request as a LOCAL COMPOSE
+    // preview. Never interpret prose as permission to send or approve.
+    const testEmailRequest = content.match(/^(?:please\\s+)?(?:draft|send|write|compose)\\s+(?:a\\s+)?(?:simple\\s+)?test\\s+email\\s+to\\s+([^\\s,;]+@[^\\s,;]+\\.[^\\s,;]+)\\s*[.!]?$/i);
+    if (testEmailRequest && !busy) {
+      setDraft("");
+      void openMailComposer(testEmailRequest[1]);
+      return;
+    }
     if (!content || busy || !activeAgent) return;
     setDraft("");
     setBusy(true);
@@ -241,6 +309,7 @@ export function ChatClient({
             </div>
           </div>
           <div className="flex min-w-0 items-center gap-2">
+            <button type="button" onClick={() => { if (mailComposerOpen) setMailComposerOpen(false); else void openMailComposer(); }} disabled={busy || composeBusy || voiceOpen} className="rounded-md border px-3 py-2 text-xs font-medium hover:bg-secondary disabled:opacity-50" aria-expanded={mailComposerOpen}>Compose email</button>
             <button type="button" onClick={() => void openMailPermissions()} disabled={busy || mailPermissionBusy || voiceOpen} className="rounded-md border px-3 py-2 text-xs font-medium hover:bg-secondary disabled:opacity-50" aria-expanded={mailPermissionOpen}>Mail permissions</button>
             <button type="button" onClick={() => setVoiceOpen(true)} disabled={busy || voiceOpen}
               aria-pressed={voiceOpen} aria-label={voiceOpen ? "Voice conversation open; use Back to chat to end safely" : "Open live realtime voice conversation"}
@@ -256,6 +325,28 @@ export function ChatClient({
         </div>
       </header>
 
+      {composeNotice && <p role="status" className="mx-auto w-full max-w-3xl px-4 py-2 text-xs text-muted-foreground">{composeNotice}</p>}
+      {mailComposerOpen && !voiceOpen && (
+        <section aria-label="Compose an email using this agent" className="mx-auto w-full max-w-3xl border-b px-4 py-4">
+          <h2 className="text-sm font-semibold">Review an email draft</h2>
+          <p className="mt-1 text-xs text-muted-foreground">The host executes only authorized agent tools. Saving a draft or requesting approval never sends it.</p>
+          {!composeCanDraft && <p role="alert" className="mt-2 text-xs text-destructive">Draft creation is unavailable. Ask an admin to enable Draft mail and confirm your email.write permission.</p>}
+          {!composeMailboxes.length && <p role="alert" className="mt-2 text-xs text-destructive">No connected primary mailbox is assigned to this agent. Assign one in Agent Channels.</p>}
+          <div className="mt-3 grid gap-3">
+            <label className="text-xs font-medium">From mailbox<select aria-label="Sending mailbox" value={composeAccount} disabled={composeBusy || Boolean(composeDraftId)} onChange={e => { setComposeAccount(e.target.value); setComposeDraftId(null); }} className="mt-1 block w-full rounded-md border bg-background p-2">{composeMailboxes.map(account => <option key={account.id} value={account.id}>{account.address}</option>)}</select></label>
+            <label className="text-xs font-medium">To<input type="email" aria-label="Email recipient" value={composeTo} onChange={e => { setComposeTo(e.target.value); setComposeDraftId(null); }} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
+            <label className="text-xs font-medium">Subject<input value={composeSubject} maxLength={998} onChange={e => { setComposeSubject(e.target.value); setComposeDraftId(null); }} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
+            <label className="text-xs font-medium">Message<textarea aria-label="Email body" value={composeBody} maxLength={100000} rows={5} onChange={e => { setComposeBody(e.target.value); setComposeDraftId(null); }} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" disabled={composeBusy || !composeCanDraft || !composeAccount || !composeTo.trim() || !composeSubject.trim() || !composeBody.trim() || Boolean(composeDraftId)} onClick={() => void submitMailCompose("draft")} className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">Save email draft</button>
+            <button type="button" disabled={composeBusy || !composeCanApprove || !composeDraftId || Boolean(composeActionId)} onClick={() => void submitMailCompose("request_approval")} className="rounded-md border px-4 py-2 text-xs font-semibold disabled:opacity-50">Request send approval</button>
+            <a href="/mail/approvals" className="rounded-md border px-4 py-2 text-xs font-medium">Review approvals</a>
+          </div>
+          {composeDraftId && <p className="mt-2 text-xs text-muted-foreground">Draft saved. Review the content above before requesting approval.</p>}
+          {composeActionId && <p role="status" className="mt-2 text-xs text-muted-foreground">Approval request created (pending_approval). The email has not been sent.</p>}
+        </section>
+      )}
       {mailPermissionNotice && <p role="status" className="mx-auto w-full max-w-3xl px-4 py-2 text-xs text-muted-foreground">{mailPermissionNotice}</p>}
       {mailPermissionOpen && mailPolicy && !voiceOpen && (
         <section aria-label="Agent mail permissions" className="mx-auto w-full max-w-3xl border-b px-4 py-4">
