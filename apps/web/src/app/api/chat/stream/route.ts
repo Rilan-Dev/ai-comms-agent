@@ -323,6 +323,7 @@ async function runInteractiveHostToolLoop(args: {
       const readOnly = result.ok && !approvalRequested && registeredTool?.sensitivity === "safe"
         && (registeredTool.required_permission === "email.read" || registeredTool.required_permission === "whatsapp.read");
       const verifiedStatus = toolOutput?.status === "draft_created" || toolOutput?.status === "draft_updated"
+        || toolOutput?.status === "reply_draft_created" || toolOutput?.status === "forward_draft_created"
         || toolOutput?.status === "pending_approval" ? toolOutput.status : undefined;
       summaries.push({ name: call.name, ok: result.ok, readOnly, status: verifiedStatus,
         ...(result.error ? { errorCode: result.error.code } : {}) });
