@@ -54,3 +54,17 @@ export function mailComposeReadiness(input: {
     && input.providerCanDraft && input.providerCanSend;
   return { canDraft, canRequestApproval, blockers };
 }
+
+
+/** When several assigned accounts are connected, start with the one able to
+ * complete the whole reviewed draft -> approval-request workflow. An earlier
+ * drafts-only account must not hide a later fully capable mailbox.
+ * This is only a UI/default choice; the host reauthorizes every operation. */
+export function selectPreferredComposeMailbox<T extends {
+  canDraft: boolean;
+  canRequestApproval: boolean;
+}>(choices: readonly T[]): T | undefined {
+  return choices.find(choice => choice.canDraft && choice.canRequestApproval)
+    ?? choices.find(choice => choice.canDraft)
+    ?? choices[0];
+}
