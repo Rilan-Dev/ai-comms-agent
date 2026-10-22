@@ -59,7 +59,7 @@ function safeHref(value: string): string | null {
   try {
     const url = new URL(value);
     if (url.protocol === "https:" && url.hostname && !url.username && !url.password) return url.href;
-    if (url.protocol === "mailto:" && !url.search && !url.hash && /^mailto:[^@?]+@[^@?]+$/i.test(url.href)) return url.href;
+    if (url.protocol === "mailto:" && !url.search && !url.hash && /^mailto:[a-z0-9._+-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(url.href)) return url.href;
   } catch {
     // Relative, malformed and non-URL strings cannot become active links.
   }
