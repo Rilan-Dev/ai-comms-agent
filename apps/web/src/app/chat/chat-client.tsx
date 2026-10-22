@@ -113,6 +113,7 @@ export function ChatClient({
     if (busy || newChatBusy || newChatInFlightRef.current || voiceOpen || mailPermissionBusy || composeInFlightRef.current
         || agentSwitchInFlightRef.current || nextAgentId === agentId) return;
     if (!agents.some(agent => agent.id === nextAgentId)) return;
+    if (draft.trim() && !window.confirm("Switch agents and discard your unsent message?")) return;
     agentSwitchInFlightRef.current = true;
     setAgentSwitchBusy(true);
     setAgentSwitchNotice("");
@@ -131,6 +132,9 @@ export function ChatClient({
       setAgentId(nextAgentId);
       setConversationId(payload.conversation.id);
       setMessages(payload.messages);
+      // Never carry an unsent prompt from the previous agent into this one.
+      // A canceled or failed switch leaves the draft untouched.
+      setDraft("");
       setConversations(payload.conversations ?? []);
       // A reload and browser back must not point to the previously selected
       // agent's conversation after the agent context has changed.
