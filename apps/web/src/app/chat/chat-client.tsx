@@ -19,6 +19,7 @@ const VoiceWorkspace = dynamic(
 
 type Agent = { id: string; name: string; status: string };
 type Message = { id: string; conversationId: string; role: string; content: string; createdAt: string };
+type ChatSession = { id: string; agentId: string; organizationId: string; subject: string | null; lastMessageAt: string | null; updatedAt: string };
 
 export function ChatClient({
   organizationId,
@@ -26,6 +27,7 @@ export function ChatClient({
   initialAgentId,
   initialConversationId,
   initialMessages,
+  initialConversations,
   catchUpEnabled = false,
 }: {
   organizationId: string;
@@ -33,11 +35,15 @@ export function ChatClient({
   initialAgentId: string;
   initialConversationId: string;
   initialMessages: Message[];
+  initialConversations: ChatSession[];
   catchUpEnabled?: boolean;
 }) {
   const [agentId, setAgentId] = useState(initialAgentId);
   const [conversationId, setConversationId] = useState(initialConversationId);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [conversations, setConversations] = useState<ChatSession[]>(initialConversations);
+  const [newChatBusy, setNewChatBusy] = useState(false);
+  const [chatHistoryNotice, setChatHistoryNotice] = useState("");
   const [draft, setDraft] = useState("");
   const [mailComposerOpen, setMailComposerOpen] = useState(false);
   const [composeMailboxes, setComposeMailboxes] = useState<Array<{
@@ -114,7 +120,7 @@ export function ChatClient({
       const response = await fetch("/api/chat/conversation?organizationId=" + encodeURIComponent(organizationId)
         + "&agentId=" + encodeURIComponent(nextAgentId), { cache: "no-store" });
       if (!response.ok) throw new Error("Could not load the selected agent conversation.");
-      const payload = await response.json() as { conversation?: { id: string }; messages?: Message[] };
+      const payload = await response.json() as { conversation?: { id: string }; messages?: Message[]; conversations?: ChatSession[] };
       if (!payload.conversation?.id || !Array.isArray(payload.messages)
           || payload.messages.some(message => message.conversationId !== payload.conversation?.id)) {
         throw new Error("The selected agent's conversation response was invalid.");
@@ -124,6 +130,7 @@ export function ChatClient({
       setAgentId(nextAgentId);
       setConversationId(payload.conversation.id);
       setMessages(payload.messages);
+      setConversations(payload.conversations ?? []);
       composeRevisionRef.current += 1;
       setMailComposerOpen(false);
       setComposeMailboxes([]);
@@ -152,18 +159,43 @@ export function ChatClient({
     }
   }
 
+  // A fresh chat is a distinct persisted session, not a reset of prior history.
+  async function startNewChat() {
+    if (!activeAgent || busy || newChatBusy || voiceOpen || agentSwitchBusy
+      || composeBusy || mailPermissionBusy || composeInFlightRef.current) return;
+    if (draft.trim() && !window.confirm("Start a new chat and discard your unsent message?")) return;
+    setNewChatBusy(true);
+    setChatHistoryNotice("");
+    try {
+      const response = await fetch("/api/chat/conversation", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ organizationId, agentId: activeAgent.id }),
+      });
+      const payload = await response.json() as { conversation?: { id: string }; message?: string };
+      if (!response.ok || !payload.conversation?.id) {
+        throw new Error(payload.message ?? "New chat could not be created.");
+      }
+      window.location.assign("/chat?" + new URLSearchParams({
+        agentId: activeAgent.id, conversationId: payload.conversation.id,
+      }).toString());
+    } catch (error) {
+      setChatHistoryNotice(error instanceof Error ? error.message : "Could not start a new chat.");
+      setNewChatBusy(false);
+    }
+  }
+
   async function returnFromVoice() {
     const epoch = agentContextEpochRef.current;
     setVoiceOpen(false);
     // Reload the same server-scoped agent conversation. Keep the unsent Chat
     // draft intact; only host-confirmed transcript turns appear after reload.
     try {
-      const params = new URLSearchParams({ organizationId, agentId });
+      const params = new URLSearchParams({ organizationId, agentId, conversationId });
       const response = await fetch(`/api/chat/conversation?${params}`, { cache: "no-store" });
       if (!response.ok) throw new Error("Could not refresh the conversation.");
       const data = await response.json() as { conversation?: { id: string }; messages?: Message[] };
       if (epoch !== agentContextEpochRef.current) return;
-      if (data.conversation && Array.isArray(data.messages)
+      if (data.conversation?.id === conversationId && Array.isArray(data.messages)
           && data.messages.every(message => message.conversationId === data.conversation?.id)) {
         setConversationId(data.conversation.id);
         setMessages(data.messages);
@@ -349,7 +381,7 @@ export function ChatClient({
       void openMailComposer(testEmailRequest);
       return;
     }
-    if (!content || busy || !activeAgent) return;
+    if (!content || busy || newChatBusy || !activeAgent) return;
     setDraft("");
     setBusy(true);
     setResponseStarted(false);
@@ -358,6 +390,10 @@ export function ChatClient({
 
     const optimisticId = "local-" + Date.now();
     setMessages((current) => [...current, { id: optimisticId, conversationId, role: "user", content, createdAt: new Date().toISOString() }]);
+    setConversations((current) => current.map(session => session.id === conversationId
+      ? { ...session, subject: session.subject === "New chat" ? content.slice(0, 80) : session.subject,
+          lastMessageAt: new Date().toISOString() }
+      : session));
 
     try {
       const response = await fetch("/api/chat/stream", {
@@ -447,6 +483,36 @@ export function ChatClient({
           </div>
         </div>
       </header>
+
+      <nav aria-label="Chat history" className="border-b bg-background px-4 py-2 sm:px-7">
+        <div className="mx-auto flex max-w-3xl items-center gap-2">
+          <button type="button" onClick={() => void startNewChat()}
+            disabled={busy || newChatBusy || agentSwitchBusy || composeBusy || mailPermissionBusy || voiceOpen}
+            className="shrink-0 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-50">
+            {newChatBusy ? "Creating…" : "+ New chat"}
+          </button>
+          <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1" aria-label="Recent conversations">
+            {conversations.map(session => (
+              <a key={session.id}
+                href={"/chat?" + new URLSearchParams({ agentId, conversationId: session.id }).toString()}
+                onClick={event => {
+                  if (busy || newChatBusy || agentSwitchBusy || voiceOpen || composeBusy || mailPermissionBusy
+                    || composeInFlightRef.current) { event.preventDefault(); return; }
+                  if (session.id !== conversationId && draft.trim()
+                    && !window.confirm("Open this chat and discard your unsent message?")) event.preventDefault();
+                }}
+                aria-current={session.id === conversationId ? "page" : undefined}
+                aria-disabled={busy || newChatBusy || agentSwitchBusy || voiceOpen}
+                className={"max-w-44 shrink-0 truncate rounded-lg border px-3 py-2 text-xs hover:bg-secondary " +
+                  (session.id === conversationId ? "border-primary/50 bg-primary/10 font-semibold" : "text-muted-foreground")}
+                title={session.subject || "Untitled chat"}>
+                {session.subject || "Untitled chat"}
+              </a>
+            ))}
+          </div>
+        </div>
+        {chatHistoryNotice && <p role="alert" className="mx-auto mt-1 max-w-3xl text-xs text-destructive">{chatHistoryNotice}</p>}
+      </nav>
 
       {agentSwitchNotice && <p role="alert" className="mx-auto w-full max-w-3xl px-4 py-2 text-xs text-destructive">{agentSwitchNotice}</p>}
       {composeNotice && <p role="status" className="mx-auto w-full max-w-3xl px-4 py-2 text-xs text-muted-foreground">{composeNotice}</p>}
