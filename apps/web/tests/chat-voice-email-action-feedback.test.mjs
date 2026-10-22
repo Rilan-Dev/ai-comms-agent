@@ -116,3 +116,33 @@ test("a send request without a host-confirmed mutation never displays a speculat
   assert.match(voice, /verifiedSummary \|\| \(explicitEmailAction \? unverifiedEmailActionExplanation\(\) : result\.text\)/);
   assert.match(client, /fetch\("\/api\/chat\/stream"/);
 });
+
+test("outgoing email command variants cannot bypass the shared chat/voice write-result gate", () => {
+  const noWrite = new Set(["organization.read", "email.read"]);
+  for (const prompt of [
+    "send emails to customer@example.com",
+    "Send these messages to customer@example.com",
+    "Please email customer@example.com about a test",
+    "Could you respond to this email?",
+    "I need you to send the emails to customer@example.com",
+    "send daily summaries of my inbox to manager@example.com",
+    "write to customer@example.com about the meeting",
+  ]) {
+    assert.equal(isExplicitEmailMutationRequest(prompt), true, prompt);
+    assert.match(deniedEmailWriteExplanation(prompt, noWrite) ?? "", /No email was sent/, prompt);
+    assert.equal(deniedEmailWriteExplanation(prompt, new Set(["email.write"])), null, prompt);
+  }
+});
+
+test("read-only email requests remain read-only when natural phrasing includes send", () => {
+  for (const prompt of [
+    "send me the emails received yesterday",
+    "send me those messages from last week",
+    "send me a summary of emails received today",
+    "send me the list of messages",
+    "how can I respond to an email?",
+    "can you tell me whether customer@example.com sent mail?",
+  ]) {
+    assert.equal(isExplicitEmailMutationRequest(prompt), false, prompt);
+  }
+});
