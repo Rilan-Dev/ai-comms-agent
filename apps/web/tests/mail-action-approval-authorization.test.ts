@@ -29,7 +29,8 @@ describe("FIX-01 separate request permission from privileged human email approva
     expect(post).toContain("getMailMessageForOrganization(organizationId, draftId)");
     expect(post).toContain("String(draft.email_account_id) !== emailAccountId");
     expect(post).toContain("const to = validRecipients(draft.to_recipients)");
-    expect(post).toContain("if (to.length === 0)");
+    expect(post).toContain("if (to.length === 0 || to.length !== (Array.isArray(draft.to_recipients)");
+    expect(post).toContain('error: "invalid_action_recipients"');
     expect(post).toContain("matchesManualComposeReview(snapshot, body.expectedSnapshot)");
     expect(post).not.toContain("connected.sendDraft");
     expect(post).not.toContain("decideEmailAction(");
