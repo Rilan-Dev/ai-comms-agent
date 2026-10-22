@@ -78,6 +78,7 @@ export function ChatClient({
   const [agentSwitchNotice, setAgentSwitchNotice] = useState("");
   // Keep agent selection and server-scoped message history atomic.
   const agentSwitchInFlightRef = useRef(false);
+  const newChatInFlightRef = useRef(false);
   const agentContextEpochRef = useRef(0);
   // A returned draft/action ID may only be attached to the same review revision.
   const composeRevisionRef = useRef(0);
@@ -109,7 +110,7 @@ export function ChatClient({
   }, [messages.length, busy]);
 
   async function switchAgent(nextAgentId: string) {
-    if (busy || voiceOpen || mailPermissionBusy || composeInFlightRef.current
+    if (busy || newChatBusy || newChatInFlightRef.current || voiceOpen || mailPermissionBusy || composeInFlightRef.current
         || agentSwitchInFlightRef.current || nextAgentId === agentId) return;
     if (!agents.some(agent => agent.id === nextAgentId)) return;
     agentSwitchInFlightRef.current = true;
@@ -166,9 +167,13 @@ export function ChatClient({
 
   // A fresh chat is a distinct persisted session, not a reset of prior history.
   async function startNewChat() {
-    if (!activeAgent || busy || newChatBusy || voiceOpen || agentSwitchBusy
-      || composeBusy || mailPermissionBusy || composeInFlightRef.current) return;
+    if (!activeAgent || busy || newChatBusy || newChatInFlightRef.current || voiceOpen || agentSwitchBusy
+      || agentSwitchInFlightRef.current || composeBusy || mailPermissionBusy || composeInFlightRef.current) return;
     if (draft.trim() && !window.confirm("Start a new chat and discard your unsent message?")) return;
+    // Set the fence synchronously: the state update below is not immediate.
+    // A double-click or agent change before the next render must not race this POST.
+    newChatInFlightRef.current = true;
+    const epoch = agentContextEpochRef.current;
     setNewChatBusy(true);
     setChatHistoryNotice("");
     try {
@@ -180,11 +185,15 @@ export function ChatClient({
       if (!response.ok || !payload.conversation?.id) {
         throw new Error(payload.message ?? "New chat could not be created.");
       }
+      if (epoch !== agentContextEpochRef.current) {
+        throw new Error("Agent changed before the new chat opened. Reload your conversations.");
+      }
       window.location.assign("/chat?" + new URLSearchParams({
         agentId: activeAgent.id, conversationId: payload.conversation.id,
       }).toString());
     } catch (error) {
       setChatHistoryNotice(error instanceof Error ? error.message : "Could not start a new chat.");
+      newChatInFlightRef.current = false;
       setNewChatBusy(false);
     }
   }
@@ -481,7 +490,7 @@ export function ChatClient({
               <AudioLines size={15} /> {voiceOpen ? "Voice session open" : "Live voice"}
             </button>
             <label className="flex min-w-0 items-center gap-2 rounded-lg border bg-background px-2.5 py-1.5">
-            <select aria-label="Choose agent" value={activeAgent?.id ?? ""} disabled={voiceOpen || busy || agentSwitchBusy || composeBusy || mailPermissionBusy} onChange={(e) => void switchAgent(e.target.value)} className="max-w-36 bg-transparent text-xs font-medium outline-none sm:max-w-48">
+            <select aria-label="Choose agent" value={activeAgent?.id ?? ""} disabled={voiceOpen || busy || agentSwitchBusy || newChatBusy || composeBusy || mailPermissionBusy} onChange={(e) => void switchAgent(e.target.value)} className="max-w-36 bg-transparent text-xs font-medium outline-none sm:max-w-48">
               {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
             </select>
             </label>
