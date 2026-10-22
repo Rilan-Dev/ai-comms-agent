@@ -7,6 +7,7 @@ import {
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
+import { assertSameOrigin } from "@/lib/identity/local-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
  * Every field is OPTIONAL — explicitly pass null to clear an override.
  */
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try { assertSameOrigin(request); }
+  catch { return NextResponse.json({ error: "invalid_origin" }, { status: 403 }); }
   try {
     if (!process.env.DATABASE_URL) return NextResponse.json({ error: "database_not_configured", message: "PostgreSQL is required." }, { status: 503 });
     await ensureDevSeed();
