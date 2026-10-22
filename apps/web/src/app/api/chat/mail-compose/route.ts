@@ -16,10 +16,11 @@ async function trustedContext(request: Request, organizationId: string, agentId:
   const subject = await authorize(request,
     { organizationId: asOrganizationId(organizationId), permission: "organization.read" },
     getIdentityAdapter(), getIdentityRepository());
-  if (!subject.membership) throw new Error("An active organization membership is required.");
+  const membership = subject.membership;
+  if (!membership) throw new Error("An active organization membership is required.");
   const agent = await new PostgresAgentRepository().get(organizationId, agentId);
   if (!agent) return null;
-  return { subject, agent };
+  return { subject, membership, agent };
 }
 
 async function primaryMailboxes(organizationId: string, agentId: string) {
@@ -75,10 +76,11 @@ export async function POST(request: Request) {
 
     const context: ToolContext = {
       organization_id: organizationId, agent_id: agentId, user_id: trusted.subject.user.id,
-      conversation_id: bounded(body?.conversationId, 100) || crypto.randomUUID(),
+      // Never trust a client-provided conversation ID as an authorization fact.
+      conversation_id: crypto.randomUUID(),
       turn_id: crypto.randomUUID(), correlation_id: crypto.randomUUID(), channel: "chat",
       auth_subject: {
-        user_id: trusted.subject.user.id, role: trusted.subject.membership.role,
+        user_id: trusted.subject.user.id, role: trusted.membership.role,
         permissions: [...trusted.subject.permissions],
       },
     };
