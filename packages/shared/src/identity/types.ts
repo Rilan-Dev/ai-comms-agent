@@ -113,8 +113,8 @@ export const PERMISSION_CATALOGUE = [
   { name: "briefing.access.manage", description: "Assign and revoke personal briefing mailbox access" },
   // WhatsApp feature permissions (added with the messaging feature phase).
   { name: "email.read", description: "Read connected email accounts and messages through agent tools" },
-  // This is a known permission contract for draft and approval-request tools.
-  // No system role receives it by default: adding the type is not an access grant.
+  // Owner/admin identities are granted this through explicit system-role
+  // defaults below. Other roles cannot obtain it by selecting agent tools.
   { name: "email.write", description: "Create email drafts and request human approval to send through agent tools" },
   { name: "whatsapp.read", description: "Read connected WhatsApp conversations and approval requests" },
   { name: "whatsapp.send", description: "Request WhatsApp outbound messages through human approval" },
@@ -139,6 +139,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission
     "settings.manage",
     "briefing.access.manage",
     "email.read",
+    "email.write",
     "whatsapp.read",
     "whatsapp.send",
   ],
@@ -151,6 +152,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission
     "settings.manage",
     "briefing.access.manage",
     "email.read",
+    "email.write",
     "whatsapp.read",
     "whatsapp.send",
   ],
