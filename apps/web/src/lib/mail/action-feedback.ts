@@ -27,8 +27,8 @@ type VerifiedEmailToolCall = Readonly<{
   errorCode?: string;
 }>;
 
-/** Append a host-verified outcome to the model's summary of email mutations.
- * The only possible send operation is a request for human approval. */
+/** Provide the authoritative host outcome for email mutations instead of
+ * trusting a model's unverified delivery claims. No send is performed here. */
 export function verifiedEmailToolSummary(calls: readonly VerifiedEmailToolCall[]): string {
   const mutations = calls.filter(call => !call.readOnly
     && /^email\.(?:draft\.|send\.|reply\.|forward\.)/.test(call.name));
