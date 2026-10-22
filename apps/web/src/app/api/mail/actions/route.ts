@@ -85,15 +85,32 @@ export async function POST(request: Request) {
       if (!message || String(message.email_account_id) !== emailAccountId) {
         return NextResponse.json({ error: "not_found", message: "Source message was not found in this organization/mailbox." }, { status: 404 });
       }
-      const to = actionType === "reply_email"
-        ? [String(message.from_email ?? message.from_address)].filter(Boolean)
-        : validRecipients(body?.to);
-      if (to.length === 0) return NextResponse.json({ error: "validation_error", message: "At least one valid recipient is required." }, { status: 422 });
+      // A saved From header is untrusted provider data. For replies, validate
+      // it exactly as a caller-specified forwarding recipient; never coerce
+      // null/undefined into the literal "undefined" mailbox.
+      const rawRecipients = actionType === "reply_email"
+        ? [message.from_email ?? message.from_address]
+        : body?.to;
+      const rawCc = body?.cc ?? [];
+      const rawBcc = body?.bcc ?? [];
+      const to = validRecipients(rawRecipients);
+      const cc = validRecipients(rawCc);
+      const bcc = validRecipients(rawBcc);
+      // Filtering invalid array members would silently change the content
+      // presented for human approval. Reject the entire malformed request.
+      if (!Array.isArray(rawRecipients) || to.length === 0 || to.length !== rawRecipients.length
+          || !Array.isArray(rawCc) || cc.length !== rawCc.length
+          || !Array.isArray(rawBcc) || bcc.length !== rawBcc.length) {
+        return NextResponse.json({
+          error: "invalid_action_recipients",
+          message: "The reply or forward has missing or invalid recipients. Correct the address before requesting human approval.",
+        }, { status: 422 });
+      }
       snapshot = {
         messageId,
         to,
-        cc: validRecipients(body?.cc),
-        bcc: validRecipients(body?.bcc),
+        cc,
+        bcc,
         subject: typeof body?.subject === "string" ? body.subject : actionType === "reply_email" ? `Re: ${String(message.subject ?? "").replace(/^(re:\s*)+/i, "")}` : `Fwd: ${String(message.subject ?? "")}`,
         bodyText: typeof body?.bodyText === "string" ? body.bodyText : "",
       };
