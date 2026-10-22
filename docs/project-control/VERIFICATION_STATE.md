@@ -1,3 +1,13 @@
+## DEV01-OVERVIEW-FIRST-EMAIL-COMMAND-CENTER-20261023 — source-only evidence
+
+- **Branch/baseline:** Owner-invoked DEV-01, `Development` started `205821395f2d855d66a73cb58b0142b6bfbde6ac`. Feature source/test commits are listed in the [session](sessions/DEV01-OVERVIEW-FIRST-EMAIL-COMMAND-CENTER-20261023.md).
+- **PASS (narrow):** Fetched actual committed home, sidebar, Overview API/client and related regression sources and evaluated 10/10 explicit read-only structural assertions for route, sidebar order, server catch-up gate, honest metrics and preserved workflow links. TDD test source added before code, but an actual pre-implementation Vitest RED run was **not** possible.
+- **NOT RUN:** Committed Vitest suites `overview-first-entry`, `workspace-shell`, `lovable-ui-migration`, any Next.js/TypeScript builds, full suites, PostgreSQL fixtures, authenticated/mobile/browser tests, deployed runtime SHA/CI/Vercel, C3 generator, timed routine, email or WhatsApp provider output.
+- **Safe state:** Overview only offers gated private preview; C3 is still disabled/unregistered. No email read/review marks on entering Overview; no new grants or routine/Meta dispatch.
+- **Exact next:** Run the three focused web Vitest suites and web typecheck at one exact fresh Development SHA; authenticated root `/`→`/overview`, `/chat` and feature-disabled UI; record observed results and do not infer deployed success.
+
+---
+
 ## DEV01-EMAIL-CHAT-COMPOSE-20261022 — Development source-only product evidence (2026-10-22)
 - **Source:** Owner-authorized DEV-01 chat/voice draft review, idempotent send-approval request, connected primary mailbox/actor/agent policy protections and admin-confirmed permission presets; full evidence in root `worklog.md`.
 - **PASS:** Local isolated Node v22 tests for mirrored pure intent parser 2/2 and permissions helper 2/2; two isolated strict TypeScript helper checks exit 0. GitHub fetched current source and verified 20/20 focused invariants, including the preserved separated human email approval.
