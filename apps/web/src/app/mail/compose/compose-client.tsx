@@ -11,11 +11,16 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
   const requestedDraftId = searchParams.get("draftId");
   const scopeKey = organizationId + ":" + (requestedDraftId ?? "");
   const scopeRef = useRef(scopeKey);
+  const scopeRevisionRef = useRef(0);
   const organizationRef = useRef(organizationId);
-  scopeRef.current = scopeKey;
+  if (scopeRef.current !== scopeKey) {
+    scopeRef.current = scopeKey;
+    scopeRevisionRef.current += 1;
+  }
   organizationRef.current = organizationId;
   const [formScope, setFormScope] = useState(scopeKey);
-  const scopeValid = formScope === scopeKey;
+  const [formRevision, setFormRevision] = useState(0);
+  const scopeValid = formScope === scopeKey && formRevision === scopeRevisionRef.current;
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountId, setAccountId] = useState("");
   const [to, setTo] = useState("");
@@ -30,13 +35,16 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
   const [approvalId, setApprovalId] = useState<string | null>(null);
   const [reviewedSnapshot, setReviewedSnapshot] = useState<ManualComposeSnapshot | null>(null);
   const [loadingDraft, setLoadingDraft] = useState(Boolean(requestedDraftId));
-  const draftOperationRef = useRef(false);
+  const draftOperationRef = useRef<{ revision: number } | null>(null);
   const markEdited = () => { setReviewedSnapshot(null); setSavedAt(null); };
 
   useEffect(() => {
     const controller = new AbortController();
+    const revision = scopeRevisionRef.current;
     // Never let the previous draft/tenant appear reviewable during navigation.
     setFormScope(scopeKey);
+    setFormRevision(revision);
+    setBusy(false);
     setDraftId(null);
     setApprovalId(null);
     setReviewedSnapshot(null);
@@ -56,7 +64,7 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
       if (!response.ok) throw new Error(data.message ?? "Could not load draft.");
       return data.draft;
     }).then((draft: Record<string, unknown> | null) => {
-      if (controller.signal.aborted || scopeRef.current !== scopeKey) return;
+      if (controller.signal.aborted || scopeRef.current !== scopeKey || scopeRevisionRef.current !== revision) return;
       if (!draft || String(draft.id) !== requestedDraftId) throw new Error("Draft response does not match the selected draft.");
       setDraftId(String(draft.id));
       setAccountId(String(draft.email_account_id));
@@ -71,10 +79,10 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
         subject: draft.subject ?? "", bodyText: draft.text_body ?? "",
       }));
     }).catch(error => {
-      if (controller.signal.aborted || scopeRef.current !== scopeKey) return;
+      if (controller.signal.aborted || scopeRef.current !== scopeKey || scopeRevisionRef.current !== revision) return;
       setNotice(error instanceof Error ? error.message : "Could not load draft.");
     }).finally(() => {
-      if (!controller.signal.aborted && scopeRef.current === scopeKey) setLoadingDraft(false);
+      if (!controller.signal.aborted && scopeRef.current === scopeKey && scopeRevisionRef.current === revision) setLoadingDraft(false);
     });
     return () => controller.abort();
     // accounts only provides a default sender; mailbox loading is an
@@ -115,13 +123,14 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
   );
 
   async function saveDraft() {
-    if (!scopeValid || draftOperationRef.current || busy || loadingDraft || approvalId || (requestedDraftId && !draftId)) return;
+    if (!scopeValid || draftOperationRef.current?.revision === scopeRevisionRef.current || busy || loadingDraft || approvalId || (requestedDraftId && !draftId)) return;
     if (!accountId || recipients.length === 0) {
       setNotice("Select a mailbox and add at least one valid recipient.");
       return;
     }
     const operationScope = scopeKey;
-    draftOperationRef.current = true;
+    const operationRevision = scopeRevisionRef.current;
+    draftOperationRef.current = { revision: operationRevision };
     setBusy(true);
     setNotice(null);
     try {
@@ -131,7 +140,7 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
         body: JSON.stringify(draftId ? { ...payload, messageId: draftId } : payload),
       });
       const data = await response.json();
-      if (scopeRef.current !== operationScope) return;
+      if (scopeRef.current !== operationScope || scopeRevisionRef.current !== operationRevision) return;
       if (!response.ok) throw new Error(data.message ?? "Could not save draft.");
       if (!data.draft?.id || String(data.draft.email_account_id) !== accountId) {
         throw new Error("Draft save returned an unexpected mailbox or record. Reload before requesting approval.");
@@ -146,23 +155,24 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
       setSavedAt(confirmed ? new Date().toLocaleTimeString() : null);
       if (!confirmed) setNotice("Draft saved, but the saved content is not identical to this review. Check recipients and subject, then save again.");
     } catch (error) {
-      if (scopeRef.current === operationScope) {
+      if (scopeRef.current === operationScope && scopeRevisionRef.current === operationRevision) {
         setReviewedSnapshot(null);
         setNotice(error instanceof Error ? error.message : "Could not save draft.");
       }
     } finally {
-      draftOperationRef.current = false;
-      if (scopeRef.current === operationScope) setBusy(false);
+      if (draftOperationRef.current?.revision === operationRevision) draftOperationRef.current = null;
+      if (scopeRef.current === operationScope && scopeRevisionRef.current === operationRevision) setBusy(false);
     }
   }
 
   async function requestSendApproval() {
-    if (!canRequestApproval || !draftId || !reviewedSnapshot || draftOperationRef.current) {
+    if (!canRequestApproval || !draftId || !reviewedSnapshot || draftOperationRef.current?.revision === scopeRevisionRef.current) {
       setNotice("Save and review the current recipients, subject and message before requesting approval.");
       return;
     }
     const operationScope = scopeKey;
-    draftOperationRef.current = true;
+    const operationRevision = scopeRevisionRef.current;
+    draftOperationRef.current = { revision: operationRevision };
     setBusy(true);
     setNotice(null);
     try {
@@ -175,7 +185,7 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
         }),
       });
       const data = await response.json();
-      if (scopeRef.current !== operationScope) return;
+      if (scopeRef.current !== operationScope || scopeRevisionRef.current !== operationRevision) return;
       if (!response.ok) throw new Error(data.message ?? "Could not request send approval.");
       if (!data.action?.id || data.status !== "pending_approval") {
         throw new Error("The server did not confirm a pending human approval request.");
@@ -183,13 +193,13 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
       setApprovalId(String(data.action.id));
       setNotice("Send approval requested for the saved draft. No email will be sent until an authorized user approves it.");
     } catch (error) {
-      if (scopeRef.current === operationScope) {
+      if (scopeRef.current === operationScope && scopeRevisionRef.current === operationRevision) {
         setNotice(error instanceof Error ? error.message : "Could not request send approval.");
         setReviewedSnapshot(null);
       }
     } finally {
-      draftOperationRef.current = false;
-      if (scopeRef.current === operationScope) setBusy(false);
+      if (draftOperationRef.current?.revision === operationRevision) draftOperationRef.current = null;
+      if (scopeRef.current === operationScope && scopeRevisionRef.current === operationRevision) setBusy(false);
     }
   }
 
