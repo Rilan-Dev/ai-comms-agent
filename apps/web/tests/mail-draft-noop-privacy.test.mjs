@@ -24,10 +24,11 @@ test("route rejects an empty/invalid draft patch before any message lookup", () 
   const end = route.indexOf("export async function GET(request: Request)", start);
   assert.ok(start > 0 && end > start);
   const patch = route.slice(start, end);
-  assert.match(patch, /if \(!hasDraftChanges\(body\)\)/);
-  assert.match(patch, /error: "no_draft_changes"/);
+  assert.match(patch, /validateDraftWrite\(body, "patch"\)/);
+  assert.match(patch, /if \(!validated\.ok\)/);
+  assert.match(patch, /error: "invalid_draft_payload"/);
   assert.match(patch, /status: 422/);
-  assert.ok(patch.indexOf("hasDraftChanges(body)") < patch.indexOf("updateLocalDraftForOrganization("));
+  assert.ok(patch.indexOf('validateDraftWrite(body, "patch")') < patch.indexOf("updateLocalDraftForOrganization("));
 });
 
 test("repository cannot return a non-draft message on a zero-column update", () => {
