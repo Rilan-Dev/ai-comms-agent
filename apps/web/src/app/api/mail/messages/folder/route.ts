@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     const organizationId = url.searchParams.get("organizationId") ?? "";
     const accountId = url.searchParams.get("accountId") ?? undefined;
     if (!organizationId) return NextResponse.json({ error: "validation_error", fieldErrors: { organizationId: "Organization is required." } }, { status: 400 });
-    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "email.read" }, getIdentityAdapter(), getIdentityRepository());
     return NextResponse.json({ folders: await listMailFoldersForOrganization(organizationId, accountId) });
   } catch (error) { return authorizationErrorToResponse(error); }
 }
