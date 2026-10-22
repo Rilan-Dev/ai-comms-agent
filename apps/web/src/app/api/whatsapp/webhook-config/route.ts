@@ -81,8 +81,6 @@ export async function POST(request: Request) {
     await saveWhatsAppCredential(account.id, organizationId, { credential_type: "oauth_token", app_secret: appSecret || previousSecret }, masterKey);
     return NextResponse.json({ saved: true, appSecretConfigured: true, message: "Webhook settings saved securely." });
   } catch (error) {
-    console.error("[whatsapp/webhook-config] POST error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: "internal_server_error", message }, { status: 500 });
+    return authorizationErrorToResponse(error);
   }
 }
