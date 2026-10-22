@@ -14,6 +14,15 @@ export type EmailActionStatus =
   | "expired"
   | "cancelled";
 
+/** A stable idempotency key belongs to one actor, agent, payload and still-pending review. */
+export class EmailActionIdempotencyConflictError extends Error {
+  readonly code = "email_action_conflict";
+  constructor() {
+    super("The idempotency key belongs to another action or an approval that is no longer pending. No new approval request was created.");
+    this.name = "EmailActionIdempotencyConflictError";
+  }
+}
+
 export interface CreateEmailActionInput {
   organizationId: string;
   agentId?: string | null;
@@ -63,6 +72,10 @@ export async function createEmailAction(input: CreateEmailActionInput) {
          AND email_actions.action_type = EXCLUDED.action_type
          AND email_actions.content_hash = EXCLUDED.content_hash
          AND email_actions.draft_id IS NOT DISTINCT FROM EXCLUDED.draft_id
+         AND email_actions.requested_by IS NOT DISTINCT FROM EXCLUDED.requested_by
+         AND email_actions.agent_id IS NOT DISTINCT FROM EXCLUDED.agent_id
+         AND email_actions.status = 'pending_approval'
+         AND (email_actions.expires_at IS NULL OR email_actions.expires_at > now())
      RETURNING *`,
     [
       input.organizationId,
@@ -80,7 +93,7 @@ export async function createEmailAction(input: CreateEmailActionInput) {
   );
   const row = r.rows[0];
   if (!row) {
-    throw new Error("Idempotency key already exists for a different email action payload");
+    throw new EmailActionIdempotencyConflictError();
   }
   return action(row);
 }
