@@ -20,8 +20,13 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
     const params = await searchParams;
     const requestedAgentId = params.agentId;
     // Both the agent and an optional chat deep link must stay inside the org.
-    const agent = agents.find(item => item.id === requestedAgentId) ?? agents[0];
+    const agent = requestedAgentId
+      ? agents.find(item => item.id === requestedAgentId)
+      : agents[0];
 
+    if (!agent && requestedAgentId) {
+      return <Unavailable title="Agent not found" body="The selected agent is not available in this organization. Choose a valid agent before opening a chat." />;
+    }
     if (!agent) {
       return <Unavailable title="Create an agent first" body="Chat becomes available as soon as your organization has an agent. Open Agents to create one." actionHref="/agents/new" actionLabel="Create agent" />;
     }
@@ -39,6 +44,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
 
     return (
       <ChatClient
+        key={`${organizationId}:${agent.id}:${conversation.id}`}
         organizationId={organizationId}
         agents={agents.map((item) => ({ id: item.id, name: item.name, status: item.status }))}
         initialAgentId={agent.id}
