@@ -238,7 +238,7 @@ export async function POST(request: Request) {
     });
 
     const verifiedSummary = verifiedEmailToolSummary(turn.toolCalls);
-    const voiceAnswer = verifiedSummary ? `${turn.text}\n\n${verifiedSummary}` : turn.text;
+    const voiceAnswer = verifiedSummary || turn.text;
     await saveAnswer(voiceAnswer);
     return NextResponse.json({
       executionId,
