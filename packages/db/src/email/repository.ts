@@ -506,15 +506,6 @@ export async function updateLocalDraftForOrganization(
            AND ea.status IN ('pending_approval', 'approved', 'executing')
            AND (ea.expires_at IS NULL OR ea.expires_at > now())
        )
-       AND NOT EXISTS (
-         SELECT 1 FROM email_actions ea
-         WHERE ea.organization_id = m.organization_id
-           AND ea.draft_id = m.id
-           AND ea.email_account_id = m.email_account_id
-           AND ea.action_type = 'send_email'
-           AND ea.status IN ('pending_approval', 'approved', 'executing')
-           AND (ea.expires_at IS NULL OR ea.expires_at > now())
-       )
      RETURNING m.*`,
     values,
   );
