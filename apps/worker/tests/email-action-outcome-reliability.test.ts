@@ -22,7 +22,7 @@ test("approved action starts its own execution clock rather than reusing request
 
 test("a successful provider execution is durably completed before draft reconciliation and evidence side effects", () => {
   const completion = worker.indexOf('await completeEmailAction(action.id, action.organizationId, "completed"');
-  const markDraft = worker.indexOf("await markLocalDraftSentForOrganization");
+  const markDraft = worker.indexOf("markLocalDraftSentForOrganization(action.organizationId");
   const event = worker.indexOf('type: "email.action.completed"');
   const audit = worker.indexOf('eventType: "email.action.completed"');
   assert.ok(completion >= 0 && markDraft > completion && event > completion && audit > completion);
@@ -43,7 +43,7 @@ test("event or audit failure does not misclassify a completed external send as f
 });
 
 test("failed event is emitted only when the executing action actually transitioned to failed", () => {
-  assert.match(worker, /const settled = await completeEmailAction\(action.id, action.organizationId, "failed"/);
+  assert.match(worker, /settled = await completeEmailAction\(action.id, action.organizationId, "failed"/);
   assert.match(worker, /if \(!settled\)/);
   assert.match(worker, /type: "email.action.failed"/);
   assert.match(worker, /eventType: "email.action.failed"/);
