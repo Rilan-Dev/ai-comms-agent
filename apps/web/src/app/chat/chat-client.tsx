@@ -74,6 +74,7 @@ export function ChatClient({
   const [voiceOpen, setVoiceOpen] = useState(false);
   const messageScrollRef = useRef<HTMLDivElement>(null);
   const historyTriggerRef = useRef<HTMLButtonElement>(null);
+  const historySidebarRef = useRef<HTMLElement>(null);
   const historyCloseRef = useRef<HTMLButtonElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const voiceWasOpen = useRef(false);
@@ -120,7 +121,27 @@ export function ChatClient({
     if (!chatHistoryOpen) return;
     historyCloseRef.current?.focus();
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setChatHistoryOpen(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setChatHistoryOpen(false);
+        return;
+      }
+      // Keep keyboard focus inside the modal drawer on narrow screens. On
+      // desktop the permanent conversation list remains ordinary navigation.
+      if (event.key !== "Tab" || window.matchMedia("(min-width: 1024px)").matches) return;
+      const controls = Array.from(historySidebarRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) ?? []).filter(element => element.getClientRects().length > 0);
+      if (controls.length === 0) return;
+      const first = controls[0]!;
+      const last = controls[controls.length - 1]!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     }
     window.addEventListener("keydown", handleEscape);
     return () => {
@@ -520,7 +541,7 @@ export function ChatClient({
       </header>
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        <aside id="chat-conversation-sidebar"
+        <aside ref={historySidebarRef} id="chat-conversation-sidebar"
           role={chatHistoryOpen ? "dialog" : undefined} aria-modal={chatHistoryOpen ? true : undefined}
           aria-label={chatHistoryOpen ? "Conversations" : undefined}
           className={`${chatHistoryOpen ? "flex" : "hidden"} absolute inset-0 z-30 w-full flex-col border-r bg-background lg:relative lg:inset-auto lg:z-auto lg:flex lg:w-56 lg:shrink-0 xl:w-64`}>
