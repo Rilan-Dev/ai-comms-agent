@@ -787,3 +787,11 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - FIX-01/Sentinel owner-authorized direct `Development` fix for Sarvam agent realtime override resolving as OpenAI and failing SDP 503 `realtime_not_configured`.
 - Source mismatch: Agent AI Settings writes `agent_ai_settings` but voice/session read legacy `agents.voice_provider`; missing legacy/org value selected OpenAI default. Commits `ae1f92e0,505e9e8d,13b44a8a` correct same-org override precedence and add seven regression cases.
 - Re-fetched GitHub source invariants 16/16; native tests/browser/Sarvam relay not run. OPS-01 deployed SHA/secret-safe provider setup and live connection; DEV-01 unaffected. Do not repeat exposed cookie.
+
+### EVT-DEV01-OVERVIEW-FIRST-EMAIL-COMMAND-CENTER-20261023 — 2026-10-23
+- **Agent:** DEV-01 / Forge, `Development`.
+- **Type:** OWNER-REQUIREMENT-OVERLAY / IMPLEMENTED-UX / VERIFY-PENDING.
+- **Decision:** Owner's Overview-first instruction supersedes only the old Chat-first landing order; Chat lives at `/chat`. Existing organization-wide Overview metrics are not personal unread/absence data; private catch-up is gated by `BRIEFINGS_ENABLED` and is not represented as automatically generated until C3 verified and activated.
+- **Source:** `3fa0fbbd,aed56cd3,65ada232,2ed12305,33f15503,fe498178,8ada8025`. Plan `docs/superpowers/plans/2026-10-23-overview-first-mail-command-center.md`.
+- **Evidence:** 10/10 repo-source invariants; installed Vitest/typechecks/identity/browser/deploy NOT RUN. No auth elevation, mailbox data read, worker registration, provider send, or scheduled job created.
+- **Owners:** DEV-01 continues C3/C4 and authorized R1b pure tests/UX. FIX-01 retains source errors and scheduler/tenant defects; OPS-01 retains CI/host/migration, credentials, provider and deployment verification. NEXT_ACTION updated without CI polling.
