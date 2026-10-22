@@ -4,9 +4,9 @@
  * revoked or disconnected after approval. The repository getById separately
  * filters soft-deleted accounts.
  */
-export function isApprovedEmailActionAccountUsable(
-  account: { organization_id: string; status: string } | null | undefined,
+export function isApprovedEmailActionAccountUsable<T extends { organization_id: string; status: string }>(
+  account: T | null | undefined,
   organizationId: string,
-): boolean {
+): account is T {
   return account?.organization_id === organizationId && account.status === "connected";
 }
