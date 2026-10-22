@@ -122,4 +122,13 @@ describe("Clara realtime voice transport", () => {
     expect(realtimeRoute).toContain("provider_transport_unsupported");
     expect(workspace).toContain("This provider has not completed its native realtime transport integration");
   });
+  it("keeps Gemini Live microphone transmission muted after React state changes", () => {
+    const gemini = workspace.slice(workspace.indexOf("async function connectGeminiRealtime("), workspace.indexOf("async function connectRealtime("));
+    const audioHandler = gemini.slice(gemini.indexOf("processor.onaudioprocess ="), gemini.indexOf("socket.onopen ="));
+    const toggle = workspace.slice(workspace.indexOf("function toggleMute()"), workspace.indexOf("function interrupt()"));
+    expect(toggle).toContain("micMutedRef.current = next;");
+    expect(audioHandler).toContain("if (micMutedRef.current || ttsGenerationRef.current || socket.readyState !== WebSocket.OPEN) return;");
+    expect(audioHandler).not.toContain("if (micMuted ||");
+  });
+
 });
