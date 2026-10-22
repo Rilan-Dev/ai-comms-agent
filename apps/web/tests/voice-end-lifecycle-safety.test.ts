@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 const workspace = readFileSync(new URL("../src/app/ai-voice/voice-workspace.tsx", import.meta.url), "utf8");
 const endpoint = readFileSync(new URL("../src/app/api/voice/session/route.ts", import.meta.url), "utf8");
-const fn = workspace.slice(workspace.indexOf("async function endSession()"), workspace.indexOf("function toggleMute()"));
+const fn = workspace.slice(workspace.indexOf("async function endSession(): Promise<boolean>"), workspace.indexOf("function toggleMute()"));
 const returnToChat = workspace.slice(workspace.indexOf('aria-label="Return to text chat"') - 500, workspace.indexOf('aria-label="Return to text chat"') + 160);
 
 describe("FIX-01 voice end lifecycle — never claim persisted end after a failed API response", () => {
