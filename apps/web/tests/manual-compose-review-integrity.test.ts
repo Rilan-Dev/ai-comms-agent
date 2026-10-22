@@ -37,7 +37,8 @@ describe("FIX-01 manual email compose must approve only the reviewed persisted d
     expect(composer).toContain("const canRequestApproval");
     expect(composer).toContain("matchesManualComposeReview");
     expect(composer).toContain("expectedSnapshot: reviewedSnapshot");
-    expect(composer).toContain("if (!canRequestApproval || !draftId || !reviewedSnapshot || draftOperationRef.current)");
+    expect(composer).toContain("if (!canRequestApproval || !draftId || !reviewedSnapshot || draftOperationRef.current?.revision === scopeRevisionRef.current)");
+    expect(composer).toContain("scopeRevisionRef.current !== operationRevision");
     expect(composer).toContain("draftOperationRef.current");
     expect(composer).not.toContain("setTimeout(() => { void saveDraft(); }, 900)");
     expect(composer).not.toContain("if (!draftId) {\n      await saveDraft();\n      return;");
