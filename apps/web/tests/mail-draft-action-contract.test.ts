@@ -19,7 +19,9 @@ describe("Mail draft and sensitive action contracts", () => {
   it("exposes authorized draft GET and DELETE routes", () => {
     expect(route).toContain('export async function GET');
     expect(route).toContain('export async function DELETE');
-    expect(route).toContain('role: "member"');
+    expect(route).toContain('permission: "email.read"');
+    expect(route).toContain('permission: "email.write"');
+    expect(route).not.toContain('role: "member"');
     expect(route).toContain('email.draft.deleted');
   });
   it("loads persisted drafts into compose instead of fabricating draft state", () => {
