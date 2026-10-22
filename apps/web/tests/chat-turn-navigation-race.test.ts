@@ -28,7 +28,13 @@ describe("FIX-01: chat turn and navigation cannot race before React busy state r
   it("rejects a second send even when the state-based busy flag has not rendered", () => {
     expect(send).toContain("chatTurnInFlightRef.current");
     expect(send).toContain("if (!content || busy || newChatBusy");
-    expect(send.indexOf("chatTurnInFlightRef.current = true")).toBeLessThan(send.indexOf("setBusy(true)"));
+    // Anchor both statements to executable lines: prose comments may mention
+    // setBusy(true) earlier without actually setting React state.
+    const claim = /^\\s*chatTurnInFlightRef\\.current = true;$/m.exec(send);
+    const busyCall = /^\\s*setBusy\\(true\\);$/m.exec(send);
+    expect(claim).not.toBeNull();
+    expect(busyCall).not.toBeNull();
+    expect(claim!.index).toBeLessThan(busyCall!.index);
   });
 
   it("releases the turn lock on success, thrown errors and prematurely closed streams", () => {
