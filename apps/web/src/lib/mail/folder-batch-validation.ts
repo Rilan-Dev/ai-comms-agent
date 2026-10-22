@@ -17,3 +17,6 @@ export function isValidFolderBatchIds(value: unknown): value is string[] {
   // same logical ID due to different UUID letter casing.
   return new Set(value.map((id: string) => id.toLowerCase())).size === value.length;
 }
+
+/** Shared message UUID validation for other bulk mail mutations. */
+export const isValidMailMessageIds = isValidFolderBatchIds;
