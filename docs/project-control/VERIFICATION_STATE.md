@@ -1900,3 +1900,9 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Development:** Starting HEAD `93d7e536`, new independent session persistence/list/history/API/deep-link UI and seven regression cases on Development. Latest fetched source verified 18/18 structural assertions and 26/26 literal expectations.
 - **NOT RUN:** Native `pnpm --filter @ai-comms-agent/web exec vitest run tests/chat-conversation-history.test.ts tests/chat-agent-context-race.test.ts tests/chat-authorization.test.ts tests/streaming-conversations.test.ts`; web/db TypeScript; isolated PostgreSQL multi-session; authenticated browser, provider, voice and deployment. Do not infer PASS.
 - **Next:** Execute on matching revision, test two fresh sessions and one legacy continuation, last-N ordering, org/agent negatives, voice return, unsent message consent and mobile keyboard UX; OPS-01 deploy/host, FIX-01 independent bugs.
+
+### DEV01-CHAT-PERSISTENT-CONTROLS-SIDEBAR-20261023 — 2026-10-23
+- **Implemented on Development:** Viewport-constrained Chat route, persistent agent action bar, vertically independent history sidebar and message scroll, persistent composer, accessible mobile history drawer and 6 new source-contract Vitest cases. Commits `273799e7,6b5839f7,454d2d7b`.
+- **Actually verified:** GitHub re-fetch of committed Chat JSX/tests, **19/19 static layout and existing-behavior invariants PASS**.
+- **Not executed:** Native `vitest` of new + chat history/race/first-workspace tests; `web tsc --noEmit`; real browser/dynamic viewport 320–1440px, keyboard focus/long chat; real DB; deployed runtime.
+- **Next:** Run the four focused web Vitest files and web typecheck on exact current Development SHA, then confirm browser scroll and mobile focus. OPS deploy separately; do not mark gate/phase accepted.
