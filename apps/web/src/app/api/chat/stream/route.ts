@@ -4,7 +4,7 @@ import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { formatRollingMailSummary, MAX_REPORT_MESSAGES, parseRollingMailSummaryRequest, type RollingMailRow } from "@/lib/mail/rolling-summary";
 import { parseExplicitMailDateRangeRequest } from "@/lib/mail/explicit-date-range";
 import { canSupplyAmbientContext } from "@/lib/ai/ambient-context-access";
-import { deniedEmailWriteExplanation, verifiedEmailToolSummary } from "@/lib/mail/action-feedback";
+import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation, verifiedEmailToolSummary } from "@/lib/mail/action-feedback";
 
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -565,8 +565,9 @@ export async function POST(request: Request) {
     // Mail, WhatsApp, and potential account mutations still go through the
     // bounded, host-authorized tool loop (which has not yet gained model-token
     // streaming). Never shortcut a potentially actionable follow-up.
+    const explicitEmailAction = isExplicitEmailMutationRequest(content);
     const blockedWriteExplanation = deniedEmailWriteExplanation(content, subject.permissions);
-    const shouldResolveTools = asksAboutEmail(combinedSearchContext)
+    const shouldResolveTools = explicitEmailAction || asksAboutEmail(combinedSearchContext)
       || asksAboutWhatsApp(combinedSearchContext)
       || /\b(send|reply|forward|archive|trash|delete|mark|move|approve|schedule|contact|conversation|account)\b/i.test(content);
 
@@ -592,7 +593,7 @@ export async function POST(request: Request) {
             toolTurn = await runInteractiveHostToolLoop({
                 organizationId, agentId, kbId, messages, toolContext: trustedToolContext,
                 onProgress: (phase) => emit("progress", { phase }),
-                onSafeReadOnlyFinal: async (completedHistory) => {
+                onSafeReadOnlyFinal: explicitEmailAction ? undefined : async (completedHistory) => {
                   emit("status", { phase: "generating" });
                   emit("progress", { phase: "generating" });
                   const finalStream = await claraRuntime.streamAuthorizedReadOnlyToolAnswer(
@@ -618,12 +619,17 @@ export async function POST(request: Request) {
             // through into a model-only answer that could claim delivery.
           } else if (toolTurn) {
             const verifiedSummary = verifiedEmailToolSummary(toolTurn.toolCalls);
-            assistantOutput = verifiedSummary || toolTurn.text;
+            assistantOutput = verifiedSummary || (explicitEmailAction ? unverifiedEmailActionExplanation() : toolTurn.text);
             if (!toolTurn.streamed) {
               // Mutating email calls use the verified host summary; read-only
               // turns keep their tool-informed model response.
               emit("delta", { text: assistantOutput });
             }
+          } else if (explicitEmailAction) {
+            // The model made no registered email mutation call. A tool-free
+            // response must never be treated as evidence of sending.
+            assistantOutput = unverifiedEmailActionExplanation();
+            emit("delta", { text: assistantOutput });
           } else {
             emit("status", { phase: "generating" });
             const turn = await claraRuntime.createChatTurn({
