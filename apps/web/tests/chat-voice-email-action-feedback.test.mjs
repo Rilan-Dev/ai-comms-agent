@@ -58,7 +58,7 @@ test("chat stream returns durable, verified tool results and denied explanation"
   const source = read("../src/app/api/chat/stream/route.ts");
   assert.match(source, /deniedEmailWriteExplanation\(content, subject\.permissions\)/);
   assert.match(source, /verifiedEmailToolSummary\(toolTurn\.toolCalls\)/);
-  assert.match(source, /assistantOutput = verifiedSummary \|\| toolTurn\.text/);
+  assert.match(source, /assistantOutput = verifiedSummary \|\| \(explicitEmailAction \? unverifiedEmailActionExplanation\(\) : toolTurn\.text\)/);
   assert.match(source, /await appendConversationMessage\(/);
   assert.match(source, /emit\("done", \{ conversationId: conversation\.id, provider, model, toolCalls:/);
   assert.match(source, /const verifiedStatus = toolOutput\?\.status/);
@@ -74,7 +74,7 @@ test("voice SSE and JSON use the same authoritative actor permission denial", ()
   assert.match(source, /emit\("delta", \{ text: blockedWriteExplanation \}\)/);
   assert.match(source, /toolCalls: \[\], pendingApprovals: \[\]/);
   assert.match(source, /runEmailAgentTurn\(/);
-  assert.match(source, /voiceAnswer = verifiedSummary \|\| turn\.text/);
+  assert.match(source, /voiceAnswer = verifiedSummary \|\| \(explicitEmailAction \? unverifiedEmailActionExplanation\(\) : turn\.text\)/);
 });
 
 test("explicit email mutation intents include natural requests but not requests for information", () => {
