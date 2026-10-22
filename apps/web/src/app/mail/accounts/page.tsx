@@ -1,5 +1,6 @@
 import { PostgresEmailAccountRepository } from "@ai-comms-agent/db";
 import { getAuthenticatedAppContext } from "@/lib/identity/repository";
+import { canReadOrganizationMail } from "@/lib/mail/mail-read-access";
 import { headers } from "next/headers";
 import { EmailAccountsClient } from "./email-accounts-client";
 
@@ -28,7 +29,10 @@ export default async function AccountsPage() {
       new Request("http://localhost", { headers: await headers() }),
     );
     const organizationId = context?.organizationId;
-    if (!organizationId) throw new Error("Organization context is unavailable.");
+    if (!organizationId || !context) throw new Error("Organization context is unavailable.");
+    if (!(await canReadOrganizationMail(organizationId, context.membership.role))) {
+      return <main className="mx-auto max-w-5xl p-6 lg:p-10" role="status"><h1 className="text-2xl font-semibold">Mailboxes unavailable</h1><p className="mt-3 text-sm">Your organization role does not have email.read permission.</p></main>;
+    }
 
     const accounts = await new PostgresEmailAccountRepository().listForOrganization(organizationId);
     return <EmailAccountsClient organizationId={organizationId} initialAccounts={accounts} />;
