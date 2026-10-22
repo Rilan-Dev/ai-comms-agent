@@ -45,9 +45,9 @@ test("voice history reload cannot replace newer selected agent's conversation", 
 
 test("draft save and approval response require the original review revision", () => {
   assert.match(open, /const revision = \+\+composeRevisionRef\.current/);
-  assert.match(open, /if \(revision !== composeRevisionRef\.current\) return/);
+  assert.match(open, /if \(revision !== composeRevisionRef\.current \|\| epoch !== agentContextEpochRef\.current\) return/);
   assert.match(submit, /const revision = composeRevisionRef\.current/);
-  assert.match(submit, /if \(revision !== composeRevisionRef\.current\) return/);
+  assert.match(submit, /if \(revision !== composeRevisionRef\.current \|\| epoch !== agentContextEpochRef\.current\) return/);
   assert.match(submit, /composeInFlightRef\.current/);
   assert.match(submit, /setComposeDraftId\(data\.draftId\)/);
   assert.match(submit, /setComposeActionId\(data\.actionId\)/);
