@@ -29,8 +29,9 @@ describe("FIX-01 email action idempotency is bound to requester, agent, and curr
     expect(route).toContain("status: action.status");
     expect(route).not.toContain('status: "pending_approval",\n      message:');
     expect(tool).toContain("error instanceof EmailActionIdempotencyConflictError");
-    expect(tool).toContain('code: "email_action_conflict"');
-    expect(tool).toContain("No new approval request was created.");
+    expect(tool).toContain('code: conflict ? "email_action_conflict"');
+    expect(tool).toContain("message: conflict ? error.message");
+    expect(db).toContain("No new approval request was created.");
   });
 
   it("preserves normal human approval and state transitions without an automatic resend", () => {
