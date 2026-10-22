@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository, activateVoiceSessionForOrganization, configureStartingVoiceSessionForOrganization, createVoiceSession, getChatConversation, getOrCreateChatConversation, endVoiceSessionForOrganization, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, query, recordVoiceTelemetry } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, activateVoiceSessionForOrganization, configureStartingVoiceSessionForOrganization, createVoiceSession, getChatConversation, getOrCreateChatConversation, endVoiceSessionForOrganization, getVoiceSessionForOrganization, getAgentAiSettings, incrementVoiceSessionTurnForOrganization, query, recordVoiceTelemetry } from "@ai-comms-agent/db";
+import { resolveAgentRealtimeVoiceProvider } from "@/lib/voice/resolve-agent-realtime-provider";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -37,6 +38,9 @@ export async function POST(request: Request) {
       [agentId, organizationId],
     );
     const agentVoiceRow = agentVoice.rows[0];
+    // AI Settings writes these per-agent overrides into agent_ai_settings,
+    // NOT the older agents.voice_provider columns.
+    const agentAiSettings = await getAgentAiSettings(organizationId, agentId);
 
     const runtimeSettings = await query<{ knowledge_base_id: string; realtime_voice_provider: string; realtime_voice_model: string; voice_id: string }>(
       "SELECT knowledge_base_id, realtime_voice_provider, realtime_voice_model, voice_id FROM organization_ai_runtime_settings WHERE organization_id = $1",
@@ -47,27 +51,45 @@ export async function POST(request: Request) {
     // KB ID is OPTIONAL for voice. RAG features are skipped when no KB is configured.
     const kbId = orgSettings?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim() || "default";
 
-    // Per-agent voice config takes priority over org-level settings.
-    // If the agent has voice_provider/voice_model/voice_id set, use those.
-    // Otherwise fall back to org-level realtime_voice_provider/model/voice_id.
-    const voiceProvider = agentVoiceRow?.voice_provider?.trim() || orgSettings?.realtime_voice_provider?.trim() || process.env.REALTIME_VOICE_PROVIDER || "openai";
-    // Provider Setup saves the selected realtime model per organization,
-    // provider and capability. Resolve it only after the trusted provider is
-    // known, so a Sarvam choice never leaks into an OpenAI/Gemini session.
+    // The selected agent's saved AI override wins. A modern NULL override
+    // means inherit the organization default; never use stale legacy agent
+    // fields to override that explicit inheritance.
+    const voiceProvider = resolveAgentRealtimeVoiceProvider({
+      agentSettings: agentAiSettings,
+      legacyAgentVoiceProvider: agentVoiceRow?.voice_provider,
+      organizationRealtimeVoiceProvider: orgSettings?.realtime_voice_provider,
+      environmentRealtimeVoiceProvider: process.env.REALTIME_VOICE_PROVIDER,
+    });
+    if (!["openai", "gemini", "sarvam", "elevenlabs"].includes(voiceProvider)) {
+      return NextResponse.json({
+        error: "voice_provider_unsupported",
+        message: "The saved realtime voice provider is not supported. Choose a supported provider in Agent AI Settings.",
+      }, { status: 422 });
+    }
+    // The provider model is resolved only after the provider is selected.
+    // In particular, an inherited OpenAI org model must not be sent as a
+    // Sarvam/ElevenLabs agent's STT model.
     const providerModelResult = await query<{ model: string | null }>(
       "SELECT model FROM ai_provider_configs WHERE organization_id=$1 AND provider=$2 AND purpose='realtime' AND enabled=true LIMIT 1",
       [organizationId, voiceProvider],
     );
     const providerModel = providerModelResult.rows[0]?.model?.trim() || "";
-    const organizationModel = orgSettings?.realtime_voice_model?.trim() || "";
-    const voiceModel = agentVoiceRow?.voice_model?.trim()
+    const orgVoiceProvider = orgSettings?.realtime_voice_provider?.trim()?.toLowerCase() || "";
+    const organizationModel = orgVoiceProvider === voiceProvider
+      ? orgSettings?.realtime_voice_model?.trim() || "" : "";
+    const legacyModel = agentAiSettings === null ? agentVoiceRow?.voice_model?.trim() || "" : "";
+    const voiceModel = agentAiSettings?.realtimeSttModel?.trim()
+      || legacyModel
       || ((voiceProvider === "sarvam" || voiceProvider === "elevenlabs") ? providerModel : organizationModel)
       || organizationModel
+      || providerModel
       || (voiceProvider === "sarvam" ? "saaras:v3-realtime"
         : voiceProvider === "elevenlabs" ? "scribe_v2_realtime"
         : voiceProvider === "gemini" ? "gemini-3.5-transcribe-live"
         : process.env.OPENAI_REALTIME_MODEL || "gpt-realtime-2.1-mini");
-    const rawConfiguredVoiceId = agentVoiceRow?.voice_id?.trim() || orgSettings?.voice_id?.trim();
+    const rawConfiguredVoiceId = agentAiSettings?.realtimeVoiceIdOverride?.trim()
+      || (agentAiSettings === null ? agentVoiceRow?.voice_id?.trim() : "")
+      || orgSettings?.voice_id?.trim();
     const sarvamV3Speakers = new Set(["shubh","aditya","ritu","priya","neha","rahul","pooja","rohan","simran","kavya","amit","dev","ishita","shreya","ratan","varun","manan","sumit","roopa","kabir","aayan","ashutosh","advait","anand","tanya","tarun","sunny","mani","gokul","vijay","shruti","suhani","mohit","kavitha","rehan","soham","rupali"]);
     const configuredVoiceId = rawConfiguredVoiceId
       && !(voiceProvider !== "openai" && rawConfiguredVoiceId === "alloy")
