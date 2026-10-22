@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { markDraftProviderSyncingForOrganization, getLocalDraftForOrganization, PostgresEmailAccountRepository, recordAuditEvent } from "@ai-comms-agent/db";
+import { queueLocalDraftProviderSyncForOrganization, getLocalDraftForOrganization, PostgresEmailAccountRepository, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -19,11 +19,12 @@ export async function POST(request: Request) {
     if (!draft) return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization." }, { status: 404 });
     const account = await new PostgresEmailAccountRepository().getById(String(draft.email_account_id));
     if (!account || account.organization_id !== organizationId) return NextResponse.json({ error: "not_found", message: "Sending mailbox was not found in this organization." }, { status: 404 });
+    if (account.status !== "connected") return NextResponse.json({ error: "account_not_connected", message: "Connect the sending mailbox before requesting provider draft synchronization." }, { status: 409 });
     if (!account.capabilities.drafts) return NextResponse.json({ error: "capability_not_supported", message: "This provider does not support remote drafts." }, { status: 409 });
-    const queued = await markDraftProviderSyncingForOrganization(organizationId, messageId);
-    if (!queued) return NextResponse.json({ error: "conflict", message: "Draft could not be queued for provider synchronization." }, { status: 409 });
+    const queued = await queueLocalDraftProviderSyncForOrganization(organizationId, messageId);
+    if (!queued) return NextResponse.json({ error: "conflict", message: "Draft is already queued, currently syncing, locked for approval, or otherwise unavailable for provider synchronization." }, { status: 409 });
     await recordAuditEvent({ organizationId, actorUserId: actor.user.id, eventType: "email.draft.provider_sync_requested", targetType: "email_message", targetId: messageId, action: "sync", decision: "allowed" });
-    return NextResponse.json({ queued: true, status: "syncing", draftId: messageId });
+    return NextResponse.json({ queued: true, status: "queued", draftId: messageId });
   } catch (error) {
     return authorizationErrorToResponse(error);
   }
