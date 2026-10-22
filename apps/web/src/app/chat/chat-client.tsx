@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { readSseEvents } from "@/lib/streaming/sse";
 import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "@/lib/ai/activity-progress";
 import { EMAIL_PERMISSION_PRESETS, REGISTERED_EMAIL_POLICY_NAMES, emailPermissionPresetSelection } from "@/lib/agents/email-permission-presets";
+import { parseTestEmailComposeRequest } from "@/lib/mail/test-email-compose-intent";
 import type { AgentPolicy } from "@ai-comms-agent/shared";
 
 // Defer microphone and vendor transport code until the user requests voice.
@@ -220,10 +221,10 @@ export function ChatClient({
     const content = draft.trim();
     // Recognize an explicit, bounded test-email request as a LOCAL COMPOSE
     // preview. Never interpret prose as permission to send or approve.
-    const testEmailRequest = content.match(/^(?:please\s+)?(?:draft|send|write|compose)\s+(?:a\s+)?(?:simple\s+)?test\s+email\s+to\s+([^\s,;]+@[^\s,;]+\.[^\s,;]+)\s*[.!]?$/i);
+    const testEmailRequest = parseTestEmailComposeRequest(content);
     if (testEmailRequest && !busy) {
       setDraft("");
-      void openMailComposer(testEmailRequest[1]);
+      void openMailComposer(testEmailRequest);
       return;
     }
     if (!content || busy || !activeAgent) return;
