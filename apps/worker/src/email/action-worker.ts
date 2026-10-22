@@ -15,6 +15,7 @@ import { createEmailProviderRegistry } from "./registry";
 import { verifyEmailProviderConnection } from "./provider-verification";
 import { emitProviderEvent } from "../events/provider-events";
 import { isRetryableProviderError } from "./retry";
+import { isApprovedEmailActionAccountUsable } from "./action-account-guard";
 
 /** Evidence writes and local draft reconciliation are secondary to the
  * durable action terminal state. Log only a type, never provider payloads. */
@@ -46,7 +47,7 @@ export async function processApprovedEmailActions(limit = 10) {
     try {
       const repository = new PostgresEmailAccountRepository();
       const account = await repository.getById(action.emailAccountId);
-      if (!account || account.organization_id !== action.organizationId) throw new Error("Email account is unavailable");
+      if (!isApprovedEmailActionAccountUsable(account, action.organizationId)) throw new Error("Email account is unavailable");
       accountProvider = account.provider;
       const masterKey = process.env.CREDENTIALS_MASTER_KEY ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY) : null;
       if (!masterKey) throw new Error("Credential encryption is not configured");
