@@ -185,3 +185,12 @@ C2 complete locally, final merge/push receipt in session.34SQL,25domain,37web,3i
 ## 2026-10-19 — owner-requested commit and recovery checkpoint
 
 Preserved concurrent main changes and both sides of eight documentation conflicts. Current status: C1/C2 focused implementation done; C3 integration then C4 browser acceptance next. Security and broad-suite follow-up remain FIX-01/OPS-01. See docs/project-control/sessions/DEV01-CURRENT-HANDOFF-20261019.md. Lesson: after a rejected push, inspect and integrate current upstream; never overwrite shared project memory or force push.
+
+### DEV01-OVERVIEW-FIRST-EMAIL-COMMAND-CENTER-20261023 — 2026-10-23
+- Recovered DEV-01's current `Development` state `205821395f2d855d66a73cb58b0142b6bfbde6ac`, per-user catch-up C1/C2 and C3/C4 disabled verification gate, inert routine R1a/R1b, latest FIX-01/OPS-01 handoffs and Superpowers plans.
+- Implemented `/`→`/overview`, Overview-first sidebar and direct `/chat`, practical Inbox/Chat/Schedules/Automations Overview plus existing server-gated catch-up link and organization-wide metric disclosure. Added/updated three web regression sources; ensured loading and failed API requests do not misleadingly say catch-up is disabled. Code commits `3fa0fbbd,aed56cd3,65ada232,2ed12305,33f15503,fe498178,8ada8025,167349a5,d00860d4`.
+- 10/10 first structural source assertions passed; native Vitest/typecheck/browser/provider/deploy NOT RUN. No customer action, grants, registration, migration or external dispatch.
+- Phased owner-focused Superpowers plan: `docs/superpowers/plans/2026-10-23-overview-first-mail-command-center.md`. Detailed session: `docs/project-control/sessions/DEV01-OVERVIEW-FIRST-EMAIL-COMMAND-CENTER-20261023.md`.
+- **Lesson:** Presence is not review, org-wide totals are not personal five-day mail; server feature flag is not proof generation runs. Preserve current source/tenant rights and human approval.
+- **Next:** exact Development focused 3-suite Vitest + web typecheck and authenticated first-page/feature-off keyboard/mobile tests; independently C3 source-grant/lease/partial/retry, then C4. R1b persistence/standing WhatsApp remains unauthorized pending review; FIX-01 bugs/OPS-01 rollout separate.
+
