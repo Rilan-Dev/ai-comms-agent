@@ -9,8 +9,9 @@ function section(name: string, next: string) {
   return repo.slice(start, end);
 }
 const update = section("updateLocalDraftForOrganization", "listLocalDraftsForOrganization");
-const pending = section("listDraftsPendingProviderSync", "markDraftProviderSyncingForOrganization");
-const markSyncing = section("markDraftProviderSyncingForOrganization", "markDraftProviderSyncedForOrganization");
+const pending = section("listDraftsPendingProviderSync", "queueLocalDraftProviderSyncForOrganization");
+const queue = section("queueLocalDraftProviderSyncForOrganization", "claimQueuedProviderDraftSyncForOrganization");
+const markSyncing = section("claimQueuedProviderDraftSyncForOrganization", "markDraftProviderSyncedForOrganization");
 const markSynced = section("markDraftProviderSyncedForOrganization", "markDraftProviderSyncErrorForOrganization");
 const markError = section("markDraftProviderSyncErrorForOrganization", "getLocalDraftForOrganization");
 const get = section("getLocalDraftForOrganization", "markLocalDraftSentForOrganization");
@@ -31,11 +32,11 @@ describe("FIX-01 email draft updates and sync enforce organization on both row a
   it("never puts mismatched organization/account drafts on provider synchronization queue", () => {
     expect(pending).toContain("a.id = m.email_account_id");
     expect(pending).toContain("a.organization_id = m.organization_id");
-    expect(pending).toContain("m.provider_draft_sync_status = 'syncing'");
+    expect(pending).toContain("m.provider_draft_sync_status = 'queued'");
     expect(pending).toContain("a.deleted_at IS NULL");
   });
   it("preserves existing organization predicates for every downstream draft transition", () => {
-    for (const snippet of [markSyncing, markSynced, markError, get, deletion]) {
+    for (const snippet of [queue, markSyncing, markSynced, markError, get, deletion]) {
       expect(snippet).toContain("m.organization_id =");
       expect(snippet).toContain("a.organization_id =");
       expect(snippet.includes("m.email_account_id = a.id") || snippet.includes("a.id = m.email_account_id")).toBe(true);
