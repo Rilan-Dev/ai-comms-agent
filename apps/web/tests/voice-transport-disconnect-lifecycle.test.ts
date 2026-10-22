@@ -38,6 +38,7 @@ describe("FIX-01 realtime transport unexpected loss host lifecycle", () => {
   });
 
   it("does not reactivate an already torn down socket from a late PATCH response", () => {
+    expect(patch).toContain("sessionRef.current?.id !== current.id");
     expect(patch).toContain('body.action === "activate" && expectedDisconnectRef.current');
     expect(patch).toContain("throw new Error");
     const startup = source.slice(source.indexOf("async function start()"), source.indexOf("async function sendTextTurn()"));
