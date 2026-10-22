@@ -61,7 +61,10 @@ export async function runEmailAgentTurn(
   const maxToolCalls = boundedLimit(input.maxToolCalls, MAX_TOOL_CALLS, MAX_TOOL_CALLS);
   const runtime = await dependencies.createRuntime(input.organizationId, input.agentId);
   const registered = runtime.registry.listForAgent(input.agentId);
-  const definitions: ChatToolDefinition[] = registered.map((tool) => ({
+  // Match chat: absent actor permission must never be presented as an
+  // executable choice to a voice/realtime model. Invocation still rechecks.
+  const visible = registered.filter((tool) => input.toolContext.auth_subject.permissions.includes(tool.required_permission));
+  const definitions: ChatToolDefinition[] = visible.map((tool) => ({
     name: tool.name,
     description: tool.description,
     parameters: tool.input_schema,
