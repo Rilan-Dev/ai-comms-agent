@@ -69,25 +69,24 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
       }
 
       const messageId = String(snapshot.messageId ?? "");
-      const source = await getMailMessageForOrganization(organizationId, messageId);
-      if (!source?.provider_message_id) throw new Error("Source message has no provider message id");
+      const source = messageId ? await getMailMessageForOrganization(organizationId, messageId) : null;
+      if (!source || Boolean(source.is_draft)
+          || String(source.email_account_id) !== claimed.emailAccountId
+          || typeof source.provider_message_id !== "string"
+          || !source.provider_message_id.trim() || source.provider_message_id.startsWith("local-draft:")) {
+        throw new Error("Approved reply/forward source is not available in the selected mailbox");
+      }
+      const providerMessageId = String(source.provider_message_id);
+      const reviewedParams = paramsFromApprovedEmailSnapshot(snapshot);
 
       if (claimed.actionType === "reply_email") {
-        const params: DraftParams = {
-          to: Array.isArray(snapshot.to) ? snapshot.to.map(String) : [],
-          cc: Array.isArray(snapshot.cc) ? snapshot.cc.map(String) : [],
-          bcc: Array.isArray(snapshot.bcc) ? snapshot.bcc.map(String) : [],
-          subject: String(snapshot.subject ?? ""),
-          body_text: String(snapshot.bodyText ?? ""),
-          reply_to_message_id: String(source.provider_message_id),
-        };
-        const replied = await connected.reply(String(source.provider_message_id), params);
+        const params: DraftParams = { ...reviewedParams, reply_to_message_id: providerMessageId };
+        const replied = await connected.reply(providerMessageId, params);
         providerAccepted = true;
         return replied;
       }
 
-      const recipients = Array.isArray(snapshot.to) ? snapshot.to.map(String) : [];
-      const forwarded = await connected.forward(String(source.provider_message_id), recipients);
+      const forwarded = await connected.forward(providerMessageId, reviewedParams.to);
       providerAccepted = true;
       return forwarded;
     });
