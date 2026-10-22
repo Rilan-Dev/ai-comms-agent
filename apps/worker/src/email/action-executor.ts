@@ -10,6 +10,7 @@ import {
 import type { DraftParams, EmailCredentials } from "@ai-comms-agent/shared";
 import { createEmailProviderRegistry } from "./registry";
 import { verifyEmailProviderConnection } from "./provider-verification";
+import { isApprovedEmailActionAccountUsable } from "./action-account-guard";
 
 function credentialsFor(
   encrypted: Record<string, unknown>,
@@ -40,7 +41,7 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
 
     const accounts = new PostgresEmailAccountRepository();
     const account = await accounts.getById(claimed.emailAccountId);
-    if (!account || account.organization_id !== organizationId) throw new Error("Email account is unavailable");
+    if (!isApprovedEmailActionAccountUsable(account, organizationId)) throw new Error("Email account is unavailable");
     const encrypted = await accounts.loadCredentials(account.id, masterKey);
     if (!encrypted) throw new Error("Email account credentials are unavailable");
     const config = await accounts.getConnectionConfig(account.id);
