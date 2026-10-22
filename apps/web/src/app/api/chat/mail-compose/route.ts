@@ -127,11 +127,19 @@ export async function POST(request: Request) {
     };
     const runtime = await createEmailToolRuntime(organizationId, agentId);
     const toolName = action === "draft" ? "email.draft.create" : "email.send.request";
-    const recipient = bounded(body?.to, 320);
-    const subject = bounded(body?.subject, 998);
-    const bodyText = bounded(body?.bodyText, 100000);
-    if (action === "draft" && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient) || !subject || !bodyText))
-      return NextResponse.json({ error: "validation_error", message: "A valid recipient, subject and email body are required." }, { status: 422 });
+    // IDs may be normalized above, but the user-reviewed email body must not
+    // be trimmed, normalized or silently truncated before durable draft save.
+    const recipient = typeof body?.to === "string" ? body.to.trim() : "";
+    const subject = typeof body?.subject === "string" ? body.subject.trim() : "";
+    const bodyText = typeof body?.bodyText === "string" ? body.bodyText : "";
+    if (action === "draft" && (
+      recipient.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)
+      || subject.length > 998 || !subject
+      || bodyText.length > 100000 || !bodyText.trim()
+    )) return NextResponse.json({
+      error: "validation_error",
+      message: "A valid recipient (up to 320 characters), subject (up to 998 characters) and nonempty email body (up to 100000 characters) are required.",
+    }, { status: 422 });
 
     const input = action === "draft"
       ? { account_id: accountId, to: [recipient], subject, body_text: bodyText }
