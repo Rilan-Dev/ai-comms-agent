@@ -1,3 +1,10 @@
+## DEV-01 — DEV01-MULTI-CHAT-SESSIONS-20261023 — independent chat sessions, 2026-10-23
+- **Owner feature:** Fresh chat + resumable prior Q&A source committed on Development. Plan `docs/plans/CHAT_CONVERSATION_SESSIONS_20261023.md`; seven regression cases in `apps/web/tests/chat-conversation-history.test.ts`. Source checks 18/18; native tests/typechecks/PostgreSQL/browser unverified. Phase 4 stays in progress.
+- **Exact next:** `pnpm --filter @ai-comms-agent/web exec vitest run tests/chat-conversation-history.test.ts tests/chat-agent-context-race.test.ts tests/chat-authorization.test.ts tests/streaming-conversations.test.ts`; `pnpm --filter @ai-comms-agent/web typecheck && pnpm --filter @ai-comms-agent/db typecheck`. Then authenticated two-chat creation/selection/old Q&A/last-N memory/voice return, cross-organization/agent negative and draft-discard confirmation in disposable DB/browser; collect exact SHA.
+- **Blocker/decision:** Existing histories are organization+agent scoped, not per-user private. Privacy/owner migration + legacy migration policy require product approval before enabling personal-only history. Continue authorized C3/R1b independently; no automatic gated routine activation. FIX-01 owns bugs; OPS-01 CI/infra/deployment.
+
+---
+
 ## DEV-01 — DEV01-OVERVIEW-FIRST-EMAIL-COMMAND-CENTER-20261023 — current Development UI continuation
 
 - **Authority:** Owner expressly asked to show the existing Overview screen first, while planning safe five-day personal catch-up and scheduled WhatsApp/email digest workflows for ordinary users, employees, SMEs and international organizations. The prior Chat-first landing preference is superseded **only** for navigation; `/chat` remains an independent AI workspace. Phase 4 remains `implementation_in_progress`.
