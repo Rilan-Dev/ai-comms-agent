@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 type Overview = {
+  catchUpAvailable: boolean;
   metrics: Record<string, number>;
   activity: { id: string; title: string; detail: string; createdAt: string }[];
 };
@@ -56,6 +57,52 @@ export default function HomePage() {
       </section>
 
       {error && <div role="alert" className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-800"><p className="font-semibold">Workspace data unavailable</p><p className="mt-1 leading-6">{error} Connect PostgreSQL and an authenticated organization context to load live workspace state.</p></div>}
+
+      <section aria-labelledby="start-here-title" className="rounded-xl border border-border bg-card p-5 sm:p-7">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Your daily command center</p>
+            <h2 id="start-here-title" className="mt-2 font-display text-2xl font-medium">Start with what matters</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Check new conversations, ask your AI assistant for help, or set up a repeatable task. You stay in control of sending and approvals.</p>
+          </div>
+          <span className="w-fit rounded-md bg-secondary px-3 py-2 text-xs font-medium text-muted-foreground">Opening Overview does not mark messages as read or reviewed.</span>
+        </div>
+        <div className="mt-6 grid gap-3 md:grid-cols-3">
+          <article className="rounded-lg border border-border p-4">
+            <p className="text-xs font-semibold text-muted-foreground">01 · Check</p>
+            <h3 className="mt-2 text-base font-semibold">Review your inbox</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Open the original messages and decide which ones deserve attention.</p>
+            <a href="/mail/inbox" className="mt-4 inline-flex min-h-10 items-center text-sm font-semibold underline decoration-border underline-offset-4 hover:decoration-foreground">Open inbox ↗</a>
+          </article>
+          <article className="rounded-lg border border-border p-4">
+            <p className="text-xs font-semibold text-muted-foreground">02 · Ask</p>
+            <h3 className="mt-2 text-base font-semibold">Ask Clara</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Ask for a summary or help preparing a draft using the accounts and permissions available to you.</p>
+            <a href="/chat" className="mt-4 inline-flex min-h-10 items-center text-sm font-semibold underline decoration-border underline-offset-4 hover:decoration-foreground">Open AI chat ↗</a>
+          </article>
+          <article className="rounded-lg border border-border p-4">
+            <p className="text-xs font-semibold text-muted-foreground">03 · Plan</p>
+            <h3 className="mt-2 text-base font-semibold">Plan a repeatable task</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Manage existing scheduled jobs and event-triggered automations. New AI digest routines are not yet activated.</p>
+            <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold">
+              <a href="/schedules" className="inline-flex min-h-10 items-center underline decoration-border underline-offset-4 hover:decoration-foreground">Schedules ↗</a>
+              <a href="/automations" className="inline-flex min-h-10 items-center underline decoration-border underline-offset-4 hover:decoration-foreground">Automations ↗</a>
+            </div>
+          </article>
+        </div>
+        <div className="mt-4 rounded-lg border border-border bg-secondary/40 p-4">
+          {data?.catchUpAvailable ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm leading-6"><strong>Private catch-up preview available.</strong> Select permitted mailboxes and a review window; AI-generated results may still be pending.</p>
+              <a href="/catch-up" className="inline-flex min-h-10 shrink-0 items-center font-semibold text-sm underline underline-offset-4">Open catch-up preview ↗</a>
+            </div>
+          ) : (
+            <p className="text-sm leading-6 text-muted-foreground"><strong className="text-foreground">Private catch-up is not enabled yet.</strong> Continue with your inbox while source-grounded summaries and access checks are verified.</p>
+          )}
+        </div>
+      </section>
+
+      <p className="text-xs leading-5 text-muted-foreground">Workspace metrics below are organization-wide counts, not your personal catch-up coverage. Opening messages still requires the relevant permissions.</p>
 
       <section aria-label="Workspace metrics" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {metricMeta.map((item) => <article key={item.key} className="rounded-md border border-border bg-card p-5 transition-colors hover:bg-card/80">
