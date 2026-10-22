@@ -40,6 +40,7 @@ test("user queue is explicit and distinct from worker's atomic queued to syncing
   assert.match(claim, /provider_draft_sync_token = gen_random_uuid\(\)/);
   assert.match(claim, /RETURNING m\.\*/);
   assert.match(list, /provider_draft_sync_status = 'queued'/);
+  assert.match(list, /a\.status = 'connected'/);
   assert.match(dbExports, /claimQueuedProviderDraftSyncForOrganization/);
   assert.match(dbExports, /queueLocalDraftProviderSyncForOrganization/);
 });
@@ -52,7 +53,7 @@ test("late provider results cannot overwrite a draft edited while the network ca
     assert.match(source, /a\.organization_id = \$3/);
   }
   assert.match(draftSync, /const draft = await claimQueuedProviderDraftSyncForOrganization\(/);
-  assert.match(draftSync, /const lease = String\(draft\.provider_draft_sync_token\)/);
+  assert.match(draftSync, /const lease = String\(draft\.provider_draft_sync_token \?\? ""\)/);
   assert.match(draftSync, /markDraftProviderSyncedForOrganization\(organizationId, messageId, providerDraftId, lease\)/);
   assert.match(draftSync, /markDraftProviderSyncErrorForOrganization\(organizationId, messageId, message, lease\)/);
   assert.doesNotMatch(draftSync, /await markDraftProviderSyncingForOrganization\(/);
@@ -66,4 +67,17 @@ test("API and draft list UI show queued separately from an active sync", () => {
   assert.match(draftUI, /provider_draft_sync_status: "queued"/);
   assert.match(draftUI, /=== "queued" \? "queued"/);
   assert.doesNotMatch(queueRoute, /markDraftProviderSyncingForOrganization/);
+});
+
+test("interrupted syncs become review-required errors and are never silently retried", () => {
+  const worker = readFileSync(new URL("../src/email/provider-draft-worker.ts", import.meta.url), "utf8");
+  const recovery = repo.slice(repo.indexOf("export async function recoverStaleProviderDraftSyncs("),
+    repo.indexOf("export async function getLocalDraftForOrganization("));
+  assert.match(recovery, /provider_draft_sync_status = 'error'/);
+  assert.match(recovery, /provider_draft_sync_token = NULL/);
+  assert.match(recovery, /provider_draft_sync_status = 'syncing'/);
+  assert.match(recovery, /updated_at < now\(\) - make_interval/);
+  assert.match(worker, /await recoverStaleProviderDraftSyncs\(\)/);
+  assert.match(draftSync, /account\.status !== "connected"/);
+  assert.match(draftSync, /catch \(auditError\)/);
 });
