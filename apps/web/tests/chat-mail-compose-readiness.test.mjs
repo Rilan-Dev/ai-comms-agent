@@ -5,7 +5,7 @@ import { mailComposeReadiness } from "../src/lib/mail/compose-readiness.ts";
 
 test("connected mailbox plus enabled agent tools never overrides missing actor email.write", () => {
   const state = mailComposeReadiness({
-    actorCanWrite: false, draftToolEnabled: true, sendRequestToolEnabled: true, hasBoundPrimaryMailbox: true,
+    actorCanWrite: false, draftToolEnabled: true, sendRequestToolEnabled: true, hasBoundPrimaryMailbox: true, providerCanDraft: true, providerCanSend: true,
   });
   assert.equal(state.canDraft, false);
   assert.equal(state.canRequestApproval, false);
@@ -16,13 +16,13 @@ test("connected mailbox plus enabled agent tools never overrides missing actor e
 
 test("report independent allowlist, account and actor failures; no implicit permission elevation", () => {
   const none = mailComposeReadiness({
-    actorCanWrite: false, draftToolEnabled: false, sendRequestToolEnabled: false, hasBoundPrimaryMailbox: false,
+    actorCanWrite: false, draftToolEnabled: false, sendRequestToolEnabled: false, hasBoundPrimaryMailbox: false, providerCanDraft: true, providerCanSend: true,
   });
   assert.deepEqual(none.blockers.map(item => item.code), [
     "missing_email_write", "draft_tool_disabled", "send_request_tool_disabled", "no_bound_primary_mailbox",
   ]);
   const draftOnly = mailComposeReadiness({
-    actorCanWrite: true, draftToolEnabled: true, sendRequestToolEnabled: false, hasBoundPrimaryMailbox: true,
+    actorCanWrite: true, draftToolEnabled: true, sendRequestToolEnabled: false, hasBoundPrimaryMailbox: true, providerCanDraft: true, providerCanSend: true,
   });
   assert.equal(draftOnly.canDraft, true);
   assert.equal(draftOnly.canRequestApproval, false);
@@ -43,4 +43,39 @@ test("readiness is a pure GET diagnostic; chat test-email intent opens preview o
   assert.match(types, /SYSTEM_ROLE_PERMISSIONS/);
   assert.match(route, /const result = await invokeEmailReadTool\(/);
   assert.doesNotMatch(route, /decideEmailAction|sendDraft\(/);
+});
+
+
+test("mailbox draft capability is required even when actor, binding and policy are enabled", () => {
+  const state = mailComposeReadiness({
+    actorCanWrite: true, draftToolEnabled: true, sendRequestToolEnabled: true,
+    hasBoundPrimaryMailbox: true, providerCanDraft: false, providerCanSend: true,
+  });
+  assert.equal(state.canDraft, false);
+  assert.equal(state.canRequestApproval, false);
+  assert.deepEqual(state.blockers.map(x => x.code), ["provider_drafts_unsupported"]);
+});
+
+test("mailbox send capability independently blocks approval but not draft creation", () => {
+  const state = mailComposeReadiness({
+    actorCanWrite: true, draftToolEnabled: true, sendRequestToolEnabled: true,
+    hasBoundPrimaryMailbox: true, providerCanDraft: true, providerCanSend: false,
+  });
+  assert.equal(state.canDraft, true);
+  assert.equal(state.canRequestApproval, false);
+  assert.deepEqual(state.blockers.map(x => x.code), ["provider_send_unsupported"]);
+});
+
+test("readiness is specific to the selected bound mailbox, never true for every account from one capable account", () => {
+  const route = readFileSync(new URL("../src/app/api/chat/mail-compose/route.ts", import.meta.url), "utf8");
+  const chat = readFileSync(new URL("../src/app/chat/chat-client.tsx", import.meta.url), "utf8");
+  assert.match(route, /a\.capabilities/);
+  assert.match(route, /mailboxes\.map\(mailbox =>/);
+  assert.match(route, /providerCanDraft: mailbox\.capabilities\.drafts === true/);
+  assert.match(route, /providerCanSend: mailbox\.capabilities\.send === true/);
+  assert.match(route, /canDraft: readiness\.canDraft/);
+  assert.match(route, /canRequestApproval: readiness\.canRequestApproval/);
+  assert.match(chat, /setComposeCanDraft\(selectedMailbox\?\.canDraft === true\)/);
+  assert.match(chat, /setComposeCanApprove\(selectedMailbox\?\.canRequestApproval === true\)/);
+  assert.match(chat, /setComposeBlockers\(selectedMailbox\?\.blockers \?\? \[\]\)/);
 });
