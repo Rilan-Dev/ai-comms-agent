@@ -74,11 +74,16 @@ export async function POST(request: Request) {
     const bound = await primaryMailboxes(organizationId, agentId);
     if (!bound.some(account => account.id === accountId)) return NextResponse.json({ error: "mailbox_not_available", message: "Choose a connected primary mailbox assigned to this agent." }, { status: 403 });
 
+    const draftId = bounded(body?.draftId, 100);
+    if (action === "request_approval" && !draftId) return NextResponse.json({ error: "validation_error", message: "Save a draft before requesting send approval." }, { status: 422 });
     const context: ToolContext = {
       organization_id: organizationId, agent_id: agentId, user_id: trusted.subject.user.id,
       // Never trust a client-provided conversation ID as an authorization fact.
       conversation_id: crypto.randomUUID(),
-      turn_id: crypto.randomUUID(), correlation_id: crypto.randomUUID(), channel: "chat",
+      // One saved draft represents one reviewable approval request. A lost
+      // response or double click reuses the DB idempotency key, not a new send.
+      turn_id: action === "request_approval" ? `chat-draft:${agentId}:${draftId}` : crypto.randomUUID(),
+      correlation_id: crypto.randomUUID(), channel: "chat",
       auth_subject: {
         user_id: trusted.subject.user.id, role: trusted.membership.role,
         permissions: [...trusted.subject.permissions],
@@ -91,9 +96,7 @@ export async function POST(request: Request) {
     const bodyText = bounded(body?.bodyText, 100000);
     if (action === "draft" && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient) || !subject || !bodyText))
       return NextResponse.json({ error: "validation_error", message: "A valid recipient, subject and email body are required." }, { status: 422 });
-    const draftId = bounded(body?.draftId, 100);
-    if (action === "request_approval" && !draftId)
-      return NextResponse.json({ error: "validation_error", message: "Save a draft before requesting send approval." }, { status: 422 });
+
     const input = action === "draft"
       ? { account_id: accountId, to: [recipient], subject, body_text: bodyText }
       : { account_id: accountId, draft_id: draftId };
