@@ -19,7 +19,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "validation_error", message: "Organization is required." }, { status: 400 });
     }
     await authorize(request, {
-      organizationId: asOrganizationId(organizationId), permission: "organization.read",
+      organizationId: asOrganizationId(organizationId), permission: "email.read",
     }, getIdentityAdapter(), getIdentityRepository());
 
     const limit = Number(params.get("limit") ?? "25");
