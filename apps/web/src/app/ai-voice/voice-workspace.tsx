@@ -980,7 +980,8 @@ export function VoiceWorkspace({
         body: JSON.stringify({ organizationId, sessionId: session.id, reason: "user_ended" }),
       });
       const payload = await response.json().catch(() => null) as { session?: VoiceSession } | null;
-      if (!response.ok || payload?.session?.status !== "ended" || payload.session.id !== session.id) {
+      if (!response.ok) throw new Error("Voice session termination request was rejected.");
+      if (payload?.session?.status !== "ended" || payload.session.id !== session.id) {
         setError("Could not confirm the voice session ended on the server. Retry End session.");
         setNotice("Microphone audio stopped, but host session termination is not confirmed.");
         return false;
