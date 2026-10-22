@@ -35,7 +35,7 @@ describe("FIX-01 email draft updates and sync enforce organization on both row a
     for (const snippet of [markSyncing, markSynced, markError, get, deletion]) {
       expect(snippet).toContain("m.organization_id =");
       expect(snippet).toContain("a.organization_id =");
-      expect(snippet).toContain("m.email_account_id = a.id");
+      expect(snippet.includes("m.email_account_id = a.id") || snippet.includes("a.id = m.email_account_id")).toBe(true);
       expect(snippet).toContain("m.is_draft = true");
     }
   });
