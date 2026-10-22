@@ -1895,3 +1895,8 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - Development `ae1f92e0,505e9e8d,13b44a8a`: scoped `getAgentAiSettings` selection, provider/model isolation and seven regression tests. Fetched source helper/route/test/Clara/browser guard: **16/16 source invariants PASS**.
 - **NOT RUN:** native web Vitest, web typecheck/build, authenticated tenant DB read, Sarvam token/relay, WebSocket activation, real TTS/STT, deployment. Corrected response is not production-confirmed.
 - **Next:** focused web `tests/voice-agent-provider-selection.test.ts tests/voice-realtime-transport.test.ts`, web typecheck, then OPS-01 approved rollout and sanitized same-account voice/session+Sarvam relay verification; #26 broader realtime lifecycle remains open.
+
+### DEV01-MULTI-CHAT-SESSIONS-20261023 — 2026-10-23 — source committed; executable acceptance pending
+- **Development:** Starting HEAD `93d7e536`, new independent session persistence/list/history/API/deep-link UI and seven regression cases on Development. Latest fetched source verified 18/18 structural assertions and 26/26 literal expectations.
+- **NOT RUN:** Native `pnpm --filter @ai-comms-agent/web exec vitest run tests/chat-conversation-history.test.ts tests/chat-agent-context-race.test.ts tests/chat-authorization.test.ts tests/streaming-conversations.test.ts`; web/db TypeScript; isolated PostgreSQL multi-session; authenticated browser, provider, voice and deployment. Do not infer PASS.
+- **Next:** Execute on matching revision, test two fresh sessions and one legacy continuation, last-N ordering, org/agent negatives, voice return, unsent message consent and mobile keyboard UX; OPS-01 deploy/host, FIX-01 independent bugs.
