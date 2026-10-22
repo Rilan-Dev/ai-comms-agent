@@ -17,7 +17,7 @@ describe("FIX-01 realtime transport unexpected loss host lifecycle", () => {
     expect(teardown).toContain('fetch("/api/voice/session"');
     expect(teardown).toContain('method: "DELETE"');
     expect(teardown).toContain('reason: "transport_lost"');
-    expect(teardown).toContain('payload.session.id !== active.id');
+    expect(teardown).toContain('payload?.session?.id !== active.id');
     expect(teardown).toContain('payload.session.status !== "ended"');
     expect(teardown).toContain("sessionRef.current?.id === active.id");
     expect(teardown).toContain("setSession(payload.session)");
@@ -40,6 +40,9 @@ describe("FIX-01 realtime transport unexpected loss host lifecycle", () => {
   it("does not reactivate an already torn down socket from a late PATCH response", () => {
     expect(patch).toContain('body.action === "activate" && expectedDisconnectRef.current');
     expect(patch).toContain("throw new Error");
-    expect(source).toContain('if (payload.session?.status !== "ended"');
+    const startup = source.slice(source.indexOf("async function start()"), source.indexOf("async function sendTextTurn()"));
+    expect(startup).toContain('reason: "transport_start_failed"');
+    expect(startup).toContain('payload.session.status !== "ended"');
+    expect(startup).not.toContain('setSession((current) => current ? { ...current, status: "error" } : null)');
   });
 });
