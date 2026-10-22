@@ -14,7 +14,10 @@ describe("mail folder mutation contract", () => {
 
   it("moves all selected messages only if every message belongs to the destination mailbox", () => {
     expect(repository).toContain("WHERE f.id = $2 AND a.organization_id = $1 AND a.deleted_at IS NULL");
-    expect(repository).toContain("destination.rows[0].email_account_id !== accounts[0]");
+    expect(repository).toContain("const destinationRow = destination.rows[0]");
+    expect(repository).toContain("if (!destinationRow || destination.rows.length !== 1");
+    expect(repository).toContain("destinationRow.email_account_id !== accounts[0]");
+    expect(repository).toContain("targets = [destinationRow]");
     expect(repository).toContain("m.email_account_id = target.email_account_id");
     expect(repository).toContain("m.id = ANY($2::uuid[])");
   });
