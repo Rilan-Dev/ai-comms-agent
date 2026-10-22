@@ -27,3 +27,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return authorizationErrorToResponse(error);
   }
 }
+
+/** Only an organization administrator may inspect full policy restrictions.
+ * Chat can display a permission preview, but never grants access on read. */
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    if (!process.env.DATABASE_URL) return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
+    await ensureDevSeed();
+    const { id } = await params;
+    const organizationId = new URL(request.url).searchParams.get("organizationId") ?? "";
+    if (!organizationId) return NextResponse.json({ error: "validation_error", message: "Organization is required." }, { status: 422 });
+    await authorize(request, { organizationId: asOrganizationId(organizationId), role: "admin" }, getIdentityAdapter(), getIdentityRepository());
+    const policy = await new PostgresAgentRepository().policy(organizationId, id);
+    if (!policy) return NextResponse.json({ error: "not_found", message: "No saved agent policy exists." }, { status: 404 });
+    return NextResponse.json({ policy }, { headers: { "cache-control": "private, no-store" } });
+  } catch (error) {
+    return authorizationErrorToResponse(error);
+  }
+}
