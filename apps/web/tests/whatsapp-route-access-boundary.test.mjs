@@ -60,3 +60,17 @@ test("WhatsApp outbound proposals still require human approval and scoped send g
   assert.match(approval, /permission: "whatsapp\.send"/);
   assert.match(approval, /queued/);
 });
+
+
+test("WhatsApp credential/config POST errors preserve 401/403 and never expose raw DB or provider errors", () => {
+  for (const p of [
+    "../src/app/api/whatsapp/accounts/route.ts",
+    "../src/app/api/whatsapp/webhook-config/route.ts",
+  ]) {
+    const post = handler(read(p), "POST");
+    assert.match(post, /return authorizationErrorToResponse\(error\)/);
+    assert.doesNotMatch(post, /console\.error\([^\n]*error\)/);
+    assert.doesNotMatch(post, /message: error\.message/);
+    assert.doesNotMatch(post, /const message = error instanceof Error \? error\.message/);
+  }
+});
