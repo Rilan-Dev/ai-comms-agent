@@ -30,8 +30,8 @@ describe("FIX-01: chat turn and navigation cannot race before React busy state r
     expect(send).toContain("if (!content || busy || newChatBusy");
     // Anchor both statements to executable lines: prose comments may mention
     // setBusy(true) earlier without actually setting React state.
-    const claim = /^\\s*chatTurnInFlightRef\\.current = true;$/m.exec(send);
-    const busyCall = /^\\s*setBusy\\(true\\);$/m.exec(send);
+    const claim = /^\s*chatTurnInFlightRef\.current = true;$/m.exec(send);
+    const busyCall = /^\s*setBusy\(true\);$/m.exec(send);
     expect(claim).not.toBeNull();
     expect(busyCall).not.toBeNull();
     expect(claim!.index).toBeLessThan(busyCall!.index);
