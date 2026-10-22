@@ -70,5 +70,12 @@ test("UI fences every async source, summary and review path before state mutatio
   assert.match(source, /onChange=\{e => changeAgent\(e\.target\.value\)\}/);
   assert.match(source, /<input type="checkbox" checked=\{mailboxIds\.includes\(m\.id\)\}[\s\S]{0,60}disabled=\{busy\}/);
   assert.match(source, /<select value=\{days\} disabled=\{busy\}/);
+  assert.match(source, /function changeMailbox\(mailboxId: string, checked: boolean\)/);
+  assert.match(source, /function changeDays\(nextDays: number\)/);
+  assert.match(source, /onChange=\{e => changeMailbox\(m\.id, e\.target\.checked\)\}/);
+  assert.match(source, /onChange=\{e => changeDays\(Number\(e\.target\.value\)\)\}/);
+  const edits = source.slice(source.indexOf("function changeMailbox("), source.indexOf("// All four read/write UI operations"));
+  assert.equal((edits.match(/clearSelectionResults\(\)/g) ?? []).length, 2);
+  assert.match(source, /function clearSelectionResults\(\)/);
   assert.doesNotMatch(source, /setAgentId\(e\.target\.value\)/);
 });
