@@ -6,7 +6,7 @@ import { Activity as ActivityIcon, ArrowLeft, Bot, FlaskConical, GitBranch, Paus
 import type { Agent, AgentEmailBinding, AgentPolicy, AgentVersion, AgentWhatsAppBinding, EmailAccount } from "@ai-comms-agent/shared";
 import { useNotifications } from "@/components/notifications";
 import { AgentAISettingsPanel } from "./agent-ai-settings-panel";
-import { EMAIL_PERMISSION_PRESETS, emailPermissionPresetSelection } from "@/lib/agents/email-permission-presets";
+import { EMAIL_PERMISSION_PRESETS, emailPermissionPresetSelection, summarizeEmailPermissionChanges } from "@/lib/agents/email-permission-presets";
 
 // Only tools registered by the current email runtime are selectable here.
 // The shared catalog also includes unimplemented contracts: showing those
@@ -214,23 +214,60 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
       ? (current.includes(toolName) ? current : [...current, toolName])
       : current.filter((name) => name !== toolName));
   }
-  async function savePolicy(event:React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true);
-    const form=new FormData(event.currentTarget);
-    // A preset is only an editable preview. The administrator must explicitly
-    // confirm every changed policy before the privileged API persists it.
+  async function savePolicy(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    const form = new FormData(event.currentTarget);
     const allowedTools = selectedTools;
-    const was = new Set(policy?.allowedTools ?? []);
-    const added = allowedTools.filter(name => !was.has(name));
-    const removed = (policy?.allowedTools ?? []).filter(name => !allowedTools.includes(name));
-    if ((added.length || removed.length) && !window.confirm(`Save agent mail permissions? Add ${added.length}, remove ${removed.length}. Request sending only creates an approval request; no email sends automatically.`)) { setBusy(false); return; }
-    const allowedSenders=String(form.get("allowedSenders")??"").split(",").map((v)=>v.trim()).filter(Boolean);
-    const blockedSenders=String(form.get("blockedSenders")??"").split(",").map((v)=>v.trim()).filter(Boolean);
-    let securityPolicy: unknown;
-    let rateLimits: unknown;
-    try { securityPolicy=JSON.parse(String(form.get("securityPolicy")??"{}")); rateLimits=JSON.parse(String(form.get("rateLimits")??"{}")); } catch { notify({kind:"error",title:"Invalid policy JSON",message:"Security policy and rate limits must be valid JSON objects."}); setBusy(false); return; }
-    if (!securityPolicy || typeof securityPolicy !== "object" || Array.isArray(securityPolicy) || !rateLimits || typeof rateLimits !== "object" || Array.isArray(rateLimits)) { notify({kind:"error",title:"Invalid policy JSON",message:"Security policy and rate limits must be JSON objects."}); setBusy(false); return; }
-    try { const p=await call(`/api/agents/${agent.id}/policy`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,securityPolicy,allowedTools,allowedSenders,blockedSenders,rateLimits})}); setPolicy(p.policy); setSelectedTools(p.policy.allowedTools); notify({kind:"success",title:"Policy saved"}); } catch(e){notify({kind:"error",title:"Policy could not be saved",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
+    const allowedSenders = String(form.get("allowedSenders") ?? "").split(",").map(v => v.trim()).filter(Boolean);
+    const blockedSenders = String(form.get("blockedSenders") ?? "").split(",").map(v => v.trim()).filter(Boolean);
+    let securityPolicy: Record<string, unknown>;
+    let rateLimits: Record<string, unknown>;
+    try {
+      const security = JSON.parse(String(form.get("securityPolicy") ?? "{}")) as unknown;
+      const limits = JSON.parse(String(form.get("rateLimits") ?? "{}")) as unknown;
+      if (!security || typeof security !== "object" || Array.isArray(security)
+        || !limits || typeof limits !== "object" || Array.isArray(limits)) throw new Error("Expected JSON objects.");
+      securityPolicy = security as Record<string, unknown>;
+      rateLimits = limits as Record<string, unknown>;
+    } catch {
+      notify({ kind: "error", title: "Invalid policy JSON", message: "Security policy and rate limits must be valid JSON objects." });
+      return;
+    }
+    const { added, removed, confirmation } =
+      summarizeEmailPermissionChanges(policy?.allowedTools ?? [], allowedTools);
+    const otherChanges = !policy || JSON.stringify({
+      securityPolicy, rateLimits, allowedSenders, blockedSenders,
+    }) !== JSON.stringify({
+      securityPolicy: policy.securityPolicy, rateLimits: policy.rateLimits,
+      allowedSenders: policy.allowedSenders, blockedSenders: policy.blockedSenders,
+    });
+    if (!added.length && !removed.length && !otherChanges) {
+      notify({ kind: "info", title: "No permission changes to save" });
+      return;
+    }
+    if (!window.confirm(confirmation + (otherChanges
+      ? "\n\nAdvanced sender restrictions or policy settings will also be updated." : ""))) return;
+    setBusy(true);
+    try {
+      const p = await call(`/api/agents/${agent.id}/policy`, {
+        method: "PATCH", headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          organizationId, securityPolicy, allowedTools, allowedSenders, blockedSenders, rateLimits,
+          ...(policy ? { expectedPolicy: {
+            securityPolicy: policy.securityPolicy, allowedTools: policy.allowedTools,
+            allowedSenders: policy.allowedSenders, blockedSenders: policy.blockedSenders,
+            rateLimits: policy.rateLimits,
+          } } : {}),
+        }),
+      });
+      setPolicy(p.policy);
+      setSelectedTools(p.policy.allowedTools);
+      notify({ kind: "success", title: "Policy saved", message: "New chat and voice turns use the updated policy. No message was sent." });
+    } catch (error) {
+      notify({ kind: "error", title: "Policy could not be saved",
+        message: error instanceof Error ? error.message : "Unknown error" });
+    } finally { setBusy(false); }
   }
 
   return <main className="mx-auto max-w-[1500px] space-y-6 p-5 sm:p-7 lg:p-9">
