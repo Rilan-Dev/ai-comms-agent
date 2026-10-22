@@ -489,7 +489,9 @@ export async function updateLocalDraftForOrganization(
   if (input.bcc) { values.push(JSON.stringify(input.bcc)); sets.push(`bcc_recipients = $${values.length}::jsonb`); }
   if (input.subject !== undefined) { values.push(input.subject.trim() || null); sets.push(`subject = $${values.length}`); }
   if (input.bodyText !== undefined) { values.push(input.bodyText); sets.push(`text_body = $${values.length}, snippet = left($${values.length}, 240)`); }
-  if (!sets.length) return getMailMessageForOrganization(organizationId, messageId);
+  // A zero-column PATCH is not a read operation. Returning the generic
+  // message here could expose non-draft mail to an email.write-only caller.
+  if (!sets.length) return null;
   values.push(messageId, organizationId);
   const draftIdParam = "$" + (values.length - 1);
   const organizationParam = "$" + values.length;
