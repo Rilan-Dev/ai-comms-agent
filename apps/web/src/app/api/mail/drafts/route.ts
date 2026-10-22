@@ -48,7 +48,7 @@ export async function PATCH(request: Request) {
       // Do not report a live, approved/queued draft as missing. Mutation is
       // blocked by the atomic repository SQL while human approval is active.
       const existing = await getLocalDraftForOrganization(organizationId, messageId);
-      if (existing) return NextResponse.json({ error: "draft_approval_locked", message: "This draft is awaiting send approval or execution. Reject or finish the action before editing it." }, { status: 409 });
+      if (existing) return NextResponse.json({ error: "draft_approval_locked", message: "This draft has a pending, executing, or completed send action. Its reviewed content cannot be changed. Check the action status before editing it." }, { status: 409 });
       return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization." }, { status: 404 });
     }
     await recordAuditEvent({ organizationId, actorUserId: subjectUser.user.id, eventType: "email.draft.updated", targetType: "email_message", targetId: messageId, action: "update", decision: "allowed" });
@@ -93,7 +93,7 @@ export async function DELETE(request: Request) {
     const deleted = await deleteLocalDraftForOrganization(organizationId, messageId);
     if (!deleted) {
       const existing = await getLocalDraftForOrganization(organizationId, messageId);
-      if (existing) return NextResponse.json({ error: "draft_approval_locked", message: "This draft is awaiting send approval or execution. Reject or finish the action before deleting it." }, { status: 409 });
+      if (existing) return NextResponse.json({ error: "draft_approval_locked", message: "This draft has a pending, executing, or completed send action. Its reviewed content cannot be changed. Check the action status before deleting it." }, { status: 409 });
       return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization." }, { status: 404 });
     }
     await recordAuditEvent({ organizationId, actorUserId: subjectUser.user.id, eventType: "email.draft.deleted", targetType: "email_message", targetId: messageId, action: "delete", decision: "allowed" });
