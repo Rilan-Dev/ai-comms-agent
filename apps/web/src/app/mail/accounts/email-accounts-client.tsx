@@ -207,7 +207,7 @@ export function EmailAccountsClient({
       const data = await response.json();
       if (!response.ok) throw new Error(data.message ?? "Could not reconnect the mailbox.");
       setAccounts((current) => current.map((item) => item.id === account.id ? data.account : item));
-      setNotice("Mailbox connection verified and restored.");
+      setNotice("Mailbox credentials verified; capability discovery is pending. Draft and send support will be available only after worker verification.");
       await refreshAccounts();
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Mailbox reconnection failed.");
