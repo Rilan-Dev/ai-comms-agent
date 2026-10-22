@@ -51,7 +51,8 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
     const provider = createEmailProviderRegistry().create(account.provider);
 
     const snapshot = claimed.recipientSnapshot;
-    const result = await verifyEmailProvi      if (claimed.actionType === "send_email") {
+    const result = await verifyEmailProviderConnection(provider, credentials, async ({ provider: connected }) => {
+      if (claimed.actionType === "send_email") {
         const draftId = claimed.draftId;
         if (!draftId) throw new Error("Approved send action has no draft");
         const draft = await getMailMessageForOrganization(organizationId, draftId);
@@ -59,15 +60,10 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
           throw new Error("Approved draft is no longer available in the selected mailbox");
         }
         const params = paramsFromApprovedEmailSnapshot(snapshot);
-        // A remote draft may have changed since approval. Create an isolated
-        // provider draft with the immutable approved recipients and content.
+        // Only dispatch the immutable human-approved snapshot. Remote drafts
+        // can have changed since the original review.
         const providerDraftId = (await connected.createDraft(params)).draft_id;
         const sent = await connected.sendDraft(providerDraftId);
-        providerAccepted = true;
-        return sent;
-      }
-
-rDraftId);
         providerAccepted = true;
         return sent;
       }
