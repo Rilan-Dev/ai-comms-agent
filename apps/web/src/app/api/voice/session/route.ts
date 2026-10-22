@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PostgresAgentRepository, activateVoiceSessionForOrganization, configureStartingVoiceSessionForOrganization, createVoiceSession, getChatConversation, getOrCreateChatConversation, endVoiceSessionForOrganization, getVoiceSessionForOrganization, getAgentAiSettings, incrementVoiceSessionTurnForOrganization, query, recordVoiceTelemetry } from "@ai-comms-agent/db";
 import { resolveAgentRealtimeVoiceProvider } from "@/lib/voice/resolve-agent-realtime-provider";
+import { resolveProviderVoiceConfig } from "@/lib/voice/resolve-provider-voice-config";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -78,29 +79,26 @@ export async function POST(request: Request) {
     const organizationModel = orgVoiceProvider === voiceProvider
       ? orgSettings?.realtime_voice_model?.trim() || "" : "";
     const legacyModel = agentAiSettings === null ? agentVoiceRow?.voice_model?.trim() || "" : "";
-    const voiceModel = agentAiSettings?.realtimeSttModel?.trim()
-      || legacyModel
-      || ((voiceProvider === "sarvam" || voiceProvider === "elevenlabs") ? providerModel : organizationModel)
-      || organizationModel
-      || providerModel
-      || (voiceProvider === "sarvam" ? "saaras:v3-realtime"
-        : voiceProvider === "elevenlabs" ? "scribe_v2_realtime"
-        : voiceProvider === "gemini" ? "gemini-3.5-transcribe-live"
-        : process.env.OPENAI_REALTIME_MODEL || "gpt-realtime-2.1-mini");
-    const rawConfiguredVoiceId = agentAiSettings?.realtimeVoiceIdOverride?.trim()
-      || (agentAiSettings === null ? agentVoiceRow?.voice_id?.trim() : "")
-      || orgSettings?.voice_id?.trim();
-    const sarvamV3Speakers = new Set(["shubh","aditya","ritu","priya","neha","rahul","pooja","rohan","simran","kavya","amit","dev","ishita","shreya","ratan","varun","manan","sumit","roopa","kabir","aayan","ashutosh","advait","anand","tanya","tarun","sunny","mani","gokul","vijay","shruti","suhani","mohit","kavitha","rehan","soham","rupali"]);
-    const configuredVoiceId = rawConfiguredVoiceId
-      && !(voiceProvider !== "openai" && rawConfiguredVoiceId === "alloy")
-      && (voiceProvider !== "sarvam" || sarvamV3Speakers.has(rawConfiguredVoiceId))
-      ? rawConfiguredVoiceId
-      : undefined;
-    const voiceId = configuredVoiceId || (
-      voiceProvider === "sarvam" ? process.env.SARVAM_DEFAULT_VOICE?.trim() || "shubh" :
-      voiceProvider === "elevenlabs" ? process.env.ELEVENLABS_VOICE_ID?.trim() || "" :
-      process.env.OPENAI_DEFAULT_VOICE?.trim() || "alloy"
-    );
+    // The selected provider is authoritative for every inherited model/voice.
+    // Never send OpenAI org settings to a Sarvam/ElevenLabs/Gemini session.
+    const { model: voiceModel, voiceId } = resolveProviderVoiceConfig({
+      provider: voiceProvider,
+      hasModernAgentSettings: agentAiSettings !== null,
+      agentSttModel: agentAiSettings?.realtimeSttModel?.trim(),
+      agentVoiceId: agentAiSettings?.realtimeVoiceIdOverride?.trim(),
+      legacyAgentProvider: agentVoiceRow?.voice_provider,
+      legacyAgentModel: legacyModel,
+      legacyAgentVoiceId: agentAiSettings === null ? agentVoiceRow?.voice_id?.trim() : "",
+      organizationProvider: orgVoiceProvider,
+      organizationModel,
+      organizationVoiceId: orgSettings?.voice_id,
+      providerModel,
+      openAiDefaultModel: process.env.OPENAI_REALTIME_MODEL,
+      openAiDefaultVoice: process.env.OPENAI_DEFAULT_VOICE,
+      sarvamDefaultVoice: process.env.SARVAM_DEFAULT_VOICE,
+      elevenLabsDefaultVoice: process.env.ELEVENLABS_VOICE_ID,
+      geminiDefaultVoice: process.env.GEMINI_VOICE_ID,
+    });
     if (voiceProvider === "elevenlabs" && !voiceId) {
       return NextResponse.json({ error: "voice_not_configured", message: "Choose an ElevenLabs voice ID in the agent voice settings before starting a voice session." }, { status: 503 });
     }
