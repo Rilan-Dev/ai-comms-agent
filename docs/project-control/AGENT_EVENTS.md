@@ -800,3 +800,8 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **DEV-01 Forge:** User-authorized fresh chat/continuable history feature on Development; current Phase 4. Start SHA `93d7e536`, repo-first control recovery, preserve concurrent FIX/OPS/DEV work.
 - **Delivered:** New per-agent persisted conversation, recent chat links, deep-link and newest-history API, first-message title, draft confirmation and selected voice-return session; commits `791ca44d,a88fbb81,578bba58,b998561f,1ecb994f,b1f42c69,11b42a67`. Tests and plan committed.
 - **Acceptance:** 18/18 static contracts; no executed Vitest/TypeScript/PostgreSQL/browser/deploy. Current org+agent shared access retained; per-user privacy design separately pending. Exact next action in `sessions/DEV01-MULTI-CHAT-SESSIONS-20261023.md`.
+
+### EVT-DEV01-CHAT-PERSISTENT-CONTROLS-SIDEBAR-20261023 — 2026-10-23
+- DEV-01 implemented owner-requested persistent chat controls and relocated New chat/recent conversations to a left-side scrollable list, retaining small-screen Chats drawer. Root cause: unbounded min-height page and horizontal top history.
+- Development commits `273799e7,6b5839f7,454d2d7b`. Source regression checks 19/19; native Vitest/TS/browser and live deployment pending.
+- No changes to scoped conversation persistence, organization/agent privacy, email policy/write/send approval, actual voice provider or C3/routine activation. See `sessions/DEV01-CHAT-PERSISTENT-CONTROLS-SIDEBAR-20261023.md`.
