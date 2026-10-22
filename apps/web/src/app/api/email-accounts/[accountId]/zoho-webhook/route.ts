@@ -8,6 +8,7 @@ import {
 } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
+import { assertSameOrigin } from "@/lib/identity/local-auth";
 import { getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { getOAuthPublicOrigin } from "@/lib/oauth/redirect-uri";
 
@@ -18,6 +19,8 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ accountId: string }> },
 ) {
+  try { assertSameOrigin(request); }
+  catch { return NextResponse.json({ error: "invalid_origin" }, { status: 403 }); }
   try {
     if (!process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY) {
       return NextResponse.json({ error: "server_not_configured" }, { status: 503 });
