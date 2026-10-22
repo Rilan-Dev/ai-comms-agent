@@ -135,6 +135,7 @@ export async function runEmailAgentTurn(
       const readOnly = result.ok && !approvalRequested && registeredTool?.sensitivity === "safe"
         && registeredTool.required_permission === "email.read";
       const verifiedStatus = toolOutput?.status === "draft_created" || toolOutput?.status === "draft_updated"
+        || toolOutput?.status === "reply_draft_created" || toolOutput?.status === "forward_draft_created"
         || toolOutput?.status === "pending_approval" ? toolOutput.status : undefined;
       summaries.push({
         name: call.name,
