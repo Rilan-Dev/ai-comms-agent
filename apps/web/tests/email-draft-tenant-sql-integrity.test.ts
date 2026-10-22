@@ -18,8 +18,11 @@ const deletion = section("deleteLocalDraftForOrganization", "listMailThreadsForO
 
 describe("FIX-01 email draft updates and sync enforce organization on both row and account", () => {
   it("requires same tenant for the draft row and bound account before any UPDATE", () => {
-    expect(update).toContain("m.organization_id = ${values.length}");
-    expect(update).toContain("a.organization_id = ${values.length}");
+    expect(update).toContain('const draftIdParam = "$" + (values.length - 1)');
+    expect(update).toContain('const organizationParam = "$" + values.length');
+    expect(update).toContain("m.id = ${draftIdParam}");
+    expect(update).toContain("m.organization_id = ${organizationParam}");
+    expect(update).toContain("a.organization_id = ${organizationParam}");
     expect(update).toContain("m.email_account_id = a.id");
     expect(update).toContain("m.is_draft = true");
     expect(update).toContain("a.deleted_at IS NULL");
