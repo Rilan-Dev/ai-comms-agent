@@ -6,7 +6,7 @@ import { AudioLines, Bot, Send, Sparkles, User } from "lucide-react";
 import dynamic from "next/dynamic";
 import { readSseEvents } from "@/lib/streaming/sse";
 import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "@/lib/ai/activity-progress";
-import { EMAIL_PERMISSION_PRESETS, REGISTERED_EMAIL_POLICY_NAMES, emailPermissionPresetSelection } from "@/lib/agents/email-permission-presets";
+import { EMAIL_PERMISSION_PRESETS, EMAIL_PERMISSION_LABELS, REGISTERED_EMAIL_POLICY_NAMES, emailPermissionPresetSelection, summarizeEmailPermissionChanges } from "@/lib/agents/email-permission-presets";
 import { parseTestEmailComposeRequest } from "@/lib/mail/test-email-compose-intent";
 import type { AgentPolicy } from "@ai-comms-agent/shared";
 
@@ -170,13 +170,13 @@ export function ChatClient({
     finally { setComposeBusy(false); }
   }
 
-  async function openMailPermissions() {
+  async function reloadMailPermissions() {
     if (!activeAgent) return;
-    if (mailPermissionOpen) { setMailPermissionOpen(false); return; }
     setMailPermissionBusy(true);
     setMailPermissionNotice("");
     try {
-      const response = await fetch("/api/agents/" + encodeURIComponent(activeAgent.id) + "/policy?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" });
+      const response = await fetch("/api/agents/" + encodeURIComponent(activeAgent.id)
+        + "/policy?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message ?? "Administrator access is required to change agent permissions.");
       setMailPolicy(data.policy);
@@ -184,34 +184,45 @@ export function ChatClient({
       setMailPermissionOpen(true);
     } catch (error) {
       setMailPermissionNotice(error instanceof Error ? error.message : "Permissions are unavailable.");
-    } finally { setMailPermissionBusy(false); }
+    } finally {
+      setMailPermissionBusy(false);
+    }
+  }
+  async function openMailPermissions() {
+    if (mailPermissionOpen) { setMailPermissionOpen(false); return; }
+    await reloadMailPermissions();
   }
   async function saveMailPermissions() {
-    if (!activeAgent || !mailPolicy) return;
-    const previous = new Set(mailPolicy.allowedTools);
-    const adds = mailToolSelection.filter(name => !previous.has(name));
-    const removes = mailPolicy.allowedTools.filter(name => !mailToolSelection.includes(name));
-    if (!adds.length && !removes.length) { setMailPermissionNotice("No changes to save."); return; }
-    if (!window.confirm(`Change this agent's permissions? Add ${adds.length}, remove ${removes.length}. This affects future chat and voice tool access. Email sending will STILL require separate human approval.`)) return;
+    if (!activeAgent || !mailPolicy || mailPermissionBusy || busy || voiceOpen) return;
+    const { added, removed, confirmation } =
+      summarizeEmailPermissionChanges(mailPolicy.allowedTools, mailToolSelection);
+    if (!added.length && !removed.length) { setMailPermissionNotice("No changes to save."); return; }
+    if (!window.confirm(confirmation)) return;
     setMailPermissionBusy(true);
     setMailPermissionNotice("");
     try {
       const response = await fetch("/api/agents/" + encodeURIComponent(activeAgent.id) + "/policy", {
         method: "PATCH", headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          organizationId,
-          securityPolicy: mailPolicy.securityPolicy,
-          rateLimits: mailPolicy.rateLimits,
-          allowedTools: mailToolSelection,
-          allowedSenders: mailPolicy.allowedSenders,
+          organizationId, securityPolicy: mailPolicy.securityPolicy, rateLimits: mailPolicy.rateLimits,
+          allowedTools: mailToolSelection, allowedSenders: mailPolicy.allowedSenders,
           blockedSenders: mailPolicy.blockedSenders,
+          expectedPolicy: {
+            securityPolicy: mailPolicy.securityPolicy, rateLimits: mailPolicy.rateLimits,
+            allowedTools: mailPolicy.allowedTools, allowedSenders: mailPolicy.allowedSenders,
+            blockedSenders: mailPolicy.blockedSenders,
+          },
         }),
       });
       const data = await response.json();
+      if (response.status === 409 && data.error === "policy_changed") {
+        setMailPermissionNotice("Permissions changed in another session. Your choices were NOT saved. Reload current permissions, review the changes, and confirm again.");
+        return;
+      }
       if (!response.ok) throw new Error(data.message ?? "Policy could not be saved; administrator access is required.");
       setMailPolicy(data.policy);
       setMailToolSelection(data.policy.allowedTools);
-      setMailPermissionNotice("Permissions saved. New turns use the updated agent policy. No email has been sent.");
+      setMailPermissionNotice("Permissions saved for future chat and voice turns. No email was sent.");
     } catch (error) {
       setMailPermissionNotice(error instanceof Error ? error.message : "Permissions could not be saved.");
     } finally { setMailPermissionBusy(false); }
@@ -353,7 +364,10 @@ export function ChatClient({
         <section aria-label="Agent mail permissions" className="mx-auto w-full max-w-3xl border-b px-4 py-4">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold">Agent mail permissions</h2>
-            <a href={`/agents/${agentId}?tab=policy`} className="text-xs underline">Full policy and mailbox setup</a>
+            <span className="flex flex-wrap items-center gap-3">
+              <button type="button" disabled={mailPermissionBusy || busy} onClick={() => void reloadMailPermissions()} className="text-xs underline disabled:opacity-50">Reload current permissions</button>
+              <a href={`/agents/${agentId}?tab=policy`} className="text-xs underline">Full policy and mailbox setup</a>
+            </span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">Administrator-only. Choose a preset, adjust individual tools if needed, then confirm to save. Mailboxes and user permissions are separate requirements.</p>
           <div className="mt-3 flex flex-wrap gap-2">{EMAIL_PERMISSION_PRESETS.map(preset => <button type="button" key={preset.id} disabled={mailPermissionBusy} title={preset.description}
@@ -361,10 +375,10 @@ export function ChatClient({
             className="rounded-md border bg-background px-3 py-2 text-xs hover:border-primary disabled:opacity-50">{preset.label}</button>)}</div>
           <details className="mt-3 rounded-md border p-3">
             <summary className="cursor-pointer text-xs font-semibold">Fine-tune email tool permissions</summary>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">{REGISTERED_EMAIL_POLICY_NAMES.map(name => <label key={name} className="flex items-center gap-2 text-xs"><input type="checkbox" checked={mailToolSelection.includes(name)} onChange={event => setMailToolSelection(current => event.target.checked ? [...new Set([...current, name])] : current.filter(n => n !== name))} />{name}</label>)}</div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">{REGISTERED_EMAIL_POLICY_NAMES.map(name => <label key={name} className="flex items-center gap-2 text-xs"><input type="checkbox" disabled={mailPermissionBusy || busy} checked={mailToolSelection.includes(name)} onChange={event => setMailToolSelection(current => event.target.checked ? [...new Set([...current, name])] : current.filter(n => n !== name))} />{EMAIL_PERMISSION_LABELS[name] ?? name}</label>)}</div>
           </details>
           <p className="mt-2 text-xs text-muted-foreground">{mailToolSelection.filter(name => REGISTERED_EMAIL_POLICY_NAMES.some(registered => registered === name)).length} email tools selected. Unrelated custom permissions are preserved. No permission changes take effect before saving.</p>
-          <button type="button" disabled={mailPermissionBusy} onClick={() => void saveMailPermissions()} className="mt-3 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">Confirm and save permissions</button>
+          <button type="button" disabled={mailPermissionBusy || busy} onClick={() => void saveMailPermissions()} className="mt-3 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">Confirm and save permissions</button>
         </section>
       )}
       {voiceOpen ? (
