@@ -16,6 +16,7 @@ import { verifyEmailProviderConnection } from "./provider-verification";
 import { emitProviderEvent } from "../events/provider-events";
 import { isRetryableProviderError } from "./retry";
 import { isApprovedEmailActionAccountUsable } from "./action-account-guard";
+import { paramsFromApprovedEmailSnapshot } from "./approved-email-draft";
 
 /** Evidence writes and local draft reconciliation are secondary to the
  * durable action terminal state. Log only a type, never provider payloads. */
@@ -59,25 +60,22 @@ export async function processApprovedEmailActions(limit = 10) {
       const config = await repository.getConnectionConfig(account.id);
       const credentials: EmailCredentials = { ...(encrypted as unknown as EmailCredentials), ...(config as unknown as Partial<EmailCredentials>) };
       const provider = createEmailProviderRegistry().create(account.provider);
-      const result = await verifyEmailProviderConnection(provider, credentials, async ({ provider: connected }) => {
-        const snapshot = action.recipientSnapshot;
-        if (action.actionType === "send_email") {
+      const result = await verifyEmailProviderConnection(provider, credentials, async ({ provi        if (action.actionType === "send_email") {
           if (!action.draftId) throw new Error("Approved send action has no draft");
           const draft = await getLocalDraftForOrganization(action.organizationId, action.draftId);
-          if (!draft) throw new Error("Approved draft no longer exists");
+          if (!draft || String(draft.email_account_id) !== action.emailAccountId) {
+            throw new Error("Approved draft no longer exists in the selected mailbox");
+          }
           if (!account.capabilities.drafts || !account.capabilities.send) throw new CapabilityNotSupported(account.provider, "send");
-          const params: DraftParams = {
-            to: Array.isArray(snapshot.to) ? snapshot.to.map(String) : [],
-            cc: Array.isArray(snapshot.cc) ? snapshot.cc.map(String) : [],
-            bcc: Array.isArray(snapshot.bcc) ? snapshot.bcc.map(String) : [],
-            subject: String(snapshot.subject ?? draft.subject ?? ""),
-            body_text: String(snapshot.bodyText ?? draft.text_body ?? ""),
-          };
-          const providerDraftId = draft.provider_draft_id
-            ? String((await connected.updateDraft(String(draft.provider_draft_id), params)).draft_id)
-            : (await connected.createDraft(params)).draft_id;
+          const params = paramsFromApprovedEmailSnapshot(snapshot);
+          // Always send the immutable reviewed snapshot, even if a previously
+          // synchronized provider draft has been edited since approval.
+          const providerDraftId = (await connected.createDraft(params)).draft_id;
           const sent = await connected.sendDraft(providerDraftId);
           providerAccepted = true;
+          return { kind: "send", ref: sent };
+        }
+rAccepted = true;
           return { kind: "send", ref: sent };
         }
         if (action.actionType === "reply_email") {
