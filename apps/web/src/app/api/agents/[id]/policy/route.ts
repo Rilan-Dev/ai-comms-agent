@@ -19,8 +19,24 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const input = validation.value;
     if (!orgId) return NextResponse.json({ error: "validation_error", fieldErrors: { organizationId: "Organization is required." } }, { status: 400 });
     const subject = await authorize(request, { organizationId: asOrganizationId(orgId), role: "admin" }, getIdentityAdapter(), getIdentityRepository());
-    const policy = await new PostgresAgentRepository().updatePolicy(orgId, id, input);
-    if (!policy) return NextResponse.json({ error: "not_found" }, { status: 404 });
+    // A first-party chat/settings preview includes its original policy.
+    // The repository compares all persisted fields atomically; a concurrent
+    // change must be reviewed, never overwritten after a stale confirmation.
+    const expectedValidation = body?.expectedPolicy === undefined
+      ? null : validateAgentPolicyInput(body.expectedPolicy);
+    if (expectedValidation && !expectedValidation.ok) {
+      return NextResponse.json({ error: "validation_error", fieldErrors: expectedValidation.fieldErrors }, { status: 422 });
+    }
+    const repo = new PostgresAgentRepository();
+    const policy = await repo.updatePolicy(orgId, id, input, expectedValidation?.value);
+    if (!policy) {
+      const current = await repo.policy(orgId, id);
+      if (current && expectedValidation) return NextResponse.json({
+        error: "policy_changed",
+        message: "Agent permissions changed in another session. Reload the current policy, review your choices, and confirm again.",
+      }, { status: 409 });
+      return NextResponse.json({ error: "not_found" }, { status: 404 });
+    }
     await recordAuditEvent({ organizationId: orgId, actorUserId: subject.user.id, agentId: id, eventType: "agent.policy_updated", targetType: "agent_policy", targetId: policy.id, action: "update", decision: "allowed" });
     return NextResponse.json({ policy });
   } catch (error) {
