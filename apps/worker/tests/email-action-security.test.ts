@@ -31,9 +31,11 @@ describe("worker email security boundaries", () => {
     assert.equal(attachmentSource.includes("NextResponse"), false);
   });
 
-  it("sends an already-synchronized provider draft instead of creating a duplicate", () => {
-    assert.equal(actionSource.includes("draft.provider_draft_id"), true);
+  it("sends the approved immutable snapshot instead of a mutable synchronized provider draft", () => {
+    assert.equal(actionSource.includes("paramsFromApprovedEmailSnapshot(snapshot)"), true);
+    assert.equal(actionSource.includes("connected.createDraft(params)"), true);
     assert.equal(actionSource.includes("connected.sendDraft(providerDraftId)"), true);
+    assert.equal(actionSource.includes("draft.provider_draft_id"), false);
     assert.equal(actionSource.includes("markLocalDraftSentForOrganization"), true);
   });
 });
