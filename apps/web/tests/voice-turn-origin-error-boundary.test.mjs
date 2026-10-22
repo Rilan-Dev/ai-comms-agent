@@ -7,8 +7,8 @@ const source = readFileSync(new URL("../src/app/api/voice/turn/route.ts", import
 
 test("foreign browser Origin is denied before a voice turn, its increment, or any email tool", () => {
   const entry = source.slice(source.indexOf("export async function POST(request: Request)"));
-  assert.match(source, /import \{ assertSameOrigin \} from "@\\/lib\\/identity\\/local-auth"/);
-  assert.match(entry, /try \{ assertSameOrigin\\(request\\); \}/);
+  assert.ok(source.includes('import { assertSameOrigin } from "@/lib/identity/local-auth";'));
+  assert.ok(entry.includes('try { assertSameOrigin(request); }'));
   assert.match(entry, /error: "invalid_origin"/);
   assert.match(entry, /status: 403/);
   assert.ok(entry.indexOf("assertSameOrigin(request)") < entry.indexOf("await ensureDevSeed()"));
