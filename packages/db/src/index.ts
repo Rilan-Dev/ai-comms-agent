@@ -71,7 +71,7 @@ export { PostgresAgentRepository } from "./agent/repository";
 
 export { listAuditEvents, listOrganizationAuditEvents, listOrganizationAuditEventsForExport, recordAuditEvent, type AuditEvent, type AuditEventFilters, type AuditEventInput } from "./audit/repository";
 
-export { getLocalDraftForOrganization, listDraftsPendingProviderSync, markDraftProviderSyncingForOrganization, markDraftProviderSyncedForOrganization, markDraftProviderSyncErrorForOrganization, markLocalDraftSentForOrganization } from "./email/repository";
+export { getLocalDraftForOrganization, listDraftsPendingProviderSync, queueLocalDraftProviderSyncForOrganization, claimQueuedProviderDraftSyncForOrganization, markDraftProviderSyncedForOrganization, markDraftProviderSyncErrorForOrganization, recoverStaleProviderDraftSyncs, markLocalDraftSentForOrganization } from "./email/repository";
 
 export {
   listWhatsAppAccountsForOrganization,
