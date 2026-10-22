@@ -620,8 +620,8 @@ export async function POST(request: Request) {
             const verifiedSummary = verifiedEmailToolSummary(toolTurn.toolCalls);
             assistantOutput = verifiedSummary || toolTurn.text;
             if (!toolTurn.streamed) {
-              // Denied, mutating, approval and safety-limit outcomes always
-              // use the untouched canonical host-tool-loop response.
+              // Mutating email calls use the verified host summary; read-only
+              // turns keep their tool-informed model response.
               emit("delta", { text: assistantOutput });
             }
           } else {
