@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ArrowRight, Inbox, RefreshCw, ShieldCheck } from "lucide-react";
+import { CatchUpRequestScope, type CatchUpScopeToken } from "./request-scope";
 
 type AgentChoice = {
   agentId: string; name: string;
@@ -41,71 +42,121 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  // Changing the selected agent must discard the prior user's visible source
-  // metadata, never reuse stale mailbox IDs or an old manifest cursor.
-  useEffect(() => {
-    setMailboxIds(agents.find(a => a.agentId === agentId)?.mailboxes.map(m => m.id) ?? []);
-    setManifest(null); setSources([]); setNextCursor(null); setItems([]); setReviewedItemIds([]); setError("");
-  }, [agentId, agents]);
+  const requestScopeRef = useRef(new CatchUpRequestScope(agents[0]?.agentId ?? ""));
 
-  async function loadDetail(id: string) {
-    const params = new URLSearchParams({ agentId });
+  // Agent changes invalidate requests synchronously. useEffect cleanup would
+  // execute after rendering and could allow a late response into the new view.
+  function changeAgent(nextAgentId: string) {
+    if (nextAgentId === agentId || !agents.some(a => a.agentId === nextAgentId)) return;
+    requestScopeRef.current.switchAgent(nextAgentId);
+    setAgentId(nextAgentId);
+    setMailboxIds(agents.find(a => a.agentId === nextAgentId)?.mailboxes.map(m => m.id) ?? []);
+    setManifest(null);
+    setSources([]);
+    setNextCursor(null);
+    setItems([]);
+    setReviewedItemIds([]);
+    setError("");
+    setBusy(false);
+  }
+
+  // All four read/write UI operations share one immediate in-flight guard.
+  // A response may mutate state only while its original agent + epoch is active.
+  async function runScopedOperation(work: (token: CatchUpScopeToken) => Promise<void>, failureMessage: string) {
+    const token = requestScopeRef.current.begin(agentId);
+    if (!token) return;
+    setBusy(true);
+    setError("");
+    try {
+      await work(token);
+    } catch (cause) {
+      if (requestScopeRef.current.isCurrent(token)) {
+        setError(cause instanceof Error ? cause.message : failureMessage);
+      }
+    } finally {
+      if (requestScopeRef.current.finish(token)) setBusy(false);
+    }
+  }
+
+  async function loadDetail(id: string, token: CatchUpScopeToken) {
+    const params = new URLSearchParams({ agentId: token.agentId });
     const response = await fetch(`/api/organizations/${organizationId}/briefings/${id}?${params}`, { cache: "no-store" });
     const data = await response.json().catch(() => null) as {
       manifest?: Manifest; items?: SummaryItem[]; reviewedItemIds?: string[]; message?: string;
     } | null;
+    if (!requestScopeRef.current.isCurrent(token)) return;
     if (!response.ok || !data?.manifest) throw new Error(data?.message || "Summary details are not available.");
     setManifest(data.manifest);
     setItems(data.items ?? []);
     setReviewedItemIds(data.reviewedItemIds ?? []);
   }
 
-  async function markReviewed(itemId: string) {
-    if (!manifest || manifest.status !== "ready" || busy) return;
-    setBusy(true); setError("");
-    try {
-      const response = await fetch(`/api/organizations/${organizationId}/briefings/${manifest.id}/review`, {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          agentId, itemIds: [itemId], expectedScopeVersion: manifest.scope.scopeVersion,
-        }),
-      });
-      if (!response.ok) throw new Error("Review could not be saved. Reload to check permissions and source revisions.");
-      await loadDetail(manifest.id);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not save review."); }
-    finally { setBusy(false); }
-  }
-
-  async function loadSources(id: string, cursor: string | null = null) {
-    const params = new URLSearchParams({ agentId, limit: "200" });
+  async function loadSources(id: string, token: CatchUpScopeToken, cursor: string | null = null) {
+    const params = new URLSearchParams({ agentId: token.agentId, limit: "200" });
     if (cursor) params.set("cursor", cursor);
     const response = await fetch(`/api/organizations/${organizationId}/briefings/${id}/sources?${params}`, { cache: "no-store" });
     const payload = await response.json().catch(() => null) as { items?: Source[]; nextCursor?: string | null; message?: string } | null;
+    if (!requestScopeRef.current.isCurrent(token)) return;
     if (!response.ok) throw new Error(payload?.message || "Selected mail sources could not be loaded.");
     setSources(current => cursor ? [...current, ...(payload?.items ?? [])] : payload?.items ?? []);
     setNextCursor(payload?.nextCursor ?? null);
   }
 
   async function prepare() {
-    if (!agentId || !mailboxIds.length || busy) return;
-    setBusy(true); setError(""); setManifest(null); setSources([]); setNextCursor(null);
-    try {
+    if (!agentId || !mailboxIds.length) return;
+    // Snapshot the exact user-selected scope for this request. Scope inputs
+    // cannot be edited while busy; changing the agent invalidates the token.
+    const selectedMailboxes = [...mailboxIds];
+    const selectedDays = days;
+    await runScopedOperation(async token => {
+      setManifest(null);
+      setSources([]);
+      setItems([]);
+      setReviewedItemIds([]);
+      setNextCursor(null);
       const now = new Date();
       const request = {
-        agentId, mailboxIds, language: "en", mode: "catch_up", requestKey: crypto.randomUUID(),
-        period: { start: new Date(now.getTime() - days * 86400000).toISOString(), end: now.toISOString() },
+        agentId: token.agentId, mailboxIds: selectedMailboxes,
+        language: "en", mode: "catch_up", requestKey: crypto.randomUUID(),
+        period: { start: new Date(now.getTime() - selectedDays * 86400000).toISOString(), end: now.toISOString() },
       };
       const response = await fetch(`/api/organizations/${organizationId}/briefings`, {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify(request),
       });
       const payload = await response.json().catch(() => null) as { manifest?: Manifest; message?: string } | null;
+      if (!requestScopeRef.current.isCurrent(token)) return;
       if (!response.ok || !payload?.manifest) throw new Error(payload?.message || "Could not prepare this mail selection.");
       setManifest(payload.manifest);
-      await loadDetail(payload.manifest.id);
-      if (payload.manifest.sourceCount) await loadSources(payload.manifest.id);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Catch-up could not start."); }
-    finally { setBusy(false); }
+      await loadDetail(payload.manifest.id, token);
+      if (!requestScopeRef.current.isCurrent(token)) return;
+      if (payload.manifest.sourceCount) await loadSources(payload.manifest.id, token);
+    }, "Catch-up could not start.");
+  }
+
+  async function markReviewed(itemId: string) {
+    if (!manifest || manifest.status !== "ready") return;
+    const selectedManifest = manifest;
+    await runScopedOperation(async token => {
+      const response = await fetch(`/api/organizations/${organizationId}/briefings/${selectedManifest.id}/review`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          agentId: token.agentId, itemIds: [itemId],
+          expectedScopeVersion: selectedManifest.scope.scopeVersion,
+        }),
+      });
+      if (!requestScopeRef.current.isCurrent(token)) return;
+      if (!response.ok) throw new Error("Review could not be saved. Reload to check permissions and source revisions.");
+      await loadDetail(selectedManifest.id, token);
+    }, "Could not save review.");
+  }
+
+  function refreshDetail(id: string) {
+    void runScopedOperation(token => loadDetail(id, token), "Could not refresh summary.");
+  }
+
+  function loadMoreSources(id: string, cursor: string) {
+    void runScopedOperation(token => loadSources(id, token, cursor), "Could not load more sources.");
   }
 
   return (
@@ -118,7 +169,7 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
       </header>
       <section aria-label="Catch-up scope" className="mt-6 grid gap-4 rounded-xl border border-border bg-card p-5">
         <label className="grid gap-1.5 text-sm font-medium">Agent
-          <select value={agentId} onChange={e => setAgentId(e.target.value)} className="h-11 rounded-md border border-input bg-background px-3">
+          <select value={agentId} onChange={e => changeAgent(e.target.value)} className="h-11 rounded-md border border-input bg-background px-3">
             {agents.map(a => <option key={a.agentId} value={a.agentId}>{a.name}</option>)}
           </select>
         </label>
@@ -128,7 +179,7 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
             <div className="grid gap-2">
               {agent.mailboxes.map(m => <label key={m.id} className="flex items-center gap-3 rounded-md border border-border p-3 text-sm">
                 <input type="checkbox" checked={mailboxIds.includes(m.id)}
-                  onChange={e => setMailboxIds(ids => e.target.checked ? [...ids, m.id] : ids.filter(id => id !== m.id))}
+                  disabled={busy} onChange={e => { setMailboxIds(ids => e.target.checked ? [...ids, m.id] : ids.filter(id => id !== m.id)); }}
                   className="size-4" /> <span className="break-all">{m.emailAddress}</span>
               </label>)}
             </div>
@@ -137,7 +188,7 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
           </div>}
         </fieldset>
         <label className="grid gap-1.5 text-sm font-medium">Catch-up window
-          <select value={days} onChange={e => setDays(Number(e.target.value))}
+          <select value={days} disabled={busy} onChange={e => setDays(Number(e.target.value))}
             className="h-11 rounded-md border border-input bg-background px-3">
             <option value={1}>Last 1 day</option>
             <option value={7}>Last 7 days (default)</option>
@@ -156,9 +207,7 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
           <p role="status" className="mt-2 text-sm text-muted-foreground">{statusText[manifest.status]}</p>
           <p className="mt-1 text-sm">{manifest.sourceCount} source {manifest.sourceCount === 1 ? "email" : "emails"} selected from your current permitted scope.</p>
           <p className="mt-3 text-xs text-muted-foreground">C3 source-grounded AI generation is not yet running automatically. Only a complete, verified generated item can be explicitly marked reviewed; opening this page changes no review state.</p>
-          <button type="button" disabled={busy} onClick={() => { setBusy(true); void loadDetail(manifest.id)
-            .catch(e => setError(e instanceof Error ? e.message : "Could not refresh summary."))
-            .finally(() => setBusy(false)); }}
+          <button type="button" disabled={busy} onClick={() => refreshDetail(manifest.id)}
             className="mt-4 rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary">
             Refresh generated summary and review progress
           </button>
@@ -211,10 +260,7 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
           ) : manifest.sourceCount === 0 ? (
             <p className="mt-4 text-sm text-muted-foreground">No newly eligible messages in this selection.</p>
           ) : null}
-          {nextCursor ? <button type="button" disabled={busy} onClick={() => {
-            setBusy(true);
-            void loadSources(manifest.id, nextCursor).catch(e => setError(e instanceof Error ? e.message : "Could not load more sources.")).finally(() => setBusy(false));
-          }} className="mt-4 rounded-md border border-border px-4 py-2 text-sm">Load more source links</button> : null}
+          {nextCursor ? <button type="button" disabled={busy} onClick={() => loadMoreSources(manifest.id, nextCursor)} className="mt-4 rounded-md border border-border px-4 py-2 text-sm">Load more source links</button> : null}
         </section>
       )}
     </main>
