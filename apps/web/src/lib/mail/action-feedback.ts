@@ -65,13 +65,30 @@ export function verifiedEmailToolSummary(calls: readonly VerifiedEmailToolCall[]
   if (mutations.length === 0) return "";
   const outcomes = mutations.map(call => {
     if (!call.ok) {
-      const code = typeof call.errorCode === "string" && /^[a-z_]{1,80}$/.test(call.errorCode)
-        ? ` (${call.errorCode})` : "";
-      return `Email tool denied${code}`;
+      // Codes come from the audited host executor, never from model text.
+      // Only known, safe codes are reflected to a chat/voice user.
+      switch (call.errorCode) {
+        case "permission_denied":
+          return "Email tool denied (permission_denied). Ask an organization administrator to review your email.write permission; agent tool settings cannot grant it.";
+        case "tool_not_allowed":
+          return "Email tool denied (tool_not_allowed). Ask an administrator to review and save the agent's saved email tool policy.";
+        case "account_not_available":
+          return "Email tool denied (account_not_available). Bind a connected primary mailbox to the agent and check its account status.";
+        case "capability_not_supported":
+          return "Email tool denied (capability_not_supported). Check the mailbox provider capabilities for drafting and sending.";
+        case "approval_required":
+          return "Email tool denied (approval_required). Use the human approval workflow to request sending, rather than attempting direct delivery.";
+        default:
+          return "Email tool denied. Review the saved agent permissions and mailbox configuration before retrying.";
+      }
     }
-    if (["draft_created", "draft_updated", "reply_draft_created", "forward_draft_created"].includes(call.status ?? "")) return "Email draft saved";
-    if (call.status === "pending_approval") return "Send approval request pending human review";
-    return "Email tool returned success without a confirmed send or approval status";
+    if (["draft_created", "draft_updated", "reply_draft_created", "forward_draft_created"].includes(call.status ?? "")) {
+      return "Email draft saved. Review the draft and explicitly request send approval if you want it delivered";
+    }
+    if (call.status === "pending_approval") {
+      return "Send approval request pending human review. Open Mail > Approvals to review the request";
+    }
+    return "Email tool returned success without a confirmed draft or approval status";
   });
   return `Verified email tool results: ${outcomes.join("; ")}. No email was sent by these actions; sending requires explicit human approval.`;
 }
