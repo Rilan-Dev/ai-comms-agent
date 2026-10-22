@@ -618,7 +618,7 @@ export async function POST(request: Request) {
             // through into a model-only answer that could claim delivery.
           } else if (toolTurn) {
             const verifiedSummary = verifiedEmailToolSummary(toolTurn.toolCalls);
-            assistantOutput = verifiedSummary ? `${toolTurn.text}\n\n${verifiedSummary}` : toolTurn.text;
+            assistantOutput = verifiedSummary || toolTurn.text;
             if (!toolTurn.streamed) {
               // Denied, mutating, approval and safety-limit outcomes always
               // use the untouched canonical host-tool-loop response.
