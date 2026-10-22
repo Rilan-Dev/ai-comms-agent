@@ -44,6 +44,15 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
 
   const requestScopeRef = useRef(new CatchUpRequestScope(agents[0]?.agentId ?? ""));
 
+  function clearSelectionResults() {
+    setManifest(null);
+    setSources([]);
+    setNextCursor(null);
+    setItems([]);
+    setReviewedItemIds([]);
+    setError("");
+  }
+
   // Agent changes invalidate requests synchronously. useEffect cleanup would
   // execute after rendering and could allow a late response into the new view.
   function changeAgent(nextAgentId: string) {
@@ -51,13 +60,23 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
     requestScopeRef.current.switchAgent(nextAgentId);
     setAgentId(nextAgentId);
     setMailboxIds(agents.find(a => a.agentId === nextAgentId)?.mailboxes.map(m => m.id) ?? []);
-    setManifest(null);
-    setSources([]);
-    setNextCursor(null);
-    setItems([]);
-    setReviewedItemIds([]);
-    setError("");
+    clearSelectionResults();
     setBusy(false);
+  }
+
+  function changeMailbox(mailboxId: string, checked: boolean) {
+    if (busy) return;
+    setMailboxIds(ids => checked
+      ? (ids.includes(mailboxId) ? ids : [...ids, mailboxId])
+      : ids.filter(id => id !== mailboxId));
+    // A previously generated manifest is not a result for edited mailbox scope.
+    clearSelectionResults();
+  }
+
+  function changeDays(nextDays: number) {
+    if (busy || ![1, 7, 30].includes(nextDays)) return;
+    setDays(nextDays);
+    clearSelectionResults();
   }
 
   // All four read/write UI operations share one immediate in-flight guard.
@@ -179,7 +198,7 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
             <div className="grid gap-2">
               {agent.mailboxes.map(m => <label key={m.id} className="flex items-center gap-3 rounded-md border border-border p-3 text-sm">
                 <input type="checkbox" checked={mailboxIds.includes(m.id)}
-                  disabled={busy} onChange={e => { setMailboxIds(ids => e.target.checked ? [...ids, m.id] : ids.filter(id => id !== m.id)); }}
+                  disabled={busy} onChange={e => changeMailbox(m.id, e.target.checked)}
                   className="size-4" /> <span className="break-all">{m.emailAddress}</span>
               </label>)}
             </div>
@@ -188,7 +207,7 @@ export function CatchUpClient({ organizationId, agents }: { organizationId: stri
           </div>}
         </fieldset>
         <label className="grid gap-1.5 text-sm font-medium">Catch-up window
-          <select value={days} disabled={busy} onChange={e => setDays(Number(e.target.value))}
+          <select value={days} disabled={busy} onChange={e => changeDays(Number(e.target.value))}
             className="h-11 rounded-md border border-input bg-background px-3">
             <option value={1}>Last 1 day</option>
             <option value={7}>Last 7 days (default)</option>
