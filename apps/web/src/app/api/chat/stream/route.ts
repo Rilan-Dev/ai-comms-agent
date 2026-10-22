@@ -4,6 +4,7 @@ import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { formatRollingMailSummary, MAX_REPORT_MESSAGES, parseRollingMailSummaryRequest, type RollingMailRow } from "@/lib/mail/rolling-summary";
 import { parseExplicitMailDateRangeRequest } from "@/lib/mail/explicit-date-range";
 import { canSupplyAmbientContext } from "@/lib/ai/ambient-context-access";
+import { deniedEmailWriteExplanation, verifiedEmailToolSummary } from "@/lib/mail/action-feedback";
 
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -238,7 +239,7 @@ const MAX_HOST_TOOL_ROUNDS = 4;
 const MAX_HOST_TOOL_CALLS = 8;
 const MAX_HOST_TOOL_RESULT_CHARS = 10000;
 
-type HostToolTurnResult = { text: string; streamed?: boolean; toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; readOnly?: boolean }> };
+type HostToolTurnResult = { text: string; streamed?: boolean; toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; readOnly?: boolean; status?: string }> };
 
 async function runInteractiveHostToolLoop(args: {
   organizationId: string;
@@ -321,7 +322,10 @@ async function runInteractiveHostToolLoop(args: {
       const approvalRequested = toolOutput?.status === "pending_approval" || toolOutput?.approval_required === true;
       const readOnly = result.ok && !approvalRequested && registeredTool?.sensitivity === "safe"
         && (registeredTool.required_permission === "email.read" || registeredTool.required_permission === "whatsapp.read");
-      summaries.push({ name: call.name, ok: result.ok, readOnly, ...(result.error ? { errorCode: result.error.code } : {}) });
+      const verifiedStatus = toolOutput?.status === "draft_created" || toolOutput?.status === "draft_updated"
+        || toolOutput?.status === "pending_approval" ? toolOutput.status : undefined;
+      summaries.push({ name: call.name, ok: result.ok, readOnly, status: verifiedStatus,
+        ...(result.error ? { errorCode: result.error.code } : {}) });
       const payload = JSON.stringify({
         ok: result.ok, output: result.output,
         error: result.error ? { code: result.error.code, message: result.error.message, retryable: result.error.retryable } : undefined,
@@ -560,6 +564,7 @@ export async function POST(request: Request) {
     // Mail, WhatsApp, and potential account mutations still go through the
     // bounded, host-authorized tool loop (which has not yet gained model-token
     // streaming). Never shortcut a potentially actionable follow-up.
+    const blockedWriteExplanation = deniedEmailWriteExplanation(content, subject.permissions);
     const shouldResolveTools = asksAboutEmail(combinedSearchContext)
       || asksAboutWhatsApp(combinedSearchContext)
       || /\b(send|reply|forward|archive|trash|delete|mark|move|approve|schedule|contact|conversation|account)\b/i.test(content);
@@ -576,7 +581,12 @@ export async function POST(request: Request) {
         try {
           emit("conversation", { conversationId: conversation.id });
           let toolTurn: HostToolTurnResult | null = null;
-          if (shouldResolveTools) {
+          if (blockedWriteExplanation) {
+            emit("status", { phase: "tools" });
+            emit("progress", { phase: "denied" });
+            assistantOutput = blockedWriteExplanation;
+            emit("delta", { text: assistantOutput });
+          } else if (shouldResolveTools) {
             emit("status", { phase: "tools" });
             toolTurn = await runInteractiveHostToolLoop({
                 organizationId, agentId, kbId, messages, toolContext: trustedToolContext,
@@ -603,7 +613,8 @@ export async function POST(request: Request) {
               });
           }
           if (toolTurn) {
-            assistantOutput = toolTurn.text;
+            const verifiedSummary = verifiedEmailToolSummary(toolTurn.toolCalls);
+            assistantOutput = verifiedSummary ? `${toolTurn.text}\n\n${verifiedSummary}` : toolTurn.text;
             if (!toolTurn.streamed) {
               // Denied, mutating, approval and safety-limit outcomes always
               // use the untouched canonical host-tool-loop response.
@@ -635,7 +646,7 @@ export async function POST(request: Request) {
             organizationId, conversationId: conversation.id, role: "assistant", content: assistantOutput,
           });
           emit("progress", { phase: "completed" });
-          emit("done", { conversationId: conversation.id, provider, model });
+          emit("done", { conversationId: conversation.id, provider, model, toolCalls: toolTurn?.toolCalls ?? [] });
           controller.close();
         } catch (error) {
           if (!request.signal.aborted) emit("error", { message: error instanceof Error ? error.message : "Chat execution failed" });
