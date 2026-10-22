@@ -1,3 +1,11 @@
+## DEV01-EMAIL-CHAT-COMPOSE-20261022 — Development source-only product evidence (2026-10-22)
+- **Source:** Owner-authorized DEV-01 chat/voice draft review, idempotent send-approval request, connected primary mailbox/actor/agent policy protections and admin-confirmed permission presets; full evidence in root `worklog.md`.
+- **PASS:** Local isolated Node v22 tests for mirrored pure intent parser 2/2 and permissions helper 2/2; two isolated strict TypeScript helper checks exit 0. GitHub fetched current source and verified 20/20 focused invariants, including the preserved separated human email approval.
+- **NOT RUN / NOT ACCEPTED:** Exact committed Node tests, web Vitest, worker email loop, full TypeScript packages, PostgreSQL integration and cross-tenant negative, browser, Sarvam live tool calls, actual provider-created draft/approval, worker send or production deployment. An earlier branch commit is not evidence that the live site runs it; no email was sent.
+- **Next:** Equipped Development checkout with exact SHA, run native focused suites + typechecks; OPS-01 separately verifies deployment, provider/account/user permissions and opt-in end-to-end draft→approval→send. Phase 4 and C3/routines rollout remain unaccepted/off.
+
+---
+
 ## DEV-01 — C3 focused host checks PASS, disposable DB pending — 2026-10-20
 
 User-host at fast-forwarded `daa89ffd`: **29/29** C3 Node regression tests pass (0 failed/skipped/cancelled; ~774ms); four successful `tsc --noEmit` executions for db, clara-core, email-agent-runtime and worker; pnpm native binary notice only. New source commit `4cda8ee5` adds five **unexecuted** disposable PostgreSQL integration subtests for multi-mailbox manifest/batch, cross-user/tenant denial, grant revocation, content revision and stale lease. **DB tests, full suites, builds, production and C4 browser acceptance remain NOT RUN.** Source record: [C3 host verified and DB gate](sessions/DEV01-C3-HOST-VERIFIED-DB-GATE-20261020.md). No worker registration/activation.
