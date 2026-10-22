@@ -11,6 +11,7 @@ import {
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
 import { canUseEmailAccountBinding, hasEmailToolCapabilities } from "./email-tool-policy";
+import { preserveEmailBody } from "./email-body";
 
 type Input = Record<string, unknown>;
 type Row = Record<string, unknown>;
@@ -129,7 +130,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       cc: list(input.cc),
       bcc: list(input.bcc),
       subject: text(input.subject, 998),
-      bodyText: text(input.body_text, 100000),
+      bodyText: preserveEmailBody(input.body_text),
     });
     return { status: "draft_created", draft_id: String(draft.id), account_id: account.id, subject: draft.subject ?? "" };
   });
@@ -144,7 +145,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       ...(Array.isArray(input.cc) ? { cc: list(input.cc) } : {}),
       ...(Array.isArray(input.bcc) ? { bcc: list(input.bcc) } : {}),
       ...(typeof input.subject === "string" ? { subject: text(input.subject, 998) } : {}),
-      ...(typeof input.body_text === "string" ? { bodyText: text(input.body_text, 100000) } : {}),
+      ...(typeof input.body_text === "string" ? { bodyText: preserveEmailBody(input.body_text) } : {}),
     });
     if (!updated) throw new EmailWriteFailure("draft_update_failed", "The draft could not be updated.");
     return { status: "draft_updated", draft_id: draftId, account_id: account.id, subject: updated.subject ?? "" };
@@ -163,7 +164,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       emailAccountId: account.id,
       to: [sender],
       subject,
-      bodyText: text(input.body_text, 100000),
+      bodyText: preserveEmailBody(input.body_text),
     });
     return { status: "reply_draft_created", draft_id: String(draft.id), account_id: account.id, subject };
   });
@@ -182,7 +183,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       emailAccountId: account.id,
       to: recipients,
       subject,
-      bodyText: `${text(input.body_text, 10000)}\n\n---------- Forwarded message ----------\n${originalBody}`.trim(),
+      bodyText: `${preserveEmailBody(input.body_text, 10000)}\n\n---------- Forwarded message ----------\n${originalBody}`.trim(),
     });
     return { status: "forward_draft_created", draft_id: String(draft.id), account_id: account.id, subject };
   });
@@ -201,7 +202,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       draftId,
       recipientSnapshot: {
         to: list(draft.to_recipients), cc: list(draft.cc_recipients), bcc: list(draft.bcc_recipients),
-        subject: text(draft.subject, 998), bodyText: text(draft.text_body, 100000),
+        subject: text(draft.subject, 998), bodyText: preserveEmailBody(draft.text_body),
       },
       requestedBy: context.user_id,
       idempotencyKey: `${context.turn_id}:send:${draftId}`,
@@ -224,7 +225,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       agentId: context.agent_id,
       emailAccountId: account.id,
       actionType: "reply_email",
-      recipientSnapshot: { messageId: text(source.provider_message_id, 500) || messageId, to: [recipient], cc: [], bcc: [], subject, bodyText: text(input.body_text, 100000) },
+      recipientSnapshot: { messageId: text(source.provider_message_id, 500) || messageId, to: [recipient], cc: [], bcc: [], subject, bodyText: preserveEmailBody(input.body_text) },
       requestedBy: context.user_id,
       idempotencyKey: `${context.turn_id}:reply:${messageId}`,
       correlationId: context.correlation_id,
@@ -244,7 +245,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       agentId: context.agent_id,
       emailAccountId: account.id,
       actionType: "forward_email",
-      recipientSnapshot: { messageId: text(source.provider_message_id, 500) || messageId, to: recipients, subject: text(source.subject, 998), bodyText: text(source.text_body, 100000) },
+      recipientSnapshot: { messageId: text(source.provider_message_id, 500) || messageId, to: recipients, subject: text(source.subject, 998), bodyText: preserveEmailBody(source.text_body) },
       requestedBy: context.user_id,
       idempotencyKey: `${context.turn_id}:forward:${messageId}`,
       correlationId: context.correlation_id,
