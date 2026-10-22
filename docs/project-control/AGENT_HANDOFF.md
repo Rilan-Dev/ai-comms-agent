@@ -282,3 +282,8 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Evidence:** 10/10 first static invariants only; native web Vitest, typechecks, browser and live deploy NOT RUN by DEV-01. The project remains Phase 4, no production readiness claim.
 - **Authorization:** Handoff is context, not permission to deploy or enable unfinished C3/R1b. OPS-01 must recover separate environment/release authorization.
 - **Status:** OPEN / ROUTED; no DEV-01 polling.
+
+### HOF-DEV01-MULTI-CHAT-SESSIONS-20261023-OPS — 2026-10-23
+- **DEV-01 → OPS-01 runtime/deploy only:** Independent new/resume chat feature on Development (commits `791ca44d,a88fbb81,578bba58,b998561f,1ecb994f,b1f42c69,11b42a67`). Existing DB schema used; no migration/secret/provider action.
+- **Verification request:** Focused web and db checks, authorized disposable PostgreSQL two-chat persistence/recent-history ordering/agent negative, browser deep links and voice-to-chat same ID. Record exact deployed SHA and real result; no production write/test without approval. Source-only 18/18 checks, native suites not run.
+- **Caveat:** Current org+agent histories are shared with organization-authorized readers. User-private ownership requires a separately reviewed migration and legacy policy; no silent visibility change or legacy reassignment.
