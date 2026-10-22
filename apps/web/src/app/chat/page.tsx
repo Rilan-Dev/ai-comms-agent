@@ -6,7 +6,7 @@ import { briefingsEnabled } from "@/lib/briefings/config";
 
 export const dynamic = "force-dynamic";
 
-export default async function ChatPage() {
+export default async function ChatPage({ searchParams }: { searchParams: Promise<{agentId?:string}> }) {
   if (!process.env.DATABASE_URL) {
     return <Unavailable title="Chat needs PostgreSQL" body="Configure DATABASE_URL to persist conversations and connect Clara." />;
   }
@@ -17,7 +17,9 @@ export default async function ChatPage() {
     if (!organizationId) throw new Error("Organization context is unavailable.");
 
     const agents = await new PostgresAgentRepository().list(organizationId);
-    const agent = agents[0];
+    const requestedAgentId = (await searchParams).agentId;
+    // The deep link may only select an agent in this authenticated org.
+    const agent = agents.find(item => item.id === requestedAgentId) ?? agents[0];
 
     if (!agent) {
       return <Unavailable title="Create an agent first" body="Chat becomes available as soon as your organization has an agent. Open Agents to create one." actionHref="/agents/new" actionLabel="Create agent" />;
