@@ -60,7 +60,9 @@ export async function processApprovedEmailActions(limit = 10) {
       const config = await repository.getConnectionConfig(account.id);
       const credentials: EmailCredentials = { ...(encrypted as unknown as EmailCredentials), ...(config as unknown as Partial<EmailCredentials>) };
       const provider = createEmailProviderRegistry().create(account.provider);
-      const result = await verifyEmailProviderConnection(provider, credentials, async ({ provi        if (action.actionType === "send_email") {
+      const result = await verifyEmailProviderConnection(provider, credentials, async ({ provider: connected }) => {
+        const snapshot = action.recipientSnapshot;
+        if (action.actionType === "send_email") {
           if (!action.draftId) throw new Error("Approved send action has no draft");
           const draft = await getLocalDraftForOrganization(action.organizationId, action.draftId);
           if (!draft || String(draft.email_account_id) !== action.emailAccountId) {
@@ -68,14 +70,11 @@ export async function processApprovedEmailActions(limit = 10) {
           }
           if (!account.capabilities.drafts || !account.capabilities.send) throw new CapabilityNotSupported(account.provider, "send");
           const params = paramsFromApprovedEmailSnapshot(snapshot);
-          // Always send the immutable reviewed snapshot, even if a previously
-          // synchronized provider draft has been edited since approval.
+          // Remote drafts may be edited independently after human review.
+          // Only submit a fresh copy of the immutable approved snapshot.
           const providerDraftId = (await connected.createDraft(params)).draft_id;
           const sent = await connected.sendDraft(providerDraftId);
           providerAccepted = true;
-          return { kind: "send", ref: sent };
-        }
-rAccepted = true;
           return { kind: "send", ref: sent };
         }
         if (action.actionType === "reply_email") {
