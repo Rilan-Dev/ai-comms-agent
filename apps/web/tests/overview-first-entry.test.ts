@@ -32,6 +32,7 @@ describe("Owner-requested Overview-first entry", () => {
     expect(overview).toContain("catchUpAvailable: boolean");
     expect(overview).toContain("data?.catchUpAvailable");
     expect(overview).toContain('href="/catch-up"');
+    expect(overview).toContain("Checking private catch-up availability");
     expect(overview).toContain("Opening Overview does not mark messages as read or reviewed");
   });
 
