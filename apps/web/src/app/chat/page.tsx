@@ -1,4 +1,4 @@
-import { PostgresAgentRepository, getOrCreateChatConversation, listChatMessages } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, getChatConversation, getOrCreateChatConversation, listChatConversations, listChatMessages } from "@ai-comms-agent/db";
 import { getAuthenticatedAppContext } from "@/lib/identity/repository";
 import { headers } from "next/headers";
 import { ChatClient } from "./chat-client";
@@ -6,7 +6,7 @@ import { briefingsEnabled } from "@/lib/briefings/config";
 
 export const dynamic = "force-dynamic";
 
-export default async function ChatPage({ searchParams }: { searchParams: Promise<{agentId?:string}> }) {
+export default async function ChatPage({ searchParams }: { searchParams: Promise<{agentId?:string;conversationId?:string}> }) {
   if (!process.env.DATABASE_URL) {
     return <Unavailable title="Chat needs PostgreSQL" body="Configure DATABASE_URL to persist conversations and connect Clara." />;
   }
@@ -17,16 +17,25 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
     if (!organizationId) throw new Error("Organization context is unavailable.");
 
     const agents = await new PostgresAgentRepository().list(organizationId);
-    const requestedAgentId = (await searchParams).agentId;
-    // The deep link may only select an agent in this authenticated org.
+    const params = await searchParams;
+    const requestedAgentId = params.agentId;
+    // Both the agent and an optional chat deep link must stay inside the org.
     const agent = agents.find(item => item.id === requestedAgentId) ?? agents[0];
 
     if (!agent) {
       return <Unavailable title="Create an agent first" body="Chat becomes available as soon as your organization has an agent. Open Agents to create one." actionHref="/agents/new" actionLabel="Create agent" />;
     }
 
-    const conversation = await getOrCreateChatConversation(organizationId, agent.id);
-    const messages = await listChatMessages(organizationId, conversation.id, 100);
+    const conversation = params.conversationId
+      ? await getChatConversation(organizationId, params.conversationId, agent.id)
+      : await getOrCreateChatConversation(organizationId, agent.id);
+    if (!conversation) {
+      return <Unavailable title="Chat not found" body="This conversation is not available in the selected organization and agent." />;
+    }
+    const [messages, conversations] = await Promise.all([
+      listChatMessages(organizationId, conversation.id, 100),
+      listChatConversations(organizationId, agent.id, 40),
+    ]);
 
     return (
       <ChatClient
@@ -35,6 +44,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
         initialAgentId={agent.id}
         initialConversationId={conversation.id}
         initialMessages={messages as never[]}
+        initialConversations={conversations}
         catchUpEnabled={briefingsEnabled()}
       />
     );
