@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const organizationId = url.searchParams.get("organizationId") ?? "";
     const threadId = url.searchParams.get("threadId") ?? "";
     if (!organizationId || !threadId) return NextResponse.json({ error: "validation_error", message: "organizationId and threadId are required." }, { status: 422 });
-    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "email.read" }, getIdentityAdapter(), getIdentityRepository());
     return NextResponse.json({ messages: await getMailThreadForOrganization(organizationId, threadId) });
   } catch (error) {
     return authorizationErrorToResponse(error);
