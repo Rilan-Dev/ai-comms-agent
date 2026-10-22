@@ -8,7 +8,7 @@ import { EMAIL_TOOL_CATALOG, ToolRegistry } from "@ai-comms-agent/shared";
 import type { ToolContext } from "@ai-comms-agent/shared";
 import { registerEmailReadTools } from "./email-read-tools";
 import { registerEmailWriteTools } from "./email-write-tools";
-import { hasEmailToolCapabilities, isEmailToolAllowedByPolicy } from "./email-tool-policy";
+import { canUseEmailAccountBinding, hasEmailToolCapabilities, isEmailToolAllowedByPolicy } from "./email-tool-policy";
 import { executeRegisteredTool } from "./tool-executor";
 import type { ToolAuthorizationDecision, ToolAuditWriter } from "./tool-executor";
 
@@ -58,8 +58,8 @@ export async function createEmailToolRuntime(organizationId: string, agentId: st
         [agentId, organizationId, accountId],
       );
       const role = binding.rows[0]?.role;
-      if (!role || (role === "send_only" && tool.required_permission === "email.read")) {
-        return { allowed: false, code: "account_not_available", message: "This mailbox is not available for read access." };
+      if (!canUseEmailAccountBinding(role, tool.required_permission)) {
+        return { allowed: false, code: "account_not_available", message: "This mailbox binding does not permit the requested operation." };
       }
       const account = await accountRepository.getForAgent(organizationId, agentId, accountId);
       if (!account) return { allowed: false, code: "account_not_available", message: "This mailbox is not bound to this agent." };
