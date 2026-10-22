@@ -33,6 +33,7 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
   const claimed = await claimApprovedEmailAction(actionId, organizationId);
   if (!claimed) throw new Error("Email action is not approved, expired, or already executing");
 
+  let providerAccepted = false;
   try {
     const masterKey = process.env.CREDENTIALS_MASTER_KEY
       ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY)
@@ -66,7 +67,7 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
           ? String(draft.provider_draft_id)
           : (await connected.createDraft(params)).draft_id;
         const sent = await connected.sendDraft(providerDraftId);
-        await markLocalDraftSentForOrganization(organizationId, draftId, sent.provider_message_id);
+        providerAccepted = true;
         return sent;
       }
 
@@ -83,19 +84,47 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
           body_text: String(snapshot.bodyText ?? ""),
           reply_to_message_id: String(source.provider_message_id),
         };
-        return connected.reply(String(source.provider_message_id), params);
+        const replied = await connected.reply(String(source.provider_message_id), params);
+        providerAccepted = true;
+        return replied;
       }
 
       const recipients = Array.isArray(snapshot.to) ? snapshot.to.map(String) : [];
-      return connected.forward(String(source.provider_message_id), recipients);
+      const forwarded = await connected.forward(String(source.provider_message_id), recipients);
+      providerAccepted = true;
+      return forwarded;
     });
 
     const completed = await completeEmailAction(claimed.id, organizationId, "completed", {
       provider: account.provider,
       result: result.value ?? null,
     });
+    if (!completed) throw new Error("Provider delivery cannot overwrite a terminal email action");
+    // Local draft state is secondary. A failed sync cannot rewrite an accepted
+    // provider action as failed or encourage a user to resend it.
+    if (claimed.actionType === "send_email" && claimed.draftId && result.value?.provider_message_id) {
+      try {
+        await markLocalDraftSentForOrganization(organizationId, claimed.draftId, result.value.provider_message_id);
+      } catch (reconcileError) {
+        console.error("[email-action] local draft reconciliation failed after confirmed delivery", {
+          actionId: claimed.id,
+          errorType: reconcileError instanceof Error ? reconcileError.name : typeof reconcileError,
+        });
+      }
+    }
     return completed;
   } catch (error) {
+    if (providerAccepted) {
+      // A provider call may have succeeded before its disconnect or before
+      // the completion DB write failed. Preserve 'executing' for fail-closed
+      // stale recovery; do not mark a sent action as failed or requeue it.
+      console.error("[email-action] provider outcome requires reconciliation", {
+        actionId: claimed.id,
+        errorType: error instanceof Error ? error.name : typeof error,
+        manualVerificationRequired: true,
+      });
+      throw error;
+    }
     const message = error instanceof Error ? error.message : "Email action failed";
     await completeEmailAction(claimed.id, organizationId, "failed", {}, message);
     throw error;
