@@ -734,7 +734,7 @@ export function VoiceWorkspace({
     source.connect(processor);
     processor.connect(audioContext.destination);
     processor.onaudioprocess = (event) => {
-      if (micMuted || ttsGenerationRef.current || socket.readyState !== WebSocket.OPEN) return;
+      if (micMutedRef.current || ttsGenerationRef.current || socket.readyState !== WebSocket.OPEN) return;
       const pcm = downsampleTo16k(event.inputBuffer.getChannelData(0), audioContext.sampleRate);
       if (!pcm.length) return;
       socket.send(JSON.stringify({
