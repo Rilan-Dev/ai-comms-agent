@@ -1,6 +1,7 @@
 import {
   PostgresEmailAccountRepository,
   createEmailAction,
+  EmailActionIdempotencyConflictError,
   createLocalDraft,
   getLocalDraftForOrganization,
   getMailMessageForOrganization,
@@ -107,9 +108,10 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
           return result(name, startedAt, output);
         } catch (error) {
           const known = error instanceof EmailWriteFailure ? error : null;
+          const conflict = error instanceof EmailActionIdempotencyConflictError;
           return result(name, startedAt, undefined, {
-            code: known?.code ?? "email_write_tool_failed",
-            message: known?.message ?? "The email operation could not be completed.",
+            code: conflict ? "email_action_conflict" : known?.code ?? "email_write_tool_failed",
+            message: conflict ? error.message : known?.message ?? "The email operation could not be completed.",
           });
         }
       },
