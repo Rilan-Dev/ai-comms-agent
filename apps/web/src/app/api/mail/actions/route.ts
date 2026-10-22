@@ -18,7 +18,10 @@ export const dynamic = "force-dynamic";
 function validRecipients(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string" && /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(item.trim())).map(item => item.trim().toLowerCase())
- export async function POST(request: Request) {
+    : [];
+}
+
+export async function POST(request: Request) {
   try { assertSameOrigin(request); }
   catch { return NextResponse.json({ error: "invalid_origin" }, { status: 403 }); }
   try {
@@ -122,10 +125,6 @@ function validRecipients(value: unknown): string[] {
       return NextResponse.json({ error: "email_action_conflict", message: error.message }, { status: 409 });
     }
     return authorizationErrorToResponse(error);
-  }
-}
-
-or);
   }
 }
 
