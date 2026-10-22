@@ -7,7 +7,9 @@ export type MailComposeBlockerCode =
   | "missing_email_write"
   | "draft_tool_disabled"
   | "send_request_tool_disabled"
-  | "no_bound_primary_mailbox";
+  | "no_bound_primary_mailbox"
+  | "provider_drafts_unsupported"
+  | "provider_send_unsupported";
 
 export type MailComposeBlocker = {
   code: MailComposeBlockerCode;
@@ -19,6 +21,8 @@ export function mailComposeReadiness(input: {
   draftToolEnabled: boolean;
   sendRequestToolEnabled: boolean;
   hasBoundPrimaryMailbox: boolean;
+  providerCanDraft: boolean;
+  providerCanSend: boolean;
 }): { canDraft: boolean; canRequestApproval: boolean; blockers: MailComposeBlocker[] } {
   const blockers: MailComposeBlocker[] = [];
   if (!input.actorCanWrite) blockers.push({
@@ -37,7 +41,16 @@ export function mailComposeReadiness(input: {
     code: "no_bound_primary_mailbox",
     message: "No connected primary mailbox is assigned to this agent. Assign a connected mailbox under Agent Channels.",
   });
-  const canDraft = input.actorCanWrite && input.draftToolEnabled && input.hasBoundPrimaryMailbox;
-  const canRequestApproval = input.actorCanWrite && input.sendRequestToolEnabled && input.hasBoundPrimaryMailbox;
+  if (input.hasBoundPrimaryMailbox && !input.providerCanDraft) blockers.push({
+    code: "provider_drafts_unsupported",
+    message: "This connected mailbox cannot save provider-backed drafts. Check the provider's discovered drafts capability.",
+  });
+  if (input.hasBoundPrimaryMailbox && !input.providerCanSend) blockers.push({
+    code: "provider_send_unsupported",
+    message: "This connected mailbox does not support sending. Send approval is unavailable for this mailbox.",
+  });
+  const canDraft = input.actorCanWrite && input.draftToolEnabled && input.hasBoundPrimaryMailbox && input.providerCanDraft;
+  const canRequestApproval = input.actorCanWrite && input.sendRequestToolEnabled && input.hasBoundPrimaryMailbox
+    && input.providerCanDraft && input.providerCanSend;
   return { canDraft, canRequestApproval, blockers };
 }
