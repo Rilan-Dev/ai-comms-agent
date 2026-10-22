@@ -131,6 +131,11 @@ export function ChatClient({
       setConversationId(payload.conversation.id);
       setMessages(payload.messages);
       setConversations(payload.conversations ?? []);
+      // A reload and browser back must not point to the previously selected
+      // agent's conversation after the agent context has changed.
+      window.history.replaceState(null, "", "/chat?" + new URLSearchParams({
+        agentId: nextAgentId, conversationId: payload.conversation.id,
+      }).toString());
       composeRevisionRef.current += 1;
       setMailComposerOpen(false);
       setComposeMailboxes([]);
