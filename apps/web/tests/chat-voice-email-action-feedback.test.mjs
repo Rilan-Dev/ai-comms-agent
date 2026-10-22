@@ -127,6 +127,10 @@ test("outgoing email command variants cannot bypass the shared chat/voice write-
     "I need you to send the emails to customer@example.com",
     "send daily summaries of my inbox to manager@example.com",
     "write to customer@example.com about the meeting",
+    "I want to send an email to customer@example.com",
+    "I would like to send an email to customer@example.com",
+    "I\u0027d like to draft an email to customer@example.com",
+    "Can you please send an email to customer@example.com",
   ]) {
     assert.equal(isExplicitEmailMutationRequest(prompt), true, prompt);
     assert.match(deniedEmailWriteExplanation(prompt, noWrite) ?? "", /No email was sent/, prompt);
