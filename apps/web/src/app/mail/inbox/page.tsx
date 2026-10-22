@@ -1,5 +1,6 @@
 import { listInboxMessages, PostgresEmailAccountRepository } from "@ai-comms-agent/db";
 import { getAuthenticatedAppContext } from "@/lib/identity/repository";
+import { canReadOrganizationMail } from "@/lib/mail/mail-read-access";
 import { headers } from "next/headers";
 import { InboxClient } from "./inbox-client";
 
@@ -10,7 +11,10 @@ export default async function MailInboxPage() {
   try {
     const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: await headers() }));
     const organizationId = context?.organizationId;
-    if (!organizationId) throw new Error("Organization context is unavailable.");
+    if (!organizationId || !context) throw new Error("Organization context is unavailable.");
+    if (!(await canReadOrganizationMail(organizationId, context.membership.role))) {
+      return <EmptyState title="Inbox access denied" body="Your organization role does not have email.read permission." />;
+    }
     const messages = await listInboxMessages(organizationId, { limit: 100 });
     return <InboxClient organizationId={organizationId} initialMessages={messages as never[]} />;
   } catch (error) {
