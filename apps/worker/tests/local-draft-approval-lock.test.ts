@@ -9,7 +9,7 @@ const deletion = repository.slice(repository.indexOf("export async function dele
   repository.indexOf("/** A page of real persisted email threads", repository.indexOf("export async function deleteLocalDraftForOrganization(")));
 
 test("an active send-approval action fences every change to its draft", () => {
-  assert.match(update, /AND NOT EXISTS \(/);
+  assert.equal((update.match(/AND NOT EXISTS \(/g) ?? []).length, 1, "each draft edit should have one approval fence");
   assert.match(update, /FROM email_actions ea/);
   assert.match(update, /ea\.organization_id = m\.organization_id/);
   assert.match(update, /ea\.draft_id = m\.id/);
@@ -27,7 +27,7 @@ test("draft edit route distinguishes a locked draft from a missing draft without
   const patch = route.slice(route.indexOf("export async function PATCH("),route.indexOf("export async function GET("));
   assert.match(patch, /updateLocalDraftForOrganization\(/);
   assert.match(patch, /getLocalDraftForOrganization\(organizationId, messageId\)/);
-  assert.match(patch, /error: "draft_locked"/);
+  assert.match(patch, /error: "draft_approval_locked"/);
   assert.match(patch, /status: 409/);
   assert.match(patch, /status: 404/);
 });
