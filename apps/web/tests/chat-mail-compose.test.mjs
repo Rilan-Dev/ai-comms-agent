@@ -44,3 +44,12 @@ test("realtime and transcript voice continue through host-authorized turn and ex
   const realtime=readFileSync(new URL("../src/app/api/voice/realtime/route.ts",import.meta.url),"utf8");
   assert.match(realtime, /authenticated host turn endpoint/);
 });
+
+
+test("repeating a request for the same saved draft uses stable approval idempotency", () => {
+  const s=route();
+  assert.match(s, /const draftId = bounded\(body\?\.draftId, 100\)/);
+  assert.match(s, /turn_id: action === "request_approval" \?/);
+  assert.match(s, /agentId.*draftId/);
+  assert.match(s, /action === "request_approval" && !draftId/);
+});
