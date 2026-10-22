@@ -152,7 +152,8 @@ export async function listApprovedEmailActions(limit = 10) {
 export async function claimApprovedEmailAction(actionId: string, organizationId: string) {
   const r = await query<Row>(
     `UPDATE email_actions
-     SET status = 'executing'
+     SET status = 'executing',
+         result = COALESCE(result,'{}'::jsonb) || jsonb_build_object('execution_started_at', now())
      WHERE id = $1
        AND organization_id = $2
        AND status = 'approved'
@@ -194,12 +195,13 @@ export async function recoverStaleExecutingEmailActions(maxAgeMinutes = 15) {
      SET status = 'failed',
          error = 'Worker execution interrupted; provider outcome is unknown. Manual verification required.',
          completed_at = now(),
-         result = jsonb_build_object(
+         result = COALESCE(result,'{}'::jsonb) || jsonb_build_object(
            'recoveredStaleExecution', true,
            'providerOutcomeUnknown', true
          )
      WHERE status = 'executing'
-       AND requested_at < now() - make_interval(mins => $1)
+       AND COALESCE(NULLIF(result->>'execution_started_at','')::timestamptz, approved_at, requested_at)
+           < now() - make_interval(mins => $1)
      RETURNING *`,
     [safeAge],
   );
