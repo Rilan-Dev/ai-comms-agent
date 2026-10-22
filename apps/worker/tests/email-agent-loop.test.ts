@@ -187,3 +187,28 @@ test("a pending-approval result must never trigger direct read-only final stream
   assert.equal(result.pendingApprovals.length, 1);
   assert.equal(result.pendingApprovals[0]?.actionId, "approval-1");
 });
+
+
+test("voice and chat model receive only actor-authorized persisted email tool definitions", async () => {
+  const runtime = fakeRuntime(["email.accounts.list", "email.draft.create"]);
+  runtime.registry.register({
+    name: "email.draft.create", domain: "email", description: "Save an email draft",
+    input_schema: { type: "object", properties: {}, required: [], additionalProperties: false },
+    required_permission: "email.write", sensitivity: "safe",
+    execute: async () => okResult(),
+  });
+  let exposed: string[] = [];
+  const result = await runEmailAgentTurn({
+    organizationId: "org-1", agentId: "agent-1",
+    messages: [{ role: "user", content: "Draft an email" }], toolContext: context,
+  }, {
+    createRuntime: async () => runtime,
+    completeWithTools: async (_ctx, _history, definitions) => {
+      exposed = definitions.map(tool => tool.name);
+      return { text: "An email.write grant is required to create a draft.", toolCalls: [], finishReason: "stop" };
+    },
+    invoke: async () => { throw new Error("No write tool should run"); },
+  });
+  assert.deepEqual(exposed, ["email.accounts.list"]);
+  assert.match(result.text, /email.write/);
+});
