@@ -6,6 +6,7 @@ import { paramsFromApprovedEmailSnapshot } from "../src/email/approved-email-dra
 const oneShot = readFileSync(new URL("../src/email/action-executor.ts", import.meta.url), "utf8");
 const batch = readFileSync(new URL("../src/email/action-worker.ts", import.meta.url), "utf8");
 const repository = readFileSync(new URL("../../../packages/db/src/email/repository.ts", import.meta.url), "utf8");
+const draftRoute = readFileSync(new URL("../../../apps/web/src/app/api/mail/drafts/route.ts", import.meta.url), "utf8");
 
 test("worker uses the immutable approval snapshot, never a mutable provider draft ID", () => {
   for (const [name, code] of [["batch", batch], ["one-shot", oneShot]] as const) {
@@ -50,5 +51,17 @@ test("all mutable draft updates and deletes reject pending, approved or executin
     assert.match(code, /ea\.action_type = 'send_email'/);
     assert.match(code, /ea\.status IN \('pending_approval', 'approved', 'executing'\)/);
     assert.match(code, /ea\.expires_at IS NULL OR ea\.expires_at > now\(\)/);
+  }
+});
+
+test("draft mutation APIs distinguish a locked approval from a missing tenant draft", () => {
+  const patch = draftRoute.slice(draftRoute.indexOf("export async function PATCH"), draftRoute.indexOf("export async function GET"));
+  const deletion = draftRoute.slice(draftRoute.indexOf("export async function DELETE"));
+  for (const route of [patch, deletion]) {
+    assert.match(route, /getLocalDraftForOrganization\(organizationId, messageId\)/);
+    assert.match(route, /error: "draft_approval_locked"/);
+    assert.match(route, /status: 409/);
+    assert.match(route, /error: "not_found"/);
+    assert.match(route, /status: 404/);
   }
 });
