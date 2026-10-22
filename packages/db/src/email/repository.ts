@@ -370,10 +370,10 @@ export async function updateMailReadStateForOrganization(
     const selected = await client.query<{ id: string }>(
       `SELECT m.id FROM email_messages m
        JOIN email_accounts a ON a.id = m.email_account_id
-       WHERE m.organization_id = $2 AND a.organization_id = $2
-         AND a.deleted_at IS NULL AND m.id = ANY($3::uuid[])
+       WHERE m.organization_id = $1 AND a.organization_id = $1
+         AND a.deleted_at IS NULL AND m.id = ANY($2::uuid[])
        ORDER BY m.id FOR UPDATE OF m FOR SHARE OF a`,
-      [isRead, organizationId, messageIds],
+      [organizationId, messageIds],
     );
     if (selected.rows.length !== messageIds.length) return 0;
 
