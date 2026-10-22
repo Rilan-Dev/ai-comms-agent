@@ -33,8 +33,10 @@ test("database changes mail read flags only after complete tenant-scoped locked 
   assert.ok(start>=0 && end>start);
   assert.match(method,/withTransaction\(async \(client\) =>/);
   assert.match(method,/FOR UPDATE OF m/);
-  assert.match(method,/m\.organization_id = \$2/);
-  assert.match(method,/a\.organization_id = \$2/);
+  assert.match(method,/m\.organization_id = \$1 AND a\.organization_id = \$1/);
+  assert.match(method,/a\.deleted_at IS NULL AND m\.id = ANY\(\$2::uuid\[\]\)/);
+  assert.match(method,/\[organizationId, messageIds\]/);
+  assert.match(method,/m\.organization_id = \$2 AND m\.id = ANY\(\$3::uuid\[\]\)/);
   assert.match(method,/selected\.rows\.length !== messageIds\.length/);
   assert.match(method,/UPDATE email_messages m/);
   assert.match(method,/if \(update\.rows\.length !== messageIds\.length\)/);
