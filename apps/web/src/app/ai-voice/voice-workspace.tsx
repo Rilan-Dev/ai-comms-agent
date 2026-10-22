@@ -1055,6 +1055,9 @@ export function VoiceWorkspace({
             <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.18em] text-primary"><Waves size={14} /> Clara voice workspace</p>
             <h1 className="mt-2 font-display text-3xl font-medium tracking-tight sm:text-4xl">Talk to your communication agent<span className="text-tertiary">.</span></h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">A live conversation surface with explicit transport state, turn history, and host-authorized answers.</p>
+            <p className="mt-2 text-xs text-muted-foreground">Mail actions spoken here use the authenticated voice-turn tool pipeline. Creating a draft or requesting send approval never bypasses human confirmation.</p>
+            {!liveSession && <a href={`/chat?agentId=${encodeURIComponent(agentId)}`} className="mt-2 inline-block text-xs font-semibold text-primary underline">Review an email draft and request send approval in chat →</a>}
+            {liveSession && <p className="mt-2 text-xs text-muted-foreground">End this voice session before switching to the email draft review in chat.</p>}
           </div>
           <div className="flex flex-wrap gap-3">
             <label className="rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
