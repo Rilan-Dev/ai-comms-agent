@@ -257,7 +257,7 @@ export function ChatClient({
   }
 
   async function reloadMailPermissions() {
-    if (!activeAgent || mailPermissionBusy) return;
+    if (!activeAgent || mailPermissionBusy || agentSwitchInFlightRef.current) return;
     if (mailPolicy) {
       const changes = summarizeEmailPermissionChanges(mailPolicy.allowedTools, mailToolSelection);
       if ((changes.added.length || changes.removed.length)
@@ -284,7 +284,7 @@ export function ChatClient({
     await reloadMailPermissions();
   }
   async function saveMailPermissions() {
-    if (!activeAgent || !mailPolicy || mailPermissionBusy || busy || voiceOpen) return;
+    if (!activeAgent || !mailPolicy || mailPermissionBusy || busy || voiceOpen || agentSwitchInFlightRef.current) return;
     const { added, removed, confirmation } =
       summarizeEmailPermissionChanges(mailPolicy.allowedTools, mailToolSelection);
     if (!added.length && !removed.length) { setMailPermissionNotice("No changes to save."); return; }
@@ -320,6 +320,7 @@ export function ChatClient({
   }
 
   async function sendMessage() {
+    if (agentSwitchInFlightRef.current) return;
     const content = draft.trim();
     // Recognize an explicit, bounded test-email request as a LOCAL COMPOSE
     // preview. Never interpret prose as permission to send or approve.
@@ -412,15 +413,15 @@ export function ChatClient({
             </div>
           </div>
           <div className="flex min-w-0 items-center gap-2">
-            <button type="button" onClick={() => { if (mailComposerOpen) setMailComposerOpen(false); else void openMailComposer(); }} disabled={busy || composeBusy || voiceOpen} className="rounded-md border px-3 py-2 text-xs font-medium hover:bg-secondary disabled:opacity-50" aria-expanded={mailComposerOpen}>Compose email</button>
-            <button type="button" onClick={() => void openMailPermissions()} disabled={busy || mailPermissionBusy || voiceOpen} className="rounded-md border px-3 py-2 text-xs font-medium hover:bg-secondary disabled:opacity-50" aria-expanded={mailPermissionOpen}>Mail permissions</button>
-            <button type="button" onClick={() => setVoiceOpen(true)} disabled={busy || voiceOpen}
+            <button type="button" onClick={() => { if (mailComposerOpen) { composeRevisionRef.current += 1; setMailComposerOpen(false); } else void openMailComposer(); }} disabled={busy || composeBusy || agentSwitchBusy || voiceOpen} className="rounded-md border px-3 py-2 text-xs font-medium hover:bg-secondary disabled:opacity-50" aria-expanded={mailComposerOpen}>Compose email</button>
+            <button type="button" onClick={() => void openMailPermissions()} disabled={busy || mailPermissionBusy || agentSwitchBusy || voiceOpen} className="rounded-md border px-3 py-2 text-xs font-medium hover:bg-secondary disabled:opacity-50" aria-expanded={mailPermissionOpen}>Mail permissions</button>
+            <button type="button" onClick={() => setVoiceOpen(true)} disabled={busy || agentSwitchBusy || composeBusy || mailPermissionBusy || voiceOpen}
               aria-pressed={voiceOpen} aria-label={voiceOpen ? "Voice conversation open; use Back to chat to end safely" : "Open live realtime voice conversation"}
               className="inline-flex shrink-0 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium transition hover:bg-secondary disabled:opacity-50">
               <AudioLines size={15} /> {voiceOpen ? "Voice session open" : "Live voice"}
             </button>
             <label className="flex min-w-0 items-center gap-2 rounded-lg border bg-background px-2.5 py-1.5">
-            <select aria-label="Choose agent" value={activeAgent?.id ?? ""} disabled={voiceOpen || busy} onChange={(e) => void switchAgent(e.target.value)} className="max-w-36 bg-transparent text-xs font-medium outline-none sm:max-w-48">
+            <select aria-label="Choose agent" value={activeAgent?.id ?? ""} disabled={voiceOpen || busy || agentSwitchBusy || composeBusy || mailPermissionBusy} onChange={(e) => void switchAgent(e.target.value)} className="max-w-36 bg-transparent text-xs font-medium outline-none sm:max-w-48">
               {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
             </select>
             </label>
@@ -428,18 +429,19 @@ export function ChatClient({
         </div>
       </header>
 
+      {agentSwitchNotice && <p role="alert" className="mx-auto w-full max-w-3xl px-4 py-2 text-xs text-destructive">{agentSwitchNotice}</p>}
       {composeNotice && <p role="status" className="mx-auto w-full max-w-3xl px-4 py-2 text-xs text-muted-foreground">{composeNotice}</p>}
-      {mailComposerOpen && !voiceOpen && (
+      {mailComposerOpen && !voiceOpen && !agentSwitchBusy && (
         <section aria-label="Compose an email using this agent" className="mx-auto w-full max-w-3xl border-b px-4 py-4">
           <h2 className="text-sm font-semibold">Review an email draft</h2>
           <p className="mt-1 text-xs text-muted-foreground">The host executes only authorized agent tools. Saving a draft or requesting approval never sends it.</p>
           {!composeCanDraft && <p role="alert" className="mt-2 text-xs text-destructive">Draft creation is unavailable. Ask an admin to enable Draft mail and confirm your email.write permission.</p>}
           {!composeMailboxes.length && <p role="alert" className="mt-2 text-xs text-destructive">No connected primary mailbox is assigned to this agent. Assign one in Agent Channels.</p>}
           <div className="mt-3 grid gap-3">
-            <label className="text-xs font-medium">From mailbox<select aria-label="Sending mailbox" value={composeAccount} disabled={composeBusy || Boolean(composeDraftId)} onChange={e => { setComposeAccount(e.target.value); setComposeDraftId(null); }} className="mt-1 block w-full rounded-md border bg-background p-2">{composeMailboxes.map(account => <option key={account.id} value={account.id}>{account.address}</option>)}</select></label>
-            <label className="text-xs font-medium">To<input type="email" aria-label="Email recipient" value={composeTo} onChange={e => { setComposeTo(e.target.value); setComposeDraftId(null); }} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
-            <label className="text-xs font-medium">Subject<input value={composeSubject} maxLength={998} onChange={e => { setComposeSubject(e.target.value); setComposeDraftId(null); }} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
-            <label className="text-xs font-medium">Message<textarea aria-label="Email body" value={composeBody} maxLength={100000} rows={5} onChange={e => { setComposeBody(e.target.value); setComposeDraftId(null); }} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
+            <label className="text-xs font-medium">From mailbox<select aria-label="Sending mailbox" value={composeAccount} disabled={composeBusy} onChange={e => { setComposeAccount(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2">{composeMailboxes.map(account => <option key={account.id} value={account.id}>{account.address}</option>)}</select></label>
+            <label className="text-xs font-medium">To<input type="email" aria-label="Email recipient" value={composeTo} disabled={composeBusy} onChange={e => { setComposeTo(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
+            <label className="text-xs font-medium">Subject<input value={composeSubject} maxLength={998} disabled={composeBusy} onChange={e => { setComposeSubject(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
+            <label className="text-xs font-medium">Message<textarea aria-label="Email body" value={composeBody} maxLength={100000} rows={5} disabled={composeBusy} onChange={e => { setComposeBody(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" disabled={composeBusy || !composeCanDraft || !composeAccount || !composeTo.trim() || !composeSubject.trim() || !composeBody.trim() || Boolean(composeDraftId)} onClick={() => void submitMailCompose("draft")} className="rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">Save email draft</button>
@@ -456,7 +458,7 @@ export function ChatClient({
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold">Agent mail permissions</h2>
             <span className="flex flex-wrap items-center gap-3">
-              <button type="button" disabled={mailPermissionBusy || busy} onClick={() => void reloadMailPermissions()} className="text-xs underline disabled:opacity-50">Reload current permissions</button>
+              <button type="button" disabled={mailPermissionBusy || busy || agentSwitchBusy} onClick={() => void reloadMailPermissions()} className="text-xs underline disabled:opacity-50">Reload current permissions</button>
               <a href={`/agents/${agentId}?tab=policy`} className="text-xs underline">Full policy and mailbox setup</a>
             </span>
           </div>
@@ -469,7 +471,7 @@ export function ChatClient({
             <div className="mt-3 grid gap-2 sm:grid-cols-2">{REGISTERED_EMAIL_POLICY_NAMES.map(name => <label key={name} className="flex items-center gap-2 text-xs"><input type="checkbox" disabled={mailPermissionBusy || busy} checked={mailToolSelection.includes(name)} onChange={event => setMailToolSelection(current => event.target.checked ? [...new Set([...current, name])] : current.filter(n => n !== name))} />{EMAIL_PERMISSION_LABELS[name] ?? name}</label>)}</div>
           </details>
           <p className="mt-2 text-xs text-muted-foreground">{mailToolSelection.filter(name => REGISTERED_EMAIL_POLICY_NAMES.some(registered => registered === name)).length} email tools selected. Unrelated custom permissions are preserved. No permission changes take effect before saving.</p>
-          <button type="button" disabled={mailPermissionBusy || busy} onClick={() => void saveMailPermissions()} className="mt-3 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">Confirm and save permissions</button>
+          <button type="button" disabled={mailPermissionBusy || busy || agentSwitchBusy} onClick={() => void saveMailPermissions()} className="mt-3 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">Confirm and save permissions</button>
         </section>
       )}
       {voiceOpen ? (
@@ -539,8 +541,8 @@ export function ChatClient({
             <div className="flex items-center justify-between px-3 pb-2">
               <button type="button" onClick={() => setVoiceOpen(true)}
                 className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-primary"
-                aria-label="Start a realtime AI voice conversation"><AudioLines size={13} /> Live voice conversation</button>
-              <button type="button" disabled={busy || !draft.trim()} onClick={() => void sendMessage()} className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground">
+                aria-label="Start a realtime AI voice conversation" disabled={agentSwitchBusy || busy || composeBusy || mailPermissionBusy}><AudioLines size={13} /> Live voice conversation</button>
+              <button type="button" disabled={busy || agentSwitchBusy || !draft.trim()} onClick={() => void sendMessage()} className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground">
                 <Send size={15} />
               </button>
             </div>
