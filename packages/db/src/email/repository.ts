@@ -581,7 +581,7 @@ export async function updateLocalDraftForOrganization(
            AND ea.email_account_id = m.email_account_id
            AND ea.action_type = 'send_email'
            AND (
-             ea.status = 'executing'
+             ea.status IN ('executing', 'completed')
              OR (
                ea.status IN ('pending_approval', 'approved')
                AND (ea.expires_at IS NULL OR ea.expires_at > now())
@@ -639,7 +639,7 @@ export async function queueLocalDraftProviderSyncForOrganization(organizationId:
          SELECT 1 FROM email_actions ea
          WHERE ea.organization_id = m.organization_id AND ea.draft_id = m.id
            AND ea.email_account_id = m.email_account_id AND ea.action_type = 'send_email'
-           AND (ea.status = 'executing'
+           AND (ea.status IN ('executing', 'completed')
                 OR (ea.status IN ('pending_approval', 'approved')
                     AND (ea.expires_at IS NULL OR ea.expires_at > now())))
        )
@@ -664,7 +664,7 @@ export async function claimQueuedProviderDraftSyncForOrganization(organizationId
          SELECT 1 FROM email_actions ea
          WHERE ea.organization_id = m.organization_id AND ea.draft_id = m.id
            AND ea.email_account_id = m.email_account_id AND ea.action_type = 'send_email'
-           AND (ea.status = 'executing'
+           AND (ea.status IN ('executing', 'completed')
                 OR (ea.status IN ('pending_approval', 'approved')
                     AND (ea.expires_at IS NULL OR ea.expires_at > now())))
        )
@@ -756,7 +756,7 @@ export async function markLocalDraftSentForOrganization(
      SET is_draft = false, is_sent = true, provider_message_id = $1, updated_at = now()
      FROM email_accounts a
      WHERE m.id = $2 AND m.organization_id = $3 AND m.email_account_id = a.id
-       AND a.organization_id = $3 AND a.deleted_at IS NULL
+       AND a.organization_id = $3 AND a.deleted_at IS NULL AND m.is_draft = true
      RETURNING m.*`,
     [providerMessageId, messageId, organizationId],
   );
@@ -776,7 +776,7 @@ export async function deleteLocalDraftForOrganization(organizationId: string, me
            AND ea.email_account_id = m.email_account_id
            AND ea.action_type = 'send_email'
            AND (
-             ea.status = 'executing'
+             ea.status IN ('executing', 'completed')
              OR (
                ea.status IN ('pending_approval', 'approved')
                AND (ea.expires_at IS NULL OR ea.expires_at > now())
