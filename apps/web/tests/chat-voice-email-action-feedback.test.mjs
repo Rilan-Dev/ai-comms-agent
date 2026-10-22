@@ -23,7 +23,7 @@ test("imperative send/draft/forward requests are denied safely when actor has no
 
 test("non-actions and legitimate write grants do not trigger deterministic denial", () => {
   const missing = new Set(["organization.read", "email.read"]);
-  for (const prompt of ["read my inbox", "how can I send email?", "who sent this message?", "send me a summary of today's meetings"]) {
+  for (const prompt of ["read my inbox", "how can I send email?", "who sent this message?", "send me a summary of today's meetings", "send me a summary of emails received today", "send me the list of messages"]) {
     assert.equal(deniedEmailWriteExplanation(prompt, missing), null, prompt);
   }
   assert.equal(deniedEmailWriteExplanation("send email to test@example.com", new Set(["email.write"])), null);
