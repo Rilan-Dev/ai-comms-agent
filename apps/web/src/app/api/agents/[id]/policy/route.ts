@@ -22,6 +22,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     // A first-party chat/settings preview includes its original policy.
     // The repository compares all persisted fields atomically; a concurrent
     // change must be reviewed, never overwritten after a stale confirmation.
+    if (body?.expectedPolicy !== undefined &&
+        (!body.expectedPolicy || typeof body.expectedPolicy !== "object" || Array.isArray(body.expectedPolicy))) {
+      return NextResponse.json({
+        error: "validation_error", fieldErrors: { expectedPolicy: "A saved policy snapshot is required." },
+      }, { status: 422 });
+    }
     const expectedValidation = body?.expectedPolicy === undefined
       ? null : validateAgentPolicyInput(body.expectedPolicy);
     if (expectedValidation && !expectedValidation.ok) {
