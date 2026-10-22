@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   createEmailAction,
+  EmailActionIdempotencyConflictError,
   decideEmailAction,
   getEmailActionForOrganization,
   getMailMessageForOrganization,
@@ -91,10 +92,13 @@ export async function POST(request: Request) {
     await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: "email.action.requested", targetType: "email_action", targetId: String(action.id), action: String(actionType), decision: "pending_approval", correlationId: action.correlationId, metadata: { emailAccountId, draftId, idempotencyKey } });
     return NextResponse.json({
       action,
-      status: "pending_approval",
-      message: "Sensitive email action created. Approval is required before provider execution.",
+      status: action.status,
+      message: "The email action is pending human approval. No email has been sent.",
     }, { status: 201 });
   } catch (error) {
+    if (error instanceof EmailActionIdempotencyConflictError) {
+      return NextResponse.json({ error: "email_action_conflict", message: error.message }, { status: 409 });
+    }
     return authorizationErrorToResponse(error);
   }
 }
