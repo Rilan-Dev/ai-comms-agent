@@ -6,6 +6,7 @@ import { Activity as ActivityIcon, ArrowLeft, Bot, FlaskConical, GitBranch, Paus
 import type { Agent, AgentEmailBinding, AgentPolicy, AgentVersion, AgentWhatsAppBinding, EmailAccount } from "@ai-comms-agent/shared";
 import { useNotifications } from "@/components/notifications";
 import { AgentAISettingsPanel } from "./agent-ai-settings-panel";
+import { EMAIL_PERMISSION_PRESETS, emailPermissionPresetSelection } from "@/lib/agents/email-permission-presets";
 
 // Only tools registered by the current email runtime are selectable here.
 // The shared catalog also includes unimplemented contracts: showing those
@@ -200,6 +201,9 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
     } catch(e) { notify({kind:"error",title:"Channels could not be saved",message:e instanceof Error?e.message:"Unknown error"}); }
     finally { setBusy(false); }
   }
+  function chooseMailPreset(preset: "read"|"draft"|"approval"|"off") {
+    setSelectedTools((current) => emailPermissionPresetSelection(current, preset));
+  }
   function togglePolicyTool(toolName: string, checked: boolean) {
     setSelectedTools((current) => checked
       ? (current.includes(toolName) ? current : [...current, toolName])
@@ -208,8 +212,13 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   async function savePolicy(event:React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true);
     const form=new FormData(event.currentTarget);
-    // Selection is explicit; never auto-enable tools when a mailbox is bound.
+    // A preset is only an editable preview. The administrator must explicitly
+    // confirm every changed policy before the privileged API persists it.
     const allowedTools = selectedTools;
+    const was = new Set(policy?.allowedTools ?? []);
+    const added = allowedTools.filter(name => !was.has(name));
+    const removed = (policy?.allowedTools ?? []).filter(name => !allowedTools.includes(name));
+    if ((added.length || removed.length) && !window.confirm(`Save agent mail permissions? Add ${added.length}, remove ${removed.length}. Request sending only creates an approval request; no email sends automatically.`)) { setBusy(false); return; }
     const allowedSenders=String(form.get("allowedSenders")??"").split(",").map((v)=>v.trim()).filter(Boolean);
     const blockedSenders=String(form.get("blockedSenders")??"").split(",").map((v)=>v.trim()).filter(Boolean);
     let securityPolicy: unknown;
@@ -262,6 +271,12 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
         <p className="mt-2 text-xs text-muted-foreground">Binding a mailbox never grants tool access automatically. The account must also be connected, and the signed-in user must have email.read. Sending always follows its separate approval rules.</p>
       </div>
       <form onSubmit={savePolicy} className="mt-6 space-y-5">
+        <fieldset className="rounded-md border border-primary/25 bg-primary/5 p-4">
+          <legend className="px-1 text-sm font-semibold">Quick permission presets</legend>
+          <p className="mb-3 text-xs text-muted-foreground">Choose a starting point, fine-tune individual checkboxes below, then confirm and save. Existing custom permissions stay intact.</p>
+          <div className="grid gap-2 sm:grid-cols-2">{EMAIL_PERMISSION_PRESETS.map((preset) => <button key={preset.id} type="button" disabled={busy} onClick={() => chooseMailPreset(preset.id)} className="rounded-md border bg-background p-3 text-left text-xs transition hover:border-primary/50 disabled:opacity-50"><span className="block font-semibold">{preset.label}</span><span className="mt-1 block text-muted-foreground">{preset.description}</span></button>)}</div>
+          <p role="status" className="mt-3 text-xs text-muted-foreground">{selectedTools.filter(name => KNOWN_EMAIL_POLICY_TOOLS.has(name)).length} email tools selected; changes are not active until you confirm and save.</p>
+        </fieldset>
         {(["read", "write"] as const).map((group) => <fieldset key={group} className="rounded-md border p-4">
           <legend className="px-1 text-sm font-semibold">{group === "read" ? "Read and search mail" : "Drafting and approval requests (optional)"}</legend>
           <p className="mb-3 text-xs text-muted-foreground">{group === "read" ? "Select only the information this agent needs. No mailbox is accessible unless separately connected." : "These actions do not bypass provider capabilities, administrator consent, or send approvals."}</p>
