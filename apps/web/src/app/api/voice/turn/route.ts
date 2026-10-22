@@ -5,6 +5,7 @@ import { authorize, authorizationErrorToResponse } from "@/lib/identity/authoriz
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { runEmailAgentTurn } from "@ai-comms-agent/email-agent-runtime";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
+import { deniedEmailWriteExplanation, verifiedEmailToolSummary } from "@/lib/mail/action-feedback";
 
 
 export const dynamic = "force-dynamic";
@@ -91,6 +92,7 @@ export async function POST(request: Request) {
     const executionId = crypto.randomUUID();
     const role = subject.membership.role;
     const permissions = [...subject.permissions];
+    const blockedWriteExplanation = deniedEmailWriteExplanation(transcript, subject.permissions);
     // Voice clients opt in to progressive text. The existing JSON contract
     // remains compatible for older clients. Conversations without a mailbox
     // or action intent use the same Clara token stream as Chat; tool-sensitive
@@ -109,7 +111,12 @@ export async function POST(request: Request) {
           try {
             emit("status", { phase: needsAuthorizedTools ? "tools" : "generating" });
             emit("progress", { phase: needsAuthorizedTools ? "checking_permissions" : "generating" });
-            if (needsAuthorizedTools) {
+            if (blockedWriteExplanation) {
+              emit("delta", { text: blockedWriteExplanation });
+              await saveAnswer(blockedWriteExplanation);
+              emit("progress", { phase: "completed" });
+              emit("done", { executionId, toolCalls: [], pendingApprovals: [], finishReason: "permission_denied", mode: "host-authorized-tools" });
+            } else if (needsAuthorizedTools) {
               const result = await runEmailAgentTurn({
                 organizationId, agentId, messages: [{ role: "user", content: transcript }], kbId,
                 toolContext: {
@@ -146,7 +153,10 @@ export async function POST(request: Request) {
               if (!request.signal.aborted) {
                 // The callback already streamed the provider's final tokens.
                 // Writes/approvals/denials retain the canonical host answer.
-                if (!result.streamed) emit("delta", { text: result.text });
+                const verifiedSummary = verifiedEmailToolSummary(result.toolCalls);
+                // A model answer is not evidence that a provider action was
+                // delivered. Append only the host-verified outcome.
+                if (!result.streamed) emit("delta", { text: verifiedSummary ? `${result.text}\n\n${verifiedSummary}` : result.text });
                 await saveAnswer(deliveredText);
                 emit("progress", { phase: "completed" });
                 emit("done", {
@@ -196,6 +206,14 @@ export async function POST(request: Request) {
       });
     }
 
+    if (blockedWriteExplanation) {
+      await saveAnswer(blockedWriteExplanation);
+      return NextResponse.json({
+        executionId, text: blockedWriteExplanation, toolCalls: [], pendingApprovals: [],
+        finishReason: "permission_denied", actions: [],
+      });
+    }
+
     const turn = await runEmailAgentTurn({
       organizationId,
       agentId,
@@ -219,10 +237,12 @@ export async function POST(request: Request) {
       maxToolCalls: 8,
     });
 
-    await saveAnswer(turn.text);
+    const verifiedSummary = verifiedEmailToolSummary(turn.toolCalls);
+    const voiceAnswer = verifiedSummary ? `${turn.text}\n\n${verifiedSummary}` : turn.text;
+    await saveAnswer(voiceAnswer);
     return NextResponse.json({
       executionId,
-      text: turn.text,
+      text: voiceAnswer,
       toolCalls: turn.toolCalls,
       pendingApprovals: turn.pendingApprovals,
       finishReason: turn.finishReason,
