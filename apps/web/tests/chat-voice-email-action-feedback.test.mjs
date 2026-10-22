@@ -146,3 +146,34 @@ test("read-only email requests remain read-only when natural phrasing includes s
     assert.equal(isExplicitEmailMutationRequest(prompt), false, prompt);
   }
 });
+
+test("verified email denials explain a safe next step rather than only showing internal error codes", () => {
+  const reasons = [
+    ["permission_denied", /email\.write permission/],
+    ["tool_not_allowed", /agent's saved email tool policy/],
+    ["account_not_available", /connected primary mailbox/],
+    ["capability_not_supported", /provider capabilities/],
+    ["approval_required", /human approval workflow/],
+  ];
+  for (const [errorCode, expected] of reasons) {
+    const answer = verifiedEmailToolSummary([
+      { name: "email.send.request", ok: false, errorCode },
+    ]);
+    assert.match(answer, expected, String(errorCode));
+    assert.match(answer, /No email was sent/);
+    assert.doesNotMatch(answer, /email was sent successfully/i);
+  }
+  const message = verifiedEmailToolSummary([
+    { name: "email.send.request", ok: false, errorCode: "unexpected_private_error" },
+  ]);
+  assert.match(message, /Email tool denied/);
+  assert.doesNotMatch(message, /private_error/);
+});
+
+test("successful draft and send-approval request give distinct next human steps", () => {
+  const draft = verifiedEmailToolSummary([{ name: "email.draft.create", ok: true, status: "draft_created" }]);
+  const approval = verifiedEmailToolSummary([{ name: "email.send.request", ok: true, status: "pending_approval" }]);
+  assert.match(draft, /review the draft/i);
+  assert.match(approval, /Mail.*Approvals/i);
+  assert.match(approval, /No email was sent/);
+});
