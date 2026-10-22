@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { getMailThreadForOrganization } from "@ai-comms-agent/db";
 import { getAuthenticatedAppContext } from "@/lib/identity/repository";
+import { canReadOrganizationMail } from "@/lib/mail/mail-read-access";
 import { redirect } from "next/navigation";
 import { ThreadClient } from "./thread-client";
 
@@ -22,6 +23,9 @@ export default async function MailThreadPage({ params }: { params: Promise<{ thr
     const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: authHeaders }));
     if (!context) redirect("/login?reason=not_provisioned");
     const organizationId = context.organizationId;
+    if (!(await canReadOrganizationMail(organizationId, context.membership.role))) {
+      return <State title="Thread access denied" body="Your organization role does not have email.read permission." />;
+    }
     const messages = await getMailThreadForOrganization(organizationId, threadId);
     if (!messages.length) return <State title="Thread not found" body="This thread is unavailable in the current organization." />;
     return <ThreadClient organizationId={organizationId} threadId={threadId} initialMessages={messages as never[]} />;
