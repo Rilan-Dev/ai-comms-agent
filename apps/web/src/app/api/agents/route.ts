@@ -3,6 +3,7 @@ import { PostgresAgentRepository, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
+import { assertSameOrigin } from "@/lib/identity/local-auth";
 import { validateAgentInput } from "@/lib/agents/validation";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +35,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  try { assertSameOrigin(request); }
+  catch { return NextResponse.json({ error: "invalid_origin" }, { status: 403 }); }
   try {
     const missingDb = dbRequired();
     if (missingDb) return missingDb;
