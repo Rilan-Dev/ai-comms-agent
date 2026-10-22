@@ -40,6 +40,8 @@ test("verified tool summary distinguishes draft, pending approval and denial wit
   assert.match(summary, /tool_not_allowed/);
   assert.match(summary, /No email was sent/i);
   assert.equal(verifiedEmailToolSummary([{ name: "email.messages.list", ok: true, readOnly: true }]), "");
+  assert.match(verifiedEmailToolSummary([{ name: "email.reply.draft", ok: true, status: "reply_draft_created" }]), /draft saved/i);
+  assert.match(verifiedEmailToolSummary([{ name: "email.forward.draft", ok: true, status: "forward_draft_created" }]), /draft saved/i);
   assert.equal(verifiedEmailToolSummary([]), "");
 });
 
@@ -58,7 +60,9 @@ test("chat stream returns durable, verified tool results and denied explanation"
   assert.match(source, /verifiedEmailToolSummary\(toolTurn\.toolCalls\)/);
   assert.match(source, /await appendConversationMessage\(/);
   assert.match(source, /emit\("done", \{ conversationId: conversation\.id, provider, model, toolCalls:/);
-  assert.match(source, /status: toolOutput\?\.status/);
+  assert.match(source, /const verifiedStatus = toolOutput\?\.status/);
+  assert.match(source, /if \(blockedWriteExplanation\) \{[\s\S]*?\} else if \(toolTurn\)/);
+  assert.match(source, /emit\("delta", \{ text: assistantOutput \}\)/);
   assert.match(source, /permissions\.includes\(tool\.required_permission\)/);
 });
 
