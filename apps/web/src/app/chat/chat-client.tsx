@@ -39,7 +39,10 @@ export function ChatClient({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [mailComposerOpen, setMailComposerOpen] = useState(false);
-  const [composeMailboxes, setComposeMailboxes] = useState<Array<{id:string;address:string}>>([]);
+  const [composeMailboxes, setComposeMailboxes] = useState<Array<{
+    id: string; address: string; canDraft: boolean; canRequestApproval: boolean;
+    blockers: Array<{code:string;message:string}>;
+  }>>([]);
   const [composeAccount, setComposeAccount] = useState("");
   const [composeTo, setComposeTo] = useState("");
   const [composeSubject, setComposeSubject] = useState("Test Email");
@@ -192,15 +195,16 @@ export function ChatClient({
       if (!response.ok || !Array.isArray(data.mailboxes)) {
         throw new Error(data.message ?? "The bound mailbox could not be loaded.");
       }
-      setComposeMailboxes(data.mailboxes);
-      setComposeAccount(data.mailboxes[0]?.id ?? "");
-      setComposeCanDraft(data.canDraft === true);
-      setComposeCanApprove(data.canRequestApproval === true);
-      setComposeBlockers(Array.isArray(data.blockers)
-        ? data.blockers.filter((entry: unknown): entry is {code:string;message:string} =>
-            Boolean(entry && typeof entry === "object" && "code" in entry && "message" in entry
-              && typeof entry.code === "string" && typeof entry.message === "string"))
-        : []);
+      const mailboxes = data.mailboxes as Array<{
+        id:string; address:string; canDraft:boolean; canRequestApproval:boolean;
+        blockers:Array<{code:string;message:string}>;
+      }>;
+      setComposeMailboxes(mailboxes);
+      const selectedMailbox = mailboxes.find(account => account.canDraft === true) ?? mailboxes[0];
+      setComposeAccount(selectedMailbox?.id ?? "");
+      setComposeCanDraft(selectedMailbox?.canDraft === true);
+      setComposeCanApprove(selectedMailbox?.canRequestApproval === true);
+      setComposeBlockers(selectedMailbox?.blockers ?? []);
       if (recipient) {
         setComposeTo(recipient);
         // Do not discard the original request if the readiness GET fails.
@@ -456,7 +460,14 @@ export function ChatClient({
           {!composeCanDraft && composeBlockers.length === 0 && <p role="alert" className="mt-2 text-xs text-destructive">Draft creation is unavailable. Check saved agent permissions and your email.write grant.</p>}
           {!composeMailboxes.length && <p role="alert" className="mt-2 text-xs text-destructive">No connected primary mailbox is assigned to this agent. Assign one in Agent Channels.</p>}
           <div className="mt-3 grid gap-3">
-            <label className="text-xs font-medium">From mailbox<select aria-label="Sending mailbox" value={composeAccount} disabled={composeBusy} onChange={e => { setComposeAccount(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2">{composeMailboxes.map(account => <option key={account.id} value={account.id}>{account.address}</option>)}</select></label>
+            <label className="text-xs font-medium">From mailbox<select aria-label="Sending mailbox" value={composeAccount} disabled={composeBusy} onChange={e => {
+              const selectedMailbox = composeMailboxes.find(account => account.id === e.target.value);
+              setComposeAccount(e.target.value);
+              setComposeCanDraft(selectedMailbox?.canDraft === true);
+              setComposeCanApprove(selectedMailbox?.canRequestApproval === true);
+              setComposeBlockers(selectedMailbox?.blockers ?? []);
+              invalidateComposeReview();
+            }} className="mt-1 block w-full rounded-md border bg-background p-2">{composeMailboxes.map(account => <option key={account.id} value={account.id}>{account.address}</option>)}</select></label>
             <label className="text-xs font-medium">To<input type="email" aria-label="Email recipient" value={composeTo} disabled={composeBusy} onChange={e => { setComposeTo(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
             <label className="text-xs font-medium">Subject<input value={composeSubject} maxLength={998} disabled={composeBusy} onChange={e => { setComposeSubject(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
             <label className="text-xs font-medium">Message<textarea aria-label="Email body" value={composeBody} maxLength={100000} rows={5} disabled={composeBusy} onChange={e => { setComposeBody(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
