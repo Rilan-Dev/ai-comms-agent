@@ -33,7 +33,7 @@ export function verifiedEmailToolSummary(calls: readonly VerifiedEmailToolCall[]
         ? ` (${call.errorCode})` : "";
       return `Email tool denied${code}`;
     }
-    if (call.status === "draft_created" || call.status === "draft_updated") return "Email draft saved";
+    if (["draft_created", "draft_updated", "reply_draft_created", "forward_draft_created"].includes(call.status ?? "")) return "Email draft saved";
     if (call.status === "pending_approval") return "Send approval request pending human review";
     return "Email tool returned success without a confirmed send or approval status";
   });
