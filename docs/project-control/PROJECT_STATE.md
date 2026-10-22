@@ -1,3 +1,9 @@
+## DEV-01 — Overview-first owner requirement / source checkpoint — 2026-10-23
+
+Owner asked for the original `/overview` screen as first entry, plus a phased human-first plan for 5-day personal catch-up and AI routine/WhatsApp digests. DEV-01 implemented the source navigation/Overview entry card and existing server feature flag gate on `Development`, with 10/10 GitHub structural assertions; native Vitest, typechecks, real browser and deployment remain **unverified**. The current Superpowers continuation plan is `docs/superpowers/plans/2026-10-23-overview-first-mail-command-center.md`; session `sessions/DEV01-OVERVIEW-FIRST-EMAIL-COMMAND-CENTER-20261023.md`. No Phase 4 transition, background worker/routine activation, standing consent, schema migration or provider send. See top of `NEXT_ACTION.md` for the exact DEV-01 next test and existing C3/C4/R1b gates. FIX-01 and OPS-01 remain separate.
+
+---
+
 ## DEV-01 current handoff — 2026-10-19, final repository synchronization
 
 See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed, in-progress, pending and next work. C1/C2 focused implementation is complete; C3 worker/grounding integration is next, then C4 authenticated UX acceptance. Phase 4 remains implementation_in_progress. Latest upstream operator/vector fixes preserved; affected checks pass 35/35 and 11/11. Earlier full-suite counts are a pre-final-merge baseline. Security follow-up remains open. Existing entries retained as history.
