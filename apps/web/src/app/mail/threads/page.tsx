@@ -1,5 +1,6 @@
 import { listMailThreadsForOrganization, PostgresEmailAccountRepository } from "@ai-comms-agent/db";
 import { getAuthenticatedAppContext } from "@/lib/identity/repository";
+import { canReadOrganizationMail } from "@/lib/mail/mail-read-access";
 import { headers } from "next/headers";
 import { ThreadsClient } from "./threads-client";
 
@@ -18,6 +19,9 @@ export default async function ThreadsPage() {
 
   try {
     const organizationId = context.organizationId;
+    if (!(await canReadOrganizationMail(organizationId, context.membership.role))) {
+      return <Status title="Threads access denied" description="Your organization role does not have email.read permission." />;
+    }
     const [result, accounts] = await Promise.all([
       listMailThreadsForOrganization(organizationId, { limit: 25 }),
       new PostgresEmailAccountRepository().listForOrganization(organizationId),
