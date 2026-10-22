@@ -43,6 +43,26 @@ export async function getOrCreateChatConversation(organizationId: string, agentI
   });
 }
 
+/** A new session never reuses the currently active chat or its model history. */
+export async function createChatConversation(organizationId: string, agentId: string) {
+  const result = await query<Row>(
+    "INSERT INTO conversations (organization_id, agent_id, channel, subject) SELECT a.organization_id,a.id,'chat','New chat' FROM agents a WHERE a.organization_id=$1 AND a.id=$2 RETURNING *",
+    [organizationId, agentId],
+  );
+  if (!result.rows[0]) throw new Error("Agent not found in this organization");
+  return mapConversation(result.rows[0]);
+}
+
+/** History entries are strictly scoped to one organization and one agent. */
+export async function listChatConversations(organizationId: string, agentId: string, limit = 40) {
+  const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 100);
+  const result = await query<Row>(
+    "SELECT c.* FROM conversations c JOIN agents a ON a.id=c.agent_id AND a.organization_id=c.organization_id WHERE c.organization_id=$1 AND c.agent_id=$2 AND c.channel='chat' AND c.status='active' ORDER BY COALESCE(c.last_message_at,c.updated_at) DESC, c.id DESC LIMIT $3",
+    [organizationId, agentId, safeLimit],
+  );
+  return result.rows.map(mapConversation);
+}
+
 export async function getChatConversation(organizationId: string, conversationId: string, agentId?: string) {
   const r = await query<Row>(
     "SELECT * FROM conversations WHERE organization_id=$1 AND id=$2 AND channel='chat'" + (agentId ? " AND agent_id=$3" : "") + " LIMIT 1",
@@ -54,7 +74,7 @@ export async function getChatConversation(organizationId: string, conversationId
 export async function listChatMessages(organizationId: string, conversationId: string, limit = 100) {
   const safeLimit = Math.min(Math.max(limit, 1), 200);
   const r = await query<Row>(
-    "SELECT m.* FROM conversation_messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.organization_id=$1 AND c.id=$2 ORDER BY m.created_at ASC LIMIT $3",
+    "SELECT recent.* FROM (SELECT m.* FROM conversation_messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.organization_id=$1 AND c.id=$2 AND c.channel='chat' ORDER BY m.created_at DESC,m.id DESC LIMIT $3) recent ORDER BY recent.created_at ASC,recent.id ASC",
     [organizationId, conversationId, safeLimit],
   );
   return r.rows.map(mapMessage);
@@ -76,7 +96,10 @@ export async function appendConversationMessage(input: {
       "INSERT INTO conversation_messages (conversation_id,role,content) VALUES ($1,$2,$3) RETURNING *",
       [input.conversationId, input.role, input.content],
     );
-    await client.query("UPDATE conversations SET updated_at=now(),last_message_at=now() WHERE id=$1 AND organization_id=$2", [input.conversationId,input.organizationId]);
+    await client.query(
+      "UPDATE conversations SET updated_at=now(),last_message_at=now(),subject=CASE WHEN $3='user' AND subject='New chat' THEN LEFT($4,80) ELSE subject END WHERE id=$1 AND organization_id=$2",
+      [input.conversationId, input.organizationId, input.role, input.content],
+    );
     if (!m.rows[0]) throw new Error("Conversation message insert returned no row");
     return mapMessage(m.rows[0]);
   });
