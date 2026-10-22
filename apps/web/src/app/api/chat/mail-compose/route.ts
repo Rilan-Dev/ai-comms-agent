@@ -25,8 +25,8 @@ async function trustedContext(request: Request, organizationId: string, agentId:
 }
 
 async function primaryMailboxes(organizationId: string, agentId: string) {
-  const result = await query<{ id: string; email_address: string }>(
-    `SELECT a.id,a.email_address::text AS email_address
+  const result = await query<{ id: string; email_address: string; capabilities: unknown }>(
+    `SELECT a.id,a.email_address::text AS email_address,a.capabilities
      FROM agent_email_accounts b
      JOIN agents g ON g.id=b.agent_id AND g.organization_id=$1
      JOIN email_accounts a ON a.id=b.email_account_id AND a.organization_id=$1
@@ -34,7 +34,11 @@ async function primaryMailboxes(organizationId: string, agentId: string) {
        AND a.status='connected' AND a.deleted_at IS NULL
      ORDER BY a.email_address LIMIT 30`, [organizationId,agentId],
   );
-  return result.rows.map(row => ({ id: String(row.id), address: String(row.email_address) }));
+  return result.rows.map(row => ({
+    id: String(row.id), address: String(row.email_address),
+    capabilities: row.capabilities && typeof row.capabilities === "object" && !Array.isArray(row.capabilities)
+      ? row.capabilities as Record<string, unknown> : {} as Record<string, unknown>,
+  }));
 }
 
 export async function GET(request: Request) {
@@ -50,19 +54,37 @@ export async function GET(request: Request) {
     const runtime = await createEmailToolRuntime(organizationId, agentId);
     const allowed = runtime.registry.listForAgent(agentId);
     const mailboxes = await primaryMailboxes(organizationId, agentId);
-    // These are diagnostics, not grants. The POST tool executor independently
-    // rechecks the actor, saved policy, account binding and provider capabilities.
-    const readiness = mailComposeReadiness({
+    // Each selectable account must pass its OWN discovered capability checks.
+    // A capable mailbox must never make a different one look authorized.
+    const baseline = {
       actorCanWrite: trusted.subject.permissions.has("email.write"),
       draftToolEnabled: allowed.some(tool => tool.name === "email.draft.create"),
       sendRequestToolEnabled: allowed.some(tool => tool.name === "email.send.request"),
-      hasBoundPrimaryMailbox: mailboxes.length > 0,
+    };
+    const choices = mailboxes.map(mailbox => {
+      const readiness = mailComposeReadiness({
+        ...baseline, hasBoundPrimaryMailbox: true,
+        providerCanDraft: mailbox.capabilities.drafts === true,
+        providerCanSend: mailbox.capabilities.send === true,
+      });
+      return {
+        id: mailbox.id, address: mailbox.address,
+        canDraft: readiness.canDraft,
+        canRequestApproval: readiness.canRequestApproval,
+        blockers: readiness.blockers,
+      };
     });
+    const empty = mailComposeReadiness({
+      ...baseline, hasBoundPrimaryMailbox: false, providerCanDraft: false, providerCanSend: false,
+    });
+    const preferred = choices.find(choice => choice.canDraft) ?? choices[0];
+    // These are read-only hints, not grants. POST rechecks authorization and
+    // provider capabilities even if they change after this response.
     return NextResponse.json({
-      mailboxes,
-      canDraft: readiness.canDraft,
-      canRequestApproval: readiness.canRequestApproval,
-      blockers: readiness.blockers,
+      mailboxes: choices,
+      canDraft: preferred?.canDraft ?? empty.canDraft,
+      canRequestApproval: preferred?.canRequestApproval ?? empty.canRequestApproval,
+      blockers: preferred?.blockers ?? empty.blockers,
     }, { headers: { "cache-control": "private, no-store" } });
   } catch (error) { return authorizationErrorToResponse(error); }
 }
