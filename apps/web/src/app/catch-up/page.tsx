@@ -4,10 +4,11 @@ import { PostgresAgentRepository, listGrantedBriefingMailboxes } from "@ai-comms
 import { getAuthenticatedAppContext } from "@/lib/identity/repository";
 import { briefingsEnabled } from "@/lib/briefings/config";
 import { CatchUpClient } from "./catch-up-client";
+import { parseCatchUpDays } from "@/lib/briefings/catch-up-window";
 
 export const dynamic = "force-dynamic";
 
-export default async function CatchUpPage() {
+export default async function CatchUpPage({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
   // C4 source-linked preview is intentionally unavailable unless the server
   // explicitly enables catch-up; C3 background AI generation isn't active yet.
   if (!briefingsEnabled()) notFound();
@@ -15,6 +16,7 @@ export default async function CatchUpPage() {
     return <main className="mx-auto max-w-3xl p-8" role="status">Catch-up requires a connected database.</main>;
   }
   try {
+    const initialDays = parseCatchUpDays((await searchParams).days);
     const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: await headers() }));
     if (!context?.organizationId || !context.user?.id) {
       return <main className="mx-auto max-w-3xl p-8" role="status">Sign in and select an organization to view catch-up.</main>;
@@ -32,7 +34,7 @@ export default async function CatchUpPage() {
       }
       choices.push({ agentId: agent.id, name: agent.name, mailboxes });
     }
-    return <CatchUpClient organizationId={context.organizationId} agents={choices} />;
+    return <CatchUpClient organizationId={context.organizationId} agents={choices} initialDays={initialDays} />;
   } catch {
     return <main className="mx-auto max-w-3xl p-8" role="alert">Catch-up could not be loaded. Try again later.</main>;
   }
