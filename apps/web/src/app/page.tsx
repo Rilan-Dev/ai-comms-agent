@@ -1,8 +1,10 @@
-import ChatPage from "./chat/page";
+import { redirect } from "next/navigation";
 
 // Segment configuration must be defined locally for Next.js static analysis.
 export const dynamic = "force-dynamic";
 
-// Chat is the primary authenticated workspace. /chat remains a compatible
-// deep link; the previous dashboard has its own /overview route.
-export default ChatPage;
+// The owner-requested landing experience is the existing Overview workspace.
+// /chat remains the direct, independently navigable AI conversation screen.
+export default function HomePage() {
+  redirect("/overview");
+}
