@@ -1,3 +1,11 @@
+## DEV-01 — DEV01-AGENT-PERMISSION-PRESETS-20261022 — 2026-10-22 (current permission UX slice)
+- **Scope:** Owner-authorized quick AI-CLI-style mail tool bundles with individual checkbox override and chat permission editing/confirmation on `Development`. Previous source already implemented the 4 preset buttons and chat permissions; this session completed the missing stale-write safety, precise confirmation, safe Off and reload handling without broadening read/write authority. Phase 4 remains `implementation_in_progress`.
+- **Source/test record:** `sessions/DEV01-AGENT-PERMISSION-PRESETS-20261022.md`. 22/22 fresh source assertions, no native tests/typechecks, DB/browser/deploy acceptance yet. No CI/Vercel polling.
+- **Exact next:** On a dependency-equipped exact-`Development` checkout run `pnpm --filter @ai-comms-agent/web exec vitest run tests/email-permission-presets.test.ts tests/agent-mail-channel-policy-regression.test.ts` and `pnpm --filter @ai-comms-agent/web typecheck && pnpm --filter @ai-comms-agent/db typecheck`. Then authenticated two-admin/tab test: concurrent policy save must reject stale original snapshot with HTTP 409, preserve other admin's updated restrictions, allow explicit reload/review/reconfirmation. Verify chat and full settings preset choice + fine tuning; no send without approval.
+- **Other independent DEV-01 next:** Resume previously authorized C3 source/review/lease verification and R1b existing focused time/proposal tests; do NOT auto-register worker, activate routine scheduling, send WhatsApp/email, or start R1b persistence without distinct authorization. FIX-01 owns unrelated bugs, OPS-01 owns CI/deploy and provider environment.
+
+---
+
 ## DEV01-EMAIL-CHAT-COMPOSE-20261022 — latest DEV-01 Development product checkpoint (2026-10-22)
 **Authorization:** Owner explicitly requested DEV-01 / Forge to make email drafting, review and send approval usable from chat and voice, plus modern one-click mail tool presets and in-chat confirmed admin policy edits. This work targets `Development`, not production `main`, and does not override earlier C3/routines disabled-by-default requirements.
 
