@@ -659,7 +659,9 @@ export async function POST(request: Request) {
           emit("done", { conversationId: conversation.id, provider, model, toolCalls: toolTurn?.toolCalls ?? [] });
           controller.close();
         } catch (error) {
-          if (!request.signal.aborted) emit("error", { message: error instanceof Error ? error.message : "Chat execution failed" });
+          // Provider, SQL and tool exceptions can contain tokens, user mail or SQL parameters.
+          // The browser must never receive the raw exception through an SSE frame.
+          if (!request.signal.aborted) emit("error", { message: "Chat execution failed. Review drafts and approvals before retrying an email action." });
           controller.close();
         }
       },
@@ -675,12 +677,8 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    // Surface the actual error for debugging (temporary — replace with
-    // authorizationErrorToResponse(error) once chat is verified working
-    // on Vercel).
-    console.error("[chat/stream] error:", error);
-    const message = error instanceof Error ? error.message : "Chat failed";
-    const code = (error as { code?: string })?.code;
-    return NextResponse.json({ error: "internal_server_error", message, code }, { status: 500 });
+    // Preserve 401/403 while suppressing unexpected provider/DB exception text.
+    // The shared handler logs only a validated SQLSTATE, never message bodies.
+    return authorizationErrorToResponse(error);
   }
 }
