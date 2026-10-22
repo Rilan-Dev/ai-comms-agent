@@ -59,6 +59,7 @@ export function VoiceWorkspace({
   const ttsObjectUrlRef = useRef<string | null>(null);
   const micMutedRef = useRef(false);
   const expectedDisconnectRef = useRef(false);
+  const transportFailureInFlightRef = useRef(false);
   const realtimeProviderRef = useRef<string | null>(null);
   const channelRef = useRef<RTCDataChannel | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -151,6 +152,7 @@ export function VoiceWorkspace({
   const patchSession = useCallback(async (body: Record<string, unknown>) => {
     const current = sessionRef.current;
     if (!current) return;
+    if (body.action === "activate" && expectedDisconnectRef.current) throw new Error("Voice transport has already closed.");
     const response = await fetch("/api/voice/session", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
@@ -158,6 +160,7 @@ export function VoiceWorkspace({
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.message ?? payload.error ?? "Voice session state could not be updated.");
+    if (body.action === "activate" && expectedDisconnectRef.current) throw new Error("Voice transport closed before activation was confirmed.");
     if (payload.session) {
       const updated = payload.session as VoiceSession;
       sessionRef.current = updated;
@@ -191,6 +194,41 @@ export function VoiceWorkspace({
       stopMedia();
     }
   }, [patchSession, stopMedia]);
+
+  const reportUnexpectedTransportLoss = useCallback(async (message: string) => {
+    if (expectedDisconnectRef.current || transportFailureInFlightRef.current) return;
+    transportFailureInFlightRef.current = true;
+    const active = sessionRef.current;
+    abortRef.current?.abort();
+    stopMedia();
+    setError(message);
+    setNotice("Voice transport disconnected; confirming host session termination.");
+    try {
+      if (!active || active.status === "ended" || active.status === "error") return;
+      const response = await fetch("/api/voice/session", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ organizationId, sessionId: active.id, reason: "transport_lost" }),
+      });
+      const payload = await response.json().catch(() => null) as { session?: VoiceSession } | null;
+      if (!response.ok || payload?.session?.id !== active.id || payload.session.status !== "ended") {
+        throw new Error("Host voice termination is not confirmed.");
+      }
+      // A delayed teardown for a previous transport cannot terminate or
+      // overwrite a different voice session started in the meantime.
+      if (sessionRef.current?.id === active.id) {
+        sessionRef.current = payload.session;
+        setSession(payload.session);
+        setTransport(null);
+      }
+      setNotice("Voice transport disconnected and host session ended. You can reconnect.");
+    } catch {
+      setError(message + " Host voice termination is not confirmed; retry End session.");
+      setNotice("Host voice termination is not confirmed. The microphone is stopped; retry End session.");
+    } finally {
+      transportFailureInFlightRef.current = false;
+    }
+  }, [organizationId, stopMedia]);
 
   function streamProviderTts(text: string, generationId: string): boolean {
     const socket = ttsSocketRef.current;
@@ -629,18 +667,13 @@ export function VoiceWorkspace({
         const message = typeof data.message === "string" ? data.message : `${provider} realtime speech recognition failed.`;
         setError(message);
         if (data.fatal === true) {
-          setConnected(false);
-          stopMedia();
+          void reportUnexpectedTransportLoss(message);
         }
       }
     };
     socket.onerror = () => setError(`${provider} realtime WebSocket failed. Check relay/provider configuration and reconnect.`);
     socket.onclose = () => {
-      if (!expectedDisconnectRef.current) {
-        setConnected(false);
-        setError(`${provider} realtime connection closed unexpectedly.`);
-        stopMedia();
-      }
+      if (!expectedDisconnectRef.current) void reportUnexpectedTransportLoss(`${provider} realtime connection closed unexpectedly.`);
     };
 
     const deadline = Date.now() + 20_000;
@@ -787,11 +820,7 @@ export function VoiceWorkspace({
     };
     socket.onerror = () => setError("Gemini Live WebSocket failed. Check provider access and reconnect.");
     socket.onclose = () => {
-      if (!expectedDisconnectRef.current) {
-        setConnected(false);
-        setError("Gemini Live connection closed unexpectedly. Reconnect to continue.");
-        stopMedia();
-      }
+      if (!expectedDisconnectRef.current) void reportUnexpectedTransportLoss("Gemini Live connection closed unexpectedly. Reconnect to continue.");
     };
 
     const deadline = Date.now() + 20_000;
@@ -834,10 +863,21 @@ export function VoiceWorkspace({
       void audio.play().catch(() => setNotice("Voice is connected; tap the page once if your browser blocks audio playback."));
     };
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "connected") void maybeActivate();
-      if (pc.connectionState === "failed" || pc.connectionState === "closed" || pc.connectionState === "disconnected") {
+      if (pc.connectionState === "connected") {
+        if (sessionRef.current?.status === "active" && channelRef.current?.readyState === "open" && !expectedDisconnectRef.current) {
+          setConnected(true);
+        } else {
+          void maybeActivate();
+        }
+      }
+      if (pc.connectionState === "disconnected") {
+        // ICE can recover from a transient disconnect; do not close the host
+        // lifecycle until WebRTC reports an irrecoverable failed/closed state.
         setConnected(false);
-        if (pc.connectionState === "failed") setError("Realtime transport connection failed. End the session and reconnect.");
+        setNotice("Realtime audio interrupted. Waiting for transport recovery.");
+      }
+      if (pc.connectionState === "failed" || pc.connectionState === "closed") {
+        if (!expectedDisconnectRef.current) void reportUnexpectedTransportLoss("OpenAI realtime transport failed or closed unexpectedly.");
       }
     };
     const channel = pc.createDataChannel("oai-events");
