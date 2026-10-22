@@ -44,6 +44,9 @@ export async function processApprovedEmailActions(limit = 10) {
     const retryAttempts = 1;
     let providerResult: { kind: string; ref: { message_id: string; provider_message_id: string } } | null = null;
     let accountProvider: string | null = null;
+    // A provider call may succeed before connection cleanup throws. Its
+    // outcome must never be reported as a failed delivery that invites replay.
+    let providerAccepted = false;
     try {
       const repository = new PostgresEmailAccountRepository();
       const account = await repository.getById(action.emailAccountId);
@@ -73,7 +76,9 @@ export async function processApprovedEmailActions(limit = 10) {
           const providerDraftId = draft.provider_draft_id
             ? String((await connected.updateDraft(String(draft.provider_draft_id), params)).draft_id)
             : (await connected.createDraft(params)).draft_id;
-          return { kind: "send", ref: await connected.sendDraft(providerDraftId) };
+          const sent = await connected.sendDraft(providerDraftId);
+          providerAccepted = true;
+          return { kind: "send", ref: sent };
         }
         if (action.actionType === "reply_email") {
           if (!account.capabilities.reply) throw new CapabilityNotSupported(account.provider, "reply");
@@ -86,16 +91,31 @@ export async function processApprovedEmailActions(limit = 10) {
             subject: String(snapshot.subject ?? ""),
             body_text: String(snapshot.bodyText ?? ""),
           };
-          return { kind: "reply", ref: await connected.reply(messageId, params) };
+          const replied = await connected.reply(messageId, params);
+          providerAccepted = true;
+          return { kind: "reply", ref: replied };
         }
         if (!account.capabilities.forward) throw new CapabilityNotSupported(account.provider, "forward");
         const messageId = String(snapshot.messageId ?? "");
         const recipients = Array.isArray(snapshot.to) ? snapshot.to.map(String) : [];
         if (!messageId || recipients.length === 0) throw new Error("Approved forward action is incomplete");
-        return { kind: "forward", ref: await connected.forward(messageId, recipients) };
+        const forwarded = await connected.forward(messageId, recipients);
+        providerAccepted = true;
+        return { kind: "forward", ref: forwarded };
       });
       providerResult = result.value as { kind: string; ref: { message_id: string; provider_message_id: string } };
     } catch (error) {
+      if (providerAccepted) {
+        // The provider acknowledged the external action before verification
+        // cleanup threw. Leave the row executing for fail-closed stale recovery
+        // rather than marking a delivered message failed or dispatching twice.
+        console.error("[email-action] provider completion needs reconciliation", {
+          actionId: action.id,
+          errorType: error instanceof Error ? error.name : typeof error,
+          manualVerificationRequired: true,
+        });
+        continue;
+      }
       // A provider-call error is a failed attempt ONLY if the database agrees
       // this action is still executing. Unknown DB outcome never emits failure.
       const message = error instanceof Error ? error.message : "Provider execution failed";
