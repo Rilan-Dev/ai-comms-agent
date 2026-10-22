@@ -39,7 +39,7 @@ test("approved snapshot must have usable direct recipient and cannot fall back t
   ]) assert.throws(() => paramsFromApprovedEmailSnapshot(snapshot), /approval snapshot/i);
 });
 
-test("all mutable draft updates and deletes reject pending, approved or executing send approvals", () => {
+test("mutable drafts reject live approvals and completed sends until reconciliation", () => {
   const update = repository.slice(repository.indexOf("export async function updateLocalDraftForOrganization("), repository.indexOf("export async function listLocalDraftsForOrganization("));
   const deletion = repository.slice(repository.indexOf("export async function deleteLocalDraftForOrganization("), repository.indexOf("/** A page of real persisted email threads"));
   for (const [name, code] of [["update", update], ["delete", deletion]] as const) {
@@ -49,7 +49,8 @@ test("all mutable draft updates and deletes reject pending, approved or executin
     assert.match(code, /ea\.draft_id = m\.id/);
     assert.match(code, /ea\.email_account_id = m\.email_account_id/);
     assert.match(code, /ea\.action_type = 'send_email'/);
-    assert.match(code, /ea\.status IN \('pending_approval', 'approved', 'executing'\)/);
+    assert.match(code, /ea\.status IN \('executing', 'completed'\)/);
+    assert.match(code, /ea\.status IN \('pending_approval', 'approved'\)/);
     assert.match(code, /ea\.expires_at IS NULL OR ea\.expires_at > now\(\)/);
   }
 });
