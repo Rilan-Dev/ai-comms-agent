@@ -1,4 +1,4 @@
-import { listDraftsPendingProviderSync } from "@ai-comms-agent/db";
+import { listDraftsPendingProviderSync, recoverStaleProviderDraftSyncs } from "@ai-comms-agent/db";
 import { syncLocalDraftToProvider } from "./draft-sync";
 
 const INTERVAL_MS = 5_000;
@@ -9,6 +9,9 @@ export async function processPendingProviderDraftSync(limit = 10) {
   running = true;
   let processed = 0;
   try {
+    // A crashed worker leaves syncing, never an automatic retry: the remote
+    // provider may already have the draft. Mark stale attempts for review.
+    await recoverStaleProviderDraftSyncs();
     const jobs = await listDraftsPendingProviderSync(limit);
     for (const job of jobs) {
       try {
