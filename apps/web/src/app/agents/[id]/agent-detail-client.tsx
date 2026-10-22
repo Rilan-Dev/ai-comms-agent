@@ -44,6 +44,11 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   const [emailBindings, setEmailBindings] = useState(initialEmailBindings);
   const [whatsappBinding, setWhatsappBinding] = useState(initialWhatsAppBinding);
   const [tab, setTab] = useState<"overview"|"versions"|"policy"|"channels"|"ai-settings"|"test"|"activity">("overview");
+  // The chat workspace can link administrators directly to this detailed
+  // policy editor. It never changes policy merely by opening the tab.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "policy") setTab("policy");
+  }, []);
   const [busy, setBusy] = useState(false);
   const [showConfirm, setShowConfirm] = useState<"deploy"|"retire"|null>(null);
   const confirmDialogRef = useRef<HTMLDivElement>(null);
