@@ -15,3 +15,12 @@ export function hasEmailToolCapabilities(
   if (descriptor.any_capabilities?.length && !descriptor.any_capabilities.some((capability) => capabilities[capability] === true)) return false;
   return true;
 }
+
+/** Agent mailbox-binding role is an independent gate from the actor's
+ * email.read/email.write permission and from the persisted tool allowlist.
+ * Fail closed on missing or future/unknown roles and permissions. */
+export function canUseEmailAccountBinding(role: unknown, requiredPermission: string): boolean {
+  if (requiredPermission === "email.read") return role === "primary" || role === "read_only";
+  if (requiredPermission === "email.write") return role === "primary" || role === "send_only";
+  return false;
+}
