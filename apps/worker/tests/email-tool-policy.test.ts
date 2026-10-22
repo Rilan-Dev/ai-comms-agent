@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { canUseEmailAccountBinding, hasEmailToolCapabilities, isEmailToolAllowedByPolicy } from "../src/agent/email-tool-policy";
 
 test("execution-time policy checks observe allowlist revocation between invocations", () => {
@@ -40,4 +41,16 @@ test("mailbox binding roles enforce read/write boundaries without implicit promo
   }
   assert.equal(canUseEmailAccountBinding("primary", "organization.read"), false);
   assert.equal(canUseEmailAccountBinding("read_only", "email.unknown"), false);
+});
+
+test("all email runtime, read and write tool boundaries enforce the same mailbox role policy", () => {
+  const runtime = readFileSync(new URL("../../../packages/email-agent-runtime/src/email-tool-runtime.ts", import.meta.url), "utf8");
+  const read = readFileSync(new URL("../../../packages/email-agent-runtime/src/email-read-tools.ts", import.meta.url), "utf8");
+  const write = readFileSync(new URL("../../../packages/email-agent-runtime/src/email-write-tools.ts", import.meta.url), "utf8");
+  assert.match(runtime, /canUseEmailAccountBinding\(role, tool\.required_permission\)/);
+  assert.match(read, /canUseEmailAccountBinding\(role, "email\.read"\)/);
+  assert.match(read, /canUseEmailAccountBinding\(binding\.role, "email\.read"\)/);
+  assert.match(write, /canUseEmailAccountBinding\(role, "email\.write"\)/);
+  // Drafts still require primary; send_only is for explicit send requests.
+  assert.match(write, /allowSendOnly \|\| role === "primary"/);
 });
