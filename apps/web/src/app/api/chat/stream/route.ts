@@ -612,7 +612,10 @@ export async function POST(request: Request) {
                 },
               });
           }
-          if (toolTurn) {
+          if (blockedWriteExplanation) {
+            // The host has already emitted the verified denial. Never fall
+            // through into a model-only answer that could claim delivery.
+          } else if (toolTurn) {
             const verifiedSummary = verifiedEmailToolSummary(toolTurn.toolCalls);
             assistantOutput = verifiedSummary ? `${toolTurn.text}\n\n${verifiedSummary}` : toolTurn.text;
             if (!toolTurn.streamed) {
