@@ -1,3 +1,10 @@
+## DEV-01 — email.write typed permission host follow-up, 2026-10-22
+- **Host evidence at prior Development `b24d6f90`:** Two permission web Vitest suites 14/14 PASS, DB TypeScript check completed without errors; web TypeScript FAIL TS2345 at `apps/web/src/app/api/chat/mail-compose/route.ts:53–54` because `email.write` was absent from shared `PermissionName`.
+- **Committed correction:** `d7392f8f` declares `email.write` in the shared permission catalogue (no system role automatically gains it); `e6e93ea1` guards catalogue/write tool alignment and lack of implicit grants. Phase 4 remains `implementation_in_progress`. Source-only correction, no production permissions/grants changed, post-fix host checks pending.
+- **Exact next:** On a fresh matching `Development` checkout run `pnpm --filter @ai-comms-agent/web exec vitest run tests/email-write-permission-contract.test.ts tests/email-permission-presets.test.ts tests/agent-mail-channel-policy-regression.test.ts`, then `pnpm --filter @ai-comms-agent/web typecheck && pnpm --filter @ai-comms-agent/db typecheck`. Record current SHA and actual results; correct real follow-on compiler/test failures via FIX-01 if independent. Later DEV-01 product design must explicitly authorize actual user `email.write` RBAC before draft/approval features can function; do not implicitly elevate existing roles or bypass the backend tool gate. OPS-01 owns deployment/CI.
+
+---
+
 ## DEV-01 — DEV01-AGENT-PERMISSION-PRESETS-20261022 — 2026-10-22 (current permission UX slice)
 - **Scope:** Owner-authorized quick AI-CLI-style mail tool bundles with individual checkbox override and chat permission editing/confirmation on `Development`. Previous source already implemented the 4 preset buttons and chat permissions; this session completed the missing stale-write safety, precise confirmation, safe Off and reload handling without broadening read/write authority. Phase 4 remains `implementation_in_progress`.
 - **Source/test record:** `sessions/DEV01-AGENT-PERMISSION-PRESETS-20261022.md`. 22/22 fresh source assertions, no native tests/typechecks, DB/browser/deploy acceptance yet. No CI/Vercel polling.
