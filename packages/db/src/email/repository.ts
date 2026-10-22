@@ -378,24 +378,98 @@ export async function updateMailReadStateForOrganization(
   return r.rows.length;
 }
 
+/**
+ * A bulk archive/move must not mutate some of the requested messages and
+ * then report 404 for the others. Lock and validate the entire selected set
+ * and every destination before the first UPDATE. One transaction protects
+ * the decision and mutation from racing deletions or concurrent moves.
+ */
+async function changeMailFoldersAtomically(
+  organizationId: string,
+  messageIds: string[],
+  folderId: string | null,
+): Promise<number> {
+  if (!messageIds.length || new Set(messageIds.map(id => id.toLowerCase())).size !== messageIds.length) return 0;
+  const ids = messageIds;
+
+  return withTransaction(async (client) => {
+    const selected = await client.query<{ id: string; email_account_id: string }>(
+      `SELECT m.id, m.email_account_id
+       FROM email_messages m
+       JOIN email_accounts a ON a.id = m.email_account_id
+       WHERE m.organization_id = $1 AND a.organization_id = $1
+         AND a.deleted_at IS NULL AND m.id = ANY($2::uuid[])
+       ORDER BY m.id
+       FOR UPDATE OF m FOR SHARE OF a`,
+      [organizationId, ids],
+    );
+    // All requested IDs must exist and belong to live accounts in this org.
+    // Zero updates is the only valid result of an inaccessible mixed batch.
+    if (selected.rows.length !== ids.length) return 0;
+
+    const accounts = [...new Set(selected.rows.map(row => row.email_account_id))];
+    let targets: Array<{ id: string; email_account_id: string }>;
+
+    if (folderId) {
+      const destination = await client.query<{ id: string; email_account_id: string }>(
+        `SELECT f.id, f.email_account_id
+         FROM email_folders f
+         JOIN email_accounts a ON a.id = f.email_account_id
+         WHERE f.id = $2 AND a.organization_id = $1 AND a.deleted_at IS NULL
+         FOR SHARE OF f, a`,
+        [organizationId, folderId],
+      );
+      // Moving messages from several accounts to one account's folder is
+      // forbidden, even if some of their message IDs are valid.
+      if (destination.rows.length !== 1 || accounts.length !== 1 ||
+          destination.rows[0].email_account_id !== accounts[0]) return 0;
+      targets = destination.rows;
+    } else {
+      const destinations = await client.query<{ id: string; email_account_id: string }>(
+        `SELECT f.id, f.email_account_id
+         FROM email_folders f
+         JOIN email_accounts a ON a.id = f.email_account_id
+         WHERE a.organization_id = $1 AND a.deleted_at IS NULL
+           AND f.role = 'archive' AND f.email_account_id = ANY($2::uuid[])
+         FOR SHARE OF f, a`,
+        [organizationId, accounts],
+      );
+      targets = destinations.rows;
+      // Require exactly one archive destination per participating mailbox.
+      // Never silently archive the subset whose provider folders happen to
+      // exist or arbitrarily pick one of multiple role='archive' folders.
+      if (targets.length !== accounts.length ||
+          new Set(targets.map(row => row.email_account_id)).size !== accounts.length) return 0;
+    }
+
+    const destinationForAccount = new Map(targets.map(row => [row.email_account_id, row.id]));
+    if (accounts.some(accountId => !destinationForAccount.has(accountId))) return 0;
+
+    // Use the prevalidated, row-locked destination IDs; do not rejoin mutable
+    // folder-role discovery after validation.
+    const update = await client.query<{ id: string }>(
+      `UPDATE email_messages m
+       SET folder_id = target.folder_id, updated_at = now()
+       FROM unnest($3::uuid[], $4::uuid[]) AS target(email_account_id, folder_id)
+       WHERE m.organization_id = $1
+         AND m.email_account_id = target.email_account_id
+         AND m.id = ANY($2::uuid[])
+       RETURNING m.id`,
+      [organizationId, ids, accounts, accounts.map(accountId => destinationForAccount.get(accountId))],
+    );
+    if (update.rows.length !== ids.length) {
+      // Invariant failure: rollback, never commit a partial mail mutation.
+      throw new Error("Mail folder batch update was incomplete; transaction rolled back.");
+    }
+    return update.rows.length;
+  });
+}
+
 export async function archiveMailMessagesForOrganization(
   organizationId: string,
   messageIds: string[],
 ): Promise<number> {
-  if (messageIds.length === 0) return 0;
-  const r = await query<{ id: string }>(
-    `UPDATE email_messages m
-     SET folder_id = f.id, updated_at = now()
-     FROM email_accounts a
-     JOIN email_folders f ON f.email_account_id = a.id AND f.role = 'archive'
-     WHERE m.email_account_id = a.id
-       AND a.organization_id = $1
-       AND a.deleted_at IS NULL
-       AND m.id = ANY($2::uuid[])
-     RETURNING m.id`,
-    [organizationId, messageIds],
-  );
-  return r.rows.length;
+  return changeMailFoldersAtomically(organizationId, messageIds, null);
 }
 
 export async function moveMailMessagesForOrganization(
@@ -403,20 +477,7 @@ export async function moveMailMessagesForOrganization(
   messageIds: string[],
   folderId: string,
 ): Promise<number> {
-  if (messageIds.length === 0) return 0;
-  const r = await query<{ id: string }>(
-    `UPDATE email_messages m
-     SET folder_id = f.id, updated_at = now()
-     FROM email_accounts a
-     JOIN email_folders f ON f.id = $2 AND f.email_account_id = a.id
-     WHERE m.email_account_id = a.id
-       AND a.organization_id = $1
-       AND a.deleted_at IS NULL
-       AND m.id = ANY($3::uuid[])
-     RETURNING m.id`,
-    [organizationId, folderId, messageIds],
-  );
-  return r.rows.length;
+  return changeMailFoldersAtomically(organizationId, messageIds, folderId);
 }
 
 export async function listMailFoldersForOrganization(
