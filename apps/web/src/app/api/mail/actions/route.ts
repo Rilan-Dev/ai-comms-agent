@@ -11,6 +11,7 @@ import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { assertSameOrigin } from "@/lib/identity/local-auth";
+import { matchesManualComposeReview } from "@/lib/mail/manual-compose-review";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,15 @@ export async function POST(request: Request) {
         subject: draft.subject ?? "",
         bodyText: draft.text_body ?? "",
       };
+      // Manual review must refer to the exact stored draft, not the previous
+      // autosaved version; other audited tool callers retain their contract.
+      if (body?.expectedSnapshot !== undefined
+          && !matchesManualComposeReview(snapshot, body.expectedSnapshot)) {
+        return NextResponse.json({
+          error: "draft_review_changed",
+          message: "The saved draft changed since your review. Reload, review and save again before requesting approval.",
+        }, { status: 409 });
+      }
     } else {
       const messageId = typeof body?.messageId === "string" ? body.messageId : "";
       const message = messageId ? await getMailMessageForOrganization(organizationId, messageId) : null;
