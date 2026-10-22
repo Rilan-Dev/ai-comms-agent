@@ -54,7 +54,7 @@ describe("realtime voice inside Chat", () => {
     const start = chat.indexOf('onClick={() => setVoiceOpen(true)}');
     expect(start).toBeGreaterThan(-1);
     const headerVoiceAction = chat.slice(start, chat.indexOf("</button>", start));
-    expect(headerVoiceAction).toMatch(/disabled=\\{[^}]*\\bbusy\\b[^}]*\\bvoiceOpen\\b[^}]*\\}/);
+    expect(headerVoiceAction).toMatch(/disabled=\{[^}]*\bbusy\b[^}]*\bvoiceOpen\b[^}]*\}/);
     for (const guard of ["agentSwitchBusy", "composeBusy", "mailPermissionBusy"]) {
       expect(headerVoiceAction).toContain(guard);
     }
