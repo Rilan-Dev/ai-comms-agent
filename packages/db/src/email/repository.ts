@@ -582,6 +582,7 @@ export async function updateLocalDraftForOrganization(
            AND ea.action_type = 'send_email'
            AND (
              ea.status IN ('executing', 'completed')
+             OR (ea.status = 'failed' AND ea.result->>'providerOutcomeUnknown' = 'true')
              OR (
                ea.status IN ('pending_approval', 'approved')
                AND (ea.expires_at IS NULL OR ea.expires_at > now())
@@ -640,6 +641,7 @@ export async function queueLocalDraftProviderSyncForOrganization(organizationId:
          WHERE ea.organization_id = m.organization_id AND ea.draft_id = m.id
            AND ea.email_account_id = m.email_account_id AND ea.action_type = 'send_email'
            AND (ea.status IN ('executing', 'completed')
+             OR (ea.status = 'failed' AND ea.result->>'providerOutcomeUnknown' = 'true')
                 OR (ea.status IN ('pending_approval', 'approved')
                     AND (ea.expires_at IS NULL OR ea.expires_at > now())))
        )
@@ -665,6 +667,7 @@ export async function claimQueuedProviderDraftSyncForOrganization(organizationId
          WHERE ea.organization_id = m.organization_id AND ea.draft_id = m.id
            AND ea.email_account_id = m.email_account_id AND ea.action_type = 'send_email'
            AND (ea.status IN ('executing', 'completed')
+             OR (ea.status = 'failed' AND ea.result->>'providerOutcomeUnknown' = 'true')
                 OR (ea.status IN ('pending_approval', 'approved')
                     AND (ea.expires_at IS NULL OR ea.expires_at > now())))
        )
@@ -777,6 +780,7 @@ export async function deleteLocalDraftForOrganization(organizationId: string, me
            AND ea.action_type = 'send_email'
            AND (
              ea.status IN ('executing', 'completed')
+             OR (ea.status = 'failed' AND ea.result->>'providerOutcomeUnknown' = 'true')
              OR (
                ea.status IN ('pending_approval', 'approved')
                AND (ea.expires_at IS NULL OR ea.expires_at > now())
