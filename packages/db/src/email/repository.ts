@@ -434,9 +434,10 @@ async function changeMailFoldersAtomically(
       );
       // Moving messages from several accounts to one account's folder is
       // forbidden, even if some of their message IDs are valid.
-      if (destination.rows.length !== 1 || accounts.length !== 1 ||
-          destination.rows[0].email_account_id !== accounts[0]) return 0;
-      targets = destination.rows;
+      const destinationRow = destination.rows[0];
+      if (!destinationRow || destination.rows.length !== 1 || accounts.length !== 1 ||
+          destinationRow.email_account_id !== accounts[0]) return 0;
+      targets = [destinationRow];
     } else {
       const destinations = await client.query<{ id: string; email_account_id: string }>(
         `SELECT f.id, f.email_account_id
