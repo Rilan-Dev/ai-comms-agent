@@ -29,6 +29,16 @@ function mapMessage(row: Row) {
 
 export async function getOrCreateChatConversation(organizationId: string, agentId: string) {
   return withTransaction(async (client) => {
+    // Serialize first-load session creation with explicit New Chat requests.
+    // A SELECT followed by INSERT with no row lock can produce two sessions
+    // when browser tabs or Chat and Voice open the same agent concurrently.
+    // Locking the specific tenant-scoped agent row avoids a global lock or a
+    // unique constraint that would incorrectly prevent multiple saved chats.
+    const lockedAgent = await client.query<Row>(
+      "SELECT id FROM agents WHERE organization_id=$1 AND id=$2 FOR UPDATE",
+      [organizationId, agentId],
+    );
+    if (!lockedAgent.rows[0]) throw new Error("Agent not found in this organization");
     const existing = await client.query<Row>(
       "SELECT * FROM conversations WHERE organization_id=$1 AND agent_id=$2 AND channel='chat' AND status='active' ORDER BY updated_at DESC LIMIT 1",
       [organizationId, agentId],
@@ -45,12 +55,21 @@ export async function getOrCreateChatConversation(organizationId: string, agentI
 
 /** A new session never reuses the currently active chat or its model history. */
 export async function createChatConversation(organizationId: string, agentId: string) {
-  const result = await query<Row>(
-    "INSERT INTO conversations (organization_id, agent_id, channel, subject) SELECT a.organization_id,a.id,'chat','New chat' FROM agents a WHERE a.organization_id=$1 AND a.id=$2 RETURNING *",
-    [organizationId, agentId],
-  );
-  if (!result.rows[0]) throw new Error("Agent not found in this organization");
-  return mapConversation(result.rows[0]);
+  return withTransaction(async (client) => {
+    // Coordinate with getOrCreateChatConversation to avoid an automatic
+    // first-load INSERT racing a user-requested fresh chat.
+    const lockedAgent = await client.query<Row>(
+      "SELECT id FROM agents WHERE organization_id=$1 AND id=$2 FOR UPDATE",
+      [organizationId, agentId],
+    );
+    if (!lockedAgent.rows[0]) throw new Error("Agent not found in this organization");
+    const result = await client.query<Row>(
+      "INSERT INTO conversations (organization_id, agent_id, channel, subject) SELECT a.organization_id,a.id,'chat','New chat' FROM agents a WHERE a.organization_id=$1 AND a.id=$2 RETURNING *",
+      [organizationId, agentId],
+    );
+    if (!result.rows[0]) throw new Error("Agent not found in this organization");
+    return mapConversation(result.rows[0]);
+  });
 }
 
 /** History entries are strictly scoped to one organization and one agent. */
