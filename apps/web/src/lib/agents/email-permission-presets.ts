@@ -23,3 +23,43 @@ export function emailPermissionPresetSelection(current: readonly string[], prese
     : preset === "draft" ? [...READ, ...DRAFT] : [...READ, ...DRAFT, ...APPROVAL];
   return [...new Set([...extras, ...selected])];
 }
+
+/** Friendly names in chat confirmations; unknown/custom permissions retain
+ * their literal name rather than appearing as an unreviewed bundled grant. */
+export const EMAIL_PERMISSION_LABELS: Record<string, string> = {
+  "email.search": "Search mailbox",
+  "email.messages.list": "List messages",
+  "email.message.get": "Read a message",
+  "email.thread.get": "Read a thread",
+  "email.accounts.list": "List connected mailboxes",
+  "email.folders.list": "List folders",
+  "email.labels.list": "List labels",
+  "email.capabilities.get": "Check mailbox capabilities",
+  "email.sync.status": "Check synchronization",
+  "email.draft.create": "Create drafts",
+  "email.draft.update": "Edit drafts",
+  "email.draft_reply": "Draft replies",
+  "email.draft_forward": "Draft forwards",
+  "email.send.request": "Request send approval",
+  "email.reply.request": "Request reply approval",
+  "email.forward.request": "Request forward approval",
+};
+
+export function summarizeEmailPermissionChanges(previous: readonly string[], selected: readonly string[]): {
+  added: string[];
+  removed: string[];
+  confirmation: string;
+} {
+  const before = new Set(previous);
+  const after = new Set(selected);
+  const added = [...after].filter(name => !before.has(name));
+  const removed = [...before].filter(name => !after.has(name));
+  const label = (name: string) => EMAIL_PERMISSION_LABELS[name] ?? name;
+  const confirmation = [
+    "Update this agent's permissions?",
+    added.length ? "Enable:\n" + added.map(name => "• " + label(name)).join("\n") : "Enable: none",
+    removed.length ? "Disable:\n" + removed.map(name => "• " + label(name)).join("\n") : "Disable: none",
+    "Changes affect future chat and voice turns. Mailboxes and user permissions are separate; sending still requires human approval.",
+  ].join("\n\n");
+  return { added, removed, confirmation };
+}
