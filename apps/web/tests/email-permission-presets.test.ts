@@ -56,6 +56,7 @@ describe("agent permission presets and consent", () => {
     expect(chat).toContain("expectedPolicy:");
     expect(chat).toContain("response.status === 409");
     expect(chat).toContain("Reload current permissions");
+    expect(chat).toContain("Discard unsaved permission selections and reload the saved policy?");
     expect(chat).toContain("EMAIL_PERMISSION_LABELS[name]");
     expect(detail).toContain("summarizeEmailPermissionChanges(policy?.allowedTools ?? [], allowedTools)");
     expect(detail).toContain("window.confirm(confirmation");
@@ -66,6 +67,7 @@ describe("agent permission presets and consent", () => {
   it("only administrators can update and stale snapshots receive 409 without persisting", () => {
     expect(policyApi).toContain('role: "admin"');
     expect(policyApi).toContain("validateAgentPolicyInput(body.expectedPolicy)");
+    expect(policyApi).toContain("A saved policy snapshot is required.");
     expect(policyApi).toContain("repo.updatePolicy(orgId, id, input, expectedValidation?.value)");
     expect(policyApi).toContain('error: "policy_changed"');
     expect(policyApi).toContain("status: 409");
