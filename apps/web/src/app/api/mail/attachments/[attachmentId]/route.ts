@@ -20,7 +20,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ atta
     const { attachmentId } = await params;
     const organizationId = new URL(request.url).searchParams.get("organizationId") ?? "";
     if (!organizationId || !attachmentId) return NextResponse.json({ error: "validation_error", message: "organizationId and attachmentId are required." }, { status: 422 });
-    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "email.read" }, getIdentityAdapter(), getIdentityRepository());
     const attachment = await getMailAttachmentForOrganization(organizationId, attachmentId);
     if (!attachment) return NextResponse.json({ error: "not_found", message: "Attachment was not found in this organization." }, { status: 404 });
     if (attachment.scan_status !== "clean") return NextResponse.json({ error: "attachment_not_safe", message: "This attachment has not passed security scanning." }, { status: 409 });
