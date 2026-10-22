@@ -386,15 +386,9 @@ export function ChatClient({
   async function sendMessage() {
     if (agentSwitchInFlightRef.current) return;
     const content = draft.trim();
-    // Recognize an explicit, bounded test-email request as a LOCAL COMPOSE
-    // preview. Never interpret prose as permission to send or approve.
-    const testEmailRequest = parseTestEmailComposeRequest(content);
-    if (testEmailRequest && !busy) {
-      // This shortcut opens a review, NOT a draft or a send. Preserve text
-      // until a successful readiness request so failures can be retried.
-      void openMailComposer(testEmailRequest);
-      return;
-    }
+    // Chat instructions, including test-email requests, always pass through
+    // the hosted AI turn. The separate compose button remains an explicit
+    // human-reviewed draft and approval workflow.
     if (!content || busy || newChatBusy || !activeAgent) return;
     setDraft("");
     setBusy(true);
