@@ -174,31 +174,51 @@ export function ChatClient({
   }
 
   async function openMailComposer(recipient = "") {
-    if (!activeAgent) return;
+    if (!activeAgent || agentSwitchInFlightRef.current || composeInFlightRef.current) return;
+    composeInFlightRef.current = true;
+    const revision = ++composeRevisionRef.current;
+    const epoch = agentContextEpochRef.current;
     setComposeBusy(true);
     setComposeNotice("");
     setComposeDraftId(null);
     setComposeActionId(null);
     try {
-      const response = await fetch("/api/chat/mail-compose?organizationId=" + encodeURIComponent(organizationId) + "&agentId=" + encodeURIComponent(activeAgent.id), { cache: "no-store" });
+      const response = await fetch("/api/chat/mail-compose?organizationId=" + encodeURIComponent(organizationId)
+        + "&agentId=" + encodeURIComponent(activeAgent.id), { cache: "no-store" });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message ?? "The bound mailbox could not be loaded.");
-      setComposeMailboxes(data.mailboxes ?? []);
-      setComposeAccount(data.mailboxes?.[0]?.id ?? "");
+      if (revision !== composeRevisionRef.current || epoch !== agentContextEpochRef.current) return;
+      if (!response.ok || !Array.isArray(data.mailboxes)) {
+        throw new Error(data.message ?? "The bound mailbox could not be loaded.");
+      }
+      setComposeMailboxes(data.mailboxes);
+      setComposeAccount(data.mailboxes[0]?.id ?? "");
       setComposeCanDraft(data.canDraft === true);
       setComposeCanApprove(data.canRequestApproval === true);
       if (recipient) setComposeTo(recipient);
       setMailComposerOpen(true);
     } catch (error) {
-      setComposeNotice(error instanceof Error ? error.message : "Draft setup failed.");
-    } finally { setComposeBusy(false); }
-  }
-  async function submitMailCompose(action: "draft"|"request_approval") {
-    if (!activeAgent || !composeAccount || composeBusy) return;
-    if (action === "request_approval") {
-      if (!composeDraftId) return;
-      if (!window.confirm(`Request approval to send the saved draft to ${composeTo} from ${composeMailboxes.find(mail => mail.id === composeAccount)?.address ?? "the selected mailbox"}? No email will be sent until a person approves.`)) return;
+      if (revision === composeRevisionRef.current && epoch === agentContextEpochRef.current) {
+        setComposeNotice(error instanceof Error ? error.message : "Draft setup failed.");
+      }
+    } finally {
+      composeInFlightRef.current = false;
+      setComposeBusy(false);
     }
+  }
+
+  async function submitMailCompose(action: "draft"|"request_approval") {
+    if (!activeAgent || !composeAccount || composeBusy || composeInFlightRef.current
+        || agentSwitchInFlightRef.current) return;
+    if (action === "draft" && (!composeCanDraft || composeDraftId)) return;
+    if (action === "request_approval") {
+      if (!composeCanApprove || !composeDraftId || composeActionId) return;
+      const sender = composeMailboxes.find(mail => mail.id === composeAccount)?.address ?? "the selected mailbox";
+      if (!window.confirm("Request approval to send the saved draft to " + composeTo + " from " + sender
+        + "? No email will be sent until a person approves.")) return;
+    }
+    composeInFlightRef.current = true;
+    const revision = composeRevisionRef.current;
+    const epoch = agentContextEpochRef.current;
     setComposeBusy(true);
     setComposeNotice("");
     try {
@@ -210,12 +230,30 @@ export function ChatClient({
         }),
       });
       const data = await response.json();
+      // An edit invalidates the reviewed recipient/content. Never resurrect
+      // a prior saved draft or approval after the form has changed.
+      if (revision !== composeRevisionRef.current || epoch !== agentContextEpochRef.current) return;
       if (!response.ok) throw new Error(data.message ?? "The email tool was denied. Check your saved permissions.");
-      if (action === "draft" && typeof data.draftId === "string") setComposeDraftId(data.draftId);
-      if (action === "request_approval" && data.status === "pending_approval" && typeof data.actionId === "string") setComposeActionId(data.actionId);
+      if (action === "draft") {
+        if (data.status !== "draft_created" || typeof data.draftId !== "string" || !data.draftId) {
+          throw new Error("Draft save was not confirmed. Retry after checking the mailbox.");
+        }
+        setComposeDraftId(data.draftId);
+      } else {
+        if (data.status !== "pending_approval" || typeof data.actionId !== "string" || !data.actionId) {
+          throw new Error("The approval request was not confirmed. Retry without sending.");
+        }
+        setComposeActionId(data.actionId);
+      }
       setComposeNotice(data.message ?? "The authorized tool completed.");
-    } catch (error) { setComposeNotice(error instanceof Error ? error.message : "The operation failed."); }
-    finally { setComposeBusy(false); }
+    } catch (error) {
+      if (revision === composeRevisionRef.current && epoch === agentContextEpochRef.current) {
+        setComposeNotice(error instanceof Error ? error.message : "The operation failed.");
+      }
+    } finally {
+      composeInFlightRef.current = false;
+      setComposeBusy(false);
+    }
   }
 
   async function reloadMailPermissions() {
