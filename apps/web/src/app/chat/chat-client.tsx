@@ -8,6 +8,7 @@ import { readSseEvents } from "@/lib/streaming/sse";
 import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "@/lib/ai/activity-progress";
 import { EMAIL_PERMISSION_PRESETS, EMAIL_PERMISSION_LABELS, REGISTERED_EMAIL_POLICY_NAMES, emailPermissionPresetSelection, summarizeEmailPermissionChanges } from "@/lib/agents/email-permission-presets";
 import { parseTestEmailComposeRequest } from "@/lib/mail/test-email-compose-intent";
+import { selectPreferredComposeMailbox } from "@/lib/mail/compose-readiness";
 import type { AgentPolicy } from "@ai-comms-agent/shared";
 
 // Defer microphone and vendor transport code until the user requests voice.
@@ -200,7 +201,7 @@ export function ChatClient({
         blockers:Array<{code:string;message:string}>;
       }>;
       setComposeMailboxes(mailboxes);
-      const selectedMailbox = mailboxes.find(account => account.canDraft === true) ?? mailboxes[0];
+      const selectedMailbox = selectPreferredComposeMailbox(mailboxes);
       setComposeAccount(selectedMailbox?.id ?? "");
       setComposeCanDraft(selectedMailbox?.canDraft === true);
       setComposeCanApprove(selectedMailbox?.canRequestApproval === true);
