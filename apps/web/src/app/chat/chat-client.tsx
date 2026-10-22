@@ -220,7 +220,7 @@ export function ChatClient({
     const content = draft.trim();
     // Recognize an explicit, bounded test-email request as a LOCAL COMPOSE
     // preview. Never interpret prose as permission to send or approve.
-    const testEmailRequest = content.match(/^(?:please\\s+)?(?:draft|send|write|compose)\\s+(?:a\\s+)?(?:simple\\s+)?test\\s+email\\s+to\\s+([^\\s,;]+@[^\\s,;]+\\.[^\\s,;]+)\\s*[.!]?$/i);
+    const testEmailRequest = content.match(/^(?:please\s+)?(?:draft|send|write|compose)\s+(?:a\s+)?(?:simple\s+)?test\s+email\s+to\s+([^\s,;]+@[^\s,;]+\.[^\s,;]+)\s*[.!]?$/i);
     if (testEmailRequest && !busy) {
       setDraft("");
       void openMailComposer(testEmailRequest[1]);
