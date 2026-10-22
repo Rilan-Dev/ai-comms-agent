@@ -91,7 +91,9 @@ export default function HomePage() {
           </article>
         </div>
         <div className="mt-4 rounded-lg border border-border bg-secondary/40 p-4">
-          {data?.catchUpAvailable ? (
+          {!data ? (
+            <p role="status" className="text-sm text-muted-foreground">{error ? "Private catch-up availability could not be checked. Please try again later." : "Checking private catch-up availability…"}</p>
+          ) : data?.catchUpAvailable ? (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm leading-6"><strong>Private catch-up preview available.</strong> Select permitted mailboxes and a review window; AI-generated results may still be pending.</p>
               <a href="/catch-up" className="inline-flex min-h-10 shrink-0 items-center font-semibold text-sm underline underline-offset-4">Open catch-up preview ↗</a>
