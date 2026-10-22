@@ -156,7 +156,7 @@ export async function POST(request: Request) {
                 const verifiedSummary = verifiedEmailToolSummary(result.toolCalls);
                 // A model answer is not evidence that a provider action was
                 // delivered. Append only the host-verified outcome.
-                if (!result.streamed) emit("delta", { text: verifiedSummary ? `${result.text}\n\n${verifiedSummary}` : result.text });
+                if (!result.streamed) emit("delta", { text: verifiedSummary || result.text });
                 await saveAnswer(deliveredText);
                 emit("progress", { phase: "completed" });
                 emit("done", {
