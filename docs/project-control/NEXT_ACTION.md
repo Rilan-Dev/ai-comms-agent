@@ -1,3 +1,12 @@
+## DEV-01 — DEV01-ADMIN-EMAIL-WRITE-DEFAULT-20261023 — 2026-10-23
+- **Owner report:** Signed-in platform administrator's Chat compose refuses drafts with `missing_email_write` although all 16 agent email tools are selected. Root cause was the missing built-in owner/admin grant in immutable `SYSTEM_ROLE_PERMISSIONS`; email.write already existed as a typed contract. Current architecture has four internal membership roles rather than a separate platform_admin enum.
+- **Committed on Development:** `61eb507d` grants `email.write` to active owner/admin only (member/viewer still denied); `a5123f59,7f8b4457` regression tests; `145d2629` user-facing role guidance. Existing per-agent tool permission, connected primary mailbox/provider capabilities and separate human approval remain mandatory. No direct send or database migration.
+- **Evidence:** 16/16 source invariants; actual executed web Vitest/shared+web typechecks, authenticated production role/browser, draft and approval acceptance pending. No live account elevated or session role asserted.
+- **Exact next:** Run `pnpm --filter @ai-comms-agent/web exec vitest run tests/email-write-permission-contract.test.ts tests/rbac-persistence-consistency.test.ts`, `node --test apps/web/tests/chat-mail-compose.test.mjs`, `pnpm --filter @ai-comms-agent/shared typecheck`, `pnpm --filter @ai-comms-agent/web typecheck`. OPS-01 deploy approved SHA and verify actual active owner/admin membership, two independently gated mail provider capabilities and draft save/request approval without auto-send; negative member/viewer/suspended/cross-org. DEV-01 separately continues current five-day catch-up/C3/C4/R1a/R1b work, no worker/routine activation.
+- **Session:** `sessions/DEV01-ADMIN-EMAIL-WRITE-DEFAULT-20261023.md`.
+
+---
+
 ## DEV-01 — DEV01-HUMAN-FIRST-FIVE-DAY-CATCHUP-20261023 — Overview-to-C4 guided five-day preview
 
 - **Owner instruction:** Make AI Comms Agent usable for ordinary people, employees, SMEs and multinational teams: explain missed permitted mail, prioritize source-backed action, eventually offer AI-planned 09:00 or every-24h routines and optional consented WhatsApp summary. Explicitly continue DEV-01, not FIX-01/OPS-01. Phase 4 stays `implementation_in_progress`.
