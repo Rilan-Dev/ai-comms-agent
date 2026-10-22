@@ -345,3 +345,9 @@ The user actually ran all 29 focused C3 Node tests and four package TypeScript c
 - Every Overview catch-up link depends on server-authorized `catchUpAvailable`; the C4 route must still independently check `BRIEFINGS_ENABLED`, signed-in per-user account grants, source revisions and explicit mark-reviewed. Default direct catch-up remains seven days.
 - Use checked-in Superpowers specs/plans and test-first slice while gated C3 worker/WhatsApp standing-consent/persistence are unapproved. Source inspection and isolated Node helpers are not native web or browser acceptance.
 - Session and code: `sessions/DEV01-HUMAN-FIRST-FIVE-DAY-CATCHUP-20261023.md`; source commits `b45ed5e7,7785e189,ed11d533,3622c0e4,a727a086`; plan `a63b2745`.
+
+### DEV01-ADMIN-EMAIL-WRITE-DEFAULT-20261023 — typed permission and default role access are separate gates
+- A typed `email.write` entry in `PERMISSION_CATALOGUE` alone does NOT authorize drafts. Both PostgreSQL and in-memory `getPermissionsForRole` use `SYSTEM_ROLE_PERMISSIONS`; owner/admin were missing `email.write` even while every agent email tool was selected.
+- User explicitly wants a single-workspace administrator experience, but existing organization memberships remain internal security boundaries. Grant the required permission to **active owner/admin role defaults**, not by spoofing membership or bypassing `authorize`. Member/viewer and suspended/cross-organization identities remain blocked.
+- Permission is NOT a send operation: agent allowlist, connected primary mailbox, provider discovered capabilities, registered audited tool and human approval remain independent gates. No automatic send, migration or account mutation.
+- Commits `61eb507d,a5123f59,7f8b4457,145d2629`; 16/16 fresh source invariants, native tests and live browser/deploy pending. Session: `sessions/DEV01-ADMIN-EMAIL-WRITE-DEFAULT-20261023.md`.
