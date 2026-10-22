@@ -5,7 +5,7 @@ import { authorize, authorizationErrorToResponse } from "@/lib/identity/authoriz
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { runEmailAgentTurn } from "@ai-comms-agent/email-agent-runtime";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
-import { deniedEmailWriteExplanation, verifiedEmailToolSummary } from "@/lib/mail/action-feedback";
+import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation, verifiedEmailToolSummary } from "@/lib/mail/action-feedback";
 
 
 export const dynamic = "force-dynamic";
@@ -92,6 +92,7 @@ export async function POST(request: Request) {
     const executionId = crypto.randomUUID();
     const role = subject.membership.role;
     const permissions = [...subject.permissions];
+    const explicitEmailAction = isExplicitEmailMutationRequest(transcript);
     const blockedWriteExplanation = deniedEmailWriteExplanation(transcript, subject.permissions);
     // Voice clients opt in to progressive text. The existing JSON contract
     // remains compatible for older clients. Conversations without a mailbox
@@ -99,7 +100,7 @@ export async function POST(request: Request) {
     // turns continue to use the bounded email tool executor and never skip
     // approval/mailbox controls just to display speculative text.
     if (request.headers.get("accept")?.includes("text/event-stream")) {
-      const needsAuthorizedTools = /\b(email|mail|inbox|draft|message|messages|sender|recipient|attachment|account|contact|whatsapp|send|reply|forward|archive|trash|delete|move|mark|read|unread|approve|schedule|appointment|thread|folder|those|them)\b/i.test(transcript);
+      const needsAuthorizedTools = explicitEmailAction || /\b(email|mail|inbox|draft|message|messages|sender|recipient|attachment|account|contact|whatsapp|send|reply|forward|archive|trash|delete|move|mark|read|unread|approve|schedule|appointment|thread|folder|those|them)\b/i.test(transcript);
       const encoder = new TextEncoder();
       const stream = new ReadableStream<Uint8Array>({
         async start(controller) {
@@ -131,7 +132,7 @@ export async function POST(request: Request) {
                 },
                 maxRounds: 4, maxToolCalls: 8,
                 onProgress: (phase) => emit("progress", { phase }),
-                onSafeReadOnlyFinal: async (completedHistory) => {
+                onSafeReadOnlyFinal: explicitEmailAction ? undefined : async (completedHistory) => {
                   emit("status", { phase: "generating" });
                   const finalStream = await claraRuntime.streamAuthorizedReadOnlyToolAnswer(
                     { orgId: organizationId, agentId, kbId },
@@ -156,7 +157,7 @@ export async function POST(request: Request) {
                 const verifiedSummary = verifiedEmailToolSummary(result.toolCalls);
                 // A model answer is not evidence of delivery. Display the
                 // verified host result instead of unconfirmed send claims.
-                if (!result.streamed) emit("delta", { text: verifiedSummary || result.text });
+                if (!result.streamed) emit("delta", { text: verifiedSummary || (explicitEmailAction ? unverifiedEmailActionExplanation() : result.text) });
                 await saveAnswer(deliveredText);
                 emit("progress", { phase: "completed" });
                 emit("done", {
@@ -238,7 +239,7 @@ export async function POST(request: Request) {
     });
 
     const verifiedSummary = verifiedEmailToolSummary(turn.toolCalls);
-    const voiceAnswer = verifiedSummary || turn.text;
+    const voiceAnswer = verifiedSummary || (explicitEmailAction ? unverifiedEmailActionExplanation() : turn.text);
     await saveAnswer(voiceAnswer);
     return NextResponse.json({
       executionId,
