@@ -95,10 +95,7 @@ export async function POST(request: Request) {
         : "Credentials were saved, but Meta verification failed. Review the account error, check the phone number ID, access token, app mode and permissions, then edit and retry.",
     }, { status: 201 });
   } catch (error) {
-    console.error("[whatsapp/accounts] POST error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    const code = (error as { code?: string })?.code;
-    return NextResponse.json({ error: "internal_server_error", message, code }, { status: 500 });
+    return authorizationErrorToResponse(error);
   }
 }
 
