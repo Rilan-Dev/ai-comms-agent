@@ -492,6 +492,15 @@ export async function updateLocalDraftForOrganization(
     `UPDATE email_messages m SET ${sets.join(", ")}, provider_draft_sync_status = 'pending', provider_draft_last_error = NULL, updated_at = now()
      FROM email_accounts a
      WHERE m.id = ${draftIdParam} AND m.organization_id = ${organizationParam} AND m.email_account_id = a.id AND a.organization_id = ${organizationParam} AND m.is_draft = true AND a.deleted_at IS NULL
+       AND NOT EXISTS (
+         SELECT 1 FROM email_actions ea
+         WHERE ea.organization_id = m.organization_id
+           AND ea.draft_id = m.id
+           AND ea.email_account_id = m.email_account_id
+           AND ea.action_type = 'send_email'
+           AND ea.status IN ('pending_approval', 'approved', 'executing')
+           AND (ea.expires_at IS NULL OR ea.expires_at > now())
+       )
      RETURNING m.*`,
     values,
   );
@@ -611,6 +620,15 @@ export async function deleteLocalDraftForOrganization(organizationId: string, me
      USING email_accounts a
      WHERE m.id = $1 AND m.organization_id = $2 AND m.email_account_id = a.id
        AND a.organization_id = $2 AND a.deleted_at IS NULL AND m.is_draft = true
+       AND NOT EXISTS (
+         SELECT 1 FROM email_actions ea
+         WHERE ea.organization_id = m.organization_id
+           AND ea.draft_id = m.id
+           AND ea.email_account_id = m.email_account_id
+           AND ea.action_type = 'send_email'
+           AND ea.status IN ('pending_approval', 'approved', 'executing')
+           AND (ea.expires_at IS NULL OR ea.expires_at > now())
+       )
      RETURNING m.id`,
     [messageId, organizationId],
   );
