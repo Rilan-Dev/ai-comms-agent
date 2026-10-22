@@ -1,3 +1,12 @@
+## FIX-01 — FIX01-SARVAM-AGENT-VOICE-OVERRIDE-20261022 — 2026-10-22
+- **Defect:** Per-agent AI Settings saved Sarvam realtime provider in `agent_ai_settings`; voice session startup incorrectly read retired `agents.voice_provider` and selected OpenAI, then its SDP endpoint failed `realtime_not_configured`. This is a source selection bug, not proof of missing Sarvam credentials.
+- **Committed `Development`:** `ae1f92e0` provider precedence, `505e9e8d` agent-scoped session lookup/model/voice binding, `13b44a8a` seven regression cases. 16/16 static source invariants PASS; native runner/typecheck and live provider acceptance NOT RUN.
+- **Exact next FIX-01 verification:** `pnpm --filter @ai-comms-agent/web exec vitest run tests/voice-agent-provider-selection.test.ts tests/voice-realtime-transport.test.ts` followed by `pnpm --filter @ai-comms-agent/web typecheck` on fresh `Development`; address only concrete source failures.
+- **OPS-01 handoff:** Verify approved deployed revision, same-tenant saved Sarvam override and credential/relay readiness (no secrets in output), actual `realtimeProvider=sarvam` with `/api/voice/sarvam/session` when native relay is ready, or explicit Sarvam pipeline when relay unavailable; only consider native realtime ready after provider WebSocket and host session become active. GitHub #26 stays open pending broader real-transport acceptance. Revoke exposed browser session. No deployment or provider action by FIX-01.
+- **Limits:** Do not fallback to OpenAI to mask Sarvam missing relay; Phase 4 remains in progress; DEV-01 feature scope separate.
+
+---
+
 ## DEV-01 — email.write typed permission host follow-up, 2026-10-22
 - **Host evidence at prior Development `b24d6f90`:** Two permission web Vitest suites 14/14 PASS, DB TypeScript check completed without errors; web TypeScript FAIL TS2345 at `apps/web/src/app/api/chat/mail-compose/route.ts:53–54` because `email.write` was absent from shared `PermissionName`.
 - **Committed correction:** `d7392f8f` declares `email.write` in the shared permission catalogue (no system role automatically gains it); `e6e93ea1` guards catalogue/write tool alignment and lack of implicit grants. Phase 4 remains `implementation_in_progress`. Source-only correction, no production permissions/grants changed, post-fix host checks pending.
