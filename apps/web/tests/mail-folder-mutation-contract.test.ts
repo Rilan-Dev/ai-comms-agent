@@ -12,9 +12,19 @@ describe("mail folder mutation contract", () => {
     expect(repository).toContain("m.id = ANY($2::uuid[])");
   });
 
-  it("moves only within the same email account", () => {
-    expect(repository).toContain("f.id = $2 AND f.email_account_id = a.id");
-    expect(repository).toContain("m.id = ANY($3::uuid[])");
+  it("moves all selected messages only if every message belongs to the destination mailbox", () => {
+    expect(repository).toContain("WHERE f.id = $2 AND a.organization_id = $1 AND a.deleted_at IS NULL");
+    expect(repository).toContain("destination.rows[0].email_account_id !== accounts[0]");
+    expect(repository).toContain("m.email_account_id = target.email_account_id");
+    expect(repository).toContain("m.id = ANY($2::uuid[])");
+  });
+
+  it("never commits a partial archive or move after a missing or inaccessible message", () => {
+    expect(repository).toContain("withTransaction(async (client) =>");
+    expect(repository).toContain("FOR UPDATE OF m");
+    expect(repository).toContain("if (selected.rows.length !== ids.length) return 0");
+    expect(repository).toContain("if (update.rows.length !== ids.length)");
+    expect(repository).toContain("transaction rolled back");
   });
 
   it("does not expose folder mutation without organization authorization", () => {
