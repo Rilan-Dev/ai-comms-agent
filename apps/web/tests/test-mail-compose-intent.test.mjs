@@ -20,14 +20,24 @@ test("non-test commands and malformed recipients are left to the authorized AI t
     assert.equal(parseTestEmailComposeRequest(text), null, text);
 });
 
-test("recognized test-mail chat turns open host-reviewed compose instead of returning an unconfirmed AI send", () => {
+test("recognized test-mail chat turns always reach the AI stream and return an assistant result", () => {
   const chat = readFileSync(new URL("../src/app/chat/chat-client.tsx", import.meta.url), "utf8");
-  const send = chat.slice(chat.indexOf("async function sendMessage()"), chat.indexOf("  return (", chat.indexOf("async function sendMessage()")));
-  assert.match(send, /parseTestEmailComposeRequest\(content\)/);
-  assert.match(send, /await openMailComposer\(testRecipient\)/);
-  assert.ok(send.indexOf("await openMailComposer(testRecipient)") < send.indexOf("chatTurnInFlightRef.current = true"));
-  assert.ok(send.indexOf("await openMailComposer(testRecipient)") < send.indexOf('fetch("/api/chat/stream"'));
-  assert.match(chat, /window\.confirm\("Open a new test-email review/);
+  const begin = chat.indexOf("async function sendMessage()");
+  const end = chat.indexOf("\n  const interactiveControlsDisabled", begin);
+  assert.ok(begin >= 0 && end > begin);
+  const send = chat.slice(begin, end);
+  assert.doesNotMatch(send, /parseTestEmailComposeRequest\(content\)/);
+  assert.doesNotMatch(send, /openMailComposer\(testRecipient\)/);
+  assert.match(send, /chatTurnInFlightRef\.current = true/);
+  assert.match(send, /fetch\("\/api\/chat\/stream"/);
+  assert.match(send, /readSseEvents\(response\.body\)/);
+  assert.match(send, /role: "assistant"/);
+  assert.match(send, /if \(!completed\) throw new Error/);
+  // The separate manual compose workflow remains available for reviewed
+  // drafts and request approvals. No send is authorized by this test.
+  assert.match(chat, /function openInlineEmailComposer\(/);
+  assert.match(chat, /Save email draft/);
+  assert.match(chat, /Request send approval/);
 });
 
 test("compose-readiness failure shows a safe review screen and disables saving", () => {
