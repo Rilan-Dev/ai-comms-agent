@@ -28,7 +28,7 @@ export function parseRollingMailSummaryRequest(input: string): RollingMailSummar
   const message = input.trim();
   const mentionsMail = /\b(?:email|emails|mail|mails|inbox|message|messages|mesaages)\b/i.test(message);
   const pastDay = /\b(?:last|past|previous|within)\s+(?:the\s+)?(?:24\s*(?:hours?|hrs?|h)|1\s*day|one\s+day)\b/i.test(message);
-  const requestsReport = /\b(?:summar\w*|summery|summary|recap|review|list|show|check|find|count|all)\b|how many/i.test(message);
+  const requestsReport = /\b(?:summar\w*|summery|summary|recap|review|list|show|check|find|count|all|received)\b|how many|let me know|tell me/i.test(message);
   if (!mentionsMail || !pastDay || !requestsReport) return null;
 
   const from = /\bfrom\s+(?!last\b|past\b|previous\b|the\s+(?:last|past|previous)\b)(.+?)(?=\s+(?:during|within|over|in|for|last|past|previous)\b|[,!?]|$)/i.exec(message)?.[1]?.trim().replace(/\.$/, "");
