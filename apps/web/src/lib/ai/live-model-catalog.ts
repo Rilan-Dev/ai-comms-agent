@@ -35,6 +35,31 @@ const DOCUMENTED_REALTIME_STT: Partial<Record<LiveModelProvider, readonly LiveMo
   ],
 };
 
+/**
+ * Sarvam publishes no per-key catalogue for its speech APIs: GET /v2/models
+ * lists CHAT models only. Select from documented IDs that the host speech
+ * pipeline actually invokes today (not every model advertised upstream).
+ * These are vendor-documented, NOT account-verified or fetched as live data.
+ *
+ * https://docs.sarvam.ai/api/getting-started/models/bulbul
+ * https://docs.sarvam.ai/api/getting-started/models/saaras
+ *
+ * Current pipeline sends bulbul:v3 from voice/speech/speak and saaras:v4
+ * from voice/speech/transcribe. Do not advertise v4 Flash or alternate STT
+ * versions until the associated runtime request supports that selection.
+ */
+const DOCUMENTED_SARVAM_VOICE: Readonly<Record<"tts" | "stt", readonly LiveModel[]>> = {
+  tts: [{ id: "bulbul:v3", name: "Bulbul v3 (voice pipeline TTS)" }],
+  stt: [{ id: "saaras:v4", name: "Saaras v4 (voice pipeline STT)" }],
+};
+export function hasDocumentedSarvamVoiceModels(provider: string, purpose: string): boolean {
+  return provider === "sarvam" && (purpose === "tts" || purpose === "stt");
+}
+export function documentedSarvamVoiceModels(provider: string, purpose: string): LiveModel[] {
+  if (!hasDocumentedSarvamVoiceModels(provider, purpose)) return [];
+  return [...DOCUMENTED_SARVAM_VOICE[purpose as "tts" | "stt"]];
+}
+
 export function hasDocumentedRealtimeModels(provider: string, purpose: string): boolean {
   return purpose === "realtime" && (provider === "sarvam" || provider === "elevenlabs");
 }
