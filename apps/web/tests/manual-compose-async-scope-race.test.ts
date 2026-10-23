@@ -23,6 +23,8 @@ describe("FIX-01 manual mail composer async scope and review guards", () => {
   it("ignores old mailbox discovery after organization switch", () => {
     expect(load).toContain("organizationRef.current !== organizationId");
     expect(load).toContain("controller.signal.aborted");
+    expect(load).toContain("accountsOrganizationRef.current === organizationId");
+    expect(load).toContain("requestedDraftIdRef.current");
     expect(load).toContain("setAccounts(items)");
     expect(load).toContain("return () => controller.abort()");
   });
