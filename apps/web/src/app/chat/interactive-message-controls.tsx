@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { buildSelectedChecklistPrompt, hasInteractiveEmailActions, suggestedChatNextActions, type AssistantChecklistItem } from "@/lib/chat/interactive-replies";
+import { buildSelectedChecklistPrompt, hasInteractiveEmailActions, shouldSuggestNextActions, suggestedChatNextActions, type AssistantChecklistItem } from "@/lib/chat/interactive-replies";
 
 export type EmailWorkflowState = "not_saved" | "draft_saved" | "pending_approval";
 
@@ -86,6 +86,10 @@ export function SuggestedNextActions({ answer, messageId, disabled, onPrepare, e
   const actions = suggestedChatNextActions(answer);
   const [choice, setChoice] = useState(actions[0]?.id ?? "");
   const selected = actions.find(action => action.id === choice) ?? actions[0];
+  // Hooks run unconditionally first (content can grow during streaming);
+  // then suppress the panel on trivial or failure-style answers where
+  // follow-up chips are noise rather than a meaningful next step.
+  if (!shouldSuggestNextActions(answer)) return null;
   return (
     <fieldset className="mt-4 rounded-xl border border-border/70 bg-muted/20 p-3.5" disabled={disabled}>
       <legend className="px-1 text-xs font-semibold text-muted-foreground">Choose a next step</legend>

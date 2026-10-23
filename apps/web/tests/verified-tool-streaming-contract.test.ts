@@ -68,6 +68,9 @@ describe("native final read-only answer streaming after host tool execution", ()
     expect(prompt).toContain("declared.delete(item.tool_call_id)");
     expect(prompt).toContain("if (declared.size || results.length === 0 || results.length > 8)");
     expect(chat).toContain('emit("delta", { text: assistantOutput })');
-    expect(voice).toContain('emit("delta", { text: result.text })');
+    // Legacy JSON voice responses carry the canonical verified answer, not a
+    // speculative streamed draft.
+    expect(voice).toContain("const voiceAnswer = verifiedSummary || (explicitEmailAction ? unverifiedEmailActionExplanation() : turn.text);");
+    expect(voice).toContain("text: voiceAnswer");
   });
 });

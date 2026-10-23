@@ -37,4 +37,16 @@ describe("Sarvam-enabled agent email chat", () => {
     expect(emailWrite).toContain('status: "pending_approval"');
     expect(emailWrite).not.toContain(".sendDraft(");
   });
+
+  it("instructs the model to chain read tools until message records are retrieved", () => {
+    // The model must not answer "no inbox contents were provided" after only
+    // discovering mailboxes: it is told to chain the message list/search call
+    // with the discovered account_id and requested filters first.
+    const start = clara.indexOf("async completeWithTools(");
+    const end = clara.indexOf("async createChatTurn(", start);
+    const method = clara.slice(start, end);
+    expect(method).toContain("retrieve the actual records with the available read tools before answering");
+    expect(method).toContain("chain a second call such as the message list or search tool with the discovered account_id");
+    expect(method).toContain("never state that inbox contents are unavailable without first retrieving them with the available tools");
+  });
 });
