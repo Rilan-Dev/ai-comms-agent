@@ -89,7 +89,7 @@ test("draft list is compact and does not require manual sync for normal saves", 
   assert.match(draftUI, /"Saving to mailbox…"/);
   assert.match(draftUI, /"In mailbox drafts"/);
   assert.match(draftUI, /"Sync needs review"/);
-  assert.match(draftUI, /"Retry sync"/);
+  assert.match(draftUI, />Retry sync</);
   assert.match(draftUI, /=== "error" &&/);
   assert.doesNotMatch(draftUI, /"Sync provider draft"/);
   assert.match(draftUI, /Sending still requires approval/);
