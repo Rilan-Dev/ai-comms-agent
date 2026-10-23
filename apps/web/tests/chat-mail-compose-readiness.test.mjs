@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { mailComposeReadiness, selectPreferredComposeMailbox } from "../src/lib/mail/compose-readiness.ts";
+import { selectComposeSender } from "../src/lib/mail/compose-identity.ts";
 
 test("connected mailbox plus enabled agent tools never overrides missing actor email.write", () => {
   const state = mailComposeReadiness({
@@ -10,8 +11,10 @@ test("connected mailbox plus enabled agent tools never overrides missing actor e
   assert.equal(state.canDraft, false);
   assert.equal(state.canRequestApproval, false);
   assert.deepEqual(state.blockers.map(item => item.code), ["missing_email_write"]);
-  assert.match(state.blockers[0].message, /email\.write/);
-  assert.match(state.blockers[0].message, /organization role/);
+  // Human-facing copy may change. Verify the denied access and its actionable
+  // actor-role guidance, not a specific permission token in the copy.
+  assert.match(state.blockers[0].message, /active workspace owners and administrators/i);
+  assert.match(state.blockers[0].message, /Agent tool checkboxes cannot change user access/i);
 });
 
 test("report independent allowlist, account and actor failures; no implicit permission elevation", () => {
@@ -93,12 +96,27 @@ test("prefer a mailbox capable of both drafting and send approval over earlier d
   assert.equal(selectPreferredComposeMailbox([]), undefined);
 });
 
-test("GET readiness and chat default mailbox selection share the full-workflow preference", () => {
+test("sender-selection helper never silently chooses among multiple bound accounts", () => {
+  const complete = { id: "complete", canDraft: true, canRequestApproval: true };
+  const limited = { id: "draft-only", canDraft: true, canRequestApproval: false };
+  assert.equal(selectComposeSender([]), "");
+  assert.equal(selectComposeSender([complete]), "complete");
+  assert.equal(selectComposeSender([complete, limited]), "");
+  assert.equal(selectComposeSender([limited, complete]), "");
+});
+
+test("GET readiness and Chat both require an explicit From selection for multiple mailboxes", () => {
   const route = readFileSync(new URL("../src/app/api/chat/mail-compose/route.ts", import.meta.url), "utf8");
   const chat = readFileSync(new URL("../src/app/chat/chat-client.tsx", import.meta.url), "utf8");
-  assert.match(route, /selectPreferredComposeMailbox\(choices\)/);
-  assert.match(chat, /selectPreferredComposeMailbox\(mailboxes\)/);
+  assert.match(route, /selectComposeSender\(choices\)/);
+  assert.match(route, /const selected = choices\.find\(choice => choice\.id === selectedId\)/);
+  assert.match(route, /canDraft: selected\?\.canDraft \?\? empty\.canDraft/);
+  assert.match(route, /canRequestApproval: selected\?\.canRequestApproval \?\? empty\.canRequestApproval/);
+  assert.match(chat, /selectComposeSender\(mailboxes\)/);
+  assert.match(chat, /setComposeAccount\(selectedId\)/);
+  assert.match(chat, /Which email should this agent send from\?/);
+  assert.match(chat, /<option value="">Choose a sending address/);
+  assert.match(chat, /if \(!activeAgent \|\| !composeAccount \|\| composeBusy/);
   assert.match(chat, /setComposeCanDraft\(selectedMailbox\?\.canDraft === true\)/);
   assert.match(chat, /setComposeCanApprove\(selectedMailbox\?\.canRequestApproval === true\)/);
-  assert.match(route, /canRequestApproval: preferred\?\.canRequestApproval \?\? empty\.canRequestApproval/);
 });
