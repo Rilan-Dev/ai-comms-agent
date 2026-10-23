@@ -15,7 +15,9 @@ test("required recipients reject missing, malformed and header-injection address
   for (const bad of [
     null, undefined, "", [], [" "], ["display name"], ["name@example.test\r\nBcc: attacker@example.test"],
     ["user@example.test", "invalid"], ["x".repeat(321) + "@example.test"],
-    ["a@@example.test"], ["a@example"], [42], ["valid@example.test", null],
+    ["a@@example.test"], ["a@example"], ["a,b@example.test"], ["a;b@example.test"],
+    ["Alice <alice@example.test>"], ['"alice"@example.test'], ["a\\\\name@example.test"],
+    [42], ["valid@example.test", null],
     Array.from({ length: 101 }, () => "valid@example.test"),
   ]) assert.equal(normalizeEmailRecipients(bad, true), null, JSON.stringify(bad)?.slice(0, 80));
 });
