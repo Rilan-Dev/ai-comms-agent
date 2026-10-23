@@ -721,8 +721,8 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
             'snippet', em.snippet
           ) AS metadata
         FROM email_messages em
-        JOIN ranked match ON match.id = em.id
-       WHERE match.duplicate_rank = 1
+        JOIN ranked picked ON picked.id = em.id
+       WHERE picked.duplicate_rank = 1
        ORDER BY em.received_at DESC NULLS LAST, em.id
        LIMIT 20`,
        [ctx.orgId, ctx.agentId, textQuery, lookupTerms],
