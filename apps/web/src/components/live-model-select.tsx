@@ -65,11 +65,13 @@ export function LiveModelSelect({
         throw new Error(body.message || "Live models could not be fetched.");
       }
       if (body.source !== "live" && body.source !== "documented") throw new Error("The provider did not return a supported model catalogue.");
-      if (body.source === "documented" && (purpose !== "realtime" || !["sarvam", "elevenlabs"].includes(provider) || body.capability !== "streaming_stt")) {
+      const documentedRealtime = purpose === "realtime" && ["sarvam", "elevenlabs"].includes(provider) && body.capability === "streaming_stt";
+      const documentedVoice = provider === "sarvam" && ["tts", "stt"].includes(purpose) && body.capability === purpose;
+      if (body.source === "documented" && !(documentedRealtime || documentedVoice)) {
         throw new Error("The provider returned an unexpected documented capability.");
       }
       setCatalogSource(body.source);
-      if (body.source === "documented") setCatalogNote(body.message || "Vendor-documented streaming STT models; availability is verified only when the voice session connects.");
+      if (body.source === "documented") setCatalogNote(body.message || "Vendor-documented models; account access is checked when the model is used.");
       setModels(body.models ?? []);
       if (!body.models?.length) setMessage("The provider returned no compatible models for this capability.");
     }).catch((err: unknown) => {
@@ -87,23 +89,23 @@ export function LiveModelSelect({
   return (
     <div className="space-y-1">
       <select
-        aria-label={`${provider} ${purpose} ${catalogSource === "documented" ? "streaming STT model from vendor documentation" : "model from live provider catalogue"}`}
+        aria-label={`${provider} ${purpose} ${catalogSource === "documented" ? "model from vendor documentation" : "model from live provider catalogue"}`}
         className={className}
         value={selectableValue}
         disabled={loading || models.length === 0}
         onChange={(event) => onChange(event.target.value || null)}
       >
-        <option value="">{allowInherit ? "(inherit organization default)" : "(select a live model)"}</option>
+        <option value="">{allowInherit ? "(inherit organization default)" : catalogSource === "documented" ? "(select a documented model)" : "(select a live model)"}</option>
         {models.map((model) => <option key={model.id} value={model.id}>{model.name === model.id ? model.id : `${model.name} — ${model.id}`}</option>)}
       </select>
-      {loading ? <p className="text-xs text-muted-foreground">Loading live models…</p> : null}
+      {loading ? <p className="text-xs text-muted-foreground">Loading model options…</p> : null}
       {message ? (
         <p role="status" className="text-xs text-amber-700">
           {message}{" "}
           <button type="button" className="underline" onClick={() => setRetry((n) => n + 1)}>Retry</button>
         </p>
       ) : catalogSource === "documented" ? (
-        <p className="text-xs text-muted-foreground">{models.length} vendor-documented streaming STT {models.length === 1 ? "model" : "models"} · not a live per-account model listing</p>
+        <p className="text-xs text-muted-foreground">{models.length} vendor-documented {models.length === 1 ? "model" : "models"} · not a live per-account model listing</p>
       ) : <p className="text-xs text-muted-foreground">{models.length} provider-advertised models · live API</p>}
       {recovery === "reuse-realtime" ? (
         <button
@@ -129,7 +131,7 @@ export function LiveModelSelect({
       {catalogNote ? <p role="status" className="text-xs text-muted-foreground">{catalogNote}</p> : null}
       {savedId && !available && !loading ? (
         <p role="status" className="text-xs text-amber-700">
-          Previously saved model “{savedId}” is not supported by the current {catalogSource === "documented" ? "streaming voice transport" : "live catalogue"}. Choose a supported option, then save. Existing settings are not changed automatically.
+          Previously saved model “{savedId}” is not supported by the current {catalogSource === "documented" ? "documented provider capability" : "live catalogue"}. Choose a supported option, then save. Existing settings are not changed automatically.
         </p>
       ) : null}
     </div>
