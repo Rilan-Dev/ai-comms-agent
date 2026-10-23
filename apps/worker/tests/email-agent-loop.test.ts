@@ -76,6 +76,57 @@ test("email agent loop executes only registered, allowlisted tools and returns f
   assert.equal(result.toolCalls[0]?.readOnly, true);
 });
 
+test("voice mail-content request cannot fabricate inbox data without an authorized tool call", async () => {
+  const result = await runEmailAgentTurn({
+    organizationId: "org-1", agentId: "agent-1", messages: inputMessages,
+    toolContext: { ...context, channel: "voice" }, requireEmailContentEvidence: true,
+  }, {
+    createRuntime: async () => fakeRuntime(["email.accounts.list", "email.messages.list"]),
+    completeWithTools: async () => ({
+      text: "I can see your Qdrant and Google emails from today.",
+      toolCalls: [], finishReason: "stop",
+    }),
+    invoke: async () => { throw new Error("No tool should be invoked"); },
+  });
+  assert.equal(result.toolCalls.length, 0);
+  assert.match(result.text, /couldn't retrieve your workspace email messages/);
+  assert.doesNotMatch(result.text, /Qdrant|Google emails/);
+});
+
+test("voice mail-content request cannot treat account discovery as message retrieval", async () => {
+  let count = 0;
+  const result = await runEmailAgentTurn({
+    organizationId: "org-1", agentId: "agent-1", messages: inputMessages,
+    toolContext: { ...context, channel: "voice" }, requireEmailContentEvidence: true,
+  }, {
+    createRuntime: async () => fakeRuntime(["email.accounts.list", "email.messages.list"]),
+    completeWithTools: async () => ++count === 1
+      ? { text: "", toolCalls: [{ id: "accounts", name: "email.accounts.list", arguments: {} }], finishReason: "tool_calls" }
+      : { text: "You received 8 emails in the past 24 hours.", toolCalls: [], finishReason: "stop" },
+    invoke: async () => okResult(),
+  });
+  assert.deepEqual(result.toolCalls.map(c => c.name), ["email.accounts.list"]);
+  assert.match(result.text, /couldn't retrieve/);
+  assert.doesNotMatch(result.text, /8 emails/);
+});
+
+test("voice mail-content request may answer after a successful authorized message list", async () => {
+  let count = 0;
+  const result = await runEmailAgentTurn({
+    organizationId: "org-1", agentId: "agent-1", messages: inputMessages,
+    toolContext: { ...context, channel: "voice" }, requireEmailContentEvidence: true,
+  }, {
+    createRuntime: async () => fakeRuntime(["email.messages.list"]),
+    completeWithTools: async () => ++count === 1
+      ? { text: "", toolCalls: [{ id: "messages", name: "email.messages.list", arguments: { account_id: "mailbox-1" } }], finishReason: "tool_calls" }
+      : { text: "An authorized message list is available.", toolCalls: [], finishReason: "stop" },
+    invoke: async () => okResult(),
+  });
+  assert.equal(result.toolCalls[0]?.name, "email.messages.list");
+  assert.equal(result.toolCalls[0]?.ok, true);
+  assert.equal(result.text, "An authorized message list is available.");
+});
+
 test("email agent loop rejects a mismatched trusted tenant/agent context before model invocation", async () => {
   let modelCalled = false;
   await assert.rejects(() => runEmailAgentTurn({
