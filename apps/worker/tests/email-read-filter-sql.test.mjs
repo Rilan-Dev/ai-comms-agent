@@ -42,3 +42,14 @@ test("mail read filters retain the existing organization/account SQL boundaries"
   assert.match(source, /a\.deleted_at IS NULL/);
   assert.match(source, /const account = await resolveAccount\(text\(input\.account_id\), context\)/);
 });
+
+test("folder matches are correlated to the current message folder, not any folder in the account", () => {
+  for (const index of [3, 11]) {
+    const sql = compiledFilter("folderId", index);
+    // Without f.id = m.folder_id, a matching INBOX anywhere in the account
+    // would make every All Mail / Sent message pass the folder filter.
+    assert.match(sql, /f\.id\s*=\s*m\.folder_id\b/);
+    assert.match(sql, /f\.email_account_id\s*=\s*m\.email_account_id/);
+    assert.match(sql, /f\.organization_id\s*=\s*\$1/);
+  }
+});
