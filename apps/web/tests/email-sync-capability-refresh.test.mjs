@@ -51,6 +51,23 @@ test("chat composer remains read-only about readiness and never grants email.wri
   assert.match(compose, /mailbox\.capabilities\.drafts === true/);
   assert.match(compose, /mailbox\.capabilities\.send === true/);
   assert.match(compose, /invokeEmailReadTool\(runtime, toolName, input, context\)/);
-  const roleMap = permission.slice(permission.indexOf("export const SYSTEM_ROLE_PERMISSIONS"));
-  assert.doesNotMatch(roleMap, /"email\.write"/);
+  // Ownership grants are intentional and separate from agent checkbox
+  // selections. The permission boundary is four-role, not "no role may write".
+  const roleMap = permission.slice(
+    permission.indexOf("export const SYSTEM_ROLE_PERMISSIONS"),
+    permission.indexOf("// Auth Subject"),
+  );
+  assert.ok(roleMap.startsWith("export const SYSTEM_ROLE_PERMISSIONS"));
+  function rolePermissions(role) {
+    const match = roleMap.match(new RegExp("\\b" + role + ":\\s*\\[([^\\]]*)\\]"));
+    assert.ok(match, "Expected canonical RBAC mapping for " + role);
+    return [...match[1].matchAll(/"([a-z.]+)"/g)].map(permission => permission[1]);
+  }
+  for (const role of ["owner", "admin"]) {
+    assert.ok(rolePermissions(role).includes("email.write"), role + " has explicit write authority");
+    assert.ok(rolePermissions(role).includes("email.read"), role + " may access mail");
+  }
+  for (const role of ["member", "viewer"]) {
+    assert.ok(!rolePermissions(role).includes("email.write"), role + " must not gain email write access");
+  }
 });
