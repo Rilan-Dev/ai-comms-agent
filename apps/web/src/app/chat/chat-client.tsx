@@ -141,8 +141,7 @@ export function ChatClient({
     if (pane) pane.scrollTo({ top: pane.scrollHeight, behavior: "smooth" });
   }, [messages.length, busy, mailComposerOpen, composeDraftId, composeActionId]);
 
-  // The mobile history drawer is keyboard accessible without affecting the
-  // permanent desktop list or the workspace's own navigation sidebar.
+  // A temporary conversation dialog opens only on request at all widths.
   useEffect(() => {
     if (!chatHistoryOpen) return;
     historyCloseRef.current?.focus();
@@ -152,9 +151,8 @@ export function ChatClient({
         setChatHistoryOpen(false);
         return;
       }
-      // Keep keyboard focus inside the modal drawer on narrow screens. On
-      // desktop the permanent conversation list remains ordinary navigation.
-      if (event.key !== "Tab" || window.matchMedia("(min-width: 1024px)").matches) return;
+      // Keep keyboard focus inside the dialog on mobile and desktop.
+      if (event.key !== "Tab") return;
       const controls = Array.from(historySidebarRef.current?.querySelectorAll<HTMLElement>(
         'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
       ) ?? []).filter(element => element.getClientRects().length > 0);
@@ -689,7 +687,7 @@ export function ChatClient({
             </div>
           </div>
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <button ref={historyTriggerRef} type="button" className="rounded-md border px-3 py-2 text-xs font-semibold hover:bg-secondary lg:hidden"
+            <button ref={historyTriggerRef} type="button" className="rounded-md border px-3 py-2 text-xs font-semibold hover:bg-secondary"
               aria-label="Show conversations" aria-controls="chat-conversation-sidebar" aria-expanded={chatHistoryOpen}
               onClick={() => setChatHistoryOpen(true)}>Chats</button>
             <button type="button" onClick={() => setVoiceOpen(true)} disabled={busy || agentSwitchBusy || composeBusy || mailPermissionBusy || voiceOpen}
@@ -707,14 +705,19 @@ export function ChatClient({
       </header>
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
+        {chatHistoryOpen && (
+          <button type="button" aria-label="Dismiss conversation history"
+            className="absolute inset-0 z-20 cursor-default bg-black/20"
+            onClick={() => setChatHistoryOpen(false)} />
+        )}
         <aside ref={historySidebarRef} id="chat-conversation-sidebar"
           role={chatHistoryOpen ? "dialog" : undefined} aria-modal={chatHistoryOpen ? true : undefined}
           aria-label={chatHistoryOpen ? "Conversations" : undefined}
-          className={`${chatHistoryOpen ? "flex" : "hidden"} absolute inset-0 z-30 w-full flex-col border-r bg-background lg:relative lg:inset-auto lg:z-auto lg:flex lg:w-56 lg:shrink-0 xl:w-64`}>
+          className={`${chatHistoryOpen ? "flex" : "hidden"} absolute inset-y-0 left-0 z-30 w-full max-w-sm flex-col border-r bg-background shadow-xl sm:w-80`}>
           <nav aria-label="Chat history" className="flex min-h-0 w-full flex-1 flex-col">
             <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
               <h2 className="text-sm font-semibold">Conversations</h2>
-              <button ref={historyCloseRef} type="button" className="rounded-md border px-2 py-1 text-xs lg:hidden"
+              <button ref={historyCloseRef} type="button" className="rounded-md border px-2 py-1 text-xs"
                 onClick={() => setChatHistoryOpen(false)} aria-label="Close conversations">Close</button>
             </div>
             <div className="shrink-0 px-3 pt-3">
