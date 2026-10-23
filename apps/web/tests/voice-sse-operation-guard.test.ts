@@ -14,7 +14,7 @@ vi.mock('@ai-comms-agent/clara-core',()=>({claraRuntime:{createChatTurn:async()=
 vi.mock('@ai-comms-agent/email-agent-runtime',()=>({runEmailAgentTurn:vi.fn(),createEmailToolRuntime:vi.fn()}));
 import {POST} from '../src/app/api/voice/turn/route';
 import {POST as chat} from '../src/app/api/chat/stream/route';
-function deltas(stream:string){return stream.split('\n\n').filter(frame=>frame.startsWith('event: delta\n')).map(frame=>JSON.parse(frame.split('\ndata: ')[1]).text).join('');}
+function deltas(stream:string){return stream.split('\n\n').filter(frame=>frame.startsWith('event: delta\n')).map(frame=>{const data=frame.split('\ndata: ')[1];if(!data)throw new Error('Missing SSE data');return JSON.parse(data).text;}).join('');}
 beforeEach(()=>{vi.stubEnv('DATABASE_URL','test-only');vi.clearAllMocks();});
 it('ordinary JSON voice never returns or archives a forged operation claim',async()=>{
  m.answer='I sent your email successfully.';
