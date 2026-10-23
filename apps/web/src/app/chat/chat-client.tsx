@@ -62,6 +62,7 @@ export function ChatClient({
   const [composeBlockers, setComposeBlockers] = useState<Array<{code:string;message:string}>>([]);
   const [composeBusy, setComposeBusy] = useState(false);
   const [composeNotice, setComposeNotice] = useState("");
+  const [composeDiscoveryFailed, setComposeDiscoveryFailed] = useState(false);
   const [mailPermissionOpen, setMailPermissionOpen] = useState(false);
   const [mailPolicy, setMailPolicy] = useState<AgentPolicy | null>(null);
   const [mailToolSelection, setMailToolSelection] = useState<string[]>([]);
@@ -279,6 +280,7 @@ export function ChatClient({
     const epoch = agentContextEpochRef.current;
     setComposeBusy(true);
     setComposeNotice("");
+    setComposeDiscoveryFailed(false);
     // Drop the previous agent/mailbox readiness immediately; a failed GET
     // must not leave a stale selectable account or usable save button.
     setComposeMailboxes([]);
@@ -324,6 +326,7 @@ export function ChatClient({
         setComposeAccount("");
         setComposeCanDraft(false);
         setComposeCanApprove(false);
+        setComposeDiscoveryFailed(true);
         setMailComposerOpen(true);
         setComposeNotice(error instanceof Error ? error.message : "Draft setup failed.");
       }
@@ -624,7 +627,8 @@ export function ChatClient({
             <ul className="mt-2 list-disc space-y-1 pl-4">{composeBlockers.map(blocker => <li key={blocker.code}>{blocker.message}</li>)}</ul>
           </div>}
           {!composeCanDraft && composeBlockers.length === 0 && <p role="alert" className="mt-2 text-xs text-destructive">Draft creation is unavailable. Check saved agent permissions and your email.write grant.</p>}
-          {!composeMailboxes.length && <p role="alert" className="mt-2 text-xs text-destructive">No connected primary mailbox is assigned to this agent. Assign one in Agent Channels.</p>}
+          {!composeMailboxes.length && !composeDiscoveryFailed && <p role="alert" className="mt-2 text-xs text-destructive">No connected primary mailbox is assigned to this agent. Assign one in Agent Channels.</p>}
+           {composeDiscoveryFailed && <p className="mt-2 text-xs text-muted-foreground">Mailbox readiness could not be checked. Verify your workspace role and agent mail permissions, then reopen Compose email. No draft has been saved.</p>}
           <div className="mt-3 grid gap-3">
             <label className="text-xs font-medium">From mailbox<select aria-label="Sending mailbox" value={composeAccount} disabled={composeBusy} onChange={e => {
               const selectedMailbox = composeMailboxes.find(account => account.id === e.target.value);
