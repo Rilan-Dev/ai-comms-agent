@@ -56,3 +56,19 @@ test("backend still verifies the organization.update reviewer permission and pen
   assert.match(actions, /assertSameOrigin\(request\)/);
   assert.doesNotMatch(review, /sendDraft\(|provider\.send\(/);
 });
+
+
+test("approval success updates Chat notice without promising delivered or unsent status", () => {
+  assert.match(review, /onApprovalConfirmed: \(\) => void/);
+  assert.match(review, /onApprovalConfirmed\(\)/);
+  assert.match(chat, /onApprovalConfirmed=\{\(\) => setComposeNotice\(/);
+  assert.match(chat, /Chat does not confirm delivery/);
+  assert.match(review, /has not verified the delivery outcome/);
+});
+
+test("editing after a send request explicitly warns that the old approval persists", () => {
+  assert.match(chat, /const hadPriorApproval = Boolean\(composeActionId\)/);
+  assert.match(chat, /Earlier send approval is not cancelled or recalled by editing here/);
+  assert.match(chat, /setComposeActionId\(null\)/);
+  assert.match(chat, /onChange=\{e => \{ setComposeBody\(e.target.value\); invalidateComposeReview\(\); \}\}/);
+});
