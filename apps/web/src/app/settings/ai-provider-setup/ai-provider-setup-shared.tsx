@@ -475,7 +475,7 @@ export function AIProviderSetupShared({
                 {tab === "voice-chat" ? "Text-to-speech model" :
                   tab === "realtime" && (provider === "sarvam" || provider === "elevenlabs") ?
                   "Realtime speech-recognition model" : "Model"}
-                <LiveModelSelect organizationId={organizationId} provider={provider}
+                <LiveModelSelect key={`${organizationId}:${tab}:${provider}:model`} organizationId={organizationId} provider={provider}
                   purpose={PURPOSE_FOR_TAB[tab] as ModelPurpose} value={model || null}
                   onChange={(next) => setModel(next || "")} refreshKey={catalogVersion} className={inputCls}
                   onReuseSavedRealtimeKey={canReuseRealtimeKey ? () => void reuseSavedRealtimeKey() : undefined}
@@ -483,7 +483,7 @@ export function AIProviderSetupShared({
               </div>
               {tab === "voice-chat" ? (
                 <div className={labelCls}>Speech-to-text model
-                  <LiveModelSelect organizationId={organizationId} provider={provider}
+                  <LiveModelSelect key={`${organizationId}:${tab}:${provider}:stt`} organizationId={organizationId} provider={provider}
                     purpose="stt" value={sttModel || null} onChange={(next) => setSttModel(next || "")}
                     refreshKey={catalogVersion} className={inputCls}
                     onReuseSavedRealtimeKey={canReuseRealtimeKey ? () => void reuseSavedRealtimeKey() : undefined}
