@@ -13,7 +13,7 @@ import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
 import { canUseEmailAccountBinding, hasEmailToolCapabilities } from "./email-tool-policy";
 import { preserveEmailBody } from "./email-body";
 import { normalizeEmailRecipients } from "./email-recipients";
-import { eligibleReplyForwardSourceId, isLocalEmailMessageId } from "./email-source-identity";
+import { eligibleReplyForwardSourceId, isLocalEmailMessageId, reviewedForwardSubject } from "./email-source-identity";
 
 type Input = Record<string, unknown>;
 type Row = Record<string, unknown>;
@@ -198,8 +198,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     const source = await checkMessage(account.id, text(input.message_id, 100), context);
     if (!account.capabilities.drafts || !account.capabilities.forward) throw new EmailWriteFailure("capability_not_supported", "This mailbox does not support forward drafts.");
     const recipients = requireRecipients(input.to);
-    const originalSubject = text(source.subject, 998);
-    const subject = /^fwd?:/i.test(originalSubject) ? originalSubject : `Fwd: ${originalSubject}`;
+    const subject = reviewedForwardSubject(source.subject);
     const originalBody = preserveEmailBody(source.text_body);
     const note = preserveEmailBody(input.body_text, 10000);
     const forwardedBody = `${note ? note + "\n\n" : ""}---------- Forwarded message ----------\n${originalBody}`;
@@ -277,7 +276,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       agentId: context.agent_id,
       emailAccountId: account.id,
       actionType: "forward_email",
-      recipientSnapshot: { messageId, to: recipients, subject: text(source.subject, 998), bodyText: preserveEmailBody(source.text_body) },
+      recipientSnapshot: { messageId, to: recipients, subject: reviewedForwardSubject(source.subject), bodyText: preserveEmailBody(source.text_body) },
       requestedBy: context.user_id,
       idempotencyKey: `${context.turn_id}:forward:${messageId}`,
       correlationId: context.correlation_id,
