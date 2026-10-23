@@ -64,3 +64,13 @@ test("settings page distinguishes four jobs; saved key never promises live avail
   assert.match(shared,/availability is confirmed when a session connects/i);
   assert.match(shared,/encrypted_api_key/);
 });
+
+
+test("organization setup does not spin forever after a denied or failed context request",()=>{
+  assert.match(page,/setOrganizationError\(/);
+  assert.match(page,/Retry organization lookup/);
+  assert.match(page,/new AbortController\(\)/);
+  assert.match(page,/if \(!r\.ok\) throw new Error/);
+  assert.match(page,/organizationLoading \?/);
+  assert.match(page,/return \(\) => controller\.abort\(\)/);
+});
