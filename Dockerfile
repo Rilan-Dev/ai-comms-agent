@@ -6,7 +6,8 @@ WORKDIR /workspace
 COPY pnpm-lock.yaml package.json pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps ./apps
 COPY packages ./packages
-RUN pnpm install --no-frozen-lockfile
+# Do not re-resolve dependencies during a release build; reject any lock drift.
+RUN pnpm install --frozen-lockfile
 
 FROM base AS web
 RUN pnpm --filter @ai-comms-agent/web build
