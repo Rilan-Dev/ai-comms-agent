@@ -775,7 +775,7 @@ export function ChatClient({
               onClick={() => setMailComposerOpen(false)}
               className="shrink-0 rounded-md border px-2 py-1 text-xs disabled:opacity-50">Hide</button>
           </div>
-          {composeNotice && <p role="status" className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs">{composeNotice}</p>
+          {composeNotice && <p role="status" className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs">{composeNotice}</p>}
           {composePermissions && <div aria-label="Email permissions for this session" className="mt-3 rounded-md border bg-muted/20 p-3 text-xs">
             <p className="font-semibold">Email permissions for this session</p>
             <div className="mt-1 grid gap-1 sm:grid-cols-2">
