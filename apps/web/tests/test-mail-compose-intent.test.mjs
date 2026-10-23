@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { parseTestEmailComposeRequest } from "../src/lib/mail/test-email-compose-intent.ts";
 
 test("bounded test-email phrase classifier recognizes legacy input without executing a send", () => {
