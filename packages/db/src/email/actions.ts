@@ -134,16 +134,17 @@ export async function createEmailAction(input: CreateEmailActionInput) {
         "SELECT id, to_recipients, cc_recipients, bcc_recipients, subject, text_body FROM email_messages WHERE id=$1 AND organization_id=$2 AND email_account_id=$3 AND is_draft=true FOR UPDATE",
         [input.draftId, input.organizationId, input.emailAccountId],
       );
-      if (!locked.rows.length) throw new EmailActionIdempotencyConflictError();
-      if (!matchesPersistedSendDraftSnapshot(locked.rows[0], input.recipientSnapshot)) {
+      const lockedDraft = locked.rows[0];
+      if (!lockedDraft) throw new EmailActionIdempotencyConflictError();
+      if (!matchesPersistedSendDraftSnapshot(lockedDraft, input.recipientSnapshot)) {
         throw new EmailActionIdempotencyConflictError();
       }
       const prior = await client.query<Row>(
         "SELECT *, (expires_at IS NULL OR expires_at > now()) AS unexpired FROM email_actions WHERE organization_id=$1 AND email_account_id=$2 AND draft_id=$3 AND action_type='send_email' ORDER BY requested_at ASC, id ASC LIMIT 1",
         [input.organizationId, input.emailAccountId, input.draftId],
       );
-      if (prior.rows.length) {
-        const existing = prior.rows[0];
+      const existing = prior.rows[0];
+      if (existing) {
         // Return the SAME pending review only to its original requesting
         // actor/agent and with identical reviewed content. An approved,
         // rejected, expired or completed action always requires a new draft.
@@ -156,14 +157,16 @@ export async function createEmailAction(input: CreateEmailActionInput) {
         throw new EmailActionIdempotencyConflictError();
       }
       const inserted = await client.query<Row>(insertSql,params);
-      if (!inserted.rows[0]) throw new EmailActionIdempotencyConflictError();
-      return action(inserted.rows[0]);
+      const insertedRow = inserted.rows[0];
+      if (!insertedRow) throw new EmailActionIdempotencyConflictError();
+      return action(insertedRow);
     });
   }
 
   const r = await query<Row>(insertSql,params);
-  if (!r.rows[0]) throw new EmailActionIdempotencyConflictError();
-  return action(r.rows[0]);
+  const resultRow = r.rows[0];
+  if (!resultRow) throw new EmailActionIdempotencyConflictError();
+  return action(resultRow);
 }
 
 export async function listPendingEmailActionsForOrganization(organizationId: string) {
