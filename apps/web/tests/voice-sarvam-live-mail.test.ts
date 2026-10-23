@@ -58,6 +58,12 @@ describe("Sarvam live voice and grounded workspace mail", () => {
     expect(voiceTurn).toContain("m.received_at >= $3::timestamptz");
     expect(voiceTurn).toContain("m.received_at <= $4::timestamptz");
     expect(voiceTurn).toContain("COUNT(*) OVER ()::integer AS total_count");
+    expect(voiceTurn).toContain("peer.email_account_id=m.email_account_id");
+    expect(voiceTurn).toContain("peer.organization_id=m.organization_id");
+    expect(voiceTurn).toContain("LOWER(BTRIM(peer.internet_message_id))=LOWER(BTRIM(m.internet_message_id))");
+    expect(voiceTurn).toContain("peer_folder.role='inbox'");
+    expect(voiceTurn).toContain("current_folder.role='inbox'");
+    expect(voiceTurn).toContain("NULLIF(BTRIM(m.internet_message_id), '') IS NULL");
     expect(voiceTurn).toContain("formatRollingMailSummary(");
     expect(voiceTurn).toContain("LIMIT $8");
     expect(voiceTurn).toContain("rollingMail.unreadOnly, 5");
