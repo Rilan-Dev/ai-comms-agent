@@ -68,3 +68,8 @@ All scenarios below are **BLOCKED / NOT EXECUTED**, not passed. Execute after OP
 ## Shared lesson
 
 Branch names in historical sessions are not current authorization. Recover the owner-selected remote branch explicitly; preserve historical evidence and add a dated checkpoint. An HTTP 522 login page blocks all authenticated acceptance: source tests and an approval UI cannot prove mail or WhatsApp delivery.
+
+
+## Integration and push receipt — 2026-10-23
+
+Committed this additive handoff in `59f75b7b`. Preserved concurrent upstream Sarvam voice changes `e8e4b326` and `ee63da1a` through merge `62394fa65f6661d0279eb9dbfa06ffa92bb7c988`, successfully pushed to Development. GitHub then advanced to `5a321ed1875c8281b32d92953ac3ec9555a43de4`, which was pulled by fast-forward. Concurrent voice changes were inspected but their voice-specific runtime tests were not executed in this session; the 54 native-check result is pinned to `ab7292fb`, not a new voice acceptance claim. Final receipt commit follows. No existing records removed, no force push and no changes pushed to main. Live frontend remains blocked by observed HTTP 522; no external send was performed.
