@@ -17,6 +17,7 @@ test("email review renders inside the scrollable conversation after assistant me
   assert.doesNotMatch(chat.slice(0, log), /<h2[^>]*>Review an email draft<\/h2>/);
   assert.match(chat.slice(inlineReview, action), /ref=\{mailComposerReviewRef\}/);
   assert.match(chat.slice(inlineReview, action), /Email ready for review in Chat/);
+  assert.match(chat.slice(inlineReview, action), /\{composeNotice && <p[^>]*>\{composeNotice\}<\/p>\}/);
   assert.match(chat.slice(inlineReview, action), /aria-label="Email recipient"/);
   assert.match(chat.slice(inlineReview, action), /aria-label="Email body"/);
 });
