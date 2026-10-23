@@ -4,6 +4,7 @@ import test from "node:test";
 
 const migrationPath = new URL("../../supabase/migrations/0053_whatsapp_check_constraints.sql", import.meta.url);
 const postgresProbePath = new URL("./whatsapp-check-constraints.postgres.sql", import.meta.url);
+const installedProbePath = new URL("./whatsapp-check-constraints-installed.postgres.sql", import.meta.url);
 const authorizationPath = new URL("../../apps/web/src/lib/identity/authorization.ts", import.meta.url);
 const dbClientPath = new URL("../../packages/db/src/client.ts", import.meta.url);
 
@@ -48,4 +49,16 @@ test("shared PostgreSQL query/pool errors log SQLSTATE only, never failing rows 
   assert.doesNotMatch(source, /console\.error\(JSON\.stringify\(\{/);
   assert.doesNotMatch(source, /sql:\s*text/);
   assert.doesNotMatch(source, /postgresError\.message/);
+});
+
+test("OPS post-deploy constraint verification is read-only and checks both installed aca definitions", () => {
+  const probe = readFileSync(installedProbePath, "utf8");
+  assert.match(probe, /BEGIN READ ONLY;/);
+  assert.match(probe, /to_regclass\('aca\.whatsapp_send_actions'\)/);
+  assert.match(probe, /to_regclass\('aca\.whatsapp_templates'\)/);
+  assert.match(probe, /pg_get_constraintdef\(c\.oid\)/);
+  assert.ok(probe.includes("whatsapp_send_actions_recipient_phone_check"));
+  assert.ok(probe.includes("whatsapp_templates_name_check"));
+  assert.match(probe, /ROLLBACK;/);
+  assert.doesNotMatch(probe, /^\s*(?:INSERT|UPDATE|DELETE|ALTER TABLE|TRUNCATE)\b/im);
 });
