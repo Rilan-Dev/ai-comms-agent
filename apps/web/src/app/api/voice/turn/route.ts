@@ -99,13 +99,15 @@ export async function POST(request: Request) {
     const permissions = [...subject.permissions];
     const explicitEmailAction = isExplicitEmailMutationRequest(transcript);
     const blockedWriteExplanation = deniedEmailWriteExplanation(transcript, subject.permissions);
+    // Keep JSON and SSE on the same host-trusted intent boundary. The JSON
+    // fallback previously routed ordinary "hello" turns into email tools.
+    const needsAuthorizedTools = explicitEmailAction || /\b(email|mail|inbox|draft|message|messages|sender|recipient|attachment|account|contact|whatsapp|send|reply|forward|archive|trash|delete|move|mark|read|unread|approve|schedule|appointment|thread|folder|those|them)\b/i.test(transcript);
     // Voice clients opt in to progressive text. The existing JSON contract
     // remains compatible for older clients. Conversations without a mailbox
     // or action intent use the same Clara token stream as Chat; tool-sensitive
     // turns continue to use the bounded email tool executor and never skip
     // approval/mailbox controls just to display speculative text.
     if (request.headers.get("accept")?.includes("text/event-stream")) {
-      const needsAuthorizedTools = explicitEmailAction || /\b(email|mail|inbox|draft|message|messages|sender|recipient|attachment|account|contact|whatsapp|send|reply|forward|archive|trash|delete|move|mark|read|unread|approve|schedule|appointment|thread|folder|those|them)\b/i.test(transcript);
       const encoder = new TextEncoder();
       const stream = new ReadableStream<Uint8Array>({
         async start(controller) {
@@ -226,6 +228,36 @@ export async function POST(request: Request) {
       return NextResponse.json({
         executionId, text: blockedWriteExplanation, toolCalls: [], pendingApprovals: [],
         finishReason: "permission_denied", actions: [],
+      });
+    }
+
+    if (!needsAuthorizedTools) {
+      // Older JSON clients require the same normal Clara conversational path
+      // as SSE clients. Tool-authorized actions remain in runEmailAgentTurn.
+      const generation = await claraRuntime.createChatTurn({
+        orgId: organizationId, agentId, kbId, userId: subject.user.id,
+        sessionId, surface: "realtime", ragMode: "hybrid",
+        messages: [
+          { role: "system", content: "This voice response is read-only. Never claim to have sent, approved, deleted, archived, moved or changed mail or other resources. Such actions require an explicit authorized host tool result. Never claim to have sent, approved or completed any side effect without such a result." },
+          { role: "user", content: transcript },
+        ],
+      });
+      let modelAnswer = "";
+      for await (const token of generation.stream) {
+        if (request.signal.aborted) break;
+        modelAnswer += token;
+      }
+      if (request.signal.aborted) {
+        return NextResponse.json({ error: "voice_turn_aborted" }, { status: 409 });
+      }
+      const validated = userFacingChatAnswer(modelAnswer);
+      if (!validated) {
+        return NextResponse.json({ error: "empty_voice_answer", message: "The AI provider did not return a usable conversational answer." }, { status: 502 });
+      }
+      await saveAnswer(validated);
+      return NextResponse.json({
+        executionId, text: validated, toolCalls: [], pendingApprovals: [],
+        finishReason: "completed", actions: [],
       });
     }
 
