@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { documentedRealtimeModels, fetchLiveModelCatalog, hasDocumentedRealtimeModels, supportsLiveCatalog } from "../src/lib/ai/live-model-catalog";
+import { documentedRealtimeModels, documentedSarvamVoiceModels, fetchLiveModelCatalog, hasDocumentedRealtimeModels, hasDocumentedSarvamVoiceModels, supportsLiveCatalog } from "../src/lib/ai/live-model-catalog";
 import { providerConfigStatus } from "../src/lib/ai/provider-config-status";
 
 function mockApi(handler: (url: string) => unknown) {
@@ -61,6 +61,18 @@ describe("Clara-style live vendor model discovery", () => {
     ]);
     expect((await fetchLiveModelCatalog("elevenlabs", "tts", "secret")).map((m) => m.id)).toEqual(["eleven_flash_v2_5"]);
     expect((await fetchLiveModelCatalog("elevenlabs", "stt", "secret")).map((m) => m.id)).toEqual(["scribe_v2"]);
+  });
+
+  it("shows only app-supported, vendor-documented Sarvam TTS/STT rather than misleading live choices", () => {
+    expect(supportsLiveCatalog("sarvam", "tts")).toBe(false);
+    expect(supportsLiveCatalog("sarvam", "stt")).toBe(false);
+    expect(hasDocumentedSarvamVoiceModels("sarvam", "tts")).toBe(true);
+    expect(hasDocumentedSarvamVoiceModels("sarvam", "stt")).toBe(true);
+    expect(documentedSarvamVoiceModels("sarvam", "tts").map(model => model.id)).toEqual(["bulbul:v3"]);
+    expect(documentedSarvamVoiceModels("sarvam", "stt").map(model => model.id)).toEqual(["saaras:v4"]);
+    expect(documentedSarvamVoiceModels("sarvam", "chat")).toEqual([]);
+    expect(documentedSarvamVoiceModels("elevenlabs", "stt")).toEqual([]);
+    expect(documentedSarvamVoiceModels("sarvam", "realtime")).toEqual([]);
   });
 
   it("offers documented Sarvam streaming STT models without claiming a live vendor catalogue", () => {
