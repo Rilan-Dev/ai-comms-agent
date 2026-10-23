@@ -622,6 +622,10 @@ export async function POST(request: Request) {
                   }
                   const validated = userFacingChatAnswer(generated);
                   if (!validated) throw new Error("Read-only model output was not a user-facing answer.");
+                  // The tool loop marks this response as already streamed.
+                  // Emit exactly once AFTER validating the complete model
+                  // answer; otherwise Chat receives "done" with no text.
+                  if (!request.signal.aborted) emit("delta", { text: validated });
                   return validated;
                 },
               });
