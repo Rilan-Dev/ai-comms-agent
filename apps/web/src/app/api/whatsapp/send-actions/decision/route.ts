@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getWhatsAppAccountForOrganization, loadWhatsAppCredential, parseCredentialsMasterKey, queueWhatsAppOutboundMessage, query, recordAuditEvent } from "@ai-comms-agent/db";
+import { ActionAuthorizationRevokedError, assertCurrentWhatsAppActionAuthorization, getWhatsAppAccountForOrganization, loadWhatsAppCredential, parseCredentialsMasterKey, queueWhatsAppOutboundMessage, query, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { assertSameOrigin } from "@/lib/identity/local-auth";
@@ -30,6 +30,7 @@ type SendAction = {
   correlation_id: string;
   expires_at: string;
   approved_by: string | null;
+  requested_by: string | null;
   queued_message_id: string | null;
   payload_type: string;
   template_name: string | null;
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
     }
     const actor = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "whatsapp.send" }, getIdentityAdapter(), getIdentityRepository());
     const found = await query<SendAction>(
-      "SELECT id, organization_id, whatsapp_account_id, agent_id, agent_binding_required, recipient_phone, message_body, status, idempotency_key, correlation_id, expires_at, approved_by, queued_message_id, payload_type, template_name, template_language, template_parameters FROM whatsapp_send_actions WHERE id=$1 AND organization_id=$2 LIMIT 1",
+      "SELECT id, organization_id, whatsapp_account_id, agent_id, agent_binding_required, recipient_phone, message_body, status, idempotency_key, correlation_id, expires_at, approved_by, requested_by, queued_message_id, payload_type, template_name, template_language, template_parameters FROM whatsapp_send_actions WHERE id=$1 AND organization_id=$2 LIMIT 1",
       [actionId, organizationId],
     );
     const action = found.rows[0];
@@ -82,6 +83,8 @@ export async function POST(request: Request) {
     if (!account || account.status !== "connected") {
       return NextResponse.json({ error: "provider_not_connected", message: "The WhatsApp account must remain connected at approval time." }, { status: 409 });
     }
+    try {await assertCurrentWhatsAppActionAuthorization({organizationId,accountId:action.whatsapp_account_id,agentId:action.agent_id,bindingRequired:action.agent_binding_required,requestedBy:action.requested_by,approvedBy:actor.user.id});}
+    catch(error) {if(!(error instanceof ActionAuthorizationRevokedError))throw error;return NextResponse.json({error:'action_authorization_revoked',message:'The requester or agent permission changed. No send was approved.'},{status:409});}
     if (action.agent_binding_required) {
       if (!action.agent_id) {
         await query("UPDATE whatsapp_send_actions SET status='failed', updated_at=now() WHERE id=$1 AND organization_id=$2 AND status IN ('pending','approved')", [actionId, organizationId]);

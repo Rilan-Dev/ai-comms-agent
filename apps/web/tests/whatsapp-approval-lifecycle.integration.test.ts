@@ -9,8 +9,9 @@ import type {ToolContext} from '@ai-comms-agent/shared';
 const controls=vi.hoisted(()=>({audit:vi.fn(),components:[{type:'BODY',text:'Hello {{1}}'}] as unknown[],metaStatus:'APPROVED'}));
 vi.mock('@/lib/identity/local-auth',()=>({assertSameOrigin:()=>{}}));
 vi.mock('@/lib/identity/repository',()=>({ensureDevSeed:async()=>{},getIdentityAdapter:()=>({}),getIdentityRepository:()=>({})}));
-vi.mock('@/lib/identity/authorization',()=>({authorize:async()=>({user:{id:USER}}),authorizationErrorToResponse:()=>Response.json({error:'request_failed'},{status:500})}));
+vi.mock('@/lib/identity/authorization',()=>({authorize:async()=>({user:{id:APPROVER}}),authorizationErrorToResponse:()=>Response.json({error:'request_failed'},{status:500})}));
 vi.mock('@ai-comms-agent/db',async()=>({
+ ...await vi.importActual('../../../packages/db/src/actions/current-authorization'),
  ...await vi.importActual('../../../packages/db/src/client'),
  ...await vi.importActual('../../../packages/db/src/messaging/whatsapp-repository'),
  recordAuditEvent:controls.audit,parseCredentialsMasterKey:()=>new Uint8Array(32),loadWhatsAppCredential:async()=>({access_token:'stub-token'}),
@@ -21,11 +22,13 @@ if(!parsed||!['localhost','127.0.0.1'].includes(parsed.hostname)||parsed.pathnam
 process.env.DATABASE_URL=url;process.env.DATABASE_SSL='false';process.env.CREDENTIALS_MASTER_KEY='test-only';
 const pg=createRequire(new URL('../../../packages/db/package.json',import.meta.url))('pg');
 const db=new pg.Client({connectionString:url});
-const ORG=randomUUID(),USER=randomUUID(),AGENT=randomUUID(),ACCOUNT=randomUUID();
+const ORG=randomUUID(),USER=randomUUID(),APPROVER=randomUUID(),AGENT=randomUUID(),ACCOUNT=randomUUID();
 const context:ToolContext={organization_id:ORG,agent_id:AGENT,user_id:USER,conversation_id:randomUUID(),turn_id:randomUUID(),correlation_id:randomUUID(),channel:'chat',auth_subject:{user_id:USER,role:'owner',permissions:['whatsapp.send']}};
 beforeAll(async()=>{
  await db.connect();await db.query(`DROP SCHEMA IF EXISTS aca CASCADE;CREATE SCHEMA aca;SET search_path=aca,public;
  CREATE TABLE agents(id uuid,organization_id uuid);
+ CREATE TABLE agent_policies(agent_id uuid,allowed_tools text[]);
+ CREATE TABLE organization_memberships(id uuid DEFAULT gen_random_uuid(),organization_id uuid,user_id uuid,role text,status text,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());
  CREATE TABLE whatsapp_accounts(id uuid PRIMARY KEY,organization_id uuid,phone_number_id text,business_account_id text,display_name text,phone_number text,status text,deleted_at timestamptz);
  CREATE TABLE agent_whatsapp_accounts(agent_id uuid,whatsapp_account_id uuid);
  CREATE TABLE whatsapp_templates(organization_id uuid,whatsapp_account_id uuid,name text,language text,status text,components jsonb,provider_template_id text,last_synced_at timestamptz,updated_at timestamptz);
@@ -35,11 +38,14 @@ beforeAll(async()=>{
  CREATE TABLE whatsapp_messages(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),organization_id uuid,whatsapp_account_id uuid,contact_id uuid,direction text,message_type text,body text,media jsonb,status text,idempotency_key text,correlation_id uuid,provider_timestamp timestamptz,created_at timestamptz DEFAULT now());
  CREATE UNIQUE INDEX whatsapp_messages_idempotency ON whatsapp_messages(organization_id,idempotency_key) WHERE idempotency_key IS NOT NULL;`);
  await db.query('INSERT INTO aca.agents VALUES($1,$2)',[AGENT,ORG]);
+ await db.query("INSERT INTO aca.organization_memberships(organization_id,user_id,role,status) VALUES($1,$2,'owner','active'),($1,$3,'owner','active')",[ORG,USER,APPROVER]);
  await db.query("INSERT INTO aca.whatsapp_accounts VALUES($1,$2,'phone','business','QA Phone','+15555555555','connected',NULL)",[ACCOUNT,ORG]);
 });
 afterAll(async()=>{await closePostgresPool();await db.end();vi.unstubAllGlobals();});
 beforeEach(async()=>{
  vi.clearAllMocks();controls.audit.mockResolvedValue(undefined);controls.metaStatus='APPROVED';controls.components=[{type:'BODY',text:'Hello {{1}}'}];
+ await db.query("UPDATE aca.organization_memberships SET status='active'");
+ await db.query('TRUNCATE aca.agent_policies');await db.query("INSERT INTO aca.agent_policies VALUES($1,ARRAY['whatsapp.send'])",[AGENT]);
  await db.query('TRUNCATE aca.whatsapp_send_actions,aca.whatsapp_messages,aca.whatsapp_contacts,aca.whatsapp_templates,aca.agent_whatsapp_accounts');
  await db.query('INSERT INTO aca.agent_whatsapp_accounts VALUES($1,$2)',[AGENT,ACCOUNT]);
  await db.query("INSERT INTO aca.whatsapp_templates(organization_id,whatsapp_account_id,name,language,status,components) VALUES($1,$2,'qa','en_US','approved',$3)",[ORG,ACCOUNT,JSON.stringify(controls.components)]);
@@ -75,6 +81,12 @@ describe('PostgreSQL WhatsApp approval lifecycle',()=>{
  });
  it('rechecks a revoked binding before approval',async()=>{
   const id=await propose();await query('DELETE FROM agent_whatsapp_accounts');expect((await decision(id)).status).toBe(409);expect(await outboundCount()).toBe(0);
+ });
+ it.each(['requester','tool'])('revoked %s authorization blocks WhatsApp approval before Meta access',async(change)=>{
+  const id=await propose('Template QA',undefined,true);
+  if(change==='requester')await db.query("UPDATE aca.organization_memberships SET status='suspended' WHERE user_id=$1",[USER]);
+  if(change==='tool')await db.query("UPDATE aca.agent_policies SET allowed_tools='{}'");
+  const response=await decision(id);expect(response.status).toBe(409);expect(await outboundCount()).toBe(0);expect(fetch).not.toHaveBeenCalled();
  });
  it('queues a currently approved template once without claiming recipient delivery',async()=>{
   const id=await propose('Template QA',undefined,true);const response=await decision(id);expect(response.status).toBe(202);expect((await response.json()).status).toBe('queued');

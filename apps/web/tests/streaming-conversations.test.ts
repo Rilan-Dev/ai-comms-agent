@@ -53,10 +53,13 @@ describe("Chat and realtime Voice progressive generation", () => {
     expect(voiceRoute).toContain("maxToolCalls: 8");
   });
 
-  it("streams actual model chunks for non-tool voice and preserves the old JSON contract", () => {
+  it("validates complete non-tool voice output before emission and preserves the JSON contract", () => {
     expect(voiceRoute).toContain('surface: "realtime"');
     expect(voiceRoute).toContain("for await (const token of generation.stream)");
-    expect(voiceRoute).toContain('emit("delta", { text: token })');
+    expect(voiceRoute).toContain('generated += token');
+    expect(voiceRoute).toContain('currentTurnOperationAnswer(validated, [], executionId, explicitEmailAction)');
+    expect(voiceRoute).toContain('emit("delta", { text: verifiedAnswer })');
+    expect(voiceRoute).not.toContain('emit("delta", { text: token })');
     expect(voiceRoute).toContain('mode: "model-stream"');
     expect(voiceRoute).toContain('mode: "host-authorized-tools"');
     expect(voiceRoute).toContain("return NextResponse.json({");

@@ -237,14 +237,19 @@ export async function POST(request: Request) {
                   { role: "user", content: transcript },
                 ],
               });
+              let generated = "";
               for await (const token of generation.stream) {
                 if (request.signal.aborted) break;
-                emit("delta", { text: token });
+                generated += token;
               }
               if (!request.signal.aborted) {
                 // The host must not claim an answered voice turn when the
                 // model yielded no spoken-text tokens at all.
-                if (!deliveredText.trim()) throw new Error("AI provider returned an empty voice response.");
+                if (!generated.trim()) throw new Error("AI provider returned an empty voice response.");
+                const validated = userFacingChatAnswer(generated);
+                if (!validated) throw new Error("Voice model output was not a user-facing answer.");
+                const verifiedAnswer = currentTurnOperationAnswer(validated, [], executionId, explicitEmailAction);
+                emit("delta", { text: verifiedAnswer });
                 await saveAnswer(deliveredText);
                 emit("done", {
                   executionId, toolCalls: [], pendingApprovals: [],

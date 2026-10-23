@@ -1,17 +1,16 @@
 import {describe,it,expect,vi,beforeEach,afterEach} from 'vitest';
-const mocks=vi.hoisted(()=>({query:vi.fn(),audit:vi.fn(),sent:vi.fn(),failed:vi.fn(),event:vi.fn(),membership:'active'}));
+const mocks=vi.hoisted(()=>({query:vi.fn(),audit:vi.fn(),sent:vi.fn(),failed:vi.fn(),event:vi.fn(),authorization:vi.fn(),credentials:vi.fn()}));
 vi.mock('@ai-comms-agent/db',()=>({
  query:mocks.query,recordAuditEvent:mocks.audit,markWhatsAppOutboundSent:mocks.sent,markWhatsAppOutboundFailed:mocks.failed,
  recoverStaleWhatsAppOutbound:async()=>[],claimQueuedWhatsAppOutbound:async()=>[{id:'message',organization_id:'org',whatsapp_account_id:'account',correlation_id:'correlation',phone_number:'+12025550123',message_type:'text',body:'Harmless QA test'}],
  getWhatsAppAccountForOrganization:async()=>({id:'account',organization_id:'org',status:'connected',phone_number_id:'phone'}),
- loadWhatsAppCredential:async()=>({access_token:'test-token'}),parseCredentialsMasterKey:()=>new Uint8Array(32),
+ loadWhatsAppCredential:mocks.credentials,assertCurrentWhatsAppActionAuthorization:mocks.authorization,parseCredentialsMasterKey:()=>new Uint8Array(32),
  listPendingWhatsAppAccounts:async()=>[],updateWhatsAppAccountStatus:vi.fn(),
- PostgresIdentityRepository:class{async getMembership(){return {role:'owner',status:mocks.membership};}async getPermissionsForRole(){return ['whatsapp.send'];}},
 }));
 vi.mock('../../worker/src/events/provider-events',()=>({emitProviderEvent:mocks.event}));
 import {processQueuedWhatsAppMessages} from '../../worker/src/messaging/whatsapp-worker';
 beforeEach(()=>{
- vi.clearAllMocks();vi.stubEnv('DATABASE_URL','test-only');vi.stubEnv('CREDENTIALS_MASTER_KEY','test-only');mocks.membership='active';
+ vi.clearAllMocks();vi.stubEnv('DATABASE_URL','test-only');vi.stubEnv('CREDENTIALS_MASTER_KEY','test-only');mocks.authorization.mockResolvedValue(undefined);mocks.credentials.mockResolvedValue({access_token:'test-token'});
  mocks.audit.mockResolvedValue(undefined);mocks.event.mockResolvedValue(undefined);mocks.sent.mockResolvedValue(true);
  mocks.query.mockImplementation(async(sql:string)=>({rows:sql.includes('SELECT id,agent_id')?[{id:'action',agent_id:'agent',agent_binding_required:true,status:'queued',requested_by:'requester',approved_by:'approver'}]:[{id:'bound-or-recent-inbound'}]}));
  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({messages:[{id:'provider-message'}]})));
@@ -31,8 +30,8 @@ describe('WhatsApp provider outcome integrity',()=>{
   vi.mocked(fetch).mockRejectedValueOnce(new Error('network timeout after dispatch'));await processQueuedWhatsAppMessages();
   expect(fetch).toHaveBeenCalledTimes(1);expect(mocks.failed).not.toHaveBeenCalled();expect(mocks.sent).not.toHaveBeenCalled();
  });
- it('rechecks current actor permission before provider access',async()=>{
-  mocks.membership='suspended';await processQueuedWhatsAppMessages();expect(fetch).not.toHaveBeenCalled();expect(mocks.failed).toHaveBeenCalled();
+ it('blocks authorization denial before loading credentials or contacting the provider',async()=>{
+  mocks.authorization.mockRejectedValueOnce(new Error('Action authorization is no longer valid'));await processQueuedWhatsAppMessages();expect(mocks.authorization).toHaveBeenCalledWith(expect.objectContaining({organizationId:'org',accountId:'account',agentId:'agent',requestedBy:'requester',approvedBy:'approver',bindingRequired:true}));expect(mocks.credentials).not.toHaveBeenCalled();expect(fetch).not.toHaveBeenCalled();expect(mocks.failed).toHaveBeenCalled();
  });
  it('keeps an ambiguous server error pending reconciliation without a replay',async()=>{
   vi.mocked(fetch).mockResolvedValueOnce(Response.json({error:{message:'upstream unavailable'}},{status:503}));

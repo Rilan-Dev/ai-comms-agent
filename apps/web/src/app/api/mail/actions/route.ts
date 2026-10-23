@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import {
   createEmailAction,
+  assertCurrentEmailActionAuthorization,
+  ActionAuthorizationRevokedError,
   EmailActionIdempotencyConflictError,
   decideEmailAction,
   getEmailActionForOrganization,
@@ -177,6 +179,12 @@ export async function PATCH(request: Request) {
       getIdentityAdapter(),
       getIdentityRepository(),
     );
+    if(decision==='approved'){
+      const pending=await getEmailActionForOrganization(organizationId,actionId);
+      if(!pending)return NextResponse.json({error:'not_found'},{status:404});
+      try {await assertCurrentEmailActionAuthorization({...pending,approvedBy:subject.user.id});}
+      catch(error) {if(!(error instanceof ActionAuthorizationRevokedError))throw error;return NextResponse.json({error:'action_authorization_revoked',message:'The requester, agent or mailbox permission changed. No send was approved.'},{status:409});}
+    }
     const action = await decideEmailAction(organizationId, actionId, subject.user.id, decision, typeof body?.comment === "string" ? body.comment.slice(0, 1000) : null);
     if (!action) return NextResponse.json({ error: "conflict", message: "The action is no longer pending, has expired, or does not belong to this organization." }, { status: 409 });
     try {

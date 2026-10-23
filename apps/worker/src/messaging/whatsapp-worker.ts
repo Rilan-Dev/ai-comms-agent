@@ -2,8 +2,7 @@ import { loadWhatsAppCredential, claimQueuedWhatsAppOutbound, recoverStaleWhatsA
 import { getWhatsAppAccountForOrganization, listPendingWhatsAppAccounts, updateWhatsAppAccountStatus } from "@ai-comms-agent/db";
 import { emitProviderEvent } from "../events/provider-events";
 import { isRetryableProviderError } from "../email/retry";
-import { PostgresIdentityRepository } from '@ai-comms-agent/db';
-import { asOrganizationId,asUserId } from '@ai-comms-agent/shared';
+import { assertCurrentWhatsAppActionAuthorization } from '@ai-comms-agent/db';
 
 const GRAPH_HOST = "https://graph.facebook.com";
 
@@ -116,14 +115,7 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
       if (!approvalAction || !["approved", "queued"].includes(approvalAction.status)) {
         throw new Error("No active human-approved WhatsApp action is associated with this outbound message; outbound was blocked");
       }
-      const identities=new PostgresIdentityRepository();
-      for(const actorId of [approvalAction.requested_by,approvalAction.approved_by]){
-        if(!actorId)throw new Error('WhatsApp action authorization is no longer valid');
-        const membership=await identities.getMembership(asOrganizationId(String(message.organization_id)),asUserId(actorId));
-        if(!membership || membership.status!=='active' || !(await identities.getPermissionsForRole(asOrganizationId(String(message.organization_id)),membership.role)).includes('whatsapp.send')) {
-          throw new Error('WhatsApp action authorization is no longer valid');
-        }
-      }
+      await assertCurrentWhatsAppActionAuthorization({organizationId:String(message.organization_id),accountId:String(message.whatsapp_account_id),agentId:approvalAction.agent_id,bindingRequired:approvalAction.agent_binding_required,requestedBy:approvalAction.requested_by,approvedBy:approvalAction.approved_by});
       if (approvalAction.agent_binding_required) {
         const agentId = approvalAction.agent_id;
         if (!agentId) throw new Error("WhatsApp agent binding no longer exists; outbound was blocked");

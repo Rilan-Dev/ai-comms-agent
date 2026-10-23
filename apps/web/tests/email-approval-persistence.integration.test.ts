@@ -7,12 +7,14 @@ import { createEmailAction, listPendingEmailActionsForOrganization, decideEmailA
   claimApprovedEmailAction, completeEmailAction, EmailActionIdempotencyConflictError } from '../../../packages/db/src/email/actions';
 import { closePostgresPool } from '../../../packages/db/src/client';
 import { executeApprovedEmailAction } from '../../worker/src/email/action-executor';
-import { POST as requestApproval } from '../src/app/api/mail/actions/route';
+import { updateLocalDraftForOrganization } from '../../../packages/db/src/email/repository';
+import { PATCH as approveAction, POST as requestApproval } from '../src/app/api/mail/actions/route';
 
 const transport = vi.hoisted(()=>({
  status:'connected', provider:'gmail',
  connect:vi.fn(async()=>{}),disconnect:vi.fn(async()=>{}),
  discoverCapabilities:vi.fn(async()=>({drafts:true,send:true})),
+ loadCredentials:vi.fn(async()=>({})),
  createDraft:vi.fn(async()=>({draft_id:'provider-test-draft'})),
  sendDraft:vi.fn(async()=>({message_id:'test-message',provider_message_id:'test-provider-id'})),
 }));
@@ -22,13 +24,14 @@ vi.mock('@/lib/identity/repository',()=>({ensureDevSeed:async()=>{},getIdentityA
 vi.mock('@/lib/identity/authorization',()=>({authorize:async()=>({user:{id:USER}}),authorizationErrorToResponse:()=>Response.json({error:'request_failed'},{status:500})}));
 vi.mock('../../worker/src/email/registry',()=>({createEmailProviderRegistry:()=>({create:()=>transport})}));
 vi.mock('@ai-comms-agent/db',async()=>({
+ ...await vi.importActual('../../../packages/db/src/actions/current-authorization'),
  ...await vi.importActual('../../../packages/db/src/email/actions'),
  ...await vi.importActual('../../../packages/db/src/identity/supabase'),
  recordAuditEvent:audit,
  parseCredentialsMasterKey:()=>new Uint8Array(32),
  PostgresEmailAccountRepository:class {
   async getById(){return {id:ACCOUNT,organization_id:ORG,status:transport.status,provider:transport.provider};}
-  async loadCredentials(){return {};}
+  async loadCredentials(){return transport.loadCredentials();}
   async getConnectionConfig(){return {};}
  },
  getMailMessageForOrganization:async(org:string,id:string)=>(await db.query('SELECT * FROM aca.email_messages WHERE organization_id=$1 AND id=$2',[org,id])).rows[0],
@@ -53,10 +56,14 @@ const migration=resolve(__dirname,'../../../supabase/migrations/0055_email_appro
 // enums and persistence, not a mock of the failing boundary.
 const fixture=`CREATE SCHEMA aca; SET search_path=aca,public;
 CREATE TABLE organizations(id uuid PRIMARY KEY); CREATE TABLE users(id uuid PRIMARY KEY);
-CREATE TABLE agents(id uuid PRIMARY KEY); CREATE TABLE email_accounts(id uuid PRIMARY KEY);
+CREATE TABLE agents(id uuid PRIMARY KEY,organization_id uuid);
+CREATE TABLE agent_email_accounts(agent_id uuid,email_account_id uuid,role text);
+CREATE TABLE agent_policies(agent_id uuid,allowed_tools text[]);
+CREATE TABLE email_accounts(id uuid PRIMARY KEY,organization_id uuid,status text DEFAULT 'connected',deleted_at timestamptz,capabilities jsonb DEFAULT '{"drafts":true}');
 CREATE TABLE organization_memberships(id uuid DEFAULT gen_random_uuid(),organization_id uuid,user_id uuid,role text,status text,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());
 CREATE TABLE email_messages(id uuid PRIMARY KEY,organization_id uuid,email_account_id uuid,is_draft boolean,
-to_recipients jsonb,cc_recipients jsonb,bcc_recipients jsonb,subject text,text_body text);
+to_recipients jsonb,cc_recipients jsonb,bcc_recipients jsonb,subject text,text_body text,
+snippet text,provider_draft_sync_status text,provider_draft_sync_token uuid,provider_draft_last_error text,updated_at timestamptz DEFAULT now());
 CREATE TYPE action_status AS ENUM('pending_approval','approved','rejected','completed','failed','expired','executing');
 CREATE TYPE approval_decision AS ENUM('approved','rejected');
 CREATE TABLE email_actions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),organization_id uuid NOT NULL REFERENCES organizations,
@@ -75,15 +82,20 @@ beforeAll(async()=>{
   if (existsSync(migration)) await db.query(readFileSync(migration,'utf8'));
   await db.query('INSERT INTO organizations VALUES($1),($2)',[ORG,OTHER]);
   await db.query('INSERT INTO users VALUES($1)',[USER]);
-  await db.query('INSERT INTO agents VALUES($1)',[AGENT]);
-  await db.query('INSERT INTO email_accounts VALUES($1)',[ACCOUNT]);
+  await db.query('INSERT INTO agents(id) VALUES($1)',[AGENT]);
+  await db.query('INSERT INTO email_accounts(id,organization_id) VALUES($1,$2)',[ACCOUNT,ORG]);
+  await db.query('UPDATE aca.agents SET organization_id=$1 WHERE id=$2',[ORG,AGENT]);
   await db.query(`INSERT INTO organization_memberships(organization_id,user_id,role,status) VALUES($1,$2,'owner','active')`,[ORG,USER]);
 });
 afterAll(async()=>{await closePostgresPool(); await db.end();});
-beforeEach(async()=>{vi.clearAllMocks();transport.status='connected';await db.query(`UPDATE aca.organization_memberships SET status='active',role='owner'`);await db.query('TRUNCATE aca.email_action_approvals,aca.email_actions,aca.email_messages');});
+beforeEach(async()=>{
+await db.query('TRUNCATE aca.agent_email_accounts,aca.agent_policies');
+await db.query("INSERT INTO aca.agent_email_accounts VALUES($1,$2,'primary')",[AGENT,ACCOUNT]);
+await db.query("INSERT INTO aca.agent_policies VALUES($1,ARRAY['email.send.request','email.reply.request','email.forward.request'])",[AGENT]);
+vi.clearAllMocks();transport.status='connected';await db.query(`UPDATE aca.organization_memberships SET status='active',role='owner'`);await db.query('TRUNCATE aca.email_action_approvals,aca.email_actions,aca.email_messages');});
 
 async function draft(){
- const id=randomUUID(); await db.query(`INSERT INTO aca.email_messages VALUES($1,$2,$3,true,'["qa@example.com"]','[]','[]','QA test','Harmless test')`,[id,ORG,ACCOUNT]);
+ const id=randomUUID(); await db.query(`INSERT INTO aca.email_messages(id,organization_id,email_account_id,is_draft,to_recipients,cc_recipients,bcc_recipients,subject,text_body) VALUES($1,$2,$3,true,'["qa@example.com"]','[]','[]','QA test','Harmless test')`,[id,ORG,ACCOUNT]);
  return {organizationId:ORG,emailAccountId:ACCOUNT,actionType:'send_email' as const,draftId:id,
   recipientSnapshot:{to:['qa@example.com'],cc:[],bcc:[],subject:'QA test',bodyText:'Harmless test'},requestedBy:USER};
 }
@@ -157,7 +169,7 @@ describe('real PostgreSQL email approval lifecycle',()=>{
   const action=await createEmailAction(await draft());await decideEmailAction(ORG,action.id,USER,'approved');
   transport.status='revoked';
   await expect(executeApprovedEmailAction(action.id,ORG)).rejects.toThrow(/account is unavailable/);
-  expect(transport.connect).not.toHaveBeenCalled();expect(transport.sendDraft).not.toHaveBeenCalled();
+  expect(transport.loadCredentials).not.toHaveBeenCalled();expect(transport.connect).not.toHaveBeenCalled();expect(transport.sendDraft).not.toHaveBeenCalled();
  });
  it('keeps a timed-out provider dispatch unknown and prevents a second send',async()=>{
   const action=await createEmailAction(await draft());await decideEmailAction(ORG,action.id,USER,'approved');
@@ -171,7 +183,42 @@ describe('real PostgreSQL email approval lifecycle',()=>{
   const action=await createEmailAction(await draft());await decideEmailAction(ORG,action.id,USER,'approved');
   await db.query(`UPDATE aca.organization_memberships SET status='suspended' WHERE user_id=$1`,[USER]);
   await expect(executeApprovedEmailAction(action.id,ORG)).rejects.toThrow(/authorization is no longer valid/);
-  expect(transport.connect).not.toHaveBeenCalled();expect(transport.sendDraft).not.toHaveBeenCalled();
+  expect(transport.loadCredentials).not.toHaveBeenCalled();expect(transport.connect).not.toHaveBeenCalled();expect(transport.sendDraft).not.toHaveBeenCalled();
+ });
+ it.each(['primary','send_only'])('current %s agent binding and allowed send tool can execute the reviewed action',async(role)=>{
+  await db.query('UPDATE aca.agent_email_accounts SET role=$1',[role]);
+  const action=await createEmailAction({...await draft(),agentId:AGENT});await decideEmailAction(ORG,action.id,USER,'approved');
+  expect((await executeApprovedEmailAction(action.id,ORG)).status).toBe('completed');expect(transport.sendDraft).toHaveBeenCalledTimes(1);
+ });
+ it.each(['removed','read_only','tool_revoked'])('agent authorization %s after approval prevents provider access',async(change)=>{
+  const action=await createEmailAction({...await draft(),agentId:AGENT});await decideEmailAction(ORG,action.id,USER,'approved');
+  if(change==='removed')await db.query('DELETE FROM aca.agent_email_accounts');
+  if(change==='read_only')await db.query("UPDATE aca.agent_email_accounts SET role='read_only'");
+  if(change==='tool_revoked')await db.query("UPDATE aca.agent_policies SET allowed_tools='{}'");
+  await expect(executeApprovedEmailAction(action.id,ORG)).rejects.toThrow(/authorization/);
+  expect(transport.loadCredentials).not.toHaveBeenCalled();expect(transport.connect).not.toHaveBeenCalled();expect(transport.sendDraft).not.toHaveBeenCalled();
+ });
+ it.each(['requester','binding','tool'])('approval rechecks current %s authorization before transitioning',async(change)=>{
+  const action=await createEmailAction({...await draft(),agentId:AGENT});
+  if(change==='requester')await db.query("UPDATE aca.organization_memberships SET status='suspended'");
+  if(change==='binding')await db.query('DELETE FROM aca.agent_email_accounts');
+  if(change==='tool')await db.query("UPDATE aca.agent_policies SET allowed_tools='{}'");
+  const response=await approveAction(new Request('https://qa.local/api/mail/actions',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({organizationId:ORG,actionId:action.id,decision:'approved'})}));
+  expect(response.status).toBe(409);expect((await db.query('SELECT status FROM aca.email_actions WHERE id=$1',[action.id])).rows[0].status).toBe('pending_approval');expect(transport.connect).not.toHaveBeenCalled();
+ });
+ it('a draft edit waiting behind a proposal lock observes the committed review',async()=>{
+  const key=731024;const input=await draft();let proposal:Promise<unknown>|undefined,edit:Promise<unknown>|undefined;
+  const waitFor=async(sql:string)=>{for(let i=0;i<200;i++){if((await db.query(sql)).rows[0].ready)return;await new Promise(r=>setTimeout(r,10));}throw new Error('Expected PostgreSQL lock wait did not occur');};
+  await db.query('SELECT pg_advisory_lock($1)',[key]);
+  await db.query(`CREATE FUNCTION aca.pause_review_insert() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(731024);RETURN NEW;END $$;CREATE TRIGGER pause_review BEFORE INSERT ON aca.email_actions FOR EACH ROW EXECUTE FUNCTION aca.pause_review_insert()`);
+  try {
+   proposal=createEmailAction(input);
+   await waitFor("SELECT EXISTS(SELECT FROM pg_locks WHERE locktype='advisory' AND objid=731024 AND NOT granted) ready");
+   edit=updateLocalDraftForOrganization(ORG,input.draftId,{bodyText:'Unreviewed concurrent edit'});
+   await waitFor("SELECT EXISTS(SELECT FROM pg_stat_activity WHERE pid<>pg_backend_pid() AND wait_event_type='Lock' AND query ILIKE '%email_messages%' AND state='active') ready");
+   await db.query('SELECT pg_advisory_unlock($1)',[key]);await proposal;
+   expect(await edit).toBeNull();expect((await db.query('SELECT text_body FROM aca.email_messages WHERE id=$1',[input.draftId])).rows[0].text_body).toBe('Harmless test');
+  } finally {await db.query('SELECT pg_advisory_unlock($1)',[key]);await Promise.allSettled([proposal,edit]);await db.query('DROP TRIGGER pause_review ON aca.email_actions;DROP FUNCTION aca.pause_review_insert()');}
  });
  it('the forward reconciliation is safe to rerun',async()=>{
   expect(existsSync(migration)).toBe(true);
@@ -184,7 +231,7 @@ describe('real PostgreSQL email approval lifecycle',()=>{
    await db.query(fixture.replace('CREATE SCHEMA aca; SET search_path=aca,public;', 'CREATE SCHEMA aca_history_test; SET search_path=aca_history_test,public;'));
    await db.query('INSERT INTO organizations VALUES($1)',[ORG]);
    await db.query('INSERT INTO users VALUES($1)',[USER]);
-   await db.query('INSERT INTO agents VALUES($1)',[AGENT]);
+   await db.query('INSERT INTO agents(id) VALUES($1)',[AGENT]);
    const id=randomUUID();
    await db.query(`INSERT INTO email_actions(id,organization_id,agent_id,action_type,target,status) VALUES($1,$2,$3,'send_email','{"legacy":true}','completed')`,[id,ORG,AGENT]);
    await db.query(`INSERT INTO email_action_approvals(action_id,approver_id,decision,reason,decided_at) VALUES($1,$2,'approved','Reviewed by owner','2026-01-02T03:04:05Z')`,[id,USER]);
