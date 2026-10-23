@@ -44,11 +44,13 @@ const PROVIDER_BASE_URLS: Record<string, string> = {
   tei: "",
 };
 
+// Derive the card and selection allowlist from the same typed capability
+// inventory; the server API independently validates every provider/purpose.
 const ALLOWED_PROVIDERS: Record<Tab, string[]> = {
-  chat: ["openai", "gemini", "sarvam"],
-  "voice-chat": ["elevenlabs", "sarvam"],
-  realtime: ["openai", "gemini", "sarvam", "elevenlabs"],
-  embedding: ["openai", "gemini", "tei"],
+  chat: PROVIDER_SETUP_OPTIONS.chat.map((option) => option.id),
+  "voice-chat": PROVIDER_SETUP_OPTIONS["voice-chat"].map((option) => option.id),
+  realtime: PROVIDER_SETUP_OPTIONS.realtime.map((option) => option.id),
+  embedding: PROVIDER_SETUP_OPTIONS.embedding.map((option) => option.id),
 };
 
 export function AIProviderSetupShared({
