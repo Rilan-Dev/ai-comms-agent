@@ -26,7 +26,7 @@ test("all WhatsApp approval insertion paths atomically reuse only the original u
 });
 
 test("manual route returns HTTP 409 on an already-decided, expired, different-actor or payload collision", () => {
-  assert.match(manual, /if \(!actionId\) return NextResponse\.json\(\{ error: "idempotency_conflict"/);
+  assert.match(manual, /if \(!actionId\) return NextResponse\.json\(\{\s*error: "idempotency_conflict"/);
   assert.match(manual, /status: 409/);
   assert.match(manual, /status: "pending", correlationId/);
   assert.doesNotMatch(manual, /This WhatsApp message is awaiting or has already received an approval decision/);
