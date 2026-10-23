@@ -1,3 +1,12 @@
+## DEV01-CATCHUP-SOURCE-DETAILS-20261023 — source-only evidence
+
+- **Branch:** `Development`, starting `10860d93c4fc2aac299ae3ae4132d8bd235ad7e8`. New five-case native Node regression and private C2/C4 SQL+UI source links implemented; parent product plan P1b `docs/superpowers/plans/2026-10-23-human-readable-catchup-sources.md`.
+- **Executed narrow checks:** Re-fetched committed helper, source SQL, private API, feature gate, UI and regression: **17/17** read-only structural invariants. Isolated exact pure helper mirror under Node 22: **3/3 passed**; strict standalone TypeScript `tsc --strict --noEmit --target es2022` exit 0.
+- **NOT RUN / must not claim PASS:** Actual five-case committed Node test, C2/C4 Vitest, web/db package typechecks/build, PostgreSQL joins and tenant/revision lifecycle, authenticated browser 0/200/320 or screen reader, C3 generator/leases/provider, Meta/WhatsApp or deployment SHA. Source code is not production acceptance.
+- **Runtime next:** Execute exact tests/typechecks and privacy/feature-off cases in new top `NEXT_ACTION.md`. No C3 enable, presence collection, durable routines/standing consent, WhatsApp or provider operations authorized. FIX-01 independent source defects, OPS-01 CI/infrastructure/provider.
+
+---
+
 ## DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023 — source-only / not production accepted
 - **Current Development:** purpose-driven provider cards and guided editor, TTS/STT and model+key status, provider-reset/org-abort invariants and error-retry flow. Exact record `sessions/DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023.md`.
 - **PASS limited:** 19/19 test callbacks executed in an isolated current-source V8 harness against fetched GitHub source (not the actual native module runner), 6/6 pure typed-helper status cases with signature stripped; earlier 18/18 focused source assertions. Existing credential reset and tenant-abort tests retained. No full source build acceptance.
