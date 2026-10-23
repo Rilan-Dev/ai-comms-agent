@@ -1,3 +1,11 @@
+## DEV01-CATCHUP-COVERAGE-CLARITY-20261023 — source-only verification
+- **Starting HEAD:** `f68e7680`; source/test commits `5fb5c549,b6aecacf,cfed27d7`; plan `5bb6b08b` and session `683a9d43`. Preserve concurrent independent Chat UI changes.
+- **PASS, narrow:** Re-fetched GitHub sources and verified 14/14 concrete helper/UI invariants for deduplicated loaded links, nonnegative selected/remaining count, cursor handling, existing C4 source/review/C3-disabled contracts. Isolated local Node 22 helper mirror passed 5/5 behavior tests and standalone strict TypeScript, not equivalent to committed test runner.
+- **NOT RUN:** committed six-case Node suite, web Vitest/typecheck, PostgreSQL/tenant-negative, live browser/keyboard, provider/WhatsApp/voice, CI/Vercel or production. No change to feature flags or worker registration.
+- **Next:** exact commands in top `NEXT_ACTION.md` and `sessions/DEV01-CATCHUP-COVERAGE-CLARITY-20261023.md`. C3 activation, R1b persistence, user presence capture and R3/R4 WhatsApp consent remain gated. Do not claim release readiness.
+
+---
+
 ## DEV01-ROUTINE-TIMING-PREVIEW-20261023 — source-only evidence
 - **Branch:** Development; starting SHA `c62666531b95f65e840621ddc6caf0a7b3bd7620`. All source changes are separate from FIX-01 work, no migrations.
 - **PASS limited to source inspection:** Private authenticated GET-only page `/routines/preview` imports canonical `nextRoutineOccurrences`, supports daily/weekly local calendar (IANA zone), elapsed 1/6/12/24h, exact one-off and event/no clock. Existing login redirect, bounded form fields, next three instants, DST explanation and explicit no-save/no-send labels. Overview retains Inbox/Chat/Schedules/Automations and gated five-day catch-up. Initial inspector 24/25 false-negative read the worker **test file** when expecting clock internals; canonical clock module re-read confirmed `validatedZone` and `firstWallInstant`, making **25/25 source assertions PASS**. Native source test has five authored cases, existing worker clock tests seven cases.
