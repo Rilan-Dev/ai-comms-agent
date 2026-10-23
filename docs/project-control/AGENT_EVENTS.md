@@ -859,3 +859,9 @@ Owner-selected Development recovered at ab7292fbb00263bb817ab2874ab4f66e10946f0f
 ## DEV01-LIVE-AUTH-RECHECK-20261023
 
 Normal login API and auth/me returned 200; actual authenticated Chat opened once. Other app routes remain intermittent. Existing QA conversation was observed, not created by this session; no new outgoing action performed. Current Development focused checks 38/38 pass. See docs/project-control/sessions/DEV01-LIVE-AUTH-RECHECK-20261023.md. OPS-01 origin-path diagnosis; DEV-01 resume F01–F21 with authoritative pending/delivery checks.
+
+### EVT-DEV01-AUTOMATIC-DRAFT-SYNC-20261023 — 2026-10-23
+- **Authorization:** Owner explicitly requests AI-first auto provider draft saving, concise Drafts UI, and AI ability to read pending drafts. Direct Development, no unattended email sends.
+- **Finding:** `createLocalDraft/updateLocalDraftForOrganization` were local-only until manual `/api/mail/drafts/sync` request despite a safe queued worker; agent read tools lacked drafts-only filter.
+- **Remedy:** Source+tests in `sessions/DEV01-AUTOMATIC-DRAFT-SYNC-20261023.md`: conditional queued writes, safe legacy queue, mailbox status UI, error-only retry and stale-poll race fence, read-only `drafts_only`. Existing user RBAC, agent tool policy, account capability and send approval retained.
+- **Evidence:** source assertion checks only; native workspace, DB/provider/browser/deployment acceptance pending. OPS handles provider runtime and rollout; FIX handles independent implementation bugs.
