@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { parseTestEmailComposeRequest } from "../src/lib/mail/test-email-compose-intent.ts";
 
-test("reported chat phrases open a preview, never execute a send", () => {
+test("bounded test-email phrase classifier recognizes legacy input without executing a send", () => {
   const to = "mohammedrilan.ksa@gmail.com";
   for (const text of [
     `send email to ${to} for test email`,
