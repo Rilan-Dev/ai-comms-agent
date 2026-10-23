@@ -13,7 +13,7 @@ import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
 import { canUseEmailAccountBinding, hasEmailToolCapabilities } from "./email-tool-policy";
 import { preserveEmailBody } from "./email-body";
 import { normalizeEmailRecipients } from "./email-recipients";
-import { eligibleReplyForwardSourceId } from "./email-source-identity";
+import { eligibleReplyForwardSourceId, isLocalEmailMessageId } from "./email-source-identity";
 
 type Input = Record<string, unknown>;
 type Row = Record<string, unknown>;
@@ -100,6 +100,10 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
   }
 
   async function checkMessage(accountId: string, messageId: string, context: ToolContext): Promise<Row> {
+    // The provider identifier is not a PostgreSQL message UUID; reject it
+    // before query parsing and offer a useful non-500 error to the agent.
+    if (!isLocalEmailMessageId(messageId)) throw new EmailWriteFailure("message_not_found",
+      "Choose a synchronized message from the selected mailbox before replying or forwarding.");
     const message = await getMailMessageForOrganization(context.organization_id, messageId);
     if (!message || !eligibleReplyForwardSourceId(message, accountId)) {
       throw new EmailWriteFailure("message_not_found",
