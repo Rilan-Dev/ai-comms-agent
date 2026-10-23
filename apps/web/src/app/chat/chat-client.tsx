@@ -672,6 +672,8 @@ export function ChatClient({
 
   const interactiveControlsDisabled = busy || voiceOpen || agentSwitchBusy || newChatBusy || composeBusy || mailPermissionBusy;
   const latestAssistantId = !busy && messages.at(-1)?.role === "assistant" ? messages.at(-1)?.id : null;
+  // A recommendation must be grounded in the request immediately preceding the displayed answer.
+  const latestUserRequest = [...messages].reverse().find(message => message.role === "user")?.content ?? "";
   const emailWorkflowState: EmailWorkflowState =
     composeActionId ? "pending_approval" : composeDraftId ? "draft_saved" : "not_saved";
 
@@ -771,6 +773,7 @@ export function ChatClient({
           ) : messages.map((message) => (
             <MessageBubble key={message.id} role={message.role} content={message.content} messageId={message.id}
               showNextActions={message.role === "assistant" && message.id === latestAssistantId}
+              userRequest={latestUserRequest}
               disabled={interactiveControlsDisabled} onPrepare={prepareInteractivePrompt}
               emailWorkflowState={emailWorkflowState}
               onComposeEmail={openInlineEmailComposer}
@@ -937,9 +940,9 @@ export function ChatClient({
   );
 }
 
-function MessageBubble({ role, content, messageId, showNextActions, disabled, onPrepare,
+function MessageBubble({ role, content, messageId, showNextActions, userRequest, disabled, onPrepare,
   emailWorkflowState, onComposeEmail, onRequestEmailApproval }: {
-  role: string; content: string; messageId: string; showNextActions: boolean;
+  role: string; content: string; messageId: string; showNextActions: boolean; userRequest: string;
   disabled: boolean; onPrepare: (prompt: string) => void;
   emailWorkflowState: EmailWorkflowState; onComposeEmail: () => void; onRequestEmailApproval: () => void;
 }) {
@@ -971,7 +974,7 @@ function MessageBubble({ role, content, messageId, showNextActions, disabled, on
         <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
         <div className="flex-1 text-sm leading-7">
           <MarkdownRenderer content={content} disabled={disabled} onPrepare={onPrepare} />
-          {showNextActions ? <SuggestedNextActions answer={content} messageId={messageId}
+          {showNextActions ? <SuggestedNextActions answer={content} userRequest={userRequest} messageId={messageId}
             disabled={disabled} onPrepare={onPrepare} emailWorkflowState={emailWorkflowState}
             onComposeEmail={onComposeEmail} onRequestEmailApproval={onRequestEmailApproval} /> : null}
         </div>
