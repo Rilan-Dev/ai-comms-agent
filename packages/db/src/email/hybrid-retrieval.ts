@@ -149,15 +149,32 @@ export function createEmailHybridRetriever(dependencies: {
     if (input.subject?.trim()) add((n) => `m.subject ILIKE $${n} ESCAPE E'\\\\'`, `%${input.subject.trim().slice(0, 300).replace(/[\\%_]/g, "\\$&")}%`);
     values.push(limit);
     const lexicalPromise = runQuery<DbRow>(
-      `SELECT m.id, m.provider_message_id, m.email_account_id, m.thread_id,
-              m.from_email, m.to_recipients, m.subject, m.text_body, m.snippet,
-              m.received_at, a.email_address, a.provider
-         FROM email_messages m
-         JOIN email_accounts a ON a.id=m.email_account_id
-         JOIN agent_email_accounts b ON b.email_account_id=a.id
-         JOIN agents g ON g.id=b.agent_id
-        WHERE ${conditions.join(" AND ")}
-        ORDER BY m.received_at DESC NULLS LAST
+      `WITH ranked AS (
+         SELECT m.id, m.provider_message_id, m.email_account_id, m.thread_id,
+                m.from_email, m.to_recipients, m.subject, m.text_body, m.snippet,
+                m.received_at, a.email_address, a.provider,
+                ROW_NUMBER() OVER (
+                  PARTITION BY m.email_account_id,
+                    CASE WHEN a.provider='imap_smtp'
+                              AND NULLIF(BTRIM(m.internet_message_id), '') IS NOT NULL
+                      THEN 'message:' || LOWER(BTRIM(m.internet_message_id))
+                      ELSE 'row:' || m.id::text END
+                  ORDER BY CASE WHEN f.role='inbox' OR UPPER(f.provider_folder_id)='INBOX' THEN 0 ELSE 1 END,
+                           m.received_at DESC NULLS LAST, m.id
+                ) AS duplicate_rank
+           FROM email_messages m
+           JOIN email_accounts a ON a.id=m.email_account_id
+           JOIN agent_email_accounts b ON b.email_account_id=a.id
+           JOIN agents g ON g.id=b.agent_id
+           LEFT JOIN email_folders f ON f.id=m.folder_id AND f.email_account_id=m.email_account_id
+          WHERE ${conditions.join(" AND ")}
+       )
+       SELECT r.id, r.provider_message_id, r.email_account_id, r.thread_id,
+              r.from_email, r.to_recipients, r.subject, r.text_body, r.snippet,
+              r.received_at, r.email_address, r.provider
+         FROM ranked r
+        WHERE r.duplicate_rank=1
+        ORDER BY r.received_at DESC NULLS LAST, r.id
         LIMIT $${values.length}`,
       values,
     );
