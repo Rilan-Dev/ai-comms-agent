@@ -74,3 +74,9 @@ test("organization setup does not spin forever after a denied or failed context 
   assert.match(page,/organizationLoading \?/);
   assert.match(page,/return \(\) => controller\.abort\(\)/);
 });
+
+test("switching capability or organization remounts vendor forms and model catalogues",()=>{
+  assert.ok(page.includes('key={`${organizationId}:${tab}`}'));
+  assert.ok(shared.includes('key={`${organizationId}:${tab}:${provider}:model`}'));
+  assert.ok(shared.includes('key={`${organizationId}:${tab}:${provider}:stt`}'));
+});
