@@ -71,28 +71,40 @@ export async function POST(request: Request) {
 
     // Outbound requests are proposals only. The worker queue is reached solely
     // after a separate authenticated human approval and a fresh Meta window check.
-    const inserted = await query<{ id: string }>(
+    // Conflict resolution and authorization happen atomically while the
+    // idempotency unique index locks the row. A caller with a copied key
+    // cannot recover another requester's action ID or a decided action.
+    const inserted = await query<{ id: string; status: string }>(
       `INSERT INTO whatsapp_send_actions
-        (organization_id, whatsapp_account_id, requested_by, recipient_phone, message_body, payload_type, template_name, template_language, template_parameters, status, idempotency_key, correlation_id)
+        (organization_id, whatsapp_account_id, requested_by, recipient_phone,
+         message_body, payload_type, template_name, template_language,
+         template_parameters, status, idempotency_key, correlation_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,'pending',$10,$11)
-       ON CONFLICT (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL
-       DO NOTHING RETURNING id`,
-      [organizationId, accountId, actor.user.id, to, messageBody, payloadType, payloadType === "template" ? templateName : null, payloadType === "template" ? templateLanguage : null, JSON.stringify(payloadType === "template" ? templateParameters : []), idempotencyKey, correlationId],
+       ON CONFLICT (organization_id,idempotency_key) WHERE idempotency_key IS NOT NULL
+       DO UPDATE SET idempotency_key = EXCLUDED.idempotency_key
+       WHERE whatsapp_send_actions.status = 'pending'
+         AND whatsapp_send_actions.expires_at > now()
+         AND whatsapp_send_actions.requested_by IS NOT DISTINCT FROM EXCLUDED.requested_by
+         AND whatsapp_send_actions.agent_id IS NOT DISTINCT FROM EXCLUDED.agent_id
+         AND whatsapp_send_actions.whatsapp_account_id IS NOT DISTINCT FROM EXCLUDED.whatsapp_account_id
+         AND whatsapp_send_actions.recipient_phone IS NOT DISTINCT FROM EXCLUDED.recipient_phone
+         AND whatsapp_send_actions.message_body IS NOT DISTINCT FROM EXCLUDED.message_body
+         AND whatsapp_send_actions.payload_type IS NOT DISTINCT FROM EXCLUDED.payload_type
+         AND whatsapp_send_actions.template_name IS NOT DISTINCT FROM EXCLUDED.template_name
+         AND whatsapp_send_actions.template_language IS NOT DISTINCT FROM EXCLUDED.template_language
+         AND whatsapp_send_actions.template_parameters IS NOT DISTINCT FROM EXCLUDED.template_parameters
+       RETURNING id,status`,
+      [organizationId, accountId, actor.user.id, to, messageBody, payloadType,
+        payloadType === "template" ? templateName : null,
+        payloadType === "template" ? templateLanguage : null,
+        JSON.stringify(payloadType === "template" ? templateParameters : []),
+        idempotencyKey, correlationId],
     );
-    let actionId = inserted.rows[0]?.id ? String(inserted.rows[0].id) : "";
-    if (!actionId) {
-      const existing = await query<{ id: string; whatsapp_account_id: string; recipient_phone: string; message_body: string; status: string; payload_type: string; template_name: string | null; template_language: string | null; template_parameters: unknown }>(
-        "SELECT id, whatsapp_account_id, recipient_phone, message_body, status, payload_type, template_name, template_language, template_parameters FROM whatsapp_send_actions WHERE organization_id=$1 AND idempotency_key=$2 LIMIT 1",
-        [organizationId, idempotencyKey],
-      );
-      const row = existing.rows[0];
-      if (!row) throw new Error("WhatsApp approval idempotency conflict could not be resolved");
-      if (String(row.whatsapp_account_id) !== accountId || String(row.recipient_phone) !== to || String(row.message_body) !== messageBody || row.payload_type !== payloadType || (row.template_name ?? null) !== (payloadType === "template" ? templateName : null) || (row.template_language ?? null) !== (payloadType === "template" ? templateLanguage : null) || JSON.stringify(row.template_parameters ?? []) !== JSON.stringify(payloadType === "template" ? templateParameters : [])) {
-        return NextResponse.json({ error: "idempotency_conflict", message: "This Idempotency-Key was already used for a different WhatsApp message." }, { status: 409 });
-      }
-      actionId = String(row.id);
-      return NextResponse.json({ approvalRequired: true, actionId, status: row.status, message: "This WhatsApp message is awaiting or has already received an approval decision." }, { status: 202 });
-    }
+    const actionId = inserted.rows[0]?.id ? String(inserted.rows[0].id) : "";
+    if (!actionId) return NextResponse.json({
+      error: "idempotency_conflict",
+      message: "This Idempotency-Key belongs to a different requester, payload, or a WhatsApp approval that is no longer pending. No new approval was created.",
+    }, { status: 409 });
     await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId, eventType: "whatsapp.send_approval.requested", targetType: "whatsapp_send_action", targetId: actionId, action: "request_send", decision: "pending", metadata: { accountId, recipientSuffix: to.slice(-4), payloadType } });
     return NextResponse.json({ approvalRequired: true, actionId, status: "pending", correlationId, message: "Message saved for human approval. It has not been sent." }, { status: 202 });
   } catch (error) { return authorizationErrorToResponse(error); }
