@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { LiveModelSelect, type ModelPurpose } from "@/components/live-model-select";
 import { providerConfigStatus } from "@/lib/ai/provider-config-status";
 import { voiceCredentialSaveError } from "@/lib/ai/voice-credential-preflight";
@@ -153,7 +153,7 @@ export function AIProviderSetupShared({
   }, [provider, tab, configs, organizationId, loadedOrganizationId]);
 
   function chooseProvider(next: string) {
-    if (next === provider || !organizationReady || saving || !ALLOWED_PROVIDERS[tab].includes(next)) return;
+    if (next === provider || !organizationReady || saving || (next !== "" && !ALLOWED_PROVIDERS[tab].includes(next))) return;
     // Never carry an unsaved secret from one vendor's password field into another.
     setProvider(next);
     // Prevent the previous provider's unsaved model IDs from being submitted
