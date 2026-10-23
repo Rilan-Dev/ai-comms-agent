@@ -731,3 +731,10 @@ Start `23ceb97637e47b9326cb2df181f3c1f9208a6fbf`. Commits `1bae80c8` (canonical 
 - **Correction:** Test-first `16b0406a`, helper text `aa1a691e` says entries are listed but does not verify current mailbox permission or AI readiness. No backend grant or source manifest logic changed.
 - **Verification:** Fresh GitHub **20/20** source checks; local isolated Node helper **5/5** and strict TS PASS. Full committed suite, production and DB/browser NOT RUN.
 - **Prevention/next:** Separate UI progress from current grants and source freshness. Exact native/DB/browser tests in top `NEXT_ACTION.md`; C3/R1b/WhatsApp remain gated.
+
+### DEV01-CHAT-COMPOSE-IDENTITY-20261023 — 2026-10-23
+- **Owner need:** Show accurate signed-in email write/draft/send-request capability, require user to choose From where multiple bound accounts exist, ask To when unknown, and apply stored personal name in Regards signature without invented profile facts.
+- **Root cause:** Chat review previously preferred first fully capable mailbox, made no explicit multi-sender choice; no user/agent permission status summary; no verified signature; write tool accepted empty To. Chat/voice model planner lacked authenticated profile guidance.
+- **Remedy and limits:** Bounded signed-in profile and permission GET, explicit From choice, exact To prompt, editable named sign-off, tool-level nonempty valid To before creation/approval, trusted but advisory chat/voice clarification instructions. Existing tenant, actor RBAC, agent policy, connected account capability and pending approval enforcement preserved. Unknown user's real effective rights/profile status not inferred or changed.
+- **Evidence:** New 7 source-regression cases plus 5 executable Vitest tests. GitHub current source 54/54 source contracts and 22/22 independent invariants PASS. Full native tests/typecheck, real actor/profile, browser/voice/provider/deploy NOT RUN.
+- **Next:** Exact host tests/typechecks and browser negative paths in `sessions/DEV01-CHAT-COMPOSE-IDENTITY-20261023.md` and top NEXT_ACTION. No CI/Vercel waiting; separate FIX/OPS roles preserved.
