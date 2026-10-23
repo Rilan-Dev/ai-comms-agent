@@ -728,6 +728,11 @@ describe("pnpm workspace lockfile integrity", () => {
     const docs = lockfile.split(/^---[ \t]*$/gm).map(text => text.trim()).filter(Boolean);
     expect(docs).toHaveLength(2);
     const [manager, workspace] = docs;
+    // Vitest's length assertion does not narrow indexed access under
+    // noUncheckedIndexedAccess. Fail the test explicitly on malformed input.
+    if (manager === undefined || workspace === undefined) {
+      throw new Error("Expected separate pnpm manager and workspace lockfile documents.");
+    }
     expect(manager).toContain("packageManagerDependencies:");
     expect(manager).toContain("specifier: 12.8.1");
     expect(manager).toContain("version: 12.8.1");
