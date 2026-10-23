@@ -55,3 +55,23 @@ test("latest assistant response passes its preceding user request to conditional
   assert.match(chat, /message\.role === "assistant" && message\.id === latestAssistantId/);
   assert.doesNotMatch(controls, /fetch\(|dangerouslySetInnerHTML/);
 });
+
+
+test("chat interactive controls import only exported reply helpers", () => {
+  // Catch unresolved named imports during native Node tests, before the Next
+  // production build reaches TypeScript's TS2305 failure.
+  const component = source("../src/app/chat/interactive-message-controls.tsx");
+  const helpers = source("../src/lib/chat/interactive-replies.ts");
+  const declaration = component.match(/import\s*\{([^}]+)\}\s*from\s*["']@\/lib\/chat\/interactive-replies["']/);
+  assert.ok(declaration, "the interactive reply helpers import must be present");
+  const importedNames = declaration[1].split(",")
+    .map(part => part.trim().replace(/^type\s+/, "").split(/\s+as\s+/)[0].trim())
+    .filter(Boolean);
+  assert.ok(importedNames.includes("suggestedChatNextActions"));
+  assert.ok(importedNames.includes("hasInteractiveEmailActions"));
+  for (const name of importedNames) {
+    assert.match(helpers,
+      new RegExp("\\bexport\\s+(?:(?:async\\s+)?function|const|class|type|interface)\\s+" + name + "\\b"),
+      `Imported helper ${name} must be exported by interactive-replies.ts`);
+  }
+});
