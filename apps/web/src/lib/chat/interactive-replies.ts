@@ -29,36 +29,43 @@ export function buildSelectedChecklistPrompt(
     : null;
 }
 
-/** Display hint only; untrusted assistant text does not authorize any email operation. */
-export function hasInteractiveEmailActions(answer: string): boolean {
-  return /\b(inbox|mailbox|emails?|senders?|threads?|replies|reply|drafts?|follow[- ]?up)\b/i.test(answer.slice(0, 5000));
+/**
+ * UI hints are opt-in by context. A model mentioning "email" in a WhatsApp
+ * refusal is not a user request to draft mail, and a generic assistant reply
+ * must never generate an unsolicited choice panel.
+ */
+function isUnrelatedMessagingRequest(request: string): boolean {
+  return /\b(?:whats\s?app|sms|text\s+message)\b/i.test(request);
 }
 
-/** Fixed, product-owned options; the model cannot specify executable actions. */
-export function suggestedChatNextActions(answer: string): ChatNextAction[] {
-  const mail = hasInteractiveEmailActions(answer);
-  return mail ? [
+function isFailedOrDeniedAnswer(answer: string): boolean {
+  return /\b(?:can't|cannot|couldn't|unable to|don't have access|do not have access|not authorized|permission denied|no matching|no new unread|not found|didn't find)\b/i.test(answer);
+}
+
+/** Only show the reviewed email workflow for an explicitly requested draft
+ * and genuinely prepared Subject/Body; this does not send or authorize mail. */
+export function hasInteractiveEmailActions(answer: string, userRequest: string): boolean {
+  if (isUnrelatedMessagingRequest(userRequest) || isFailedOrDeniedAnswer(answer)) return false;
+  if (!/\b(?:draft|write|compose|prepare|reply|forward|send)\b/i.test(userRequest)
+    || !/\b(?:e-?mails?|drafts?|replies?)\b/i.test(userRequest)) return false;
+  return /^\s*(?:\*\*)?Subject(?:\*\*)?\s*:/im.test(answer)
+    && /^\s*(?:\*\*)?Body(?:\*\*)?\s*:/im.test(answer);
+}
+
+/** Deliberately no generic fallback. Follow-up cards are useful after
+ * substantive requested mail summaries, but intrusive after greetings,
+ * missing data, denied actions, tool failures, or unrelated WhatsApp turns.
+ * This never derives executable actions from untrusted assistant text. */
+export function suggestedChatNextActions(answer: string, userRequest: string): ChatNextAction[] {
+  if (isUnrelatedMessagingRequest(userRequest) || isFailedOrDeniedAnswer(answer)) return [];
+  const requestedSummary = /\b(?:summari[sz]e|summary|list|find|show|review|prioriti[sz]e|check|how many)\b/i.test(userRequest)
+    && /\b(?:e-?mails?|mailbox|inbox|messages?|threads?)\b/i.test(userRequest);
+  const hasMailEvidence = /\b(?:sender|subject|from|received)\s*:/i.test(answer)
+    || /\b\d+\s+(?:new\s+|unread\s+)?(?:e-?mails?|messages?)\s+(?:were\s+)?(?:received|found|matched)\b/i.test(answer);
+  if (!requestedSummary || !hasMailEvidence) return [];
+  return [
     { id: "prioritize", label: "Find important mail", prompt: "Review the recent emails I can access and list those that need my attention, with sender, date and reason. Do not modify messages." },
     { id: "checklist", label: "Make an action checklist", prompt: "Turn your previous answer into a short prioritized checklist for me. Do not modify any emails." },
     { id: "draft", label: "Plan an email reply", prompt: "Help me prepare an editable reply draft for an email we discussed. Ask which email if unclear; do not send anything." },
-  ] : [
-    { id: "simplify", label: "Explain simply", prompt: "Explain your last response in simpler words and keep important caveats." },
-    { id: "checklist", label: "Make a checklist", prompt: "Turn your last response into a clear, practical checklist. Do not take external actions." },
-    { id: "clarify", label: "What should I check?", prompt: "What information should I verify or clarify before acting on your last response?" },
   ];
-}
-
-/**
- * Follow-up suggestions are a affordance for substantive, successful answers.
- * They are noise on trivial replies (greetings, one-line acknowledgements)
- * and on failure-style answers ("unable to", "insufficient records") where
- * the assistant could not actually complete the request. The panel must only
- * appear where a next step is genuinely meaningful.
- */
-const NEXT_ACTION_FAILURE_MARKERS = /\b(?:unable to|couldn'?t|could not|can'?t|cannot|failed to|failure occurred|insufficient|not provided|no records|not found|no results|no matching|unavailable|not available|not accessible|not permitted|denied|i'?m sorry|apologize|try again|not completed|did not complete)\b/i;
-
-export function shouldSuggestNextActions(answer: string): boolean {
-  const text = answer.trim();
-  if (text.length < 200) return false;
-  return !NEXT_ACTION_FAILURE_MARKERS.test(text.slice(0, 3000));
 }
