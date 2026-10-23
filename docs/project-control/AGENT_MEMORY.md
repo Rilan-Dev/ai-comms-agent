@@ -537,3 +537,8 @@ The generic Clara chat turn invokes ambient RAG/email search and must **not** be
 - **Remedy:** Private no-write Overview-linked preview using the existing typed R1a time engine, next UTC/local occurrences and an explicit “not saved/sent” result; P0–P7 roadmap layers personal catch-up, AI judgement, consent and delivery.
 - **Prevention:** Never copy the clock algorithm to the browser, infer attendance from a five-day lookback, present a proposed routine as active or equate an approved Meta template with signed user consent. Record source-only checks separately from native/runtime acceptance. FIX-01 errors and OPS-01 deployment remain separate.
 - **Reference:** `docs/project-control/sessions/DEV01-ROUTINE-TIMING-PREVIEW-20261023.md`; `docs/superpowers/plans/2026-10-23-practical-email-assistant-roadmap.md`.
+
+### DEV-01 lesson, 2026-10-23 — composition identity and permission truth
+- A connected account is not permission to select it as From when the agent has multiple mailboxes. The UI must request an explicit sender, and missing To must prompt for a complete address. Display signed-in `email.write`, agent draft, agent send-request and provider capability separately, never conflate request approval with delivered mail.
+- `AuthSubject.user.name/email` may be used only for an editable, bounded signature and private model context; absent fields cannot be fabricated. Human sign-off review, tenant-scoped grants and approved send path remain independent.
+- DEV-01 session `sessions/DEV01-CHAT-COMPOSE-IDENTITY-20261023.md`; 54/54 source contracts + 22/22 invariants on Development, native/browser/DB pending. No live permissions changed or external email sent.
