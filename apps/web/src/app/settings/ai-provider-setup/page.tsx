@@ -8,18 +8,16 @@ import {
   Boxes,
   KeyRound,
   Loader2,
-  CheckCircle2,
-  AlertCircle,
 } from "lucide-react";
 import { AIProviderSetupShared } from "./ai-provider-setup-shared";
 
 type Tab = "chat" | "voice-chat" | "realtime" | "embedding";
 
 const TABS: Array<{ id: Tab; label: string; icon: typeof Bot; description: string }> = [
-  { id: "chat",         label: "Chat Models",           icon: Bot,   description: "Text chat completions. Used by /api/chat/stream and worker agent execution." },
-  { id: "voice-chat",   label: "Voice Chat (TTS / STT)", icon: Mic,   description: "Text-to-speech + speech-to-text pipeline. ElevenLabs and Sarvam Bulbul / Saaras." },
-  { id: "realtime",     label: "Realtime Voice AI Agent", icon: Radio, description: "Realtime voice: OpenAI Realtime or Gemini Live; Sarvam Saaras and ElevenLabs Scribe streaming STT + host AI/TTS relays. ElevenLabs Conversational AI agents require a separate integration." },
-  { id: "embedding",     label: "Embedding Models",       icon: Boxes, description: "Vector embeddings for RAG / knowledge retrieval. OpenAI text-embedding-3-* / Gemini embedding-*." },
+  { id: "chat", label: "Chat & writing", icon: Bot, description: "Choose the AI service that powers agent replies, writing help and approved tools." },
+  { id: "voice-chat", label: "Voice pipeline", icon: Mic, description: "Turn speech into text and text into speech. Both TTS and STT need their own configuration." },
+  { id: "realtime", label: "Live voice", icon: Radio, description: "Configure low-latency voice. Supported transports vary by provider, and connection still needs runtime verification." },
+  { id: "embedding", label: "Knowledge search", icon: Boxes, description: "Create semantic embeddings to help agents retrieve the right information from knowledge sources." },
 ];
 
 export default function AIProviderSetupPage() {
@@ -49,13 +47,18 @@ export default function AIProviderSetupPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">AI Provider Setup</h1>
             <p className="text-sm text-muted-foreground">
-              Configure credentials and models for chat, voice, realtime, and embeddings. Each agent can override these org-level defaults.
+              Set up the right AI service for each job: chat, voice, realtime conversation or knowledge search. Agents can override organization defaults.
             </p>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="mt-6 flex flex-wrap gap-1 rounded-xl bg-muted/40 p-1">
+        <div className="mt-5 rounded-xl border border-border bg-muted/20 p-4 text-sm">
+          <p className="font-semibold">A simpler way to connect AI providers</p>
+          <p className="mt-1 text-muted-foreground">Select what you want to enable below, choose a compatible provider card, then add credentials and a supported model. Saving one capability does not automatically enable the others.</p>
+        </div>
+
+        {/* Each tab represents a separate business capability, not a provider dropdown. */}
+        <div className="mt-6 flex flex-wrap gap-1 rounded-xl bg-muted/40 p-1" role="group" aria-label="AI provider capability">
           {TABS.map((t) => {
             const Icon = t.icon;
             const isActive = t.id === tab;
