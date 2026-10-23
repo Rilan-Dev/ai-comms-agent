@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { eligibleReplyForwardSourceId } from "../../../packages/email-agent-runtime/src/email-source-identity.ts";
+import { eligibleReplyForwardSourceId, isLocalEmailMessageId } from "../../../packages/email-agent-runtime/src/email-source-identity.ts";
 
 const write = () => readFileSync(new URL("../../../packages/email-agent-runtime/src/email-write-tools.ts", import.meta.url), "utf8");
 const worker = () => readFileSync(new URL("../src/email/action-worker.ts", import.meta.url), "utf8");
@@ -18,6 +18,16 @@ const message = (overrides = {}) => ({
 test("verified provider-backed message returns LOCAL UUID for approval, never provider identifier", () => {
   assert.equal(eligibleReplyForwardSourceId(message(), "mailbox-one"),
     "84a6cb6a-4426-4f1e-852d-521d685fd019");
+});
+
+test("opaque provider IDs never get passed into UUID-only local database lookups", () => {
+  assert.equal(isLocalEmailMessageId("84a6cb6a-4426-4f1e-852d-521d685fd019"), true);
+  assert.equal(isLocalEmailMessageId("provider-opaque-message-123"), false);
+  assert.equal(isLocalEmailMessageId("local-draft:remote"), false);
+  assert.equal(isLocalEmailMessageId(""), false);
+  assert.equal(isLocalEmailMessageId(null), false);
+  assert.match(write(), /if \(!isLocalEmailMessageId\(messageId\)\)/);
+  assert.match(manual(), /isLocalEmailMessageId\(messageId\)/);
 });
 
 test("drafts, unsynchronized sources, bad IDs and cross-mailbox rows fail closed before approval", () => {
