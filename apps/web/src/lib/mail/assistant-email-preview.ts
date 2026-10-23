@@ -4,7 +4,7 @@ export function assistantEmailPreview(raw: string): { subject: string; body: str
   if (typeof raw !== "string" || raw.length > 16000 || !raw.trim()) return null;
   // Host denials and private planning must never become recipient-visible mail.
   if (/Security check|No email draft or send-approval request|No email was sent|I should not hallucinate|<\/?think/i.test(raw)) return null;
-  const subjectMatch = raw.match(/^\s*(?:\*\*)?Subject:(?:\*\*)?\s*(.+)\s*$/im);
+  const subjectMatch = raw.match(/^[ \t]*(?:\*\*)?Subject:(?:\*\*)?[ \t]*(\S[^\r\n]*?)[ \t]*$/im);
   const bodyMatch = raw.match(/^\s*(?:\*\*)?Body:(?:\*\*)?[ \t]*\r?\n([\s\S]+)$/im);
   if (!subjectMatch || !bodyMatch || bodyMatch.index === undefined
       || subjectMatch.index === undefined || subjectMatch.index >= bodyMatch.index) return null;
