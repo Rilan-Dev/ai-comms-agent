@@ -39,3 +39,7 @@ pnpm --filter @ai-comms-agent/web exec vitest run tests/overview-first-entry.tes
 Authenticated browser: invalid/missing login, UTC/Asia/Kolkata/America-New_York zones, DST spring skip/fall duplicate, weekly ISO weekday, one-off past/requires explicit UTC offset, keyboard/mobile, no network writes and no activated jobs. Then proceed to separately authorized **C3** negative grant/lease/provider runtime verification and C4 persona/source-coverage acceptance. **Do not** register C3, create new R1b persistence/migration, silently activate routines or send WhatsApp.
 
 **Routing:** Significant source bugs to FIX-01, infrastructure/provider/CI/build/deployment to OPS-01, architecture/standing delivery consent back to owner review. No polling other roles; continue independent DEV work.
+
+## Follow-on R1a interval completion — 2026-10-23
+
+The same source slice now supports previewing **every hour**, every 6 hours, every 12 hours or every 24 elapsed hours instead of just 24 hours. Test-first `edde5453`, bounded canonical-engine form `2a193964`; all are inert GET previews. Server validates an explicit finite allowlist before constructing `RoutineTrigger.interval`. Latest fetched code/clock/Overview/test/plan **19/19 focused assertions PASS**; actual native tests, web/worker typechecks, authenticated browser and deployed runtime still NOT RUN. This does not add a new scheduler, permission, webhook or consent.
