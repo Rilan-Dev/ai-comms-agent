@@ -738,23 +738,53 @@ export function ChatClient({
         <section ref={mailComposerReviewRef} tabIndex={-1} aria-label="Compose an email using this agent" className="mx-auto w-full max-w-3xl border-b px-4 py-4 outline-none focus-visible:ring-2 focus-visible:ring-primary">
           <h2 className="text-sm font-semibold">Review an email draft</h2>
           <p className="mt-1 text-xs text-muted-foreground">The host executes only authorized agent tools. Save the draft, request send approval, then use Mail Approvals to approve sending. Saving or requesting approval never sends it.</p>
+          {composePermissions && <div aria-label="Email permissions for this session" className="mt-3 rounded-md border bg-muted/20 p-3 text-xs">
+            <p className="font-semibold">Email permissions for this session</p>
+            <div className="mt-1 grid gap-1 sm:grid-cols-2">
+              <span>User email write: {composePermissions.userCanWrite ? "Permitted" : "Not granted"}</span>
+              <span>Agent draft permission: {composePermissions.agentCanDraft ? "Enabled" : "Disabled"}</span>
+              <span>Agent send-request permission: {composePermissions.agentCanRequestApproval ? "Enabled" : "Disabled"}</span>
+              <span>Send: human approval required; never automatic</span>
+            </div>
+            <p className="mt-1 text-muted-foreground">Actual draft and approval actions also require the selected mailbox's capabilities. Permission choices do not grant access automatically.</p>
+          </div>}
+          {composeProfile && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-xs">
+            <div>
+              <p className="font-semibold">Your saved profile: {composeProfile.name || "No saved display name"}</p>
+              <p className="text-muted-foreground">{composeProfile.email}</p>
+              <p className="mt-1 text-muted-foreground">Profile details come from your signed-in account. The agent won't invent a name, title, company, phone number or signature.</p>
+            </div>
+            <button type="button" disabled={composeBusy || Boolean(composeDraftId)} onClick={useProfileSignature}
+              className="rounded-md border px-3 py-2 font-medium disabled:opacity-50">Use my profile signature</button>
+          </div>}
           {composeBlockers.length > 0 && <div role="alert" className="mt-3 rounded-md border border-destructive/30 p-3 text-xs text-destructive">
             <p className="font-semibold">Email tools are not ready; no draft or approval was created.</p>
             <ul className="mt-2 list-disc space-y-1 pl-4">{composeBlockers.map(blocker => <li key={blocker.code}>{blocker.message}</li>)}</ul>
           </div>}
-          {!composeCanDraft && composeBlockers.length === 0 && <p role="alert" className="mt-2 text-xs text-destructive">Draft creation is unavailable. Check saved agent permissions and your email.write grant.</p>}
+          {!composeCanDraft && composeBlockers.length === 0 && composeAccount && <p role="alert" className="mt-2 text-xs text-destructive">Draft creation is unavailable. Check saved agent permissions and your email.write grant.</p>}
           {!composeMailboxes.length && !composeDiscoveryFailed && <p role="alert" className="mt-2 text-xs text-destructive">No connected primary mailbox is assigned to this agent. Assign one in Agent Channels.</p>}
            {composeDiscoveryFailed && <p className="mt-2 text-xs text-muted-foreground">Mailbox readiness could not be checked. Verify your workspace role and agent mail permissions, then reopen Compose email. No draft has been saved.</p>}
           <div className="mt-3 grid gap-3">
-            <label className="text-xs font-medium">From mailbox<select aria-label="Sending mailbox" value={composeAccount} disabled={composeBusy} onChange={e => {
+            <label className="text-xs font-medium">From mailbox
+              {composeMailboxes.length > 1 && !composeAccount && <span role="status" className="mt-1 block text-primary">Which email should this agent send from? Choose the From address explicitly.</span>}
+              <select aria-label="Sending mailbox" value={composeAccount} disabled={composeBusy || Boolean(composeDraftId)} onChange={e => {
               const selectedMailbox = composeMailboxes.find(account => account.id === e.target.value);
               setComposeAccount(e.target.value);
               setComposeCanDraft(selectedMailbox?.canDraft === true);
               setComposeCanApprove(selectedMailbox?.canRequestApproval === true);
               setComposeBlockers(selectedMailbox?.blockers ?? []);
               invalidateComposeReview();
-            }} className="mt-1 block w-full rounded-md border bg-background p-2">{composeMailboxes.map(account => <option key={account.id} value={account.id}>{account.address}</option>)}</select></label>
-            <label className="text-xs font-medium">To<input type="email" aria-label="Email recipient" value={composeTo} disabled={composeBusy} onChange={e => { setComposeTo(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
+            }} className="mt-1 block w-full rounded-md border bg-background p-2">
+                <option value="">Choose a sending address…</option>
+                {composeMailboxes.map(account => <option key={account.id} value={account.id}>{account.address}</option>)}
+              </select></label>
+            <label className="text-xs font-medium">To
+              {!composeTo.trim() && <span role="status" className="mt-1 block text-primary">Who should receive this email? Enter or explicitly choose the recipient's exact address; the AI will not guess.</span>}
+              <input type="email" aria-label="Email recipient" value={composeTo} disabled={composeBusy || Boolean(composeDraftId)} required placeholder="recipient@example.com" onChange={e => { setComposeTo(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2" />
+            </label>
+            {composeProfile?.email && !composeTo.trim() && <button type="button" disabled={composeBusy || Boolean(composeDraftId)}
+              className="w-fit rounded-md border px-3 py-1.5 text-xs disabled:opacity-50"
+              onClick={() => { setComposeTo(composeProfile.email); invalidateComposeReview(); }}>Choose my signed-in email as recipient</button>}
             <label className="text-xs font-medium">Subject<input value={composeSubject} maxLength={998} disabled={composeBusy} onChange={e => { setComposeSubject(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
             <label className="text-xs font-medium">Message<textarea aria-label="Email body" value={composeBody} maxLength={100000} rows={5} disabled={composeBusy} onChange={e => { setComposeBody(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2" /></label>
           </div>
