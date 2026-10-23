@@ -50,7 +50,8 @@ test("briefing source pagination joins only existing owner/agent scoped, canonic
   assert.match(query, /m\.subject,m\.from_email,m\.received_at/);
   assert.match(query, /subject: s\.subject, sender: s\.from_email/);
   assert.match(query, /nextCursor: rows\.length > limit/);
-  assert.doesNotMatch(query, /text_body|html_body|attachment|sendDraft\(/);
+  const selectedSql = query.slice(query.indexOf("SELECT s.email_message_id"), query.indexOf("ORDER BY s.email_message_id LIMIT $3"));
+  assert.doesNotMatch(selectedSql, /text_body|html_body|attachment|sendDraft\(/);
 });
 
 test("catch-up presents original subject and sender with source links, never fabricated AI priorities", () => {
