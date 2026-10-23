@@ -37,7 +37,7 @@ describe("Sarvam live voice and grounded workspace mail", () => {
     expect(body).toContain("let sttReady = false;");
     expect(body).toContain('let ttsReady = provider !== "sarvam";');
     expect(body).toContain("let microphoneReady = false;");
-    expect(body).toContain("if (!sttReady || !ttsReady || !microphoneReady || activationStartedRef.current) return;");
+    expect(body).toContain("if (!isCurrentConnection() || !sttReady || !ttsReady || !microphoneReady || activationStartedRef.current) return;");
     expect(body).toContain("ttsReady = true;");
     expect(body).toContain("sttReady = true;");
     expect(body).toContain("microphoneReady = true;");

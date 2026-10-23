@@ -239,7 +239,9 @@ export function VoiceWorkspace({
     ttsFinalSeenRef.current = false;
     ttsPendingFramesRef.current = 0;
     ttsNextStartRef.current = ttsAudioContextRef.current?.currentTime ?? 0;
-    streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; });
+    streamRef.current?.getAudioTracks().forEach((track) => {
+      track.enabled = realtimeProviderRef.current === "sarvam" && !micMutedRef.current;
+    });
     setSpeaking(true);
     setNotice(`${realtimeProviderRef.current} is streaming Clara's answer as audio.`);
     socket.send(JSON.stringify({ type: "generation_start", generationId }));
@@ -425,6 +427,8 @@ export function VoiceWorkspace({
         ? { ...turn, text: streamedText ? `${streamedText}\n\n[Response interrupted: ${message}]` : message, state: "done" }
         : turn));
       setNotice("This turn failed. No external action is claimed as completed.");
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
     }
   }, [agent, organizationId]);
 
@@ -551,6 +555,7 @@ export function VoiceWorkspace({
           ttsPendingFramesRef.current += 1;
           source.onended = () => {
             ttsSourcesRef.current.delete(source);
+            if (ttsGenerationRef.current !== generationId) return;
             ttsPendingFramesRef.current = Math.max(0, ttsPendingFramesRef.current - 1);
             finishProviderTts(generationId);
           };
@@ -578,38 +583,94 @@ export function VoiceWorkspace({
     });
     const payload = await response.json().catch(() => ({})) as { relayUrl?: string; ttsRelayUrl?: string; message?: string; error?: string };
     if (!response.ok || !payload.relayUrl) throw new Error(payload.message ?? payload.error ?? `${provider} realtime relay could not be initialized.`);
+    if (sessionRef.current?.id !== current.id || expectedDisconnectRef.current) return;
 
     const socket = new WebSocket(payload.relayUrl);
     providerSocketRef.current = socket;
     if (provider === "sarvam" && !payload.ttsRelayUrl) {
       throw new Error("Sarvam live voice needs both a Saaras STT and Bulbul TTS WebSocket relay.");
     }
-    // Do not mark the live conversation active until BOTH vendor streams have
-    // completed their upstream handshakes and the microphone is actually
-    // capturing. A browser WebSocket OPEN alone is not provider readiness.
+    // Relay connected statuses confirm both upstream WebSocket connections,
+    // not provider configuration acceptance or usable audio. Require both
+    // connections and microphone capture before activating the host session.
+    const isCurrentConnection = () => providerSocketRef.current === socket
+      && sessionRef.current?.id === current.id && !expectedDisconnectRef.current;
     let sttReady = false;
     let ttsReady = provider !== "sarvam";
     let microphoneReady = false;
     const activate = () => {
-      if (!sttReady || !ttsReady || !microphoneReady || activationStartedRef.current) return;
+      if (!isCurrentConnection() || !sttReady || !ttsReady || !microphoneReady || activationStartedRef.current) return;
       activationStartedRef.current = true;
       void patchSession({ action: "activate" }).then(() => {
+        if (!isCurrentConnection()) return;
         setConnected(true);
         setNotice(`${provider === "sarvam" ? "Sarvam Saaras and Bulbul" : "ElevenLabs Scribe"} realtime voice is connected. Spoken turns use Clara's authorized email runtime.`);
         streamProviderTts("Hello, I'm Clara. How can I help you with your email and communication tasks today?", `${current.id}-welcome`);
       }).catch((e) => {
+        if (!isCurrentConnection()) return;
         activationStartedRef.current = false;
         setError(e instanceof Error ? e.message : "Could not persist the connected provider session.");
         stopMedia();
       });
     };
+    // Subscribe before awaiting audio startup or microphone permission: the
+    // relay may report its upstream connection while the browser prompt is open.
+    socket.onmessage = (event) => {
+      if (!isCurrentConnection()) return;
+      let data: Record<string, unknown>;
+      try { data = JSON.parse(String(event.data)) as Record<string, unknown>; } catch { return; }
+      const type = String(data.type ?? data.message_type ?? "");
+      if ((type === "status" && data.value === "connected") || type === "session_started") {
+        sttReady = true;
+        activate();
+      }
+      // Keep Sarvam duplex: vendor VAD and early text can cancel current
+      // playback before the completed utterance starts the next host turn.
+      if (provider === "sarvam" && micMutedRef.current
+          && (type === "vad_speech_start" || type === "transcript_partial" || type === "transcript_final")) return;
+      if (provider === "sarvam" && (ttsGenerationRef.current || (abortRef.current && !abortRef.current.signal.aborted))
+          && (type === "vad_speech_start" || (type === "transcript_partial"
+            && typeof data.text === "string" && data.text.trim()))) interrupt();
+      if (type === "transcript_partial") {
+        if (typeof data.text === "string" && data.text.trim()) setNotice(`Hearing: ${data.text.trim()}`);
+      }
+      if (type === "transcript_final") {
+        const transcript = typeof data.text === "string" ? data.text.trim() : "";
+        const now = Date.now();
+        const previous = lastProviderFinalRef.current;
+        if (transcript && !(previous?.text === transcript && now - previous.at < 1800)) {
+          lastProviderFinalRef.current = { text: transcript, at: now };
+          void submitHostTurn(transcript, true);
+        }
+      }
+      if (type === "error") {
+        const message = typeof data.message === "string" ? data.message : `${provider} realtime speech recognition failed.`;
+        setError(message);
+        if (data.fatal === true) {
+          void reportUnexpectedTransportLoss(message);
+        }
+      }
+    };
+    socket.onerror = () => {
+      if (isCurrentConnection()) setError(`${provider} realtime WebSocket failed. Check relay/provider configuration and reconnect.`);
+    };
+    socket.onclose = () => {
+      if (isCurrentConnection()) void reportUnexpectedTransportLoss(`${provider} realtime connection closed unexpectedly.`);
+    };
+
     if (payload.ttsRelayUrl) {
       const outputContext = new AudioContext();
       ttsAudioContextRef.current = outputContext;
       await outputContext.resume().catch(() => undefined);
+      if (!isCurrentConnection()) {
+        await outputContext.close().catch(() => undefined);
+        if (ttsAudioContextRef.current === outputContext) ttsAudioContextRef.current = null;
+        return;
+      }
       const ttsSocket = new WebSocket(payload.ttsRelayUrl);
       ttsSocketRef.current = ttsSocket;
       ttsSocket.onmessage = (event) => {
+        if (!isCurrentConnection() || ttsSocketRef.current !== ttsSocket) return;
         let data: Record<string, unknown>;
         try { data = JSON.parse(String(event.data)) as Record<string, unknown>; } catch { return; }
         const type = String(data.type ?? "");
@@ -639,8 +700,12 @@ export function VoiceWorkspace({
           }
         }
       };
-      ttsSocket.onerror = () => setError(`${provider} streaming speech WebSocket failed. Check the connected provider and relay.`);
+      ttsSocket.onerror = () => {
+        if (isCurrentConnection() && ttsSocketRef.current === ttsSocket)
+          setError(`${provider} streaming speech WebSocket failed. Check the connected provider and relay.`);
+      };
       ttsSocket.onclose = () => {
+        if (!isCurrentConnection() || ttsSocketRef.current !== ttsSocket) return;
         ttsReady = false;
         if (provider === "sarvam" && !expectedDisconnectRef.current) {
           void reportUnexpectedTransportLoss("Sarvam Bulbul realtime speech socket closed. The live conversation cannot continue without TTS.");
@@ -649,6 +714,10 @@ export function VoiceWorkspace({
     }
 
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    if (!isCurrentConnection()) {
+      stream.getTracks().forEach(track => track.stop());
+      return;
+    }
     streamRef.current = stream;
     const audioContext = new AudioContext();
     geminiAudioContextRef.current = audioContext;
@@ -659,7 +728,8 @@ export function VoiceWorkspace({
     source.connect(processor);
     processor.connect(audioContext.destination);
     processor.onaudioprocess = (event) => {
-      if (micMutedRef.current || ttsGenerationRef.current || socket.readyState !== WebSocket.OPEN) return;
+      if (!isCurrentConnection() || micMutedRef.current
+          || (provider !== "sarvam" && ttsGenerationRef.current) || socket.readyState !== WebSocket.OPEN) return;
       const pcm = downsampleTo16k(event.inputBuffer.getChannelData(0), audioContext.sampleRate);
       if (!pcm.length) return;
       const audio = pcm16ToBase64(pcm);
@@ -671,39 +741,6 @@ export function VoiceWorkspace({
 
     microphoneReady = true;
     activate();
-
-    socket.onmessage = (event) => {
-      let data: Record<string, unknown>;
-      try { data = JSON.parse(String(event.data)) as Record<string, unknown>; } catch { return; }
-      const type = String(data.type ?? data.message_type ?? "");
-      if ((type === "status" && data.value === "connected") || type === "session_started") {
-        sttReady = true;
-        activate();
-      }
-      if (type === "transcript_partial") {
-        if (typeof data.text === "string" && data.text.trim()) setNotice(`Hearing: ${data.text.trim()}`);
-      }
-      if (type === "transcript_final") {
-        const transcript = typeof data.text === "string" ? data.text.trim() : "";
-        const now = Date.now();
-        const previous = lastProviderFinalRef.current;
-        if (transcript && !(previous?.text === transcript && now - previous.at < 1800)) {
-          lastProviderFinalRef.current = { text: transcript, at: now };
-          void submitHostTurn(transcript, true);
-        }
-      }
-      if (type === "error") {
-        const message = typeof data.message === "string" ? data.message : `${provider} realtime speech recognition failed.`;
-        setError(message);
-        if (data.fatal === true) {
-          void reportUnexpectedTransportLoss(message);
-        }
-      }
-    };
-    socket.onerror = () => setError(`${provider} realtime WebSocket failed. Check relay/provider configuration and reconnect.`);
-    socket.onclose = () => {
-      if (!expectedDisconnectRef.current) void reportUnexpectedTransportLoss(`${provider} realtime connection closed unexpectedly.`);
-    };
 
     const deadline = Date.now() + 20_000;
     while (sessionRef.current?.status !== "active" && socket.readyState !== WebSocket.CLOSED && Date.now() < deadline) {
@@ -1093,12 +1130,17 @@ export function VoiceWorkspace({
   function toggleMute() {
     const next = !micMuted;
     micMutedRef.current = next;
-    streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next && !ttsGenerationRef.current; });
+    streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next && (realtimeProviderRef.current === "sarvam" || !ttsGenerationRef.current); });
     setMicMuted(next);
-    setNotice(next ? "Microphone muted. The realtime session remains connected." : ttsGenerationRef.current ? "Microphone will resume after Clara finishes speaking." : "Microphone unmuted. Listening for speech.");
+    setNotice(next ? "Microphone muted. The realtime session remains connected." : ttsGenerationRef.current && realtimeProviderRef.current !== "sarvam" ? "Microphone will resume after Clara finishes speaking." : "Microphone unmuted. Listening for speech.");
   }
 
   function interrupt() {
+    // Invalidate every in-flight SSE callback before touching playback. This
+    // stops late tokens/final events from reviving the cancelled response; it
+    // does not undo host-authorized actions that may already have completed.
+    turnSequenceRef.current += 1;
+    abortRef.current?.abort();
     if (realtimeProviderRef.current === "gemini") window.speechSynthesis?.cancel();
     if (ttsSocketRef.current?.readyState === WebSocket.OPEN && ttsGenerationRef.current) {
       ttsSocketRef.current.send(JSON.stringify({ type: "interrupt", generationId: ttsGenerationRef.current }));

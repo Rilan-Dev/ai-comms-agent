@@ -72,7 +72,7 @@ describe("Clara realtime voice transport", () => {
   });
 
   it("uses the same shared authorized email runtime for spoken and typed turns", () => {
-    expect(turnRoute).toContain('import { runEmailAgentTurn } from "@ai-comms-agent/email-agent-runtime"');
+    expect(turnRoute).toMatch(/import \{[^}]*\brunEmailAgentTurn\b[^}]*\} from "@ai-comms-agent\/email-agent-runtime"/);
     expect(turnRoute).toContain("if (!subject.membership)");
     expect(turnRoute).toContain("subject.membership.role");
     expect(turnRoute).toContain('conversation_id: typeof session.conversation_id === "string"');
@@ -108,7 +108,7 @@ describe("Clara realtime voice transport", () => {
     expect(provider).toContain("let sttReady = false;");
     expect(provider).toContain('let ttsReady = provider !== "sarvam";');
     expect(provider).toContain("let microphoneReady = false;");
-    expect(provider).toContain("if (!sttReady || !ttsReady || !microphoneReady || activationStartedRef.current) return;");
+    expect(provider).toContain("if (!isCurrentConnection() || !sttReady || !ttsReady || !microphoneReady || activationStartedRef.current) return;");
     expect(provider).toContain('if (type === "status" && data.value === "connected")');
     expect(provider).toContain("ttsReady = true;");
     expect(provider).toContain("sttReady = true;");
