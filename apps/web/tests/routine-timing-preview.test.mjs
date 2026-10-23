@@ -18,8 +18,7 @@ test("calendar 09:00 local and every 24 elapsed hours are separate explicit choi
   assert.match(page, /kind === "weekly"/);
   assert.match(page, /kind === "interval"/);
   assert.match(page, /everyMinutes: 1440/);
-  assert.match(page, /cadence: "daily"/);
-  assert.match(page, /cadence: "weekly"/);
+  assert.match(page, /cadence: kind === "weekly" \? "weekly" : "daily"/);
   assert.match(page, /name="timeZone"/);
   assert.match(page, /name="localTime"/);
   assert.match(page, /name="weekday"/);
