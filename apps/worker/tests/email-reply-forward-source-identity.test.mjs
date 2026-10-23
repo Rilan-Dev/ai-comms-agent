@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { eligibleReplyForwardSourceId, isLocalEmailMessageId } from "../../../packages/email-agent-runtime/src/email-source-identity.ts";
+import { eligibleReplyForwardSourceId, isLocalEmailMessageId, reviewedForwardSubject } from "../../../packages/email-agent-runtime/src/email-source-identity.ts";
 
 const write = () => readFileSync(new URL("../../../packages/email-agent-runtime/src/email-write-tools.ts", import.meta.url), "utf8");
 const worker = () => readFileSync(new URL("../src/email/action-worker.ts", import.meta.url), "utf8");
@@ -64,4 +64,19 @@ test("manual approvals and BOTH execution paths resolve local rows before provid
     assert.match(source, /Boolean\(source\.is_draft\)/);
     assert.match(source, /provider_message_id\.startsWith\("local-draft:"\)/);
   }
+});
+
+test("subjectless provider forwards have an explicit reviewed subject, never an unsendable empty snapshot", () => {
+  assert.equal(reviewedForwardSubject(null), "Fwd: (no subject)");
+  assert.equal(reviewedForwardSubject(""), "Fwd: (no subject)");
+  assert.equal(reviewedForwardSubject("Project update"), "Fwd: Project update");
+  assert.equal(reviewedForwardSubject("Fwd: Project update"), "Fwd: Project update");
+  assert.equal(reviewedForwardSubject("Re: Project update"), "Fwd: Re: Project update");
+  assert.ok(reviewedForwardSubject("a".repeat(998)).length <= 998);
+  const source = write();
+  const forward = source.slice(source.indexOf('const requestForward = makeTool('), source.indexOf('return [draftCreate'));
+  assert.match(forward, /subject: reviewedForwardSubject\(source\.subject\)/);
+  assert.doesNotMatch(forward, /subject: text\(source\.subject, 998\)/);
+  const draft = source.slice(source.indexOf('const forwardDraft = makeTool('), source.indexOf('const requestSend = makeTool('));
+  assert.match(draft, /reviewedForwardSubject\(source\.subject\)/);
 });
