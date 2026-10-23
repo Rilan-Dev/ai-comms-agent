@@ -13,6 +13,7 @@ import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
 import { canUseEmailAccountBinding, hasEmailToolCapabilities } from "./email-tool-policy";
 import { preserveEmailBody } from "./email-body";
 import { normalizeEmailRecipients } from "./email-recipients";
+import { eligibleReplyForwardSourceId } from "./email-source-identity";
 
 type Input = Record<string, unknown>;
 type Row = Record<string, unknown>;
@@ -100,8 +101,9 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
 
   async function checkMessage(accountId: string, messageId: string, context: ToolContext): Promise<Row> {
     const message = await getMailMessageForOrganization(context.organization_id, messageId);
-    if (!message || String(message.email_account_id) !== accountId) {
-      throw new EmailWriteFailure("message_not_found", "The message was not found in the selected mailbox.");
+    if (!message || !eligibleReplyForwardSourceId(message, accountId)) {
+      throw new EmailWriteFailure("message_not_found",
+        "The source must be a synchronized, provider-backed message in the selected mailbox; drafts cannot be replied to or forwarded.");
     }
     return message;
   }
@@ -252,7 +254,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       agentId: context.agent_id,
       emailAccountId: account.id,
       actionType: "reply_email",
-      recipientSnapshot: { messageId: text(source.provider_message_id, 500) || messageId, to: [recipient], cc: [], bcc: [], subject, bodyText: preserveEmailBody(input.body_text) },
+      recipientSnapshot: { messageId, to: [recipient], cc: [], bcc: [], subject, bodyText: preserveEmailBody(input.body_text) },
       requestedBy: context.user_id,
       idempotencyKey: `${context.turn_id}:reply:${messageId}`,
       correlationId: context.correlation_id,
@@ -271,7 +273,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       agentId: context.agent_id,
       emailAccountId: account.id,
       actionType: "forward_email",
-      recipientSnapshot: { messageId: text(source.provider_message_id, 500) || messageId, to: recipients, subject: text(source.subject, 998), bodyText: preserveEmailBody(source.text_body) },
+      recipientSnapshot: { messageId, to: recipients, subject: text(source.subject, 998), bodyText: preserveEmailBody(source.text_body) },
       requestedBy: context.user_id,
       idempotencyKey: `${context.turn_id}:forward:${messageId}`,
       correlationId: context.correlation_id,
