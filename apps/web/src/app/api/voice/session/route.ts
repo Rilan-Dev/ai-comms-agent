@@ -106,6 +106,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "voice_not_configured", message: "Choose an ElevenLabs voice ID in the agent voice settings before starting a voice session." }, { status: 503 });
     }
 
+    // This is the realtime conversation surface, not the one-shot Voice Chat
+    // STT/TTS feature. Sarvam must have its dedicated authenticated WebSocket
+    // relay available; never silently activate an ordinary REST speech pipeline.
+    if (voiceProvider === "sarvam" && (!process.env.VOICE_RELAY_PUBLIC_URL?.trim()
+      || (process.env.AUTH_SECRET?.trim().length ?? 0) < 32)) {
+      return NextResponse.json({
+        error: "sarvam_realtime_relay_required",
+        message: "Sarvam live conversation needs the secure voice WebSocket relay. Ask the workspace operator to connect the voice relay; batch speech-to-text/text-to-speech is not a live conversation.",
+      }, { status: 503 });
+    }
+
     // Persist the lifecycle record before requesting realtime transport details,
     // so failures cannot leave an untracked session that the UI believes started.
     const persisted = await createVoiceSession({ organizationId, agentId, userId: subject.user.id, conversationId: safeConversationId });
@@ -118,6 +129,14 @@ export async function POST(request: Request) {
         sessionId: String(persisted.id),
         voiceOverride: { provider: voiceProvider, model: voiceModel, voiceId },
       });
+      if (voiceProvider === "sarvam" &&
+          (transport.transportMode !== "realtime" || transport.realtimeProvider !== "sarvam")) {
+        await endVoiceSessionForOrganization(organizationId, String(persisted.id), "realtime_unavailable");
+        return NextResponse.json({
+          error: "sarvam_realtime_unavailable",
+          message: "Sarvam realtime speech is not ready for this agent. Verify the connected Sarvam provider credential and WebSocket relay configuration.",
+        }, { status: 503 });
+      }
       const configured = await configureStartingVoiceSessionForOrganization({
         organizationId,
         sessionId: String(persisted.id),

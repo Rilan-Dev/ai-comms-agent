@@ -12,6 +12,7 @@ import { authorize, authorizationErrorToResponse } from "@/lib/identity/authoriz
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { assertSameOrigin } from "@/lib/identity/local-auth";
 import { matchesManualComposeReview } from "@/lib/mail/manual-compose-review";
+import { eligibleReplyForwardSourceId, isLocalEmailMessageId } from "@ai-comms-agent/email-agent-runtime/email-source-identity";
 
 export const dynamic = "force-dynamic";
 
@@ -81,9 +82,14 @@ export async function POST(request: Request) {
       }
     } else {
       const messageId = typeof body?.messageId === "string" ? body.messageId : "";
-      const message = messageId ? await getMailMessageForOrganization(organizationId, messageId) : null;
-      if (!message || String(message.email_account_id) !== emailAccountId) {
-        return NextResponse.json({ error: "not_found", message: "Source message was not found in this organization/mailbox." }, { status: 404 });
+      if (!isLocalEmailMessageId(messageId)) return NextResponse.json({
+        error: "invalid_source_message", message: "Choose a synchronized message from this mailbox before requesting reply or forward approval.",
+      }, { status: 422 });
+      const message = await getMailMessageForOrganization(organizationId, messageId);
+      if (!message || !eligibleReplyForwardSourceId(message, emailAccountId)) {
+        // Worker requires the tenant-scoped LOCAL ID, backed by a genuine
+        // provider message, rather than an unsynced draft/provider-only ID.
+        return NextResponse.json({ error: "not_found", message: "A provider-backed source message was not found in this organization/mailbox." }, { status: 404 });
       }
       // A saved From header is untrusted provider data. For replies, validate
       // it exactly as a caller-specified forwarding recipient; never coerce

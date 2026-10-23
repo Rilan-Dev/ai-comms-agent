@@ -1130,3 +1130,31 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Implemented:** Read-only actor/agent compose permissions, explicit multi-sender From and missing To, safe authenticated name signature, tool-level recipient guards, trusted chat+voice guidance; separate human send approval retained. `sessions/DEV01-CHAT-COMPOSE-IDENTITY-20261023.md` is full task record.
 - **Evidence:** 54/54 source-regression assertions, 22/22 source invariants; host native tests/TypeScript/browser/provider pending, no live claims or sender/recipient guesses.
 - **Next:** Run focused host Node/Vitest/typecheck and authenticated two-mailbox, missing name and denied permissions acceptance; OPS deploy and FIX bugs separately.
+
+### DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023 — 2026-10-23
+- **Role:** DEV-01 / Forge; owner-requested single-purpose AI provider configuration redesign; direct `Development`, start `574c5151`; live selected tab inspected read-only.
+- **Delivered:** task-first category navigation, accessible selected provider cards replacing redundant dropdown, no default provider, guided credential/model/voice checklist/save panel, model+key truthful statuses, org lookup retry and safeguards preserved. Tests and full details in `sessions/DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023.md`.
+- **Verified only:** 19/19 in-memory current-source test callbacks and 6/6 isolated readiness classifications; full repo Node/Vitest/typecheck, browser with new UI, provider/database/deployment NOT RUN. No changes to live credentials, provider API, agent model override, C3/R1b or other agent scope.
+- **Next:** exact committed Node provider UI suites, focused web Vitest/typecheck, authorized browser and OPS deployed SHA/real provider model selection, then independent next DEV-01 slice. Do not poll CI/Vercel.
+
+### DEV01-CATCHUP-SOURCE-DETAILS-20261023 — source-readable P1 source links
+- **Role:** DEV-01/Forge; user-authorized continuing practical human-first mail assistant P0–P7 on direct Development; recovered shared architecture, phase, current NEXT_ACTION, central records and DEV-01 role memory/worklog.
+- **Deliverables:** Five-case regression, bounded source header display helper, source-list-only canonical metadata projection after private manifest grants/revisions, original-email card subject/sender/UTC, new Superpowers P1b plan. Commits `7d1230b9,abe796cd,37e7ac1,bebd8775,61d0a74,fa5e72b2`. No C3 generator/WhatsApp/routine activation or private visit tracking.
+- **Verification:** GitHub 17/17 focused source checks; isolated Node 3/3 helper + strict TS pass; actual repo/DB/authenticated browser/deployed SHA not run.
+- **Next:** Exact native Node/Vitest/web+DB typecheck and 0/200/320/tenant/revocation/manual-review acceptance from `docs/project-control/sessions/DEV01-CATCHUP-SOURCE-DETAILS-20261023.md` and new NEXT_ACTION. Preserve Phase 4 in progress and inactive C3/R1b/P6.
+
+
+## DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023
+
+Owner-selected Development recovered at ab7292fbb00263bb817ab2874ab4f66e10946f0f. Fresh native tests 54/54 pass (source/behavior scope only). Live Chromium login returns HTTP 522 origin timeout, so authenticated AI mail/WhatsApp acceptance is blocked with no external messages created. Current state, completed/in-progress/pending work, F01–F21 matrix and exact next action: docs/project-control/sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md. OPS-01 owns origin recovery; DEV-01 resumes frontend acceptance; FIX-01 owns proven application defects. Existing records and roles preserved.
+
+
+## DEV01-LIVE-AUTH-RECHECK-20261023
+
+Normal login API and auth/me returned 200; actual authenticated Chat opened once. Other app routes remain intermittent. Existing QA conversation was observed, not created by this session; no new outgoing action performed. Current Development focused checks 38/38 pass. See docs/project-control/sessions/DEV01-LIVE-AUTH-RECHECK-20261023.md. OPS-01 origin-path diagnosis; DEV-01 resume F01–F21 with authoritative pending/delivery checks.
+
+### DEV01-AUTOMATIC-DRAFT-SYNC-20261023 — 2026-10-23
+- **DEV-01 / Forge**, owner-scoped draft usability / automation feature on `Development` (initial `48c6dfde6eff4179ddee5598c6239a32d612fef4`). Recovered Phase4, `CHAT_CONTINUITY`, `NEXT_ACTION`, shared/role records and existing provider draft worker.
+- **Root cause:** Local draft create/edit never automatically queued provider Drafts sync; UI required manual POST per draft. Agent read tool could not select only drafts.
+- **Delivered:** Transactional queued create; safe queued edits and quarantined unknown attempts; legacy local_only row-locked worker admission; compact drafts list, state and exception-only retry; polling race fence; AI `drafts_only` read tool filter with tenant/account scope. Regression coverage added, no send/approval bypass.
+- **Status:** source contracts inspected/checked (113/113 earlier, 35/35 new, polling 12/12). Native tests/typechecks, PostgreSQL, external provider and browser NOT RUN. OPS rollout/health, FIX separate reproducible defects. Exact next commands and handoff `sessions/DEV01-AUTOMATIC-DRAFT-SYNC-20261023.md`.

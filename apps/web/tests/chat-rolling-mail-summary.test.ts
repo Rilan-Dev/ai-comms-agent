@@ -9,6 +9,8 @@ describe("FIX-01 rolling 24-hour email report", () => {
   it("interprets the reported user request accurately, without prior AI context", () => {
     expect(parseRollingMailSummaryRequest("Please Summery My Last Unreaded Mesaages from last 24hours"))
       .toEqual({ hours: 24, unreadOnly: true });
+    expect(parseRollingMailSummaryRequest("Can you please let me know last 24 hours emails received in my workspace?"))
+      .toEqual({ hours: 24, unreadOnly: false });
     expect(route.indexOf("parseRollingMailSummaryRequest(content)"))
       .toBeLessThan(route.indexOf("const history = await listChatMessages("));
   });

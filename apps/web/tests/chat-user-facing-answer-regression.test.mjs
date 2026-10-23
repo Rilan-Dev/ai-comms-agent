@@ -49,7 +49,8 @@ test("chat holds model text until user-facing validation, and does not persist p
 test("deterministic authorization feedback is labeled and provides the in-chat review path", () => {
   const denied = deniedEmailWriteExplanation("send email to recipient@example.com", new Set(["organization.read"]));
   assert.match(denied ?? "", /Security check \(not an AI-generated send confirmation\)/);
-  assert.match(denied ?? "", /Compose email/);
+  assert.match(denied ?? "", /inline email review in Chat/);
+  assert.doesNotMatch(denied ?? "", /Open Compose email/);
   assert.match(denied ?? "", /email\.write/);
   assert.match(denied ?? "", /No email was sent/);
   const unverified = unverifiedEmailActionExplanation();

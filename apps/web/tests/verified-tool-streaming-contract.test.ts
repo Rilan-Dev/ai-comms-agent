@@ -69,10 +69,10 @@ describe("native final read-only answer streaming after host tool execution", ()
     expect(prompt).toContain("declared.delete(item.tool_call_id)");
     expect(prompt).toContain("if (declared.size || results.length === 0 || results.length > 8)");
     expect(chat).toContain('emit("delta", { text: assistantOutput })');
-    // Legacy JSON voice responses carry the canonical verified answer, not a
-    // speculative streamed draft.
-    expect(voice).toContain("const voiceAnswer = verifiedSummary || (explicitEmailAction ? unverifiedEmailActionExplanation() : turn.text);");
-    expect(voice).toContain("text: voiceAnswer");
+    expect(voice).toContain('emit("delta", { text: validated })');
+    expect(chat).toContain('emit("delta", { text: validated })');
+    expect(voice).toContain("const validated = userFacingChatAnswer(generated)");
+    expect(chat).toContain("const validated = userFacingChatAnswer(generated)");
   });
   it("preserves ambient email/WhatsApp context through the final read-only stream when the tool chain stops after discovery-only calls", () => {
     // Regression: when the model called email.accounts.list (discovery)

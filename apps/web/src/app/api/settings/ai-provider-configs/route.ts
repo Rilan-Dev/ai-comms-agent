@@ -11,7 +11,7 @@ import {
 } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { getAuthenticatedAppContext, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
-import { documentedRealtimeModels, hasDocumentedRealtimeModels } from "@/lib/ai/live-model-catalog";
+import { documentedRealtimeModels, documentedSarvamVoiceModels, hasDocumentedRealtimeModels, hasDocumentedSarvamVoiceModels } from "@/lib/ai/live-model-catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -103,6 +103,16 @@ export async function PUT(request: Request) {
       return NextResponse.json({
         error: "unsupported_realtime_model",
         message: "Choose a supported realtime speech-recognition model for this provider. Legacy conversational agent markers are not WebSocket model IDs.",
+      }, { status: 422 });
+    }
+    // Sarvam /v2/models is chat-only. The current voice pipeline accepts the
+    // documented Bulbul/Saaras IDs exposed by the same setup dropdown.
+    // Reject arbitrary capability IDs rather than saving unusable voice config.
+    if (model && hasDocumentedSarvamVoiceModels(provider, purpose) &&
+        !documentedSarvamVoiceModels(provider, purpose).some(item => item.id === model)) {
+      return NextResponse.json({
+        error: "unsupported_voice_model",
+        message: "Choose a supported Sarvam speech model shown for this capability. Models are vendor-documented, not live-verified for your account.",
       }, { status: 422 });
     }
     const suppliedKey = typeof body.apiKey === "string" ? body.apiKey.trim() : "";

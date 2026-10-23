@@ -542,3 +542,27 @@ The generic Clara chat turn invokes ambient RAG/email search and must **not** be
 - A connected account is not permission to select it as From when the agent has multiple mailboxes. The UI must request an explicit sender, and missing To must prompt for a complete address. Display signed-in `email.write`, agent draft, agent send-request and provider capability separately, never conflate request approval with delivered mail.
 - `AuthSubject.user.name/email` may be used only for an editable, bounded signature and private model context; absent fields cannot be fabricated. Human sign-off review, tenant-scoped grants and approved send path remain independent.
 - DEV-01 session `sessions/DEV01-CHAT-COMPOSE-IDENTITY-20261023.md`; 54/54 source contracts + 22/22 invariants on Development, native/browser/DB pending. No live permissions changed or external email sent.
+
+### DEV-01 — 2026-10-23 — provider UI capability clarity
+- The original AI Provider Setup showed the same vendors as both selectable status cards and a second Provider dropdown. For people configuring AI without backend knowledge, present four purpose areas and compatible provider cards, with one selected editor only on explicit choice.
+- “Key enabled” can falsely imply a ready chat/voice capability. Readiness for this UX requires an enabled saved credential and nonempty saved model for each required purpose (Voice Chat = TTS+STT); a configured record is still not a successful live API/realtime session. Vendor catalog/no-secret failures remain truthful. Never auto-reuse an ElevenLabs Realtime key without a separate confirmed action.
+- Preserve org/tenant abort/fail-closed and plaintext key reset on capability/provider changes; when org context GET fails surface retry instead of spinning forever. Full source/evidence and next action `sessions/DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023.md`. Native runner/browser/deployment acceptance still pending; FIX/OPS scopes separate.
+
+### DEV-01 2026-10-23 — canonical header UX before AI generation
+- A five-day permitted source manifest can be correct yet unusable if original email links only display UUIDs. Display bounded original sender, subject and UTC received date from canonical PostgreSQL **after** per-user/agent/mailbox grant and revision checks; preserve cursor/feature flag and do not return bodies in the source-list API.
+- Empty/invalid headers are **unavailable**, not unknown AI guesses. A loaded source list is not generated high/medium/low priority, reviewed work, provider unread state, five-day inactivity or a scheduled/WhatsApp digest. Source metadata can be untrusted text: escape in the UI, cap length and sanitize controls.
+- Keep privacy and delivery gates: never collect employee attendance or infer absence from a chosen lookback; per-user visit telemetry needs consent/retention/opt-out, C3 activation needs grant/lease/provider acceptance, and routine consent/WhatsApp delivery are independently security gated. P1b evidence: `DEV01-CATCHUP-SOURCE-DETAILS-20261023`, 17/17 structural checks, 3/3 isolated helper cases, full runtime unverified.
+
+
+## DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023
+
+Owner-selected Development recovered at ab7292fbb00263bb817ab2874ab4f66e10946f0f. Fresh native tests 54/54 pass (source/behavior scope only). Live Chromium login returns HTTP 522 origin timeout, so authenticated AI mail/WhatsApp acceptance is blocked with no external messages created. Current state, completed/in-progress/pending work, F01–F21 matrix and exact next action: docs/project-control/sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md. OPS-01 owns origin recovery; DEV-01 resumes frontend acceptance; FIX-01 owns proven application defects. Existing records and roles preserved.
+
+
+## DEV01-LIVE-AUTH-RECHECK-20261023
+
+Normal login API and auth/me returned 200; actual authenticated Chat opened once. Other app routes remain intermittent. Existing QA conversation was observed, not created by this session; no new outgoing action performed. Current Development focused checks 38/38 pass. See docs/project-control/sessions/DEV01-LIVE-AUTH-RECHECK-20261023.md. OPS-01 origin-path diagnosis; DEV-01 resume F01–F21 with authoritative pending/delivery checks.
+
+### DEV-01 lesson DEV01-AUTOMATIC-DRAFT-SYNC-20261023 — 2026-10-23
+- Provider draft auto-save should be *derived from an authorized draft write* and committed as a bounded durable worker queue; never require one technical sync button per saved message. Preserve tenant/account/capability gates, row-locked admission, fenced in-flight provider updates and no replay of unknown external outcomes. A saved draft still cannot be sent without the separate human approval workflow.
+- AI draft discovery uses optional `drafts_only` on existing registered `email.messages.list`/`email.search`, with normal account/agent/user read boundaries; it does not grant write or outbound send rights. Compact pending review UX and stale-read fencing are essential for reliable user confidence. See `sessions/DEV01-AUTOMATIC-DRAFT-SYNC-20261023.md`.

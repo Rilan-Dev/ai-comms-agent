@@ -351,6 +351,9 @@ export function VoiceWorkspace({
           const provider = realtimeProviderRef.current;
           const generationId = `${current.id}-${sequence}`;
           if (streamProviderTts(answer, generationId)) return;
+          if (provider === "sarvam") {
+            throw new Error("Sarvam realtime TTS WebSocket is unavailable. No batch TTS fallback is allowed in a live voice conversation.");
+          }
           const response = await fetch("/api/voice/speech/speak", {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -578,6 +581,28 @@ export function VoiceWorkspace({
 
     const socket = new WebSocket(payload.relayUrl);
     providerSocketRef.current = socket;
+    if (provider === "sarvam" && !payload.ttsRelayUrl) {
+      throw new Error("Sarvam live voice needs both a Saaras STT and Bulbul TTS WebSocket relay.");
+    }
+    // Do not mark the live conversation active until BOTH vendor streams have
+    // completed their upstream handshakes and the microphone is actually
+    // capturing. A browser WebSocket OPEN alone is not provider readiness.
+    let sttReady = false;
+    let ttsReady = provider !== "sarvam";
+    let microphoneReady = false;
+    const activate = () => {
+      if (!sttReady || !ttsReady || !microphoneReady || activationStartedRef.current) return;
+      activationStartedRef.current = true;
+      void patchSession({ action: "activate" }).then(() => {
+        setConnected(true);
+        setNotice(`${provider === "sarvam" ? "Sarvam Saaras and Bulbul" : "ElevenLabs Scribe"} realtime voice is connected. Spoken turns use Clara's authorized email runtime.`);
+        streamProviderTts("Hello, I'm Clara. How can I help you with your email and communication tasks today?", `${current.id}-welcome`);
+      }).catch((e) => {
+        activationStartedRef.current = false;
+        setError(e instanceof Error ? e.message : "Could not persist the connected provider session.");
+        stopMedia();
+      });
+    };
     if (payload.ttsRelayUrl) {
       const outputContext = new AudioContext();
       ttsAudioContextRef.current = outputContext;
@@ -588,6 +613,10 @@ export function VoiceWorkspace({
         let data: Record<string, unknown>;
         try { data = JSON.parse(String(event.data)) as Record<string, unknown>; } catch { return; }
         const type = String(data.type ?? "");
+        if (type === "status" && data.value === "connected") {
+          ttsReady = true;
+          activate();
+        }
         if (type === "audio" && typeof data.audio === "string") {
           const generationId = typeof data.generationId === "string" ? data.generationId : "";
           const rate = Number(data.sampleRate) || (provider === "sarvam" ? 24000 : 16000);
@@ -610,7 +639,13 @@ export function VoiceWorkspace({
           }
         }
       };
-      ttsSocket.onerror = () => setError(`${provider} streaming speech output is unavailable; the host will try the provider's speech endpoint instead.`);
+      ttsSocket.onerror = () => setError(`${provider} streaming speech WebSocket failed. Check the connected provider and relay.`);
+      ttsSocket.onclose = () => {
+        ttsReady = false;
+        if (provider === "sarvam" && !expectedDisconnectRef.current) {
+          void reportUnexpectedTransportLoss("Sarvam Bulbul realtime speech socket closed. The live conversation cannot continue without TTS.");
+        }
+      };
     }
 
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
@@ -634,25 +669,17 @@ export function VoiceWorkspace({
       try { socket.send(JSON.stringify(frame)); } catch {}
     };
 
-    const activate = () => {
-      if (activationStartedRef.current) return;
-      activationStartedRef.current = true;
-      void patchSession({ action: "activate" }).then(() => {
-        setConnected(true);
-        setNotice(`${provider === "sarvam" ? "Sarvam Saaras" : "ElevenLabs Scribe"} realtime STT is connected. Spoken turns use Clara's authorized email runtime; answers stream through provider TTS when available.`);
-        streamProviderTts("Hello, I'm Clara. How can I help you with your email and communication tasks today?", `${current.id}-welcome`);
-      }).catch((e) => {
-        activationStartedRef.current = false;
-        setError(e instanceof Error ? e.message : "Could not persist the connected provider session.");
-        stopMedia();
-      });
-    };
+    microphoneReady = true;
+    activate();
 
     socket.onmessage = (event) => {
       let data: Record<string, unknown>;
       try { data = JSON.parse(String(event.data)) as Record<string, unknown>; } catch { return; }
       const type = String(data.type ?? data.message_type ?? "");
-      if ((type === "status" && data.value === "connected") || type === "session_started") activate();
+      if ((type === "status" && data.value === "connected") || type === "session_started") {
+        sttReady = true;
+        activate();
+      }
       if (type === "transcript_partial") {
         if (typeof data.text === "string" && data.text.trim()) setNotice(`Hearing: ${data.text.trim()}`);
       }
@@ -978,8 +1005,10 @@ export function VoiceWorkspace({
         else if (payload.transport.realtimeProvider === "gemini") await connectGeminiRealtime(payload.session, payload.transport);
         else if (payload.transport.realtimeProvider === "sarvam" || payload.transport.realtimeProvider === "elevenlabs") await connectProviderRealtime(payload.session, payload.transport, payload.transport.realtimeProvider);
         else throw new Error("This provider has not completed its native realtime transport integration.");
-      } else if (payload.transport.transportMode === "pipeline" && (payload.transport.realtimeProvider === "sarvam" || payload.transport.realtimeProvider === "elevenlabs")) {
-        await connectSpeechPipeline(payload.session, payload.transport.realtimeProvider);
+      } else if (payload.transport.transportMode === "pipeline" && payload.transport.realtimeProvider === "elevenlabs") {
+        await connectSpeechPipeline(payload.session, "elevenlabs");
+      } else if (payload.transport.realtimeProvider === "sarvam") {
+        throw new Error("Sarvam realtime voice requires a connected WebSocket relay. The batch STT/TTS Voice Chat fallback is not a live conversation.");
       } else {
         setNotice("This provider is configured for the authorized text bridge, not live microphone audio. The session is not marked connected.");
       }

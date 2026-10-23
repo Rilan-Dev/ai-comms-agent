@@ -119,13 +119,33 @@ export async function prepareBriefing(p: TrustedBriefingPrincipal, request: Brie
   }));
 }
 
-export async function listBriefingSources(p: TrustedBriefingPrincipal, id: string, cursor: string | null = null, limit = 200): Promise<{items: BriefingSource[]; nextCursor: string | null}> {
+export async function listBriefingSources(p: TrustedBriefingPrincipal, id: string, cursor: string | null = null, limit = 200): Promise<{
+  items: Array<BriefingSource & { subject: string | null; sender: string | null; receivedAt: string | null }>;
+  nextCursor: string | null;
+}> {
   if (!Number.isInteger(limit) || limit < 1 || limit > 200 || (cursor !== null && !/^[0-9a-f-]{36}$/i.test(cursor))) throw new Error('Invalid source pagination');
   return withTransaction(async client => {
+    // This revalidates owner + agent, all mailbox grants, scope fingerprint and
+    // source revisions before any email header metadata is selected.
     await currentManifest(client, p, id);
-    const rows = (await client.query(`SELECT email_message_id,mailbox_id,source_thread_id,content_revision,source_ordinal FROM summary_sources WHERE summary_id=$1 AND ($2::uuid IS NULL OR email_message_id>$2::uuid) ORDER BY email_message_id LIMIT $3`, [id, cursor, limit + 1])).rows;
+    const rows = (await client.query(`
+      SELECT s.email_message_id,s.mailbox_id,s.source_thread_id,s.content_revision,s.source_ordinal,
+        m.subject,m.from_email,m.received_at
+      FROM summary_sources s
+      LEFT JOIN email_messages m ON m.id=s.email_message_id
+        AND m.organization_id=s.organization_id AND m.email_account_id=s.mailbox_id
+      WHERE s.summary_id=$1 AND ($2::uuid IS NULL OR s.email_message_id>$2::uuid)
+        AND s.organization_id=$4 AND s.owner_user_id=$5 AND s.agent_id=$6
+      ORDER BY s.email_message_id LIMIT $3
+    `, [id, cursor, limit + 1, p.organizationId, p.userId, p.agentId])).rows;
     const selected = rows.slice(0, limit);
-    return { items: selected.map(s => ({ messageId: s.email_message_id, mailboxId: s.mailbox_id, threadId: s.source_thread_id, contentRevision: s.content_revision })), nextCursor: rows.length > limit ? selected.at(-1).email_message_id : null };
+    // Only safe identifiers and header metadata, never raw bodies or attachments.
+    return { items: selected.map(s => ({
+      messageId: s.email_message_id, mailboxId: s.mailbox_id,
+      threadId: s.source_thread_id, contentRevision: s.content_revision,
+      subject: s.subject, sender: s.from_email,
+      receivedAt: s.received_at ? new Date(s.received_at).toISOString() : null,
+    })), nextCursor: rows.length > limit ? selected.at(-1).email_message_id : null };
   });
 }
 

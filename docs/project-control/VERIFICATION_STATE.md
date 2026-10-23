@@ -1,3 +1,32 @@
+## DEV-01 — live authentication succeeded; downstream acceptance incomplete — 2026-10-23
+
+[Latest live recheck](sessions/DEV01-LIVE-AUTH-RECHECK-20261023.md): ordinary login API **HTTP 200**, authenticated auth/me **HTTP 200**, actual Chat frontend opened once. Earlier “cannot log in” is superseded. Application routes remain intermittent (timeouts/Cloudflare error surfaces); existing QA transcript is historical, not a new send or current delivery proof. No new draft/approval/email/WhatsApp action performed. Focused Development permission/approval/summary checks **38/38 pass** after pulling concurrent FIX-01 corrections. OPS-01 diagnoses intermittent origin/application access; DEV-01 resumes the preserved F01–F21 matrix after checking existing pending actions to prevent duplicates. Work remains on Development; no phase/feature activation.
+
+---
+
+## DEV-01 — current Development and frontend acceptance checkpoint — 2026-10-23
+
+Owner now directs all work/pushes to **Development**. Latest recovery and completed/in-progress/pending checklist: [current handoff](sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md). C3 source exists but remains unregistered; C4 source details, R1a preview and reviewed Chat email/WhatsApp tools exist, with live acceptance pending. Current Development native checks: **54 passed, 0 failed/skipped**. Live `/login` returns **Cloudflare HTTP 522 Host Error**; no login, draft, email, approval or WhatsApp test was executed. **Exact next:** OPS-01 restores origin availability; DEV-01 resumes the documented F01–F21 frontend matrix, including permission-negative and human-approval cases, using owner-authorized WhatsApp recipient. No deployment, permission mutation or feature activation performed. Phase 4 remains implementation_in_progress; older entries retained as history.
+
+---
+
+## DEV01-CATCHUP-SOURCE-DETAILS-20261023 — source-only evidence
+
+- **Branch:** `Development`, starting `10860d93c4fc2aac299ae3ae4132d8bd235ad7e8`. New five-case native Node regression and private C2/C4 SQL+UI source links implemented; parent product plan P1b `docs/superpowers/plans/2026-10-23-human-readable-catchup-sources.md`.
+- **Executed narrow checks:** Re-fetched committed helper, source SQL, private API, feature gate, UI and regression: **17/17** read-only structural invariants. Isolated exact pure helper mirror under Node 22: **3/3 passed**; strict standalone TypeScript `tsc --strict --noEmit --target es2022` exit 0.
+- **NOT RUN / must not claim PASS:** Actual five-case committed Node test, C2/C4 Vitest, web/db package typechecks/build, PostgreSQL joins and tenant/revision lifecycle, authenticated browser 0/200/320 or screen reader, C3 generator/leases/provider, Meta/WhatsApp or deployment SHA. Source code is not production acceptance.
+- **Runtime next:** Execute exact tests/typechecks and privacy/feature-off cases in new top `NEXT_ACTION.md`. No C3 enable, presence collection, durable routines/standing consent, WhatsApp or provider operations authorized. FIX-01 independent source defects, OPS-01 CI/infrastructure/provider.
+
+---
+
+## DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023 — source-only / not production accepted
+- **Current Development:** purpose-driven provider cards and guided editor, TTS/STT and model+key status, provider-reset/org-abort invariants and error-retry flow. Exact record `sessions/DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023.md`.
+- **PASS limited:** 19/19 test callbacks executed in an isolated current-source V8 harness against fetched GitHub source (not the actual native module runner), 6/6 pure typed-helper status cases with signature stripped; earlier 18/18 focused source assertions. Existing credential reset and tenant-abort tests retained. No full source build acceptance.
+- **NOT RUN:** exact committed Node test files, live provider model Vitest, web TypeScript/build, keyboard/responsive browser with redesigned build, real provider credentials/catalog/reuse, auth/DB, CI/Vercel, deployed SHA. Read-only browser inspection observed the *old* page, not newly built source.
+- **Next:** exact current Development Node tests (`ai-provider-guided-setup`, `ai-provider-setup-safety`, `ai-provider-organization-safety`, `elevenlabs-voice-catalog-recovery`) then `pnpm --filter @ai-comms-agent/web typecheck` and provider model Vitest; OPS-01 deploy/live catalog/realtime; keep Phase 4 open.
+
+---
+
 ## DEV01-CATCHUP-COVERAGE-CLARITY-20261023 — source-only verification
 - **Starting HEAD:** `f68e7680`; source/test commits `5fb5c549,b6aecacf,cfed27d7`; plan `5bb6b08b` and session `683a9d43`. Preserve concurrent independent Chat UI changes.
 - **PASS, narrow:** Re-fetched GitHub sources and verified 14/14 concrete helper/UI invariants for deduplicated loaded links, nonnegative selected/remaining count, cursor handling, existing C4 source/review/C3-disabled contracts. Isolated local Node 22 helper mirror passed 5/5 behavior tests and standalone strict TypeScript, not equivalent to committed test runner.
@@ -1949,3 +1978,10 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **PASS:** Fresh GitHub Development source: 54/54 source-contract assertions evaluated by pattern against actual blobs; separate 22/22 invariant checks of same-org binding, user/agent permission distinctions, no direct send, profile provenance, single-sender-only default, Chat and voice guidance. 5 executable Vitest tests created but not executed.
 - **NOT RUN:** Committed Node/Vitest suites, workspace TypeScript, PostgreSQL, actual identity/agent policy, real mailbox/browser/voice, CI/Vercel, production. Do not call source-only checks runtime acceptance. Exact next host commands in `sessions/DEV01-CHAT-COMPOSE-IDENTITY-20261023.md`.
 - **2026-10-23 DEV01-CHAT-COMPOSE-IDENTITY correction:** GET aggregate readiness now disabled when multiple senders await selection (commit `335a7c3927f9413455a509524a742c175eae71fa`), separate per-mailbox permissions remain visible. 10/10 latest structural checks pass; native tests/typechecks still pending.
+
+- **2026-10-23 provider-setup follow-on:** After immediate editor/model remount commits, re-fetched current `Development` source and executed 20/20 isolated regression callbacks (7 guided, 5 existing credential, 8 existing organization) plus prior six helper behavior cases; exact repo runner/typechecks/new-build browser still NOT RUN. `DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023` remains SOURCE-ONLY, not production accepted.
+
+### DEV01-AUTOMATIC-DRAFT-SYNC-20261023 — 2026-10-23 — committed source, host/provider acceptance pending
+- **Source checks:** 113/113 existing+new source regex contracts with corrected old assertion context, 9/9 invariants, 35/35 new agent draft source test regexes, and 12/12 post-fence UI behavior patterns. These are source tests/probes, not native Node/Vitest, real SQL engine, browser or provider acceptance.
+- **NOT RUN:** `node --import tsx --test apps/worker/tests/provider-draft-queue-safety.test.ts apps/worker/tests/local-draft-transaction.test.ts apps/worker/tests/agent-draft-autosave-contract.test.ts`; `pnpm --filter @ai-comms-agent/{shared,email-agent-runtime,db,worker,web} typecheck` as individual commands; PostgreSQL account and lease race integration; real Gmail/IMAP/Zoho Drafts; worker deployment/loop and UI browser.
+- **Boundary:** Explicit provider draft save is NOT an email send. Existing human send approval remains mandatory. On unknown provider outcome no automatic retry. OPS owns rollout and live QA; DEV-01 can independently continue product UX source, FIX-01 any reproduced provider/source defect. Details `sessions/DEV01-AUTOMATIC-DRAFT-SYNC-20261023.md`.

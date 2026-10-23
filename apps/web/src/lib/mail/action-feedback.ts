@@ -39,14 +39,14 @@ export function deniedEmailWriteExplanation(
   permissions: ReadonlySet<string>,
 ): string | null {
   if (permissions.has("email.write") || !isExplicitEmailMutationRequest(text)) return null;
-  return "Security check (not an AI-generated send confirmation): Your current organization membership does not grant email.write, so this request cannot save a draft or request sending. No draft or send-approval request was created. No email was sent. Open Compose email in Chat to see your actual user and agent permissions. An authorized administrator must correct your workspace role or grant through the approved access process; selecting agent tools does not grant user access. After authorization, explicitly choose From, enter To, review the message, Save email draft, and Request send approval. A human must approve before worker delivery.";
+  return "Security check (not an AI-generated send confirmation): Your current organization membership does not grant email.write, so this request cannot save a draft or request sending. No draft or send-approval request was created. No email was sent. Open the inline email review in Chat with the Write email draft or Prepare to send for approval action to see actual user and agent permissions. An authorized administrator must correct your workspace role or grant through the approved access process; selecting agent tools does not grant user access. After authorization, explicitly choose From, enter To, review the message, Save email draft, and Request send approval. A human must approve before worker delivery.";
 }
 
 /** An explicit email command needs a verified mutation tool result. A model
  * completion (including a tool-free answer or read-only search) cannot prove
  * that anything was drafted, approved or sent. */
 export function unverifiedEmailActionExplanation(): string {
-  return "Security check (not an AI-generated send confirmation): No email draft or send-approval request was confirmed by an authorized email tool. No email was sent by this request. Repeating this same command cannot confirm delivery. Choose Write email draft below (or Compose email above), select the connected From mailbox and the exact To address, review the message, then Save email draft. Only after a saved draft is confirmed should you Request send approval. If Save is disabled, check the displayed user email.write grant, saved agent tools and mailbox provider capabilities. Delivery still requires separate human approval and a working provider/worker.";
+  return "Security check (not an AI-generated send confirmation): No email draft or send-approval request was confirmed by an authorized email tool. No email was sent by this request. Repeating this same command cannot confirm delivery. Choose Write email draft or Prepare to send for approval below to open the inline email review in Chat. Select the connected From mailbox and exact To address, review the message, then Save email draft. Only after a saved draft is confirmed should you Request send approval. If Save is disabled, check the user email.write grant, saved agent tools and mailbox capabilities shown in Chat. Delivery still requires separate human approval and a working provider/worker.";
 }
 
 type VerifiedEmailToolCall = Readonly<{

@@ -1,3 +1,9 @@
+## DEV-01 — current Development and frontend acceptance checkpoint — 2026-10-23
+
+Owner now directs all work/pushes to **Development**. Latest recovery and completed/in-progress/pending checklist: [current handoff](sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md). C3 source exists but remains unregistered; C4 source details, R1a preview and reviewed Chat email/WhatsApp tools exist, with live acceptance pending. Current Development native checks: **54 passed, 0 failed/skipped**. Live `/login` returns **Cloudflare HTTP 522 Host Error**; no login, draft, email, approval or WhatsApp test was executed. **Exact next:** OPS-01 restores origin availability; DEV-01 resumes the documented F01–F21 frontend matrix, including permission-negative and human-approval cases, using owner-authorized WhatsApp recipient. No deployment, permission mutation or feature activation performed. Phase 4 remains implementation_in_progress; older entries retained as history.
+
+---
+
 ## DEV-01 source checkpoint — 2026-10-20
 
 C3 canonical source/Clara worker path committed and still unregistered. Phase 4 continues `implementation_in_progress`. No database, delivery, feature activation or deployment acceptance. See [C3 checkpoint](sessions/DEV01-C3-CANONICAL-CLARA-20261020.md); previous phase entries preserved.

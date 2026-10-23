@@ -17,7 +17,7 @@ test("imperative send/draft/forward requests are denied safely when actor has no
     const denied = deniedEmailWriteExplanation(prompt, permissions);
     assert.match(denied ?? "", /email\.write/);
     assert.match(denied ?? "", /No email was sent/);
-    assert.match(denied ?? "", /A human must approve|human approval/);
+    assert.match(denied ?? "", /human (?:must approve|approval)/i);
   }
 });
 

@@ -28,9 +28,21 @@ test("standalone draft listing keeps separate email.read requirement", () => {
   assert.match(handler("GET", "DELETE"), /authorize\(request,\s*\{ organizationId: asOrganizationId\(organizationId\), permission: "email\.read" \}/);
 });
 
-test("no existing system role silently acquires email.write from this fix", () => {
+test("only owner and admin have the explicit email.write grant; members and viewers remain read-only", () => {
   const block = identity.slice(identity.indexOf("export const SYSTEM_ROLE_PERMISSIONS"), identity.indexOf("// Auth Subject"));
-  assert.doesNotMatch(block, /"email\.write"/);
+  assert.ok(block.startsWith("export const SYSTEM_ROLE_PERMISSIONS"));
+  function rolePermissions(role) {
+    const match = block.match(new RegExp("\\b" + role + ":\\s*\\[([^\\]]*)\\]"));
+    assert.ok(match, "Role mapping exists: " + role);
+    return [...match[1].matchAll(/"([a-z.]+)"/g)].map(value => value[1]);
+  }
+  for (const role of ["owner", "admin"]) {
+    assert.ok(rolePermissions(role).includes("email.write"), role + " may draft and request approval");
+    assert.ok(rolePermissions(role).includes("email.read"), role + " may read connected mail");
+  }
+  for (const role of ["member", "viewer"]) {
+    assert.ok(!rolePermissions(role).includes("email.write"), role + " must not gain draft/write access");
+  }
   assert.match(runtime, /context\.auth_subject\.permissions\.includes\(tool\.required_permission\)/);
 });
 

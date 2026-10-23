@@ -17,9 +17,11 @@ test('switching providers clears the previously typed unsaved secret', () => {
   assert.ok(handler.includes('setError("");'));
 });
 
-test('both provider selection controls call the secret-clearing switch handler', () => {
+test('provider cards use the secret-clearing switch handler without a duplicate dropdown', () => {
   assert.ok(source.includes('onClick={() => chooseProvider(p)}'));
-  assert.ok(source.includes('onChange={(e) => chooseProvider(e.target.value)}'));
+  assert.ok(source.includes('aria-pressed={p === provider}'));
+  assert.ok(source.includes('onClick={() => chooseProvider("")}'));
+  assert.ok(!source.includes('onChange={(e) => chooseProvider(e.target.value)}'));
   assert.ok(!source.includes('onClick={() => setProvider(p)}'));
   assert.ok(!source.includes('onChange={(e) => setProvider(e.target.value)}'));
 });

@@ -57,16 +57,20 @@ describe("conversation sidebar and persistent controls", () => {
     expect(chat.indexOf('<aside ref={historySidebarRef}')).toBeLessThan(chat.indexOf('role="log"'));
   });
 
-  it("provides a mobile history drawer with Escape, focus containment and focus restoration", () => {
+  it("hides the conversation list by default on both desktop and mobile, with accessible on-demand dialog", () => {
+    expect(chat).toContain('const [chatHistoryOpen, setChatHistoryOpen] = useState(false)');
     expect(chat).toContain('aria-label="Show conversations"');
     expect(chat).toContain('aria-controls="chat-conversation-sidebar"');
     expect(chat).toContain('aria-expanded={chatHistoryOpen}');
     expect(chat).toContain('aria-label="Close conversations"');
-    expect(chat).toContain('lg:relative lg:inset-auto lg:z-auto lg:flex');
+    expect(chat).toContain('aria-label="Dismiss conversation history"');
+    expect(chat).toContain('chatHistoryOpen ? "flex" : "hidden"');
+    expect(chat).not.toContain('lg:relative lg:inset-auto lg:z-auto lg:flex');
+    expect(chat).not.toContain('hover:bg-secondary lg:hidden');
     expect(chat).toContain('role={chatHistoryOpen ? "dialog" : undefined}');
     expect(chat).toContain('aria-modal={chatHistoryOpen ? true : undefined}');
     expect(chat).toContain('if (event.key === "Escape")');
-    expect(chat).toContain('if (event.key !== "Tab"');
+    expect(chat).toContain('if (event.key !== "Tab") return;');
     expect(chat).toContain('historyTriggerRef.current?.focus()');
     expect(chat).toContain('historyCloseRef.current?.focus()');
   });

@@ -5,7 +5,17 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-BRANCH="main"
+BRANCH="Development"
+
+# This is the Development release updater: it subsequently runs manual-up.sh,
+# which applies migrations and starts services. Never use it to fetch Development
+# into Development (or operate on a detached checkout).
+CURRENT_BRANCH="$(git symbolic-ref --quiet --short HEAD || true)"
+if [[ "$CURRENT_BRANCH" != "$BRANCH" ]]; then
+  echo "ERROR: scripts/update-and-up.sh is only for the Development checkout; current branch: ${CURRENT_BRANCH:-detached}." >&2
+  echo "Stop. Keep Development fixes on Development; use the separately authorized release workflow to deploy Development." >&2
+  exit 1
+fi
 
 echo "==> Checking Git working tree..."
 if [[ -n "$(git status --porcelain)" ]]; then
