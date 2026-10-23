@@ -17,7 +17,10 @@ test("calendar 09:00 local and every 24 elapsed hours are separate explicit choi
   assert.match(page, /<option value="daily"/);
   assert.match(page, /kind === "weekly"/);
   assert.match(page, /kind === "interval"/);
-  assert.match(page, /everyMinutes: 1440/);
+  assert.match(page, /everyMinutes: intervalMinutes/);
+  assert.match(page, /"1": 60, "6": 360, "12": 720, "24": 1440/);
+  assert.match(page, /name="intervalHours"/);
+  assert.match(page, /Choose a supported interval between one and 24 hours/);
   assert.match(page, /cadence: kind === "weekly" \? "weekly" : "daily"/);
   assert.match(page, /name="timeZone"/);
   assert.match(page, /name="localTime"/);
