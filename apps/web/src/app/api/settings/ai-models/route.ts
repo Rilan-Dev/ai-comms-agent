@@ -3,7 +3,7 @@ import { getDecryptedProviderConfig, getProviderConfig } from "@ai-comms-agent/d
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { getAuthenticatedAppContext, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
-import { documentedRealtimeModels, fetchLiveModelCatalog, hasDocumentedRealtimeModels, supportsLiveCatalog, type LiveModelProvider, type LiveModelPurpose } from "@/lib/ai/live-model-catalog";
+import { documentedRealtimeModels, documentedSarvamVoiceModels, fetchLiveModelCatalog, hasDocumentedRealtimeModels, hasDocumentedSarvamVoiceModels, supportsLiveCatalog, type LiveModelProvider, type LiveModelPurpose } from "@/lib/ai/live-model-catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     // Do not disclose provider credentials, or even catalogue availability,
     // to unauthenticated or cross-organization callers.
     await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
-    if (!supportsLiveCatalog(provider, purpose) && !hasDocumentedRealtimeModels(provider, purpose)) {
+    if (!supportsLiveCatalog(provider, purpose) && !hasDocumentedRealtimeModels(provider, purpose) && !hasDocumentedSarvamVoiceModels(provider, purpose)) {
       return NextResponse.json({
         error: "catalog_unsupported",
         message: "This provider does not publish a live model listing for this capability. No static model list is substituted.",
@@ -59,6 +59,20 @@ export async function GET(request: Request) {
         models: [],
         ...(reusable ? { canReuseRealtimeKey: true } : {}),
       }, { status: unavailableStoredKey ? 503 : 409, headers: { "Cache-Control": "private, no-store" } });
+    }
+
+    // Sarvam speech TTS/STT use vendor-documented IDs, not the unrelated
+    // Sarvam /v2/models CHAT catalogue. Verify the exact organization/purpose
+    // saved credential first; never leak a catalogue for a disabled key.
+    if (hasDocumentedSarvamVoiceModels(provider, purpose)) {
+      return NextResponse.json({
+        models: documentedSarvamVoiceModels(provider, purpose),
+        provider,
+        purpose,
+        source: "documented",
+        capability: purpose,
+        message: "These are Sarvam-documented speech models supported by this app\'s current voice pipeline, not a live per-key model list. Actual provider access is checked when speech runs.",
+      }, { headers: { "Cache-Control": "private, no-store" } });
     }
 
     // Sarvam and ElevenLabs realtime voice on this host are streaming
