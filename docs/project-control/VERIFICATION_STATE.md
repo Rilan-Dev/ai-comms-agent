@@ -1,3 +1,9 @@
+## DEV-01 — current Development and frontend acceptance checkpoint — 2026-10-23
+
+Owner now directs all work/pushes to **Development**. Latest recovery and completed/in-progress/pending checklist: [current handoff](sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md). C3 source exists but remains unregistered; C4 source details, R1a preview and reviewed Chat email/WhatsApp tools exist, with live acceptance pending. Current Development native checks: **54 passed, 0 failed/skipped**. Live `/login` returns **Cloudflare HTTP 522 Host Error**; no login, draft, email, approval or WhatsApp test was executed. **Exact next:** OPS-01 restores origin availability; DEV-01 resumes the documented F01–F21 frontend matrix, including permission-negative and human-approval cases, using owner-authorized WhatsApp recipient. No deployment, permission mutation or feature activation performed. Phase 4 remains implementation_in_progress; older entries retained as history.
+
+---
+
 ## DEV01-CATCHUP-SOURCE-DETAILS-20261023 — source-only evidence
 
 - **Branch:** `Development`, starting `10860d93c4fc2aac299ae3ae4132d8bd235ad7e8`. New five-case native Node regression and private C2/C4 SQL+UI source links implemented; parent product plan P1b `docs/superpowers/plans/2026-10-23-human-readable-catchup-sources.md`.

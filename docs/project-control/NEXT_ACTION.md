@@ -1,3 +1,9 @@
+## DEV-01 — current Development and frontend acceptance checkpoint — 2026-10-23
+
+Owner now directs all work/pushes to **Development**. Latest recovery and completed/in-progress/pending checklist: [current handoff](sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md). C3 source exists but remains unregistered; C4 source details, R1a preview and reviewed Chat email/WhatsApp tools exist, with live acceptance pending. Current Development native checks: **54 passed, 0 failed/skipped**. Live `/login` returns **Cloudflare HTTP 522 Host Error**; no login, draft, email, approval or WhatsApp test was executed. **Exact next:** OPS-01 restores origin availability; DEV-01 resumes the documented F01–F21 frontend matrix, including permission-negative and human-approval cases, using owner-authorized WhatsApp recipient. No deployment, permission mutation or feature activation performed. Phase 4 remains implementation_in_progress; older entries retained as history.
+
+---
+
 ## DEV-01 — DEV01-CATCHUP-SOURCE-DETAILS-20261023 — private readable source emails
 
 - **Owner goal / safe current slice:** Ordinary person, employee, SME and multinational AI mail catch-up. Existing approved P0–P7 roadmap remains authoritative. C4 first five-day selection formerly showed opaque source UUIDs; now source-only header details are prepared on `Development`: original canonical subject, sender, explicit UTC received time and unavailable fallbacks, only after existing private C1/C2 per-user/agent/mailbox/revision scope checks. Original links, 200-page cursor, feature flag, review-only consent and Overview-first remain unchanged.

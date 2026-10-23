@@ -1142,3 +1142,8 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Deliverables:** Five-case regression, bounded source header display helper, source-list-only canonical metadata projection after private manifest grants/revisions, original-email card subject/sender/UTC, new Superpowers P1b plan. Commits `7d1230b9,abe796cd,37e7ac1,bebd8775,61d0a74,fa5e72b2`. No C3 generator/WhatsApp/routine activation or private visit tracking.
 - **Verification:** GitHub 17/17 focused source checks; isolated Node 3/3 helper + strict TS pass; actual repo/DB/authenticated browser/deployed SHA not run.
 - **Next:** Exact native Node/Vitest/web+DB typecheck and 0/200/320/tenant/revocation/manual-review acceptance from `docs/project-control/sessions/DEV01-CATCHUP-SOURCE-DETAILS-20261023.md` and new NEXT_ACTION. Preserve Phase 4 in progress and inactive C3/R1b/P6.
+
+
+## DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023
+
+Owner-selected Development recovered at ab7292fbb00263bb817ab2874ab4f66e10946f0f. Fresh native tests 54/54 pass (source/behavior scope only). Live Chromium login returns HTTP 522 origin timeout, so authenticated AI mail/WhatsApp acceptance is blocked with no external messages created. Current state, completed/in-progress/pending work, F01–F21 matrix and exact next action: docs/project-control/sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md. OPS-01 owns origin recovery; DEV-01 resumes frontend acceptance; FIX-01 owns proven application defects. Existing records and roles preserved.

@@ -349,3 +349,14 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Owner:** DEV-01 product feature/source, OPS-01 runtime/DB/deploy, FIX-01 independently reproduced bugs.
 - **State:** SOURCE_IMPLEMENTED; NATIVE_TEST/DB/BROWSER_ACCEPTANCE_PENDING; PRIVATE_OWNER_SCOPE_REVIEW_REQUIRED.
 - **Work/next:** Run 4 focused web tests, web/db TypeScript; two-session PostgreSQL/auth/browser and voice-return acceptance. Decide organization-shared versus creator-private ownership and migration for legacy chats before expanding visibility; pagination/search/rename/archive require separate approval. Plan `docs/plans/CHAT_CONVERSATION_SESSIONS_20261023.md`. No message deletion or routine activation.
+
+
+### BKL-DEV01-ORIGIN-522-20261023 — 2026-10-23
+- **Work:** Restore authenticated frontend availability; `/login` returns Cloudflare 522 Host Error.
+- **Owner:** OPS-01
+- **State:** ROUTED
+- **Dependency:** Blocks DEV-01 live AI inbox/draft/email permission and WhatsApp acceptance.
+- **Authorization:** Owner requests live frontend tests; infrastructure operations remain OPS-01-owned.
+- **Suggested next action:** Read-only origin/listener/proxy/firewall/resources and deployed-SHA diagnosis; approved recovery then verify HTTPS login. Do not infer an application permission bug or successful delivery.
+- **Evidence:** Playwright Chromium HTTP 522, Cloudflare page timestamp 2026-10-23 15:31:45 UTC. No authentication or messaging performed.
+- **Related:** sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md

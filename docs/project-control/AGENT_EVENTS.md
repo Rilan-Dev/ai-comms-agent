@@ -849,3 +849,8 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **What:** C4 private five-day original email list now projects only canonical sender/subject/received_at after C1/C2 owner+agent+mailbox/revision verification; displays understandable details and exact UTC dates instead of opaque UUID-only source links. Source regression and existing P0–P7 plan continue; no new raw-email store, model classification, login tracking or send.
 - **Evidence:** GitHub source invariant 17/17; isolated helper Node3/3 + strict standalone TS pass. Full committed tests, DB tenant/privacy revocation, browser, worker, CI/deploy not run.
 - **Owner/next:** DEV-01 executes new top NEXT_ACTION regression/feature-off/0-200-320 tests, then C3 negative acceptance while off; FIX-01 code defects; OPS-01 provider/database/production deployment. P3 presence consent and P5/P6 routine/WhatsApp need separate owner/security approval. Session `docs/project-control/sessions/DEV01-CATCHUP-SOURCE-DETAILS-20261023.md`.
+
+
+## DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023
+
+Owner-selected Development recovered at ab7292fbb00263bb817ab2874ab4f66e10946f0f. Fresh native tests 54/54 pass (source/behavior scope only). Live Chromium login returns HTTP 522 origin timeout, so authenticated AI mail/WhatsApp acceptance is blocked with no external messages created. Current state, completed/in-progress/pending work, F01–F21 matrix and exact next action: docs/project-control/sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md. OPS-01 owns origin recovery; DEV-01 resumes frontend acceptance; FIX-01 owns proven application defects. Existing records and roles preserved.

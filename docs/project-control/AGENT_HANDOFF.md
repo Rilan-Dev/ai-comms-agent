@@ -293,3 +293,8 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Scope:** Four task categories; no duplicate provider dropdown; explicit accessible provider cards; guided key, live model, TTS/STT and save, honest readiness, failed org lookup retry; existing encrypted/org-scoped provider operations/realtime key reuse unchanged.
 - **Evidence:** 20/20 isolated committed test callbacks and 6/6 pure status helper cases, no native dependency suite/web TS/browser/real provider evidence or live deployed source revision. Exact record `sessions/DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023.md`.
 - **OPS next:** Independently verify authorized deployment from precise Git SHA, secure provider API credentials, per-purpose TTS/STT/realtime saved models and capability state, vendor model discovery, actual realtime session, responsive/keyboard browser. No insecure API key inspection or implicit credential reuse. All deployment/build/CI/provider-infrastructure problems remain OPS-owned; do not block DEV source work by polling.
+
+
+## DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023
+
+Owner-selected Development recovered at ab7292fbb00263bb817ab2874ab4f66e10946f0f. Fresh native tests 54/54 pass (source/behavior scope only). Live Chromium login returns HTTP 522 origin timeout, so authenticated AI mail/WhatsApp acceptance is blocked with no external messages created. Current state, completed/in-progress/pending work, F01–F21 matrix and exact next action: docs/project-control/sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md. OPS-01 owns origin recovery; DEV-01 resumes frontend acceptance; FIX-01 owns proven application defects. Existing records and roles preserved.
