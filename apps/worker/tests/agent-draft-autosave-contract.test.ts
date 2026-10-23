@@ -63,4 +63,11 @@ test("draft inbox stays concise and exposes retry only for uncertain provider er
   assert.match(ui, /Retry sync/);
   assert.doesNotMatch(ui, /Sync provider draft/);
   assert.match(ui, /Sending still requires approval/);
+  // Background status refresh must not resurrect deleted drafts or
+  // overwrite a recent manual retry with an older GET response.
+  assert.match(ui, /requestId === latestRequest/);
+  assert.match(ui, /revision === mutationRevision\.current/);
+  assert.match(ui, /!mutationRunning\.current/);
+  assert.match(ui, /mutationRevision\.current \+= 1/);
+  assert.match(ui, /return \(\) => \{ cancelled = true; clearInterval\(interval\); \}/);
 });
