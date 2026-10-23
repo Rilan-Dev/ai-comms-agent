@@ -77,42 +77,45 @@ export function InteractiveMailActions({ disabled, state, onComposeEmail, onRequ
 }
 
 /** User-selected suggestions; never model-defined executable tool calls. */
-export function SuggestedNextActions({ answer, messageId, disabled, onPrepare, emailWorkflowState, onComposeEmail, onRequestEmailApproval }: {
-  answer: string; messageId: string; disabled: boolean; onPrepare: PrepareDraft;
+export function SuggestedNextActions({ answer, userRequest, messageId, disabled, onPrepare, emailWorkflowState, onComposeEmail, onRequestEmailApproval }: {
+  answer: string; userRequest: string; messageId: string; disabled: boolean; onPrepare: PrepareDraft;
   emailWorkflowState: EmailWorkflowState;
   onComposeEmail: () => void;
   onRequestEmailApproval: () => void;
 }) {
-  const actions = suggestedChatNextActions(answer);
+  const actions = suggestedChatNextActions(answer, userRequest);
+  const emailActions = hasInteractiveEmailActions(answer, userRequest);
   const [choice, setChoice] = useState(actions[0]?.id ?? "");
   const selected = actions.find(action => action.id === choice) ?? actions[0];
-  // Hooks run unconditionally first (content can grow during streaming);
-  // then suppress the panel on trivial or failure-style answers where
-  // follow-up chips are noise rather than a meaningful next step.
-  if (!shouldSuggestNextActions(answer)) return null;
+  // A conversational response, refusal or unrelated WhatsApp turn does not
+  // need a generic next-step fieldset (or accidental email buttons).
+  if (!actions.length && !emailActions) return null;
+
   return (
-    <fieldset className="mt-4 rounded-xl border border-border/70 bg-muted/20 p-3.5" disabled={disabled}>
-      <legend className="px-1 text-xs font-semibold text-muted-foreground">Choose a next step</legend>
-      <div className="grid gap-2 sm:grid-cols-3">
-        {actions.map(action => (
-          <label key={action.id} className="flex cursor-pointer items-start gap-2 rounded-lg border bg-background px-2.5 py-2 text-xs leading-5 hover:border-primary/40">
-            <input type="radio" name={"next-action-" + messageId} value={action.id}
-              checked={selected?.id === action.id} onChange={() => setChoice(action.id)}
-              className="mt-0.5 size-4 shrink-0 accent-primary" />
-            <span>{action.label}</span>
-          </label>
-        ))}
-      </div>
-      <button type="button" disabled={!selected || disabled}
-        onClick={() => { if (selected) onPrepare(selected.prompt); }}
-        className="mt-3 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
-        Review next action in message
-      </button>
-      <p className="mt-2 text-xs text-muted-foreground">Review before Send. Email actions still require normal permissions and approval.</p>
-      {hasInteractiveEmailActions(answer) ? (
-        <InteractiveMailActions state={emailWorkflowState} disabled={disabled}
-          onComposeEmail={onComposeEmail} onRequestEmailApproval={onRequestEmailApproval} />
+    <>
+      {actions.length > 0 ? (
+        <fieldset className="mt-4 rounded-xl border border-border/70 bg-muted/20 p-3.5" disabled={disabled}>
+          <legend className="px-1 text-xs font-semibold text-muted-foreground">Choose a next step</legend>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {actions.map(action => (
+              <label key={action.id} className="flex cursor-pointer items-start gap-2 rounded-lg border bg-background px-2.5 py-2 text-xs leading-5 hover:border-primary/40">
+                <input type="radio" name={"next-action-" + messageId} value={action.id}
+                  checked={selected?.id === action.id} onChange={() => setChoice(action.id)}
+                  className="mt-0.5 size-4 shrink-0 accent-primary" />
+                <span>{action.label}</span>
+              </label>
+            ))}
+          </div>
+          <button type="button" disabled={!selected || disabled}
+            onClick={() => { if (selected) onPrepare(selected.prompt); }}
+            className="mt-3 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+            Review next action in message
+          </button>
+          <p className="mt-2 text-xs text-muted-foreground">Review before Send. Email actions still require normal permissions and approval.</p>
+        </fieldset>
       ) : null}
-    </fieldset>
+      {emailActions ? <InteractiveMailActions state={emailWorkflowState} disabled={disabled}
+        onComposeEmail={onComposeEmail} onRequestEmailApproval={onRequestEmailApproval} /> : null}
+    </>
   );
 }
