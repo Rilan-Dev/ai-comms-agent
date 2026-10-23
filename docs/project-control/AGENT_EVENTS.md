@@ -811,3 +811,12 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Cause:** `SYSTEM_ROLE_PERMISSIONS.owner/admin` excluded email.write though runtime executor required it. Production and in-memory repos both read that static mapping.
 - **Fix:** `61eb507d` grants owner/admin only; `a5123f59,7f8b4457` test privileged/nonprivileged roles, runtime and provider gates; `145d2629` fixes misleading blocker wording. No implicit send or new tenant model.
 - **Evidence:** 16/16 GitHub source checks, full test/typecheck and live deployed role/provider acceptance pending. `sessions/DEV01-ADMIN-EMAIL-WRITE-DEFAULT-20261023.md`.
+
+### EVT-DEV01-R1A-TIMING-PREVIEW-20261023 — scope and delivery separation
+- **Agent/session:** DEV-01 / Forge, `DEV01-ROUTINE-TIMING-PREVIEW-20261023`.
+- **Type:** REQUIREMENT / IMPLEMENTATION CHECKPOINT; no authorization expansion.
+- **Finding:** Ordinary users can confuse daily local 09:00, elapsed every 24h, weekly, one-off and event-triggered automation. Existing Schedules/Automations are independent engines; a common read-only timing preview reuses the existing R1a clock instead of creating another worker.
+- **Committed:** `/routines/preview` on authenticated Overview, five source-test cases and P0–P7 people-first plan. No persistence, provider action, mailbox access, user activity monitoring, agent grants or consent changes.
+- **Verification:** GitHub-only static inspection 25/25; full native/runtime/browser/deploy NOT RUN. Source-only.
+- **Cross-agent routing:** FIX-01 owns implementation bugs (its concurrent fixes untouched); OPS-01 owns CI/host/Meta/deployment; future persisted consent/external delivery requires separate user/security approval.
+- **Next:** `NEXT_ACTION.md` and session file; R1a runtime tests and C3/C4 negative checks, no gate polling.
