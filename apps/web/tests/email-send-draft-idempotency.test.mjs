@@ -59,11 +59,30 @@ test("the locked draft must still match the exact reviewed recipients and body b
     repo.indexOf("export async function listPendingEmailActionsForOrganization("));
   assert.match(repo, /function matchesPersistedSendDraftSnapshot\(/);
   assert.match(f, /SELECT id, to_recipients, cc_recipients, bcc_recipients, subject, text_body FROM email_messages/);
-  assert.match(f, /matchesPersistedSendDraftSnapshot\(locked\.rows\[0\], input\.recipientSnapshot\)/);
-  assert.ok(f.indexOf("matchesPersistedSendDraftSnapshot(locked.rows[0], input.recipientSnapshot)")
+  assert.match(f, /matchesPersistedSendDraftSnapshot\(lockedDraft, input\.recipientSnapshot\)/);
+  assert.ok(f.indexOf("matchesPersistedSendDraftSnapshot(lockedDraft, input.recipientSnapshot)")
     < f.indexOf("client.query<Row>(insertSql,params)"));
   assert.match(repo, /recipientSnapshot\.bodyText/);
   assert.match(repo, /persisted\.text_body/);
   assert.match(repo, /to_recipients/);
   assert.match(repo, /bcc_recipients/);
+});
+
+
+test("strict TypeScript row guards preserve locked-draft validation and idempotent approval reuse", () => {
+  const f = repo.slice(repo.indexOf("export async function createEmailAction("),
+    repo.indexOf("export async function listPendingEmailActionsForOrganization("));
+  assert.match(f, /const lockedDraft = locked\.rows\[0\];/);
+  assert.match(f, /if \(!lockedDraft\) throw new EmailActionIdempotencyConflictError\(\)/);
+  assert.match(f, /matchesPersistedSendDraftSnapshot\(lockedDraft, input\.recipientSnapshot\)/);
+  assert.match(f, /const existing = prior\.rows\[0\];/);
+  assert.match(f, /if \(existing\) \{/);
+  assert.match(f, /return action\(existing\)/);
+  assert.match(f, /const insertedRow = inserted\.rows\[0\];/);
+  assert.match(f, /if \(!insertedRow\) throw new EmailActionIdempotencyConflictError\(\)/);
+  assert.match(f, /return action\(insertedRow\)/);
+  assert.match(f, /const resultRow = r\.rows\[0\];/);
+  assert.match(f, /if \(!resultRow\) throw new EmailActionIdempotencyConflictError\(\)/);
+  assert.match(f, /return action\(resultRow\)/);
+  assert.doesNotMatch(f, /action\((?:locked|prior|inserted|r)\.rows\[0\]\)/);
 });
