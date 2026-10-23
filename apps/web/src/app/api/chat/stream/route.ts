@@ -5,8 +5,10 @@ import { formatRollingMailSummary, MAX_REPORT_MESSAGES, parseRollingMailSummaryR
 import { parseExplicitMailDateRangeRequest } from "@/lib/mail/explicit-date-range";
 import { canSupplyAmbientContext } from "@/lib/ai/ambient-context-access";
 import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
-import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation, verifiedEmailToolSummary } from "@/lib/mail/action-feedback";
+import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation } from "@/lib/mail/action-feedback";
 import { userFacingChatAnswer } from "@/lib/chat/user-facing-answer";
+import { currentTurnOperationAnswer } from "@/lib/chat/operation-feedback";
+import { operationResultFromToolCall, type OperationResult } from "@ai-comms-agent/shared";
 
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -266,7 +268,7 @@ const MAX_HOST_TOOL_ROUNDS = 4;
 const MAX_HOST_TOOL_CALLS = 8;
 const MAX_HOST_TOOL_RESULT_CHARS = 10000;
 
-type HostToolTurnResult = { text: string; streamed?: boolean; toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; readOnly?: boolean; status?: string }> };
+type HostToolTurnResult = { text: string; streamed?: boolean; toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; readOnly?: boolean; status?: string; operation?: OperationResult }> };
 
 async function runInteractiveHostToolLoop(args: {
   organizationId: string;
@@ -371,6 +373,7 @@ async function runInteractiveHostToolLoop(args: {
         || toolOutput?.status === "reply_draft_created" || toolOutput?.status === "forward_draft_created"
         || toolOutput?.status === "pending_approval" ? toolOutput.status : undefined;
       summaries.push({ name: call.name, ok: result.ok, readOnly, status: verifiedStatus,
+        operation: operationResultFromToolCall({context:args.toolContext,callId:call.id,registeredName:registeredTool?.name,result}) ?? undefined,
         ...(result.error ? { errorCode: result.error.code } : {}) });
       const payload = JSON.stringify({
         ok: result.ok, output: result.output,
@@ -672,8 +675,9 @@ export async function POST(request: Request) {
             // The host has already emitted the verified denial. Never fall
             // through into a model-only answer that could claim delivery.
           } else if (toolTurn) {
-            const verifiedSummary = verifiedEmailToolSummary(toolTurn.toolCalls);
-            assistantOutput = verifiedSummary || (explicitEmailAction ? unverifiedEmailActionExplanation() : toolTurn.text);
+            const operations = toolTurn.toolCalls.flatMap(call => call.operation ? [call.operation] : []);
+            const verifiedSummary = operations.length > 0;
+            assistantOutput = currentTurnOperationAnswer(toolTurn.text, operations, trustedToolContext.turn_id, explicitEmailAction);
             if (!verifiedSummary && !explicitEmailAction) {
               const validated = userFacingChatAnswer(assistantOutput);
               if (!validated) throw new Error("Tool-loop model output was not a user-facing answer.");

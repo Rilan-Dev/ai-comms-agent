@@ -1,6 +1,6 @@
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import type { ChatMessage, ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/clara-core";
-import type { ToolContext, ToolResult } from "@ai-comms-agent/shared";
+import { operationResultFromToolCall, type OperationResult, type ToolContext, type ToolResult } from "@ai-comms-agent/shared";
 import { createEmailToolRuntime, invokeEmailReadTool } from "./email-tool-runtime";
 import type { EmailToolRuntime } from "./email-tool-runtime";
 
@@ -29,7 +29,7 @@ export interface EmailAgentTurnInput {
 export interface EmailAgentTurnResult {
   text: string;
   streamed?: boolean;
-  toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; durationMs: number; readOnly?: boolean; status?: string }>;
+  toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; durationMs: number; readOnly?: boolean; status?: string; operation?: OperationResult }>;
   pendingApprovals: Array<{ actionId: string; actionType: string; message: string }>;
   finishReason: "completed" | "round_limit" | "tool_limit" | "invalid_tool_call" | "invalid_tool_arguments";
 }
@@ -154,14 +154,15 @@ export async function runEmailAgentTurn(
       const toolOutput = result.output && typeof result.output === "object" && !Array.isArray(result.output)
         ? result.output as Record<string, unknown>
         : null;
-      if (result.ok && toolOutput?.status === "pending_approval" && typeof toolOutput.action_id === "string") {
+      const registeredTool = registered.find((entry) => entry.name === call.name);
+      const operation = operationResultFromToolCall({context:input.toolContext,callId:call.id,registeredName:registeredTool?.name,result});
+      if (operation?.state === "pending_approval") {
         pendingApprovals.push({
-          actionId: toolOutput.action_id,
-          actionType: typeof toolOutput.action_type === "string" ? toolOutput.action_type : call.name,
-          message: typeof toolOutput.message === "string" ? toolOutput.message : "This email action is awaiting explicit approval and has not been executed.",
+          actionId: operation.resourceId,
+          actionType: operation.operation,
+          message: "This email action is awaiting explicit approval and has not been executed.",
         });
       }
-      const registeredTool = registered.find((entry) => entry.name === call.name);
       const approvalRequested = toolOutput?.status === "pending_approval" || toolOutput?.approval_required === true;
       const readOnly = result.ok && !approvalRequested && registeredTool?.sensitivity === "safe"
         && registeredTool.required_permission === "email.read";
@@ -173,6 +174,7 @@ export async function runEmailAgentTurn(
         ok: result.ok,
         readOnly,
         status: verifiedStatus,
+        operation: operation ?? undefined,
         ...(result.error ? { errorCode: result.error.code } : {}),
         durationMs: result.audit.duration_ms,
       });

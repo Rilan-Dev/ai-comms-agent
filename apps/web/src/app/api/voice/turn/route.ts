@@ -8,8 +8,9 @@ import { runEmailAgentTurn, createEmailToolRuntime } from "@ai-comms-agent/email
 import { formatRollingMailSummary, parseRollingMailSummaryRequest, type RollingMailRow } from "@/lib/mail/rolling-summary";
 import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
-import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation, verifiedEmailToolSummary } from "@/lib/mail/action-feedback";
+import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest } from "@/lib/mail/action-feedback";
 import { userFacingChatAnswer } from "@/lib/chat/user-facing-answer";
+import { currentTurnOperationAnswer } from "@/lib/chat/operation-feedback";
 
 
 export const dynamic = "force-dynamic";
@@ -261,10 +262,10 @@ export async function POST(request: Request) {
               if (!request.signal.aborted) {
                 // The callback already streamed the provider's final tokens.
                 // Writes/approvals/denials retain the canonical host answer.
-                const verifiedSummary = verifiedEmailToolSummary(result.toolCalls);
+                const verifiedSummary = currentTurnOperationAnswer(result.text, result.toolCalls.flatMap(call => call.operation ? [call.operation] : []), executionId, explicitEmailAction);
                 // A model answer is not evidence of delivery. Display the
                 // verified host result instead of unconfirmed send claims.
-                if (!result.streamed) emit("delta", { text: verifiedSummary || (explicitEmailAction ? unverifiedEmailActionExplanation() : result.text) });
+                if (!result.streamed) emit("delta", { text: verifiedSummary });
                 await saveAnswer(deliveredText);
                 emit("progress", { phase: "completed" });
                 emit("done", {
@@ -397,8 +398,7 @@ export async function POST(request: Request) {
       maxToolCalls: 8,
     });
 
-    const verifiedSummary = verifiedEmailToolSummary(turn.toolCalls);
-    const voiceAnswer = verifiedSummary || (explicitEmailAction ? unverifiedEmailActionExplanation() : turn.text);
+    const voiceAnswer = currentTurnOperationAnswer(turn.text, turn.toolCalls.flatMap(call => call.operation ? [call.operation] : []), executionId, explicitEmailAction);
     await saveAnswer(voiceAnswer);
     return NextResponse.json({
       executionId,
