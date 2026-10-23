@@ -15,11 +15,11 @@ test("all send_email request sources are serialized against the saved draft befo
   assert.match(f, /SELECT id FROM email_messages/);
   assert.match(f, /organization_id=\$2 AND email_account_id=\$3 AND is_draft=true/);
   assert.match(f, /FOR UPDATE/);
-  assert.match(f, /SELECT \* FROM email_actions/);
+  assert.match(f, /SELECT \*, \(expires_at IS NULL OR expires_at > now\(\)\) AS unexpired FROM email_actions/);
   assert.match(f, /draft_id=\$3 AND action_type='send_email'/);
   assert.match(f, /client\.query<Row>\(insertSql,params\)/);
-  assert.ok(f.indexOf("FOR UPDATE") < f.indexOf("SELECT * FROM email_actions"));
-  assert.ok(f.indexOf("SELECT * FROM email_actions") < f.indexOf("client.query<Row>(insertSql,params)"));
+  assert.ok(f.indexOf("FOR UPDATE") < f.indexOf("AS unexpired FROM email_actions"));
+  assert.ok(f.indexOf("AS unexpired FROM email_actions") < f.indexOf("client.query<Row>(insertSql,params)"));
 });
 
 test("one pending draft review is reused only for the same payload, actor and agent; settled reviews fail closed", () => {
@@ -29,7 +29,7 @@ test("one pending draft review is reused only for the same payload, actor and ag
   assert.match(f, /existing\.content_hash === contentHash/);
   assert.match(f, /existing\.requested_by === \(input\.requestedBy \?\? null\)/);
   assert.match(f, /existing\.agent_id === \(input\.agentId \?\? null\)/);
-  assert.match(f, /existing\.expires_at/);
+  assert.match(f, /existing\.unexpired === true/);
   assert.match(f, /throw new EmailActionIdempotencyConflictError\(\)/);
   assert.doesNotMatch(f, /DELETE FROM email_actions/);
 });
