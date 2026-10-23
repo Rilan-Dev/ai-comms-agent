@@ -184,7 +184,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
       values.push(value); conditions.push(condition(values.length));
     };
     const folderId = text(input.folder_id) || text(input.folder);
-    if (folderId) add((n) => `(m.folder_id::text = ${n} OR EXISTS (SELECT 1 FROM email_folders f WHERE f.email_account_id = m.email_account_id AND f.organization_id = $1 AND (f.id::text = ${n} OR f.provider_folder_id = ${n} OR f.name ILIKE ${n})))`, folderId);
+    if (folderId) add((n) => `(m.folder_id::text = $${n} OR EXISTS (SELECT 1 FROM email_folders f WHERE f.email_account_id = m.email_account_id AND f.organization_id = $1 AND (f.id::text = $${n} OR f.provider_folder_id = $${n} OR f.name ILIKE $${n})))`, folderId);
     const queryText = text(input.query);
     if (queryText) add((n) => `(m.subject ILIKE $${n} OR m.from_email ILIKE $${n} OR m.from_name ILIKE $${n} OR m.text_body ILIKE $${n} OR m.snippet ILIKE $${n})`, `%${queryText.slice(0, 300)}%`);
     const from = text(input.from);
@@ -194,7 +194,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
     if (input.unread_only === true) conditions.push("m.is_read = false");
     if (input.starred_only === true) conditions.push("m.is_starred = true");
     const label = text(input.label);
-    if (label) add((n) => `m.labels @> jsonb_build_array(${n}::text)`, label);
+    if (label) add((n) => `m.labels @> jsonb_build_array($${n}::text)`, label);
     const dateFrom = text(input.date_from);
     if (dateFrom && Number.isFinite(Date.parse(dateFrom))) add((n) => `m.received_at >= $${n}::timestamptz`, dateFrom);
     const dateTo = text(input.date_to);
