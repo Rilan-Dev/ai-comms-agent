@@ -978,8 +978,10 @@ export function VoiceWorkspace({
         else if (payload.transport.realtimeProvider === "gemini") await connectGeminiRealtime(payload.session, payload.transport);
         else if (payload.transport.realtimeProvider === "sarvam" || payload.transport.realtimeProvider === "elevenlabs") await connectProviderRealtime(payload.session, payload.transport, payload.transport.realtimeProvider);
         else throw new Error("This provider has not completed its native realtime transport integration.");
-      } else if (payload.transport.transportMode === "pipeline" && (payload.transport.realtimeProvider === "sarvam" || payload.transport.realtimeProvider === "elevenlabs")) {
-        await connectSpeechPipeline(payload.session, payload.transport.realtimeProvider);
+      } else if (payload.transport.transportMode === "pipeline" && payload.transport.realtimeProvider === "elevenlabs") {
+        await connectSpeechPipeline(payload.session, "elevenlabs");
+      } else if (payload.transport.realtimeProvider === "sarvam") {
+        throw new Error("Sarvam realtime voice requires a connected WebSocket relay. The batch STT/TTS Voice Chat fallback is not a live conversation.");
       } else {
         setNotice("This provider is configured for the authorized text bridge, not live microphone audio. The session is not marked connected.");
       }
