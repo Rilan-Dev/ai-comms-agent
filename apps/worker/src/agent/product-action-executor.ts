@@ -40,21 +40,36 @@ export async function executeProductActions(context: Context, params: Record<str
       }
       const idempotencyKey = "agent:" + context.agentId + ":execution:" + context.executionId + ":whatsapp:" + to;
       const correlationId = context.executionId;
+      // Repeated scheduled/product attempts must not represent an approved,
+      // rejected or already-queued WhatsApp action as a fresh human review.
+      // The unique-key row lock also binds the original agent and payload.
       const inserted = await query<{ id: string; status: string }>(
-        "INSERT INTO whatsapp_send_actions (organization_id, whatsapp_account_id, agent_id, agent_binding_required, requested_by, recipient_phone, message_body, payload_type, status, idempotency_key, correlation_id) VALUES ($1,$2,$3,true,NULL,$4,$5,'text','pending',$6,$7) ON CONFLICT (organization_id,idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING RETURNING id,status",
+        `INSERT INTO whatsapp_send_actions
+           (organization_id, whatsapp_account_id, agent_id, agent_binding_required,
+            requested_by, recipient_phone, message_body, payload_type,
+            status, idempotency_key, correlation_id)
+         VALUES ($1,$2,$3,true,NULL,$4,$5,'text','pending',$6,$7)
+         ON CONFLICT (organization_id,idempotency_key) WHERE idempotency_key IS NOT NULL
+         DO UPDATE SET idempotency_key = EXCLUDED.idempotency_key
+         WHERE whatsapp_send_actions.status = 'pending'
+           AND whatsapp_send_actions.expires_at > now()
+           AND whatsapp_send_actions.requested_by IS NOT DISTINCT FROM EXCLUDED.requested_by
+           AND whatsapp_send_actions.agent_id IS NOT DISTINCT FROM EXCLUDED.agent_id
+           AND whatsapp_send_actions.agent_binding_required IS NOT DISTINCT FROM EXCLUDED.agent_binding_required
+           AND whatsapp_send_actions.whatsapp_account_id IS NOT DISTINCT FROM EXCLUDED.whatsapp_account_id
+           AND whatsapp_send_actions.recipient_phone IS NOT DISTINCT FROM EXCLUDED.recipient_phone
+           AND whatsapp_send_actions.message_body IS NOT DISTINCT FROM EXCLUDED.message_body
+           AND whatsapp_send_actions.payload_type IS NOT DISTINCT FROM EXCLUDED.payload_type
+           AND whatsapp_send_actions.template_name IS NOT DISTINCT FROM EXCLUDED.template_name
+           AND whatsapp_send_actions.template_language IS NOT DISTINCT FROM EXCLUDED.template_language
+           AND whatsapp_send_actions.template_parameters IS NOT DISTINCT FROM EXCLUDED.template_parameters
+         RETURNING id,status`,
         [context.organizationId, account.id, context.agentId, to, body, idempotencyKey, correlationId],
       );
-      let approval: { id: string; status: string; whatsapp_account_id?: string; recipient_phone?: string; message_body?: string } | undefined = inserted.rows[0];
+      const approval = inserted.rows[0];
       if (!approval) {
-        const existing = await query<{ id: string; status: string; whatsapp_account_id: string; recipient_phone: string; message_body: string }>(
-          "SELECT id,status,whatsapp_account_id,recipient_phone,message_body FROM whatsapp_send_actions WHERE organization_id=$1 AND idempotency_key=$2 LIMIT 1",
-          [context.organizationId, idempotencyKey],
-        );
-        approval = existing.rows[0];
-        if (!approval || String(approval.whatsapp_account_id) !== account.id || String(approval.recipient_phone) !== to || String(approval.message_body) !== body) {
-          results.push({ type, status: "failed", reason: "WhatsApp approval idempotency conflict" });
-          continue;
-        }
+        results.push({ type, status: "failed", reason: "WhatsApp approval idempotency conflict: another actor or payload used this key, or the approval is no longer pending." });
+        continue;
       }
       await recordAuditEvent({ organizationId: context.organizationId, actorUserId: null, agentId: context.agentId, eventType: "whatsapp.send_approval.requested", targetType: "whatsapp_send_action", targetId: approval.id, action: "send_whatsapp", decision: "pending_approval", correlationId, metadata: { executionId: context.executionId, recipientSuffix: to.slice(-4), accountId: account.id } });
       results.push({ type, status: "pending_approval", actionId: String(approval.id), reason: "Human approval is required; no WhatsApp message has been queued or sent." });
