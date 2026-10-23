@@ -10,3 +10,7 @@ allowBuilds:
   'esbuild@0.28.2': true
   'sharp@0.35.5': true
   '@tailwindcss/oxide@4.3.3': true
+  # UnRS maintainers confirm this legacy-npm postinstall is unnecessary with
+  # pnpm's installed optional native binding. Deny script execution explicitly
+  # instead of weakening strictDepBuilds or approving all dependency scripts.
+  'unrs-resolver@1.12.2': false
