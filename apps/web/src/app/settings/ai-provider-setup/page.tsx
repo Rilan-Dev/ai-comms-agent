@@ -115,7 +115,7 @@ export default function AIProviderSetupPage() {
                 onClick={() => setOrganizationRetry(n => n + 1)}>Retry organization lookup</button>
             </div>
           ) : (
-            <AIProviderSetupShared organizationId={organizationId} tab={tab} />
+            <AIProviderSetupShared key={`${organizationId}:${tab}`} organizationId={organizationId} tab={tab} />
           )}
         </div>
       </div>
