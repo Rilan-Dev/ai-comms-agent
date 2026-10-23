@@ -1,30 +1,171 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-type Draft = { id: string; email_account_id: string; subject?: string | null; text_body?: string | null; to_recipients?: string[]; updated_at?: string; account_email?: string; provider_draft_id?: string | null; provider_draft_sync_status?: "local_only" | "queued" | "syncing" | "synced" | "error"; provider_draft_last_error?: string | null };
+type SyncStatus = "local_only" | "queued" | "syncing" | "synced" | "error";
+type Draft = {
+  id: string; email_account_id: string; subject?: string | null;
+  text_body?: string | null; to_recipients?: string[];
+  updated_at?: string; account_email?: string;
+  provider_draft_sync_status?: SyncStatus; provider_draft_last_error?: string | null;
+};
+const isPending = (draft: Draft) =>
+  draft.provider_draft_sync_status === "queued" || draft.provider_draft_sync_status === "syncing";
+function draftStatus(status?: SyncStatus) {
+  switch (status) {
+    case "synced": return "In mailbox drafts";
+    case "queued":
+    case "syncing": return "Saving to mailbox…";
+    case "error": return "Sync needs review";
+    default: return "Saved in app";
+  }
+}
 
 export default function DraftsClient({ organizationId }: { organizationId: string }) {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const mutationRevision = useRef(0);
+  const mutationRunning = useRef(false);
   const filteredDrafts = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     if (!needle) return drafts;
-    return drafts.filter(d => [d.subject, d.text_body, d.account_email, ...(d.to_recipients ?? [])].some(value => typeof value === "string" && value.toLocaleLowerCase().includes(needle)));
+    return drafts.filter(d => [d.subject, d.text_body, d.account_email, ...(d.to_recipients ?? [])]
+      .some(value => typeof value === "string" && value.toLocaleLowerCase().includes(needle)));
   }, [drafts, query]);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  async function load() { try { const r = await fetch("/api/mail/drafts?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" }); const d = await r.json(); if (!r.ok) throw new Error(d.message ?? "Could not load drafts."); setDrafts(d.drafts ?? []); } catch (e) { setNotice(e instanceof Error ? e.message : "Could not load drafts."); } }
-  useEffect(() => { void load(); }, [organizationId]);
-  async function syncProvider(id: string) {
+  const needAttention = drafts.filter(d => d.provider_draft_sync_status === "error").length;
+  const saving = drafts.filter(isPending).length;
+
+  useEffect(() => {
+    let cancelled = false;
+    let latestRequest = 0;
+    const refresh = async () => {
+      const requestId = ++latestRequest;
+      const revision = mutationRevision.current;
+      try {
+        const response = await fetch("/api/mail/drafts?organizationId=" + encodeURIComponent(organizationId), {
+          cache: "no-store",
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message ?? "Could not load drafts.");
+        if (!cancelled && requestId === latestRequest && revision === mutationRevision.current && !mutationRunning.current) {
+          setDrafts(data.drafts ?? []); setNotice(null);
+        }
+      } catch (error) {
+        if (!cancelled && requestId === latestRequest && revision === mutationRevision.current && !mutationRunning.current)
+          setNotice(error instanceof Error ? error.message : "Could not load drafts.");
+      }
+    };
+    void refresh();
+    // Provider synchronization is driven by the worker, never by clicking
+    // through each draft. Refresh while this view is open to show progress.
+    const interval = setInterval(() => { if (!cancelled) void refresh(); }, 15_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [organizationId]);
+
+  async function retryProviderSync(id: string) {
+    if (!window.confirm(
+      "The provider may already have a saved draft. Check your mailbox Drafts folder before retrying to avoid a duplicate. Queue another attempt?",
+    )) return;
+    mutationRunning.current = true;
+    mutationRevision.current += 1;
+    setBusyId(id);
+    setNotice(null);
+    try {
+      const response = await fetch("/api/mail/drafts/sync", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ organizationId, messageId: id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message ?? "Could not retry draft synchronization.");
+      setDrafts(items => items.map(item => item.id === id
+        ? { ...item, provider_draft_sync_status: "queued", provider_draft_last_error: null } : item));
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not retry draft synchronization.");
+    } finally { mutationRevision.current += 1; mutationRunning.current = false; setBusyId(null); }
+  }
+
+  async function remove(id: string) {
+    if (!window.confirm("Delete this draft from AI Comms Agent? Already-synced provider copies may remain in your mailbox.")) return;
+    mutationRunning.current = true; mutationRevision.current += 1;
     setBusyId(id); setNotice(null);
     try {
-      const r = await fetch("/api/mail/drafts/sync", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ organizationId, messageId: id }) });
-      const d = await r.json(); if (!r.ok) throw new Error(d.message ?? "Could not queue provider synchronization.");
-      setDrafts(items => items.map(item => item.id === id ? { ...item, provider_draft_sync_status: "queued" } : item));
-      setNotice("Provider draft synchronization queued. The worker will update the status when processing begins.");
-    } catch (e) { setNotice(e instanceof Error ? e.message : "Could not queue provider synchronization."); } finally { setBusyId(null); }
+      const response = await fetch("/api/mail/drafts", {
+        method: "DELETE", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ organizationId, messageId: id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message ?? "Could not delete draft.");
+      setDrafts(items => items.filter(item => item.id !== id));
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not delete draft.");
+    } finally { mutationRevision.current += 1; mutationRunning.current = false; setBusyId(null); }
   }
-  async function remove(id: string) { if (!window.confirm("Delete this local draft? This cannot be undone.")) return; setBusyId(id); setNotice(null); try { const r = await fetch("/api/mail/drafts", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ organizationId, messageId: id }) }); const d = await r.json(); if (!r.ok) throw new Error(d.message ?? "Could not delete draft."); setDrafts(items => items.filter(item => item.id !== id)); } catch (e) { setNotice(e instanceof Error ? e.message : "Could not delete draft."); } finally { setBusyId(null); } }
-  return <main className="min-h-full bg-muted/20 p-5 sm:p-7 lg:p-9"><div className="mx-auto max-w-[1100px]"><div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.16em] text-muted-foreground"><span className="grid size-7 place-items-center rounded bg-accent text-accent-foreground"><svg aria-hidden="true" viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 5h16v14H4z"/><path d="m4 7 8 6 8-6"/></svg></span> Mail workspace</p><h1 className="font-display text-3xl font-medium tracking-tight">Drafts<span className="text-tertiary">.</span></h1><p className="mt-2 text-sm text-muted-foreground">Persisted drafts stay editable until you explicitly request an approval-gated send.</p></div><a href="/mail/compose" className="rounded-md bg-foreground px-4 py-2.5 text-center text-sm font-semibold text-background">New draft</a></div>{notice && <div role="alert" className="mt-5 rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">{notice}</div>}<section className="mt-7 overflow-hidden rounded-md border bg-background shadow-sm"><div className="border-b p-4"><label className="block"><span className="sr-only">Search drafts</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search subject, message, recipient, or mailbox…" className="h-11 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20" /></label></div>{drafts.length === 0 ? <div className="p-12 text-center"><p className="font-semibold">No drafts yet</p><p className="mt-2 text-sm text-muted-foreground">Compose a message to create the first persisted draft.</p></div> : <div className="divide-y">{filteredDrafts.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">No drafts match your search.</p> : filteredDrafts.map(d => <article key={d.id} className="p-5 sm:p-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><p className="truncate font-semibold">{d.subject || "(No subject)"}</p><p className="mt-1 text-xs text-muted-foreground">{d.account_email || "Mailbox"} · {d.to_recipients?.join(", ") || "No recipients"}</p><p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{d.text_body || "Empty draft"}</p><p className="mt-3 text-xs text-muted-foreground">Updated {d.updated_at ? new Date(d.updated_at).toLocaleString() : "recently"} · Provider {d.provider_draft_sync_status === "synced" ? "synced" : d.provider_draft_sync_status === "queued" ? "queued" : d.provider_draft_sync_status === "syncing" ? "syncing" : d.provider_draft_sync_status === "error" ? "sync failed" : "local only"}</p>{d.provider_draft_last_error && <p className="mt-1 text-xs text-destructive">{d.provider_draft_last_error}</p>}</div><div className="flex shrink-0 flex-wrap gap-2"><a href={"/mail/compose?draftId=" + encodeURIComponent(d.id)} className="rounded-md border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary">Edit</a>{d.provider_draft_sync_status !== "synced" && <button type="button" disabled={busyId === d.id || (d.provider_draft_sync_status === "queued" || d.provider_draft_sync_status === "syncing")} onClick={() => void syncProvider(d.id)} className="rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-50">{d.provider_draft_sync_status === "queued" ? "Queued…" : d.provider_draft_sync_status === "syncing" ? "Syncing…" : "Sync provider draft"}</button>}<button type="button" disabled={busyId === d.id} onClick={() => void remove(d.id)} className="rounded-md border border-destructive/30 px-3 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/5 disabled:opacity-50">{busyId === d.id ? "Deleting…" : "Delete"}</button></div></div></article>)}</div>}</section></div></main>;
+
+  return <main className="min-h-full bg-muted/20 p-5 sm:p-7 lg:p-9">
+    <div className="mx-auto max-w-[920px]">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mail workspace</p>
+          <h1 className="mt-2 font-display text-3xl font-medium tracking-tight">Drafts</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {drafts.length} {drafts.length === 1 ? "draft" : "drafts"} ready to review
+            {saving > 0 ? ` · ${saving} saving to mailbox` : ""}
+            {needAttention > 0 ? ` · ${needAttention} need attention` : ""}.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">AI saves eligible drafts to your connected mailbox automatically. Sending still requires approval.</p>
+        </div>
+        <a href="/mail/compose" className="rounded-md bg-foreground px-4 py-2.5 text-sm font-semibold text-background">New draft</a>
+      </div>
+      {notice && <p role="alert" className="mt-4 rounded-md border p-3 text-sm text-destructive">{notice}</p>}
+      <section className="mt-5 overflow-hidden rounded-md border bg-background shadow-sm">
+        <div className="border-b p-3">
+          <label>
+            <span className="sr-only">Search drafts</span>
+            <input value={query} onChange={event => setQuery(event.target.value)}
+              placeholder="Find a draft…" className="h-10 w-full rounded-md border bg-background px-3 text-sm" />
+          </label>
+        </div>
+        {drafts.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">No pending drafts. AI-created drafts will appear here.</p>
+          : filteredDrafts.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">No matching drafts.</p>
+          : <div className="divide-y">{filteredDrafts.map(draft => <article key={draft.id}
+              className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <a className="truncate text-sm font-semibold hover:underline"
+                    href={"/mail/compose?draftId=" + encodeURIComponent(draft.id)}>
+                    {draft.subject || "(No subject)"}
+                  </a>
+                  <span className={draft.provider_draft_sync_status === "error"
+                    ? "text-xs font-medium text-destructive" : "text-xs text-muted-foreground"}
+                    role="status">{draftStatus(draft.provider_draft_sync_status)}</span>
+                </div>
+                <p className="mt-1 truncate text-xs text-muted-foreground">
+                  To: {draft.to_recipients?.join(", ") || "No recipients"}
+                  {draft.account_email ? " · " + draft.account_email : ""}
+                </p>
+                <p className="mt-1 truncate text-xs text-muted-foreground">{draft.text_body || "Empty draft"}</p>
+                {draft.provider_draft_sync_status === "error" &&
+                  <p className="mt-1 text-xs text-destructive">The last provider update is uncertain. Check your mailbox before retrying.</p>}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <a href={"/mail/compose?draftId=" + encodeURIComponent(draft.id)}
+                  className="rounded-md border px-3 py-1.5 text-xs font-medium">Review</a>
+                {draft.provider_draft_sync_status === "error" &&
+                  <button type="button" disabled={busyId !== null}
+                    onClick={() => void retryProviderSync(draft.id)}
+                    className="rounded-md border px-3 py-1.5 text-xs font-medium disabled:opacity-50">
+                    Retry sync
+                  </button>}
+                <button type="button" disabled={busyId !== null}
+                  onClick={() => void remove(draft.id)}
+                  className="rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-destructive disabled:opacity-50">
+                  Delete
+                </button>
+              </div>
+            </article>)}</div>}
+      </section>
+    </div>
+  </main>;
 }

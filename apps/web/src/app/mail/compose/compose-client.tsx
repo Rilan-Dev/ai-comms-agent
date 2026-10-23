@@ -35,6 +35,7 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [providerDraftStatus, setProviderDraftStatus] = useState<string | null>(null);
   const [approvalId, setApprovalId] = useState<string | null>(null);
   const [reviewedSnapshot, setReviewedSnapshot] = useState<ManualComposeSnapshot | null>(null);
   const [loadingDraft, setLoadingDraft] = useState(Boolean(requestedDraftId));
@@ -52,6 +53,7 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
     setApprovalId(null);
     setReviewedSnapshot(null);
     setSavedAt(null);
+    setProviderDraftStatus(null);
     setNotice(null);
     setTo(""); setCc(""); setBcc(""); setSubject(""); setBodyText("");
     setAccountId(!requestedDraftId && accountsOrganizationRef.current === organizationId
@@ -78,6 +80,7 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
       setSubject(String(draft.subject ?? ""));
       setBodyText(String(draft.text_body ?? ""));
       setSavedAt(draft.updated_at ? new Date(String(draft.updated_at)).toLocaleTimeString() : null);
+      setProviderDraftStatus(typeof draft.provider_draft_sync_status === "string" ? draft.provider_draft_sync_status : null);
       setReviewedSnapshot(normalizeManualComposeSnapshot({
         to: draft.to_recipients, cc: draft.cc_recipients, bcc: draft.bcc_recipients,
         subject: draft.subject ?? "", bodyText: draft.text_body ?? "",
@@ -159,6 +162,7 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
       const confirmed = matchesManualComposeReview(persisted, payload);
       setReviewedSnapshot(confirmed ? normalizeManualComposeSnapshot(payload) : null);
       setSavedAt(confirmed ? new Date().toLocaleTimeString() : null);
+      setProviderDraftStatus(typeof data.draft.provider_draft_sync_status === "string" ? data.draft.provider_draft_sync_status : null);
       if (!confirmed) setNotice("Draft saved, but the saved content is not identical to this review. Check recipients and subject, then save again.");
     } catch (error) {
       if (scopeRef.current === operationScope && scopeRevisionRef.current === operationRevision) {
@@ -210,9 +214,9 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
   }
 
   return <main className="min-h-full bg-background p-5 sm:p-7 lg:p-10"><div className="mx-auto max-w-4xl">
-    <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-4"><a href="/mail/inbox" className="text-sm font-semibold text-muted-foreground">← Back to inbox</a><a href="/mail/approvals" className="text-sm font-semibold text-muted-foreground underline underline-offset-4">Approvals</a></div><span className="text-xs text-muted-foreground">{savedAt ? "Saved " + savedAt : "Local draft"}</span></div>
+    <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-4"><a href="/mail/inbox" className="text-sm font-semibold text-muted-foreground">← Back to inbox</a><a href="/mail/approvals" className="text-sm font-semibold text-muted-foreground underline underline-offset-4">Approvals</a></div><span className="text-xs text-muted-foreground">{savedAt ? "Saved " + savedAt : "Unsaved"}{savedAt && providerDraftStatus === "queued" ? " · Mailbox sync queued" : savedAt && providerDraftStatus === "synced" ? " · In mailbox drafts" : savedAt && providerDraftStatus === "local_only" ? " · Saved here" : ""}</span></div>
     <section className="mt-6 overflow-hidden rounded-md border border-border bg-card">
-      <header className="border-b border-border p-5 sm:p-6"><p className="mb-3 text-xs font-semibold uppercase tracking-[.16em] text-muted-foreground">Mail workspace</p><h1 className="font-display text-2xl font-medium">New draft<span className="text-tertiary">.</span></h1><p className="mt-2 text-sm text-muted-foreground">Drafts are persisted locally first. Sending remains an authorized provider action and is not simulated.</p></header>
+      <header className="border-b border-border p-5 sm:p-6"><p className="mb-3 text-xs font-semibold uppercase tracking-[.16em] text-muted-foreground">Mail workspace</p><h1 className="font-display text-2xl font-medium">New draft<span className="text-tertiary">.</span></h1><p className="mt-2 text-sm text-muted-foreground">Drafts save automatically to connected mailboxes that support them. Sending always requires separate approval.</p></header>
       {notice && <div role="alert" className="border-b bg-destructive/5 px-6 py-3 text-sm text-destructive">{notice}</div>}
       <div className="space-y-4 p-6">
         <label className="block text-sm font-medium">From<select value={accountId} onChange={e=>{ setAccountId(e.target.value); markEdited(); }} disabled={busy || loadingDraft || !scopeValid || Boolean(draftId) || Boolean(approvalId)} className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-ring/20">{accounts.length===0?<option value="">No configured mailbox</option>:accounts.map(a=><option key={a.id} value={a.id}>{a.display_name || a.email_address} · {a.provider} · {a.status}</option>)}</select></label>

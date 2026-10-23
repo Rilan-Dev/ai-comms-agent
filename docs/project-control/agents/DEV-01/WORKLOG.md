@@ -775,3 +775,9 @@ Owner-selected Development recovered at ab7292fbb00263bb817ab2874ab4f66e10946f0f
 ## DEV01-LIVE-AUTH-RECHECK-20261023
 
 Normal login API and auth/me returned 200; actual authenticated Chat opened once. Other app routes remain intermittent. Existing QA conversation was observed, not created by this session; no new outgoing action performed. Current Development focused checks 38/38 pass. See docs/project-control/sessions/DEV01-LIVE-AUTH-RECHECK-20261023.md. OPS-01 origin-path diagnosis; DEV-01 resume F01–F21 with authoritative pending/delivery checks.
+
+### DEV01-AUTOMATIC-DRAFT-SYNC-20261023 — 2026-10-23
+- **Owner:** Reduce human clicks: automatically sync AI-created/local draft saves to connected provider Drafts, make draft list concise, allow AI to inspect pending drafts, preserve approval-gated sending.
+- **Source delivery:** Durable conditional queue on `createLocalDraft` and safe edits, bounded row-locked legacy auto-queue from `local_only`, existing provider draft worker integration, concise status/search/review list and uncertain-error confirmation only, stale GET/mutation fencing; AI read tool `drafts_only` and provider sync status. No implicit send or approval request.
+- **Source evidence:** New+updated focused tests. Fresh source contract checks 113/113 plus new 35/35 (partly overlapping) and polling 12/12; native tests/DB/provider/browser NOT RUN. OPS owns enabled worker/migrations/deploy and live acceptance, FIX independent adapter failures.
+- **Session and exact next:** `docs/project-control/sessions/DEV01-AUTOMATIC-DRAFT-SYNC-20261023.md`; run worker three-suite + five package typechecks on exact current Development SHA; verify state queued→synced, one provider Drafts copy, legacy auto-admission and rare error handling on isolated approved account. Continue independent C3/C4/R1b only after this scoped feature.

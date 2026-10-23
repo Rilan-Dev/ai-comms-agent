@@ -44,6 +44,7 @@ function publicMessage(row: Row, bodyLimit: number): Record<string, unknown> {
     is_read: row.is_read,
     is_starred: row.is_starred,
     is_draft: row.is_draft,
+    provider_draft_sync_status: row.is_draft ? row.provider_draft_sync_status ?? null : undefined,
     is_outbound: row.is_outbound ?? row.is_sent,
     importance_score: row.importance_score,
     action_required: row.action_required,
@@ -193,6 +194,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
     if (subject) add((n) => `m.subject ILIKE $${n}`, `%${subject.slice(0, 300)}%`);
     if (input.unread_only === true) conditions.push("m.is_read = false");
     if (input.starred_only === true) conditions.push("m.is_starred = true");
+    if (input.drafts_only === true) conditions.push("m.is_draft = true");
     const label = text(input.label);
     if (label) add((n) => `m.labels @> jsonb_build_array($${n}::text)`, label);
     const dateFrom = text(input.date_from);
@@ -209,12 +211,13 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
               COALESCE(m.from_email, m.from_name, '') AS from_address,
               m.to_recipients AS to_addresses, m.subject, m.snippet, m.received_at,
               m.is_read, m.is_starred, m.is_draft, m.is_sent AS is_outbound,
+              m.to_recipients AS to_addresses, m.provider_draft_sync_status, m.updated_at,
               m.importance_score, m.action_required,
               EXISTS (SELECT 1 FROM email_attachments ea WHERE ea.message_id=m.id) AS has_attachments,
               a.email_address AS account_email, a.display_name AS account_name
        FROM email_messages m JOIN email_accounts a ON a.id=m.email_account_id
        WHERE ${conditions.join(" AND ")}
-       ORDER BY m.received_at DESC NULLS LAST
+       ORDER BY ${input.drafts_only === true ? "m.updated_at" : "m.received_at"} DESC NULLS LAST
        LIMIT $${values.length - 1} OFFSET $${values.length}`,
       values,
     );

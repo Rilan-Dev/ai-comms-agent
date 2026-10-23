@@ -562,3 +562,7 @@ Owner-selected Development recovered at ab7292fbb00263bb817ab2874ab4f66e10946f0f
 ## DEV01-LIVE-AUTH-RECHECK-20261023
 
 Normal login API and auth/me returned 200; actual authenticated Chat opened once. Other app routes remain intermittent. Existing QA conversation was observed, not created by this session; no new outgoing action performed. Current Development focused checks 38/38 pass. See docs/project-control/sessions/DEV01-LIVE-AUTH-RECHECK-20261023.md. OPS-01 origin-path diagnosis; DEV-01 resume F01–F21 with authoritative pending/delivery checks.
+
+### DEV-01 lesson DEV01-AUTOMATIC-DRAFT-SYNC-20261023 — 2026-10-23
+- Provider draft auto-save should be *derived from an authorized draft write* and committed as a bounded durable worker queue; never require one technical sync button per saved message. Preserve tenant/account/capability gates, row-locked admission, fenced in-flight provider updates and no replay of unknown external outcomes. A saved draft still cannot be sent without the separate human approval workflow.
+- AI draft discovery uses optional `drafts_only` on existing registered `email.messages.list`/`email.search`, with normal account/agent/user read boundaries; it does not grant write or outbound send rights. Compact pending review UX and stale-read fencing are essential for reliable user confidence. See `sessions/DEV01-AUTOMATIC-DRAFT-SYNC-20261023.md`.

@@ -393,3 +393,8 @@ Owner-selected Development recovered at ab7292fbb00263bb817ab2874ab4f66e10946f0f
 ## DEV01-LIVE-AUTH-RECHECK-20261023
 
 Normal login API and auth/me returned 200; actual authenticated Chat opened once. Other app routes remain intermittent. Existing QA conversation was observed, not created by this session; no new outgoing action performed. Current Development focused checks 38/38 pass. See docs/project-control/sessions/DEV01-LIVE-AUTH-RECHECK-20261023.md. OPS-01 origin-path diagnosis; DEV-01 resume F01–F21 with authoritative pending/delivery checks.
+
+### DEV01-AUTOMATIC-DRAFT-SYNC-20261023 — draft save is not a send or approval
+- Draft provider sync is safe to automate **after an already-authorized draft write**, but must be durable DB queue admission, not a per-page button or fragile browser POST. Select queued with the same transaction as create; on edits avoid automatically retrying `syncing`/`error` because a remote provider may have already committed before timeout. Worker lease/token guards and human approval for sending must remain distinct.
+- A legacy `local_only` row can be promoted only with same-organization connected draft-capable account, no active send action and row-level bounded locking; never replay unknown outcomes without review. Keep UI focused on outstanding drafts, not implementation states; show a concise review count and status. Polling must fence stale reads around mutations, or old responses can resurrect deleted drafts.
+- The AI `email.messages.list`/`email.search` tools can expose `drafts_only` under existing scoped `email.read` permissions; this does not grant `email.write` or `send`. Details `sessions/DEV01-AUTOMATIC-DRAFT-SYNC-20261023.md`; source-only regression PASS, real DB/browser/provider not verified.
