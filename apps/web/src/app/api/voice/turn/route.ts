@@ -102,6 +102,10 @@ export async function POST(request: Request) {
     // Keep JSON and SSE on the same host-trusted intent boundary. The JSON
     // fallback previously routed ordinary "hello" turns into email tools.
     const needsAuthorizedTools = explicitEmailAction || /\b(email|mail|inbox|draft|message|messages|sender|recipient|attachment|account|contact|whatsapp|send|reply|forward|archive|trash|delete|move|mark|read|unread|approve|schedule|appointment|thread|folder|those|them)\b/i.test(transcript);
+    // A voice answer about actual mailbox contents must be grounded in a
+    // successful scoped message/search read. A model's unsupported claim of
+    // seeing email subjects is not evidence of host access.
+    const requiresEmailContentEvidence = !explicitEmailAction && /\b(emails?|mailbox|inbox|mail)\b/i.test(transcript);
     // Voice clients opt in to progressive text. The existing JSON contract
     // remains compatible for older clients. Conversations without a mailbox
     // or action intent use the same Clara token stream as Chat; tool-sensitive
@@ -140,6 +144,7 @@ export async function POST(request: Request) {
                   auth_subject: { user_id: subject.user.id, role, permissions },
                 },
                 maxRounds: 4, maxToolCalls: 8,
+                requireEmailContentEvidence: requiresEmailContentEvidence,
                 onProgress: (phase) => emit("progress", { phase }),
                 onSafeReadOnlyFinal: explicitEmailAction ? undefined : async (completedHistory) => {
                   emit("status", { phase: "generating" });
@@ -206,7 +211,14 @@ export async function POST(request: Request) {
             }
           } catch (error) {
             if (!request.signal.aborted) {
-              emit("error", { message: "Voice turn failed. No further action was confirmed. Review saved drafts and pending approvals before retrying." });
+              // Do not log message bodies, tool arguments or provider secrets.
+              console.error("[voice/turn] authorized voice turn failed", {
+                executionId, type: error instanceof Error ? error.name : "UnknownError",
+                stage: needsAuthorizedTools ? "authorized_tools" : "model",
+              });
+              emit("error", { message: needsAuthorizedTools
+                ? "Clara could not complete the authorized mail-tool request. No email summary or action was confirmed. Check the connected mailbox, permissions and sync status before retrying."
+                : "Clara could not complete the voice answer. No external action was confirmed." });
             }
           } finally {
             controller.close();
@@ -282,6 +294,7 @@ export async function POST(request: Request) {
           permissions,
         },
       },
+      requireEmailContentEvidence: requiresEmailContentEvidence,
       maxRounds: 4,
       maxToolCalls: 8,
     });
