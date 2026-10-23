@@ -187,6 +187,9 @@ export async function POST(request: Request) {
                 emit("delta", { text: token });
               }
               if (!request.signal.aborted) {
+                // The host must not claim an answered voice turn when the
+                // model yielded no spoken-text tokens at all.
+                if (!deliveredText.trim()) throw new Error("AI provider returned an empty voice response.");
                 await saveAnswer(deliveredText);
                 emit("done", {
                   executionId, toolCalls: [], pendingApprovals: [],
