@@ -10,15 +10,20 @@ export function AssistantChecklist({ items, disabled, onPrepare }: {
   items: readonly AssistantChecklistItem[]; disabled: boolean; onPrepare: PrepareDraft;
 }) {
   const [selected, setSelected] = useState<boolean[]>(() => items.map(item => item.checked));
-  const prompt = buildSelectedChecklistPrompt(items, selected);
+  // Streaming can append checklist rows after first mount; keep all rows selectable.
+  const effectiveSelection = items.map((item, index) => selected[index] ?? item.checked);
+  const prompt = buildSelectedChecklistPrompt(items, effectiveSelection);
   return (
     <section aria-label="Select items from assistant checklist" className="rounded-xl border bg-card p-3.5">
       <p className="text-xs font-semibold">Choose items to discuss</p>
       <div className="mt-2 space-y-2">
         {items.map((item, index) => (
           <label key={index} className="flex cursor-pointer items-start gap-2 text-sm leading-6">
-            <input type="checkbox" checked={selected[index] ?? item.checked} disabled={disabled}
-              onChange={event => setSelected(current => current.map((value, position) => position === index ? event.target.checked : value))}
+            <input type="checkbox" checked={effectiveSelection[index] ?? false} disabled={disabled}
+              onChange={event => {
+                const checked = event.currentTarget.checked;
+                setSelected(current => items.map((entry, position) => position === index ? checked : (current[position] ?? entry.checked)));
+              }}
               className="mt-1.5 size-4 shrink-0 accent-primary" />
             <span className="min-w-0 break-words">{item.label}</span>
           </label>
@@ -30,7 +35,7 @@ export function AssistantChecklist({ items, disabled, onPrepare }: {
           className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50">
           Add selected to message
         </button>
-        <span className="text-xs text-muted-foreground">{selected.filter(Boolean).length} selected</span>
+        <span className="text-xs text-muted-foreground">{effectiveSelection.filter(Boolean).length} selected</span>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">Selections are local. Nothing is sent or marked complete.</p>
     </section>
