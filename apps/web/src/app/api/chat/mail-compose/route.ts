@@ -6,7 +6,8 @@ import { authorize, authorizationErrorToResponse } from "@/lib/identity/authoriz
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { assertSameOrigin } from "@/lib/identity/local-auth";
 import { createEmailToolRuntime, invokeEmailReadTool } from "../../../../../../../apps/worker/src/agent/email-tool-runtime";
-import { mailComposeReadiness, selectPreferredComposeMailbox } from "@/lib/mail/compose-readiness";
+import { mailComposeReadiness } from "@/lib/mail/compose-readiness";
+import { selectComposeSender } from "@/lib/mail/compose-identity";
 import { mayDiscoverComposeMailboxes, mayWriteComposeDraft } from "@/lib/mail/compose-access";
 
 export const dynamic = "force-dynamic";
@@ -84,7 +85,10 @@ export async function GET(request: Request) {
     const empty = mailComposeReadiness({
       ...baseline, hasBoundPrimaryMailbox: false, providerCanDraft: false, providerCanSend: false,
     });
-    const preferred = selectPreferredComposeMailbox(choices);
+    // Aggregate readiness cannot assume a From choice when more than one
+    // account exists. Even a capable preferred account requires user selection.
+    const selectedId = selectComposeSender(choices);
+    const selected = choices.find(choice => choice.id === selectedId);
     // These are read-only hints, not grants. POST rechecks authorization and
     // provider capabilities even if they change after this response.
     return NextResponse.json({
@@ -102,9 +106,9 @@ export async function GET(request: Request) {
         name: trusted.subject.user.name,
         email: trusted.subject.user.email,
       },
-      canDraft: preferred?.canDraft ?? empty.canDraft,
-      canRequestApproval: preferred?.canRequestApproval ?? empty.canRequestApproval,
-      blockers: preferred?.blockers ?? empty.blockers,
+      canDraft: selected?.canDraft ?? empty.canDraft,
+      canRequestApproval: selected?.canRequestApproval ?? empty.canRequestApproval,
+      blockers: selected?.blockers ?? empty.blockers,
     }, { headers: { "cache-control": "private, no-store" } });
   } catch (error) { return authorizationErrorToResponse(error); }
 }
