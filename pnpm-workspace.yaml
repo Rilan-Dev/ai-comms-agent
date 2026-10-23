@@ -2,5 +2,11 @@ packages:
   - "apps/*"
   - "packages/*"
 
-# pnpm v12+ build script security
-dangerouslyAllowAllBuilds: true
+# Only previously reviewed, version-pinned native build dependencies may run
+# installation scripts. Never approve all current/future transitive packages.
+strictDepBuilds: true
+allowBuilds:
+  'esbuild@0.21.5': true
+  'esbuild@0.28.2': true
+  'sharp@0.35.5': true
+  '@tailwindcss/oxide@4.3.3': true
