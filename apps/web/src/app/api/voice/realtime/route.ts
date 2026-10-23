@@ -3,6 +3,7 @@ import { decryptCredential, parseCredentialsMasterKey, PostgresAgentRepository, 
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
+import { assertSameOrigin } from "@/lib/identity/local-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,8 @@ function boundedText(value: unknown, max = 200): string {
  * its SDP offer and receives the negotiated SDP answer.
  */
 export async function POST(request: Request) {
+  try { assertSameOrigin(request); }
+  catch { return NextResponse.json({ error: "invalid_origin" }, { status: 403 }); }
   try {
     if (!process.env.DATABASE_URL) {
       return NextResponse.json({ error: "database_not_configured" }, { status: 503 });
