@@ -33,7 +33,8 @@ test("an exact selected set without next page is a complete SOURCE LINK list, no
   assert.equal(result.complete, true);
   assert.equal(result.hasMore, false);
   assert.match(result.message, /2 of 2 source email links/);
-  assert.doesNotMatch(result.message, /AI generated|AI complete|all reviewed/i);
+  assert.match(result.message, /does not verify current mailbox permission/i);
+  assert.doesNotMatch(result.message, /source links are available|AI generated|AI complete|all reviewed/i);
 });
 
 test("duplicate and empty IDs never inflate coverage, invalid source counts fail closed", () => {
