@@ -51,6 +51,7 @@ test("all draft and approval entry points validate recipient addresses before pe
 
   const reply = handler("replyDraft", "forwardDraft");
   assert.match(reply, /requireRecipients\(\[sender\]\)/);
+  assert.match(reply, /const sender = typeof source\.from_email === "string" \? source\.from_email\.trim\(\) : ""/);
 
   const forward = handler("forwardDraft", "requestSend");
   assert.match(forward, /requireRecipients\(input\.to\)/);
@@ -62,6 +63,7 @@ test("all draft and approval entry points validate recipient addresses before pe
 
   const requestReply = handler("requestReply", "requestForward");
   assert.match(requestReply, /requireRecipients\(\[recipient\]\)/);
+  assert.match(requestReply, /const recipient = typeof source\.from_email === "string" \? source\.from_email\.trim\(\) : ""/);
 
   const requestForward = source.slice(source.indexOf('const requestForward = makeTool('));
   assert.match(requestForward, /requireRecipients\(input\.to\)/);
