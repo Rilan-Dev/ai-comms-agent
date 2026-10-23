@@ -867,13 +867,17 @@ export const claraRuntime = {
             : "scribe_v2_realtime",
         };
       }
-      if (available) {
+      if (available && provider === "elevenlabs") {
+        // ElevenLabs retains its explicitly named turn-based fallback. A
+        // Sarvam *realtime conversation* must never silently become REST
+        // STT -> completed host turn -> REST TTS just because the WebSocket
+        // relay is missing. The session endpoint reports that prerequisite.
         return {
           realtimeProvider: provider,
           transportMode: "pipeline" as const,
           turnEndpoint: "/api/voice/turn",
           voiceId,
-          model: provider === "sarvam" ? "saaras:v4" : "scribe_v2",
+          model: "scribe_v2",
         };
       }
     }
