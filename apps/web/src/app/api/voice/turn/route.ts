@@ -8,6 +8,7 @@ import { runEmailAgentTurn } from "@ai-comms-agent/email-agent-runtime";
 import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation, verifiedEmailToolSummary } from "@/lib/mail/action-feedback";
+import { userFacingChatAnswer } from "@/lib/chat/user-facing-answer";
 
 
 export const dynamic = "force-dynamic";
@@ -149,12 +150,16 @@ export async function POST(request: Request) {
                   for await (const token of finalStream) {
                     if (request.signal.aborted) break;
                     generated += token;
-                    emit("delta", { text: token });
                   }
                   if (!request.signal.aborted && !generated.trim()) {
                     throw new Error("The provider did not produce a final voice answer after completed read-only tools.");
                   }
-                  return generated;
+                  // Validate the full untrusted model reply before speaking or
+                  // displaying any of it. A reasoning leak must not be spoken.
+                  const validated = userFacingChatAnswer(generated);
+                  if (!validated && !request.signal.aborted) throw new Error("Read-only voice model output was not a user-facing answer.");
+                  if (validated && !request.signal.aborted) emit("delta", { text: validated });
+                  return validated ?? "";
                 },
               });
               if (!request.signal.aborted) {
