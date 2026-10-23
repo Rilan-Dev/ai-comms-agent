@@ -499,6 +499,10 @@ export async function POST(request: Request) {
     }
 
     const history = await listChatMessages(organizationId, conversation.id, 40);
+    // A previously persisted provider response may contain private planning.
+    // Preserve it in the user's existing transcript for audit, but never
+    // reintroduce it into the model prompt or mailbox search context.
+    const safeHistory = history.filter(message => message.role !== "assistant" || userFacingChatAnswer(message.content) !== null);
     // Build combined search context from the current message + recent user
     // AND assistant messages. Including the assistant's previous response is
     // critical: when the user asks "show me the exact emails" as a follow-up,
@@ -507,8 +511,9 @@ export async function POST(request: Request) {
     // original query said "mohammed rilan ksa" without the @ symbol. By
     // including the assistant response, the email address gets extracted as
     // a search term and matches from_email with high precision.
-    const recentMessages = history
-      .filter(m => m.role === "user" || m.role === "assistant")
+    const recentMessages = safeHistory.filter(
+      m => m.role === "user" || m.role === "assistant",
+    )
       .slice(-6)
       .map(m => m.content);
     const combinedSearchContext = [...recentMessages, content].join(" ");
@@ -543,7 +548,7 @@ export async function POST(request: Request) {
     // Previously the email context was placed BEFORE conversation history,
     // which biased the LLM toward dumping the 20-email context rather than
     // recognizing the user's reference to the previous turn's emails.
-    const filteredHistory = history
+    const filteredHistory = safeHistory
       .filter((message) => message.role === "user" || message.role === "assistant" || message.role === "system")
       .map((message) => ({ role: message.role as "user" | "assistant" | "system", content: message.content }));
     const messages = [
