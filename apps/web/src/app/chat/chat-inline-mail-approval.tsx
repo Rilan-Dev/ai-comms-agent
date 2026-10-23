@@ -10,11 +10,12 @@ import { validateChatEmailApproval, type ChatEmailApproval } from "@/lib/chat/in
  * authorize the signed-in reviewer; approving queues the worker, not a
  * browser-side provider send.
  */
-export function InlineMailApprovalReview({ organizationId, actionId, draftId, accountId }: {
+export function InlineMailApprovalReview({ organizationId, actionId, draftId, accountId, onApprovalConfirmed }: {
   organizationId: string;
   actionId: string;
   draftId: string;
   accountId: string;
+  onApprovalConfirmed: () => void;
 }) {
   const [approval, setApproval] = useState<ChatEmailApproval | null>(null);
   const [loading, setLoading] = useState(false);
@@ -65,6 +66,7 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
         throw new Error(data.message ?? "Approval was not confirmed; reload its status before trying again.");
       }
       setDecisionDone(true);
+      onApprovalConfirmed();
       setApproval(null);
       setReviewConfirmed(false);
       setNotice("Approval accepted for worker processing. This Chat view has not verified the delivery outcome; check your Sent mailbox or action status.");

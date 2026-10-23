@@ -97,10 +97,15 @@ export function ChatClient({
   const composeInFlightRef = useRef(false);
 
   function invalidateComposeReview() {
+    // Editing a locally reviewed draft never cancels an already persisted
+    // approval request. Make that distinction visible before another draft.
+    const hadPriorApproval = Boolean(composeActionId);
     composeRevisionRef.current += 1;
     setComposeDraftId(null);
     setComposeActionId(null);
-    setComposeNotice("");
+    setComposeNotice(hadPriorApproval
+      ? "Earlier send approval is not cancelled or recalled by editing here. Check Mail Approvals and Sent before creating another request."
+      : "");
   }
 
   // After closing the embedded voice panel, return keyboard focus to the
@@ -720,7 +725,8 @@ export function ChatClient({
           {composeActionId && <p role="status" className="mt-2 text-xs text-muted-foreground">Approval request created (pending_approval at submission). Check current approval and delivery status in Mail.</p>}
           {composeActionId && composeDraftId && composeAccount ? (
             <InlineMailApprovalReview key={composeActionId} organizationId={organizationId}
-              actionId={composeActionId} draftId={composeDraftId} accountId={composeAccount} />
+              actionId={composeActionId} draftId={composeDraftId} accountId={composeAccount}
+              onApprovalConfirmed={() => setComposeNotice("Approval accepted for worker processing. Chat does not confirm delivery; check Mail or Sent.")} />
           ) : null}
         </section>
       )}
