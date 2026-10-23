@@ -29,6 +29,17 @@ function text(value: unknown, max = 4000): string {
 function list(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean).slice(0, 100) : [];
 }
+/** A draft's To must be explicit, not inferred from an email contact name.
+ * Ask the user to choose the full recipient address before writing anything. */
+function requireRecipients(value: unknown): string[] {
+  const recipients = list(value);
+  if (!recipients.length || recipients.some(address =>
+    address.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address))) {
+    throw new EmailWriteFailure("recipient_required",
+      "Who should receive this email? Please choose or provide the exact recipient email address before I create a draft.");
+  }
+  return recipients;
+}
 function summary(toolName: string, output?: unknown): string {
   if (output && typeof output === "object" && "status" in output) {
     const record = output as Record<string, unknown>;
@@ -63,7 +74,8 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
   };
 
   async function resolveAccount(accountId: string, context: ToolContext, allowSendOnly = false) {
-    if (!accountId) throw new EmailWriteFailure("invalid_account", "A connected email account is required.");
+    if (!accountId) throw new EmailWriteFailure("invalid_account",
+      "Which From email should I use? Select a connected mailbox assigned to this agent before I create a draft.");
     const binding = await query<{ role: string }>(
       `SELECT b.role FROM agent_email_accounts b
        JOIN agents g ON g.id=b.agent_id
@@ -120,13 +132,14 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
   }
 
   const draftCreate = makeTool("email.draft.create", async (input, context) => {
+    const recipients = requireRecipients(input.to);
     const account = await resolveAccount(text(input.account_id), context);
     const item = descriptor("email.draft.create");
     if (!hasEmailToolCapabilities(item, account.capabilities as Record<string, boolean>)) throw new EmailWriteFailure("capability_not_supported", "This mailbox does not support drafts.");
     const draft = await createLocalDraft({
       organizationId: context.organization_id,
       emailAccountId: account.id,
-      to: list(input.to),
+      to: recipients,
       cc: list(input.cc),
       bcc: list(input.bcc),
       subject: text(input.subject, 998),
@@ -198,6 +211,8 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     const draftId = text(input.draft_id, 100);
     const draft = await getLocalDraftForOrganization(context.organization_id, draftId);
     if (!draft || String(draft.email_account_id) !== account.id) throw new EmailWriteFailure("draft_not_found", "The draft was not found in the selected mailbox.");
+    // Older saved drafts can lack a recipient; never request approval for one.
+    requireRecipients(draft.to_recipients);
     if (!account.capabilities.drafts || !account.capabilities.send) throw new EmailWriteFailure("capability_not_supported", "This mailbox cannot send drafts.");
     const action = await createEmailAction({
       organizationId: context.organization_id,
