@@ -38,7 +38,7 @@ test("same-draft duplicate approval is a visible safe conflict, not a second pro
   assert.match(manual, /EmailActionIdempotencyConflictError/);
   assert.match(manual, /status: 409/);
   assert.match(agent, /EmailActionIdempotencyConflictError/);
-  assert.match(agent, /draft_approval_conflict/);
+  assert.match(agent, /email_action_conflict/);
   assert.match(agent, /"pending_approval"/);
   assert.doesNotMatch(manual, /sendDraft\(|claimApprovedEmailAction\(/);
 });
