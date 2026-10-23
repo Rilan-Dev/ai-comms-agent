@@ -255,21 +255,34 @@ export function createEmailHybridRetriever(dependencies: {
     if (input.sender?.trim()) finalAdd((n) => `m.from_email ILIKE $${n} ESCAPE E'\\\\'`, `%${input.sender.trim().slice(0, 320).replace(/[\\%_]/g, "\\$&")}%`);
     if (input.subject?.trim()) finalAdd((n) => `m.subject ILIKE $${n} ESCAPE E'\\\\'`, `%${input.subject.trim().slice(0, 300).replace(/[\\%_]/g, "\\$&")}%`);
     finalValues.push(limit);
+    // Revalidate vector candidate pointers from PostgreSQL under the same
+    // tenant/agent/readable-account scope, then collapse IMAP folder copies
+    // *before* LIMIT. A stale Qdrant hit may still refer to the All Mail UID
+    // while its INBOX copy is already the canonical knowledge record.
     const finalRows = await runQuery<DbRow>(
       `WITH candidates AS (
          SELECT account_id, provider_message_id, score, matched_by, content_hash, storage_path
            FROM jsonb_to_recordset($4::jsonb)
              AS c(account_id uuid, provider_message_id text, score double precision, matched_by text[], content_hash text, storage_path text)
-       )
+       ), ranked AS (
        SELECT m.id, m.provider_message_id, m.email_account_id, m.thread_id,
               m.from_email, m.to_recipients, m.subject, m.text_body, m.snippet,
               m.received_at, a.email_address, a.provider, c.score,
-               CASE
-                 WHEN 'semantic'=ANY(c.matched_by)
-                   AND COALESCE(d.sha256, d.metadata->>'content_hash') IS DISTINCT FROM c.content_hash
-                 THEN array_remove(c.matched_by, 'semantic')
-                 ELSE c.matched_by
-               END AS matched_by
+              CASE
+                WHEN 'semantic'=ANY(c.matched_by)
+                  AND COALESCE(d.sha256, d.metadata->>'content_hash') IS DISTINCT FROM c.content_hash
+                THEN array_remove(c.matched_by, 'semantic')
+                ELSE c.matched_by
+              END AS matched_by,
+              ROW_NUMBER() OVER (
+                PARTITION BY m.email_account_id,
+                  CASE WHEN a.provider='imap_smtp'
+                            AND NULLIF(BTRIM(m.internet_message_id), '') IS NOT NULL
+                    THEN 'message:' || LOWER(BTRIM(m.internet_message_id))
+                    ELSE 'row:' || m.id::text END
+                ORDER BY CASE WHEN f.role='inbox' OR UPPER(f.provider_folder_id)='INBOX' THEN 0 ELSE 1 END,
+                         c.score DESC, m.received_at DESC NULLS LAST, m.id
+              ) AS duplicate_rank
          FROM candidates c
          JOIN email_messages m ON m.email_account_id=c.account_id AND m.provider_message_id=c.provider_message_id
          LEFT JOIN knowledge_documents d ON d.organization_id=m.organization_id
@@ -277,8 +290,15 @@ export function createEmailHybridRetriever(dependencies: {
          JOIN email_accounts a ON a.id=m.email_account_id
          JOIN agent_email_accounts b ON b.email_account_id=a.id
          JOIN agents g ON g.id=b.agent_id
+         LEFT JOIN email_folders f ON f.id=m.folder_id AND f.email_account_id=m.email_account_id
         WHERE ${finalConditions.join(" AND ")}
-        ORDER BY c.score DESC, m.received_at DESC NULLS LAST
+       )
+       SELECT r.id, r.provider_message_id, r.email_account_id, r.thread_id,
+              r.from_email, r.to_recipients, r.subject, r.text_body, r.snippet,
+              r.received_at, r.email_address, r.provider, r.score, r.matched_by
+         FROM ranked r
+        WHERE r.duplicate_rank=1
+        ORDER BY r.score DESC, r.received_at DESC NULLS LAST, r.id
         LIMIT $${finalValues.length}`,
       finalValues,
     );
