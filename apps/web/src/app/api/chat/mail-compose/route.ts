@@ -89,6 +89,19 @@ export async function GET(request: Request) {
     // provider capabilities even if they change after this response.
     return NextResponse.json({
       mailboxes: choices,
+      // Display only authenticated facts. These are not authorization tokens:
+      // every POST still verifies user RBAC, agent tool policy, binding and
+      // provider support. A send request always requires human approval.
+      permissions: {
+        userCanWrite: baseline.actorCanWrite,
+        agentCanDraft: baseline.draftToolEnabled,
+        agentCanRequestApproval: baseline.sendRequestToolEnabled,
+        directSend: false,
+      },
+      profile: {
+        name: trusted.subject.user.name,
+        email: trusted.subject.user.email,
+      },
       canDraft: preferred?.canDraft ?? empty.canDraft,
       canRequestApproval: preferred?.canRequestApproval ?? empty.canRequestApproval,
       blockers: preferred?.blockers ?? empty.blockers,
