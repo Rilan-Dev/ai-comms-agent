@@ -56,6 +56,41 @@ describe("WhatsApp send approval tool behavior", () => {
     }));
   });
 
+  it("reuses a still-pending identical approval without creating another action", async () => {
+    mocks.query
+      .mockResolvedValueOnce({ rows: [{ id: "account-1" }] })
+      .mockResolvedValueOnce({ rows: [{ id: "existing-pending", status: "pending" }] });
+    const result = await createWhatsAppSendApprovalTool().execute({
+      account_id: "account-1", to: "+919876543210",
+      payload_type: "text", body: "Same reviewed text",
+    }, context);
+    expect(result.ok).toBe(true);
+    expect(result.output).toEqual({
+      approval_required: true, action_id: "existing-pending", status: "pending",
+    });
+    expect(mocks.query).toHaveBeenCalledTimes(2);
+    expect(mocks.query.mock.calls[1][0]).toContain("DO UPDATE SET idempotency_key = EXCLUDED.idempotency_key");
+    expect(mocks.query.mock.calls[1][0]).toContain("whatsapp_send_actions.requested_by IS NOT DISTINCT FROM EXCLUDED.requested_by");
+    expect(mocks.query.mock.calls[1][0]).toContain("whatsapp_send_actions.status = 'pending'");
+  });
+
+  it("rejects reused or finalized idempotency keys without an audit claiming fresh approval", async () => {
+    // PostgreSQL's atomic ON CONFLICT predicate returns zero rows for a
+    // different actor, agent, payload, or non-pending/expired existing action.
+    mocks.query
+      .mockResolvedValueOnce({ rows: [{ id: "account-1" }] })
+      .mockResolvedValueOnce({ rows: [] });
+    const result = await createWhatsAppSendApprovalTool().execute({
+      account_id: "account-1", to: "+919876543210",
+      payload_type: "text", body: "Safe test",
+    }, context);
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("idempotency_conflict");
+    expect(result.error?.message).toContain("No new approval was created");
+    expect(mocks.query).toHaveBeenCalledTimes(2);
+    expect(mocks.recordAuditEvent).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid recipients before creating any action", async () => {
     const tool = createWhatsAppSendApprovalTool();
     const result = await tool.execute({
