@@ -19,6 +19,8 @@ function offsetText(minutes: number): string {
   return `UTC${sign}${String(Math.floor(absolute / 60)).padStart(2, "0")}:${String(absolute % 60).padStart(2, "0")}`;
 }
 
+const intervalOptions = { "1": 60, "6": 360, "12": 720, "24": 1440 } as const;
+
 const weekdays = [
   ["1", "Monday"], ["2", "Tuesday"], ["3", "Wednesday"], ["4", "Thursday"],
   ["5", "Friday"], ["6", "Saturday"], ["7", "Sunday"],
@@ -37,6 +39,7 @@ export default async function RoutinePreviewPage({ searchParams }: { searchParam
   const timeZone = boundedParam(raw.timeZone, 90) || "UTC";
   const localTime = boundedParam(raw.localTime, 5) || "09:00";
   const weekday = boundedParam(raw.weekday, 1) || "1";
+  const intervalHours = boundedParam(raw.intervalHours, 2) || "24";
   const now = new Date();
   const fireAt = boundedParam(raw.fireAt, 45) || new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
   const hasInputs = Object.keys(raw).length > 0;
@@ -47,9 +50,13 @@ export default async function RoutinePreviewPage({ searchParams }: { searchParam
     if (requestedKind && !["daily", "weekly", "interval", "once", "event"].includes(requestedKind)) {
       throw new Error("Choose a supported routine trigger.");
     }
+    if (kind === "interval" && !(intervalHours in intervalOptions)) {
+      throw new Error("Choose a supported interval between one and 24 hours.");
+    }
     if (kind !== "event") {
+      const intervalMinutes = intervalOptions[intervalHours as keyof typeof intervalOptions] ?? 1440;
       const trigger: RoutineTrigger = kind === "interval"
-        ? { kind: "interval", everyMinutes: 1440, anchorAt: now.toISOString() }
+        ? { kind: "interval", everyMinutes: intervalMinutes, anchorAt: now.toISOString() }
         : kind === "once"
           ? { kind: "once", fireAt, timeZone }
           : { kind: "calendar", cadence: kind === "weekly" ? "weekly" : "daily",
@@ -78,7 +85,7 @@ export default async function RoutinePreviewPage({ searchParams }: { searchParam
             <select name="kind" defaultValue={kind} className="h-11 rounded-md border border-input bg-background px-3">
               <option value="daily">Every day at a local time</option>
               <option value="weekly">Every week on a chosen day</option>
-              <option value="interval">Every 24 elapsed hours</option>
+              <option value="interval">Every 1, 6, 12 or 24 elapsed hours</option>
               <option value="once">One time at an exact instant</option>
               <option value="event">When an email arrives (event trigger)</option>
             </select>
@@ -89,6 +96,14 @@ export default async function RoutinePreviewPage({ searchParams }: { searchParam
           </label>
           <label className="grid gap-2 text-sm font-medium">Calendar local time
             <input name="localTime" type="time" defaultValue={localTime} className="h-11 rounded-md border border-input bg-background px-3" />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">Fixed elapsed interval
+            <select name="intervalHours" defaultValue={intervalHours} className="h-11 rounded-md border border-input bg-background px-3">
+              <option value="1">Every hour (minimum)</option>
+              <option value="6">Every 6 hours</option>
+              <option value="12">Every 12 hours</option>
+              <option value="24">Every 24 hours</option>
+            </select>
           </label>
           <label className="grid gap-2 text-sm font-medium">Weekly day
             <select name="weekday" defaultValue={weekday} className="h-11 rounded-md border border-input bg-background px-3">
@@ -116,7 +131,7 @@ export default async function RoutinePreviewPage({ searchParams }: { searchParam
           </li>)}
         </ol>}
         <p className="mt-4 text-xs leading-5 text-muted-foreground">
-          These times are estimates for planning, not actual scheduled jobs. Every 24 elapsed hours may appear at a different time through daylight-saving changes; a daily local-time rule follows the chosen time zone's calendar. Missing spring-forward times are skipped and the first duplicated fall-back instant is used.
+          These times are estimates for planning, not actual scheduled jobs. Fixed elapsed intervals (including every 24 hours) may appear at a different time through daylight-saving changes; a daily local-time rule follows the chosen time zone's calendar. Missing spring-forward times are skipped and the first duplicated fall-back instant is used.
         </p>
         {hasInputs && <p className="mt-2 text-xs text-muted-foreground">Changing the selection never edits an existing schedule or automation.</p>}
         <p className="mt-3 text-xs leading-5 text-muted-foreground">
