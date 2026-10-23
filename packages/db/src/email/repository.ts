@@ -283,22 +283,28 @@ export interface MailInboxFilters {
 
 export async function listInboxMessages(organizationId: string, filters: MailInboxFilters = {}): Promise<Array<Record<string, unknown>>> {
   const values: unknown[] = [organizationId];
-  // Gmail IMAP exposes INBOX and [Gmail]/All Mail as separate
-  // folder:UID copies. The Inbox page shows INBOX membership only.
+  // An Inbox page must not surface the local draft rows created by Chat,
+  // nor non-IMAP Sent/Archive folder rows. IMAP folder-qualified UID copies
+  // keep requiring positive Inbox membership. For legacy non-IMAP rows with
+  // no resolved folder, accept only non-outbound messages.
   const conditions = [
+    "m.organization_id = $1",
     "a.organization_id = $1",
     "a.deleted_at IS NULL",
-    "(a.provider <> 'imap_smtp' OR EXISTS (SELECT 1 FROM email_folders inbox_folder WHERE inbox_folder.id = m.folder_id AND inbox_folder.email_account_id = m.email_account_id AND (inbox_folder.role = 'inbox' OR UPPER(inbox_folder.provider_folder_id) = 'INBOX')))",
+    "m.is_draft = false",
+    "(EXISTS (SELECT 1 FROM email_folders inbox_folder WHERE inbox_folder.id = m.folder_id AND inbox_folder.email_account_id = m.email_account_id AND (inbox_folder.role = 'inbox' OR UPPER(inbox_folder.provider_folder_id) = 'INBOX')) OR (a.provider <> 'imap_smtp' AND m.folder_id IS NULL AND m.is_sent = false))",
   ];
   if (filters.accountId) { values.push(filters.accountId); conditions.push(`m.email_account_id = $${values.length}`); }
   if (filters.unreadOnly) conditions.push("m.is_read = false");
   if (filters.actionRequired) conditions.push("m.action_required = true");
   if (filters.query?.trim()) { values.push(`%${filters.query.trim()}%`); conditions.push(`(m.subject ILIKE $${values.length} OR m.from_email ILIKE $${values.length} OR m.from_name ILIKE $${values.length} OR m.text_body ILIKE $${values.length} OR m.snippet ILIKE $${values.length})`); }
-  const limit = Math.min(Math.max(filters.limit ?? 50, 1), 100); const offset = Math.max(filters.offset ?? 0, 0);
+  // Match the /api/mail/inbox contract (1..500). Capping here at 100
+  // while advancing UI offsets by 500 silently skipped up to 400 messages.
+  const limit = Math.min(Math.max(filters.limit ?? 50, 1), 500); const offset = Math.max(filters.offset ?? 0, 0);
   values.push(limit, offset);
   const r = await query<Row>(`SELECT m.id, m.email_account_id, m.thread_id, COALESCE(m.from_email, m.from_name, '') AS from_address, m.to_recipients AS to_addresses, m.subject, m.snippet, m.received_at, m.is_read, m.is_starred, m.is_draft, m.is_sent AS is_outbound, m.importance_score, m.action_required, EXISTS (SELECT 1 FROM email_attachments ea WHERE ea.message_id = m.id) AS has_attachments, a.email_address AS account_email, a.display_name AS account_name
     FROM email_messages m JOIN email_accounts a ON a.id = m.email_account_id
-    WHERE ${conditions.join(" AND ")} ORDER BY m.received_at DESC NULLS LAST LIMIT $${values.length - 1} OFFSET $${values.length}`, values);
+    WHERE ${conditions.join(" AND ")} ORDER BY m.received_at DESC NULLS LAST, m.id DESC LIMIT ${values.length - 1} OFFSET ${values.length}`, values);
   return r.rows;
 }
 
