@@ -52,3 +52,18 @@ test("preserve existing unrelated reply/forward idempotency and human approval g
   assert.match(agent, /createEmailAction\(/);
   assert.match(agent, /"pending_approval"/);
 });
+
+
+test("the locked draft must still match the exact reviewed recipients and body before approval", () => {
+  const f = repo.slice(repo.indexOf("export async function createEmailAction("),
+    repo.indexOf("export async function listPendingEmailActionsForOrganization("));
+  assert.match(repo, /function matchesPersistedSendDraftSnapshot\(/);
+  assert.match(f, /SELECT id, to_recipients, cc_recipients, bcc_recipients, subject, text_body FROM email_messages/);
+  assert.match(f, /matchesPersistedSendDraftSnapshot\(locked\.rows\[0\], input\.recipientSnapshot\)/);
+  assert.ok(f.indexOf("matchesPersistedSendDraftSnapshot(locked.rows[0], input.recipientSnapshot)")
+    < f.indexOf("client.query<Row>(insertSql,params)"));
+  assert.match(repo, /recipientSnapshot\.bodyText/);
+  assert.match(repo, /persisted\.text_body/);
+  assert.match(repo, /to_recipients/);
+  assert.match(repo, /bcc_recipients/);
+});
