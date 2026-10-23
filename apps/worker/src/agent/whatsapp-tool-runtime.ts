@@ -108,21 +108,41 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
       const messageBody = input.payload_type === "template" ? "Template: " + input.template_name : input.body!.trim();
       const idempotencyKey = "agent:" + context.agent_id + ":" + context.turn_id + ":" + input.to;
       const correlationId = context.correlation_id;
+      // Atomic retry authorization: an idempotency key may only identify the
+      // SAME still-pending, unexpired human review, owned by this actor/agent
+      // and containing identical account, recipient, template and message.
+      // Never fetch a terminal/foreign action by key after a DO NOTHING race.
       const inserted = await query<{ id: string; status: string }>(
-        "INSERT INTO whatsapp_send_actions (organization_id, whatsapp_account_id, agent_id, agent_binding_required, requested_by, recipient_phone, message_body, payload_type, template_name, template_language, template_parameters, status, idempotency_key, correlation_id) VALUES ($1,$2,$3,true,$4,$5,$6,$7,$8,$9,$10::jsonb,'pending',$11,$12) ON CONFLICT (organization_id,idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING RETURNING id,status",
-        [context.organization_id, input.account_id, context.agent_id, context.user_id, input.to, messageBody, input.payload_type, input.payload_type === "template" ? input.template_name : null, input.payload_type === "template" ? input.template_language : null, JSON.stringify(input.payload_type === "template" ? templateParameters : []), idempotencyKey, correlationId],
+        `INSERT INTO whatsapp_send_actions
+           (organization_id, whatsapp_account_id, agent_id, agent_binding_required, requested_by,
+            recipient_phone, message_body, payload_type, template_name, template_language,
+            template_parameters, status, idempotency_key, correlation_id)
+         VALUES ($1,$2,$3,true,$4,$5,$6,$7,$8,$9,$10::jsonb,'pending',$11,$12)
+         ON CONFLICT (organization_id,idempotency_key) WHERE idempotency_key IS NOT NULL
+         DO UPDATE SET idempotency_key = EXCLUDED.idempotency_key
+         WHERE whatsapp_send_actions.status = 'pending'
+           AND whatsapp_send_actions.expires_at > now()
+           AND whatsapp_send_actions.requested_by IS NOT DISTINCT FROM EXCLUDED.requested_by
+           AND whatsapp_send_actions.agent_id IS NOT DISTINCT FROM EXCLUDED.agent_id
+           AND whatsapp_send_actions.agent_binding_required IS NOT DISTINCT FROM EXCLUDED.agent_binding_required
+           AND whatsapp_send_actions.whatsapp_account_id IS NOT DISTINCT FROM EXCLUDED.whatsapp_account_id
+           AND whatsapp_send_actions.recipient_phone IS NOT DISTINCT FROM EXCLUDED.recipient_phone
+           AND whatsapp_send_actions.message_body IS NOT DISTINCT FROM EXCLUDED.message_body
+           AND whatsapp_send_actions.payload_type IS NOT DISTINCT FROM EXCLUDED.payload_type
+           AND whatsapp_send_actions.template_name IS NOT DISTINCT FROM EXCLUDED.template_name
+           AND whatsapp_send_actions.template_language IS NOT DISTINCT FROM EXCLUDED.template_language
+           AND whatsapp_send_actions.template_parameters IS NOT DISTINCT FROM EXCLUDED.template_parameters
+         RETURNING id,status`,
+        [context.organization_id, input.account_id, context.agent_id, context.user_id,
+          input.to, messageBody, input.payload_type,
+          input.payload_type === "template" ? input.template_name : null,
+          input.payload_type === "template" ? input.template_language : null,
+          JSON.stringify(input.payload_type === "template" ? templateParameters : []),
+          idempotencyKey, correlationId],
       );
-      let action: { id: string; status: string; whatsapp_account_id?: string; recipient_phone?: string; message_body?: string; payload_type?: string; template_name?: string | null; template_language?: string | null; template_parameters?: unknown } | undefined = inserted.rows[0];
-      if (!action) {
-        const existing = await query<{ id: string; status: string; whatsapp_account_id: string; recipient_phone: string; message_body: string; payload_type: string; template_name: string | null; template_language: string | null; template_parameters: unknown }>(
-          "SELECT id,status,whatsapp_account_id,recipient_phone,message_body,payload_type,template_name,template_language,template_parameters FROM whatsapp_send_actions WHERE organization_id=$1 AND idempotency_key=$2 LIMIT 1",
-          [context.organization_id, idempotencyKey],
-        );
-        action = existing.rows[0];
-        if (!action || String(action.whatsapp_account_id) !== input.account_id || String(action.recipient_phone) !== input.to || String(action.message_body) !== messageBody || action.payload_type !== input.payload_type || (action.template_name ?? null) !== (input.payload_type === "template" ? input.template_name : null) || (action.template_language ?? null) !== (input.payload_type === "template" ? input.template_language : null) || JSON.stringify(action.template_parameters ?? []) !== JSON.stringify(input.payload_type === "template" ? templateParameters : [])) {
-          return fail("idempotency_conflict", "This tool turn already requested a different WhatsApp payload for the same recipient.");
-        }
-      }
+      const action = inserted.rows[0];
+      if (!action) return fail("idempotency_conflict",
+        "This WhatsApp approval key belongs to a different requester/payload or a review that is no longer pending. No new approval was created.");
       await recordAuditEvent({ organizationId: context.organization_id, actorUserId: context.user_id, agentId: context.agent_id, correlationId, eventType: "whatsapp.send_approval.requested", targetType: "whatsapp_send_action", targetId: action.id, action: "request_send", decision: "pending", metadata: { accountId: input.account_id, recipientSuffix: input.to.slice(-4), payloadType: input.payload_type, source: "agent_tool" } });
       return {
         ok: true, output: { approval_required: true, action_id: String(action.id), status: String(action.status) },
