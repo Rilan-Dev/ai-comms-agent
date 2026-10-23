@@ -11,6 +11,7 @@ import { parseTestEmailComposeRequest } from "@/lib/mail/test-email-compose-inte
 import { selectPreferredComposeMailbox } from "@/lib/mail/compose-readiness";
 import { parseAssistantChecklistLine } from "@/lib/chat/interactive-replies";
 import { AssistantChecklist, SuggestedNextActions, type EmailWorkflowState } from "./interactive-message-controls";
+import { InlineMailApprovalReview } from "./chat-inline-mail-approval";
 import type { AgentPolicy } from "@ai-comms-agent/shared";
 
 // Defer microphone and vendor transport code until the user requests voice.
@@ -717,6 +718,10 @@ export function ChatClient({
           </div>
           {composeDraftId && <p className="mt-2 text-xs text-muted-foreground">Draft saved. Review the content above before requesting approval.</p>}
           {composeActionId && <p role="status" className="mt-2 text-xs text-muted-foreground">Approval request created (pending_approval). The email has not been sent.</p>}
+          {composeActionId && composeDraftId && composeAccount ? (
+            <InlineMailApprovalReview key={composeActionId} organizationId={organizationId}
+              actionId={composeActionId} draftId={composeDraftId} accountId={composeAccount} />
+          ) : null}
         </section>
       )}
       {mailPermissionNotice && <p role="status" className="mx-auto w-full max-w-3xl px-4 py-2 text-xs text-muted-foreground">{mailPermissionNotice}</p>}
