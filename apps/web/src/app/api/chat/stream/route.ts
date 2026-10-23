@@ -8,7 +8,7 @@ import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
 import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation } from "@/lib/mail/action-feedback";
 import { userFacingChatAnswer } from "@/lib/chat/user-facing-answer";
 import { currentTurnOperationAnswer } from "@/lib/chat/operation-feedback";
-import { operationResultFromToolCall, type OperationResult } from "@ai-comms-agent/shared";
+import { operationResultFromToolCall, reviewExplicitEmailBody, type OperationResult } from "@ai-comms-agent/shared";
 
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -605,6 +605,7 @@ export async function POST(request: Request) {
       user_id: subject.user.id,
       conversation_id: conversation.id,
       turn_id: crypto.randomUUID(),
+      email_body_review: reviewExplicitEmailBody(content),
       correlation_id: crypto.randomUUID(),
       channel: "chat",
       auth_subject: { user_id: subject.user.id, role: subject.membership.role, permissions: [...subject.permissions] },

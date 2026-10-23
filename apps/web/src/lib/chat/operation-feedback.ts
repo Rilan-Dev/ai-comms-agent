@@ -11,6 +11,9 @@ export function containsUnverifiedOperationClaim(text:string):boolean {
 
 function failureExplanation(code?:string):string {
   switch(code){
+    case 'body_review_required':return 'Please review the intended email body and put it in quotes or a fenced text block after Body:. Keep sending and approval instructions outside the body. No draft or approval was saved.';
+    case 'recipient_required':return 'Provide or select the exact recipient email address before saving.';
+    case 'invalid_account':return 'Choose the connected From mailbox before saving.';
     case 'permission_denied':return 'Your current permission does not allow this action.';
     case 'tool_not_allowed':return 'This action is not enabled for the agent.';
     case 'account_not_available':case 'account_not_bound':return 'Choose a connected account available to this agent.';

@@ -172,3 +172,5 @@ export type { RoutineTrigger, RoutineScheduleTrigger, DigestWindow, RoutineOccur
 export { matchesCron, nextCronFire } from "./scheduling/cron";
 export type { OperationResult } from "./operations/result";
 export { operationResultFromToolCall } from "./operations/result";
+export type { EmailBodyReview } from "./operations/email-content";
+export { reviewExplicitEmailBody } from "./operations/email-content";
