@@ -54,6 +54,7 @@ export function ApprovalsClient({ organizationId }: { organizationId: string }) 
     // Invalidate it immediately; do not resurrect the item after approval.
     guardRef.current.invalidate();
     const requestedOrg = organizationId;
+    setLoading(false);
     setDecidingId(actionId);
     setNotice(null);
     try {
