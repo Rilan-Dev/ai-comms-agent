@@ -73,6 +73,7 @@ fi
 step "Pull current main (fast-forward only) and validate the source chain"
 git pull --ff-only origin main
 [[ -z "$(git status --porcelain --untracked-files=normal)" ]] || die "Git checkout changed unexpectedly after pull."
+node --test scripts/tests/build-entrypoint-integrity.test.mjs scripts/tests/offline-supply-chain.test.mjs
 node --test scripts/tests/operator-migration-core.test.mjs scripts/tests/operator-migrate-script.test.mjs scripts/tests/operator-one-shot-script.test.mjs
 bash scripts/verify-migration-chain.sh
 
