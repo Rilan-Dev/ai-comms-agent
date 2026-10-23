@@ -8,6 +8,7 @@ import { readSseEvents } from "@/lib/streaming/sse";
 import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "@/lib/ai/activity-progress";
 import { EMAIL_PERMISSION_PRESETS, EMAIL_PERMISSION_LABELS, REGISTERED_EMAIL_POLICY_NAMES, emailPermissionPresetSelection, summarizeEmailPermissionChanges } from "@/lib/agents/email-permission-presets";
 import { explicitComposeRecipient, parseTestEmailComposeRequest } from "@/lib/mail/test-email-compose-intent";
+import { assistantEmailPreview } from "@/lib/mail/assistant-email-preview";
 import { selectComposeSender, signatureFromProfile, withProfileSignature, type ComposeProfile } from "@/lib/mail/compose-identity";
 import { parseAssistantChecklistLine } from "@/lib/chat/interactive-replies";
 import { AssistantChecklist, SuggestedNextActions, type EmailWorkflowState } from "./interactive-message-controls";
@@ -533,8 +534,18 @@ export function ChatClient({
       mailComposerReviewRef.current?.focus();
       return;
     }
-    // GET opens review only; POST/save and send approval still require explicit
-    // human input and the separately enforced current session permissions.
+    // Reuse an actual drafted Subject/Body from the last assistant turn if it
+    // is explicitly structured. A host denial never counts as prepared email.
+    // No recipient is inferred from assistant text, and an existing saved or
+    // edited draft is never overwritten.
+    const latestAssistantReply = messages.at(-1)?.role === "assistant" ? messages.at(-1)?.content ?? "" : "";
+    const prepared = assistantEmailPreview(latestAssistantReply);
+    if (prepared) {
+      setComposeSubject(prepared.subject);
+      setComposeBody(prepared.body);
+    }
+    // Readiness GET only opens the in-chat review. Draft save and approval
+    // remain two explicit authorized POSTs with human confirmation.
     void openMailComposer(suggestedRecipient ?? "");
   }
   function requestInlineEmailApproval() {
