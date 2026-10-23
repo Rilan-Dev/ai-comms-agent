@@ -58,3 +58,12 @@ test("deterministic authorization feedback is labeled and provides the in-chat r
   assert.match(unverified, /Request send approval/);
   assert.match(unverified, /No email was sent/);
 });
+
+
+test("persisted internal-planning assistant turns are excluded from future model and ambient mail context", () => {
+  const route = read("../src/app/api/chat/stream/route.ts");
+  assert.match(route, /history\.filter\(message => message\.role !== "assistant" \|\| userFacingChatAnswer\(message\.content\) !== null\)/);
+  assert.match(route, /safeHistory\.filter\(/);
+  assert.match(route, /const filteredHistory = safeHistory/);
+  assert.doesNotMatch(route, /const recentMessages = history\s*\n/);
+});
