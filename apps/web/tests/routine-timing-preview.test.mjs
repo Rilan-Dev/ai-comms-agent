@@ -14,7 +14,7 @@ test("preview reuses the canonical routine clock and never owns another schedule
 
 test("calendar 09:00 local and every 24 elapsed hours are separate explicit choices", () => {
   const page = read("../src/app/routines/preview/page.tsx");
-  assert.match(page, /kind === "daily"/);
+  assert.match(page, /<option value="daily"/);
   assert.match(page, /kind === "weekly"/);
   assert.match(page, /kind === "interval"/);
   assert.match(page, /everyMinutes: 1440/);
