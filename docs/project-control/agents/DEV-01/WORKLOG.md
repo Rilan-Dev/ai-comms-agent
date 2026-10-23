@@ -724,3 +724,10 @@ Start `23ceb97637e47b9326cb2df181f3c1f9208a6fbf`. Commits `1bae80c8` (canonical 
 - **Blockers:** C3 worker disabled pending scoped/lease/provider negatives, R1b proposal persistence and standing WhatsApp delivery consent unauthorized; real 320-source/permissions acceptance pending. No new schema/job/provider send.
 - **Lessons:** A manifest count is not the number currently displayed, and displayed original emails are not AI priorities or reviewed items. Make scope and partial states explicit and avoid inferring last visit from a lookback.
 - **Next:** Run exact current `NEXT_ACTION.md` three targeted test commands; inspect authenticated C4 0/200/320 and access revocation; then independently return to gated C3 test evidence and R1a clock acceptance. Do not await CI/Vercel.
+
+
+### DEV01-CATCHUP-COVERAGE-CLARITY-PRIVACY-COPY-20261023 — follow-on
+- **Observation:** A loaded source-link count is not an authorization guarantee after access revocation. “All selected source links are available” overstated the meaning of a completed local pagination counter.
+- **Correction:** Test-first `16b0406a`, helper text `aa1a691e` says entries are listed but does not verify current mailbox permission or AI readiness. No backend grant or source manifest logic changed.
+- **Verification:** Fresh GitHub **20/20** source checks; local isolated Node helper **5/5** and strict TS PASS. Full committed suite, production and DB/browser NOT RUN.
+- **Prevention/next:** Separate UI progress from current grants and source freshness. Exact native/DB/browser tests in top `NEXT_ACTION.md`; C3/R1b/WhatsApp remain gated.
