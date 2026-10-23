@@ -137,7 +137,13 @@ export async function POST(request: Request) {
       correlationId: crypto.randomUUID(),
     });
 
-    await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: "email.action.requested", targetType: "email_action", targetId: String(action.id), action: String(actionType), decision: "pending_approval", correlationId: action.correlationId, metadata: { emailAccountId, draftId, idempotencyKey } });
+    try {
+      await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: "email.action.requested", targetType: "email_action", targetId: String(action.id), action: String(actionType), decision: "pending_approval", correlationId: action.correlationId, metadata: { emailAccountId, draftId, idempotencyKey } });
+    } catch (error) {
+      // The committed request is the reconciliation source. A secondary
+      // audit outage must not invite the user to create another request.
+      console.error("[email-action] request audit needs reconciliation", { actionId: action.id, correlationId: action.correlationId, errorType: error instanceof Error ? error.name : typeof error });
+    }
     return NextResponse.json({
       action,
       status: action.status,
@@ -172,7 +178,11 @@ export async function PATCH(request: Request) {
     );
     const action = await decideEmailAction(organizationId, actionId, subject.user.id, decision, typeof body?.comment === "string" ? body.comment.slice(0, 1000) : null);
     if (!action) return NextResponse.json({ error: "conflict", message: "The action is no longer pending, has expired, or does not belong to this organization." }, { status: 409 });
-    await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: `email.action.${decision}`, targetType: "email_action", targetId: actionId, action: decision, decision: "allowed", correlationId: action.correlationId, metadata: { comment: typeof body?.comment === "string" ? body.comment.slice(0, 1000) : null } });
+    try {
+      await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: `email.action.${decision}`, targetType: "email_action", targetId: actionId, action: decision, decision: "allowed", correlationId: action.correlationId, metadata: { comment: typeof body?.comment === "string" ? body.comment.slice(0, 1000) : null } });
+    } catch (error) {
+      console.error("[email-action] decision audit needs reconciliation", { actionId, correlationId: action.correlationId, errorType: error instanceof Error ? error.name : typeof error });
+    }
     return NextResponse.json({ action });
   } catch (error) {
     return authorizationErrorToResponse(error);

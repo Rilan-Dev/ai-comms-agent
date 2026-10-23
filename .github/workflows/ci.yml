@@ -79,6 +79,14 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test
         run: bash scripts/migration-changes.sh
 
+      - name: Verify email approval persistence on a dedicated disposable database
+        env:
+          PGPASSWORD: postgres
+          ACA_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/aca_repair_test
+        run: |
+          psql "postgresql://postgres@127.0.0.1:5432/ai_comms_agent_test" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE aca_repair_test'
+          pnpm --filter @ai-comms-agent/web test:integration
+
       - name: Verify Phase 3 PostgreSQL runtime
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_comms_agent_test

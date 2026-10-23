@@ -18,6 +18,7 @@ import { emitProviderEvent } from "../events/provider-events";
 import { isRetryableProviderError } from "./retry";
 import { isApprovedEmailActionAccountUsable } from "./action-account-guard";
 import { paramsFromApprovedEmailSnapshot } from "./approved-email-draft";
+import { assertCurrentEmailActionAuthorization } from "./action-authorization";
 
 /** Evidence writes and local draft reconciliation are secondary to the
  * durable action terminal state. Log only a type, never provider payloads. */
@@ -50,6 +51,7 @@ export async function processApprovedEmailActions(limit = 10) {
     // outcome must never be reported as a failed delivery that invites replay.
     let providerAccepted = false;
     try {
+      await assertCurrentEmailActionAuthorization(action);
       const repository = new PostgresEmailAccountRepository();
       const account = await repository.getById(action.emailAccountId);
       if (!isApprovedEmailActionAccountUsable(account, action.organizationId)) throw new Error("Email account is unavailable");

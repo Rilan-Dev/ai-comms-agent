@@ -12,6 +12,7 @@ import { createEmailProviderRegistry } from "./registry";
 import { verifyEmailProviderConnection } from "./provider-verification";
 import { isApprovedEmailActionAccountUsable } from "./action-account-guard";
 import { paramsFromApprovedEmailSnapshot } from "./approved-email-draft";
+import { assertCurrentEmailActionAuthorization } from "./action-authorization";
 
 function credentialsFor(
   encrypted: Record<string, unknown>,
@@ -36,6 +37,7 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
 
   let providerAccepted = false;
   try {
+    await assertCurrentEmailActionAuthorization(claimed);
     const masterKey = process.env.CREDENTIALS_MASTER_KEY
       ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY)
       : null;
