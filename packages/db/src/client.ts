@@ -86,9 +86,21 @@ export function getPostgresConfigFromEnv(): PostgresConfig | null {
   };
 }
 
+/** Only an allowlisted SQLSTATE can be sent to shared server logs.
+ * Never log database errors, SQL text or bound values: PostgreSQL may include
+ * private WhatsApp recipients, message bodies and whole failing rows in detail.
+ */
+export function safePostgresDiagnostic(error: unknown): { sqlstate: string } | { kind: "server_error" } {
+  const rawCode = error && typeof error === "object" && "code" in error
+    ? (error as { code?: unknown }).code : null;
+  return typeof rawCode === "string" && /^[A-Z0-9]{5}$/.test(rawCode)
+    ? { sqlstate: rawCode }
+    : { kind: "server_error" };
+}
+
 function configurePool(next: Pool): Pool {
   next.on("error", (error) => {
-    console.error("[db] PostgreSQL pool error", error);
+    console.error("[db] PostgreSQL pool error", safePostgresDiagnostic(error));
   });
   return next;
 }
@@ -161,21 +173,7 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
     if (!isSessionMode()) {
       try { await client.query("ROLLBACK"); } catch { /* preserve original error */ }
     }
-    const postgresError = error && typeof error === "object"
-      ? error as { message?: unknown; code?: unknown; position?: unknown; routine?: unknown }
-      : {};
-    console.error(JSON.stringify({
-      level: "error",
-      service: "db.query",
-      message: typeof postgresError.message === "string"
-        ? postgresError.message
-        : "PostgreSQL query failed",
-      code: typeof postgresError.code === "string" ? postgresError.code : undefined,
-      position: typeof postgresError.position === "string" ? postgresError.position : undefined,
-      routine: typeof postgresError.routine === "string" ? postgresError.routine : undefined,
-      sql: text,
-      parameter_count: values.length,
-    }));
+    console.error("[db] PostgreSQL query failed", safePostgresDiagnostic(error));
     throw error;
   } finally {
     client.release();
