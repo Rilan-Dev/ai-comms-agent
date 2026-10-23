@@ -13,7 +13,7 @@ test("an assistant mail answer exposes reviewed compose and send-approval contro
   assert.match(controls, /export function InteractiveMailActions\(/);
   assert.match(controls, /Write email draft/);
   assert.match(controls, /Request send approval/);
-  assert.match(controls, /hasInteractiveEmailActions\(answer\)/);
+  assert.match(controls, /hasInteractiveEmailActions\(answer, userRequest\)/);
   assert.match(controls, /<InteractiveMailActions/);
   assert.match(chat, /<SuggestedNextActions/);
   assert.match(chat, /onComposeEmail=\{openInlineEmailComposer\}/);
