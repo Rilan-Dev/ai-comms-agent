@@ -147,7 +147,7 @@ export class PostgresEmailAccountRepository {
 
   async listForOrganization(organizationId: string): Promise<EmailAccount[]> {
     const r = await query<Row>(
-      "SELECT * FROM email_accounts WHERE organization_id = $1 ORDER BY created_at DESC",
+      "SELECT * FROM email_accounts WHERE organization_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC",
       [organizationId],
     );
     return r.rows.map(account);

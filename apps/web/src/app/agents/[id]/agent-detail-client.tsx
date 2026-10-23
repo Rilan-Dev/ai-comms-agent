@@ -324,7 +324,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
         <button type="button" onClick={() => setTab("channels")} className="mt-2 text-sm font-semibold text-primary underline">Choose connected WhatsApp account →</button>
         <p className="mt-2 text-xs text-muted-foreground">
           Account binding and saved tool permission are separate. The signed-in user must also have whatsapp.send.
-          The agent can create a pending proposal only; a human must approve it and Meta's conversation-window or template rules still apply.
+          The agent can create a pending proposal only; a human must approve it and Meta&apos;s conversation-window or template rules still apply.
         </p>
       </div>
       <form onSubmit={savePolicy} className="mt-6 space-y-5">

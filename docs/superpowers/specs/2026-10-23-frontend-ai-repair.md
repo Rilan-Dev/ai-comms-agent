@@ -1,12 +1,12 @@
-# AI communications repair and simplification — proposed design
+# AI communications repair and simplification — approved design
 
-Date: 23 October 2026. Status: proposed for owner review; product code, production schema and deployments have not been changed by this assessment.
+Date: 23 October 2026. Status: owner-approved; implementation and release verification are in progress. The evidence below records the initial assessment, not the current release status.
 
 ## Intended outcome
 
 A person can ask about their actual inbox, create and edit a draft, review the correct sender/recipient/content, request permission to send, and see the actual result. Unsupported or unauthorized operations clearly explain the next useful step. Technical account IDs, repeated boilerplate and contradictory readiness indicators disappear from ordinary use. Human approval, tenant isolation and provider restrictions remain enforced.
 
-The acceptance target is all 26 scenarios from [the live report](frontend-ai-test-report.md), plus security and state-transition regressions needed by the repairs. A blocked delivery prerequisite remains a release blocker; it is never relabelled a passing delivery test.
+The acceptance target is all 26 scenarios from the private frontend test report (outputs/frontend-ai-test-report.md in the task artifacts), plus security and state-transition regressions needed by the repairs. A blocked delivery prerequisite remains a release blocker; it is never relabelled a passing delivery test.
 
 ## Evidence and confidence
 

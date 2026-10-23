@@ -195,7 +195,7 @@ Node and source-contract tests complement, rather than replace, the real databas
 - [ ] Replay all 26 cases using fresh and longer conversations. Reset only labelled disposable fixtures; keep existing user mail unchanged. Record actual prompts, record IDs, safe references and screenshots.
 - [ ] Send one harmless approved test email from each provider to the owner-approved test recipient; verify provider acceptance and independently verified recipient receipt. Do not double-send on refresh/retry.
 - [ ] Test email rejection, expired approval, modified draft, duplicate approval, revoked role/binding and denied direct-send attempts. All must result in zero unauthorized dispatch.
-- [ ] Complete one allowed WhatsApp test to +919629534701 after the real conversation/template and test-recipient prerequisites exist. Verify its provider message ID and delivered receipt. Recheck that the no-window/unapproved-template case still blocks.
+- [ ] Complete one allowed WhatsApp test to the owner-provided WhatsApp test number after the real conversation/template and test-recipient prerequisites exist. Verify its provider message ID and delivered receipt. Recheck that the no-window/unapproved-template case still blocks.
 - [ ] Cover reply/forward threading, attachments, malformed addresses, partial failure, permission-less disposable user and cross-tenant access. Externally consequential tests use test recipients and fixtures only.
 - [ ] Update worklog/project-control evidence on the implementation branch and publish the final report. Mark the repair complete only when automation, all required browser cases and both channel delivery acceptance pass.
 

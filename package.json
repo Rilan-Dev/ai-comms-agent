@@ -2,7 +2,7 @@
   "name": "ai-comms-agent",
   "version": "0.0.0",
   "private": true,
-  "description": "Multi-channel AI communications agent \u2014 monorepo root",
+  "description": "Multi-channel AI communications agent — monorepo root",
   "license": "MIT",
   "packageManager": "pnpm@12.8.1",
   "engines": {
@@ -19,7 +19,9 @@
     "dev:worker": "pnpm --filter @ai-comms-agent/worker dev",
     "build:web": "pnpm --filter @ai-comms-agent/web build",
     "build:worker": "pnpm --filter @ai-comms-agent/worker build",
-    "verify": "bash scripts/verify.sh"
+    "verify": "bash scripts/verify.sh",
+    "test:standalone": "bash scripts/test-standalone.sh",
+    "lint:packages": "node apps/web/node_modules/eslint/bin/eslint.js \"packages/*/src/**/*.ts\""
   },
   "devDependencies": {
     "typescript": "^5.6.0"

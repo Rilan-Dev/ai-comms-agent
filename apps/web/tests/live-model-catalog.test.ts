@@ -176,9 +176,9 @@ describe("realtime voice selection and relay integration", () => {
     expect(selector).toContain('catalogSource === "documented"');
     expect(selector).toContain("Previously saved model");
     expect(setup).toContain("Realtime speech-recognition model");
-    expect(setup).toContain("ElevenLabs Conversational AI agents are a separate integration");
-    expect(setup).toContain('status === "active" ? "key enabled" : status');
-    expect(setup).toContain("API key saved (enabled; model not yet verified)");
+    expect(setup).toContain("not ElevenLabs Conversational AI agents");
+    expect(setup).toContain('savedKeyStatus === "active" ? "Credentials enabled"');
+    expect(setup).toContain("A saved key does not guarantee a live session.");
   });
 });
 
@@ -197,7 +197,7 @@ describe("provider-setup safety and truthful status", () => {
     const remove = setup.slice(setup.indexOf("async function deleteProvider()"));
     expect(choose).toContain('setApiKey("");');
     expect(setup).toContain("onClick={() => chooseProvider(p)}");
-    expect(setup).toContain("onChange={(e) => chooseProvider(e.target.value)}");
+    expect(setup).toContain('onClick={() => chooseProvider("")}');
     expect(remove).toContain("if (!response.ok)");
     expect(remove.indexOf("if (!response.ok)")).toBeLessThan(remove.indexOf('setNotice("Provider config removed.")'));
     expect(remove).toContain("setCatalogVersion((n) => n + 1)");

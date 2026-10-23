@@ -10,12 +10,13 @@ const voiceRoute = read("../src/app/api/voice/turn/route.ts");
 const clara = read("../../../packages/clara-core/src/runtime.ts");
 
 describe("Chat and realtime Voice progressive generation", () => {
-  it("starts ordinary chat SSE before generation, forwards provider deltas and sends a final completion", () => {
+  it("starts chat SSE before generation and publishes only a host-checked final answer", () => {
     const stream = chatRoute.slice(chatRoute.indexOf("const shouldResolveTools ="));
     expect(stream).toContain('emit("conversation"');
     expect(stream).toContain('emit("status", { phase: "generating" })');
     expect(stream).toContain('for await (const chunk of turn.stream)');
-    expect(stream).toContain('emit("delta", { text: chunk })');
+    expect(stream).toContain("userFacingChatAnswer(");
+    expect(stream).toContain('emit("delta", { text: assistantOutput })');
     expect(stream).toContain('emit("done", { conversationId');
     expect(stream).toContain('"x-accel-buffering": "no"');
   });

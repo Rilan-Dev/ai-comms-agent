@@ -44,7 +44,7 @@ describe('current turn host outcomes',()=>{
   expect(currentTurnOperationAnswer('There are two unread emails.',[],context.turn_id,false)).toBe('There are two unread emails.');
  });
  it('does not mistake a WhatsApp-only request for an email permission request',()=>{
-  expect(isExplicitEmailMutationRequest('Send a message on WhatsApp to +919629534701')).toBe(false);
+  expect(isExplicitEmailMutationRequest('Send a message on WhatsApp to +12025550123')).toBe(false);
  });
  it('does not confuse a delivery notification subject with an action performed by the assistant',()=>{
   const text='Email subject: Package delivered. Sender: Courier.';

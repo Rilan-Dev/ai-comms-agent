@@ -166,9 +166,12 @@ describe("WhatsApp CHECK repair route behavior", () => {
     const res = await POST(request("POST", "/api/whatsapp/messages", { organizationId, accountId, to, body: "private message" }));
     expect(res.status).toBe(500);
     const response = JSON.stringify(await res.json());
-    expect(response).toBe('{"error":"internal_server_error"}');
+    const safe=JSON.parse(response);
+    expect(safe.error).toBe('internal_server_error');
+    expect(safe.reference).toMatch(/^[a-f0-9-]{36}$/);
+    expect(safe.message).toContain('Check the current action status');
     expect(response).not.toContain(to);
     expect(response).not.toContain("private message");
-    expect(spy).toHaveBeenCalledWith("[authorization] unexpected error", { sqlstate: "23514" });
+    expect(spy).toHaveBeenCalledWith("[authorization] unexpected error", { sqlstate: "23514",reference:safe.reference });
   });
 });

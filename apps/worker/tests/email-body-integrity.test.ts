@@ -17,7 +17,7 @@ test("oversize email content is rejected rather than silently truncated", () => 
 
 test("write handlers preserve body for create, update, reply and reviewed send snapshots", () => {
   const source = readFileSync(new URL("../../../packages/email-agent-runtime/src/email-write-tools.ts", import.meta.url), "utf8");
-  assert.match(source, /bodyText: preserveEmailBody\(input\.body_text\)/);
+  assert.match(source, /bodyText: reviewedBody\(input\.body_text, context\)/);
   assert.match(source, /bodyText: preserveEmailBody\(draft\.text_body\)/);
   assert.match(source, /bodyText: preserveEmailBody\(source\.text_body\)/);
   assert.doesNotMatch(source, /text\((?:input\.body_text|draft\.text_body|source\.text_body),\s*100000\)/);

@@ -17,7 +17,7 @@ describe("approval-safe email action contract", () => {
 
   it("binds actions to the organization and selected mailbox", () => {
     expect(actionRoute).toContain("String(draft.email_account_id) !== emailAccountId");
-    expect(actionRoute).toContain("String(message.email_account_id) !== emailAccountId");
+    expect(actionRoute).toContain("eligibleReplyForwardSourceId(message, emailAccountId)");
     expect(actionRepository).toContain("organization_id = $2");
   });
 

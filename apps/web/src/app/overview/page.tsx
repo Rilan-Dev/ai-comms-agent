@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useEffect, useState } from "react";
 
@@ -51,7 +52,7 @@ export default function HomePage() {
           <p className="mt-5 max-w-[580px] text-sm leading-6 text-muted-foreground">One considered workspace for your agents, inbox, messaging, knowledge and realtime AI. Your organization data stays the source of truth.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <a href="/agents/new" className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-85"><span aria-hidden="true">＋</span> Create agent</a>
+          <Link href="/agents/new" className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-85"><span aria-hidden="true">＋</span> Create agent</Link>
           <a href="/chat" className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium transition hover:bg-secondary"><span aria-hidden="true">✳</span> Ask Clara</a>
         </div>
       </section>

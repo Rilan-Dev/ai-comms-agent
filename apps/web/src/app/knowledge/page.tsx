@@ -126,7 +126,7 @@ export default function KnowledgePage() {
         <div className="rounded-md border border-border bg-card p-5">
           <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Text chunks</span><BookOpenText className="h-4 w-4 text-muted-foreground" /></div>
           <p className="mt-4 text-3xl font-semibold tabular-nums">{loading ? "—" : stats?.emailChunks ?? 0}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Available to Clara's current lexical retrieval</p>
+          <p className="mt-1 text-xs text-muted-foreground">Available to Clara&apos;s current lexical retrieval</p>
         </div>
         <div className="rounded-md border border-border bg-card p-5">
           <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ready</span><CheckCircle2 className="h-4 w-4 text-muted-foreground" /></div>
@@ -146,7 +146,7 @@ export default function KnowledgePage() {
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
         <div className="overflow-hidden rounded-md border border-border bg-card">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
-            <div><h2 className="text-sm font-semibold">Recent email knowledge</h2><p className="mt-1 text-xs text-muted-foreground">Latest documents saved to Clara's knowledge boundary</p></div>
+            <div><h2 className="text-sm font-semibold">Recent email knowledge</h2><p className="mt-1 text-xs text-muted-foreground">Latest documents saved to Clara&apos;s knowledge boundary</p></div>
             <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground">{loading ? "…" : data?.recentDocuments.length ?? 0} recent</span>
           </div>
           {loading ? (

@@ -15,7 +15,7 @@ describe("Postgres email account repository contract", () => {
 
   it("never returns soft-deleted accounts through normal account reads", () => {
     expect(source).toContain("WHERE id = $1 AND deleted_at IS NULL");
-    expect(source).toContain("WHERE organization_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC");
+    expect(source).toMatch(/WHERE organization_id = \$1 AND deleted_at IS NULL[\s\S]*?ORDER BY created_at DESC/);
   });
 
   it("clears a stale connection error when a mailbox is restored", () => {

@@ -21,15 +21,15 @@ test("voice SSE never completes a normal model turn if the provider yields zero 
   const stream = route.slice(from, until);
   assert.match(stream, /if \(!deliveredText\.trim\(\)\) throw new Error\("AI provider returned an empty voice response\."\)/);
   assert.ok(stream.indexOf("if (!deliveredText.trim())") < stream.indexOf("await saveAnswer(deliveredText)"));
-  assert.match(route, /emit\("error", \{ message: "Voice turn failed/);
+  assert.match(route, /Clara could not complete the voice answer\. No external action was confirmed\./);
 });
 
 test("existing host-verified email feedback and non-empty read-only stream protections stay intact", () => {
   const chat = src("../src/app/api/chat/stream/route.ts");
   const voice = src("../src/app/api/voice/turn/route.ts");
-  assert.match(chat, /verifiedEmailToolSummary\(toolTurn\.toolCalls\)/);
+  assert.match(chat, /currentTurnOperationAnswer\(toolTurn\.text,/);
   assert.match(chat, /if \(!request\.signal\.aborted && !generated\.trim\(\)\)/);
-  assert.match(voice, /verifiedEmailToolSummary\(result\.toolCalls\)/);
+  assert.match(voice, /currentTurnOperationAnswer\(result\.text,/);
   assert.match(voice, /if \(!request\.signal\.aborted && !generated\.trim\(\)\)/);
   assert.match(voice, /deniedEmailWriteExplanation\(transcript, subject\.permissions\)/);
 });

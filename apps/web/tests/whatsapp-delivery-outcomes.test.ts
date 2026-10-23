@@ -2,7 +2,7 @@ import {describe,it,expect,vi,beforeEach,afterEach} from 'vitest';
 const mocks=vi.hoisted(()=>({query:vi.fn(),audit:vi.fn(),sent:vi.fn(),failed:vi.fn(),event:vi.fn(),membership:'active'}));
 vi.mock('@ai-comms-agent/db',()=>({
  query:mocks.query,recordAuditEvent:mocks.audit,markWhatsAppOutboundSent:mocks.sent,markWhatsAppOutboundFailed:mocks.failed,
- recoverStaleWhatsAppOutbound:async()=>[],claimQueuedWhatsAppOutbound:async()=>[{id:'message',organization_id:'org',whatsapp_account_id:'account',correlation_id:'correlation',phone_number:'+919629534701',message_type:'text',body:'Harmless QA test'}],
+ recoverStaleWhatsAppOutbound:async()=>[],claimQueuedWhatsAppOutbound:async()=>[{id:'message',organization_id:'org',whatsapp_account_id:'account',correlation_id:'correlation',phone_number:'+12025550123',message_type:'text',body:'Harmless QA test'}],
  getWhatsAppAccountForOrganization:async()=>({id:'account',organization_id:'org',status:'connected',phone_number_id:'phone'}),
  loadWhatsAppCredential:async()=>({access_token:'test-token'}),parseCredentialsMasterKey:()=>new Uint8Array(32),
  listPendingWhatsAppAccounts:async()=>[],updateWhatsAppAccountStatus:vi.fn(),

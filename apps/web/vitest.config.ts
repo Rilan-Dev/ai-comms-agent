@@ -8,6 +8,8 @@ export default defineConfig({
     include: ["tests/**/*.test.ts", "../worker/tests/**/*.spec.ts"],
     exclude: ["tests/**/*.integration.test.ts"],
     globals: false,
+    maxWorkers: 1,
+    minWorkers: 1,
   },
   resolve: {
     alias: {

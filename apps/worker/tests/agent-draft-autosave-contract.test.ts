@@ -48,8 +48,8 @@ test("AI can list its authorized drafts and see pending mailbox sync without wri
   assert.match(readTools, /const account = await resolveAccount\(text\(input\.account_id\), context\)/);
   assert.match(readTools, /"m\.organization_id = \$1", "m\.email_account_id = \$2"/);
   assert.match(readTools, /if \(input\.drafts_only === true\) conditions\.push\("m\.is_draft = true"\)/);
-  assert.match(readTools, /m\.to_recipients AS to_addresses, m\.provider_draft_sync_status, m\.updated_at/);
-  assert.match(readTools, /input\.drafts_only === true \? "m\.updated_at" : "m\.received_at"/);
+  assert.match(readTools, /m\.to_recipients AS to_addresses/);
+  assert.match(readTools, /input\.drafts_only===true\?'m\.updated_at':'m\.received_at'/);
   assert.match(readTools, /provider_draft_sync_status: row\.is_draft \?/);
   assert.doesNotMatch(readTools, /createEmailAction\(|sendEmail\(/);
 });

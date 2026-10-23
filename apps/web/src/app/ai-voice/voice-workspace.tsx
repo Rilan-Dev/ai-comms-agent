@@ -1168,7 +1168,7 @@ export function VoiceWorkspace({
   const Container = embedded ? "section" : "main";
   return (
     <Container aria-label={embedded ? "Live voice conversation" : undefined} className={embedded ? "min-w-0 flex-1 bg-background px-4 py-5 sm:px-8 sm:py-8" : "min-h-[calc(100vh-72px)] bg-background px-4 py-5 sm:px-8 sm:py-8"}>
-      <audio ref={audioRef} autoPlay playsInline className="hidden" aria-hidden="true" />
+      <audio ref={audioRef} autoPlay className="hidden" aria-hidden="true" />
       <div className="mx-auto max-w-6xl">
         {embedded && onReturnToChat ? (
           <button type="button" onClick={() => {
@@ -1315,7 +1315,7 @@ export function VoiceWorkspace({
             </div>
             <div className="rounded-3xl border bg-card p-5 shadow-sm">
               <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground"><ShieldCheck size={15} /> Authorization boundary</p>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">Recognized speech is submitted to the authenticated host turn endpoint. Email data and business actions must be authorized by the selected organization, agent, and mailbox grants; the browser never receives the provider's long-lived API key.</p>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">Recognized speech is submitted to the authenticated host turn endpoint. Email data and business actions must be authorized by the selected organization, agent, and mailbox grants; the browser never receives the provider&apos;s long-lived API key.</p>
             </div>
             <div className="rounded-3xl border bg-card p-5 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Session checklist</p>

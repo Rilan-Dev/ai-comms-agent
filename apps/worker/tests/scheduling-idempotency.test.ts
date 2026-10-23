@@ -54,7 +54,7 @@ test("advancing an occurrence cannot reactivate paused or edited schedules", () 
 
   const scheduler = readFileSync(resolve(__dirname, "../src/scheduling/scheduler-worker.ts"), "utf8");
   assert.match(scheduler, /advanceScheduledJob\(job\.id,job\.organizationId,job\.nextFireAt,/);
-  assert.match(repository, /nextFireAt:string; timezone:string; catchUpMinutes:number/);
+  assert.match(repository, /nextFireAt:string; revisionAt:string; timezone:string; catchUpMinutes:number/);
 });
 
 
@@ -79,7 +79,7 @@ test("duplicate durable occurrences do not consume the due-claim batch limit", (
 test("an in-flight run cannot overwrite same-fire schedule edits, even if status stays active", () => {
   const claim = repository.slice(repository.indexOf("export async function claimDueScheduledJobs"),
     repository.indexOf("export type RecoveredScheduledJobRun"));
-  assert.match(claim, /revisionAt:/);
+  assert.match(claim, /const revisionAt=new Date\(row\.updated_at/);
   assert.match(claim, /row\.updated_at/);
   assert.match(claim, /toISOString\(\)/);
   const advance = repository.slice(repository.indexOf("export async function advanceScheduledJob"),

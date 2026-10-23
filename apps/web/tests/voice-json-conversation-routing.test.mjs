@@ -33,8 +33,8 @@ test("JSON email actions still use host tools, actor rights, approval and bounde
   assert.match(json, /permissions,/);
   assert.match(json, /maxRounds: 4,/);
   assert.match(json, /maxToolCalls: 8,/);
-  assert.match(json, /verifiedEmailToolSummary\(turn\.toolCalls\)/);
-  assert.match(json, /unverifiedEmailActionExplanation\(\)/);
+  assert.match(json, /currentTurnOperationAnswer\(turn\.text,/);
+  assert.match(json, /executionId, explicitEmailAction/);
   assert.match(route, /deniedEmailWriteExplanation\(transcript, subject\.permissions\)/);
 });
 

@@ -16,7 +16,7 @@ describe("cross-surface product completion contract", () => {
     expect(emailActionRoute).toContain("pending_approval");
     expect(emailActionRoute).toContain("Idempotency-Key");
     expect(emailActionRoute).toContain("email.action.requested");
-    expect(emailActionRepository).toContain("Idempotency key already exists for a different email action payload");
+    expect(emailActionRepository).toContain("request conflicts with an existing idempotency key");
     expect(emailActionRepository).toContain("content_hash = EXCLUDED.content_hash");
   });
 

@@ -159,6 +159,14 @@ describe('real PostgreSQL email approval lifecycle',()=>{
   await expect(executeApprovedEmailAction(action.id,ORG)).rejects.toThrow(/account is unavailable/);
   expect(transport.connect).not.toHaveBeenCalled();expect(transport.sendDraft).not.toHaveBeenCalled();
  });
+ it('keeps a timed-out provider dispatch unknown and prevents a second send',async()=>{
+  const action=await createEmailAction(await draft());await decideEmailAction(ORG,action.id,USER,'approved');
+  transport.sendDraft.mockRejectedValueOnce(new Error('connection lost after dispatch'));
+  await expect(executeApprovedEmailAction(action.id,ORG)).rejects.toThrow('connection lost');
+  expect((await db.query('SELECT status FROM aca.email_actions WHERE id=$1',[action.id])).rows[0]?.status).toBe('executing');
+  await expect(executeApprovedEmailAction(action.id,ORG)).rejects.toThrow(/not approved/);
+  expect(transport.sendDraft).toHaveBeenCalledTimes(1);
+ });
  it('revoked membership after approval prevents provider execution',async()=>{
   const action=await createEmailAction(await draft());await decideEmailAction(ORG,action.id,USER,'approved');
   await db.query(`UPDATE aca.organization_memberships SET status='suspended' WHERE user_id=$1`,[USER]);

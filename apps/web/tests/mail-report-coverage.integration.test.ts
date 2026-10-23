@@ -7,6 +7,7 @@ import {createEmailReadTools} from '../../../packages/email-agent-runtime/src/em
 import type {PostgresEmailAccountRepository,PostgresAgentRepository,PostgresEmailFolderLabelRepository} from '@ai-comms-agent/db';
 import type {ToolContext} from '@ai-comms-agent/shared';
 import {closePostgresPool} from '../../../packages/db/src/client';
+import {PostgresEmailAccountRepository as RealAccountRepository} from '../../../packages/db/src/email/repository';
 
 const url=process.env.ACA_TEST_DATABASE_URL;
 const parsed=url?new URL(url):null;
@@ -28,6 +29,7 @@ beforeAll(async()=>{
  await db.query('INSERT INTO agents VALUES($1,$2)',[agent,org]);
  await db.query(`INSERT INTO email_accounts VALUES($1,$3,'one@example.com','imap_smtp','connected',null,$4),($2,$3,'two@example.com','gmail','connected',null,$4)`,[account,second,org,to]);
  await db.query('ALTER TABLE email_accounts ADD COLUMN display_name text');
+ await db.query('ALTER TABLE email_accounts ADD COLUMN created_at timestamptz DEFAULT now()');
  await db.query(`INSERT INTO agent_email_accounts VALUES($1,$2,'primary'),($1,$3,'read_only')`,[agent,account,second]);
  await db.query(`INSERT INTO email_folders VALUES($1,$3,'custom','INBOX'),($2,$3,'custom','[Gmail]/All Mail')`,[inbox,allmail,account]);
 });
@@ -40,6 +42,14 @@ async function message(options:{account?:string;folder?:string;identity?:string;
 }
 const report=(scope:MailReportScope={unreadOnly:false},limit=500)=>getMailReportEvidence({organizationId:org,agentId:agent,fromUtc:from,toUtc:to,scope,limit});
 describe('canonical report evidence',()=>{
+ it('excludes soft-deleted accounts while preserving a recoverable disconnected mailbox',async()=>{
+  const deleted=randomUUID(),disconnected=randomUUID(),foreign=randomUUID();
+  await db.query(`INSERT INTO aca.email_accounts(id,organization_id,email_address,provider,status,deleted_at) VALUES($1,$4,'deleted@example.com','gmail','connected',now()),($2,$4,'disconnected@example.com','gmail','disconnected',null),($3,$5,'foreign@example.com','gmail','connected',null)`,[deleted,disconnected,foreign,org,other]);
+  try{
+   const ids=(await new RealAccountRepository().listForOrganization(org)).map(row=>row.id);
+   expect(ids).toContain(disconnected);expect(ids).not.toContain(deleted);expect(ids).not.toContain(foreign);
+  }finally{await db.query('DELETE FROM aca.email_accounts WHERE id=ANY($1::uuid[])',[[deleted,disconnected,foreign]]);}
+ });
  it('counts one logical IMAP mail across INBOX/All Mail, preserves same-subject mail and copies in another account',async()=>{
   const canonical=await message({identity:'<same@provider>',folder:inbox});
   await message({identity:'<same@provider>',folder:allmail});

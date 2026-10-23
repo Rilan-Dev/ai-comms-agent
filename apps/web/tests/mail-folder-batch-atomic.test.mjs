@@ -58,7 +58,7 @@ test("public archive and move functions call the common atomic path and no indep
   const segment = repo.slice(from, to);
   assert.match(segment, /return changeMailFoldersAtomically\(organizationId, messageIds, null\)/);
   assert.match(segment, /return changeMailFoldersAtomically\(organizationId, messageIds, folderId\)/);
-  assert.equal((segment.match(/UPDATE email_messages m/g) ?? []).length, 1);
+  assert.equal((segment.match(/UPDATE email_messages m/g) ?? []).length, 0);
 });
 
 test("move destination row is explicitly present before its account ID is accessed (TS2532 regression)", () => {

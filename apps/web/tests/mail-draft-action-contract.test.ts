@@ -27,10 +27,10 @@ describe("Mail draft and sensitive action contracts", () => {
   it("loads persisted drafts into compose instead of fabricating draft state", () => {
     expect(compose).toContain("requestedDraftId");
     expect(compose).toContain("/api/mail/drafts?organizationId=");
-    expect(compose).toContain("setDraftId(String(d.id))");
+    expect(compose).toContain("setDraftId(String(draft.id))");
   });
   it("injects only organization-scoped synchronized mail into email-related chat turns", () => {
-    expect(chatRoute).toContain("loadEmailContext(organizationId, content)");
+    expect(chatRoute).toContain("loadEmailContext(organizationId, agentId, combinedSearchContext)");
     expect(chatRoute).toContain("m.organization_id = $1");
     expect(chatRoute).toContain("a.organization_id = $1");
     expect(chatRoute).toContain("a.status = 'connected'");
@@ -39,12 +39,12 @@ describe("Mail draft and sensitive action contracts", () => {
     expect(chatRoute).toContain("No locally synchronized emails or drafts were found");
   });
   it("makes persisted drafts searchable by subject, body, recipient, and mailbox", () => {
-    expect(draftsClient).toContain('placeholder="Search subject, message, recipient, or mailbox…"');
+    expect(draftsClient).toContain('placeholder="Find a draft…"');
     expect(draftsClient).toContain("d.subject");
     expect(draftsClient).toContain("d.text_body");
     expect(draftsClient).toContain("d.to_recipients");
     expect(draftsClient).toContain("d.account_email");
-    expect(draftsClient).toContain("No drafts match your search.");
+    expect(draftsClient).toContain("No matching drafts.");
   });
   it("routes forward through the sensitive approval API", () => {
     expect(thread).toContain('actionType: "forward_email"');

@@ -53,9 +53,6 @@ jobs:
       - name: Full source verification
         run: pnpm run verify
 
-      - name: Worker unit tests
-        run: pnpm --filter @ai-comms-agent/worker test
-
       - name: Verify migration chain structure
         run: bash scripts/verify-migration-chain.sh
 

@@ -46,13 +46,13 @@ beforeEach(async()=>{
  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({data:[{id:'meta-template',name:'qa',language:'en_US',status:controls.metaStatus,components:controls.components}]})));
 });
 async function propose(body='QA body',key?:string,template=false){
- const result=await createWhatsAppSendApprovalTool().execute({to:'+919629534701',payload_type:template?'template':'text',body,template_name:template?'qa':undefined,template_language:template?'en_US':undefined,template_parameters:template?['QA']:undefined,},{...context,turn_id:key??randomUUID()});
+ const result=await createWhatsAppSendApprovalTool().execute({to:'+12025550123',payload_type:template?'template':'text',body,template_name:template?'qa':undefined,template_language:template?'en_US':undefined,template_parameters:template?['QA']:undefined,},{...context,turn_id:key??randomUUID()});
  if(!result.ok||!result.output)throw new Error(result.error?.code);return result.output.action_id;
 }
 function decision(id:string,value='approve'){return decide(new Request('https://qa.local/api/whatsapp/send-actions/decision',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({organizationId:ORG,actionId:id,decision:value})}));}
 async function outboundCount(){return Number((await query<{count:string}>("SELECT count(*) FROM whatsapp_messages WHERE direction='outbound'")).rows[0]?.count);}
 async function inbound(offset:string){
- const contact=await query<{id:string}>("INSERT INTO whatsapp_contacts(organization_id,whatsapp_account_id,phone_number) VALUES($1,$2,'+919629534701') RETURNING id",[ORG,ACCOUNT]);
+ const contact=await query<{id:string}>("INSERT INTO whatsapp_contacts(organization_id,whatsapp_account_id,phone_number) VALUES($1,$2,'+12025550123') RETURNING id",[ORG,ACCOUNT]);
  await query("INSERT INTO whatsapp_messages(organization_id,whatsapp_account_id,contact_id,direction,provider_timestamp) VALUES($1,$2,$3,'inbound',now()+$4::interval)",[ORG,ACCOUNT,contact.rows[0]!.id,offset]);
 }
 describe('PostgreSQL WhatsApp approval lifecycle',()=>{

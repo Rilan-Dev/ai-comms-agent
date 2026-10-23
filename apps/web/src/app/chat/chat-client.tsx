@@ -671,11 +671,12 @@ export function ChatClient({
     } finally {
       clearTimeout(turnTimeout);
       if(chatAbortRef.current===turnController)chatAbortRef.current=null;
-      if(turnEpoch!==agentContextEpochRef.current)return;
+      if(turnEpoch===agentContextEpochRef.current){
       chatTurnInFlightRef.current = false;
       setBusy(false);
       setResponseStarted(false);
       setActivity("");
+      }
     }
   }
 
@@ -714,6 +715,7 @@ export function ChatClient({
           </div>
         </div>
       </header>
+      <p role="status" aria-live="polite" className="sr-only">{busy ? "Clara is preparing a response." : messages.at(-1)?.role === "assistant" ? "Clara’s response is ready." : messages.at(-1)?.role === "system" ? "Clara could not complete the response." : ""}</p>
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {chatHistoryOpen && (
@@ -769,7 +771,7 @@ export function ChatClient({
         </div>
       ) : (
       <section className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
-        <div ref={messageScrollRef} role="log" aria-live="polite" className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto overscroll-contain py-6">
+        <div ref={messageScrollRef} role="log" aria-label="Conversation messages" aria-live="polite" className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto overscroll-contain py-6">
           {messages.length === 0 ? (
             <div className="grid min-h-[50vh] place-items-center text-center">
               <div className="max-w-md">
@@ -814,13 +816,13 @@ export function ChatClient({
               <span>Agent send-request permission: {composePermissions.agentCanRequestApproval ? "Enabled" : "Disabled"}</span>
               <span>Send: human approval required; never automatic</span>
             </div>
-            <p className="mt-1 text-muted-foreground">Actual draft and approval actions also require the selected mailbox's capabilities. Permission choices do not grant access automatically.</p>
+            <p className="mt-1 text-muted-foreground">Actual draft and approval actions also require the selected mailbox&apos;s capabilities. Permission choices do not grant access automatically.</p>
           </div>}
           {composeProfile && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-xs">
             <div>
               <p className="font-semibold">Your saved profile: {composeProfile.name || "No saved display name"}</p>
               <p className="text-muted-foreground">{composeProfile.email}</p>
-              <p className="mt-1 text-muted-foreground">Profile details come from your signed-in account. The agent won't invent a name, title, company, phone number or signature.</p>
+              <p className="mt-1 text-muted-foreground">Profile details come from your signed-in account. The agent won&apos;t invent a name, title, company, phone number or signature.</p>
             </div>
             <button type="button" disabled={composeBusy || Boolean(composeDraftId)} onClick={useProfileSignature}
               className="rounded-md border px-3 py-2 font-medium disabled:opacity-50">Use my profile signature</button>
@@ -849,7 +851,7 @@ export function ChatClient({
                 {composeMailboxes.map(account => <option key={account.id} value={account.id}>{account.address}</option>)}
               </select></label>
             <label className="text-xs font-medium">To
-              {!composeTo.trim() && <span role="status" className="mt-1 block text-primary">Who should receive this email? Enter or explicitly choose the recipient's exact address; the AI will not guess.</span>}
+              {!composeTo.trim() && <span role="status" className="mt-1 block text-primary">Who should receive this email? Enter or explicitly choose the recipient&apos;s exact address; the AI will not guess.</span>}
               <input type="email" aria-label="Email recipient" value={composeTo} disabled={composeBusy || Boolean(composeDraftId)} required placeholder="recipient@example.com" onChange={e => { setComposeTo(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2" />
             </label>
             {composeProfile?.email && !composeTo.trim() && <button type="button" disabled={composeBusy || Boolean(composeDraftId)}
