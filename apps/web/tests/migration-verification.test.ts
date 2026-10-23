@@ -724,9 +724,18 @@ describe("pnpm workspace lockfile integrity", () => {
   const lockfilePath = resolve(__dirname, "../../../pnpm-lock.yaml");
   const lockfile = readFileSync(lockfilePath, "utf8");
 
-  it("contains exactly one workspace lockfile document", () => {
-    expect(lockfile.match(/^lockfileVersion:/gm) ?? []).toHaveLength(1);
-    expect(lockfile.match(/^importers:/gm) ?? []).toHaveLength(1);
+  it("pins pnpm 12 and workspace dependencies in their separate reviewed lockfile documents", () => {
+    const docs = lockfile.split(/^---[ \\t]*$/gm).map(text => text.trim()).filter(Boolean);
+    expect(docs).toHaveLength(2);
+    const [manager, workspace] = docs;
+    expect(manager).toContain("packageManagerDependencies:");
+    expect(manager).toContain("specifier: 12.8.1");
+    expect(manager).toContain("version: 12.8.1");
+    expect(manager).toMatch(/pnpm@12\\.8\\.1:\\n    resolution: \\{integrity: sha512-/);
+    expect(manager.match(/^importers:/gm) ?? []).toHaveLength(1);
+    expect(workspace.match(/^importers:/gm) ?? []).toHaveLength(1);
+    expect(workspace).toContain("  apps/worker:");
+    expect(workspace).not.toContain("packageManagerDependencies:");
   });
 
   it("resolves the worker's amqplib dependency in both package and snapshot sections", () => {
