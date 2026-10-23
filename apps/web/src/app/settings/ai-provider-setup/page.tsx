@@ -22,17 +22,33 @@ const TABS: Array<{ id: Tab; label: string; icon: typeof Bot; description: strin
 
 export default function AIProviderSetupPage() {
   const [organizationId, setOrganizationId] = useState("");
+  const [organizationLoading, setOrganizationLoading] = useState(true);
+  const [organizationError, setOrganizationError] = useState("");
+  const [organizationRetry, setOrganizationRetry] = useState(0);
   const [tab, setTab] = useState<Tab>("chat");
 
   useEffect(() => {
-    void fetch("/api/settings/organization", { cache: "no-store" })
+    const controller = new AbortController();
+    setOrganizationLoading(true);
+    setOrganizationError("");
+    void fetch("/api/settings/organization", { cache: "no-store", signal: controller.signal })
       .then(async (r) => {
-        if (!r.ok) return;
+        if (!r.ok) throw new Error("Organization lookup was denied or is unavailable.");
         const body = await r.json();
-        if (body.organization?.id) setOrganizationId(body.organization.id);
+        if (controller.signal.aborted) return;
+        if (typeof body.organization?.id !== "string" || !body.organization.id) {
+          throw new Error("No organization is available for AI provider configuration.");
+        }
+        setOrganizationId(body.organization.id);
       })
-      .catch(() => undefined);
-  }, []);
+      .catch(() => {
+        if (!controller.signal.aborted) setOrganizationError("Could not load your organization. Check access and retry.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setOrganizationLoading(false);
+      });
+    return () => controller.abort();
+  }, [organizationRetry]);
 
   const activeTab = useMemo(() => TABS.find((t) => t.id === tab)!, [tab]);
 
@@ -87,15 +103,19 @@ export default function AIProviderSetupPage() {
 
         {/* Tab panel */}
         <div className="mt-4">
-          {!organizationId ? (
+          {organizationLoading ? (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Resolving organization context…
             </p>
+          ) : organizationError || !organizationId ? (
+            <div role="alert" className="rounded-xl border border-destructive/25 bg-card p-5">
+              <p className="text-sm font-semibold">Organization setup is unavailable</p>
+              <p className="mt-1 text-sm text-muted-foreground">{organizationError || "No organization was found."}</p>
+              <button type="button" className="mt-3 rounded-md border px-3 py-2 text-sm font-semibold hover:bg-muted"
+                onClick={() => setOrganizationRetry(n => n + 1)}>Retry organization lookup</button>
+            </div>
           ) : (
-            <AIProviderSetupShared
-              organizationId={organizationId}
-              tab={tab}
-            />
+            <AIProviderSetupShared organizationId={organizationId} tab={tab} />
           )}
         </div>
       </div>
