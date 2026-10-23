@@ -38,11 +38,11 @@ test("JSON email actions still use host tools, actor rights, approval and bounde
   assert.match(route, /deniedEmailWriteExplanation\(transcript, subject\.permissions\)/);
 });
 
-test("SSE retains progressive conversational deltas and tool-qualified status", () => {
+test("SSE validates conversational output and retains tool-qualified status", () => {
   const sse = route.slice(route.indexOf('if (request.headers.get("accept")?.includes("text/event-stream"))'), route.indexOf('return new Response(stream,'));
   assert.match(sse, /if \(blockedWriteExplanation\)/);
   assert.match(sse, /else if \(needsAuthorizedTools\)/);
-  assert.match(sse, /emit\("delta", \{ text: token \}\)/);
+  assert.match(sse, /emit\("delta", \{ text: verifiedAnswer \}\)/);
   assert.match(sse, /mode: "model-stream"/);
   assert.match(sse, /runEmailAgentTurn\(/);
 });

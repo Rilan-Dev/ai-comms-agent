@@ -19,8 +19,8 @@ test("voice SSE never completes a normal model turn if the provider yields zero 
   const from = route.indexOf('surface: "realtime"');
   const until = route.indexOf('mode: "model-stream"', from);
   const stream = route.slice(from, until);
-  assert.match(stream, /if \(!deliveredText\.trim\(\)\) throw new Error\("AI provider returned an empty voice response\."\)/);
-  assert.ok(stream.indexOf("if (!deliveredText.trim())") < stream.indexOf("await saveAnswer(deliveredText)"));
+  assert.match(stream, /if \(!generated\.trim\(\)\) throw new Error\("AI provider returned an empty voice response\."\)/);
+  assert.ok(stream.indexOf("if (!generated.trim())") < stream.indexOf("await saveAnswer(deliveredText)"));
   assert.match(route, /Clara could not complete the voice answer\. No external action was confirmed\./);
 });
 
