@@ -13,6 +13,9 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
   const scopeRef = useRef(scopeKey);
   const scopeRevisionRef = useRef(0);
   const organizationRef = useRef(organizationId);
+  const accountsOrganizationRef = useRef<string | null>(null);
+  const requestedDraftIdRef = useRef(requestedDraftId);
+  requestedDraftIdRef.current = requestedDraftId;
   if (scopeRef.current !== scopeKey) {
     scopeRef.current = scopeKey;
     scopeRevisionRef.current += 1;
@@ -51,7 +54,8 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
     setSavedAt(null);
     setNotice(null);
     setTo(""); setCc(""); setBcc(""); setSubject(""); setBodyText("");
-    setAccountId(requestedDraftId ? "" : accounts.find(a => a.status === "connected")?.id ?? "");
+    setAccountId(!requestedDraftId && accountsOrganizationRef.current === organizationId
+      ? accounts.find(a => a.status === "connected")?.id ?? "" : "");
     if (!requestedDraftId) {
       setLoadingDraft(false);
       return () => controller.abort();
@@ -91,6 +95,7 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
 
   useEffect(() => {
     const controller = new AbortController();
+    accountsOrganizationRef.current = null;
     setAccounts([]);
     void fetch("/api/email-accounts?organizationId=" + encodeURIComponent(organizationId), {
       cache: "no-store", signal: controller.signal,
@@ -100,8 +105,9 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
       return data.accounts ?? [];
     }).then((items: Account[]) => {
       if (controller.signal.aborted || organizationRef.current !== organizationId) return;
+      accountsOrganizationRef.current = organizationId;
       setAccounts(items);
-      if (!requestedDraftId) {
+      if (!requestedDraftIdRef.current) {
         const first = items.find(account => account.status === "connected");
         setAccountId(current => current || first?.id || "");
       }
