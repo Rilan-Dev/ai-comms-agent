@@ -820,3 +820,8 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Verification:** GitHub-only static inspection 25/25; full native/runtime/browser/deploy NOT RUN. Source-only.
 - **Cross-agent routing:** FIX-01 owns implementation bugs (its concurrent fixes untouched); OPS-01 owns CI/host/Meta/deployment; future persisted consent/external delivery requires separate user/security approval.
 - **Next:** `NEXT_ACTION.md` and session file; R1a runtime tests and C3/C4 negative checks, no gate polling.
+
+### EVT-DEV01-R1A-HOURLY-CHOICES-20261023 — interval completeness checkpoint
+- **Agent/session:** DEV-01 / Forge, `DEV01-ROUTINE-TIMING-PREVIEW-20261023`; same R1a no-side-effects feature.
+- **User-facing result:** Preview now distinguishes 1/6/12/24 **elapsed-hour** intervals from daily or weekly fixed-local-clock triggers. Backend refuses unlisted intervals; minimum is 60 minutes per canonical engine. No runner activation or send.
+- **Commits:** `edde5453` tests, `2a193964` UX/server validation; source 19/19 assertions, native/browser not executed; Phase 4 unchanged. Follow `NEXT_ACTION.md` for acceptance and independent C3 gate.
