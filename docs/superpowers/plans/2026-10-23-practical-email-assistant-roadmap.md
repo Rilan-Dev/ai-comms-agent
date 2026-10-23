@@ -48,7 +48,7 @@ The home screen should answer four questions in **under a minute of reading**: W
 - **Exit:** No monitoring staff attendance; two users never share each other's private visit/review state. Corrections can be undone and do not override source truth.
 
 ### P4 — Understand routine timing BEFORE scheduling — R1a safe slice
-- **Source implemented here:** `/routines/preview` linked from Overview. Private GET-only arithmetic via canonical `nextRoutineOccurrences`; options for daily local time, weekly weekday, every 24 elapsed hours, one-off exact instant and event/no fixed clock. Show next three UTC/local instants and DST explanation. **No DB write, job, trigger, WhatsApp or provider call.**
+- **Source implemented here:** `/routines/preview` linked from Overview. Private GET-only arithmetic via canonical `nextRoutineOccurrences`; options for daily local time, weekly weekday, every 1/6/12/24 elapsed hours (minimum 60 minutes), one-off exact instant and event/no fixed clock. Show next three UTC/local instants and DST explanation. **No DB write, job, trigger, WhatsApp or provider call.**
 - **RED:** DST spring gap/fall duplicate, invalid IANA zone, past once instant, fixed 24h crossing DST, hourly minimum below 60 minutes, unrecognized kind and missing auth.
 - **Exit:** Focused native source contracts, existing worker timing tests and authenticated browser/keyboard preview; permission and activation remain unchanged.
 
