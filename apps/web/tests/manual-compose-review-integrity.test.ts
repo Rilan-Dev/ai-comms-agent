@@ -46,7 +46,7 @@ describe("FIX-01 manual email compose must approve only the reviewed persisted d
 
   it("never overrides loaded draft sender with the default mailbox and keeps existing drafts on their original sender", () => {
     expect(composer).toContain("setAccountId(current => current || first?.id ||");
-    expect(composer).toContain("disabled={busy || loadingDraft || Boolean(draftId)");
+    expect(composer).toContain("disabled={busy || loadingDraft || !scopeValid || Boolean(draftId)");
     expect(composer).toContain("requestedDraftId && !draftId");
   });
 
