@@ -47,6 +47,7 @@ test("AI reply and forward tool snapshots retain canonical local message identit
 test("manual approvals and BOTH execution paths resolve local rows before provider calls", () => {
   const m=manual(), w=worker(), e=executor();
   assert.match(m, /snapshot = \{\s*messageId,/);
+  assert.match(m, /eligibleReplyForwardSourceId\(message, emailAccountId\)/);
   for (const source of [w, e]) {
     assert.match(source, /getMailMessageForOrganization\([^\n]+, messageId\)/);
     assert.match(source, /const providerMessageId = String\(source\.provider_message_id\)/);
