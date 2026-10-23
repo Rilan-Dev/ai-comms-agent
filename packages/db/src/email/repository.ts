@@ -304,7 +304,7 @@ export async function listInboxMessages(organizationId: string, filters: MailInb
   values.push(limit, offset);
   const r = await query<Row>(`SELECT m.id, m.email_account_id, m.thread_id, COALESCE(m.from_email, m.from_name, '') AS from_address, m.to_recipients AS to_addresses, m.subject, m.snippet, m.received_at, m.is_read, m.is_starred, m.is_draft, m.is_sent AS is_outbound, m.importance_score, m.action_required, EXISTS (SELECT 1 FROM email_attachments ea WHERE ea.message_id = m.id) AS has_attachments, a.email_address AS account_email, a.display_name AS account_name
     FROM email_messages m JOIN email_accounts a ON a.id = m.email_account_id
-    WHERE ${conditions.join(" AND ")} ORDER BY m.received_at DESC NULLS LAST, m.id DESC LIMIT ${values.length - 1} OFFSET ${values.length}`, values);
+    WHERE ${conditions.join(" AND ")} ORDER BY m.received_at DESC NULLS LAST, m.id DESC LIMIT $${values.length - 1} OFFSET $${values.length}`, values);
   return r.rows;
 }
 
