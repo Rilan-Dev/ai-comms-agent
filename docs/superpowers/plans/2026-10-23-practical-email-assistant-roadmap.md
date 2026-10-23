@@ -80,3 +80,16 @@ The home screen should answer four questions in **under a minute of reading**: W
 - **Next:** Run `node --experimental-strip-types --test apps/web/tests/routine-timing-preview.test.mjs apps/web/tests/catch-up-five-day-entry.test.mjs`; `cd apps/worker && node --import tsx --test tests/routine-time.test.ts`; `pnpm --filter @ai-comms-agent/web typecheck`; authenticated browser with timezone/DST and login-redirect negatives; preserve disabled worker and no-send state. Then return to C3 disposable grant/lease/provider-negative tests, not R1b persistence or WhatsApp enablement.
 
 Every new slice follows **RED executable test → small code change → focused check → exact SHA evidence → role-correct handoff**. Do not wait for unrelated CI/CD, but do not imply a source-only check is a deployed acceptance.
+
+
+
+## 2026-10-23 DEV-01 continuation — understand source coverage before AI prioritization
+
+A practical first-use friction surfaced in P1: when the platform has selected 320 permitted messages but has loaded only 200 original links, people need to see **how much was selected versus how much is visible**. That number is neither user inactivity, provider unread mail, C3 AI classification, nor human review progress.
+
+- Added TDD source contract `apps/web/tests/catch-up-source-coverage.test.mjs`, pure `describeCatchUpSourceCoverage` and existing C4 UI progress. Each user sees the selected count, distinct loaded source links and honest pagination/incomplete states before C3 begins.
+- Source commits `5fb5c549,b6aecacf,cfed27d7`. Five isolated Node helper cases and standalone strict TypeScript passed; re-fetched source contracts 14/14; full committed tests, DB browser, deployment not run.
+- Exact independent implementation plan: `docs/superpowers/plans/2026-10-23-catch-up-source-coverage-clarity.md`. Session and current `NEXT_ACTION.md` contain acceptance commands.
+- **Next safe work:** Source/grant negative acceptance, mobile catch-up workflow, then C3 source-grounding verification while the worker remains off. Later priority adjustments must be source-evidenced and human undoable; attendance tracking, routine persistence and unattended WhatsApp require separate privacy/consent approvals. Overview remains the first screen, and legacy Schedules/Automations remain discoverable.
+
+No new authority or phase completion is implied by this source-only continuation.
