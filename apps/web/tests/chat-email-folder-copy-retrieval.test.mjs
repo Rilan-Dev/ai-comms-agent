@@ -26,8 +26,12 @@ for (const [name, sql] of [["ambient Chat context", ambient], ["Clara hybrid con
   });
 
   test(`${name} chooses INBOX without weakening the agent, tenant or provider boundaries`, () => {
-    assert.match(sql, /JOIN agent_email_accounts b/);
-    assert.match(sql, /b\.role IN \('primary', 'read_only'\)/);
+    const scopedSql = name === "ambient Chat context" ? chat : sql;
+    assert.match(scopedSql, /JOIN agent_email_accounts b/);
+    assert.match(scopedSql, /b\.role IN \('primary', 'read_only'\)/);
+    if (name === "ambient Chat context") {
+      assert.match(sql, /agentScopeSql\.replace/); // injects the verified binding join
+    }
     assert.match(sql, /(?:m|em)\.organization_id = \$1/);
     assert.match(sql, /(?:f|folder)\.role = 'inbox'/);
     assert.match(sql, /UPPER\((?:f|folder)\.provider_folder_id\) = 'INBOX'/);
