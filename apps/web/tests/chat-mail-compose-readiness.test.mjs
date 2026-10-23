@@ -29,7 +29,7 @@ test("report independent allowlist, account and actor failures; no implicit perm
   assert.deepEqual(draftOnly.blockers.map(item => item.code), ["send_request_tool_disabled"]);
 });
 
-test("readiness is a pure GET diagnostic; chat test-email intent opens preview only", () => {
+test("readiness GET and explicit manual compose remain review-only and never send", () => {
   const route = readFileSync(new URL("../src/app/api/chat/mail-compose/route.ts", import.meta.url), "utf8");
   const chat = readFileSync(new URL("../src/app/chat/chat-client.tsx", import.meta.url), "utf8");
   const types = readFileSync(new URL("../../../packages/shared/src/identity/types.ts", import.meta.url), "utf8");
