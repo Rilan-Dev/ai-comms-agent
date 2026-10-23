@@ -13,14 +13,18 @@ export function ApprovalsClient({ organizationId }: { organizationId: string }) 
   const guardRef = useRef(createApprovalQueueRefreshGuard());
   // Do not accept a second action before React commits decidingId.
   const decisionInFlightRef = useRef(false);
+  const foregroundLoadTicketRef = useRef<number | null>(null);
   const organizationRef = useRef(organizationId);
   organizationRef.current = organizationId;
 
   async function load({ silent = false }: { silent?: boolean } = {}) {
     if (decisionInFlightRef.current) return;
+    // Do not let the five-second poll replace a user-initiated refresh.
+    if (silent && foregroundLoadTicketRef.current !== null) return;
     const ticket = guardRef.current.begin();
     const requestedOrg = organizationId;
     if (!silent) {
+      foregroundLoadTicketRef.current = ticket;
       setLoading(true);
       setNotice(null);
     }
@@ -34,8 +38,11 @@ export function ApprovalsClient({ organizationId }: { organizationId: string }) 
       if (!silent && guardRef.current.isCurrent(ticket) && organizationRef.current === requestedOrg)
         setNotice(e instanceof Error ? e.message : "Could not load approvals.");
     } finally {
-      if (!silent && guardRef.current.isCurrent(ticket) && organizationRef.current === requestedOrg)
-        setLoading(false);
+      if (!silent && foregroundLoadTicketRef.current === ticket) {
+        foregroundLoadTicketRef.current = null;
+        if (guardRef.current.isCurrent(ticket) && organizationRef.current === requestedOrg)
+          setLoading(false);
+      }
     }
   }
 
@@ -44,7 +51,11 @@ export function ApprovalsClient({ organizationId }: { organizationId: string }) 
     setActions([]);
     void load();
     const timer = setInterval(() => { void load({ silent: true }); }, 5000);
-    return () => { clearInterval(timer); guardRef.current.invalidate(); };
+    return () => {
+      clearInterval(timer);
+      guardRef.current.invalidate();
+      foregroundLoadTicketRef.current = null;
+    };
   }, [organizationId]);
 
   async function decide(actionId: string, decision: "approved" | "rejected") {
@@ -54,6 +65,7 @@ export function ApprovalsClient({ organizationId }: { organizationId: string }) 
     // Invalidate it immediately; do not resurrect the item after approval.
     guardRef.current.invalidate();
     const requestedOrg = organizationId;
+    foregroundLoadTicketRef.current = null;
     setLoading(false);
     setDecidingId(actionId);
     setNotice(null);
