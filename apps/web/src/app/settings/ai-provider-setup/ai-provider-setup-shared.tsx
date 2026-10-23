@@ -491,9 +491,11 @@ export function AIProviderSetupShared({
                 </div>
               ) : null}
               <p className="text-xs leading-5 text-muted-foreground">
-                {tab === "realtime" && (provider === "sarvam" || provider === "elevenlabs")
-                  ? "These streaming speech models are documented by the vendor, not fetched from a live per-key catalogue. Availability is confirmed when a session connects. This app uses the authorized host agent and speech pipeline, not ElevenLabs Conversational AI agents."
-                  : "Model options are fetched from the provider's live API with this organization's saved key. Save the key first, choose a listed model, and save again. Unsupported capabilities are never presented as live."}
+                {tab === "voice-chat" && provider === "sarvam"
+                  ? "Sarvam's model-list endpoint covers chat, not TTS or STT. These vendor-documented TTS and STT choices are the models supported by this app's current voice pipeline. They are not live account-verified; actual access is checked when speech runs. Save the TTS and STT credentials and model choices separately."
+                  : tab === "realtime" && (provider === "sarvam" || provider === "elevenlabs")
+                    ? "These streaming speech models are documented by the vendor, not fetched from a live per-key catalogue. Availability is confirmed when a session connects. This app uses the authorized host agent and speech pipeline, not ElevenLabs Conversational AI agents."
+                    : "Model options are fetched from the provider's live API with this organization's saved key. Save the key first, choose a listed model, and save again. Unsupported capabilities are never presented as live."}
               </p>
               <div className="space-y-3 rounded-lg border border-border p-4">
                 <h4 className="text-sm font-semibold">4. Review and save</h4>
