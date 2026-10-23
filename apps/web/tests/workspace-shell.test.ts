@@ -48,7 +48,12 @@ describe("Embedded realtime voice in the chat workspace", () => {
     expect(chat).toContain('import("../ai-voice/voice-workspace")');
     expect(chat).toContain("setVoiceOpen(true)");
     expect(chat).toContain('initialAgentId={agentId}');
-    expect(chat).toContain("onReturnToChat={() => setVoiceOpen(false)}");
+    // Returning from voice must refresh the current agent's persisted chat
+    // session, rather than closing the component and silently losing turns.
+    expect(chat).toContain("embedded onReturnToChat={() => { void returnFromVoice(); }}");
+    expect(chat).toContain("async function returnFromVoice()");
+    expect(chat).toContain("setVoiceOpen(false)");
+    expect(chat).not.toContain("onReturnToChat={() => setVoiceOpen(false)}");
     expect(chat).not.toContain('href="/ai-voice"');
   });
 
