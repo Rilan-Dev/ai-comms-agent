@@ -5,6 +5,7 @@ import { ArrowRight, Inbox, RefreshCw, ShieldCheck } from "lucide-react";
 import { CatchUpRequestScope, type CatchUpScopeToken } from "./request-scope";
 import { catchUpPeriodUtc, parseCatchUpDays, type CatchUpDays } from "@/lib/briefings/catch-up-window";
 import { describeCatchUpSourceCoverage } from "@/lib/briefings/source-coverage-display";
+import { describeBriefingSource } from "@/lib/briefings/source-email-display";
 
 type AgentChoice = {
   agentId: string; name: string;
@@ -15,7 +16,10 @@ type Manifest = {
   sourceCount: number; scope: { scopeVersion: string };
   period: { start: string; end: string } | null;
 };
-type Source = { messageId: string; mailboxId: string; threadId: string; contentRevision: string };
+type Source = {
+  messageId: string; mailboxId: string; threadId: string; contentRevision: string;
+  subject?: string | null; sender?: string | null; receivedAt?: string | null;
+};
 type SummaryItem = {
   id: string; sourceIds: string[]; priority: "high" | "medium" | "low";
   title: string; summary: string; reason: string; deadline: string | null;
@@ -284,14 +288,21 @@ export function CatchUpClient({ organizationId, agents, initialDays = 7 }: { org
           ) : null}
           {sources.length ? (
             <ul className="mt-4 divide-y divide-border" aria-label="Original source emails">
-              {sources.map(source => (
-                <li key={source.messageId} className="py-2">
+              {sources.map(source => {
+                const details = describeBriefingSource(source);
+                return <li key={source.messageId} className="py-3">
                   <a href={`/mail/thread/${encodeURIComponent(source.threadId)}`}
-                    className="inline-flex min-w-0 items-center gap-2 text-sm text-primary hover:underline">
-                    <Inbox size={16} /> <span className="break-all">Open source email {source.messageId.slice(0, 8)}</span><ArrowRight size={15} />
+                    className="flex min-w-0 items-start gap-3 rounded-md p-2 text-sm text-primary hover:bg-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+                    <Inbox size={17} className="mt-1 shrink-0" aria-hidden="true" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block break-words font-semibold text-foreground">{details.subject}</span>
+                      <span className="mt-1 block break-words text-xs text-muted-foreground">From {details.sender} · <time dateTime={details.receivedAtIso ?? undefined}>{details.receivedLabel}</time></span>
+                      <span className="mt-1 block text-xs font-medium">Open original email</span>
+                    </span>
+                    <ArrowRight size={16} className="mt-1 shrink-0" aria-hidden="true" />
                   </a>
-                </li>
-              ))}
+                </li>;
+              })}
             </ul>
           ) : manifest.sourceCount === 0 ? (
             <p className="mt-4 text-sm text-muted-foreground">No newly eligible messages in this selection.</p>
