@@ -334,6 +334,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
           <div className="grid gap-2 sm:grid-cols-2">{EMAIL_PERMISSION_PRESETS.map((preset) => <button key={preset.id} type="button" disabled={busy} onClick={() => chooseMailPreset(preset.id)} className="rounded-md border bg-background p-3 text-left text-xs transition hover:border-primary/50 disabled:opacity-50"><span className="block font-semibold">{preset.label}</span><span className="mt-1 block text-muted-foreground">{preset.description}</span></button>)}</div>
           <p role="status" className="mt-3 text-xs text-muted-foreground">{selectedTools.filter(name => KNOWN_EMAIL_POLICY_TOOLS.has(name)).length} email tools selected; changes are not active until you confirm and save.</p>
         </fieldset>
+        <details className="space-y-4 rounded-md border p-4"><summary className="cursor-pointer text-sm font-semibold">Advanced: individual registered tools</summary>
         {(["read", "write"] as const).map((group) => <fieldset key={group} className="rounded-md border p-4">
           <legend className="px-1 text-sm font-semibold">{group === "read" ? "Read and search mail" : "Drafting and approval requests (optional)"}</legend>
           <p className="mb-3 text-xs text-muted-foreground">{group === "read" ? "Select only the information this agent needs. No mailbox is accessible unless separately connected." : "These actions do not bypass provider capabilities, administrator consent, or send approvals."}</p>
@@ -360,6 +361,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
           <p className="mb-3 text-xs text-muted-foreground">These were already saved. They are preserved until you explicitly remove them; this page cannot confirm whether each has a registered handler.</p>
           {selectedTools.filter((name) => !KNOWN_SELECTABLE_POLICY_TOOLS.has(name)).map((name) => <label key={name} className="mb-2 flex items-center gap-2 text-sm"><input type="checkbox" checked onChange={() => togglePolicyTool(name, false)} />{name}</label>)}
         </fieldset>}
+        </details>
         <details className="rounded-md border p-4"><summary className="cursor-pointer text-sm font-semibold">Advanced sender rules and existing custom policy (optional)</summary>
           <p className="mt-2 text-xs text-muted-foreground">The saved security and rate-limit rules stay unchanged unless you edit them here. Leave these fields as provided unless an administrator has specific restrictions.</p>
           <div className="mt-4 space-y-4">

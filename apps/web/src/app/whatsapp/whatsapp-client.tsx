@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MessageCircle, Send, ShieldCheck, Smartphone, Unplug, X, Pencil, FlaskConical } from "lucide-react";
 import { WhatsAppWebhookSetupGuide } from "./whatsapp-webhook-setup-guide";
+import {createScopedRequestLoader,readJsonWithTimeout} from "@/lib/streaming/scoped-request";
+import {operationStateLabel} from "@/lib/operation-state-label";
+import {formatWorkspaceTimestamp} from "@/lib/workspace-timestamp";
 import {useWhatsAppReadiness} from "@/lib/whatsapp/use-readiness";
 
 type Account = { id: string; phone_number_id: string; phone_number?: string | null; display_name?: string | null; business_account_id?: string | null; status: string; last_error?: string | null };
 
 export default function WhatsAppClient({ organizationId }: { organizationId: string }) {
+  return <WhatsAppWorkspace key={organizationId} organizationId={organizationId} />;
+}
+function WhatsAppWorkspace({ organizationId }: { organizationId: string }) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [form, setForm] = useState({ phoneNumberId: "", businessAccountId: "", phoneNumber: "", displayName: "", accessToken: "", verifyToken: "", appSecret: "" });
   const [busy, setBusy] = useState(false);
@@ -15,7 +21,7 @@ export default function WhatsAppClient({ organizationId }: { organizationId: str
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState("");
-  const [messages, setMessages] = useState<Array<{ id: string; direction: string; body?: string | null; status: string; phone_number?: string | null; display_name?: string | null; created_at: string }>>([]);
+  const [messages, setMessages] = useState<Array<{ id: string; direction: string; body?: string | null; status: string; provider_error?:string|null; phone_number?: string | null; display_name?: string | null; created_at: string }>>([]);
   const [recipient, setRecipient] = useState("");
   const readiness=useWhatsAppReadiness({organizationId,accountId:selectedAccountId,recipient,revision:JSON.stringify(accounts.map(account=>[account.id,account.status]))});
   const [messageBody, setMessageBody] = useState("");
@@ -31,36 +37,58 @@ export default function WhatsAppClient({ organizationId }: { organizationId: str
   const [newTemplateCategory, setNewTemplateCategory] = useState("UTILITY");
   const [newTemplateBody, setNewTemplateBody] = useState("");
 
-  async function load() {
-    try {
-      const r = await fetch("/api/whatsapp/accounts?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.message ?? "Could not load WhatsApp accounts.");
-      setAccounts(d.accounts ?? []);
-    } catch (e) { setNotice(e instanceof Error ? e.message : "Could not load WhatsApp accounts."); }
+  const [accountsLoading,setAccountsLoading]=useState(true);
+  const [accountsError,setAccountsError]=useState('');
+  const [messagesScope,setMessagesScope]=useState('');
+  const [messagesError,setMessagesError]=useState('');
+  const [approvalsLoading,setApprovalsLoading]=useState(true);
+  const [approvalsError,setApprovalsError]=useState('');
+  const [templatesScope,setTemplatesScope]=useState('');
+  const selectionScope=organizationId+':'+selectedAccountId;
+  const currentScope=useRef(selectionScope);currentScope.current=selectionScope;
+  const accountLoader=useRef(createScopedRequestLoader());
+  const messageLoader=useRef(createScopedRequestLoader());
+  const approvalLoader=useRef(createScopedRequestLoader());
+  const templateLoader=useRef(createScopedRequestLoader());
+  const visibleMessages=messagesScope===selectionScope?messages:[];
+  const visibleTemplates=templatesScope===selectionScope?templates:[];
+  async function load(){
+    await accountLoader.current.load(organizationId,()=>organizationId,signal=>readJsonWithTimeout<{accounts:Account[]}>('/api/whatsapp/accounts?organizationId='+encodeURIComponent(organizationId),signal),result=>{
+      setAccountsLoading(false);
+      if('value' in result){setAccounts(result.value.accounts??[]);setAccountsError('');}
+      else setAccountsError(result.error);
+    });
   }
-  useEffect(() => { void load(); }, [organizationId]);
-  useEffect(() => { const firstAccount = accounts.length===1?accounts[0]:undefined; if (firstAccount && !selectedAccountId) setSelectedAccountId(firstAccount.id); }, [accounts, selectedAccountId]);
-  useEffect(() => { if (!selectedAccountId) return; const loadMessages = async () => { try { const r = await fetch("/api/whatsapp/messages?organizationId=" + encodeURIComponent(organizationId) + "&accountId=" + encodeURIComponent(selectedAccountId), { cache: "no-store" }); const d = await r.json(); if (r.ok) setMessages(d.messages ?? []); } catch {} }; void loadMessages(); const timer = setInterval(() => { void loadMessages(); }, 5000); return () => clearInterval(timer); }, [organizationId, selectedAccountId]);
-  async function loadApprovals() {
-    try {
-      const r = await fetch("/api/whatsapp/send-actions?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" });
-      const d = await r.json();
-      if (r.ok) setApprovalActions(d.actions ?? []);
-    } catch {}
+  useEffect(()=>{void load();return()=>accountLoader.current.invalidate();},[organizationId]);
+  useEffect(()=>{if(accounts.length===1&&!selectedAccountId)setSelectedAccountId(accounts[0]!.id);},[accounts,selectedAccountId]);
+  useEffect(()=>{
+    setMessages([]);setMessagesError('');
+    if(!selectedAccountId)return;
+    const loadMessages=()=>messageLoader.current.load(selectionScope,()=>currentScope.current,signal=>readJsonWithTimeout<{messages:typeof messages}>('/api/whatsapp/messages?'+new URLSearchParams({organizationId,accountId:selectedAccountId}),signal),result=>{
+      setMessagesScope(selectionScope);
+      if('value' in result){setMessages(result.value.messages??[]);setMessagesError('');}
+      else setMessagesError(result.error);
+    });
+    void loadMessages();const timer=setInterval(()=>{void loadMessages();},5000);
+    return()=>{clearInterval(timer);messageLoader.current.invalidate();};
+  },[organizationId,selectedAccountId,selectionScope]);
+  async function loadApprovals(){
+    await approvalLoader.current.load(organizationId,()=>organizationId,signal=>readJsonWithTimeout<{actions:typeof approvalActions}>('/api/whatsapp/send-actions?organizationId='+encodeURIComponent(organizationId),signal),result=>{
+      setApprovalsLoading(false);
+      if('value' in result){setApprovalActions(result.value.actions??[]);setApprovalsError('');}
+      else setApprovalsError(result.error);
+    });
   }
-  async function loadTemplates() {
-    if (!selectedAccountId) { setTemplates([]); return; }
-    try {
-      const r = await fetch("/api/whatsapp/templates?organizationId=" + encodeURIComponent(organizationId) + "&accountId=" + encodeURIComponent(selectedAccountId), { cache: "no-store" });
-      const d = await r.json();
-      if (r.ok) setTemplates(d.templates ?? []);
-      else {setTemplates([]);setNotice(d.message ?? 'Meta templates could not be checked. Verify the account access token.');}
-    } catch { setTemplates([]);setNotice('Meta templates could not be checked. Verify the account connection before sending.'); }
+  async function loadTemplates(){
+    if(!selectedAccountId){setTemplates([]);return;}
+    await templateLoader.current.load(selectionScope,()=>currentScope.current,signal=>readJsonWithTimeout<{templates:typeof templates}>('/api/whatsapp/templates?'+new URLSearchParams({organizationId,accountId:selectedAccountId}),signal),result=>{
+      setTemplatesScope(selectionScope);
+      if('value' in result)setTemplates(result.value.templates??[]);
+      else{setTemplates([]);setNotice('Meta templates could not be checked. Verify the account connection before sending.');}
+    });
   }
-  useEffect(() => { void loadApprovals(); const timer = setInterval(() => { void loadApprovals(); }, 5000); return () => clearInterval(timer); }, [organizationId]);
-  useEffect(() => { void loadTemplates(); }, [organizationId, selectedAccountId]);
-
+  useEffect(()=>{void loadApprovals();const timer=setInterval(()=>{void loadApprovals();},5000);return()=>{clearInterval(timer);approvalLoader.current.invalidate();};},[organizationId]);
+  useEffect(()=>{setTemplates([]);void loadTemplates();return()=>templateLoader.current.invalidate();},[organizationId,selectedAccountId]);
   const credentialFields = [
     ["phoneNumberId", "Phone number ID *", false],
     ["businessAccountId", "Business account ID", false],
@@ -105,6 +133,7 @@ export default function WhatsAppClient({ organizationId }: { organizationId: str
   }
 
   async function decideApproval(actionId: string, decision: "approve" | "reject") {
+    approvalLoader.current.invalidate();
     setBusy(true); setNotice(null);
     try {
       const r = await fetch("/api/whatsapp/send-actions/decision", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ organizationId, actionId, decision }) });
@@ -197,20 +226,20 @@ export default function WhatsAppClient({ organizationId }: { organizationId: str
     <header className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Messaging</p><h1 className="mt-2 font-display text-3xl font-medium tracking-tight">WhatsApp Business</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Add Meta Cloud API business phones or test numbers. Saving a phone immediately checks its ID and access token with Meta; webhook subscriptions and test-recipient permissions are separate.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => { setEditingAccountId(null); setForm({ phoneNumberId: "", businessAccountId: "", phoneNumber: "", displayName: "Meta Test Phone", accessToken: "", verifyToken: "", appSecret: "" }); setShowWebhookSetupModal(true); }} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-md border px-4 text-sm font-semibold hover:bg-muted"><FlaskConical size={16} />Add Meta test phone</button><button type="button" onClick={() => { setEditingAccountId(null); setForm({ phoneNumberId: "", businessAccountId: "", phoneNumber: "", displayName: "", accessToken: "", verifyToken: "", appSecret: "" }); setShowWebhookSetupModal(true); }} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90"><Smartphone size={16} />{accounts.length ? "Connect another phone" : "Connect WhatsApp Business"}</button></div></header>
     {notice && <div role="status" className="mt-5 rounded-md border bg-background px-4 py-3 text-sm">{notice}</div>}
     <div className="mt-7 grid gap-6 lg:grid-cols-[1.05fr_.95fr]">
-      <section className="rounded-md border bg-background p-5  sm:p-7 lg:col-span-2"><div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="flex items-center gap-2 font-display text-lg font-medium"><MessageCircle size={17} /> Conversation channel</h2><p className="mt-1 text-xs text-muted-foreground">Inbound webhook messages and worker-queued outbound text. No fake messages are inserted.</p></div><select value={selectedAccountId} onChange={e=>setSelectedAccountId(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm">{accounts.map(a=><option key={a.id} value={a.id}>{a.display_name || a.phone_number || a.phone_number_id}</option>)}</select></div><div className="mt-5 max-h-[360px] space-y-2 overflow-y-auto rounded-md bg-muted/30 p-4">{messages.length ? messages.slice().reverse().map(m=><div key={m.id} className={"flex " + (m.direction === "outbound" ? "justify-end" : "justify-start")}><div className={"max-w-[80%] rounded-md border px-4 py-3 text-sm " + (m.direction === "outbound" ? "bg-foreground text-background" : "bg-background")}><p className="whitespace-pre-wrap">{m.body || "[" + m.status + "]"}</p><p className="mt-1 text-[10px] opacity-60">{m.phone_number || "WhatsApp"} · {m.status}</p></div></div>) : <p className="py-12 text-center text-sm text-muted-foreground">No persisted messages yet.</p>}</div><div className="mt-4 grid gap-3 sm:grid-cols-[180px_1fr_auto]">
+      <section className="rounded-md border bg-background p-5  sm:p-7 lg:col-span-2"><div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="flex items-center gap-2 font-display text-lg font-medium"><MessageCircle size={17} /> Conversation channel</h2><p className="mt-1 text-xs text-muted-foreground">Inbound webhook messages and worker-queued outbound text. No fake messages are inserted.</p></div><select aria-label="WhatsApp conversation phone" value={selectedAccountId} onChange={e=>setSelectedAccountId(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm">{accounts.map(a=><option key={a.id} value={a.id}>{a.display_name || a.phone_number || a.phone_number_id}</option>)}</select></div><div className="mt-5 max-h-[360px] space-y-2 overflow-y-auto rounded-md bg-muted/30 p-4">{accountsLoading ? <p role="status">Loading WhatsApp accounts…</p> : accountsError ? <p role="alert">{accountsError}</p> : !selectedAccountId ? <p>Select a connected phone to view messages.</p> : messagesScope!==selectionScope ? <p role="status">Loading messages…</p> : messagesError ? <p role="alert">{messagesError}</p> : visibleMessages.length ? visibleMessages.slice().reverse().map(m=><div key={m.id} className={"flex " + (m.direction === "outbound" ? "justify-end" : "justify-start")}><div className={"max-w-[80%] rounded-md border px-4 py-3 text-sm " + (m.direction === "outbound" ? "bg-foreground text-background" : "bg-background")}><p className="whitespace-pre-wrap">{m.body || "[" + operationStateLabel(m.status,m.provider_error) + "]"}</p><p className="mt-1 text-[10px] opacity-60">{m.phone_number || "WhatsApp"} · {operationStateLabel(m.status,m.provider_error)}</p></div></div>) : <p className="py-12 text-center text-sm text-muted-foreground">No persisted messages yet.</p>}</div><div className="mt-4 grid gap-3 sm:grid-cols-[180px_1fr_auto]">
         <input value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder="+919876543210" aria-label="Recipient phone in E.164 format" className="h-11 rounded-md border bg-background px-3 text-sm"/>
         <div className="grid gap-2">
           <select value={payloadType} onChange={e=>setPayloadType(e.target.value as "text" | "template")} aria-label="WhatsApp message type" className="h-11 rounded-md border bg-background px-3 text-sm"><option value="text">Free-form text (24-hour window)</option><option value="template">Approved Meta template</option></select>
-          {payloadType === "text" ? <input value={messageBody} onChange={e=>setMessageBody(e.target.value)} placeholder="Write a WhatsApp message…" aria-label="WhatsApp message" className="h-11 rounded-md border bg-background px-3 text-sm"/> : <><select value={templateName + "|" + templateLanguage} onChange={e=>{const [name = "",language = "en_US"]=e.target.value.split("|");setTemplateName(name);setTemplateLanguage(language);}} aria-label="Approved WhatsApp template" className="h-11 rounded-md border bg-background px-3 text-sm"><option value="|">Choose approved template…</option>{templates.filter(t=>t.status==="approved").map(t=><option key={t.id} value={t.name + "|" + t.language}>{t.name} ({t.language})</option>)}</select><textarea value={templateParametersText} onChange={e=>setTemplateParametersText(e.target.value)} placeholder="One body parameter per line, in template order" aria-label="Template body parameters" className="min-h-20 rounded-md border bg-background px-3 py-2 text-sm"/></>}
+          {payloadType === "text" ? <input value={messageBody} onChange={e=>setMessageBody(e.target.value)} placeholder="Write a WhatsApp message…" aria-label="WhatsApp message" className="h-11 rounded-md border bg-background px-3 text-sm"/> : <><select value={templateName + "|" + templateLanguage} onChange={e=>{const [name = "",language = "en_US"]=e.target.value.split("|");setTemplateName(name);setTemplateLanguage(language);}} aria-label="Approved WhatsApp template" className="h-11 rounded-md border bg-background px-3 text-sm"><option value="|">Choose approved template…</option>{visibleTemplates.filter(t=>t.status==="approved").map(t=><option key={t.id} value={t.name + "|" + t.language}>{t.name} ({t.language})</option>)}</select><textarea value={templateParametersText} onChange={e=>setTemplateParametersText(e.target.value)} placeholder="One body parameter per line, in template order" aria-label="Template body parameters" className="min-h-20 rounded-md border bg-background px-3 py-2 text-sm"/></>}
         </div>
         <p role="status" className="text-sm text-muted-foreground">{readiness.message}</p>
         <button type="button" disabled={busy || !readiness.canRequestSend || (payloadType === "text" && readiness.windowOpen===false) || !selectedAccountId || !accounts.some(a => a.id === selectedAccountId && a.status === "connected") || !/^\+[1-9]\d{7,14}$/.test(recipient) || (payloadType === "text" ? !messageBody.trim() : !templates.some(t=>t.name===templateName && t.language===templateLanguage && t.status==="approved"))} onClick={()=>void sendMessage()} className="h-11 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50"><><Send size={14} className="mr-2 inline" />{busy ? "Submitting…" : "Request approval"}</></button>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">Sending is approval-gated. Free-form text is allowed only after a recent inbound customer message; outside Meta’s 24-hour window, choose a template currently approved by Meta.</p></section>
       <section className="rounded-md border bg-background p-5 shadow-sm sm:p-7 lg:col-span-2"><div className="flex items-center justify-between gap-3"><div><h2 className="font-display text-lg font-medium">Send approval queue</h2><p className="mt-1 text-xs text-muted-foreground">Requests are not sent until an authorized person approves them. Expired-window text requires a Meta-approved template.</p></div><button type="button" onClick={()=>void loadApprovals()} className="rounded-md border px-3 py-2 text-xs font-semibold">Refresh</button></div>
-        <div className="mt-4 space-y-3">{approvalActions.length ? approvalActions.map(action=><article key={action.id} className="rounded-md border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="font-semibold">{action.payload_type === "template" ? "Template: " + (action.template_name ?? action.message_body.replace(/^Template: /,"")) + " (" + (action.template_language ?? "") + ")" : action.message_body}</p><p className="mt-1 text-xs text-muted-foreground">To {action.recipient_phone} · {action.status} · expires {new Date(action.expires_at).toLocaleString()}</p>{action.payload_type === "template" && action.template_preview && <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">Preview: {action.template_preview}</p>}<p className="mt-1 text-xs text-muted-foreground">Account {action.whatsapp_account_id}</p></div><span className="rounded-full border px-2.5 py-1 text-[11px] font-semibold">{action.status}</span></div>{action.status === "pending" && <div className="mt-3 flex justify-end gap-2"><button type="button" disabled={busy} onClick={()=>void decideApproval(action.id,"reject")} className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-50">Reject</button><button type="button" disabled={busy} onClick={()=>void decideApproval(action.id,"approve")} className="rounded-md bg-foreground px-3 py-2 text-xs font-semibold text-background disabled:opacity-50">Approve and queue</button></div>}{action.status === "requires_template" && <p className="mt-3 text-xs text-amber-700">No free-form send was queued. Create or select an approved Meta template and submit a new request.</p>}</article>) : <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">No pending WhatsApp send approvals.</p>}</div>
+        <div className="mt-4 space-y-3">{approvalsLoading ? <p role="status">Loading approvals…</p> : approvalsError ? <p role="alert">{approvalsError}</p> : approvalActions.length ? approvalActions.map(action=><article key={action.id} className="rounded-md border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="font-semibold">{action.payload_type === "template" ? "Template: " + (action.template_name ?? action.message_body.replace(/^Template: /,"")) + " (" + (action.template_language ?? "") + ")" : action.message_body}</p><p className="mt-1 text-xs text-muted-foreground">To {action.recipient_phone} · {operationStateLabel(action.status)} · expires {formatWorkspaceTimestamp(action.expires_at)}</p>{action.payload_type === "template" && action.template_preview && <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">Preview: {action.template_preview}</p>}<p className="mt-1 text-xs text-muted-foreground">{accounts.find(account=>account.id===action.whatsapp_account_id)?.display_name ?? "WhatsApp phone"}</p><details className="mt-1 text-xs"><summary>Technical reference</summary>{action.id}</details></div><span className="rounded-full border px-2.5 py-1 text-[11px] font-semibold">{operationStateLabel(action.status)}</span></div>{action.status === "pending" && <div className="mt-3 flex justify-end gap-2"><button type="button" disabled={busy} onClick={()=>void decideApproval(action.id,"reject")} className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-50">Reject</button><button type="button" disabled={busy} onClick={()=>void decideApproval(action.id,"approve")} className="rounded-md bg-foreground px-3 py-2 text-xs font-semibold text-background disabled:opacity-50">Approve and queue</button></div>}{action.status === "requires_template" && <p className="mt-3 text-xs text-amber-700">No free-form send was queued. Create or select an approved Meta template and submit a new request.</p>}</article>) : <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">No pending WhatsApp send approvals.</p>}</div>
       </section>
-      <section className="rounded-md border bg-background p-5 shadow-sm sm:p-7 lg:col-span-2"><h2 className="font-display text-lg font-medium">Meta message templates</h2><p className="mt-1 text-xs text-muted-foreground">Submissions are sent to Meta for review. Only current Meta-approved text-body templates can be used; media headers, dynamic headers and button templates fail closed.</p><button type="button" onClick={()=>void loadTemplates()} disabled={busy || !selectedAccountId} className="mt-3 rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-50">Refresh Meta approval status</button><div className="mt-4 grid gap-3 sm:grid-cols-4"><input value={newTemplateName} onChange={e=>setNewTemplateName(e.target.value)} placeholder="template_name" aria-label="New template name" className="h-10 rounded-md border bg-background px-3 text-sm"/><input value={newTemplateLanguage} onChange={e=>setNewTemplateLanguage(e.target.value)} aria-label="Template language" className="h-10 rounded-md border bg-background px-3 text-sm"/><select value={newTemplateCategory} onChange={e=>setNewTemplateCategory(e.target.value)} aria-label="Template category" className="h-10 rounded-md border bg-background px-3 text-sm"><option value="UTILITY">Utility</option><option value="MARKETING">Marketing</option></select><button type="button" disabled={busy || !selectedAccountId || !newTemplateName.trim() || !newTemplateBody.trim() || !accounts.some(a=>a.id===selectedAccountId && a.status==="connected")} onClick={()=>void submitTemplate()} className="h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">Submit to Meta</button></div><textarea value={newTemplateBody} onChange={e=>setNewTemplateBody(e.target.value)} placeholder="Template body text. Use {{1}}, {{2}} for body parameters." aria-label="Template body text" className="mt-3 min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm"/><div className="mt-3 flex flex-wrap gap-2">{templates.map(template=><span key={template.id} className="rounded-md border px-3 py-2 text-xs">{template.name} ({template.language}) · {template.status}</span>)}</div></section>
+      <section className="rounded-md border bg-background p-5 shadow-sm sm:p-7 lg:col-span-2"><h2 className="font-display text-lg font-medium">Meta message templates</h2><p className="mt-1 text-xs text-muted-foreground">Submissions are sent to Meta for review. Only current Meta-approved text-body templates can be used; media headers, dynamic headers and button templates fail closed.</p><button type="button" onClick={()=>void loadTemplates()} disabled={busy || !selectedAccountId} className="mt-3 rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-50">Refresh Meta approval status</button><div className="mt-4 grid gap-3 sm:grid-cols-4"><input value={newTemplateName} onChange={e=>setNewTemplateName(e.target.value)} placeholder="template_name" aria-label="New template name" className="h-10 rounded-md border bg-background px-3 text-sm"/><input value={newTemplateLanguage} onChange={e=>setNewTemplateLanguage(e.target.value)} aria-label="Template language" className="h-10 rounded-md border bg-background px-3 text-sm"/><select value={newTemplateCategory} onChange={e=>setNewTemplateCategory(e.target.value)} aria-label="Template category" className="h-10 rounded-md border bg-background px-3 text-sm"><option value="UTILITY">Utility</option><option value="MARKETING">Marketing</option></select><button type="button" disabled={busy || !selectedAccountId || !newTemplateName.trim() || !newTemplateBody.trim() || !accounts.some(a=>a.id===selectedAccountId && a.status==="connected")} onClick={()=>void submitTemplate()} className="h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">Submit to Meta</button></div><textarea value={newTemplateBody} onChange={e=>setNewTemplateBody(e.target.value)} placeholder="Template body text. Use {{1}}, {{2}} for body parameters." aria-label="Template body text" className="mt-3 min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm"/><div className="mt-3 flex flex-wrap gap-2">{visibleTemplates.map(template=><span key={template.id} className="rounded-md border px-3 py-2 text-xs">{template.name} ({template.language}) · {template.status}</span>)}</div></section>
       <section className="rounded-md border bg-background p-5 shadow-sm sm:p-7"><div className="flex items-center justify-between"><div><h2 className="flex items-center gap-2 font-display text-lg font-medium"><Smartphone size={17} /> Connected phone</h2><p className="mt-1 text-xs text-muted-foreground">{accounts.length} account{accounts.length === 1 ? "" : "s"} configured</p></div></div>
         <div className="mt-5 space-y-3">{accounts.length === 0 ? <div className="rounded-md border border-dashed p-7 text-center text-sm text-muted-foreground">No WhatsApp Business account configured yet.</div> : accounts.map(a => <article key={a.id} className="rounded-md border p-4"><div className="flex items-start justify-between gap-4"><div><p className="font-semibold">{a.display_name || a.phone_number || "WhatsApp Business phone"}</p><p className="mt-1 text-xs text-muted-foreground">Phone ID {a.phone_number_id}{a.business_account_id ? " · Business " + a.business_account_id : ""}</p></div><span className={"rounded-full px-2.5 py-1 text-[11px] font-semibold " + (a.status === "connected" ? "bg-emerald-50 text-emerald-700" : a.status === "error" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700")}>{a.status}</span></div>{a.status !== "connected" && <p className="mt-3 text-xs text-muted-foreground">{a.status === "pending" ? "Waiting for provider verification." : "Meta verification failed or the account needs attention. Edit the credentials and save to retry."}</p>}{a.last_error && <p role="alert" className="mt-2 text-xs text-destructive">{a.last_error}</p>}<div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" disabled={busy} onClick={() => void verifyAccount(a)} className="rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-50"><ShieldCheck size={13} className="mr-1 inline" />{a.status === "connected" ? "Recheck" : "Verify now"}</button><button type="button" disabled={busy} onClick={() => { setEditingAccountId(a.id); setForm({ phoneNumberId: a.phone_number_id, businessAccountId: a.business_account_id ?? "", phoneNumber: a.phone_number ?? "", displayName: a.display_name ?? "", accessToken: "", verifyToken: "", appSecret: "" }); setShowWebhookSetupModal(true); }} className="rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-50"><Pencil size={13} className="mr-1 inline" />Edit</button><button type="button" disabled={busy} onClick={() => void disconnect(a.id)} className="rounded-lg border border-destructive/20 px-3 py-2 text-xs font-semibold text-destructive disabled:opacity-50"><Unplug size={13} className="mr-1 inline" />Disconnect</button></div></article>)}</div>
       </section>

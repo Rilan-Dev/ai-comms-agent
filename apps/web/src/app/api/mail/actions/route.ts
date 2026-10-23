@@ -6,6 +6,7 @@ import {
   getEmailActionForOrganization,
   getMailMessageForOrganization,
   recordAuditEvent,
+  query,
 } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -199,7 +200,9 @@ export async function GET(request: Request) {
     if (!organizationId || !actionId) return NextResponse.json({ error: "validation_error" }, { status: 422 });
     await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.update" }, getIdentityAdapter(), getIdentityRepository());
     const action = await getEmailActionForOrganization(organizationId, actionId);
-    return action ? NextResponse.json({ action }) : NextResponse.json({ error: "not_found" }, { status: 404 });
+    if(!action)return NextResponse.json({error:"not_found"},{status:404});
+    const sender=await query<{email_address:string}>('SELECT email_address FROM email_accounts WHERE id=$1 AND organization_id=$2 AND deleted_at IS NULL',[action.emailAccountId,organizationId]);
+    return NextResponse.json({action:{...action,senderAddress:sender.rows[0]?.email_address??null}},{headers:{'Cache-Control':'private, no-store'}});
   } catch (error) {
     return authorizationErrorToResponse(error);
   }

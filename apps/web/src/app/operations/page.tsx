@@ -25,6 +25,8 @@ type OperationsPayload = {
 
 const labels: Record<string, string> = {
   postgres: "PostgreSQL",
+  email_approvals: "Email approval schema",
+  release: "Running release",
   redis: "Redis",
   rabbitmq: "RabbitMQ",
   qdrant: "Qdrant",

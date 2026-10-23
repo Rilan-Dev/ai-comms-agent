@@ -1,4 +1,5 @@
 "use client";
+import {formatWorkspaceTimestamp} from "@/lib/workspace-timestamp";
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -10,13 +11,7 @@ type MailRow = {
   action_required: boolean; has_attachments: boolean; account_email: string; account_name?: string | null;
 };
 
-function relative(value: string | null) {
-  if (!value) return "No date";
-  const date = new Date(value); const diff = Date.now() - date.getTime();
-  if (diff < 60_000) return "Just now"; if (diff < 3_600_000) return Math.floor(diff / 60_000) + "m ago";
-  if (diff < 86_400_000) return Math.floor(diff / 3_600_000) + "h ago";
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
+function relative(value:string|null){return formatWorkspaceTimestamp(value,true);}
 
 export function InboxClient({ organizationId, initialMessages }: { organizationId: string; initialMessages: MailRow[] }) {
   const searchParams = useSearchParams();

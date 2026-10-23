@@ -39,7 +39,7 @@ function isUnrelatedMessagingRequest(request: string): boolean {
 }
 
 function isFailedOrDeniedAnswer(answer: string): boolean {
-  return /\b(?:can't|cannot|couldn't|unable to|don't have access|do not have access|not authorized|permission denied|no matching|no new unread|not found|didn't find)\b/i.test(answer);
+  return /\b(?:can't|cannot|couldn't|unable to|don't have access|do not have access|not authorized|permission denied|no matching|no new unread|not found|didn't find|failed|needs verification|no (?:messages|emails) found)\b/i.test(answer);
 }
 
 /** Only show the reviewed email workflow for an explicitly requested draft
@@ -68,7 +68,5 @@ export function suggestedChatNextActions(answer: string, userRequest: string): C
   if (!requestedSummary || !hasMailEvidence) return [];
   return [
     { id: "prioritize", label: "Find important mail", prompt: "Review the recent emails I can access and list those that need my attention, with sender, date and reason. Do not modify messages." },
-    { id: "checklist", label: "Make an action checklist", prompt: "Turn your previous answer into a short prioritized checklist for me. Do not modify any emails." },
-    { id: "draft", label: "Plan an email reply", prompt: "Help me prepare an editable reply draft for an email we discussed. Ask which email if unclear; do not send anything." },
   ];
 }
