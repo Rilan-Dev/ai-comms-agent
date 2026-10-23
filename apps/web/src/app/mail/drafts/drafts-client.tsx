@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type SyncStatus = "local_only" | "queued" | "syncing" | "synced" | "error";
 type Draft = {
@@ -26,6 +26,8 @@ export default function DraftsClient({ organizationId }: { organizationId: strin
   const [notice, setNotice] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const mutationRevision = useRef(0);
+  const mutationRunning = useRef(false);
   const filteredDrafts = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     if (!needle) return drafts;
@@ -37,16 +39,22 @@ export default function DraftsClient({ organizationId }: { organizationId: strin
 
   useEffect(() => {
     let cancelled = false;
+    let latestRequest = 0;
     const refresh = async () => {
+      const requestId = ++latestRequest;
+      const revision = mutationRevision.current;
       try {
         const response = await fetch("/api/mail/drafts?organizationId=" + encodeURIComponent(organizationId), {
           cache: "no-store",
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.message ?? "Could not load drafts.");
-        if (!cancelled) { setDrafts(data.drafts ?? []); setNotice(null); }
+        if (!cancelled && requestId === latestRequest && revision === mutationRevision.current && !mutationRunning.current) {
+          setDrafts(data.drafts ?? []); setNotice(null);
+        }
       } catch (error) {
-        if (!cancelled) setNotice(error instanceof Error ? error.message : "Could not load drafts.");
+        if (!cancelled && requestId === latestRequest && revision === mutationRevision.current && !mutationRunning.current)
+          setNotice(error instanceof Error ? error.message : "Could not load drafts.");
       }
     };
     void refresh();
@@ -60,6 +68,8 @@ export default function DraftsClient({ organizationId }: { organizationId: strin
     if (!window.confirm(
       "The provider may already have a saved draft. Check your mailbox Drafts folder before retrying to avoid a duplicate. Queue another attempt?",
     )) return;
+    mutationRunning.current = true;
+    mutationRevision.current += 1;
     setBusyId(id);
     setNotice(null);
     try {
@@ -73,11 +83,12 @@ export default function DraftsClient({ organizationId }: { organizationId: strin
         ? { ...item, provider_draft_sync_status: "queued", provider_draft_last_error: null } : item));
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not retry draft synchronization.");
-    } finally { setBusyId(null); }
+    } finally { mutationRevision.current += 1; mutationRunning.current = false; setBusyId(null); }
   }
 
   async function remove(id: string) {
     if (!window.confirm("Delete this draft from AI Comms Agent? Already-synced provider copies may remain in your mailbox.")) return;
+    mutationRunning.current = true; mutationRevision.current += 1;
     setBusyId(id); setNotice(null);
     try {
       const response = await fetch("/api/mail/drafts", {
@@ -89,7 +100,7 @@ export default function DraftsClient({ organizationId }: { organizationId: strin
       setDrafts(items => items.filter(item => item.id !== id));
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not delete draft.");
-    } finally { setBusyId(null); }
+    } finally { mutationRevision.current += 1; mutationRunning.current = false; setBusyId(null); }
   }
 
   return <main className="min-h-full bg-muted/20 p-5 sm:p-7 lg:p-9">
