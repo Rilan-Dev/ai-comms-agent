@@ -43,3 +43,11 @@ Existing foundations: independent provider sync to canonical PostgreSQL; C1/C2 p
 5. OPS-01 independently checks deployment/source SHAs if approved; FIX-01 owns any test-discovered source defects. No CI/Vercel polling.
 
 **Status:** Source implementation committed; runtime/product acceptance pending, phase unchanged.
+
+
+## Follow-on privacy-copy correction — 2026-10-23
+
+During source review, the fully loaded source-link message used “available”, which could be misunderstood as a *current* grant even after the manifest becomes invalidated. Tightened the regression `16b0406a2c9752c492a946322a1fe614731c4812` and helper `aa1a691e5b0d374b6dc386484d06999e53d7cb08` to state that all entries are listed but **current mailbox permission is not verified** by the displayed-link count. The surrounding existing C4 invalidation/revocation and review authority remain separate.
+- Re-fetched source and product-control docs: **20/20 latest targeted source invariants pass**.
+- Re-ran **five isolated Node 22 pure-helper cases 5/5 PASS** and strict standalone TypeScript exited 0. The native six-case committed test and full app/browser acceptance remain unexecuted.
+- Exact next remains the C4 native tests, DB/revocation/browser acceptance and gated C3 verification in `NEXT_ACTION.md`; do not claim deployed approval.
