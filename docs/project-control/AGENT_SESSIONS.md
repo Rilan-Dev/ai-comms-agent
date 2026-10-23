@@ -1130,3 +1130,9 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Implemented:** Read-only actor/agent compose permissions, explicit multi-sender From and missing To, safe authenticated name signature, tool-level recipient guards, trusted chat+voice guidance; separate human send approval retained. `sessions/DEV01-CHAT-COMPOSE-IDENTITY-20261023.md` is full task record.
 - **Evidence:** 54/54 source-regression assertions, 22/22 source invariants; host native tests/TypeScript/browser/provider pending, no live claims or sender/recipient guesses.
 - **Next:** Run focused host Node/Vitest/typecheck and authenticated two-mailbox, missing name and denied permissions acceptance; OPS deploy and FIX bugs separately.
+
+### DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023 — 2026-10-23
+- **Role:** DEV-01 / Forge; owner-requested single-purpose AI provider configuration redesign; direct `Development`, start `574c5151`; live selected tab inspected read-only.
+- **Delivered:** task-first category navigation, accessible selected provider cards replacing redundant dropdown, no default provider, guided credential/model/voice checklist/save panel, model+key truthful statuses, org lookup retry and safeguards preserved. Tests and full details in `sessions/DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023.md`.
+- **Verified only:** 19/19 in-memory current-source test callbacks and 6/6 isolated readiness classifications; full repo Node/Vitest/typecheck, browser with new UI, provider/database/deployment NOT RUN. No changes to live credentials, provider API, agent model override, C3/R1b or other agent scope.
+- **Next:** exact committed Node provider UI suites, focused web Vitest/typecheck, authorized browser and OPS deployed SHA/real provider model selection, then independent next DEV-01 slice. Do not poll CI/Vercel.
