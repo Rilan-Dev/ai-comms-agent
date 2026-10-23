@@ -93,6 +93,21 @@ export async function runEmailAgentTurn(
       const finishReason = completion.finishReason === "invalid_tool_call" || completion.finishReason === "invalid_tool_arguments"
         ? completion.finishReason
         : "completed";
+      // The model has STOPPED requesting tools after one or more completed,
+      // audited rounds. Discovery chains (email.accounts.list ->
+      // email.messages.list) must be allowed to finish before the final
+      // answer is generated; terminating after round 0 cut the chain after
+      // mailbox discovery. When the stopping completion already carries the
+      // final answer text, use it directly instead of regenerating it through
+      // a second model request; the hardened tool-free read-only writer
+      // remains the fallback for textless stops. Writes, denials and
+      // approvals never enter this branch.
+      if (input.onSafeReadOnlyFinal && !completion.text.trim() && pendingApprovals.length === 0
+        && summaries.length > 0 && summaries.length <= 4
+        && summaries.every((call) => call.ok && call.readOnly === true)) {
+        const text = await input.onSafeReadOnlyFinal(history);
+        return { text, streamed: true, toolCalls: summaries, pendingApprovals, finishReason: "completed" };
+      }
       const finalText = completion.text.trim()
         ? completion.text
         : "I couldn't complete the email request safely. Please try again or narrow the request.";
@@ -152,15 +167,10 @@ export async function runEmailAgentTurn(
         content: serializeUntrustedToolResult(result),
       });
     }
-    // Resolve one permitted read-only batch directly with native provider
-    // tokens, not with a second model request that copies a buffered answer.
-    // Writes, denials, approvals and multi-round paths retain old semantics.
-    if (round === 0 && input.onSafeReadOnlyFinal && pendingApprovals.length === 0
-      && summaries.length > 0 && summaries.length <= 4
-      && summaries.every((call) => call.ok && call.readOnly === true)) {
-      const text = await input.onSafeReadOnlyFinal(history);
-      return { text, streamed: true, toolCalls: summaries, pendingApprovals, finishReason: "completed" };
-    }
+    // Read-only discovery chains continue into the next round here (bounded
+    // by maxRounds / maxToolCalls). The streamed read-only final answer is
+    // triggered only when the model stops requesting tools — see the
+    // completion.toolCalls.length === 0 branch above.
   }
 
   return {

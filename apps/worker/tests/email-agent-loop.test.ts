@@ -30,6 +30,17 @@ function fakeRuntime(allowed = ["email.accounts.list"]): EmailToolRuntime {
     execute: async () => ({ ok: true, output: [{ id: "mailbox-1" }], audit: { tool_name: "email.accounts.list", input_summary: "email.accounts.list", output_summary: "1 result", duration_ms: 1 } }),
   };
   registry.register(tool);
+  if (allowed.includes("email.messages.list")) {
+    registry.register({
+      name: "email.messages.list",
+      domain: "email",
+      description: "List a bounded page of messages.",
+      input_schema: { type: "object", properties: { account_id: { type: "string" }, unread_only: { type: "boolean" } }, required: ["account_id"], additionalProperties: false },
+      sensitivity: "safe",
+      required_permission: "email.read",
+      execute: async () => okResult(),
+    });
+  }
   return { registry, authorize: async () => ({ allowed: true }), writeAudit: async () => {} };
 }
 
@@ -119,7 +130,7 @@ test("an approval-shaped result from a registered read tool cannot be marked saf
   assert.equal(result.pendingApprovals[0]?.actionId, "approval-1");
 });
 
-test("read-only successful host batch generates one direct final text stream without another tool decision", async () => {
+test("a completed safe read-only batch reaches the final text stream once the model stops requesting tools", async () => {
   let decisions = 0;
   let invoked = 0;
   const result = await runEmailAgentTurn({
@@ -133,15 +144,88 @@ test("read-only successful host batch generates one direct final text stream wit
     createRuntime: async () => fakeRuntime(),
     completeWithTools: async () => {
       decisions += 1;
-      return { text: "", toolCalls: [{ id: "call-read", name: "email.accounts.list", arguments: {} }], finishReason: "tool_calls" };
+      // Round 1: the model requests one read-only tool. Round 2: the model
+      // has seen the result and stops requesting tools without final text,
+      // so the hardened read-only writer delivers the answer.
+      return decisions === 1
+        ? { text: "", toolCalls: [{ id: "call-read", name: "email.accounts.list", arguments: {} }], finishReason: "tool_calls" }
+        : { text: "", toolCalls: [], finishReason: "stop" };
     },
     invoke: async () => { invoked += 1; return okResult(); },
   });
-  assert.equal(decisions, 1);
+  assert.equal(decisions, 2);
   assert.equal(result.streamed, true);
   assert.equal(result.text, "Live answer delivered token by token");
   assert.equal(result.toolCalls[0]?.readOnly, true);
   assert.deepEqual(result.pendingApprovals, []);
+});
+
+test("read-only discovery chains (accounts.list -> messages.list) are not cut off after the first batch", async () => {
+  // Regression for the "no inbox contents were provided" answer: the model
+  // must be allowed to finish its discovery chain (mailbox IDs, then the
+  // message records themselves) before the final answer is generated.
+  let decisions = 0;
+  const invoked: string[] = [];
+  let writerHistory: ToolChatMessage[] | null = null;
+  const result = await runEmailAgentTurn({
+    organizationId: "org-1", agentId: "agent-1",
+    messages: [{ role: "user", content: "Summarize my unread emails" }],
+    toolContext: context,
+    onSafeReadOnlyFinal: async (history) => {
+      writerHistory = history;
+      return "49 unread messages summarized";
+    },
+  }, {
+    createRuntime: async () => fakeRuntime(["email.accounts.list", "email.messages.list"]),
+    completeWithTools: async (_ctx, history, tools) => {
+      decisions += 1;
+      assert.equal(tools.length, 2);
+      if (decisions === 1) {
+        return { text: "", toolCalls: [{ id: "call-accounts", name: "email.accounts.list", arguments: {} }], finishReason: "tool_calls" };
+      }
+      if (decisions === 2) {
+        // The accounts.list result must already be in history so the model
+        // can chain the message-list call with the discovered account_id.
+        assert.ok(history.some((message) => message.role === "tool" && message.tool_call_id === "call-accounts"));
+        return { text: "", toolCalls: [{ id: "call-messages", name: "email.messages.list", arguments: { account_id: "mailbox-1", unread_only: true } }], finishReason: "tool_calls" };
+      }
+      assert.ok(history.some((message) => message.role === "tool" && message.tool_call_id === "call-messages"));
+      return { text: "", toolCalls: [], finishReason: "stop" };
+    },
+    invoke: async (_runtime, name) => { invoked.push(name); return okResult(); },
+  });
+  assert.equal(decisions, 3);
+  assert.deepEqual(invoked, ["email.accounts.list", "email.messages.list"]);
+  assert.equal(result.streamed, true);
+  assert.equal(result.text, "49 unread messages summarized");
+  assert.equal(result.toolCalls.length, 2);
+  assert.ok(result.toolCalls.every((call) => call.readOnly === true));
+  // The final writer received BOTH completed tool results, not just the
+  // account discovery record.
+  assert.equal(writerHistory?.filter((message) => message.role === "tool").length, 2);
+});
+
+test("the model's own stopping-round answer text is used directly instead of regenerating it", async () => {
+  let decisions = 0;
+  let writerCalled = false;
+  const result = await runEmailAgentTurn({
+    organizationId: "org-1", agentId: "agent-1", messages: inputMessages, toolContext: context,
+    onSafeReadOnlyFinal: async () => { writerCalled = true; return "regenerated"; },
+  }, {
+    createRuntime: async () => fakeRuntime(["email.accounts.list", "email.messages.list"]),
+    completeWithTools: async () => {
+      decisions += 1;
+      return decisions === 1
+        ? { text: "", toolCalls: [{ id: "call-accounts", name: "email.accounts.list", arguments: {} }], finishReason: "tool_calls" }
+        : { text: "You have 49 unread emails in mailbox-1, most recently the ACME invoice.", toolCalls: [], finishReason: "stop" };
+    },
+    invoke: async () => okResult(),
+  });
+  assert.equal(decisions, 2);
+  assert.equal(writerCalled, false);
+  assert.equal(result.streamed, undefined);
+  assert.equal(result.text, "You have 49 unread emails in mailbox-1, most recently the ACME invoice.");
+  assert.equal(result.toolCalls[0]?.readOnly, true);
 });
 
 test("a denied tool result never enters the native final streaming path", async () => {

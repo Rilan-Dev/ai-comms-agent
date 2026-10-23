@@ -47,3 +47,18 @@ export function suggestedChatNextActions(answer: string): ChatNextAction[] {
     { id: "clarify", label: "What should I check?", prompt: "What information should I verify or clarify before acting on your last response?" },
   ];
 }
+
+/**
+ * Follow-up suggestions are a affordance for substantive, successful answers.
+ * They are noise on trivial replies (greetings, one-line acknowledgements)
+ * and on failure-style answers ("unable to", "insufficient records") where
+ * the assistant could not actually complete the request. The panel must only
+ * appear where a next step is genuinely meaningful.
+ */
+const NEXT_ACTION_FAILURE_MARKERS = /\b(?:unable to|couldn'?t|could not|can'?t|cannot|failed to|failure occurred|insufficient|not provided|no records|not found|no results|no matching|unavailable|not available|not accessible|not permitted|denied|i'?m sorry|apologize|try again|not completed|did not complete)\b/i;
+
+export function shouldSuggestNextActions(answer: string): boolean {
+  const text = answer.trim();
+  if (text.length < 200) return false;
+  return !NEXT_ACTION_FAILURE_MARKERS.test(text.slice(0, 3000));
+}
