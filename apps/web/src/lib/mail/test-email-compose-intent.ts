@@ -1,5 +1,3 @@
-import { isExplicitEmailMutationRequest } from "./action-feedback";
-
 /**
  * UI-only shortcut for the bounded demo/test-email phrasing.
  * A match opens a local draft review. No provider calls, policies or approvals
@@ -26,8 +24,10 @@ export function parseTestEmailComposeRequest(raw: string): string | null {
  * mailbox selection, tool invocation or sending happens here.
  */
 export function explicitComposeRecipient(raw: string): string | null {
-  if (typeof raw !== "string" || raw.length > 900 ||
-      !isExplicitEmailMutationRequest(raw)) return null;
+  if (typeof raw !== "string" || raw.length > 900) return null;
+  // Standalone for Node strip-types and browser compilation: accept only
+  // direct outgoing commands, never informational questions about email.
+  if (!/^(?:(?:please|kindly)\s+)?(?:(?:can|could|would|will)\s+you\s+)?(?:send|draft|write|compose|email)\b/i.test(raw.trim())) return null;
   const matches = raw.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) ?? [];
   if (matches.length !== 1) return null;
   const exactAddress = matches[0]!;
