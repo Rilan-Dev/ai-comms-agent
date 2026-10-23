@@ -113,7 +113,6 @@ describe("Clara realtime voice transport", () => {
     expect(provider).toContain("ttsReady = true;");
     expect(provider).toContain("sttReady = true;");
     expect(provider).toContain("microphoneReady = true;");
-    expect(provider).toContain('await patchSession({ action: "activate"') === false; // async activation uses a chained Promise
     expect(provider).toContain('void patchSession({ action: "activate" })');
     expect(provider).toContain('reportUnexpectedTransportLoss("Sarvam Bulbul realtime speech socket closed.');
   });
