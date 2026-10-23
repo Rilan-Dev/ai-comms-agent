@@ -1152,3 +1152,9 @@ Owner-selected Development recovered at ab7292fbb00263bb817ab2874ab4f66e10946f0f
 ## DEV01-LIVE-AUTH-RECHECK-20261023
 
 Normal login API and auth/me returned 200; actual authenticated Chat opened once. Other app routes remain intermittent. Existing QA conversation was observed, not created by this session; no new outgoing action performed. Current Development focused checks 38/38 pass. See docs/project-control/sessions/DEV01-LIVE-AUTH-RECHECK-20261023.md. OPS-01 origin-path diagnosis; DEV-01 resume F01–F21 with authoritative pending/delivery checks.
+
+### DEV01-AUTOMATIC-DRAFT-SYNC-20261023 — 2026-10-23
+- **DEV-01 / Forge**, owner-scoped draft usability / automation feature on `Development` (initial `48c6dfde6eff4179ddee5598c6239a32d612fef4`). Recovered Phase4, `CHAT_CONTINUITY`, `NEXT_ACTION`, shared/role records and existing provider draft worker.
+- **Root cause:** Local draft create/edit never automatically queued provider Drafts sync; UI required manual POST per draft. Agent read tool could not select only drafts.
+- **Delivered:** Transactional queued create; safe queued edits and quarantined unknown attempts; legacy local_only row-locked worker admission; compact drafts list, state and exception-only retry; polling race fence; AI `drafts_only` read tool filter with tenant/account scope. Regression coverage added, no send/approval bypass.
+- **Status:** source contracts inspected/checked (113/113 earlier, 35/35 new, polling 12/12). Native tests/typechecks, PostgreSQL, external provider and browser NOT RUN. OPS rollout/health, FIX separate reproducible defects. Exact next commands and handoff `sessions/DEV01-AUTOMATIC-DRAFT-SYNC-20261023.md`.
