@@ -40,4 +40,6 @@ test("compose-readiness failure shows a safe review screen and disables saving",
   assert.match(open, /setMailComposerOpen\(true\)/);
   assert.match(chat, /disabled=\{composeBusy \|\| !composeCanDraft/);
   assert.match(chat, /disabled=\{composeBusy \|\| !composeCanApprove/);
+  assert.match(chat, /composeDiscoveryFailed && <p/);
+  assert.match(chat, /!composeMailboxes\.length && !composeDiscoveryFailed/);
 });
