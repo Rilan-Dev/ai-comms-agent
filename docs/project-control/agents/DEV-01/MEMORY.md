@@ -357,3 +357,10 @@ The user actually ran all 29 focused C3 Node tests and four package TypeScript c
 - **Privacy:** Five-day selected lookback does not prove five-day user absence. Keep independent personal visit/review/delivery signals and per-user source grants; do not monitor employees.
 - **Quality:** Test source-level contracts before code, align assertions with actual typed-discriminant structure, and record whether real tests were executed rather than treating a 25/25 source check as runtime acceptance. Plan P0–P7 via `docs/superpowers/plans/2026-10-23-practical-email-assistant-roadmap.md`.
 - **Boundary:** DEV-01 implements safe UX, FIX-01 independently corrects bugs, OPS-01 release/provider. C3 registration, R1b stateful consent, R3/R4 WhatsApp remain gated. Session `sessions/DEV01-ROUTINE-TIMING-PREVIEW-20261023.md`.
+
+
+### DEV01-CATCHUP-COVERAGE-CLARITY-20261023 — separate selected from displayed from understood
+- Treat immutable `manifest.sourceCount`, paginated source link count, generated item count, reviewed-item count and per-user presence/review history as **five independent facts**. Do not infer any one from another. A 5-day selected period is not proof of 5-day absence.
+- Source pagination can honestly say "200 of 320 source email links loaded" when a cursor remains; no cursor with missing links is still not complete. Duplicate IDs must not inflate progress.
+- Before any automated High/Medium/Low claim, C3 grounded AI content must exist and pass source/grant validation. Never show an inert preview as a scheduled or sent WhatsApp digest.
+- Reuse canonical C4 immutable manifest, C1/C2 grants, C3 gated generation and existing R1a clock. DEV-01 source/UI owns representation; FIX-01 owns independently found defects; OPS-01 owns acceptance and deployment. Session: `DEV01-CATCHUP-COVERAGE-CLARITY-20261023`. GitHub source checks 14/14; local isolated helper 5/5; full repo test/DB/browser pending.
