@@ -1,0 +1,26 @@
+/**
+ * Compose identity is a UI convenience, never an authorization source.
+ * Sender options come only from the tenant/agent-scoped host endpoint and
+ * sender selection is mandatory when more than one mailbox is available.
+ */
+export type ComposeProfile = { name: string | null; email: string };
+
+export function selectComposeSender<T extends { id: string }>(mailboxes: readonly T[]): string {
+  return mailboxes.length === 1 ? mailboxes[0]!.id : "";
+}
+
+/** Never infer a name, title, employer, phone or sender address from the email
+ * string. Only a saved, authenticated profile name may populate a signature. */
+export function signatureFromProfile(profile: ComposeProfile | null | undefined): string {
+  if (!profile || typeof profile.name !== "string") return "";
+  const name = profile.name.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+  return name ? `Best regards,\n${name}` : "";
+}
+
+/** The signature remains editable, and using it twice must not duplicate it. */
+export function withProfileSignature(body: string, profile: ComposeProfile | null | undefined): string {
+  const signature = signatureFromProfile(profile);
+  if (!signature || body.trimEnd().endsWith(signature)) return body;
+  const withoutUnfinishedSignoff = body.trimEnd().replace(/(?:\r?\n)+(?:Best regards|Regards),?\s*$/i, "");
+  return (withoutUnfinishedSignoff ? withoutUnfinishedSignoff + "\n\n" : "") + signature;
+}
