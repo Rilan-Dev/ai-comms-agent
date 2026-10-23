@@ -668,38 +668,64 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
     if (hasLookupTerms) conditions.push(`EXISTS (SELECT 1 FROM unnest($4::text[]) AS term WHERE em.from_email ILIKE '%' || term || '%' OR em.from_name ILIKE '%' || term || '%' OR em.subject ILIKE '%' || term || '%')`);
     const matchClause = conditions.length > 0 ? conditions.join(" OR ") : "FALSE";
 
+    // Apply the same account-scoped Gmail folder-copy dedup as Chat.
+    // Partition only IMAP copies with nonblank RFC822 Message-ID; other
+    // provider messages and missing IDs must remain separate. Rank after
+    // the agent's readable bindings and query filters, before LIMIT.
     const recentResult = await query<{ id: string; content: string; metadata: Record<string, unknown> | null }>(
-      `SELECT
-         em.id AS id,
-         (COALESCE('Subject: ' || em.subject, '') ||
-          CASE WHEN em.from_email IS NOT NULL THEN '\nFrom: ' || em.from_email ELSE '' END ||
-          CASE WHEN em.from_name IS NOT NULL AND em.from_name <> '' THEN ' (' || em.from_name || ')' ELSE '' END ||
-          CASE WHEN em.received_at IS NOT NULL THEN '\nDate: ' || em.received_at::text ELSE '' END ||
-          CASE WHEN em.snippet IS NOT NULL AND em.snippet <> '' THEN '\nPreview: ' || em.snippet ELSE '' END ||
-          CASE WHEN em.text_body IS NOT NULL THEN '\n\n' || left(em.text_body, 2000) ELSE '' END
-         ) AS content,
-         jsonb_build_object(
-           'source', 'email',
-           'email_account_id', em.email_account_id,
-           'provider_message_id', em.provider_message_id,
-           'from_email', em.from_email,
-           'from_name', em.from_name,
-           'subject', em.subject,
-           'received_at', em.received_at,
-           'snippet', em.snippet
-         ) AS metadata
-       FROM email_messages em
-       JOIN agent_email_accounts b
-         ON b.email_account_id = em.email_account_id
-        AND b.agent_id = $2
-        AND b.role IN ('primary', 'read_only')
-       WHERE em.organization_id = $1
-         AND em.is_draft = false
-         AND (${matchClause})
-       ORDER BY
-         em.received_at DESC
+      `WITH ranked AS (
+         SELECT em.id,
+                ROW_NUMBER() OVER (
+                  PARTITION BY em.email_account_id,
+                    CASE WHEN ea.provider = 'imap_smtp'
+                              AND NULLIF(BTRIM(em.internet_message_id), '') IS NOT NULL
+                      THEN 'message:' || LOWER(BTRIM(em.internet_message_id))
+                      ELSE 'row:' || em.id::text END
+                  ORDER BY CASE WHEN folder.role = 'inbox'
+                                     OR UPPER(folder.provider_folder_id) = 'INBOX'
+                           THEN 0 ELSE 1 END,
+                           em.received_at DESC NULLS LAST, em.id
+                ) AS duplicate_rank
+           FROM email_messages em
+           JOIN email_accounts ea
+             ON ea.id = em.email_account_id
+            AND ea.organization_id = em.organization_id
+           LEFT JOIN email_folders folder
+             ON folder.id = em.folder_id
+            AND folder.email_account_id = em.email_account_id
+           JOIN agent_email_accounts b
+             ON b.email_account_id = em.email_account_id
+            AND b.agent_id = $2
+            AND b.role IN ('primary', 'read_only')
+          WHERE em.organization_id = $1
+            AND em.is_draft = false
+            AND (${matchClause})
+      )
+      SELECT
+          em.id AS id,
+          (COALESCE('Subject: ' || em.subject, '') ||
+           CASE WHEN em.from_email IS NOT NULL THEN '\nFrom: ' || em.from_email ELSE '' END ||
+           CASE WHEN em.from_name IS NOT NULL AND em.from_name <> '' THEN ' (' || em.from_name || ')' ELSE '' END ||
+           CASE WHEN em.received_at IS NOT NULL THEN '\nDate: ' || em.received_at::text ELSE '' END ||
+           CASE WHEN em.snippet IS NOT NULL AND em.snippet <> '' THEN '\nPreview: ' || em.snippet ELSE '' END ||
+           CASE WHEN em.text_body IS NOT NULL THEN '\n\n' || left(em.text_body, 2000) ELSE '' END
+          ) AS content,
+          jsonb_build_object(
+            'source', 'email',
+            'email_account_id', em.email_account_id,
+            'provider_message_id', em.provider_message_id,
+            'from_email', em.from_email,
+            'from_name', em.from_name,
+            'subject', em.subject,
+            'received_at', em.received_at,
+            'snippet', em.snippet
+          ) AS metadata
+        FROM email_messages em
+        JOIN ranked match ON match.id = em.id
+       WHERE match.duplicate_rank = 1
+       ORDER BY em.received_at DESC NULLS LAST, em.id
        LIMIT 20`,
-      [ctx.orgId, ctx.agentId, textQuery, lookupTerms],
+       [ctx.orgId, ctx.agentId, textQuery, lookupTerms],
     );
 
     // Merge results — recent emails first (most relevant for user questions),
