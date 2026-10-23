@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { ArrowRight, Inbox, RefreshCw, ShieldCheck } from "lucide-react";
 import { CatchUpRequestScope, type CatchUpScopeToken } from "./request-scope";
 import { catchUpPeriodUtc, parseCatchUpDays, type CatchUpDays } from "@/lib/briefings/catch-up-window";
+import { describeCatchUpSourceCoverage } from "@/lib/briefings/source-coverage-display";
 
 type AgentChoice = {
   agentId: string; name: string;
@@ -185,6 +186,12 @@ export function CatchUpClient({ organizationId, agents, initialDays = 7 }: { org
     void runScopedOperation(token => loadSources(id, token, cursor), "Could not load more sources.");
   }
 
+  // Links loaded into this view are distinct from selected-source coverage,
+  // generated AI summary items and acknowledged review progress.
+  const sourceCoverage = manifest
+    ? describeCatchUpSourceCoverage(manifest.sourceCount, sources.map(s => s.messageId), nextCursor)
+    : null;
+
   return (
     <main className="mx-auto min-w-0 max-w-5xl px-4 py-7 sm:px-8">
       <a href="/overview" className="text-sm text-muted-foreground hover:text-foreground">← Back to Overview</a>
@@ -233,6 +240,7 @@ export function CatchUpClient({ organizationId, agents, initialDays = 7 }: { org
           <h2 className="text-lg font-semibold">Your selection</h2>
           <p role="status" className="mt-2 text-sm text-muted-foreground">{statusText[manifest.status]}</p>
           <p className="mt-1 text-sm">{manifest.sourceCount} source {manifest.sourceCount === 1 ? "email" : "emails"} selected from your current permitted scope.</p>
+           {sourceCoverage && <p role="status" className="mt-2 rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground"><strong>Source email links loaded:</strong> {sourceCoverage.message}</p>}
           {manifest.period ? <p className="mt-1 text-xs text-muted-foreground">Selected UTC window: <time dateTime={manifest.period.start}>{manifest.period.start}</time> to <time dateTime={manifest.period.end}>{manifest.period.end}</time>. This is not an automatic absence or read-state measurement.</p> : null}
           <p className="mt-3 text-xs text-muted-foreground">C3 source-grounded AI generation is not yet running automatically. Only a complete, verified generated item can be explicitly marked reviewed; opening this page changes no review state.</p>
           <button type="button" disabled={busy} onClick={() => refreshDetail(manifest.id)}
