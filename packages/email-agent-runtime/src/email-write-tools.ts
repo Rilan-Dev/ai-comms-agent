@@ -27,9 +27,6 @@ function object(value: unknown): Input {
 function text(value: unknown, max = 4000): string {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
-function list(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean).slice(0, 100) : [];
-}
 /** A draft's To must be explicit, not inferred from an email contact name.
  * Ask the user to choose the full recipient address before writing anything. */
 function requireRecipients(value: unknown): string[] {
