@@ -47,7 +47,7 @@ function isFailedOrDeniedAnswer(answer: string): boolean {
 export function hasInteractiveEmailActions(answer: string, userRequest: string): boolean {
   if (isUnrelatedMessagingRequest(userRequest) || isFailedOrDeniedAnswer(answer)) return false;
   if (!/\b(?:draft|write|compose|prepare|reply|forward|send)\b/i.test(userRequest)
-    || !/\b(?:e-?mails?|drafts?|replies?)\b/i.test(userRequest)) return false;
+    || !/\b(?:e-?mails?|drafts?|repl(?:y|ies))\b/i.test(userRequest)) return false;
   return /^\s*(?:\*\*)?Subject(?:\*\*)?\s*:/im.test(answer)
     && /^\s*(?:\*\*)?Body(?:\*\*)?\s*:/im.test(answer);
 }
@@ -61,7 +61,10 @@ export function suggestedChatNextActions(answer: string, userRequest: string): C
   const requestedSummary = /\b(?:summari[sz]e|summary|list|find|show|review|prioriti[sz]e|check|how many)\b/i.test(userRequest)
     && /\b(?:e-?mails?|mailbox|inbox|messages?|threads?)\b/i.test(userRequest);
   const hasMailEvidence = /\b(?:sender|subject|from|received)\s*:/i.test(answer)
-    || /\b\d+\s+(?:new\s+|unread\s+)?(?:e-?mails?|messages?)\s+(?:were\s+)?(?:received|found|matched)\b/i.test(answer);
+    || /\b\d+\s+(?:new\s+|unread\s+)?(?:e-?mails?|messages?)\s+(?:were\s+)?(?:received|found|matched)\b/i.test(answer)
+    // A bare count ("49 unread emails") needs no redundant action panel.
+    // A substantial categorized report with the same count can be explored.
+    || (answer.length >= 160 && /\b\d+\s+unread\s+(?:e-?mails?|messages?)\b/i.test(answer));
   if (!requestedSummary || !hasMailEvidence) return [];
   return [
     { id: "prioritize", label: "Find important mail", prompt: "Review the recent emails I can access and list those that need my attention, with sender, date and reason. Do not modify messages." },
