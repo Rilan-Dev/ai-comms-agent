@@ -10,3 +10,4 @@ allowBuilds:
   'esbuild@0.28.2': true
   'sharp@0.35.5': true
   '@tailwindcss/oxide@4.3.3': true
+  unrs-resolver: true
