@@ -1,3 +1,11 @@
+## DEV01-ROUTINE-TIMING-PREVIEW-20261023 — source-only evidence
+- **Branch:** Development; starting SHA `c62666531b95f65e840621ddc6caf0a7b3bd7620`. All source changes are separate from FIX-01 work, no migrations.
+- **PASS limited to source inspection:** Private authenticated GET-only page `/routines/preview` imports canonical `nextRoutineOccurrences`, supports daily/weekly local calendar (IANA zone), elapsed 24h, exact one-off and event/no clock. Existing login redirect, bounded form fields, next three instants, DST explanation and explicit no-save/no-send labels. Overview retains Inbox/Chat/Schedules/Automations and gated five-day catch-up. Initial inspector 24/25 false-negative read the worker **test file** when expecting clock internals; canonical clock module re-read confirmed `validatedZone` and `firstWallInstant`, making **25/25 source assertions PASS**. Native source test has five authored cases, existing worker clock tests seven cases.
+- **NOT RUN:** Native committed tests, worker clocks, TypeScript, authenticated browser at DST, PostgreSQL/integration, provider/WhatsApp/voice, CI, Vercel and production. No feature flag, scheduler activation or standing delivery consent changed.
+- **Next:** Commands and negative scenarios in `NEXT_ACTION.md` and `sessions/DEV01-ROUTINE-TIMING-PREVIEW-20261023.md`. C3 worker off; R1b stateful routine consent and WhatsApp external dispatch gated.
+
+---
+
 ## DEV01-HUMAN-FIRST-FIVE-DAY-CATCHUP-20261023 — exact source-vs-runtime evidence
 
 - **Branch:** Development; source commits `b45ed5e7,7785e189,ed11d533,3622c0e4,a727a086`; plan `a63b2745`. Phase 4 `implementation_in_progress`.
