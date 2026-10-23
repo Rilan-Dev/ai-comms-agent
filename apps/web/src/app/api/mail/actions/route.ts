@@ -86,7 +86,7 @@ export async function POST(request: Request) {
         error: "invalid_source_message", message: "Choose a synchronized message from this mailbox before requesting reply or forward approval.",
       }, { status: 422 });
       const message = await getMailMessageForOrganization(organizationId, messageId);
-      if (!eligibleReplyForwardSourceId(message, emailAccountId)) {
+      if (!message || !eligibleReplyForwardSourceId(message, emailAccountId)) {
         // Worker requires the tenant-scoped LOCAL ID, backed by a genuine
         // provider message, rather than an unsynced draft/provider-only ID.
         return NextResponse.json({ error: "not_found", message: "A provider-backed source message was not found in this organization/mailbox." }, { status: 404 });
