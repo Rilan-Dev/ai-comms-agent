@@ -45,7 +45,7 @@ test("chat fallback date and explicit sender filters execute before folder ranki
 test("Clara hybrid retrieval keeps typed full-text search, agent scope and existing metadata", () => {
   assert.match(ground, /\$\{matchClause\}/);
   assert.ok(ground.indexOf("${matchClause}") < ground.indexOf("duplicate_rank = 1"));
-  assert.match(ground, /em\.search_vector @@ to_tsquery\('simple', \$3\)/); // query fragment is assembled above
+  assert.match(clara, /em\.search_vector @@ to_tsquery\('simple', \$3\)/); // query fragment is assembled before the SQL template
   assert.match(clara, /\[ctx\.orgId, ctx\.agentId, textQuery, lookupTerms\]/);
   assert.match(ground, /'provider_message_id', em\.provider_message_id/);
   assert.match(ground, /em\.is_draft = false/);
