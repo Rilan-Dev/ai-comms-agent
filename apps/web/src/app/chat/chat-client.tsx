@@ -8,7 +8,7 @@ import { readSseEvents } from "@/lib/streaming/sse";
 import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "@/lib/ai/activity-progress";
 import { EMAIL_PERMISSION_PRESETS, EMAIL_PERMISSION_LABELS, REGISTERED_EMAIL_POLICY_NAMES, emailPermissionPresetSelection, summarizeEmailPermissionChanges } from "@/lib/agents/email-permission-presets";
 import { parseTestEmailComposeRequest } from "@/lib/mail/test-email-compose-intent";
-import { selectPreferredComposeMailbox } from "@/lib/mail/compose-readiness";
+import { selectComposeSender, signatureFromProfile, withProfileSignature, type ComposeProfile } from "@/lib/mail/compose-identity";
 import { parseAssistantChecklistLine } from "@/lib/chat/interactive-replies";
 import { AssistantChecklist, SuggestedNextActions, type EmailWorkflowState } from "./interactive-message-controls";
 import { InlineMailApprovalReview } from "./chat-inline-mail-approval";
@@ -20,6 +20,10 @@ const VoiceWorkspace = dynamic(
   { ssr: false, loading: () => <p role="status" className="p-6 text-sm text-muted-foreground">Opening secure voice workspace…</p> },
 );
 
+const DEFAULT_COMPOSE_BODY = "Hi,\n\nThis is a test email from my workspace.\n\nPlease let me know if you receive this correctly.\n\nBest regards";
+type ComposePermissionHints = {
+  userCanWrite: boolean; agentCanDraft: boolean; agentCanRequestApproval: boolean; directSend: false;
+};
 type Agent = { id: string; name: string; status: string };
 type Message = { id: string; conversationId: string; role: string; content: string; createdAt: string };
 type ChatSession = { id: string; agentId: string; organizationId: string; subject: string | null; lastMessageAt: string | null; updatedAt: string };
@@ -57,7 +61,9 @@ export function ChatClient({
   const [composeAccount, setComposeAccount] = useState("");
   const [composeTo, setComposeTo] = useState("");
   const [composeSubject, setComposeSubject] = useState("Test Email");
-  const [composeBody, setComposeBody] = useState("Hi,\n\nThis is a test email from my workspace.\n\nPlease let me know if you receive this correctly.\n\nBest regards");
+  const [composeBody, setComposeBody] = useState(DEFAULT_COMPOSE_BODY);
+  const [composeProfile, setComposeProfile] = useState<ComposeProfile | null>(null);
+  const [composePermissions, setComposePermissions] = useState<ComposePermissionHints | null>(null);
   const [composeDraftId, setComposeDraftId] = useState<string | null>(null);
   const [composeActionId, setComposeActionId] = useState<string | null>(null);
   const [composeCanDraft, setComposeCanDraft] = useState(false);
@@ -205,6 +211,8 @@ export function ChatClient({
       setMailComposerOpen(false);
       setComposeMailboxes([]);
       setComposeAccount("");
+      setComposeProfile(null);
+      setComposePermissions(null);
       setComposeDraftId(null);
       setComposeActionId(null);
       setComposeCanDraft(false);
@@ -300,6 +308,8 @@ export function ChatClient({
     // must not leave a stale selectable account or usable save button.
     setComposeMailboxes([]);
     setComposeAccount("");
+    setComposeProfile(null);
+    setComposePermissions(null);
     setComposeCanDraft(false);
     setComposeCanApprove(false);
     setComposeBlockers([]);
@@ -318,18 +328,38 @@ export function ChatClient({
         blockers:Array<{code:string;message:string}>;
       }>;
       setComposeMailboxes(mailboxes);
-      const selectedMailbox = selectPreferredComposeMailbox(mailboxes);
-      setComposeAccount(selectedMailbox?.id ?? "");
+      const selectedId = selectComposeSender(mailboxes);
+      const selectedMailbox = mailboxes.find(mailbox => mailbox.id === selectedId);
+      // When there are several connected accounts, no From address is safe
+      // to infer. The user must explicitly choose one before draft creation.
+      setComposeAccount(selectedId);
       setComposeCanDraft(selectedMailbox?.canDraft === true);
       setComposeCanApprove(selectedMailbox?.canRequestApproval === true);
       setComposeBlockers(selectedMailbox?.blockers ?? []);
+      const permissions = data.permissions;
+      setComposePermissions(permissions && typeof permissions === "object"
+        ? {
+            userCanWrite: permissions.userCanWrite === true,
+            agentCanDraft: permissions.agentCanDraft === true,
+            agentCanRequestApproval: permissions.agentCanRequestApproval === true,
+            directSend: false,
+          } : null);
+      const profile = data.profile && typeof data.profile === "object"
+        && typeof data.profile.email === "string"
+        ? { name: typeof data.profile.name === "string" ? data.profile.name : null,
+            email: data.profile.email } as ComposeProfile : null;
+      setComposeProfile(profile);
+      if (profile) setComposeBody(current => current === DEFAULT_COMPOSE_BODY
+        ? withProfileSignature(current, profile) : current);
       if (recipient) {
         setComposeTo(recipient);
         // Do not discard the original request if the readiness GET fails.
         // A GET only opens a preview; it never saves a draft.
         setDraft(current => parseTestEmailComposeRequest(current) === recipient ? "" : current);
       }
-      setComposeNotice("Review only: No draft has been saved and no email was sent. Select Save email draft after authorization is available.");
+      setComposeNotice(mailboxes.length > 1
+        ? "Which From email should this agent use? Choose a sending address before saving. No draft was saved and no email was sent."
+        : "Review only: No draft has been saved and no email was sent. Select Save email draft after authorization is available.");
       setMailComposerOpen(true);
     } catch (error) {
       if (revision === composeRevisionRef.current && epoch === agentContextEpochRef.current) {
@@ -339,6 +369,8 @@ export function ChatClient({
         if (recipient) setComposeTo(recipient);
         setComposeMailboxes([]);
         setComposeAccount("");
+        setComposeProfile(null);
+        setComposePermissions(null);
         setComposeCanDraft(false);
         setComposeCanApprove(false);
         setComposeDiscoveryFailed(true);
@@ -349,6 +381,16 @@ export function ChatClient({
       composeInFlightRef.current = false;
       setComposeBusy(false);
     }
+  }
+
+  function useProfileSignature() {
+    const signature = signatureFromProfile(composeProfile);
+    if (!signature) {
+      setComposeNotice("Your signed-in profile has no saved name. Enter your name in the editable email sign-off; the agent will not guess it.");
+      return;
+    }
+    setComposeBody(current => withProfileSignature(current, composeProfile));
+    invalidateComposeReview();
   }
 
   async function submitMailCompose(action: "draft"|"request_approval") {
