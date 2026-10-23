@@ -725,13 +725,13 @@ describe("pnpm workspace lockfile integrity", () => {
   const lockfile = readFileSync(lockfilePath, "utf8");
 
   it("pins pnpm 12 and workspace dependencies in their separate reviewed lockfile documents", () => {
-    const docs = lockfile.split(/^---[ \\t]*$/gm).map(text => text.trim()).filter(Boolean);
+    const docs = lockfile.split(/^---[ \t]*$/gm).map(text => text.trim()).filter(Boolean);
     expect(docs).toHaveLength(2);
     const [manager, workspace] = docs;
     expect(manager).toContain("packageManagerDependencies:");
     expect(manager).toContain("specifier: 12.8.1");
     expect(manager).toContain("version: 12.8.1");
-    expect(manager).toMatch(/pnpm@12\\.8\\.1:\\n    resolution: \\{integrity: sha512-/);
+    expect(manager).toMatch(/pnpm@12\.8\.1:\n    resolution: \{integrity: sha512-/);
     expect(manager.match(/^importers:/gm) ?? []).toHaveLength(1);
     expect(workspace.match(/^importers:/gm) ?? []).toHaveLength(1);
     expect(workspace).toContain("  apps/worker:");
