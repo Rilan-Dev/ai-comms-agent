@@ -4,6 +4,7 @@ import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { formatRollingMailSummary, MAX_REPORT_MESSAGES, parseRollingMailSummaryRequest, type RollingMailRow } from "@/lib/mail/rolling-summary";
 import { parseExplicitMailDateRangeRequest } from "@/lib/mail/explicit-date-range";
 import { canSupplyAmbientContext } from "@/lib/ai/ambient-context-access";
+import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
 import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation, verifiedEmailToolSummary } from "@/lib/mail/action-feedback";
 
 import { asOrganizationId } from "@ai-comms-agent/shared";
@@ -591,7 +592,11 @@ export async function POST(request: Request) {
           } else if (shouldResolveTools) {
             emit("status", { phase: "tools" });
             toolTurn = await runInteractiveHostToolLoop({
-                organizationId, agentId, kbId, messages, toolContext: trustedToolContext,
+                organizationId, agentId, kbId,
+                messages: [{ role: "system", content: composeAssistantGuidance({
+                  name: subject.user.name, email: subject.user.email,
+                }) }, ...messages],
+                toolContext: trustedToolContext,
                 onProgress: (phase) => emit("progress", { phase }),
                 onSafeReadOnlyFinal: explicitEmailAction ? undefined : async (completedHistory) => {
                   emit("status", { phase: "generating" });
