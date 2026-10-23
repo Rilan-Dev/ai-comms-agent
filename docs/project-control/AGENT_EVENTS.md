@@ -833,3 +833,8 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Action:** Added deduplicated, cursor-aware progress copy to existing permission-scoped C4 page; test-first source and Superpowers plan/session. Not a proxy for AI summary coverage, unread count, foreground absence or review completion.
 - **Evidence/constraints:** `5fb5c549,b6aecacf,cfed27d7,5bb6b08b`; GitHub 14/14, isolated helper 5/5 and strict TS; full repo and browser pending. Phase 4 in progress; C3 off, R1b consent and WhatsApp gated, no deployment. DEV-01 owns product, FIX-01 errors, OPS-01 operations.
 - **Next:** Follow top `NEXT_ACTION.md`, `sessions/DEV01-CATCHUP-COVERAGE-CLARITY-20261023.md`.
+
+### EVT-DEV01-CHAT-COMPOSE-IDENTITY-20261023 — 2026-10-23
+- **DEV-01 source delivery:** Chat compose now reports authenticated email.write, saved agent draft/send-request permission and explicit human approval separately, asks users to choose a From when multiple connected bound mailboxes exist, and asks for exact To instead of guessing.
+- **Safe profile:** Uses only saved name/email from verified signed-in subject; optional editable Regards sign-off, no fabricated title/company/phone. Chat and voice model guidance backed by raw write-tool presence/syntax checks, existing tenant RBAC and approval gates.
+- **Tests:** Seven source contract + five Vitest behavior cases authored; source inspection 54/54 + 22/22; no host/real profile/provider/browser verification. Session `sessions/DEV01-CHAT-COMPOSE-IDENTITY-20261023.md`. OPS release, FIX defects.
