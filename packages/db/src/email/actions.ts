@@ -59,6 +59,38 @@ function action(row: Row) {
   };
 }
 
+/** Recheck the reviewed content AFTER locking the saved draft. A concurrent
+ * PATCH may have committed between an API/tool read and this transaction.
+ * Reusing the old snapshot could approve one message but dispatch another. */
+function matchesPersistedSendDraftSnapshot(persisted: Row, recipientSnapshot: Record<string, unknown>): boolean {
+  const recipients = (value: unknown, required: boolean): string[] | null => {
+    if (value == null && !required) return [];
+    if (!Array.isArray(value) || (required && value.length === 0)) return null;
+    const entries: string[] = [];
+    for (const item of value) {
+      if (typeof item !== "string") return null;
+      const address = item.trim().toLowerCase();
+      if (!address) return null;
+      entries.push(address);
+    }
+    return entries;
+  };
+  for (const [persistedKey, snapshotKey, required] of [
+    ["to_recipients", "to", true],
+    ["cc_recipients", "cc", false],
+    ["bcc_recipients", "bcc", false],
+  ] as const) {
+    const current = recipients(persisted[persistedKey], required);
+    const reviewed = recipients(recipientSnapshot[snapshotKey], required);
+    if (!current || !reviewed || current.length !== reviewed.length
+      || current.some((address, index) => address !== reviewed[index])) return false;
+  }
+  return typeof recipientSnapshot.subject === "string"
+    && typeof recipientSnapshot.bodyText === "string"
+    && String(persisted.subject ?? "") === recipientSnapshot.subject
+    && String(persisted.text_body ?? "") === recipientSnapshot.bodyText;
+}
+
 export async function createEmailAction(input: CreateEmailActionInput) {
   const snapshot = JSON.stringify(input.recipientSnapshot);
   const contentHash = createHash("sha256").update(snapshot).digest("hex");
@@ -99,10 +131,13 @@ export async function createEmailAction(input: CreateEmailActionInput) {
   if (input.actionType === "send_email" && input.draftId) {
     return withTransaction(async client => {
       const locked = await client.query<Row>(
-        "SELECT id FROM email_messages WHERE id=$1 AND organization_id=$2 AND email_account_id=$3 AND is_draft=true FOR UPDATE",
+        "SELECT id, to_recipients, cc_recipients, bcc_recipients, subject, text_body FROM email_messages WHERE id=$1 AND organization_id=$2 AND email_account_id=$3 AND is_draft=true FOR UPDATE",
         [input.draftId, input.organizationId, input.emailAccountId],
       );
       if (!locked.rows.length) throw new EmailActionIdempotencyConflictError();
+      if (!matchesPersistedSendDraftSnapshot(locked.rows[0], input.recipientSnapshot)) {
+        throw new EmailActionIdempotencyConflictError();
+      }
       const prior = await client.query<Row>(
         "SELECT *, (expires_at IS NULL OR expires_at > now()) AS unexpired FROM email_actions WHERE organization_id=$1 AND email_account_id=$2 AND draft_id=$3 AND action_type='send_email' ORDER BY requested_at ASC, id ASC LIMIT 1",
         [input.organizationId, input.emailAccountId, input.draftId],
