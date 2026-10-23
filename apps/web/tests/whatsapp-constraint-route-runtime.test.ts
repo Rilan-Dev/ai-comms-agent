@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ForbiddenError } from "@ai-comms-agent/shared";
+import { safePostgresDiagnostic } from "../../../packages/db/src/client";
 
 const mocks = vi.hoisted(() => ({
   authorize: vi.fn(),
@@ -139,6 +140,21 @@ describe("WhatsApp CHECK repair route behavior", () => {
     expect(deniedSync.status).toBe(403);
     expect(mocks.query).not.toHaveBeenCalled();
     expect(mocks.metaFetch).not.toHaveBeenCalled();
+  });
+
+  it("never exposes PostgreSQL failing rows, SQL text, phone numbers or message bodies in shared diagnostics", () => {
+    const sensitiveError = Object.assign(
+      new Error("private message +919876543210 in SQL error"),
+      { code: "23514", detail: "Failing row contains (+919876543210, private message)", query: "SELECT private_message" },
+    );
+    const rendered = JSON.stringify(safePostgresDiagnostic(sensitiveError));
+    expect(rendered).toBe('{"sqlstate":"23514"}');
+    expect(rendered).not.toContain("919876543210");
+    expect(rendered).not.toContain("private message");
+    expect(rendered).not.toContain("Failing row contains");
+    expect(safePostgresDiagnostic({ code: "2201B", message: "invalid regex" })).toEqual({ sqlstate: "2201B" });
+    expect(safePostgresDiagnostic({ code: "ab;\nleak", detail: "SECRET" })).toEqual({ kind: "server_error" });
+    expect(safePostgresDiagnostic(null)).toEqual({ kind: "server_error" });
   });
 
   it("fails closed on SQLSTATE 23514 without leaking a failing row into the HTTP response", async () => {
