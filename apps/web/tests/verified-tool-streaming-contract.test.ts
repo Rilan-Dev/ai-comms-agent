@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 const read = (relative: string) => readFileSync(resolve(__dirname, relative), "utf8");
 const runtime = read("../../../packages/clara-core/src/runtime.ts");
+const ambient = read("../../../packages/clara-core/src/ambient-context.ts");
 const chat = read("../src/app/api/chat/stream/route.ts");
 const voice = read("../src/app/api/voice/turn/route.ts");
 const loop = read("../../../packages/email-agent-runtime/src/email-agent-loop.ts");
@@ -72,5 +73,29 @@ describe("native final read-only answer streaming after host tool execution", ()
     expect(chat).toContain('emit("delta", { text: validated })');
     expect(voice).toContain("const validated = userFacingChatAnswer(generated)");
     expect(chat).toContain("const validated = userFacingChatAnswer(generated)");
+  });
+  it("preserves ambient email/WhatsApp context through the final read-only stream when the tool chain stops after discovery-only calls", () => {
+    // Regression: when the model called email.accounts.list (discovery)
+    // and stopped without chaining email.messages.list, the final stream
+    // saw only account metadata and produced failure answers like
+    // "no inbox contents were provided" even though 20 actual email
+    // records were sitting in the ambient context system message that
+    // loadEmailContext had pre-fetched.
+    expect(runtime).toContain("extractAmbientContextForFinalStream(history)");
+    expect(ambient).toContain("Host-provided ambient context");
+    expect(ambient).toContain("UNTRUSTED DATA");
+    expect(ambient).toContain("Organization-scoped local email context");
+  });
+  it("verifiedEmailToolSummary recognizes BOTH naming conventions for email mutation tools", () => {
+    // The email tool registry has two naming conventions:
+    //   - dot-separated: email.draft.create, email.draft.update,
+    //     email.send.request, email.reply.request, email.forward.request
+    //   - underscore-separated: email.draft_reply, email.draft_forward
+    // The verifiedEmailToolSummary regex MUST match both, otherwise a
+    // successful email.draft_reply tool call gets surfaced as the
+    // unverifiedEmailActionExplanation() denial message even though the
+    // draft was actually saved in the database.
+    const actionFeedback = read("../src/lib/mail/action-feedback.ts");
+    expect(actionFeedback).toContain("/^email\\.(?:draft|send|reply|forward)[._]/.test(call.name)");
   });
 });

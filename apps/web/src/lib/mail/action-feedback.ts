@@ -60,8 +60,19 @@ type VerifiedEmailToolCall = Readonly<{
 /** Provide the authoritative host outcome for email mutations instead of
  * trusting a model's unverified delivery claims. No send is performed here. */
 export function verifiedEmailToolSummary(calls: readonly VerifiedEmailToolCall[]): string {
+  // Match ALL registered email mutation tool names. Two naming conventions
+  // coexist in the registry:
+  //   - dot-separated: email.draft.create, email.draft.update,
+  //     email.send.request, email.reply.request, email.forward.request
+  //   - underscore-separated: email.draft_reply, email.draft_forward
+  // The old regex `^email\.(?:draft\.|send\.|reply\.|forward\.)` only matched
+  // the dot form, so a successful email.draft_reply / email.draft_forward
+  // tool call was treated as "no verified mutation" and the chat surfaced
+  // the unverifiedEmailActionExplanation() denial message even though the
+  // draft was actually saved. This updated regex accepts either separator
+  // after the leading verb (draft|send|reply|forward).
   const mutations = calls.filter(call => !call.readOnly
-    && /^email\.(?:draft\.|send\.|reply\.|forward\.)/.test(call.name));
+    && /^email\.(?:draft|send|reply|forward)[._]/.test(call.name));
   if (mutations.length === 0) return "";
   const outcomes = mutations.map(call => {
     if (!call.ok) {

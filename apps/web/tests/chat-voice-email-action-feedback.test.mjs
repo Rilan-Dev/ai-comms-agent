@@ -40,6 +40,20 @@ test("verified tool summary distinguishes draft, pending approval and denial wit
   assert.match(summary, /tool_not_allowed/);
   assert.match(summary, /No email was sent/i);
   assert.equal(verifiedEmailToolSummary([{ name: "email.messages.list", ok: true, readOnly: true }]), "");
+  // email.draft_reply and email.draft_forward use UNDERSCORE separators
+  // (the real registry names). The older `email.reply.draft` /
+  // `email.forward.draft` test fixtures used dot-separated names that
+  // don't exist in the registry — they passed the regex accidentally
+  // because `reply.` and `forward.` are alternatives in the regex,
+  // but the production tool never produces those names. The real tool
+  // names are email.draft_reply / email.draft_forward. Both must be
+  // recognized as verified mutations, otherwise a successful reply/forward
+  // draft call gets surfaced as the unverifiedEmailActionExplanation()
+  // denial message even though the draft was saved.
+  assert.match(verifiedEmailToolSummary([{ name: "email.draft_reply", ok: true, status: "reply_draft_created" }]), /draft saved/i);
+  assert.match(verifiedEmailToolSummary([{ name: "email.draft_forward", ok: true, status: "forward_draft_created" }]), /draft saved/i);
+  // Legacy fixtures (phantom names not in registry) still pass for
+  // backwards-compat with anyone reading the test suite:
   assert.match(verifiedEmailToolSummary([{ name: "email.reply.draft", ok: true, status: "reply_draft_created" }]), /draft saved/i);
   assert.match(verifiedEmailToolSummary([{ name: "email.forward.draft", ok: true, status: "forward_draft_created" }]), /draft saved/i);
   assert.equal(verifiedEmailToolSummary([]), "");

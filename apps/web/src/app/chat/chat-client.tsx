@@ -1019,6 +1019,18 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
   let i = 0;
   let key = 0;
 
+  // Split a markdown table row into cells. Leading/trailing pipes are
+  // optional; escaped pipes (\|) stay inside a cell instead of splitting it.
+  const splitTableRow = (row: string): string[] => row
+    .replace(/^\s*\|/, "").replace(/\|\s*$/, "")
+    .split(/(?<!\\)\|/)
+    .map(cell => cell.replace(/\\\|/g, "|").trim());
+
+  // A table needs a header row of cells followed by a delimiter row like
+  // | --- | :---: | ---: |. Only then do body rows get collected.
+  const isTableDelimiter = (row: string): boolean =>
+    /^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)*\|?\s*$/.test(row) && row.includes("-");
+
   while (i < lines.length) {
     const line = lines[i] ?? "";
 
@@ -1036,6 +1048,69 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
         <pre key={key++} className="overflow-x-auto rounded-lg border bg-muted/50 p-3 text-xs">
           <code className="font-mono">{codeLines.join("\n")}</code>
         </pre>
+      );
+      continue;
+    }
+
+    // Markdown table: header row + delimiter row. LLM email summaries are
+    // almost always tables; without this branch every row rendered as a
+    // plain paragraph with raw pipe characters.
+    if (line.includes("|") && i + 1 < lines.length && isTableDelimiter(lines[i + 1] ?? "")) {
+      const headerCells = splitTableRow(line);
+      if (headerCells.length > 0) {
+        i += 2; // skip header + delimiter
+        const bodyRows: string[][] = [];
+        while (i < lines.length && (lines[i] ?? "").includes("|") && (lines[i] ?? "").trim() !== "") {
+          const cells = splitTableRow(lines[i] ?? "");
+          // Pad/trim to header width so ragged model output cannot break layout.
+          while (cells.length < headerCells.length) cells.push("");
+          bodyRows.push(cells.slice(0, headerCells.length));
+          i++;
+        }
+        elements.push(
+          <div key={key++} className="overflow-x-auto rounded-lg border">
+            <table className="w-full border-collapse text-xs">
+              <thead>
+                <tr className="border-b bg-muted/40">
+                  {headerCells.map((cell, idx) => (
+                    <th key={idx} className="px-3 py-2 text-left font-semibold">{renderInline(cell)}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {bodyRows.map((row, rowIdx) => (
+                  <tr key={rowIdx} className="border-b last:border-b-0 even:bg-muted/10">
+                    {row.map((cell, cellIdx) => (
+                      <td key={cellIdx} className="px-3 py-1.5 align-top">{renderInline(cell)}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+        continue;
+      }
+    }
+
+    // Horizontal rule
+    if (/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+      elements.push(<hr key={key++} className="border-border/60" />);
+      i++;
+      continue;
+    }
+
+    // Blockquote
+    if (line.match(/^\s*>\s?/)) {
+      const quoteLines: string[] = [];
+      while (i < lines.length && (lines[i] ?? "").match(/^\s*>\s?/)) {
+        quoteLines.push((lines[i] ?? "").replace(/^\s*>\s?/, ""));
+        i++;
+      }
+      elements.push(
+        <blockquote key={key++} className="border-l-4 border-border pl-3 text-muted-foreground">
+          {renderInline(quoteLines.join("\n"))}
+        </blockquote>
       );
       continue;
     }
@@ -1103,7 +1178,17 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
 
     // Regular paragraph — collect consecutive non-empty, non-special lines
     const paraLines: string[] = [];
-    while (i < lines.length && (lines[i] ?? "").trim() !== "" && !(lines[i] ?? "").trim().startsWith("```") && !(lines[i] ?? "").match(/^(#{1,4})\s+/) && !(lines[i] ?? "").match(/^\s*[-•]\s+/) && !(lines[i] ?? "").match(/^\s*\d+\.\s+/)) {
+    while (i < lines.length && (lines[i] ?? "").trim() !== ""
+        && !(lines[i] ?? "").trim().startsWith("```")
+        && !(lines[i] ?? "").match(/^(#{1,4})\s+/)
+        && !(lines[i] ?? "").match(/^\s*[-•]\s+/)
+        && !(lines[i] ?? "").match(/^\s*\d+\.\s+/)
+        && !(lines[i] ?? "").match(/^\s*>/)
+        && !(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(lines[i] ?? ""))
+        // Stop before a table start (a pipe line whose next line is a
+        // delimiter row) so a paragraph directly above a table does not
+        // swallow the table's header row.
+        && !((lines[i] ?? "").includes("|") && i + 1 < lines.length && isTableDelimiter(lines[i + 1] ?? ""))) {
       paraLines.push(lines[i] ?? "");
       i++;
     }

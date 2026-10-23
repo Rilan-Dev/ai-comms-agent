@@ -59,7 +59,12 @@ describe("email read tools", () => {
   });
 
   it("rechecks organization, agent and account binding before returning capabilities", async () => {
-    queryMock.mockResolvedValueOnce({ rows: [{ role: "read_only" }] });
+    // "account-1" is not a UUID, so the account identifier resolver query
+    // runs FIRST (resolving the label through the binding scope), then the
+    // binding-role query. Mock both in order.
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ id: "account-1" }] }) // resolver: label -> account-1
+      .mockResolvedValueOnce({ rows: [{ role: "read_only" }] }); // binding role
     const accounts = { getForAgent: vi.fn().mockResolvedValue(account) };
     const tools = createEmailReadTools({
       accounts: accounts as unknown as PostgresEmailAccountRepository,
@@ -71,5 +76,42 @@ describe("email read tools", () => {
     expect(result.ok).toBe(true);
     expect(result.output).toMatchObject({ account_id: "account-1", provider: "gmail" });
     expect(queryMock).toHaveBeenCalledWith(expect.stringContaining("agent_email_accounts"), ["agent-1", "org-1", "account-1"]);
+  });
+
+  it("resolves an email-address account_id through the binding scope instead of throwing a uuid syntax error", async () => {
+    // Regression for the live bug: the model passed the mailbox address
+    // (e.g. "user@gmail.com") as account_id; the raw uuid comparison threw
+    // "invalid input syntax for type uuid" and the executor surfaced the
+    // cryptic authorization_unavailable error. The address must resolve to
+    // the bound account and the tool must succeed.
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ id: "account-uuid-1" }] }) // resolver: email -> uuid
+      .mockResolvedValueOnce({ rows: [{ role: "primary" }] }); // binding role
+    const accounts = { getForAgent: vi.fn().mockResolvedValue(account) };
+    const tools = createEmailReadTools({
+      accounts: accounts as unknown as PostgresEmailAccountRepository,
+      agents: { emailBindings: vi.fn() } as unknown as PostgresAgentRepository,
+      folders: { listLabels: vi.fn() } as unknown as PostgresEmailFolderLabelRepository,
+    });
+    const tool = tools.find((item) => item.name === "email.capabilities.get")!;
+    const result = await tool.execute({ account_id: "user@gmail.com" }, context);
+    expect(result.ok).toBe(true);
+    // The downstream account lookup must use the RESOLVED uuid, never the raw address.
+    expect(accounts.getForAgent).toHaveBeenCalledWith("org-1", "agent-1", "account-uuid-1");
+  });
+
+  it("denies an unresolvable account_id cleanly instead of throwing authorization_unavailable", async () => {
+    queryMock.mockResolvedValueOnce({ rows: [] }); // resolver: no matching bound mailbox
+    const accounts = { getForAgent: vi.fn() };
+    const tools = createEmailReadTools({
+      accounts: accounts as unknown as PostgresEmailAccountRepository,
+      agents: { emailBindings: vi.fn() } as unknown as PostgresAgentRepository,
+      folders: { listLabels: vi.fn() } as unknown as PostgresEmailFolderLabelRepository,
+    });
+    const tool = tools.find((item) => item.name === "email.capabilities.get")!;
+    const result = await tool.execute({ account_id: "not-a-real-mailbox" }, context);
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("account_not_available");
+    expect(accounts.getForAgent).not.toHaveBeenCalled();
   });
 });

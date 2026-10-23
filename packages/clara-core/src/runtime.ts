@@ -3,6 +3,7 @@ import { readOpenAIToolCompletion } from "./tool-call-stream";
 import { createSarvamToolBridge } from "./sarvam-tool-bridge";
 import { readGeminiToolCompletion } from "./gemini-tool-stream";
 import { buildReadOnlyToolFinalMessages } from "./tool-result-final";
+import { extractAmbientContextForFinalStream } from "./ambient-context";
 import type {
   AIProvider,
   ChatMessage,
@@ -977,6 +978,20 @@ export const claraRuntime = {
    * audited read-only tool batch. Unlike streamCanonicalToolAnswer this is
    * not an extra attempt to copy a fully generated canonical answer.
    * This call carries NO available tool definitions or action capabilities.
+   *
+   * Ambient context preservation: when the chat route pre-fetched scoped
+   * mailbox/WhatsApp records (loadEmailContext / loadWhatsAppContext) and
+   * injected them as system messages into the tool loop's history, those
+   * records MUST remain visible to the final-stream model. Otherwise, when
+   * the model stopped the tool chain after a discovery-only call such as
+   * email.accounts.list (without chained email.messages.list), the final
+   * stream saw only the account metadata tool result and produced failure
+   * answers like "no inbox contents were provided" even though 20 actual
+   * email records were sitting in the ambient context. The ambient context
+   * is authorized through the same permission boundary as the read tools,
+   * so re-surfacing it here does not grant new access — it simply prevents
+   * the model from claiming data is missing when it has already been
+   * provided through the ambient path.
    */
   async streamAuthorizedReadOnlyToolAnswer(
     ctx: ClaraRuntimeContext, history: readonly ToolChatMessage[], signal?: AbortSignal,
@@ -988,10 +1003,21 @@ export const claraRuntime = {
     const configured = await organizationAIConfig(ctx.orgId, ctx.agentId);
     const provider = configured?.provider ?? selectedProvider();
     const settings = configured?.providerConfig ?? providerConfig(provider);
+    // Re-surface ambient context system messages that completeWithTools
+    // would have included in its system prompt. Without this, the final
+    // stream sees only tool results — and when the tool chain stopped
+    // after a discovery-only call (email.accounts.list), the model had
+    // no message records to summarize even though they were already
+    // pre-fetched into the ambient context. Marked UNTRUSTED DATA so the
+    // system-policy guard against instruction injection still applies.
+    const ambientContext = extractAmbientContextForFinalStream(history);
     // The system message in prompt is host-owned and not copied from mail.
     const messages: ChatMessage[] = [
       ...(configured?.resolved.assistantConfig.systemPrompt
         ? [{ role: "system" as const, content: configured.resolved.assistantConfig.systemPrompt }]
+        : []),
+      ...(ambientContext
+        ? [{ role: "system" as const, content: ambientContext }]
         : []),
       ...prompt,
     ];

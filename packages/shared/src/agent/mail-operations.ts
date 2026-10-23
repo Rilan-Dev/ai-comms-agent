@@ -7,7 +7,10 @@ import type { Channel, EmailToolDescriptor } from "./types";
 import type { CapabilitySet, EmailProviderCapability } from "../email/provider";
 
 const emailChannels = ["chat", "voice", "whatsapp", "schedule"] as const;
-const emailAccountId = { type: "string", minLength: 1, description: "Local email account ID, resolved by the host." };
+// The model may pass either the UUID from email.accounts.list or the
+// mailbox address the user named (e.g. "user@gmail.com"); the host
+// resolves addresses to the bound account before any authorization query.
+const emailAccountId = { type: "string", minLength: 1, description: "Email account: the account UUID from email.accounts.list, or the mailbox address (e.g. user@gmail.com). The host resolves it to the agent's bound mailbox." };
 const emailMessageIds = { type: "array", minItems: 1, maxItems: 100, items: { type: "string", minLength: 1 } };
 const emailRecipients = { type: "array", maxItems: 100, items: { type: "string", minLength: 1 } };
 const emailObject = (properties: Record<string, unknown>, required: string[] = []) => ({

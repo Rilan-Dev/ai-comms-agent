@@ -10,6 +10,7 @@ import { registerEmailReadTools } from "./email-read-tools";
 import { registerEmailWriteTools } from "./email-write-tools";
 import { canUseEmailAccountBinding, hasEmailToolCapabilities, isEmailToolAllowedByPolicy } from "./email-tool-policy";
 import { executeRegisteredTool } from "./tool-executor";
+import { resolveAccountIdentifier } from "./account-identifier";
 import type { ToolAuthorizationDecision, ToolAuditWriter } from "./tool-executor";
 
 export interface EmailToolRuntime {
@@ -48,6 +49,16 @@ export async function createEmailToolRuntime(organizationId: string, agentId: st
     const value = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
     const accountId = typeof value.account_id === "string" ? value.account_id.trim() : "";
     if (accountId) {
+      // Resolve BEFORE any uuid-typed query. The model often passes the
+      // mailbox address (e.g. "user@gmail.com") instead of the UUID from
+      // email.accounts.list; a raw uuid comparison would throw
+      // "invalid input syntax for type uuid" and surface as the cryptic
+      // authorization_unavailable error. Unresolvable identifiers get a
+      // clean account_not_available denial instead of an exception.
+      const resolvedAccountId = await resolveAccountIdentifier(organizationId, agentId, accountId);
+      if (!resolvedAccountId) {
+        return { allowed: false, code: "account_not_available", message: "No mailbox matching that identifier is bound to this agent. Call email.accounts.list to discover the available mailbox IDs." };
+      }
       const binding = await query<{ role: string }>(
         `SELECT b.role FROM agent_email_accounts b
          JOIN agents g ON g.id=b.agent_id
@@ -55,13 +66,13 @@ export async function createEmailToolRuntime(organizationId: string, agentId: st
          WHERE g.id=$1 AND g.organization_id=$2 AND a.id=$3
            AND a.organization_id=$2 AND a.deleted_at IS NULL
          LIMIT 1`,
-        [agentId, organizationId, accountId],
+        [agentId, organizationId, resolvedAccountId],
       );
       const role = binding.rows[0]?.role;
       if (!canUseEmailAccountBinding(role, tool.required_permission)) {
         return { allowed: false, code: "account_not_available", message: "This mailbox binding does not permit the requested operation." };
       }
-      const account = await accountRepository.getForAgent(organizationId, agentId, accountId);
+      const account = await accountRepository.getForAgent(organizationId, agentId, resolvedAccountId);
       if (!account) return { allowed: false, code: "account_not_available", message: "This mailbox is not bound to this agent." };
       const descriptor = EMAIL_TOOL_CATALOG.find((item) => item.name === tool.name);
       const capabilities = account.capabilities as Record<string, boolean>;
