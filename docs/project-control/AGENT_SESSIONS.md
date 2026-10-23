@@ -1107,3 +1107,11 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Source:** Default owner/admin email.write grant, no member/viewer promotion; tests and user-facing nonadmin guidance. Commits `61eb507d,a5123f59,7f8b4457,145d2629`.
 - **Result:** 16/16 source invariants. Real owner/admin sign-in status, native Vitest, web/DB typecheck, browser/approval, provider and rollout not proven. No live grant migration required; OPS approved deploy still required.
 - **Next:** `sessions/DEV01-ADMIN-EMAIL-WRITE-DEFAULT-20261023.md` test/verification instructions; C3/C4/R1b separately gated.
+
+### DEV01-ROUTINE-TIMING-PREVIEW-20261023 — safe R1a clock UX
+- **Agent/authorization:** DEV-01 / Forge; user explicitly requested phased people-first mail assistance, personal catch-up and AI routines with Overview-first entry on Development. Start SHA `c62666531b95f65e840621ddc6caf0a7b3bd7620`.
+- **Recovered:** Root AGENTS and role skills, CHAT_CONTINUITY, NEXT_ACTION, phase, shared/role-local lessons, central issues/verification/events/handoff/backlog, original five-day Superpowers and R1b plans, existing C1/C2/C4, clock helper, schedule/automation UX and seven worker clock tests.
+- **Source work:** Native five-case TDD contract `20c41cfb`, new private GET-only routine time preview `7a7f0565`, Overview CTA `75cb3ac3`, two matcher refinements `86f49eb0,41693926`, practical people-first P0–P7 Superpowers roadmap `4d18e192`. Canonical clock reused; no job/DB/worker/sends.
+- **Evidence:** 25/25 targeted GitHub source assertions after correcting inspector-only false-negative, seven existing clock test cases inspected. Native tests, typechecks, browser, database, Meta, deployments not run; source only.
+- **Blockers/gates:** C3 registration/grant/lease/provider acceptance, real absence/coverage, R1b persistence/standing consent and R3/R4 WhatsApp remain independently gated; Phase 4 not closed. FIX-01 owns bugs; OPS-01 owns runtime/deploy. No overlap.
+- **Next:** Exact tests and authenticated DST/zone/one-off/keyboard checks in `NEXT_ACTION.md`. Continue independently authorized C3 negative verification and C4a acceptance; no activation. Full session: `sessions/DEV01-ROUTINE-TIMING-PREVIEW-20261023.md`.
