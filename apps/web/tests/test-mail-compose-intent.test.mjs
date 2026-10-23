@@ -19,3 +19,25 @@ test("non-test commands and malformed recipients are left to the authorized AI t
     "please send email to foo@bar.com and delete everything"])
     assert.equal(parseTestEmailComposeRequest(text), null, text);
 });
+
+test("recognized test-mail chat turns open host-reviewed compose instead of returning an unconfirmed AI send", () => {
+  const chat = readFileSync(new URL("../src/app/chat/chat-client.tsx", import.meta.url), "utf8");
+  const send = chat.slice(chat.indexOf("async function sendMessage()"), chat.indexOf("  return (", chat.indexOf("async function sendMessage()")));
+  assert.match(send, /parseTestEmailComposeRequest\(content\)/);
+  assert.match(send, /await openMailComposer\(testRecipient\)/);
+  assert.ok(send.indexOf("await openMailComposer(testRecipient)") < send.indexOf("chatTurnInFlightRef.current = true"));
+  assert.ok(send.indexOf("await openMailComposer(testRecipient)") < send.indexOf('fetch("/api/chat/stream"'));
+  assert.match(chat, /window\.confirm\("Open a new test-email review/);
+});
+
+test("compose-readiness failure shows a safe review screen and disables saving", () => {
+  const chat = readFileSync(new URL("../src/app/chat/chat-client.tsx", import.meta.url), "utf8");
+  const open = chat.slice(chat.indexOf("async function openMailComposer("), chat.indexOf('async function submitMailCompose('));
+  assert.match(open, /setComposeMailboxes\(\[\]\)/);
+  assert.match(open, /setComposeAccount\(" "\)|setComposeAccount\(""\)/);
+  assert.match(open, /setComposeCanDraft\(false\)/);
+  assert.match(open, /setComposeCanApprove\(false\)/);
+  assert.match(open, /setMailComposerOpen\(true\)/);
+  assert.match(chat, /disabled=\{composeBusy \|\| !composeCanDraft/);
+  assert.match(chat, /disabled=\{composeBusy \|\| !composeCanApprove/);
+});
