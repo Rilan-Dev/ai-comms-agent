@@ -42,7 +42,12 @@ export async function startVoiceRelaySession(request: Request, provider: RelayPr
     const sttPath = provider === "sarvam" ? "/api/voice/sarvam/realtime" : "/api/voice/elevenlabs/realtime";
     const relayUrl = buildVoiceRelayUrl(sttPath, token.token);
     if (!relayUrl) {
-      return NextResponse.json({ error: "voice_relay_not_configured", message: "VOICE_RELAY_PUBLIC_URL is not configured; this provider can use the utterance pipeline instead." }, { status: 503 });
+      return NextResponse.json({
+        error: "voice_relay_not_configured",
+        message: provider === "sarvam"
+          ? "Sarvam live conversation requires the authenticated STT and TTS WebSocket relay. Configure VOICE_RELAY_PUBLIC_URL; batch speech is not a live-conversation fallback."
+          : "VOICE_RELAY_PUBLIC_URL is not configured; ElevenLabs can use the utterance pipeline instead.",
+      }, { status: 503 });
     }
     const ttsPath = provider === "sarvam" ? "/api/voice/sarvam/tts-realtime" : "/api/voice/elevenlabs/tts-realtime";
     const ttsRelayUrl = buildVoiceRelayUrl(ttsPath, token.token);

@@ -1,3 +1,9 @@
+## DEV-01 / FIX-01 — Sarvam live voice lifecycle fix verified — 2026-10-23
+
+Source on **Development** fixes lost readiness during mic consent, live Sarvam input/barge-in, late response replay, stale socket/activation/playback callbacks and abandoned microphone resources. [Session and exact next action](sessions/DEV01-FIX01-SARVAM-LIVE-LIFECYCLE-20261023.md); source `b58b4811`, upstream preserved in `4fefc41d`. **54/54 focused voice tests**, **7/7 core/integrity checks**, all package types and production web build pass. No live acoustic/vendor/production acceptance, deployment or messaging performed. OPS-01 verifies approved web+relay release, exact-origin WSS configuration, actual transcription/playback, real-device consent/mute/barge-in/end/reconnect and scoped mailbox reads. Phase 4 remains implementation_in_progress; standing routines/C3 activation unchanged. Earlier source/login checkpoints remain historical.
+
+---
+
 ## DEV-01 — live authentication succeeded; downstream acceptance incomplete — 2026-10-23
 
 [Latest live recheck](sessions/DEV01-LIVE-AUTH-RECHECK-20261023.md): ordinary login API **HTTP 200**, authenticated auth/me **HTTP 200**, actual Chat frontend opened once. Earlier “cannot log in” is superseded. Application routes remain intermittent (timeouts/Cloudflare error surfaces); existing QA transcript is historical, not a new send or current delivery proof. No new draft/approval/email/WhatsApp action performed. Focused Development permission/approval/summary checks **38/38 pass** after pulling concurrent FIX-01 corrections. OPS-01 diagnoses intermittent origin/application access; DEV-01 resumes the preserved F01–F21 matrix after checking existing pending actions to prevent duplicates. Work remains on Development; no phase/feature activation.

@@ -360,3 +360,14 @@ If a task belongs to another agent, create or update a backlog entry and continu
 - **Suggested next action:** Read-only origin/listener/proxy/firewall/resources and deployed-SHA diagnosis; approved recovery then verify HTTPS login. Do not infer an application permission bug or successful delivery.
 - **Evidence:** Playwright Chromium HTTP 522, Cloudflare page timestamp 2026-10-23 15:31:45 UTC. No authentication or messaging performed.
 - **Related:** sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md
+
+
+### BKL-SARVAM-LIVE-ACCEPTANCE-20261023 — 2026-10-23
+- **Work:** Deploy approved Sarvam live lifecycle source and verify actual browser/vendor behavior.
+- **Owner:** OPS-01 (release/relay), DEV-01/FIX-01 (post-release behavior).
+- **State:** ROUTED
+- **Dependency:** Approved web+relay release, matching signing secret, exact-origin WSS and server-side provider readiness; reliable origin access.
+- **Authorization:** Owner requests correct Clara live Sarvam source. No deployment executed by this source task.
+- **Next:** Read source/runbook session, verify provenance/config, then real transcription/playback, delayed permission, mute, barge-in, end/reconnect, source-scope/denial. Do not infer live acceptance from process health or socket-open statuses.
+- **Evidence:** Source b58b4811; 54 focused voice tests, 7 core/integrity tests, types/build pass.
+- **Session:** sessions/DEV01-FIX01-SARVAM-LIVE-LIFECYCLE-20261023.md
