@@ -65,3 +65,34 @@ test("assistant controls prepare a draft and do not bypass review or network pol
   assert.doesNotMatch(controls, /fetch\(|dangerouslySetInnerHTML|window\.location|email\.send|request_approval/);
   assert.match(chat, /if \(agentSwitchInFlightRef\.current \|\| chatTurnInFlightRef\.current/);
 });
+
+test("assistant markdown renders tables, horizontal rules and blockquotes instead of raw text", () => {
+  // Live regression: AI email summaries are markdown tables, but the chat
+  // renderer had no table branch — every row displayed as a plain paragraph
+  // with raw pipe characters ("| # | Date | Subject |"). The renderer must
+  // detect a header row followed by a delimiter row and render a real table.
+  assert.match(chat, /isTableDelimiter/);
+  assert.match(chat, /splitTableRow/);
+  assert.match(chat, /<table className="w-full border-collapse text-xs">/);
+  assert.match(chat, /<thead>/);
+  assert.match(chat, /<tbody>/);
+  // Ragged model rows are padded/trimmed to the header width.
+  assert.match(chat, /while \(cells\.length < headerCells\.length\) cells\.push\(""\)/);
+  assert.match(chat, /cells\.slice\(0, headerCells\.length\)/);
+  // A paragraph directly above a table must not swallow the table header.
+  assert.match(chat, /Stop before a table start/);
+  // Horizontal rules and blockquotes render as real elements too.
+  assert.match(chat, /<hr key=\{key\+\+\}/);
+  assert.match(chat, /<blockquote key=\{key\+\+\}/);
+});
+
+test("table delimiter detection accepts common LLM separator styles", () => {
+  // Mirror the isTableDelimiter logic from chat-client.tsx so the source
+  // contract and the behavioral expectation stay in sync.
+  const source = chat.slice(chat.indexOf("const isTableDelimiter"), chat.indexOf("while (i < lines.length)"));
+  assert.ok(source.includes("-{1,}"), "delimiter regex must allow single dashes");
+  assert.ok(source.includes(":?-{1,}:?"), "delimiter regex must allow alignment colons");
+  // The table branch requires a pipe in the header line AND a delimiter on
+  // the next line — plain bullet lists can never be mistaken for tables.
+  assert.match(chat, /line\.includes\("\|"\) && i \+ 1 < lines\.length && isTableDelimiter\(lines\[i \+ 1\] \?\? ""\)/);
+});

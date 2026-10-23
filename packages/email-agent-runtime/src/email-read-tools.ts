@@ -10,6 +10,7 @@ import {
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
 import { canUseEmailAccountBinding } from "./email-tool-policy";
+import { resolveAccountIdentifier } from "./account-identifier";
 
 type Input = Record<string, unknown>;
 type Row = Record<string, unknown>;
@@ -92,6 +93,12 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
   }
   async function resolveAccount(accountId: string, context: ToolContext, requireConnected = true) {
     if (!accountId) throw new EmailToolFailure("invalid_account", "A connected email account is required.");
+    // Resolve email-address identifiers to the internal UUID BEFORE any
+    // uuid-typed query, so the model echoing the user's mailbox address
+    // (e.g. "user@gmail.com") works instead of failing with a cryptic
+    // uuid syntax error surfaced as authorization_unavailable.
+    const resolvedAccountId = await resolveAccountIdentifier(context.organization_id, context.agent_id, accountId);
+    if (!resolvedAccountId) throw new EmailToolFailure("account_not_available", "No mailbox matching that identifier is bound to this agent. Available mailboxes are returned by email.accounts.list.");
     const binding = await query<{ role: string }>(
       `SELECT b.role FROM agent_email_accounts b
        JOIN agents g ON g.id = b.agent_id
@@ -99,11 +106,11 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
        WHERE g.id = $1 AND g.organization_id = $2 AND a.id = $3
          AND a.organization_id = $2 AND a.deleted_at IS NULL
        LIMIT 1`,
-      [context.agent_id, context.organization_id, accountId],
+      [context.agent_id, context.organization_id, resolvedAccountId],
     );
     const role = binding.rows[0]?.role;
     if (!canUseEmailAccountBinding(role, "email.read")) throw new EmailToolFailure("account_not_available", "This agent is not allowed to read that mailbox.");
-    const account = await accounts.getForAgent(context.organization_id, context.agent_id, accountId);
+    const account = await accounts.getForAgent(context.organization_id, context.agent_id, resolvedAccountId);
     if (!account) throw new EmailToolFailure("account_not_available", "This mailbox is not bound to this agent in the active organization.");
     if (requireConnected && account.status !== "connected") throw new EmailToolFailure("account_not_connected", "This mailbox is not connected.");
     return account;
