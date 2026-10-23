@@ -39,16 +39,16 @@ test("provider selection uses accessible separate cards and no redundant vendor 
   assert.match(shared,/Provider setup guide/);
   assert.match(shared,/No provider is selected/);
   assert.match(shared,/const organizationReady = Boolean\(organizationId\) && loadedOrganizationId === organizationId && !loading/);
-  assert.match(shared,/setApiKey\("?"\)/);
+  assert.match(shared,/setApiKey\(""\)/);
 });
 
 test("never carry unsaved credentials across category, vendor or tenant changes",()=>{
   const providerSwitch=shared.slice(shared.indexOf("function chooseProvider(next: string)"),shared.indexOf("async function saveProvider()"));
-  assert.match(providerSwitch,/setApiKey\("?"\)/);
-  assert.match(providerSwitch,/setModel\("?"\)/);
-  assert.match(providerSwitch,/setSttModel\("?"\)/);
+  assert.match(providerSwitch,/setApiKey\(""\)/);
+  assert.match(providerSwitch,/setModel\(""\)/);
+  assert.match(providerSwitch,/setSttModel\(""\)/);
   assert.match(shared,/\[organizationId\]/);
-  assert.match(shared,/setLoadedOrganizationId\("?"\)/);
+  assert.match(shared,/setLoadedOrganizationId\(""\)/);
   assert.match(shared,/new AbortController\(\)/);
   assert.match(shared,/currentOrganizationId\.current !== organizationId/);
   assert.match(shared,/voiceCredentialSaveError\(/);
