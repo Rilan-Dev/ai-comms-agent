@@ -41,3 +41,15 @@ test("one-shot reply/forward applies identical source mailbox and immutable reci
   assert.match(area, /connected.forward\(providerMessageId, reviewedParams.to\)/);
   assert.doesNotMatch(area, /snapshot\.to\.map\(String\)/);
 });
+
+
+test("approval route narrows nullable source row before reading reply sender and subject", () => {
+  const post = route.slice(route.indexOf("export async function POST("), route.indexOf("export async function PATCH("));
+  assert.match(post, /if \(!message \|\| !eligibleReplyForwardSourceId\(message, emailAccountId\)\)/);
+  const guarded = post.indexOf("if (!message || !eligibleReplyForwardSourceId(message, emailAccountId))");
+  const sender = post.indexOf("message.from_email ?? message.from_address");
+  const subject = post.indexOf("message.subject ??");
+  assert.ok(guarded >= 0 && guarded < sender && sender < subject,
+    "null source must be rejected before any reply/forward header access");
+  assert.match(post, /error: "not_found"/);
+});
