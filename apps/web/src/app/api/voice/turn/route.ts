@@ -4,7 +4,8 @@ import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { assertSameOrigin } from "@/lib/identity/local-auth";
-import { runEmailAgentTurn } from "@ai-comms-agent/email-agent-runtime";
+import { runEmailAgentTurn, createEmailToolRuntime } from "@ai-comms-agent/email-agent-runtime";
+import { formatRollingMailSummary, parseRollingMailSummaryRequest, type RollingMailRow } from "@/lib/mail/rolling-summary";
 import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation, verifiedEmailToolSummary } from "@/lib/mail/action-feedback";
@@ -94,6 +95,67 @@ export async function POST(request: Request) {
       }
     };
 
+    // The normal Chat surface already uses a deterministic, scoped local
+    // mailbox report for an explicit rolling 24-hour request. Voice must not
+    // ask the model to guess mailbox contents for that same supported query.
+    // Limit the spoken preview to the newest five, while retaining the exact
+    // matching count and an explicit partial-coverage warning.
+    const rollingMail = parseRollingMailSummaryRequest(transcript);
+    let rollingMailAnswer: string | null = null;
+    let rollingMailDenied = false;
+    if (rollingMail) {
+      const registered = subject.permissions.has("email.read")
+        ? (await createEmailToolRuntime(organizationId, agentId)).registry.listForAgent(agentId)
+        : [];
+      const allowed = subject.permissions.has("email.read") && registered.some(tool =>
+        tool.required_permission === "email.read"
+        && (tool.name === "email.search" || tool.name === "email.messages.list"));
+      if (!allowed) {
+        rollingMailDenied = true;
+        rollingMailAnswer = "I can't read this workspace's email messages with the current permissions. An administrator must enable email.read for you, enable Search or List Mail in the agent policy, and connect a readable mailbox. No messages were retrieved.";
+      } else {
+        const toUtc = new Date().toISOString();
+        const fromUtc = new Date(new Date(toUtc).getTime() - 24 * 60 * 60 * 1000).toISOString();
+        const rows = await query<RollingMailRow>(
+          `SELECT m.id, a.email_address AS account_email, m.from_email::text AS from_email,
+                  m.from_name, m.subject, m.received_at,
+                  LEFT(m.snippet, 260) AS snippet, LEFT(m.text_body, 420) AS text_body,
+                  COUNT(*) OVER ()::integer AS total_count
+             FROM email_messages m
+             JOIN email_accounts a ON a.id=m.email_account_id
+              AND a.organization_id=$1 AND a.deleted_at IS NULL
+            WHERE m.organization_id=$1
+              AND m.received_at >= $3::timestamptz
+              AND m.received_at <= $4::timestamptz
+              AND m.is_draft IS FALSE AND m.is_sent IS FALSE
+              AND (NOT $7::boolean OR m.is_read IS FALSE)
+              AND ($5::text IS NULL OR strpos(lower(coalesce(m.from_email::text, '')), lower($5::text)) > 0
+                   OR strpos(lower(coalesce(m.from_name, '')), lower($5::text)) > 0)
+              AND ($6::text IS NULL OR strpos(lower(coalesce(m.subject, '')), lower($6::text)) > 0
+                   OR strpos(lower(coalesce(m.text_body, '')), lower($6::text)) > 0)
+              AND EXISTS (
+                SELECT 1 FROM agent_email_accounts b
+                JOIN agents bound_agent ON bound_agent.id=b.agent_id AND bound_agent.organization_id=$1
+                 WHERE b.email_account_id=a.id AND b.agent_id=$2
+                   AND b.role IN ('primary','read_only')
+              )
+              AND (a.provider <> 'imap_smtp' OR EXISTS (
+                SELECT 1 FROM email_folders inbox_folder
+                 WHERE inbox_folder.id=m.folder_id
+                   AND inbox_folder.email_account_id=m.email_account_id
+                   AND (inbox_folder.role='inbox' OR UPPER(inbox_folder.provider_folder_id)='INBOX')
+              ))
+            ORDER BY m.received_at DESC, m.id DESC
+            LIMIT $8`,
+          [organizationId, agentId, fromUtc, toUtc,
+            rollingMail.sender ?? null, rollingMail.topic ?? null, rollingMail.unreadOnly, 5],
+        );
+        rollingMailAnswer = formatRollingMailSummary(
+          rows.rows, rollingMail, fromUtc, toUtc, "rolling 24-hour UTC voice overview",
+        );
+      }
+    }
+
     const executionId = crypto.randomUUID();
     const role = subject.membership.role;
     const permissions = [...subject.permissions];
@@ -123,7 +185,17 @@ export async function POST(request: Request) {
           try {
             emit("status", { phase: needsAuthorizedTools ? "tools" : "generating" });
             emit("progress", { phase: needsAuthorizedTools ? "checking_permissions" : "generating" });
-            if (blockedWriteExplanation) {
+            if (rollingMailAnswer !== null) {
+              emit("status", { phase: rollingMailDenied ? "permission_denied" : "verified_local_mail" });
+              emit("delta", { text: rollingMailAnswer });
+              await saveAnswer(rollingMailAnswer);
+              emit("progress", { phase: "completed" });
+              emit("done", {
+                executionId, toolCalls: [], pendingApprovals: [],
+                finishReason: rollingMailDenied ? "permission_denied" : "completed",
+                mode: "verified-local-mail", source: rollingMailDenied ? "permission_gate" : "local_mail_database",
+              });
+            } else if (blockedWriteExplanation) {
               emit("delta", { text: blockedWriteExplanation });
               await saveAnswer(blockedWriteExplanation);
               emit("progress", { phase: "completed" });
@@ -235,6 +307,15 @@ export async function POST(request: Request) {
       });
     }
 
+    if (rollingMailAnswer !== null) {
+      await saveAnswer(rollingMailAnswer);
+      return NextResponse.json({
+        executionId, text: rollingMailAnswer, toolCalls: [], pendingApprovals: [],
+        finishReason: rollingMailDenied ? "permission_denied" : "completed",
+        source: rollingMailDenied ? "permission_gate" : "local_mail_database",
+        actions: [],
+      });
+    }
     if (blockedWriteExplanation) {
       await saveAnswer(blockedWriteExplanation);
       return NextResponse.json({
