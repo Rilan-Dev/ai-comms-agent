@@ -17,17 +17,39 @@ const workspaces = [
 const literal = (value) => value.replace(/[^a-zA-Z0-9]/g, (ch) => "\\" + ch);
 function lockViolations(lock, manifests) {
   const issues = [];
-  if ((lock.match(/^---\s*$/gm) ?? []).length > 1) {
-    issues.push("concatenated lockfile documents");
+  // pnpm 12 saves its own pinned executable in a separate YAML document.
+  // A single application document lacks packageManagerDependencies and fails
+  // --frozen-lockfile. Reject extra/ambiguous documents and unpinned managers.
+  const documents = lock.split(/^---[ \t]*$/gm).map(part => part.trim()).filter(Boolean);
+  if (documents.length !== 2) {
+    issues.push("expected one pnpm 12 package-manager document and one workspace lockfile document");
+    return issues;
   }
-  const start = lock.indexOf("\nimporters:\n");
-  const end = lock.indexOf("\npackages:\n");
-  const snapshot = lock.indexOf("\nsnapshots:\n");
+  const [manager, workspaceLock] = documents;
+  const expectedVersion = manifests["."].packageManager?.match(/^pnpm@([0-9]+\.[0-9]+\.[0-9]+)$/)?.[1];
+  if (!expectedVersion ||
+      (manager.match(/^lockfileVersion:/gm) ?? []).length !== 1 ||
+      (manager.match(/^importers:/gm) ?? []).length !== 1 ||
+      !manager.includes("  .:\n    configDependencies: {}\n    packageManagerDependencies:\n      pnpm:\n") ||
+      !manager.includes(`specifier: ${expectedVersion}\n        version: ${expectedVersion}`) ||
+      !manager.includes(`  pnpm@${expectedVersion}:\n    resolution: {integrity: sha512-`) ||
+      !manager.includes(`  '@pnpm/exe.linux-x64@${expectedVersion}':\n    resolution: {integrity: sha512-`) ||
+      !manager.includes("\nsnapshots:\n")) {
+    issues.push("missing or unpinned pnpm package-manager executable integrity");
+  }
+  if ((workspaceLock.match(/^lockfileVersion:/gm) ?? []).length !== 1 ||
+      (workspaceLock.match(/^importers:/gm) ?? []).length !== 1 ||
+      workspaceLock.includes("packageManagerDependencies:")) {
+    issues.push("invalid or duplicate application dependency lockfile");
+  }
+  const start = workspaceLock.indexOf("\nimporters:\n");
+  const end = workspaceLock.indexOf("\npackages:\n");
+  const snapshot = workspaceLock.indexOf("\nsnapshots:\n");
   if (start < 0 || end <= start || snapshot <= end) {
     issues.push("missing pnpm lockfile importer/package/snapshot sections");
     return issues;
   }
-  const importers = lock.slice(start + "\nimporters:\n".length, end);
+  const importers = workspaceLock.slice(start + "\nimporters:\n".length, end);
   const names = [...importers.matchAll(/^  ([^\s][^\n]*):\n/gm)]
     .map((match) => ({ key: match[1], index: match.index }));
   if (names.length !== workspaces.length) {
@@ -56,22 +78,31 @@ function lockViolations(lock, manifests) {
       }
     }
   }
-  if (!/^\s{2}next@15\.[^\n]*:\n\s+resolution: \{integrity: sha512-/m.test(lock)) {
+  if (!/^\s{2}next@15\.[^\n]*:\n\s+resolution: \{integrity: sha512-/m.test(workspaceLock)) {
     issues.push("missing resolved Next.js package integrity");
   }
   return issues;
 }
 
-test("single valid lockfile document pins every workspace dependency", () => {
+test("pnpm 12 pins its executable and every workspace dependency in distinct documents", () => {
   const manifests = Object.fromEntries(workspaces.map(([key, path]) => [key, JSON.parse(read(path))]));
   assert.deepEqual(lockViolations(read("pnpm-lock.yaml"), manifests), []);
 });
 
-test("reject the historical concatenated pnpm-manager header without evaluating code", () => {
+test("reject missing manager pin, forged manager integrity and duplicate workspace documents", () => {
   const manifests = Object.fromEntries(workspaces.map(([key, path]) => [key, JSON.parse(read(path))]));
-  const duplicate = "---\nlockfileVersion: '9.0'\n\nimporters:\n  .:\n    configDependencies: {}\n\npackages:\n  pnpm@12.8.1: {}\n\nsnapshots:\n  pnpm@12.8.1: {}\n" +
-    read("pnpm-lock.yaml");
-  assert.ok(lockViolations(duplicate, manifests).includes("concatenated lockfile documents"));
+  const current = read("pnpm-lock.yaml");
+  const docs = current.split(/^---[ \t]*$/gm).map(part => part.trim()).filter(Boolean);
+  assert.equal(docs.length, 2, "pnpm manager pin and application dependency graph are distinct");
+  const applicationOnly = "---\n" + docs[1] + "\n";
+  assert.ok(lockViolations(applicationOnly, manifests).some(issue => issue.includes("package-manager document")));
+  const forgedManager = "---\n" + docs[0].replace(
+    "  pnpm@12.8.1:\n    resolution: {integrity: sha512-",
+    "  pnpm@12.8.1:\n    resolution: {integrity: missing-",
+  ) + "\n---\n" + docs[1] + "\n";
+  assert.ok(lockViolations(forgedManager, manifests).some(issue => issue.includes("package-manager executable integrity")));
+  const duplicated = current + "\n---\n" + docs[1] + "\n";
+  assert.ok(lockViolations(duplicated, manifests).some(issue => issue.includes("package-manager document")));
 });
 
 test("Docker build must install only from the committed lockfile", () => {
