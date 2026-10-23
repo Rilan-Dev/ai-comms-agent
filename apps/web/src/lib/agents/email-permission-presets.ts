@@ -46,6 +46,8 @@ export const EMAIL_PERMISSION_LABELS: Record<string, string> = {
   "email.send.request": "Request send approval",
   "email.reply.request": "Request reply approval",
   "email.forward.request": "Request forward approval",
+  "whatsapp.history": "Read bound WhatsApp conversation history",
+  "whatsapp.send": "Request WhatsApp send approval (human review required)",
 };
 
 export function summarizeEmailPermissionChanges(previous: readonly string[], selected: readonly string[]): {
