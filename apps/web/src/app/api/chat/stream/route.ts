@@ -657,6 +657,9 @@ export async function POST(request: Request) {
             controller.close();
             return;
           }
+          // A provider may finish without emitting any content. Never save a
+          // blank assistant reply or tell Chat that such a turn completed.
+          if (!assistantOutput.trim()) throw new Error("AI provider returned an empty chat response.");
           await appendConversationMessage({
             organizationId, conversationId: conversation.id, role: "assistant", content: assistantOutput,
           });
