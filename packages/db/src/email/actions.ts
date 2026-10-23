@@ -104,7 +104,7 @@ export async function createEmailAction(input: CreateEmailActionInput) {
       );
       if (!locked.rows.length) throw new EmailActionIdempotencyConflictError();
       const prior = await client.query<Row>(
-        "SELECT * FROM email_actions WHERE organization_id=$1 AND email_account_id=$2 AND draft_id=$3 AND action_type='send_email' ORDER BY requested_at ASC, id ASC LIMIT 1",
+        "SELECT *, (expires_at IS NULL OR expires_at > now()) AS unexpired FROM email_actions WHERE organization_id=$1 AND email_account_id=$2 AND draft_id=$3 AND action_type='send_email' ORDER BY requested_at ASC, id ASC LIMIT 1",
         [input.organizationId, input.emailAccountId, input.draftId],
       );
       if (prior.rows.length) {
@@ -112,8 +112,7 @@ export async function createEmailAction(input: CreateEmailActionInput) {
         // Return the SAME pending review only to its original requesting
         // actor/agent and with identical reviewed content. An approved,
         // rejected, expired or completed action always requires a new draft.
-        const stillPending = existing.status === "pending_approval"
-          && (existing.expires_at == null || new Date(String(existing.expires_at)).getTime() > Date.now());
+        const stillPending = existing.status === "pending_approval" && existing.unexpired === true;
         if (stillPending && existing.content_hash === contentHash
           && existing.requested_by === (input.requestedBy ?? null)
           && existing.agent_id === (input.agentId ?? null)) {
