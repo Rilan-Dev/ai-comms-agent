@@ -8,7 +8,7 @@ import { canSupplyAmbientContext } from "@/lib/ai/ambient-context-access";
 import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
 import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation } from "@/lib/mail/action-feedback";
 import { userFacingChatAnswer } from "@/lib/chat/user-facing-answer";
-import { currentTurnOperationAnswer } from "@/lib/chat/operation-feedback";
+import { currentTurnOperationAnswer, isExplicitWhatsAppMutationRequest } from "@/lib/chat/operation-feedback";
 import { operationResultFromToolCall, reviewExplicitEmailBody, type OperationResult } from "@ai-comms-agent/shared";
 
 import { asOrganizationId } from "@ai-comms-agent/shared";
@@ -592,6 +592,7 @@ export async function POST(request: Request) {
     // bounded, host-authorized tool loop (which has not yet gained model-token
     // streaming). Never shortcut a potentially actionable follow-up.
     const explicitEmailAction = isExplicitEmailMutationRequest(content);
+    const explicitMessagingAction=explicitEmailAction || isExplicitWhatsAppMutationRequest(content);
     const blockedWriteExplanation = deniedEmailWriteExplanation(content, subject.permissions);
     const shouldResolveTools = explicitEmailAction || asksAboutEmail(combinedSearchContext)
       || asksAboutWhatsApp(combinedSearchContext)
@@ -623,7 +624,7 @@ export async function POST(request: Request) {
                 }) }, ...messages],
                 toolContext: trustedToolContext,
                 onProgress: (phase) => emit("progress", { phase }),
-                onSafeReadOnlyFinal: explicitEmailAction ? undefined : async (completedHistory) => {
+                onSafeReadOnlyFinal: explicitMessagingAction ? undefined : async (completedHistory) => {
                   emit("status", { phase: "generating" });
                   emit("progress", { phase: "generating" });
                   const finalStream = await claraRuntime.streamAuthorizedReadOnlyToolAnswer(
@@ -655,8 +656,8 @@ export async function POST(request: Request) {
           } else if (toolTurn) {
             const operations = toolTurn.toolCalls.flatMap(call => call.operation ? [call.operation] : []);
             const verifiedSummary = operations.length > 0;
-            assistantOutput = currentTurnOperationAnswer(toolTurn.text, operations, trustedToolContext.turn_id, explicitEmailAction);
-            if (!verifiedSummary && !explicitEmailAction) {
+            assistantOutput = currentTurnOperationAnswer(toolTurn.text, operations, trustedToolContext.turn_id, explicitMessagingAction);
+            if (!verifiedSummary && !explicitMessagingAction) {
               const validated = userFacingChatAnswer(assistantOutput);
               if (!validated) throw new Error("Tool-loop model output was not a user-facing answer.");
               assistantOutput = validated;
@@ -666,10 +667,10 @@ export async function POST(request: Request) {
               // turns keep their tool-informed model response.
               emit("delta", { text: assistantOutput });
             }
-          } else if (explicitEmailAction) {
+          } else if (explicitMessagingAction) {
             // The model made no registered email mutation call. A tool-free
             // response must never be treated as evidence of sending.
-            assistantOutput = unverifiedEmailActionExplanation();
+            assistantOutput = currentTurnOperationAnswer('',[],trustedToolContext.turn_id,true);
             emit("delta", { text: assistantOutput });
           } else {
             emit("status", { phase: "generating" });

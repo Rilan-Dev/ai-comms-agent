@@ -2,6 +2,8 @@ import { loadWhatsAppCredential, claimQueuedWhatsAppOutbound, recoverStaleWhatsA
 import { getWhatsAppAccountForOrganization, listPendingWhatsAppAccounts, updateWhatsAppAccountStatus } from "@ai-comms-agent/db";
 import { emitProviderEvent } from "../events/provider-events";
 import { isRetryableProviderError } from "../email/retry";
+import { PostgresIdentityRepository } from '@ai-comms-agent/db';
+import { asOrganizationId,asUserId } from '@ai-comms-agent/shared';
 
 const GRAPH_HOST = "https://graph.facebook.com";
 
@@ -100,17 +102,27 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
   for (const message of messages) {
     processed += 1;
     const retryAttempts = 1;
+    let providerMayHaveAccepted=false;
+    let acceptedProviderMessageId: string | null = null;
     try {
       const account = await getWhatsAppAccountForOrganization(String(message.organization_id), String(message.whatsapp_account_id));
       if (!account) throw new Error("WhatsApp account is unavailable");
       if (account.status !== "connected") throw new Error("WhatsApp account is no longer connected; outbound was blocked");
-      const actionBinding = await query<{ id: string; agent_id: string | null; agent_binding_required: boolean; status: string }>(
-        "SELECT id,agent_id,agent_binding_required,status FROM whatsapp_send_actions WHERE organization_id=$1 AND correlation_id=$2 LIMIT 1",
+      const actionBinding = await query<{ id: string; agent_id: string | null; agent_binding_required: boolean; status: string; requested_by:string|null;approved_by:string|null }>(
+        "SELECT id,agent_id,agent_binding_required,status,requested_by,approved_by FROM whatsapp_send_actions WHERE organization_id=$1 AND correlation_id=$2 LIMIT 1",
         [String(message.organization_id), String(message.correlation_id ?? "")],
       );
       const approvalAction = actionBinding.rows[0];
       if (!approvalAction || !["approved", "queued"].includes(approvalAction.status)) {
         throw new Error("No active human-approved WhatsApp action is associated with this outbound message; outbound was blocked");
+      }
+      const identities=new PostgresIdentityRepository();
+      for(const actorId of [approvalAction.requested_by,approvalAction.approved_by]){
+        if(!actorId)throw new Error('WhatsApp action authorization is no longer valid');
+        const membership=await identities.getMembership(asOrganizationId(String(message.organization_id)),asUserId(actorId));
+        if(!membership || membership.status!=='active' || !(await identities.getPermissionsForRole(asOrganizationId(String(message.organization_id)),membership.role)).includes('whatsapp.send')) {
+          throw new Error('WhatsApp action authorization is no longer valid');
+        }
       }
       if (approvalAction.agent_binding_required) {
         const agentId = approvalAction.agent_id;
@@ -159,15 +171,22 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
         if (!windowCheck.rows.length) throw new Error("WhatsApp free-form text blocked: no inbound customer message within Meta's 24-hour window");
       }
       const url = new URL(version + "/" + encodeURIComponent(account.phone_number_id) + "/messages", GRAPH_HOST + "/");
+      // Once dispatch starts, a timeout may occur after Meta accepted it.
+      // Preserve the execution claim for reconciliation rather than replay.
+      providerMayHaveAccepted=true;
       const response = await fetch(url, {
         method: "POST",
         headers: { authorization: "Bearer " + token, "content-type": "application/json" },
         body: JSON.stringify(buildWhatsAppOutboundPayload(message)),
       });
       const payload = (await response.json().catch(() => ({}))) as WhatsAppGraphPayload;
-      if (!response.ok) throw new Error(typeof payload?.error?.message === "string" ? payload.error.message : "Meta WhatsApp API request failed");
+      if (!response.ok) {
+        providerMayHaveAccepted=response.status >= 500;
+        throw new Error(typeof payload?.error?.message === "string" ? payload.error.message : "Meta WhatsApp API request failed");
+      }
       const providerMessageId = typeof payload?.messages?.[0]?.id === "string" ? payload.messages[0].id : "";
       if (!providerMessageId) throw new Error("Meta WhatsApp API returned no message ID");
+      acceptedProviderMessageId=providerMessageId;
       const persistedSent = await markWhatsAppOutboundSent(String(message.id), providerMessageId);
       if (!persistedSent) {
         // A stale-lease recovery may have closed this row while the provider
@@ -198,6 +217,10 @@ export async function processQueuedWhatsAppMessages(limit = 10) {
       await emitProviderEvent({ type: "whatsapp.message.sent", organizationId: String(message.organization_id), messageId: String(message.id), accountId: String(message.whatsapp_account_id), correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { providerMessageId, retryAttempts } });
       await recordAuditEvent({ organizationId: String(message.organization_id), actorUserId: null, eventType: "whatsapp.message.sent", targetType: "whatsapp_message", targetId: String(message.id), action: "send", decision: "allowed", correlationId: message.correlation_id ? String(message.correlation_id) : null, metadata: { providerMessageId } });
     } catch (error) {
+      if(providerMayHaveAccepted){
+        console.error('[whatsapp-action] provider outcome requires reconciliation',{messageId:String(message.id),correlationId:String(message.correlation_id??''),providerOutcomeUnknown:acceptedProviderMessageId===null,providerAccepted:acceptedProviderMessageId!==null,providerMessageId:acceptedProviderMessageId,manualVerificationRequired:true,errorType:error instanceof Error?error.name:typeof error});
+        continue;
+      }
       const messageText = error instanceof Error ? error.message : "WhatsApp send failed";
       const retryable = isRetryableProviderError(error);
       if (message.id) {

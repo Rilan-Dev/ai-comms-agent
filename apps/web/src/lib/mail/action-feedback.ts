@@ -10,6 +10,7 @@
  */
 export function isExplicitEmailMutationRequest(text: string): boolean {
   const prompt = text.trim();
+  if(/\bwhatsapp\b/i.test(prompt) && !/\b(?:send|draft|compose|create|prepare|update|reply)\s+(?:(?:a|an|the|this|test|new)\s+){0,3}(?:e-?mail|draft)\b/i.test(prompt))return false;
   const followup = /\b(?:and|then|also)\s+(?:then\s+)?((?:send|draft|write|compose|create|update|prepare|forward|reply)\b.+)$/i.exec(prompt)?.[1];
   if (followup && isExplicitEmailMutationRequest(followup)) return true;
   const command = prompt.match(

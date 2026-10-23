@@ -2,6 +2,11 @@ import type { OperationResult } from '@ai-comms-agent/shared';
 
 const NO_CONFIRMATION='No saved draft or send request was confirmed for this turn. Check Drafts or Approvals before retrying. No message was sent by this request.';
 
+export function isExplicitWhatsAppMutationRequest(text:string):boolean {
+  return /\bwhatsapp\b/i.test(text) && ( /^(?:(?:please|kindly)\s+)?(?:(?:can|could|would|will)\s+you\s+)?(?:send|message|reply|create|prepare|request)\b/i.test(text.trim())
+    || /\b(?:and\s+then|then|also|and|want\s+to|need\s+you\s+to)\s+(?:send|message|reply|create|prepare|request)\b/i.test(text));
+}
+
 export function containsUnverifiedOperationClaim(text:string):boolean {
   return /\bverified\s+(?:email|whatsapp|messaging)(?:\s+tool)?\s+results\b/i.test(text)
     || /\b(?:draft|approval request)\s+(?:(?:was|is|has been)\s+)?(?:saved|created|updated|queued|submitted|pending)\b/i.test(text)
@@ -14,6 +19,7 @@ function failureExplanation(code?:string):string {
     case 'body_review_required':return 'Please review the intended email body and put it in quotes or a fenced text block after Body:. Keep sending and approval instructions outside the body. No draft or approval was saved.';
     case 'recipient_required':return 'Provide or select the exact recipient email address before saving.';
     case 'invalid_account':return 'Choose the connected From mailbox before saving.';
+    case 'account_selection_required':return 'Choose one WhatsApp account by its visible label or phone number in Channels.';
     case 'permission_denied':return 'Your current permission does not allow this action.';
     case 'tool_not_allowed':return 'This action is not enabled for the agent.';
     case 'account_not_available':case 'account_not_bound':return 'Choose a connected account available to this agent.';

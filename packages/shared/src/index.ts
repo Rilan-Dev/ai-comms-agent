@@ -174,3 +174,5 @@ export type { OperationResult } from "./operations/result";
 export { operationResultFromToolCall } from "./operations/result";
 export type { EmailBodyReview } from "./operations/email-content";
 export { reviewExplicitEmailBody } from "./operations/email-content";
+export type { WhatsAppReadiness } from "./operations/whatsapp-readiness";
+export { deriveWhatsAppReadiness } from "./operations/whatsapp-readiness";
