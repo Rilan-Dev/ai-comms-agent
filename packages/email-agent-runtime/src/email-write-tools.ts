@@ -172,7 +172,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     const account = await resolveAccount(text(input.account_id), context);
     const source = await checkMessage(account.id, text(input.message_id, 100), context);
     if (!account.capabilities.drafts || !account.capabilities.reply) throw new EmailWriteFailure("capability_not_supported", "This mailbox does not support reply drafts.");
-    const sender = text(source.from_email, 320);
+    const sender = typeof source.from_email === "string" ? source.from_email.trim() : "";
     if (!sender) throw new EmailWriteFailure("reply_recipient_missing", "The source message has no replyable sender address.");
     const recipient = requireRecipients([sender])[0]!;
     const originalSubject = text(source.subject, 998);
@@ -242,7 +242,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     const messageId = text(input.message_id, 100);
     const source = await checkMessage(account.id, messageId, context);
     if (!account.capabilities.reply) throw new EmailWriteFailure("capability_not_supported", "This mailbox does not support replies.");
-    const recipient = text(source.from_email, 320);
+    const recipient = typeof source.from_email === "string" ? source.from_email.trim() : "";
     if (!recipient) throw new EmailWriteFailure("reply_recipient_missing", "The source message has no replyable sender address.");
     requireRecipients([recipient]);
     const originalSubject = text(source.subject, 998);
