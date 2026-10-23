@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { buildSelectedChecklistPrompt, hasInteractiveEmailActions, shouldSuggestNextActions, suggestedChatNextActions, type AssistantChecklistItem } from "@/lib/chat/interactive-replies";
+import { buildSelectedChecklistPrompt, hasInteractiveEmailActions, suggestedChatNextActions, type AssistantChecklistItem } from "@/lib/chat/interactive-replies";
 
 export type EmailWorkflowState = "not_saved" | "draft_saved" | "pending_approval";
 
