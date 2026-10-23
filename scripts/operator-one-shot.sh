@@ -98,7 +98,21 @@ docker run --rm --network none \
   --volume "$ROOT/.github:/workspace/.github:ro" \
   --volume "$ROOT/README.md:/workspace/README.md:ro" \
   --volume "$ROOT/.env.example:/workspace/.env.example:ro" \
-  "$WEB_IMAGE" sh -euc 'pnpm -r typecheck; pnpm -r test; pnpm --filter @ai-comms-agent/worker build'
+  "$WEB_IMAGE" sh -euc '
+    pnpm -r typecheck
+    pnpm --filter @ai-comms-agent/clara-core test
+    # Run diagnostic suites independently: a failing web test must not kill
+    # worker assertions or suppress its first reproducible failure.
+    web_status=0
+    worker_status=0
+    pnpm --filter @ai-comms-agent/web exec vitest run --maxWorkers=1 --minWorkers=1 --reporter=verbose || web_status=$?
+    pnpm --filter @ai-comms-agent/worker test || worker_status=$?
+    if [ "$web_status" -ne 0 ] || [ "$worker_status" -ne 0 ]; then
+      printf "OFFLINE TESTS FAILED: web=%s worker=%s\n" "$web_status" "$worker_status" >&2
+      exit 1
+    fi
+    pnpm --filter @ai-comms-agent/worker build
+  '
 
 if [[ "$target" == docker ]]; then
   step "Build the separately approved production Compose images before database writes"
