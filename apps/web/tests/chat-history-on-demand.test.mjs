@@ -42,5 +42,5 @@ test("the active conversation is not replaced by the history toggle", () => {
   assert.match(sidebar, /session\.id === conversationId \? "page" : undefined/);
   assert.match(sidebar, /new URLSearchParams\(\{ agentId, conversationId: session\.id \}\)/);
   assert.match(chat, /role="log"/);
-  assert.match(chat, /if \(draft\.trim\(\) && !window\.confirm\("Open this chat and discard your unsent message\?"\)\)/);
+  assert.match(sidebar, /session\.id !== conversationId && draft\.trim\(\)[\s\S]*?window\.confirm\("Open this chat and discard your unsent message\?"\)/);
 });
