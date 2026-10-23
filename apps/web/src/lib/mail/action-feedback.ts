@@ -39,14 +39,14 @@ export function deniedEmailWriteExplanation(
   permissions: ReadonlySet<string>,
 ): string | null {
   if (permissions.has("email.write") || !isExplicitEmailMutationRequest(text)) return null;
-  return "I cannot create an email draft or request send approval because your signed-in organization role lacks email.write. The agent's saved tool choices and assigned mailboxes do not grant that user permission. No draft or send-approval request was created. No email was sent. An authorized administrator must arrange a separately approved role-permission change before you retry. Even with that access, sending requires explicit human approval.";
+  return "Security check (not an AI-generated send confirmation): Your current organization membership does not grant email.write, so this request cannot save a draft or request sending. No draft or send-approval request was created. No email was sent. Open Compose email in Chat to see your actual user and agent permissions. An authorized administrator must correct your workspace role or grant through the approved access process; selecting agent tools does not grant user access. After authorization, explicitly choose From, enter To, review the message, Save email draft, and Request send approval. A human must approve before worker delivery.";
 }
 
 /** An explicit email command needs a verified mutation tool result. A model
  * completion (including a tool-free answer or read-only search) cannot prove
  * that anything was drafted, approved or sent. */
 export function unverifiedEmailActionExplanation(): string {
-  return "No email draft or send-approval request was confirmed by an authorized email tool. No email was sent. Please check this agent's saved email tools, assigned primary mailbox, provider capabilities, and your organization's email.write permission, then retry. Actual sending remains subject to explicit human approval.";
+  return "Security check (not an AI-generated send confirmation): No email draft or send-approval request was confirmed by an authorized email tool. No email was sent by this request. Repeating this same command cannot confirm delivery. Choose Write email draft below (or Compose email above), select the connected From mailbox and the exact To address, review the message, then Save email draft. Only after a saved draft is confirmed should you Request send approval. If Save is disabled, check the displayed user email.write grant, saved agent tools and mailbox provider capabilities. Delivery still requires separate human approval and a working provider/worker.";
 }
 
 type VerifiedEmailToolCall = Readonly<{
