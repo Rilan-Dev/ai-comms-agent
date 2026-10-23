@@ -124,6 +124,8 @@ export async function POST(request: Request) {
              FROM email_messages m
              JOIN email_accounts a ON a.id=m.email_account_id
               AND a.organization_id=$1 AND a.deleted_at IS NULL
+             LEFT JOIN email_folders current_folder ON current_folder.id=m.folder_id
+              AND current_folder.email_account_id=m.email_account_id
             WHERE m.organization_id=$1
               AND m.received_at >= $3::timestamptz
               AND m.received_at <= $4::timestamptz
@@ -139,12 +141,27 @@ export async function POST(request: Request) {
                  WHERE b.email_account_id=a.id AND b.agent_id=$2
                    AND b.role IN ('primary','read_only')
               )
-              AND (a.provider <> 'imap_smtp' OR EXISTS (
-                SELECT 1 FROM email_folders inbox_folder
-                 WHERE inbox_folder.id=m.folder_id
-                   AND inbox_folder.email_account_id=m.email_account_id
-                   AND (inbox_folder.role='inbox' OR UPPER(inbox_folder.provider_folder_id)='INBOX')
-              ))
+              -- An IMAP Gmail email can have separate UIDs in INBOX and
+              -- All Mail. Count one logical Message-ID per account, favoring
+              -- INBOX, while retaining archived (All Mail-only) messages.
+              AND (a.provider <> 'imap_smtp'
+                OR NULLIF(BTRIM(m.internet_message_id), '') IS NULL
+                OR NOT EXISTS (
+                  SELECT 1 FROM email_messages peer
+                  LEFT JOIN email_folders peer_folder ON peer_folder.id=peer.folder_id
+                   AND peer_folder.email_account_id=peer.email_account_id
+                  WHERE peer.organization_id=m.organization_id
+                    AND peer.email_account_id=m.email_account_id
+                    AND peer.id<>m.id
+                    AND LOWER(BTRIM(peer.internet_message_id))=LOWER(BTRIM(m.internet_message_id))
+                    AND (
+                      CASE WHEN peer_folder.role='inbox' OR UPPER(peer_folder.provider_folder_id)='INBOX' THEN 0 ELSE 1 END,
+                      peer.id
+                    ) < (
+                      CASE WHEN current_folder.role='inbox' OR UPPER(current_folder.provider_folder_id)='INBOX' THEN 0 ELSE 1 END,
+                      m.id
+                    )
+                ))
             ORDER BY m.received_at DESC, m.id DESC
             LIMIT $8`,
           [organizationId, agentId, fromUtc, toUtc,
