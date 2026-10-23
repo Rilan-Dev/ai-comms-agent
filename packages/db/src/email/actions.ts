@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { query } from "../client";
+import { query, withTransaction } from "../client";
 
 type Row = Record<string, unknown>;
 
@@ -62,8 +62,7 @@ function action(row: Row) {
 export async function createEmailAction(input: CreateEmailActionInput) {
   const snapshot = JSON.stringify(input.recipientSnapshot);
   const contentHash = createHash("sha256").update(snapshot).digest("hex");
-  const r = await query<Row>(
-    `INSERT INTO email_actions
+  const insertSql = `INSERT INTO email_actions
       (organization_id, agent_id, email_account_id, action_type, status, draft_id, recipient_snapshot, content_hash, requested_by, expires_at, idempotency_key, correlation_id)
      VALUES ($1,$2,$3,$4,'pending_approval',$5,$6::jsonb,$7,$8,COALESCE($9::timestamptz, now() + interval '15 minutes'),$10,$11)
      ON CONFLICT (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL
@@ -76,26 +75,61 @@ export async function createEmailAction(input: CreateEmailActionInput) {
          AND email_actions.agent_id IS NOT DISTINCT FROM EXCLUDED.agent_id
          AND email_actions.status = 'pending_approval'
          AND (email_actions.expires_at IS NULL OR email_actions.expires_at > now())
-     RETURNING *`,
-    [
-      input.organizationId,
-      input.agentId ?? null,
-      input.emailAccountId,
-      input.actionType,
-      input.draftId ?? null,
-      snapshot,
-      contentHash,
-      input.requestedBy ?? null,
-      input.expiresAt ?? null,
-      input.idempotencyKey ?? null,
-      input.correlationId ?? null,
-    ],
-  );
-  const row = r.rows[0];
-  if (!row) {
-    throw new EmailActionIdempotencyConflictError();
+     RETURNING *`;
+  const params = [
+    input.organizationId,
+    input.agentId ?? null,
+    input.emailAccountId,
+    input.actionType,
+    input.draftId ?? null,
+    snapshot,
+    contentHash,
+    input.requestedBy ?? null,
+    input.expiresAt ?? null,
+    input.idempotencyKey ?? null,
+    input.correlationId ?? null,
+  ];
+
+  // Lock the durable draft, not just the idempotency key. Manual Compose did
+  // not supply an Idempotency-Key; Chat/voice can supply different keys for
+  // the SAME draft. Locking serializes all of these callers and prevents two
+  // separate human approvals (and ultimately two sends) for one draft.
+  // Historical source-snapshot-only actions without a draftId keep their
+  // previously authorized contract; reply/forward are unchanged.
+  if (input.actionType === "send_email" && input.draftId) {
+    return withTransaction(async client => {
+      const locked = await client.query<Row>(
+        "SELECT id FROM email_messages WHERE id=$1 AND organization_id=$2 AND email_account_id=$3 AND is_draft=true FOR UPDATE",
+        [input.draftId, input.organizationId, input.emailAccountId],
+      );
+      if (!locked.rows.length) throw new EmailActionIdempotencyConflictError();
+      const prior = await client.query<Row>(
+        "SELECT * FROM email_actions WHERE organization_id=$1 AND email_account_id=$2 AND draft_id=$3 AND action_type='send_email' ORDER BY requested_at ASC, id ASC LIMIT 1",
+        [input.organizationId, input.emailAccountId, input.draftId],
+      );
+      if (prior.rows.length) {
+        const existing = prior.rows[0];
+        // Return the SAME pending review only to its original requesting
+        // actor/agent and with identical reviewed content. An approved,
+        // rejected, expired or completed action always requires a new draft.
+        const stillPending = existing.status === "pending_approval"
+          && (existing.expires_at == null || new Date(String(existing.expires_at)).getTime() > Date.now());
+        if (stillPending && existing.content_hash === contentHash
+          && existing.requested_by === (input.requestedBy ?? null)
+          && existing.agent_id === (input.agentId ?? null)) {
+          return action(existing);
+        }
+        throw new EmailActionIdempotencyConflictError();
+      }
+      const inserted = await client.query<Row>(insertSql,params);
+      if (!inserted.rows[0]) throw new EmailActionIdempotencyConflictError();
+      return action(inserted.rows[0]);
+    });
   }
-  return action(row);
+
+  const r = await query<Row>(insertSql,params);
+  if (!r.rows[0]) throw new EmailActionIdempotencyConflictError();
+  return action(r.rows[0]);
 }
 
 export async function listPendingEmailActionsForOrganization(organizationId: string) {
