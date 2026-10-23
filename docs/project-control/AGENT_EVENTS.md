@@ -865,3 +865,8 @@ Normal login API and auth/me returned 200; actual authenticated Chat opened once
 - **Finding:** `createLocalDraft/updateLocalDraftForOrganization` were local-only until manual `/api/mail/drafts/sync` request despite a safe queued worker; agent read tools lacked drafts-only filter.
 - **Remedy:** Source+tests in `sessions/DEV01-AUTOMATIC-DRAFT-SYNC-20261023.md`: conditional queued writes, safe legacy queue, mailbox status UI, error-only retry and stale-poll race fence, read-only `drafts_only`. Existing user RBAC, agent tool policy, account capability and send approval retained.
 - **Evidence:** source assertion checks only; native workspace, DB/provider/browser/deployment acceptance pending. OPS handles provider runtime and rollout; FIX handles independent implementation bugs.
+
+
+## DEV01-FIX01-SARVAM-LIVE-LIFECYCLE-20261023
+
+DEV-01 coordinated authoritative Clara comparison and integration; FIX-01 implemented/reproduced lifecycle bugs; OPS-01 documented deployment gaps. Source b58b4811 and concurrent integration4fefc41d preserve existing work. Readiness, duplex/mute, VAD/partial interruption, aborted/late responses, stale session/socket/activation/audio completion and abandoned microphone resources covered. Final54/54voice +7/7core/integrity checks, all package typechecks and production build pass. No live deployment/acoustic/provider acceptance. Exact next: OPS verifies approved web+relay revision/config and real-device streams; DEV/FIX then validates scoped spoken mailbox scenarios. Session: docs/project-control/sessions/DEV01-FIX01-SARVAM-LIVE-LIFECYCLE-20261023.md. Lesson: callback registration precedes awaits, every continuation is identity-fenced, cancellation never implies undoing authorized writes.
