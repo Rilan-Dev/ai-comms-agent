@@ -1,3 +1,5 @@
+import { isExplicitEmailMutationRequest } from "./action-feedback";
+
 /**
  * UI-only shortcut for the bounded demo/test-email phrasing.
  * A match opens a local draft review. No provider calls, policies or approvals
@@ -15,4 +17,20 @@ export function parseTestEmailComposeRequest(raw: string): string | null {
     if (match?.[1]) return match[1];
   }
   return null;
+}
+
+
+/**
+ * Identify the ONE exact To address that the user explicitly supplied in a
+ * direct outgoing email instruction. This only prefills a review form: no
+ * mailbox selection, tool invocation or sending happens here.
+ */
+export function explicitComposeRecipient(raw: string): string | null {
+  if (typeof raw !== "string" || raw.length > 900 ||
+      !isExplicitEmailMutationRequest(raw)) return null;
+  const matches = raw.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) ?? [];
+  if (matches.length !== 1) return null;
+  const exactAddress = matches[0]!;
+  const toMatch = raw.match(/\bto\s+([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})\b/i);
+  return toMatch?.[1]?.toLowerCase() === exactAddress.toLowerCase() ? exactAddress : null;
 }

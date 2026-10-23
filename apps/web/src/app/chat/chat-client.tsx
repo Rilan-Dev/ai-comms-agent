@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 import { readSseEvents } from "@/lib/streaming/sse";
 import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "@/lib/ai/activity-progress";
 import { EMAIL_PERMISSION_PRESETS, EMAIL_PERMISSION_LABELS, REGISTERED_EMAIL_POLICY_NAMES, emailPermissionPresetSelection, summarizeEmailPermissionChanges } from "@/lib/agents/email-permission-presets";
-import { parseTestEmailComposeRequest } from "@/lib/mail/test-email-compose-intent";
+import { explicitComposeRecipient, parseTestEmailComposeRequest } from "@/lib/mail/test-email-compose-intent";
 import { selectComposeSender, signatureFromProfile, withProfileSignature, type ComposeProfile } from "@/lib/mail/compose-identity";
 import { parseAssistantChecklistLine } from "@/lib/chat/interactive-replies";
 import { AssistantChecklist, SuggestedNextActions, type EmailWorkflowState } from "./interactive-message-controls";
@@ -518,16 +518,25 @@ export function ChatClient({
   function openInlineEmailComposer() {
     if (!activeAgent || busy || agentSwitchInFlightRef.current || chatTurnInFlightRef.current
       || newChatInFlightRef.current || newChatBusy || voiceOpen || composeBusy || composeInFlightRef.current || mailPermissionBusy) return;
-    // Never destroy an existing saved draft or active approval by rediscovering
-    // mailboxes. New drafts use the normal permission-checked GET first.
+    // The latest user turn is the only safe source for a candidate To address.
+    // Never infer one from the assistant, retrieved mail, or older turns.
+    const latestUserRequest = [...messages].reverse().find(message => message.role === "user")?.content ?? "";
+    const suggestedRecipient = explicitComposeRecipient(latestUserRequest);
+    // Reopening a saved draft must not reset it. Never replace an explicitly
+    // chosen recipient with an inferred value from the previous conversation.
     if (mailComposerOpen || composeDraftId || composeActionId) {
       setMailComposerOpen(true);
+      if (!composeTo.trim() && suggestedRecipient && !composeDraftId && !composeActionId) {
+        setComposeTo(suggestedRecipient);
+        invalidateComposeReview();
+      }
       mailComposerReviewRef.current?.focus();
       return;
     }
-    void openMailComposer();
+    // GET opens review only; POST/save and send approval still require explicit
+    // human input and the separately enforced current session permissions.
+    void openMailComposer(suggestedRecipient ?? "");
   }
-
   function requestInlineEmailApproval() {
     if (!activeAgent || busy || agentSwitchInFlightRef.current || chatTurnInFlightRef.current
       || newChatInFlightRef.current || newChatBusy || voiceOpen || composeBusy || composeInFlightRef.current || mailPermissionBusy) return;
