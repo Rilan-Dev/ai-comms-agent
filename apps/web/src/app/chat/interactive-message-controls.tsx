@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { buildSelectedChecklistPrompt, suggestedChatNextActions, type AssistantChecklistItem } from "@/lib/chat/interactive-replies";
+import { buildSelectedChecklistPrompt, hasInteractiveEmailActions, suggestedChatNextActions, type AssistantChecklistItem } from "@/lib/chat/interactive-replies";
+
+export type EmailWorkflowState = "not_saved" | "draft_saved" | "pending_approval";
 
 type PrepareDraft = (prompt: string) => void;
 
@@ -42,9 +44,43 @@ export function AssistantChecklist({ items, disabled, onPrepare }: {
   );
 }
 
+/** Explicit human commands reuse Chat's existing reviewed mail-compose state. */
+export function InteractiveMailActions({ disabled, state, onComposeEmail, onRequestEmailApproval }: {
+  disabled: boolean;
+  state: EmailWorkflowState;
+  onComposeEmail: () => void;
+  onRequestEmailApproval: () => void;
+}) {
+  return (
+    <section aria-label="Email drafting and sending actions" className="mt-3 rounded-xl border border-primary/20 bg-card p-3.5">
+      <h3 className="text-xs font-semibold">Email actions</h3>
+      <p role="status" className="mt-1 text-xs text-muted-foreground">
+        {state === "pending_approval" ? "Approval requested; awaiting a human decision." :
+          state === "draft_saved" ? "Draft saved and ready for review." : "Compose and review before saving."} No email has been sent.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" disabled={disabled} onClick={onComposeEmail}
+          className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-50">
+          Write email draft
+        </button>
+        <button type="button" disabled={disabled || state === "pending_approval"} onClick={onRequestEmailApproval}
+          className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+          {state === "draft_saved" ? "Request send approval" : "Prepare to send for approval"}
+        </button>
+        {state === "pending_approval" ? <a className="rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-muted"
+          href="/mail/approvals">Review pending approval</a> : null}
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">Save the draft first, then explicitly request approval. An authorized reviewer must approve before a worker can send it.</p>
+    </section>
+  );
+}
+
 /** User-selected suggestions; never model-defined executable tool calls. */
-export function SuggestedNextActions({ answer, messageId, disabled, onPrepare }: {
+export function SuggestedNextActions({ answer, messageId, disabled, onPrepare, emailWorkflowState, onComposeEmail, onRequestEmailApproval }: {
   answer: string; messageId: string; disabled: boolean; onPrepare: PrepareDraft;
+  emailWorkflowState: EmailWorkflowState;
+  onComposeEmail: () => void;
+  onRequestEmailApproval: () => void;
 }) {
   const actions = suggestedChatNextActions(answer);
   const [choice, setChoice] = useState(actions[0]?.id ?? "");
@@ -68,6 +104,10 @@ export function SuggestedNextActions({ answer, messageId, disabled, onPrepare }:
         Review next action in message
       </button>
       <p className="mt-2 text-xs text-muted-foreground">Review before Send. Email actions still require normal permissions and approval.</p>
+      {hasInteractiveEmailActions(answer) ? (
+        <InteractiveMailActions state={emailWorkflowState} disabled={disabled}
+          onComposeEmail={onComposeEmail} onRequestEmailApproval={onRequestEmailApproval} />
+      ) : null}
     </fieldset>
   );
 }

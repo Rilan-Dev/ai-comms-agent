@@ -10,7 +10,7 @@ import { EMAIL_PERMISSION_PRESETS, EMAIL_PERMISSION_LABELS, REGISTERED_EMAIL_POL
 import { parseTestEmailComposeRequest } from "@/lib/mail/test-email-compose-intent";
 import { selectPreferredComposeMailbox } from "@/lib/mail/compose-readiness";
 import { parseAssistantChecklistLine } from "@/lib/chat/interactive-replies";
-import { AssistantChecklist, SuggestedNextActions } from "./interactive-message-controls";
+import { AssistantChecklist, SuggestedNextActions, type EmailWorkflowState } from "./interactive-message-controls";
 import type { AgentPolicy } from "@ai-comms-agent/shared";
 
 // Defer microphone and vendor transport code until the user requests voice.
@@ -80,6 +80,7 @@ export function ChatClient({
   const historySidebarRef = useRef<HTMLElement>(null);
   const historyCloseRef = useRef<HTMLButtonElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  const mailComposerReviewRef = useRef<HTMLElement>(null);
   const voiceWasOpen = useRef(false);
   const [agentSwitchBusy, setAgentSwitchBusy] = useState(false);
   const [agentSwitchNotice, setAgentSwitchNotice] = useState("");
@@ -113,6 +114,12 @@ export function ChatClient({
   }, [voiceOpen]);
 
   const activeAgent = useMemo(() => agents.find((agent) => agent.id === agentId) ?? agents[0], [agents, agentId]);
+
+  useEffect(() => {
+    // The inline mail actions open the existing review, not a second compose
+    // route. Focus the review heading/region for keyboard and screen readers.
+    if (mailComposerOpen && !voiceOpen) mailComposerReviewRef.current?.focus();
+  }, [mailComposerOpen, voiceOpen]);
 
   // Scroll the message pane, not the entire document (the controls and
   // conversation sidebar must stay visible even for long sessions).
@@ -460,6 +467,51 @@ export function ChatClient({
     composerRef.current?.focus();
   }
 
+  function openInlineEmailComposer() {
+    if (!activeAgent || busy || agentSwitchInFlightRef.current || chatTurnInFlightRef.current
+      || newChatInFlightRef.current || newChatBusy || voiceOpen || composeBusy || composeInFlightRef.current || mailPermissionBusy) return;
+    // Never destroy an existing saved draft or active approval by rediscovering
+    // mailboxes. New drafts use the normal permission-checked GET first.
+    if (mailComposerOpen || composeDraftId || composeActionId) {
+      setMailComposerOpen(true);
+      mailComposerReviewRef.current?.focus();
+      return;
+    }
+    void openMailComposer();
+  }
+
+  function requestInlineEmailApproval() {
+    if (!activeAgent || busy || agentSwitchInFlightRef.current || chatTurnInFlightRef.current
+      || newChatInFlightRef.current || newChatBusy || voiceOpen || composeBusy || composeInFlightRef.current || mailPermissionBusy) return;
+    if (!mailComposerOpen) {
+      if (composeDraftId || composeActionId) {
+        setMailComposerOpen(true);
+        setComposeNotice("Review the saved draft and click Request send approval. No email has been sent.");
+      } else {
+        void openMailComposer();
+      }
+      return;
+    }
+    if (composeActionId) {
+      setComposeNotice("This draft already has a pending approval request. Review it in Mail Approvals.");
+      mailComposerReviewRef.current?.focus();
+      return;
+    }
+    if (!composeDraftId) {
+      setComposeNotice("Save an authorized email draft first. Then request send approval. Nothing has been sent.");
+      mailComposerReviewRef.current?.focus();
+      return;
+    }
+    if (!composeCanApprove) {
+      setComposeNotice("Send approval is not available for this mailbox or role. Check the blockers and permissions above.");
+      mailComposerReviewRef.current?.focus();
+      return;
+    }
+    // Uses the existing explicit recipient confirmation and authenticated
+    // policy-checked email.send.request tool. It does NOT send an email.
+    void submitMailCompose("request_approval");
+  }
+
   async function sendMessage() {
     if (agentSwitchInFlightRef.current) return;
     if (chatTurnInFlightRef.current || newChatInFlightRef.current || voiceOpen || composeInFlightRef.current || mailPermissionBusy) return;
@@ -555,6 +607,8 @@ export function ChatClient({
 
   const interactiveControlsDisabled = busy || voiceOpen || agentSwitchBusy || newChatBusy || composeBusy || mailPermissionBusy;
   const latestAssistantId = !busy && messages.at(-1)?.role === "assistant" ? messages.at(-1)?.id : null;
+  const emailWorkflowState: EmailWorkflowState =
+    composeActionId ? "pending_approval" : composeDraftId ? "draft_saved" : "not_saved";
 
   return (
     <main className="flex h-[calc(100dvh-64px)] min-h-0 min-w-0 flex-col overflow-hidden bg-background">
@@ -633,9 +687,9 @@ export function ChatClient({
       {agentSwitchNotice && <p role="alert" className="mx-auto w-full max-w-3xl px-4 py-2 text-xs text-destructive">{agentSwitchNotice}</p>}
       {composeNotice && <p role="status" className="mx-auto w-full max-w-3xl px-4 py-2 text-xs text-muted-foreground">{composeNotice}</p>}
       {mailComposerOpen && !voiceOpen && !agentSwitchBusy && (
-        <section aria-label="Compose an email using this agent" className="mx-auto w-full max-w-3xl border-b px-4 py-4">
+        <section ref={mailComposerReviewRef} tabIndex={-1} aria-label="Compose an email using this agent" className="mx-auto w-full max-w-3xl border-b px-4 py-4 outline-none focus-visible:ring-2 focus-visible:ring-primary">
           <h2 className="text-sm font-semibold">Review an email draft</h2>
-          <p className="mt-1 text-xs text-muted-foreground">The host executes only authorized agent tools. Saving a draft or requesting approval never sends it.</p>
+          <p className="mt-1 text-xs text-muted-foreground">The host executes only authorized agent tools. Save the draft, request send approval, then use Mail Approvals to approve sending. Saving or requesting approval never sends it.</p>
           {composeBlockers.length > 0 && <div role="alert" className="mt-3 rounded-md border border-destructive/30 p-3 text-xs text-destructive">
             <p className="font-semibold">Email tools are not ready; no draft or approval was created.</p>
             <ul className="mt-2 list-disc space-y-1 pl-4">{composeBlockers.map(blocker => <li key={blocker.code}>{blocker.message}</li>)}</ul>
@@ -713,7 +767,10 @@ export function ChatClient({
           ) : messages.map((message) => (
             <MessageBubble key={message.id} role={message.role} content={message.content} messageId={message.id}
               showNextActions={message.role === "assistant" && message.id === latestAssistantId}
-              disabled={interactiveControlsDisabled} onPrepare={prepareInteractivePrompt} />
+              disabled={interactiveControlsDisabled} onPrepare={prepareInteractivePrompt}
+              emailWorkflowState={emailWorkflowState}
+              onComposeEmail={openInlineEmailComposer}
+              onRequestEmailApproval={requestInlineEmailApproval} />
           ))}
           {activitySteps.length > 0 ? (
             <details className="max-w-2xl rounded-xl border border-border/70 bg-muted/25 px-4 py-3 text-sm" open={busy}>
@@ -775,9 +832,11 @@ export function ChatClient({
   );
 }
 
-function MessageBubble({ role, content, messageId, showNextActions, disabled, onPrepare }: {
+function MessageBubble({ role, content, messageId, showNextActions, disabled, onPrepare,
+  emailWorkflowState, onComposeEmail, onRequestEmailApproval }: {
   role: string; content: string; messageId: string; showNextActions: boolean;
   disabled: boolean; onPrepare: (prompt: string) => void;
+  emailWorkflowState: EmailWorkflowState; onComposeEmail: () => void; onRequestEmailApproval: () => void;
 }) {
   if (role === "system") {
     return (
@@ -808,7 +867,8 @@ function MessageBubble({ role, content, messageId, showNextActions, disabled, on
         <div className="flex-1 text-sm leading-7">
           <MarkdownRenderer content={content} disabled={disabled} onPrepare={onPrepare} />
           {showNextActions ? <SuggestedNextActions answer={content} messageId={messageId}
-            disabled={disabled} onPrepare={onPrepare} /> : null}
+            disabled={disabled} onPrepare={onPrepare} emailWorkflowState={emailWorkflowState}
+            onComposeEmail={onComposeEmail} onRequestEmailApproval={onRequestEmailApproval} /> : null}
         </div>
       </div>
     </div>

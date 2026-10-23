@@ -29,9 +29,14 @@ export function buildSelectedChecklistPrompt(
     : null;
 }
 
+/** Display hint only; untrusted assistant text does not authorize any email operation. */
+export function hasInteractiveEmailActions(answer: string): boolean {
+  return /\b(inbox|mailbox|emails?|senders?|threads?|replies|reply|drafts?|follow[- ]?up)\b/i.test(answer.slice(0, 5000));
+}
+
 /** Fixed, product-owned options; the model cannot specify executable actions. */
 export function suggestedChatNextActions(answer: string): ChatNextAction[] {
-  const mail = /\b(inbox|mailbox|emails?|senders?|threads?|replies|reply|drafts?|follow[- ]?up)\b/i.test(answer.slice(0, 5000));
+  const mail = hasInteractiveEmailActions(answer);
   return mail ? [
     { id: "prioritize", label: "Find important mail", prompt: "Review the recent emails I can access and list those that need my attention, with sender, date and reason. Do not modify messages." },
     { id: "checklist", label: "Make an action checklist", prompt: "Turn your previous answer into a short prioritized checklist for me. Do not modify any emails." },
