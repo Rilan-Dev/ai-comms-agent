@@ -1,3 +1,11 @@
+## DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023 — source-only / not production accepted
+- **Current Development:** purpose-driven provider cards and guided editor, TTS/STT and model+key status, provider-reset/org-abort invariants and error-retry flow. Exact record `sessions/DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023.md`.
+- **PASS limited:** 19/19 test callbacks executed in an isolated current-source V8 harness against fetched GitHub source (not the actual native module runner), 6/6 pure typed-helper status cases with signature stripped; earlier 18/18 focused source assertions. Existing credential reset and tenant-abort tests retained. No full source build acceptance.
+- **NOT RUN:** exact committed Node test files, live provider model Vitest, web TypeScript/build, keyboard/responsive browser with redesigned build, real provider credentials/catalog/reuse, auth/DB, CI/Vercel, deployed SHA. Read-only browser inspection observed the *old* page, not newly built source.
+- **Next:** exact current Development Node tests (`ai-provider-guided-setup`, `ai-provider-setup-safety`, `ai-provider-organization-safety`, `elevenlabs-voice-catalog-recovery`) then `pnpm --filter @ai-comms-agent/web typecheck` and provider model Vitest; OPS-01 deploy/live catalog/realtime; keep Phase 4 open.
+
+---
+
 ## DEV01-CATCHUP-COVERAGE-CLARITY-20261023 — source-only verification
 - **Starting HEAD:** `f68e7680`; source/test commits `5fb5c549,b6aecacf,cfed27d7`; plan `5bb6b08b` and session `683a9d43`. Preserve concurrent independent Chat UI changes.
 - **PASS, narrow:** Re-fetched GitHub sources and verified 14/14 concrete helper/UI invariants for deduplicated loaded links, nonnegative selected/remaining count, cursor handling, existing C4 source/review/C3-disabled contracts. Isolated local Node 22 helper mirror passed 5/5 behavior tests and standalone strict TypeScript, not equivalent to committed test runner.
