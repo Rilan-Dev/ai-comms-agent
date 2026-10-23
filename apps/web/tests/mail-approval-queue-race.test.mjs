@@ -31,6 +31,10 @@ test("approval queue keeps poll status separate from mutation and never erases d
   assert.match(client, /load\(\{ silent: true \}\)/);
   assert.match(client, /if \(!silent\) setNotice\(null\)/);
   assert.match(client, /decisionInFlightRef\.current/);
+  // An interrupted foreground Refresh must release its disabled button when
+  // the user begins a PATCH that invalidates that GET.
+  assert.match(client, /guardRef\.current\.invalidate\(\);\s*const requestedOrg = organizationId;\s*setLoading\(false\)/);
+  assert.match(client, /disabled=\{loading \|\| decidingId !== null\}/);
   assert.match(client, /setActions\(current => current\.filter\(a => a\.id !== actionId\)\)/);
   assert.doesNotMatch(client, /setInterval\(\(\) => \{ void load\(\); \}, 5000\)/);
 });
