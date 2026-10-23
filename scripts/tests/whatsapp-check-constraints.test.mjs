@@ -57,6 +57,9 @@ test("OPS post-deploy constraint verification is read-only and checks both insta
   assert.match(probe, /to_regclass\('aca\.whatsapp_send_actions'\)/);
   assert.match(probe, /to_regclass\('aca\.whatsapp_templates'\)/);
   assert.match(probe, /pg_get_constraintdef\(c\.oid\)/);
+  assert.match(probe, /c\.convalidated/);
+  assert.ok(probe.includes("phone_validated IS DISTINCT FROM TRUE"));
+  assert.ok(probe.includes("template_validated IS DISTINCT FROM TRUE"));
   assert.ok(probe.includes("whatsapp_send_actions_recipient_phone_check"));
   assert.ok(probe.includes("whatsapp_templates_name_check"));
   assert.match(probe, /ROLLBACK;/);
