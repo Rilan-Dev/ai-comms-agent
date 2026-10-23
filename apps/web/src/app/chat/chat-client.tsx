@@ -565,16 +565,10 @@ export function ChatClient({
     if (chatTurnInFlightRef.current || newChatInFlightRef.current || voiceOpen || composeInFlightRef.current || mailPermissionBusy) return;
     const content = draft.trim();
     if (!content || busy || newChatBusy || !activeAgent) return;
-    // Only the explicitly recognized, bounded test-email phrases open the
-    // REVIEW composer. They do not create a draft, invoke an AI send tool,
-    // request approval, or send email. All other chat remains with the AI.
-    const testRecipient = parseTestEmailComposeRequest(content);
-    if (testRecipient) {
-      if (mailComposerOpen
-          && !window.confirm("Open a new test-email review? Your current unsaved email review will be replaced.")) return;
-      await openMailComposer(testRecipient);
-      return;
-    }
+    // A natural-language email request is still a Chat/AI turn. Do not route
+    // an intercepted test-email phrase to a silent compose GET: the user
+    // needs the streamed, persisted authorization/tool outcome in Chat.
+    // Manual Compose remains a separate, explicitly reviewed operation.
     // Claim before React sees setBusy(true): Enter and button clicks can
     // otherwise submit twice, or race a newly requested conversation.
     chatTurnInFlightRef.current = true;
