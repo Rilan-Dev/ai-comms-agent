@@ -29,6 +29,7 @@ test("Chat prefill reads last assistant draft only when preparing a new, unsaved
   const client = readFileSync(new URL("../src/app/chat/chat-client.tsx", import.meta.url), "utf8");
   const open = client.slice(client.indexOf("function openInlineEmailComposer()"), client.indexOf("function requestInlineEmailApproval()"));
   assert.match(open, /assistantEmailPreview\(latestAssistantReply\)/);
+  assert.match(open, /if \(prepared && composeSubject === "Test Email" && composeBody === DEFAULT_COMPOSE_BODY\)/);
   assert.match(open, /setComposeSubject\(prepared\.subject\)/);
   assert.match(open, /setComposeBody\(prepared\.body\)/);
   assert.match(open, /if \(mailComposerOpen \|\| composeDraftId \|\| composeActionId\)/);
