@@ -717,7 +717,7 @@ export function ChatClient({
             <a href="/mail/approvals" className="rounded-md border px-4 py-2 text-xs font-medium">Review approvals</a>
           </div>
           {composeDraftId && <p className="mt-2 text-xs text-muted-foreground">Draft saved. Review the content above before requesting approval.</p>}
-          {composeActionId && <p role="status" className="mt-2 text-xs text-muted-foreground">Approval request created (pending_approval). The email has not been sent.</p>}
+          {composeActionId && <p role="status" className="mt-2 text-xs text-muted-foreground">Approval request created (pending_approval at submission). Check current approval and delivery status in Mail.</p>}
           {composeActionId && composeDraftId && composeAccount ? (
             <InlineMailApprovalReview key={composeActionId} organizationId={organizationId}
               actionId={composeActionId} draftId={composeDraftId} accountId={composeAccount} />

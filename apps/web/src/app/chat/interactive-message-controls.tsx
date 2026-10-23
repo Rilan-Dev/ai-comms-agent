@@ -55,8 +55,9 @@ export function InteractiveMailActions({ disabled, state, onComposeEmail, onRequ
     <section aria-label="Email drafting and sending actions" className="mt-3 rounded-xl border border-primary/20 bg-card p-3.5">
       <h3 className="text-xs font-semibold">Email actions</h3>
       <p role="status" className="mt-1 text-xs text-muted-foreground">
-        {state === "pending_approval" ? "Approval requested; awaiting a human decision." :
-          state === "draft_saved" ? "Draft saved and ready for review." : "Compose and review before saving."} No email has been sent.
+        {state === "pending_approval" ? "Approval request created. Check the current decision and delivery status in Mail." :
+          state === "draft_saved" ? "Draft saved and ready for review. No email has been sent yet." :
+          "Compose and review before saving. No email has been sent."}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" disabled={disabled} onClick={onComposeEmail}
@@ -68,7 +69,7 @@ export function InteractiveMailActions({ disabled, state, onComposeEmail, onRequ
           {state === "draft_saved" ? "Request send approval" : "Prepare to send for approval"}
         </button>
         {state === "pending_approval" ? <a className="rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-muted"
-          href="/mail/approvals">Review pending approval</a> : null}
+          href="/mail/approvals">Check approval status</a> : null}
       </div>
       <p className="mt-2 text-xs text-muted-foreground">Save the draft first, then explicitly request approval. An authorized reviewer must approve before a worker can send it.</p>
     </section>

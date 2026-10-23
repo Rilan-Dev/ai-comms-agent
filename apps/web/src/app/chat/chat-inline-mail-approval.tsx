@@ -67,7 +67,7 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
       setDecisionDone(true);
       setApproval(null);
       setReviewConfirmed(false);
-      setNotice("Approved and queued for worker execution. Email delivery is not yet confirmed.");
+      setNotice("Approval accepted for worker processing. This Chat view has not verified the delivery outcome; check your Sent mailbox or action status.");
     } catch (error) {
       // The result may be uncertain after a network failure. The user must
       // reload the authoritative action status instead of retrying blindly.
