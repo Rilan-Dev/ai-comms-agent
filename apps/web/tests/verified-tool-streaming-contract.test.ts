@@ -68,6 +68,9 @@ describe("native final read-only answer streaming after host tool execution", ()
     expect(prompt).toContain("declared.delete(item.tool_call_id)");
     expect(prompt).toContain("if (declared.size || results.length === 0 || results.length > 8)");
     expect(chat).toContain('emit("delta", { text: assistantOutput })');
-    expect(voice).toContain('emit("delta", { text: result.text })');
+    expect(voice).toContain('emit("delta", { text: validated })');
+    expect(chat).toContain('emit("delta", { text: validated })');
+    expect(voice).toContain("const validated = userFacingChatAnswer(generated)");
+    expect(chat).toContain("const validated = userFacingChatAnswer(generated)");
   });
 });
