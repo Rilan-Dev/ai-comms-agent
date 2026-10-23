@@ -31,9 +31,9 @@ function lockViolations(lock, manifests) {
       (manager.match(/^lockfileVersion:/gm) ?? []).length !== 1 ||
       (manager.match(/^importers:/gm) ?? []).length !== 1 ||
       !manager.includes("  .:\n    configDependencies: {}\n    packageManagerDependencies:\n      pnpm:\n") ||
-      !manager.includes(\`specifier: \${expectedVersion}\n        version: \${expectedVersion}\`) ||
-      !manager.includes(\`  pnpm@\${expectedVersion}:\n    resolution: {integrity: sha512-\`) ||
-      !manager.includes(\`  '@pnpm/exe.linux-x64@\${expectedVersion}':\n    resolution: {integrity: sha512-\`) ||
+      !manager.includes(`specifier: ${expectedVersion}\n        version: ${expectedVersion}`) ||
+      !manager.includes(`  pnpm@${expectedVersion}:\n    resolution: {integrity: sha512-`) ||
+      !manager.includes(`  '@pnpm/exe.linux-x64@${expectedVersion}':\n    resolution: {integrity: sha512-`) ||
       !manager.includes("\nsnapshots:\n")) {
     issues.push("missing or unpinned pnpm package-manager executable integrity");
   }
