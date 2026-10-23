@@ -108,3 +108,38 @@ test("semantic retrieval failure is reported as degraded lexical fallback", asyn
   assert.equal(result.degraded, true);
   assert.match(result.note ?? "", /may be incomplete/);
 });
+
+test("hybrid lexical and semantic result paths suppress IMAP folder copies before their limits", async () => {
+  const statements: string[] = [];
+  const queryMock = (async (sql: string) => {
+    statements.push(sql);
+    if (sql.includes("SELECT a.id AS account_id")) return { rows: [{ account_id: account }] };
+    return { rows: [row()] };
+  }) as unknown as typeof query;
+  const search = createEmailHybridRetriever({
+    query: queryMock,
+    vectorSearch: async () => [{ orgId: org, accountId: account, messageId: "provider-message-1",
+      contentHash: "b".repeat(64), score: 0.9 }],
+  });
+  await search({ organizationId: org, agentId: agent, query: "renewal", limit: 5 });
+  assert.equal(statements.length, 3);
+
+  // Folder UID alone is not a logical email identity. Bound the logical key
+  // per account, and only merge Gmail IMAP copies with a real Message-ID.
+  for (const sql of [statements[1]!, statements[2]!]) {
+    assert.match(sql, /ROW_NUMBER\(\) OVER/);
+    assert.match(sql, /PARTITION BY m\.email_account_id/);
+    assert.match(sql, /a\.provider='imap_smtp'/);
+    assert.match(sql, /NULLIF\(BTRIM\(m\.internet_message_id\), ''\) IS NOT NULL/);
+    assert.match(sql, /'message:' \|\| LOWER\(BTRIM\(m\.internet_message_id\)\)/);
+    assert.match(sql, /'row:' \|\| m\.id::text/);
+    assert.match(sql, /f\.email_account_id=m\.email_account_id/);
+    assert.match(sql, /f\.role='inbox'/);
+    assert.match(sql, /duplicate_rank=1/);
+    assert.ok(sql.indexOf("duplicate_rank=1") < sql.lastIndexOf("LIMIT"), "Dedup must precede LIMIT");
+    assert.match(sql, /b\.role IN \('primary','read_only'\)/);
+    assert.match(sql, /m\.organization_id=\$1/);
+  }
+  assert.match(statements[2]!, /jsonb_to_recordset/);
+  assert.match(statements[2]!, /array_remove\(c\.matched_by, 'semantic'\)/);
+});
