@@ -5,6 +5,7 @@ import { authorize, authorizationErrorToResponse } from "@/lib/identity/authoriz
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { assertSameOrigin } from "@/lib/identity/local-auth";
 import { runEmailAgentTurn } from "@ai-comms-agent/email-agent-runtime";
+import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation, verifiedEmailToolSummary } from "@/lib/mail/action-feedback";
 
@@ -122,7 +123,9 @@ export async function POST(request: Request) {
               emit("done", { executionId, toolCalls: [], pendingApprovals: [], finishReason: "permission_denied", mode: "host-authorized-tools" });
             } else if (needsAuthorizedTools) {
               const result = await runEmailAgentTurn({
-                organizationId, agentId, messages: [{ role: "user", content: transcript }], kbId,
+                organizationId, agentId, messages: [{ role: "system", content: composeAssistantGuidance({
+                  name: subject.user.name, email: subject.user.email,
+                }) }, { role: "user", content: transcript }], kbId,
                 toolContext: {
                   organization_id: organizationId,
                   agent_id: agentId,
@@ -221,7 +224,9 @@ export async function POST(request: Request) {
     const turn = await runEmailAgentTurn({
       organizationId,
       agentId,
-      messages: [{ role: "user", content: transcript }],
+      messages: [{ role: "system", content: composeAssistantGuidance({
+                  name: subject.user.name, email: subject.user.email,
+                }) }, { role: "user", content: transcript }],
       kbId,
       toolContext: {
         organization_id: organizationId,
