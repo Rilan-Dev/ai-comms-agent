@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { appendConversationMessage, getChatConversation, getOrCreateChatConversation, listChatMessages, PostgresAgentRepository, query } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
-import { formatRollingMailSummary, MAX_REPORT_MESSAGES, parseRollingMailSummaryRequest, type RollingMailRow } from "@/lib/mail/rolling-summary";
+import { formatRollingMailSummary, MAX_REPORT_MESSAGES, parseRollingMailSummaryRequest, looksLikeRollingMailReport } from "@/lib/mail/rolling-summary";
+import { getMailReportEvidence, MailReportScopeError } from "@/lib/mail/report-evidence";
 import { parseExplicitMailDateRangeRequest } from "@/lib/mail/explicit-date-range";
 import { canSupplyAmbientContext } from "@/lib/ai/ambient-context-access";
 import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
@@ -455,6 +456,9 @@ export async function POST(request: Request) {
       }, { status: 422, headers: { "Cache-Control": "private, no-store" } });
     }
     const rollingMail = parseRollingMailSummaryRequest(content);
+    if (!rollingMail && looksLikeRollingMailReport(content) && explicitRange?.kind !== 'valid') {
+      return NextResponse.json({error:'unsupported_mail_report_scope',message:'Please specify the mailbox, sender or subject filter clearly. This report supports the last 24 hours, unread and Inbox filters; unsupported filters are not ignored.'},{status:422});
+    }
     const requestedMailScope = explicitRange?.kind === "valid" ? explicitRange : rollingMail;
     if (requestedMailScope) {
       if (!subject.permissions.has("email.read")) {
@@ -480,39 +484,12 @@ export async function POST(request: Request) {
         ? explicitRange.toUtc : windowEnd.toISOString();
       const fromUtc = explicitRange?.kind === "valid"
         ? explicitRange.fromUtc : new Date(windowEnd.getTime() - 24 * 60 * 60 * 1000).toISOString();
-      const rows = await query<RollingMailRow>(
-        `SELECT m.id, a.email_address AS account_email, m.from_email::text AS from_email,
-                m.from_name, m.subject, m.received_at,
-                LEFT(m.snippet, 600) AS snippet, LEFT(m.text_body, 1200) AS text_body,
-                COUNT(*) OVER ()::integer AS total_count
-         FROM email_messages m
-         JOIN email_accounts a ON a.id = m.email_account_id
-          AND a.organization_id = $1 AND a.deleted_at IS NULL
-         WHERE m.organization_id = $1
-           AND m.received_at >= $3::timestamptz
-           AND (CASE WHEN $9::boolean THEN m.received_at < $4::timestamptz ELSE m.received_at <= $4::timestamptz END)
-           AND m.is_draft IS FALSE AND m.is_sent IS FALSE
-           AND (NOT $7::boolean OR m.is_read IS FALSE)
-           AND ($5::text IS NULL OR strpos(lower(coalesce(m.from_email::text, '')), lower($5::text)) > 0
-                OR strpos(lower(coalesce(m.from_name, '')), lower($5::text)) > 0)
-           AND ($6::text IS NULL OR strpos(lower(coalesce(m.subject, '')), lower($6::text)) > 0
-                OR strpos(lower(coalesce(m.text_body, '')), lower($6::text)) > 0)
-           AND EXISTS (
-             SELECT 1 FROM agent_email_accounts b
-             JOIN agents bound_agent ON bound_agent.id = b.agent_id AND bound_agent.organization_id = $1
-             WHERE b.email_account_id = a.id AND b.agent_id = $2
-               AND b.role IN ('primary', 'read_only')
-           )
-         ORDER BY m.received_at DESC, m.id DESC
-         LIMIT $8`,
-        [organizationId, agentId, fromUtc, toUtc,
-         requestedMailScope.sender ?? null, requestedMailScope.topic ?? null,
-         requestedMailScope.unreadOnly, MAX_REPORT_MESSAGES, explicitRange?.kind === "valid"],
-      );
+      const evidence = await getMailReportEvidence({organizationId,agentId,scope:requestedMailScope,fromUtc,toUtc,
+        exclusiveEnd:explicitRange?.kind === "valid",limit:MAX_REPORT_MESSAGES});
       const report = formatRollingMailSummary(
-        rows.rows, requestedMailScope, fromUtc, toUtc,
+        evidence.rows, requestedMailScope, fromUtc, toUtc,
         explicitRange?.kind === "valid" ? "explicit UTC calendar-date range (exclusive end)" : undefined,
-      );
+      ) + `\nOldest mailbox sync: ${evidence.lastSyncAt ?? "unknown"}.`;
       await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "user", content });
       await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "assistant", content: report });
       const encoder = new TextEncoder();
@@ -528,7 +505,7 @@ export async function POST(request: Request) {
           for (let i = 0; i < report.length; i += 2000) {
             emit("delta", { text: report.slice(i, i + 2000) });
           }
-          emit("done", { conversationId: conversation.id, source: "local_mail_database", complete: true });
+          emit("done", { conversationId: conversation.id, source: "local_mail_database", complete: !evidence.hasMore, matchedCount:evidence.matchedCount, includedCount:evidence.includedCount, hasMore:evidence.hasMore, lastSyncAt:evidence.lastSyncAt });
           controller.close();
         },
       });
@@ -750,6 +727,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     // Preserve 401/403 while suppressing unexpected provider/DB exception text.
+    if(error instanceof MailReportScopeError)return NextResponse.json({error:'mailbox_not_available',message:error.message},{status:422});
     // The shared handler logs only a validated SQLSTATE, never message bodies.
     return authorizationErrorToResponse(error);
   }

@@ -3,5 +3,5 @@ import base from "./vitest.config";
 
 export default defineConfig({
   ...base,
-  test: { ...base.test, include: ["tests/**/*.integration.test.ts"], exclude: [] },
+  test: { ...base.test, include: ["tests/**/*.integration.test.ts"], exclude: [], fileParallelism: false },
 });
