@@ -9,6 +9,8 @@ import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "
 import { EMAIL_PERMISSION_PRESETS, EMAIL_PERMISSION_LABELS, REGISTERED_EMAIL_POLICY_NAMES, emailPermissionPresetSelection, summarizeEmailPermissionChanges } from "@/lib/agents/email-permission-presets";
 import { parseTestEmailComposeRequest } from "@/lib/mail/test-email-compose-intent";
 import { selectPreferredComposeMailbox } from "@/lib/mail/compose-readiness";
+import { parseAssistantChecklistLine } from "@/lib/chat/interactive-replies";
+import { AssistantChecklist, SuggestedNextActions } from "./interactive-message-controls";
 import type { AgentPolicy } from "@ai-comms-agent/shared";
 
 // Defer microphone and vendor transport code until the user requests voice.
@@ -449,6 +451,15 @@ export function ChatClient({
     } finally { setMailPermissionBusy(false); }
   }
 
+  // No inline control calls the chat API; it only prepares an editable draft.
+  function prepareInteractivePrompt(prompt: string) {
+    if (agentSwitchInFlightRef.current || chatTurnInFlightRef.current || newChatInFlightRef.current
+        || voiceOpen || composeInFlightRef.current || mailPermissionBusy || busy || !activeAgent) return;
+    if (draft.trim() && !window.confirm("Replace your unsent chat message with this selection?")) return;
+    setDraft(prompt);
+    composerRef.current?.focus();
+  }
+
   async function sendMessage() {
     if (agentSwitchInFlightRef.current) return;
     if (chatTurnInFlightRef.current || newChatInFlightRef.current || voiceOpen || composeInFlightRef.current || mailPermissionBusy) return;
@@ -541,6 +552,9 @@ export function ChatClient({
       setActivity("");
     }
   }
+
+  const interactiveControlsDisabled = busy || voiceOpen || agentSwitchBusy || newChatBusy || composeBusy || mailPermissionBusy;
+  const latestAssistantId = !busy && messages.at(-1)?.role === "assistant" ? messages.at(-1)?.id : null;
 
   return (
     <main className="flex h-[calc(100dvh-64px)] min-h-0 min-w-0 flex-col overflow-hidden bg-background">
@@ -697,7 +711,9 @@ export function ChatClient({
               </div>
             </div>
           ) : messages.map((message) => (
-            <MessageBubble key={message.id} role={message.role} content={message.content} />
+            <MessageBubble key={message.id} role={message.role} content={message.content} messageId={message.id}
+              showNextActions={message.role === "assistant" && message.id === latestAssistantId}
+              disabled={interactiveControlsDisabled} onPrepare={prepareInteractivePrompt} />
           ))}
           {activitySteps.length > 0 ? (
             <details className="max-w-2xl rounded-xl border border-border/70 bg-muted/25 px-4 py-3 text-sm" open={busy}>
@@ -759,7 +775,10 @@ export function ChatClient({
   );
 }
 
-function MessageBubble({ role, content }: { role: string; content: string }) {
+function MessageBubble({ role, content, messageId, showNextActions, disabled, onPrepare }: {
+  role: string; content: string; messageId: string; showNextActions: boolean;
+  disabled: boolean; onPrepare: (prompt: string) => void;
+}) {
   if (role === "system") {
     return (
       <div className="flex justify-center">
@@ -787,7 +806,9 @@ function MessageBubble({ role, content }: { role: string; content: string }) {
       <div className="flex max-w-[90%] items-start gap-2.5">
         <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
         <div className="flex-1 text-sm leading-7">
-          <MarkdownRenderer content={content} />
+          <MarkdownRenderer content={content} disabled={disabled} onPrepare={onPrepare} />
+          {showNextActions ? <SuggestedNextActions answer={content} messageId={messageId}
+            disabled={disabled} onPrepare={onPrepare} /> : null}
         </div>
       </div>
     </div>
@@ -814,12 +835,14 @@ function TypingIndicator() {
  * found in LLM responses: bold, italic, inline code, code blocks, headers,
  * bullet lists, numbered lists, links, and paragraphs. No external deps.
  */
-function MarkdownRenderer({ content }: { content: string }) {
-  const elements = parseMarkdown(content);
+function MarkdownRenderer({ content, disabled, onPrepare }: {
+  content: string; disabled: boolean; onPrepare: (prompt: string) => void;
+}) {
+  const elements = parseMarkdown(content, disabled, onPrepare);
   return <div className="space-y-2">{elements}</div>;
 }
 
-function parseMarkdown(text: string): React.ReactNode[] {
+function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: string) => void): React.ReactNode[] {
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
   let i = 0;
@@ -843,6 +866,20 @@ function parseMarkdown(text: string): React.ReactNode[] {
           <code className="font-mono">{codeLines.join("\n")}</code>
         </pre>
       );
+      continue;
+    }
+
+    // Code fences are consumed above. Checklist rows are selectable text,
+    // never serialized executable commands from untrusted model output.
+    if (parseAssistantChecklistLine(line)) {
+      const items = [];
+      while (i < lines.length && items.length < 10) {
+        const item = parseAssistantChecklistLine(lines[i] ?? "");
+        if (!item) break;
+        items.push(item);
+        i++;
+      }
+      elements.push(<AssistantChecklist key={key++} items={items} disabled={disabled} onPrepare={onPrepare} />);
       continue;
     }
 
