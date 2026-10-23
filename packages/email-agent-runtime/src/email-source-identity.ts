@@ -14,6 +14,16 @@ export function isLocalEmailMessageId(id: unknown): id is string {
     && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id);
 }
 
+/** The approved forward snapshot requires a nonempty subject even when the
+ * original provider message has none. Keep draft and approval views aligned. */
+export function reviewedForwardSubject(sourceSubject: unknown): string {
+  const original = typeof sourceSubject === "string" ? sourceSubject.trim() : "";
+  const reviewed = /^fwd?:/i.test(original)
+    ? original
+    : `Fwd: ${original || "(no subject)"}`;
+  return reviewed.slice(0, 998);
+}
+
 export function eligibleReplyForwardSourceId(source: unknown, accountId: string): string | null {
   if (!source || typeof source !== "object" || Array.isArray(source)) return null;
   const row = source as Record<string, unknown>;
