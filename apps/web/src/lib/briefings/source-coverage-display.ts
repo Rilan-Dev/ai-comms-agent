@@ -28,7 +28,7 @@ export function describeCatchUpSourceCoverage(
   } else if (remainingCount > 0) {
     message = `${loadedCount} of ${selectedCount} source email links loaded. Some selected source links are not yet available; refresh or check selection status.`;
   } else {
-    message = `${loadedCount} of ${selectedCount} source email links loaded. All selected source links are available; this does not mean an AI summary was generated or reviewed.`;
+    message = `${loadedCount} of ${selectedCount} source email links loaded. All selected source links are listed here. This does not verify current mailbox permission or mean an AI summary was generated or reviewed.`;
   }
   return { selectedCount, loadedCount, remainingCount, hasMore, complete, message };
 }
