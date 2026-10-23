@@ -11,7 +11,9 @@ export function normalizeEmailRecipients(value: unknown, required: boolean): str
   for (const item of value) {
     if (typeof item !== "string") return null;
     const address = item.trim();
-    if (!address || address.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
+    // One bare mailbox only: reject list separators, display names, quoted
+    // header syntax, backslashes and control/whitespace characters.
+    if (!address || address.length > 320 || !/^[^\s@<>,;:"()[\]\\]+@[^\s@<>,;:"()[\]\\]+\.[^\s@<>,;:"()[\]\\]+$/.test(address)) {
       return null;
     }
     addresses.push(address);
