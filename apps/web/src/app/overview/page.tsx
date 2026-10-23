@@ -85,6 +85,7 @@ export default function HomePage() {
             <h3 className="mt-2 text-base font-semibold">Plan a repeatable task</h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">Manage existing scheduled jobs and event-triggered automations. New AI digest routines are not yet activated.</p>
             <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold">
+              <a href="/routines/preview" className="inline-flex min-h-10 items-center underline decoration-border underline-offset-4 hover:decoration-foreground">Preview routine timing ↗</a>
               <a href="/schedules" className="inline-flex min-h-10 items-center underline decoration-border underline-offset-4 hover:decoration-foreground">Schedules ↗</a>
               <a href="/automations" className="inline-flex min-h-10 items-center underline decoration-border underline-offset-4 hover:decoration-foreground">Automations ↗</a>
             </div>
