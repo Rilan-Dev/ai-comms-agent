@@ -12,6 +12,7 @@ import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
 import { canUseEmailAccountBinding, hasEmailToolCapabilities } from "./email-tool-policy";
 import { preserveEmailBody } from "./email-body";
+import { normalizeEmailRecipients } from "./email-recipients";
 
 type Input = Record<string, unknown>;
 type Row = Record<string, unknown>;
@@ -32,12 +33,18 @@ function list(value: unknown): string[] {
 /** A draft's To must be explicit, not inferred from an email contact name.
  * Ask the user to choose the full recipient address before writing anything. */
 function requireRecipients(value: unknown): string[] {
-  const recipients = list(value);
-  if (!recipients.length || recipients.some(address =>
-    address.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address))) {
-    throw new EmailWriteFailure("recipient_required",
-      "Who should receive this email? Please choose or provide the exact recipient email address before I create a draft.");
-  }
+  const recipients = normalizeEmailRecipients(value, true);
+  if (!recipients) throw new EmailWriteFailure("recipient_required",
+    "Who should receive this email? Please choose or provide valid recipient email addresses before I create a draft or request approval.");
+  return recipients;
+}
+/** Empty optional recipient fields are permitted; malformed provided lists
+ * are not silently truncated, skipped, or persisted into a future send. */
+function optionalRecipients(value: unknown): string[] {
+  if (value == null) return [];
+  const recipients = normalizeEmailRecipients(value, false);
+  if (!recipients) throw new EmailWriteFailure("recipient_required",
+    "CC and BCC must contain valid recipient email addresses.");
   return recipients;
 }
 function summary(toolName: string, output?: unknown): string {
@@ -140,8 +147,8 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       organizationId: context.organization_id,
       emailAccountId: account.id,
       to: recipients,
-      cc: list(input.cc),
-      bcc: list(input.bcc),
+      cc: optionalRecipients(input.cc),
+      bcc: optionalRecipients(input.bcc),
       subject: text(input.subject, 998),
       bodyText: preserveEmailBody(input.body_text),
     });
@@ -154,9 +161,9 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     const existing = await getLocalDraftForOrganization(context.organization_id, draftId);
     if (!existing || String(existing.email_account_id) !== account.id) throw new EmailWriteFailure("draft_not_found", "The draft was not found in the selected mailbox.");
     const updated = await updateLocalDraftForOrganization(context.organization_id, draftId, {
-      ...(Array.isArray(input.to) ? { to: list(input.to) } : {}),
-      ...(Array.isArray(input.cc) ? { cc: list(input.cc) } : {}),
-      ...(Array.isArray(input.bcc) ? { bcc: list(input.bcc) } : {}),
+      ...(input.to !== undefined ? { to: requireRecipients(input.to) } : {}),
+      ...(input.cc !== undefined ? { cc: optionalRecipients(input.cc) } : {}),
+      ...(input.bcc !== undefined ? { bcc: optionalRecipients(input.bcc) } : {}),
       ...(typeof input.subject === "string" ? { subject: text(input.subject, 998) } : {}),
       ...(typeof input.body_text === "string" ? { bodyText: preserveEmailBody(input.body_text) } : {}),
     });
@@ -170,12 +177,13 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     if (!account.capabilities.drafts || !account.capabilities.reply) throw new EmailWriteFailure("capability_not_supported", "This mailbox does not support reply drafts.");
     const sender = text(source.from_email, 320);
     if (!sender) throw new EmailWriteFailure("reply_recipient_missing", "The source message has no replyable sender address.");
+    const recipient = requireRecipients([sender])[0]!;
     const originalSubject = text(source.subject, 998);
     const subject = /^re:/i.test(originalSubject) ? originalSubject : `Re: ${originalSubject}`;
     const draft = await createLocalDraft({
       organizationId: context.organization_id,
       emailAccountId: account.id,
-      to: [sender],
+      to: [recipient],
       subject,
       bodyText: preserveEmailBody(input.body_text),
     });
@@ -186,8 +194,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     const account = await resolveAccount(text(input.account_id), context);
     const source = await checkMessage(account.id, text(input.message_id, 100), context);
     if (!account.capabilities.drafts || !account.capabilities.forward) throw new EmailWriteFailure("capability_not_supported", "This mailbox does not support forward drafts.");
-    const recipients = list(input.to);
-    if (!recipients.length) throw new EmailWriteFailure("recipient_required", "At least one forward recipient is required.");
+    const recipients = requireRecipients(input.to);
     const originalSubject = text(source.subject, 998);
     const subject = /^fwd?:/i.test(originalSubject) ? originalSubject : `Fwd: ${originalSubject}`;
     const originalBody = preserveEmailBody(source.text_body);
@@ -212,7 +219,9 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     const draft = await getLocalDraftForOrganization(context.organization_id, draftId);
     if (!draft || String(draft.email_account_id) !== account.id) throw new EmailWriteFailure("draft_not_found", "The draft was not found in the selected mailbox.");
     // Older saved drafts can lack a recipient; never request approval for one.
-    requireRecipients(draft.to_recipients);
+    const recipients = requireRecipients(draft.to_recipients);
+    const cc = optionalRecipients(draft.cc_recipients);
+    const bcc = optionalRecipients(draft.bcc_recipients);
     if (!account.capabilities.drafts || !account.capabilities.send) throw new EmailWriteFailure("capability_not_supported", "This mailbox cannot send drafts.");
     const action = await createEmailAction({
       organizationId: context.organization_id,
@@ -221,7 +230,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       actionType: "send_email",
       draftId,
       recipientSnapshot: {
-        to: list(draft.to_recipients), cc: list(draft.cc_recipients), bcc: list(draft.bcc_recipients),
+        to: recipients, cc, bcc,
         subject: text(draft.subject, 998), bodyText: preserveEmailBody(draft.text_body),
       },
       requestedBy: context.user_id,
@@ -238,6 +247,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     if (!account.capabilities.reply) throw new EmailWriteFailure("capability_not_supported", "This mailbox does not support replies.");
     const recipient = text(source.from_email, 320);
     if (!recipient) throw new EmailWriteFailure("reply_recipient_missing", "The source message has no replyable sender address.");
+    requireRecipients([recipient]);
     const originalSubject = text(source.subject, 998);
     const subject = /^re:/i.test(originalSubject) ? originalSubject : `Re: ${originalSubject}`;
     const action = await createEmailAction({
@@ -258,8 +268,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     const messageId = text(input.message_id, 100);
     const source = await checkMessage(account.id, messageId, context);
     if (!account.capabilities.forward) throw new EmailWriteFailure("capability_not_supported", "This mailbox does not support forwarding.");
-    const recipients = list(input.to);
-    if (!recipients.length) throw new EmailWriteFailure("recipient_required", "At least one forward recipient is required.");
+    const recipients = requireRecipients(input.to);
     const action = await createEmailAction({
       organizationId: context.organization_id,
       agentId: context.agent_id,
