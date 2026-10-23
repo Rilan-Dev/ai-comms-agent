@@ -8,6 +8,7 @@ import { readSseEvents } from "@/lib/streaming/sse";
 import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "@/lib/ai/activity-progress";
 import { EMAIL_PERMISSION_PRESETS, EMAIL_PERMISSION_LABELS, REGISTERED_EMAIL_POLICY_NAMES, emailPermissionPresetSelection, summarizeEmailPermissionChanges } from "@/lib/agents/email-permission-presets";
 import { explicitComposeRecipient, parseTestEmailComposeRequest } from "@/lib/mail/test-email-compose-intent";
+import { assistantEmailPreview } from "@/lib/mail/assistant-email-preview";
 import { selectComposeSender, signatureFromProfile, withProfileSignature, type ComposeProfile } from "@/lib/mail/compose-identity";
 import { parseAssistantChecklistLine } from "@/lib/chat/interactive-replies";
 import { AssistantChecklist, SuggestedNextActions, type EmailWorkflowState } from "./interactive-message-controls";
@@ -138,10 +139,9 @@ export function ChatClient({
   useEffect(() => {
     const pane = messageScrollRef.current;
     if (pane) pane.scrollTo({ top: pane.scrollHeight, behavior: "smooth" });
-  }, [messages.length, busy]);
+  }, [messages.length, busy, mailComposerOpen, composeDraftId, composeActionId]);
 
-  // The mobile history drawer is keyboard accessible without affecting the
-  // permanent desktop list or the workspace's own navigation sidebar.
+  // A temporary conversation dialog opens only on request at all widths.
   useEffect(() => {
     if (!chatHistoryOpen) return;
     historyCloseRef.current?.focus();
@@ -151,9 +151,8 @@ export function ChatClient({
         setChatHistoryOpen(false);
         return;
       }
-      // Keep keyboard focus inside the modal drawer on narrow screens. On
-      // desktop the permanent conversation list remains ordinary navigation.
-      if (event.key !== "Tab" || window.matchMedia("(min-width: 1024px)").matches) return;
+      // Keep keyboard focus inside the dialog on mobile and desktop.
+      if (event.key !== "Tab") return;
       const controls = Array.from(historySidebarRef.current?.querySelectorAll<HTMLElement>(
         'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
       ) ?? []).filter(element => element.getClientRects().length > 0);
@@ -533,8 +532,20 @@ export function ChatClient({
       mailComposerReviewRef.current?.focus();
       return;
     }
-    // GET opens review only; POST/save and send approval still require explicit
-    // human input and the separately enforced current session permissions.
+    // Reuse an actual drafted Subject/Body from the last assistant turn if it
+    // is explicitly structured. A host denial never counts as prepared email.
+    // No recipient is inferred from assistant text, and an existing saved or
+    // edited draft is never overwritten.
+    const latestAssistantReply = messages.at(-1)?.role === "assistant" ? messages.at(-1)?.content ?? "" : "";
+    const prepared = assistantEmailPreview(latestAssistantReply);
+    // A hidden unsaved review can contain user's own edits. Only populate
+    // the untouched initial template; never replace previously edited text.
+    if (prepared && composeSubject === "Test Email" && composeBody === DEFAULT_COMPOSE_BODY) {
+      setComposeSubject(prepared.subject);
+      setComposeBody(prepared.body);
+    }
+    // Readiness GET only opens the in-chat review. Draft save and approval
+    // remain two explicit authorized POSTs with human confirmation.
     void openMailComposer(suggestedRecipient ?? "");
   }
   function requestInlineEmailApproval() {
@@ -545,7 +556,8 @@ export function ChatClient({
         setMailComposerOpen(true);
         setComposeNotice("Review the saved draft and click Request send approval. No email has been sent.");
       } else {
-        void openMailComposer();
+        // Reuse the last explicit recipient rather than opening a blank admin form.
+        openInlineEmailComposer();
       }
       return;
     }
@@ -658,6 +670,8 @@ export function ChatClient({
 
   const interactiveControlsDisabled = busy || voiceOpen || agentSwitchBusy || newChatBusy || composeBusy || mailPermissionBusy;
   const latestAssistantId = !busy && messages.at(-1)?.role === "assistant" ? messages.at(-1)?.id : null;
+  // A recommendation must be grounded in the request immediately preceding the displayed answer.
+  const latestUserRequest = [...messages].reverse().find(message => message.role === "user")?.content ?? "";
   const emailWorkflowState: EmailWorkflowState =
     composeActionId ? "pending_approval" : composeDraftId ? "draft_saved" : "not_saved";
 
@@ -673,11 +687,9 @@ export function ChatClient({
             </div>
           </div>
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <button ref={historyTriggerRef} type="button" className="rounded-md border px-3 py-2 text-xs font-semibold hover:bg-secondary lg:hidden"
+            <button ref={historyTriggerRef} type="button" className="rounded-md border px-3 py-2 text-xs font-semibold hover:bg-secondary"
               aria-label="Show conversations" aria-controls="chat-conversation-sidebar" aria-expanded={chatHistoryOpen}
               onClick={() => setChatHistoryOpen(true)}>Chats</button>
-            <button type="button" onClick={() => { if (mailComposerOpen) { composeRevisionRef.current += 1; setMailComposerOpen(false); } else void openMailComposer(); }} disabled={busy || composeBusy || agentSwitchBusy || voiceOpen} className="rounded-md border px-3 py-2 text-xs font-medium hover:bg-secondary disabled:opacity-50" aria-expanded={mailComposerOpen}>Compose email</button>
-            <button type="button" onClick={() => void openMailPermissions()} disabled={busy || mailPermissionBusy || agentSwitchBusy || voiceOpen} className="rounded-md border px-3 py-2 text-xs font-medium hover:bg-secondary disabled:opacity-50" aria-expanded={mailPermissionOpen}>Mail permissions</button>
             <button type="button" onClick={() => setVoiceOpen(true)} disabled={busy || agentSwitchBusy || composeBusy || mailPermissionBusy || voiceOpen}
               aria-pressed={voiceOpen} aria-label={voiceOpen ? "Voice conversation open; use Back to chat to end safely" : "Open live realtime voice conversation"}
               className="inline-flex shrink-0 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium transition hover:bg-secondary disabled:opacity-50">
@@ -693,14 +705,19 @@ export function ChatClient({
       </header>
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
+        {chatHistoryOpen && (
+          <button type="button" aria-label="Dismiss conversation history"
+            className="absolute inset-0 z-20 cursor-default bg-black/20"
+            onClick={() => setChatHistoryOpen(false)} />
+        )}
         <aside ref={historySidebarRef} id="chat-conversation-sidebar"
           role={chatHistoryOpen ? "dialog" : undefined} aria-modal={chatHistoryOpen ? true : undefined}
           aria-label={chatHistoryOpen ? "Conversations" : undefined}
-          className={`${chatHistoryOpen ? "flex" : "hidden"} absolute inset-0 z-30 w-full flex-col border-r bg-background lg:relative lg:inset-auto lg:z-auto lg:flex lg:w-56 lg:shrink-0 xl:w-64`}>
+          className={`${chatHistoryOpen ? "flex" : "hidden"} absolute inset-y-0 left-0 z-30 w-full max-w-sm flex-col border-r bg-background shadow-xl sm:w-80`}>
           <nav aria-label="Chat history" className="flex min-h-0 w-full flex-1 flex-col">
             <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
               <h2 className="text-sm font-semibold">Conversations</h2>
-              <button ref={historyCloseRef} type="button" className="rounded-md border px-2 py-1 text-xs lg:hidden"
+              <button ref={historyCloseRef} type="button" className="rounded-md border px-2 py-1 text-xs"
                 onClick={() => setChatHistoryOpen(false)} aria-label="Close conversations">Close</button>
             </div>
             <div className="shrink-0 px-3 pt-3">
@@ -734,13 +751,50 @@ export function ChatClient({
           </nav>
         </aside>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="max-h-[45%] shrink-0 overflow-y-auto overscroll-contain">
-      {agentSwitchNotice && <p role="alert" className="mx-auto w-full max-w-3xl px-4 py-2 text-xs text-destructive">{agentSwitchNotice}</p>}
-      {composeNotice && <p role="status" className="mx-auto w-full max-w-3xl px-4 py-2 text-xs text-muted-foreground">{composeNotice}</p>}
+      {voiceOpen ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <VoiceWorkspace organizationId={organizationId} agents={agents} initialAgentId={agentId}
+          conversationId={conversationId} embedded onReturnToChat={() => { void returnFromVoice(); }} />
+        </div>
+      ) : (
+      <section className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
+        <div ref={messageScrollRef} role="log" aria-live="polite" className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto overscroll-contain py-6">
+          {messages.length === 0 ? (
+            <div className="grid min-h-[50vh] place-items-center text-center">
+              <div className="max-w-md">
+                <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary text-primary-foreground"><Sparkles size={24} /></div>
+                <h2 className="mt-4 text-lg font-semibold">Ask Clara anything</h2>
+                <p className="mt-1.5 text-sm text-muted-foreground">Summarize your inbox, find important emails, or ask about recent messages.</p>
+                <div className="mt-5 grid gap-2">
+                  {catchUpEnabled ? <a href="/catch-up" className="mb-3 inline-flex items-center rounded-lg border border-primary/25 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/10">Catch up on my mail →</a> : null}
+                  {["What needs my attention today?", "Summarize my recent emails", "Show emails from the last hour"].map((prompt) =>
+                    <button key={prompt} onClick={() => setDraft(prompt)} className="rounded-lg border bg-card px-3.5 py-2.5 text-left text-sm transition hover:border-primary/30 hover:bg-accent/5">{prompt}</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : messages.map((message) => (
+            <MessageBubble key={message.id} role={message.role} content={message.content} messageId={message.id}
+              showNextActions={message.role === "assistant" && message.id === latestAssistantId}
+              userRequest={latestUserRequest}
+              disabled={interactiveControlsDisabled} onPrepare={prepareInteractivePrompt}
+              emailWorkflowState={emailWorkflowState}
+              onComposeEmail={openInlineEmailComposer}
+              onRequestEmailApproval={requestInlineEmailApproval} />
+          ))}
+          {agentSwitchNotice && <p role="alert" className="rounded-lg border border-destructive/30 p-3 text-xs text-destructive">{agentSwitchNotice}</p>}
       {mailComposerOpen && !voiceOpen && !agentSwitchBusy && (
-        <section ref={mailComposerReviewRef} tabIndex={-1} aria-label="Compose an email using this agent" className="mx-auto w-full max-w-3xl border-b px-4 py-4 outline-none focus-visible:ring-2 focus-visible:ring-primary">
-          <h2 className="text-sm font-semibold">Review an email draft</h2>
-          <p className="mt-1 text-xs text-muted-foreground">The host executes only authorized agent tools. Save the draft, request send approval, then use Mail Approvals to approve sending. Saving or requesting approval never sends it.</p>
+        <section ref={mailComposerReviewRef} tabIndex={-1} aria-label="Email review in this Chat conversation" className="w-full min-w-0 rounded-2xl border bg-card px-4 py-4 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Email ready for review in Chat</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Review and edit your email here in the conversation. Save draft first, then request human approval. No email was sent.</p>
+            </div>
+            <button type="button" aria-label="Hide email review" disabled={composeBusy}
+              onClick={() => setMailComposerOpen(false)}
+              className="shrink-0 rounded-md border px-2 py-1 text-xs disabled:opacity-50">Hide</button>
+          </div>
+          {composeNotice && <p role="status" className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs">{composeNotice}</p>}
           {composePermissions && <div aria-label="Email permissions for this session" className="mt-3 rounded-md border bg-muted/20 p-3 text-xs">
             <p className="font-semibold">Email permissions for this session</p>
             <div className="mt-1 grid gap-1 sm:grid-cols-2">
@@ -760,13 +814,15 @@ export function ChatClient({
             <button type="button" disabled={composeBusy || Boolean(composeDraftId)} onClick={useProfileSignature}
               className="rounded-md border px-3 py-2 font-medium disabled:opacity-50">Use my profile signature</button>
           </div>}
+          <button type="button" onClick={() => void openMailPermissions()} disabled={composeBusy || mailPermissionBusy}
+            className="mt-2 text-xs underline disabled:opacity-50">Mail permissions (admin settings)</button>
           {composeBlockers.length > 0 && <div role="alert" className="mt-3 rounded-md border border-destructive/30 p-3 text-xs text-destructive">
             <p className="font-semibold">Email tools are not ready; no draft or approval was created.</p>
             <ul className="mt-2 list-disc space-y-1 pl-4">{composeBlockers.map(blocker => <li key={blocker.code}>{blocker.message}</li>)}</ul>
           </div>}
           {!composeCanDraft && composeBlockers.length === 0 && composeAccount && <p role="alert" className="mt-2 text-xs text-destructive">Draft creation is unavailable. Check saved agent permissions and your email.write grant.</p>}
           {!composeMailboxes.length && !composeDiscoveryFailed && <p role="alert" className="mt-2 text-xs text-destructive">No connected primary mailbox is assigned to this agent. Assign one in Agent Channels.</p>}
-           {composeDiscoveryFailed && <p className="mt-2 text-xs text-muted-foreground">Mailbox readiness could not be checked. Verify your workspace role and agent mail permissions, then reopen Compose email. No draft has been saved.</p>}
+           {composeDiscoveryFailed && <p className="mt-2 text-xs text-muted-foreground">Mailbox readiness could not be checked. Verify your workspace role and agent mail permissions, then reopen this email review in Chat. No draft has been saved.</p>}
           <div className="mt-3 grid gap-3">
             <label className="text-xs font-medium">From mailbox
               {composeMailboxes.length > 1 && !composeAccount && <span role="status" className="mt-1 block text-primary">Which email should this agent send from? Choose the From address explicitly.</span>}
@@ -827,37 +883,6 @@ export function ChatClient({
           <button type="button" disabled={mailPermissionBusy || busy || agentSwitchBusy} onClick={() => void saveMailPermissions()} className="mt-3 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">Confirm and save permissions</button>
         </section>
       )}
-          </div>
-      {voiceOpen ? (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <VoiceWorkspace organizationId={organizationId} agents={agents} initialAgentId={agentId}
-          conversationId={conversationId} embedded onReturnToChat={() => { void returnFromVoice(); }} />
-        </div>
-      ) : (
-      <section className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
-        <div ref={messageScrollRef} role="log" aria-live="polite" className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto overscroll-contain py-6">
-          {messages.length === 0 ? (
-            <div className="grid min-h-[50vh] place-items-center text-center">
-              <div className="max-w-md">
-                <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary text-primary-foreground"><Sparkles size={24} /></div>
-                <h2 className="mt-4 text-lg font-semibold">Ask Clara anything</h2>
-                <p className="mt-1.5 text-sm text-muted-foreground">Summarize your inbox, find important emails, or ask about recent messages.</p>
-                <div className="mt-5 grid gap-2">
-                  {catchUpEnabled ? <a href="/catch-up" className="mb-3 inline-flex items-center rounded-lg border border-primary/25 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/10">Catch up on my mail →</a> : null}
-                  {["What needs my attention today?", "Summarize my recent emails", "Show emails from the last hour"].map((prompt) =>
-                    <button key={prompt} onClick={() => setDraft(prompt)} className="rounded-lg border bg-card px-3.5 py-2.5 text-left text-sm transition hover:border-primary/30 hover:bg-accent/5">{prompt}</button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : messages.map((message) => (
-            <MessageBubble key={message.id} role={message.role} content={message.content} messageId={message.id}
-              showNextActions={message.role === "assistant" && message.id === latestAssistantId}
-              disabled={interactiveControlsDisabled} onPrepare={prepareInteractivePrompt}
-              emailWorkflowState={emailWorkflowState}
-              onComposeEmail={openInlineEmailComposer}
-              onRequestEmailApproval={requestInlineEmailApproval} />
-          ))}
           {activitySteps.length > 0 ? (
             <details className="max-w-2xl rounded-xl border border-border/70 bg-muted/25 px-4 py-3 text-sm" open={busy}>
               <summary className="cursor-pointer list-none font-medium text-muted-foreground">
@@ -918,9 +943,9 @@ export function ChatClient({
   );
 }
 
-function MessageBubble({ role, content, messageId, showNextActions, disabled, onPrepare,
+function MessageBubble({ role, content, messageId, showNextActions, userRequest, disabled, onPrepare,
   emailWorkflowState, onComposeEmail, onRequestEmailApproval }: {
-  role: string; content: string; messageId: string; showNextActions: boolean;
+  role: string; content: string; messageId: string; showNextActions: boolean; userRequest: string;
   disabled: boolean; onPrepare: (prompt: string) => void;
   emailWorkflowState: EmailWorkflowState; onComposeEmail: () => void; onRequestEmailApproval: () => void;
 }) {
@@ -952,7 +977,7 @@ function MessageBubble({ role, content, messageId, showNextActions, disabled, on
         <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
         <div className="flex-1 text-sm leading-7">
           <MarkdownRenderer content={content} disabled={disabled} onPrepare={onPrepare} />
-          {showNextActions ? <SuggestedNextActions answer={content} messageId={messageId}
+          {showNextActions ? <SuggestedNextActions answer={content} userRequest={userRequest} messageId={messageId}
             disabled={disabled} onPrepare={onPrepare} emailWorkflowState={emailWorkflowState}
             onComposeEmail={onComposeEmail} onRequestEmailApproval={onRequestEmailApproval} /> : null}
         </div>

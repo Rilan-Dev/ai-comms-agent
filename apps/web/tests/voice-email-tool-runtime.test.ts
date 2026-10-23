@@ -7,7 +7,6 @@ const runtime = readFileSync(resolve(__dirname, "../../../packages/email-agent-r
 const writeTools = readFileSync(resolve(__dirname, "../../../packages/email-agent-runtime/src/email-write-tools.ts"), "utf8");
 const loop = readFileSync(resolve(__dirname, "../../../packages/email-agent-runtime/src/email-agent-loop.ts"), "utf8");
 const actionWorker = readFileSync(resolve(__dirname, "../../../apps/worker/src/email/action-worker.ts"), "utf8");
-const dbRepository = readFileSync(resolve(__dirname, "../../../packages/db/src/email/repository.ts"), "utf8");
 
 describe("voice email tool runtime boundary", () => {
   it("constructs tool context from the authenticated subject, never model-supplied identity", () => {
@@ -46,10 +45,12 @@ describe("voice email tool runtime boundary", () => {
     expect(writeTools).not.toContain("const draftDelete =");
   });
 
-  it("updates provider drafts with the latest approved content before sending", () => {
-    expect(actionWorker).toContain("connected.updateDraft(String(draft.provider_draft_id), params)");
-    expect(dbRepository).toContain("provider_draft_sync_status = 'pending'");
-  
+  it("sends a fresh provider draft from the immutable human-approved snapshot", () => {
+    expect(actionWorker).toContain("const params = paramsFromApprovedEmailSnapshot(snapshot);");
+    expect(actionWorker).toContain("const providerDraftId = (await connected.createDraft(params)).draft_id;");
+    expect(actionWorker).toContain("const sent = await connected.sendDraft(providerDraftId);");
+    expect(actionWorker.indexOf("connected.createDraft(params)")).toBeLessThan(actionWorker.indexOf("connected.sendDraft(providerDraftId)"));
+    expect(actionWorker).not.toContain("connected.sendDraft(String(draft.provider_draft_id))");
   });
 
   it("bounds tool rounds and calls and treats tool output as untrusted data", () => {

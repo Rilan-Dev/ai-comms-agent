@@ -23,3 +23,18 @@ C2 complete locally, final merge/push receipt in session.34SQL,25domain,37web,3i
 ## 2026-10-19 — owner-requested commit and recovery checkpoint
 
 Preserved concurrent main changes and both sides of eight documentation conflicts. Current status: C1/C2 focused implementation done; C3 integration then C4 browser acceptance next. Security and broad-suite follow-up remain FIX-01/OPS-01. See docs/project-control/sessions/DEV01-CURRENT-HANDOFF-20261019.md. Lesson: after a rejected push, inspect and integrate current upstream; never overwrite shared project memory or force push.
+
+
+## DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023
+
+Owner-selected Development recovered at ab7292fbb00263bb817ab2874ab4f66e10946f0f. Fresh native tests 54/54 pass (source/behavior scope only). Live Chromium login returns HTTP 522 origin timeout, so authenticated AI mail/WhatsApp acceptance is blocked with no external messages created. Current state, completed/in-progress/pending work, F01–F21 matrix and exact next action: docs/project-control/sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md. OPS-01 owns origin recovery; DEV-01 resumes frontend acceptance; FIX-01 owns proven application defects. Existing records and roles preserved.
+
+
+## DEV01-LIVE-AUTH-RECHECK-20261023
+
+Normal login API and auth/me returned 200; actual authenticated Chat opened once. Other app routes remain intermittent. Existing QA conversation was observed, not created by this session; no new outgoing action performed. Current Development focused checks 38/38 pass. See docs/project-control/sessions/DEV01-LIVE-AUTH-RECHECK-20261023.md. OPS-01 origin-path diagnosis; DEV-01 resume F01–F21 with authoritative pending/delivery checks.
+
+
+## DEV01-FIX01-SARVAM-LIVE-LIFECYCLE-20261023
+
+DEV-01 coordinated authoritative Clara comparison and integration; FIX-01 implemented/reproduced lifecycle bugs; OPS-01 documented deployment gaps. Source b58b4811 and concurrent integration4fefc41d preserve existing work. Readiness, duplex/mute, VAD/partial interruption, aborted/late responses, stale session/socket/activation/audio completion and abandoned microphone resources covered. Final54/54voice +7/7core/integrity checks, all package typechecks and production build pass. No live deployment/acoustic/provider acceptance. Exact next: OPS verifies approved web+relay revision/config and real-device streams; DEV/FIX then validates scoped spoken mailbox scenarios. Session: docs/project-control/sessions/DEV01-FIX01-SARVAM-LIVE-LIFECYCLE-20261023.md. Lesson: callback registration precedes awaits, every continuation is identity-fenced, cancellation never implies undoing authorized writes.

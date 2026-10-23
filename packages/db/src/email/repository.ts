@@ -283,22 +283,28 @@ export interface MailInboxFilters {
 
 export async function listInboxMessages(organizationId: string, filters: MailInboxFilters = {}): Promise<Array<Record<string, unknown>>> {
   const values: unknown[] = [organizationId];
-  // Gmail IMAP exposes INBOX and [Gmail]/All Mail as separate
-  // folder:UID copies. The Inbox page shows INBOX membership only.
+  // An Inbox page must not surface the local draft rows created by Chat,
+  // nor non-IMAP Sent/Archive folder rows. IMAP folder-qualified UID copies
+  // keep requiring positive Inbox membership. For legacy non-IMAP rows with
+  // no resolved folder, accept only non-outbound messages.
   const conditions = [
+    "m.organization_id = $1",
     "a.organization_id = $1",
     "a.deleted_at IS NULL",
-    "(a.provider <> 'imap_smtp' OR EXISTS (SELECT 1 FROM email_folders inbox_folder WHERE inbox_folder.id = m.folder_id AND inbox_folder.email_account_id = m.email_account_id AND (inbox_folder.role = 'inbox' OR UPPER(inbox_folder.provider_folder_id) = 'INBOX')))",
+    "m.is_draft = false",
+    "(EXISTS (SELECT 1 FROM email_folders inbox_folder WHERE inbox_folder.id = m.folder_id AND inbox_folder.email_account_id = m.email_account_id AND (inbox_folder.role = 'inbox' OR UPPER(inbox_folder.provider_folder_id) = 'INBOX')) OR (a.provider <> 'imap_smtp' AND m.folder_id IS NULL AND m.is_sent = false))",
   ];
   if (filters.accountId) { values.push(filters.accountId); conditions.push(`m.email_account_id = $${values.length}`); }
   if (filters.unreadOnly) conditions.push("m.is_read = false");
   if (filters.actionRequired) conditions.push("m.action_required = true");
   if (filters.query?.trim()) { values.push(`%${filters.query.trim()}%`); conditions.push(`(m.subject ILIKE $${values.length} OR m.from_email ILIKE $${values.length} OR m.from_name ILIKE $${values.length} OR m.text_body ILIKE $${values.length} OR m.snippet ILIKE $${values.length})`); }
-  const limit = Math.min(Math.max(filters.limit ?? 50, 1), 100); const offset = Math.max(filters.offset ?? 0, 0);
+  // Match the /api/mail/inbox contract (1..500). Capping here at 100
+  // while advancing UI offsets by 500 silently skipped up to 400 messages.
+  const limit = Math.min(Math.max(filters.limit ?? 50, 1), 500); const offset = Math.max(filters.offset ?? 0, 0);
   values.push(limit, offset);
   const r = await query<Row>(`SELECT m.id, m.email_account_id, m.thread_id, COALESCE(m.from_email, m.from_name, '') AS from_address, m.to_recipients AS to_addresses, m.subject, m.snippet, m.received_at, m.is_read, m.is_starred, m.is_draft, m.is_sent AS is_outbound, m.importance_score, m.action_required, EXISTS (SELECT 1 FROM email_attachments ea WHERE ea.message_id = m.id) AS has_attachments, a.email_address AS account_email, a.display_name AS account_name
     FROM email_messages m JOIN email_accounts a ON a.id = m.email_account_id
-    WHERE ${conditions.join(" AND ")} ORDER BY m.received_at DESC NULLS LAST LIMIT $${values.length - 1} OFFSET $${values.length}`, values);
+    WHERE ${conditions.join(" AND ")} ORDER BY m.received_at DESC NULLS LAST, m.id DESC LIMIT $${values.length - 1} OFFSET $${values.length}`, values);
   return r.rows;
 }
 
@@ -530,10 +536,16 @@ export async function createLocalDraft(input: CreateLocalDraftInput): Promise<Re
   // concurrent account deletion or reconnection cannot race these writes.
   return withTransaction(async (client) => {
   const accountResult = await client.query<Row>(
-    "SELECT id, email_address FROM email_accounts WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL LIMIT 1 FOR SHARE",
+    "SELECT id, email_address, status, capabilities FROM email_accounts WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL LIMIT 1 FOR SHARE",
     [input.emailAccountId, input.organizationId],
   );
   if (!accountResult.rows[0]) throw new Error("Email account was not found in this organization.");
+  const connected = accountResult.rows[0].status === "connected";
+  const capabilities = accountResult.rows[0].capabilities as Record<string, unknown> | null;
+  // Draft creation is an explicitly authorized write. Saving to the
+  // connected provider's Drafts folder is part of that write, not sending.
+  // The durable queue flag is committed with the draft in one transaction.
+  const syncStatus = connected && capabilities?.drafts === true ? "queued" : "local_only";
   const threadResult = await client.query<Row>(
     `INSERT INTO email_threads (email_account_id, organization_id, subject, normalized_subject, participant_emails)
      VALUES ($1, $2, $3, lower(regexp_replace(coalesce($3,''), '^([[:space:]]*(re|fwd):[[:space:]]*)+', '', 'gi')), $4::citext[])
@@ -543,10 +555,10 @@ export async function createLocalDraft(input: CreateLocalDraftInput): Promise<Re
   const threadId = String(requiredRow(threadResult.rows[0], "draft thread").id);
   const messageResult = await client.query<Row>(
     `INSERT INTO email_messages
-      (email_account_id, organization_id, thread_id, provider_message_id, from_email, to_recipients, cc_recipients, bcc_recipients, subject, text_body, snippet, is_read, is_draft, is_sent, received_at)
-     VALUES ($1, $2, $3, 'local-draft:' || gen_random_uuid()::text, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8, $9, left($9, 240), true, true, false, now())
-     RETURNING id, thread_id, email_account_id, from_email, to_recipients, cc_recipients, bcc_recipients, subject, text_body, is_draft, updated_at`,
-    [input.emailAccountId, input.organizationId, threadId, accountResult.rows[0].email_address, JSON.stringify(input.to), JSON.stringify(input.cc ?? []), JSON.stringify(input.bcc ?? []), input.subject?.trim() || null, input.bodyText ?? ""],
+      (email_account_id, organization_id, thread_id, provider_message_id, from_email, to_recipients, cc_recipients, bcc_recipients, subject, text_body, snippet, is_read, is_draft, is_sent, received_at, provider_draft_sync_status)
+     VALUES ($1, $2, $3, 'local-draft:' || gen_random_uuid()::text, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8, $9, left($9, 240), true, true, false, now(), $10)
+     RETURNING id, thread_id, email_account_id, from_email, to_recipients, cc_recipients, bcc_recipients, subject, text_body, is_draft, provider_draft_sync_status, updated_at`,
+    [input.emailAccountId, input.organizationId, threadId, accountResult.rows[0].email_address, JSON.stringify(input.to), JSON.stringify(input.cc ?? []), JSON.stringify(input.bcc ?? []), input.subject?.trim() || null, input.bodyText ?? "", syncStatus],
   );
   return requiredRow(messageResult.rows[0], "draft message");
   });
@@ -571,7 +583,14 @@ export async function updateLocalDraftForOrganization(
   const draftIdParam = "$" + (values.length - 1);
   const organizationParam = "$" + values.length;
   const r = await query<Row>(
-    `UPDATE email_messages m SET ${sets.join(", ")}, provider_draft_sync_status = 'local_only', provider_draft_sync_token = NULL, provider_draft_last_error = NULL, updated_at = now()
+    `UPDATE email_messages m SET ${sets.join(", ")}, provider_draft_sync_status = CASE
+       WHEN m.provider_draft_sync_status IN ('syncing','error') THEN 'error'
+       WHEN a.status = 'connected' AND a.capabilities->>'drafts' = 'true' THEN 'queued'
+       ELSE 'local_only' END,
+       provider_draft_sync_token = NULL,
+       provider_draft_last_error = CASE WHEN m.provider_draft_sync_status IN ('syncing','error')
+         THEN 'A previous provider update may have completed. Review the remote draft before retrying.'
+         ELSE NULL END, updated_at = now()
      FROM email_accounts a
      WHERE m.id = ${draftIdParam} AND m.organization_id = ${organizationParam} AND m.email_account_id = a.id AND a.organization_id = ${organizationParam} AND m.is_draft = true AND a.deleted_at IS NULL
        AND NOT EXISTS (
@@ -607,6 +626,46 @@ export async function listLocalDraftsForOrganization(organizationId: string): Pr
     [organizationId],
   );
   return r.rows;
+}
+
+/** Queue legacy/local-only drafts automatically when a connected account supports
+ * remote drafts. Never replay an error or interrupted provider mutation:
+ * its outcome may be unknown and retry could create a duplicate remote draft.
+ * Both the selection and state transition are bounded, tenant-checked and
+ * idempotent across concurrent worker instances.
+ */
+export async function queueEligibleLocalDraftsForProviderSync(limit = 25): Promise<number> {
+  const safeLimit = Math.min(Math.max(Math.floor(limit), 1), 100);
+  const r = await query<Row>(
+    `WITH eligible AS (
+       SELECT m.id FROM email_messages m
+       JOIN email_accounts a ON a.id = m.email_account_id
+         AND a.organization_id = m.organization_id
+       WHERE m.is_draft = true AND m.provider_draft_sync_status = 'local_only'
+         AND m.provider_draft_sync_token IS NULL
+         AND a.status = 'connected' AND a.deleted_at IS NULL
+         AND a.capabilities->>'drafts' = 'true'
+         AND NOT EXISTS (
+           SELECT 1 FROM email_actions ea
+           WHERE ea.organization_id = m.organization_id AND ea.draft_id = m.id
+             AND ea.email_account_id = m.email_account_id AND ea.action_type = 'send_email'
+             AND (ea.status IN ('executing', 'completed')
+               OR (ea.status = 'failed' AND ea.result->>'providerOutcomeUnknown' = 'true')
+               OR (ea.status IN ('pending_approval', 'approved')
+                   AND (ea.expires_at IS NULL OR ea.expires_at > now())))
+         )
+       ORDER BY m.updated_at ASC LIMIT $1
+       FOR UPDATE OF m SKIP LOCKED
+     )
+     UPDATE email_messages m
+       SET provider_draft_sync_status = 'queued', provider_draft_last_error = NULL,
+           updated_at = now()
+       FROM eligible WHERE m.id = eligible.id
+         AND m.is_draft = true AND m.provider_draft_sync_status = 'local_only'
+       RETURNING m.id`,
+    [safeLimit],
+  );
+  return r.rows.length;
 }
 
 export async function listDraftsPendingProviderSync(limit = 25): Promise<Array<{ id: string; organization_id: string }>> {

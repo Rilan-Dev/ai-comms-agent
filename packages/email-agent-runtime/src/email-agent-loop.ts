@@ -17,6 +17,9 @@ export interface EmailAgentTurnInput {
   toolContext: ToolContext;
   maxRounds?: number;
   maxToolCalls?: number;
+  /** For requests for actual mailbox contents, require successful authorized
+   * message/search retrieval before showing any model-generated email claims. */
+  requireEmailContentEvidence?: boolean;
   /** Only invoked after a complete audited batch of successful read-only tools. */
   onSafeReadOnlyFinal?: (history: ToolChatMessage[]) => Promise<string>;
   /** Public lifecycle only: no model reasoning or tool arguments. */
@@ -90,6 +93,19 @@ export async function runEmailAgentTurn(
       definitions,
     );
     if (completion.toolCalls.length === 0) {
+      // The model may answer "I can see your Qdrant / Google emails" without
+      // calling a mailbox tool. The caller only enables this gate for requests
+      // about real email contents; listing connected accounts is not evidence
+      // that any messages were retrieved.
+      if (input.requireEmailContentEvidence && !summaries.some(call =>
+        call.ok && ["email.search", "email.messages.list", "email.message.get", "email.thread.get"].includes(call.name))) {
+        return {
+          text: "I couldn't retrieve your workspace email messages for this request. No email summary is confirmed. Check that the agent has a connected readable mailbox and Email Read permission, then retry.",
+          toolCalls: summaries,
+          pendingApprovals,
+          finishReason: "completed",
+        };
+      }
       const finishReason = completion.finishReason === "invalid_tool_call" || completion.finishReason === "invalid_tool_arguments"
         ? completion.finishReason
         : "completed";

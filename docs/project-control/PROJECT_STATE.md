@@ -1,3 +1,21 @@
+## DEV-01 / FIX-01 — Sarvam live voice lifecycle fix verified — 2026-10-23
+
+Source on **Development** fixes lost readiness during mic consent, live Sarvam input/barge-in, late response replay, stale socket/activation/playback callbacks and abandoned microphone resources. [Session and exact next action](sessions/DEV01-FIX01-SARVAM-LIVE-LIFECYCLE-20261023.md); source `b58b4811`, upstream preserved in `4fefc41d`. **54/54 focused voice tests**, **7/7 core/integrity checks**, all package types and production web build pass. No live acoustic/vendor/production acceptance, deployment or messaging performed. OPS-01 verifies approved web+relay release, exact-origin WSS configuration, actual transcription/playback, real-device consent/mute/barge-in/end/reconnect and scoped mailbox reads. Phase 4 remains implementation_in_progress; standing routines/C3 activation unchanged. Earlier source/login checkpoints remain historical.
+
+---
+
+## DEV-01 — live authentication succeeded; downstream acceptance incomplete — 2026-10-23
+
+[Latest live recheck](sessions/DEV01-LIVE-AUTH-RECHECK-20261023.md): ordinary login API **HTTP 200**, authenticated auth/me **HTTP 200**, actual Chat frontend opened once. Earlier “cannot log in” is superseded. Application routes remain intermittent (timeouts/Cloudflare error surfaces); existing QA transcript is historical, not a new send or current delivery proof. No new draft/approval/email/WhatsApp action performed. Focused Development permission/approval/summary checks **38/38 pass** after pulling concurrent FIX-01 corrections. OPS-01 diagnoses intermittent origin/application access; DEV-01 resumes the preserved F01–F21 matrix after checking existing pending actions to prevent duplicates. Work remains on Development; no phase/feature activation.
+
+---
+
+## DEV-01 — current Development and frontend acceptance checkpoint — 2026-10-23
+
+Owner now directs all work/pushes to **Development**. Latest recovery and completed/in-progress/pending checklist: [current handoff](sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md). C3 source exists but remains unregistered; C4 source details, R1a preview and reviewed Chat email/WhatsApp tools exist, with live acceptance pending. Current Development native checks: **54 passed, 0 failed/skipped**. Live `/login` returns **Cloudflare HTTP 522 Host Error**; no login, draft, email, approval or WhatsApp test was executed. **Exact next:** OPS-01 restores origin availability; DEV-01 resumes the documented F01–F21 frontend matrix, including permission-negative and human-approval cases, using owner-authorized WhatsApp recipient. No deployment, permission mutation or feature activation performed. Phase 4 remains implementation_in_progress; older entries retained as history.
+
+---
+
 ## DEV-01 — R1a no-side-effect timing preview checkpoint — 2026-10-23
 Source on `Development` now includes an authenticated `/routines/preview` UI (linked from Overview) showing canonical next UTC/local occurrences for calendar daily/weekly, elapsed 1/6/12/24h, one-off and event-trigger semantics. No schedule/automation persistence, AI worker registration, permission grant or WhatsApp/email dispatch. Five focused native-source regressions authored; 25/25 corrected GitHub-only checks, actual runner/typechecks/browser/deployment not executed. Parent phased roadmap `docs/superpowers/plans/2026-10-23-practical-email-assistant-roadmap.md` complements existing five-day catch-up plan; next exact step and gates in `NEXT_ACTION.md`. Phase 4 remains `implementation_in_progress`, C3 source generator off, R1b persistence/external standing consent not approved; DEV-01 features, FIX-01 errors, OPS-01 operations remain separate.
 

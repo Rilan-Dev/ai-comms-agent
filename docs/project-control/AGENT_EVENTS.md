@@ -838,3 +838,35 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **DEV-01 source delivery:** Chat compose now reports authenticated email.write, saved agent draft/send-request permission and explicit human approval separately, asks users to choose a From when multiple connected bound mailboxes exist, and asks for exact To instead of guessing.
 - **Safe profile:** Uses only saved name/email from verified signed-in subject; optional editable Regards sign-off, no fabricated title/company/phone. Chat and voice model guidance backed by raw write-tool presence/syntax checks, existing tenant RBAC and approval gates.
 - **Tests:** Seven source contract + five Vitest behavior cases authored; source inspection 54/54 + 22/22; no host/real profile/provider/browser verification. Session `sessions/DEV01-CHAT-COMPOSE-IDENTITY-20261023.md`. OPS release, FIX defects.
+
+### EVT-DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023
+- Owner authorized DEV-01 redesign of the selected live AI Provider Setup. Read-only screen evidence: duplicate vendor cards+dropdown, status conflating enabled key with readiness, voice TTS/STT/Reatime key separation hard to understand.
+- Development implements no-default card-only vendor selection per capability, four task-first areas, guided credential/model/voice checklist/save, honest statuses needing key+model, and recoverable org lookup errors. Backend authorization/catalog/encryption, explicit credential reuse and non-overlap with FIX-01/OPS-01 unchanged.
+- Source/test evidence: 19/19 isolated callbacks, 6/6 helper states, detailed session `sessions/DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023.md`. Native tests/typecheck, browser on new build and real provider/deployment acceptance NOT RUN. OPS-01 owns rollout and vendor runtime verification; DEV-01 next tests UX source in equipped checkout.
+
+### EVT-DEV01-CATCHUP-SOURCE-DETAILS-20261023 — 2026-10-23
+- **From:** DEV-01 / Forge. **Type:** SOURCE_IMPLEMENTATION / ACCEPTANCE_HANDOFF. **State:** SOURCE_ONLY, RUNTIME_PENDING.
+- **What:** C4 private five-day original email list now projects only canonical sender/subject/received_at after C1/C2 owner+agent+mailbox/revision verification; displays understandable details and exact UTC dates instead of opaque UUID-only source links. Source regression and existing P0–P7 plan continue; no new raw-email store, model classification, login tracking or send.
+- **Evidence:** GitHub source invariant 17/17; isolated helper Node3/3 + strict standalone TS pass. Full committed tests, DB tenant/privacy revocation, browser, worker, CI/deploy not run.
+- **Owner/next:** DEV-01 executes new top NEXT_ACTION regression/feature-off/0-200-320 tests, then C3 negative acceptance while off; FIX-01 code defects; OPS-01 provider/database/production deployment. P3 presence consent and P5/P6 routine/WhatsApp need separate owner/security approval. Session `docs/project-control/sessions/DEV01-CATCHUP-SOURCE-DETAILS-20261023.md`.
+
+
+## DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023
+
+Owner-selected Development recovered at ab7292fbb00263bb817ab2874ab4f66e10946f0f. Fresh native tests 54/54 pass (source/behavior scope only). Live Chromium login returns HTTP 522 origin timeout, so authenticated AI mail/WhatsApp acceptance is blocked with no external messages created. Current state, completed/in-progress/pending work, F01–F21 matrix and exact next action: docs/project-control/sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md. OPS-01 owns origin recovery; DEV-01 resumes frontend acceptance; FIX-01 owns proven application defects. Existing records and roles preserved.
+
+
+## DEV01-LIVE-AUTH-RECHECK-20261023
+
+Normal login API and auth/me returned 200; actual authenticated Chat opened once. Other app routes remain intermittent. Existing QA conversation was observed, not created by this session; no new outgoing action performed. Current Development focused checks 38/38 pass. See docs/project-control/sessions/DEV01-LIVE-AUTH-RECHECK-20261023.md. OPS-01 origin-path diagnosis; DEV-01 resume F01–F21 with authoritative pending/delivery checks.
+
+### EVT-DEV01-AUTOMATIC-DRAFT-SYNC-20261023 — 2026-10-23
+- **Authorization:** Owner explicitly requests AI-first auto provider draft saving, concise Drafts UI, and AI ability to read pending drafts. Direct Development, no unattended email sends.
+- **Finding:** `createLocalDraft/updateLocalDraftForOrganization` were local-only until manual `/api/mail/drafts/sync` request despite a safe queued worker; agent read tools lacked drafts-only filter.
+- **Remedy:** Source+tests in `sessions/DEV01-AUTOMATIC-DRAFT-SYNC-20261023.md`: conditional queued writes, safe legacy queue, mailbox status UI, error-only retry and stale-poll race fence, read-only `drafts_only`. Existing user RBAC, agent tool policy, account capability and send approval retained.
+- **Evidence:** source assertion checks only; native workspace, DB/provider/browser/deployment acceptance pending. OPS handles provider runtime and rollout; FIX handles independent implementation bugs.
+
+
+## DEV01-FIX01-SARVAM-LIVE-LIFECYCLE-20261023
+
+DEV-01 coordinated authoritative Clara comparison and integration; FIX-01 implemented/reproduced lifecycle bugs; OPS-01 documented deployment gaps. Source b58b4811 and concurrent integration4fefc41d preserve existing work. Readiness, duplex/mute, VAD/partial interruption, aborted/late responses, stale session/socket/activation/audio completion and abandoned microphone resources covered. Final54/54voice +7/7core/integrity checks, all package typechecks and production build pass. No live deployment/acoustic/provider acceptance. Exact next: OPS verifies approved web+relay revision/config and real-device streams; DEV/FIX then validates scoped spoken mailbox scenarios. Session: docs/project-control/sessions/DEV01-FIX01-SARVAM-LIVE-LIFECYCLE-20261023.md. Lesson: callback registration precedes awaits, every continuation is identity-fenced, cancellation never implies undoing authorized writes.

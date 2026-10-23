@@ -7,6 +7,7 @@ import type { Agent, AgentEmailBinding, AgentPolicy, AgentVersion, AgentWhatsApp
 import { useNotifications } from "@/components/notifications";
 import { AgentAISettingsPanel } from "./agent-ai-settings-panel";
 import { EMAIL_PERMISSION_PRESETS, emailPermissionPresetSelection, summarizeEmailPermissionChanges } from "@/lib/agents/email-permission-presets";
+import { WHATSAPP_POLICY_CHOICES, whatsappPolicyReadiness } from "@/lib/agents/whatsapp-permission-choices";
 
 // Only tools registered by the current email runtime are selectable here.
 // The shared catalog also includes unimplemented contracts: showing those
@@ -30,6 +31,7 @@ const EMAIL_POLICY_CHOICES = [
   { name: "email.forward.request", label: "Request forward approval", detail: "Request authorization to forward; does not send automatically.", group: "write" },
 ] as const;
 const KNOWN_EMAIL_POLICY_TOOLS = new Set<string>(EMAIL_POLICY_CHOICES.map((choice) => choice.name));
+const KNOWN_SELECTABLE_POLICY_TOOLS = new Set<string>([...KNOWN_EMAIL_POLICY_TOOLS, ...WHATSAPP_POLICY_CHOICES.map((choice) => choice.name)]);
 
 type Check = { key: string; label: string; ok: boolean; detail?: string };
 type AuditEvent = { id:string; eventType:string; action:string|null; decision:string|null; createdAt:string; metadata:Record<string,unknown> };
@@ -62,6 +64,8 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   const [selectedVersionId, setSelectedVersionId] = useState(initialAgent.currentVersionId ?? initialVersions[0]?.id ?? "");
   const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
   const [whatsappAccounts, setWhatsappAccounts] = useState<Array<{id:string;displayName:string|null;phoneNumberId:string;status:string}>>([]);
+  const savedWhatsAppAccount = whatsappAccounts.find(account => account.id === whatsappBinding?.whatsappAccountId);
+  const whatsappSetup = whatsappPolicyReadiness({ allowedTools: selectedTools, bound: Boolean(whatsappBinding), connected: savedWhatsAppAccount?.status === "connected" });
   const [emailRole, setEmailRole] = useState<"primary"|"read_only"|"send_only">("primary");
   const [editName, setEditName] = useState(initialAgent.name);
   const [editSlug, setEditSlug] = useState(initialAgent.slug);
@@ -312,6 +316,20 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
         <button type="button" onClick={() => setTab("channels")} className="mt-2 text-sm font-semibold text-primary underline">Choose connected mailbox →</button>
         <p className="mt-2 text-xs text-muted-foreground">Binding a mailbox never grants tool access automatically. The account must also be connected, and the signed-in user must have email.read. Sending always follows its separate approval rules.</p>
       </div>
+      <div className="mt-4 rounded-md border bg-muted/30 p-4 text-sm">
+        <p className="font-semibold">WhatsApp setup checklist</p>
+        <p role="status" className="mt-1 text-muted-foreground">
+          {whatsappBinding
+            ? savedWhatsAppAccount?.status === "connected" ? "✓ A connected WhatsApp Business account is bound." : "The bound WhatsApp account is not confirmed connected."
+            : "1. Bind a connected WhatsApp Business account in Channels."}
+          {" "}{selectedTools.includes("whatsapp.send") ? "✓ WhatsApp approval tool selected (save to apply)." : "2. Select Request WhatsApp send approval below and save."}
+        </p>
+        <button type="button" onClick={() => setTab("channels")} className="mt-2 text-sm font-semibold text-primary underline">Choose connected WhatsApp account →</button>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Account binding and saved tool permission are separate. The signed-in user must also have whatsapp.send.
+          The agent can create a pending proposal only; a human must approve it and Meta's conversation-window or template rules still apply.
+        </p>
+      </div>
       <form onSubmit={savePolicy} className="mt-6 space-y-5">
         <fieldset className="rounded-md border border-primary/25 bg-primary/5 p-4">
           <legend className="px-1 text-sm font-semibold">Quick permission presets</legend>
@@ -327,10 +345,23 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
             <span><span className="block font-medium">{choice.label}</span><span className="mt-1 block text-xs text-muted-foreground">{choice.detail}</span></span>
           </label>)}</div>
         </fieldset>)}
-        {selectedTools.filter((name) => !KNOWN_EMAIL_POLICY_TOOLS.has(name)).length > 0 && <fieldset className="rounded-md border p-4">
+        <fieldset className="rounded-md border p-4">
+          <legend className="px-1 text-sm font-semibold">WhatsApp permissions</legend>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Enable only the registered WhatsApp tools this agent needs. A selected checkbox is not active until an administrator confirms and saves the policy.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">{WHATSAPP_POLICY_CHOICES.map((choice) => <label key={choice.name} className="flex items-start gap-3 rounded-md border p-3 text-sm hover:bg-muted/30">
+            <input type="checkbox" disabled={busy} checked={selectedTools.includes(choice.name)} onChange={(event) => togglePolicyTool(choice.name, event.target.checked)} className="mt-1 size-4 shrink-0" />
+            <span><span className="block font-medium">{choice.label}</span><span className="mt-1 block text-xs text-muted-foreground">{choice.detail}</span></span>
+          </label>)}</div>
+          <p role="status" className="mt-3 text-xs text-muted-foreground">
+            {whatsappSetup.canRequestSend ? "WhatsApp tool and connected binding selected. Actor permission, template/window compliance and human approval are checked separately." : whatsappSetup.blockers.join(" · ")}
+          </p>
+        </fieldset>
+        {selectedTools.filter((name) => !KNOWN_SELECTABLE_POLICY_TOOLS.has(name)).length > 0 && <fieldset className="rounded-md border p-4">
           <legend className="px-1 text-sm font-semibold">Existing other permissions</legend>
           <p className="mb-3 text-xs text-muted-foreground">These were already saved. They are preserved until you explicitly remove them; this page cannot confirm whether each has a registered handler.</p>
-          {selectedTools.filter((name) => !KNOWN_EMAIL_POLICY_TOOLS.has(name)).map((name) => <label key={name} className="mb-2 flex items-center gap-2 text-sm"><input type="checkbox" checked onChange={() => togglePolicyTool(name, false)} />{name}</label>)}
+          {selectedTools.filter((name) => !KNOWN_SELECTABLE_POLICY_TOOLS.has(name)).map((name) => <label key={name} className="mb-2 flex items-center gap-2 text-sm"><input type="checkbox" checked onChange={() => togglePolicyTool(name, false)} />{name}</label>)}
         </fieldset>}
         <details className="rounded-md border p-4"><summary className="cursor-pointer text-sm font-semibold">Advanced sender rules and existing custom policy (optional)</summary>
           <p className="mt-2 text-xs text-muted-foreground">The saved security and rate-limit rules stay unchanged unless you edit them here. Leave these fields as provided unless an administrator has specific restrictions.</p>
@@ -356,7 +387,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
     <option value="read_only">Read only</option>
     <option value="send_only">Send only</option>
   </select>
-</div><p className="mt-2 text-xs text-muted-foreground">Only connected mailboxes can be assigned. Unavailable accounts must be restored under <a href="/mail/accounts" className="font-semibold text-primary underline">Mailboxes</a> first.</p><div className="mt-4 space-y-2">{emailBindings.map((b)=><div key={b.id} className="flex items-center justify-between rounded-md border p-3 text-xs"><span className="min-w-0 truncate font-medium">{emailAccounts.find((a)=>a.id===b.emailAccountId)?.email_address ?? b.emailAccountId}</span><span className="ml-3 flex items-center gap-2"><span className="rounded-full bg-muted px-2 py-1">{b.role}</span><button type="button" disabled={busy} onClick={()=>unbindEmail(b.emailAccountId)} className="text-destructive hover:underline">Remove</button></span></div>)}</div></div><div className="rounded-md border bg-background p-6 shadow-sm"><h2 className="font-semibold">WhatsApp</h2><p className="mt-1 text-sm text-muted-foreground">Exactly one WhatsApp Business account can be bound to an agent.</p><select aria-label="WhatsApp account to connect" value={whatsappAccountId} onChange={(e)=>setWhatsappAccountId(e.target.value)} className="mt-5 h-11 w-full rounded-md border bg-background px-3 text-sm"><option value="">Select a WhatsApp account</option>{whatsappAccounts.map(account=><option key={account.id} value={account.id}>{account.displayName || account.phoneNumberId} · {account.status}</option>)}</select><div className="mt-4 rounded-md border p-3 text-xs">{whatsappBinding ? <><span className="font-medium">{whatsappBinding.whatsappAccountId}</span><span className="flex items-center gap-3"><span className="text-emerald-600">Connected</span><button type="button" disabled={busy} onClick={unbindWhatsApp} className="text-destructive hover:underline">Remove</button></span></> : <span className="text-muted-foreground">No WhatsApp account connected.</span>}</div><button type="button" disabled={busy || (!emailAccountId && !whatsappAccountId)} onClick={saveChannels} className="mt-5 h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Saving…":"Save channels"}</button></div></section>}
+</div><p className="mt-2 text-xs text-muted-foreground">Only connected mailboxes can be assigned. Unavailable accounts must be restored under <a href="/mail/accounts" className="font-semibold text-primary underline">Mailboxes</a> first.</p><div className="mt-4 space-y-2">{emailBindings.map((b)=><div key={b.id} className="flex items-center justify-between rounded-md border p-3 text-xs"><span className="min-w-0 truncate font-medium">{emailAccounts.find((a)=>a.id===b.emailAccountId)?.email_address ?? b.emailAccountId}</span><span className="ml-3 flex items-center gap-2"><span className="rounded-full bg-muted px-2 py-1">{b.role}</span><button type="button" disabled={busy} onClick={()=>unbindEmail(b.emailAccountId)} className="text-destructive hover:underline">Remove</button></span></div>)}</div></div><div className="rounded-md border bg-background p-6 shadow-sm"><h2 className="font-semibold">WhatsApp</h2><p className="mt-1 text-sm text-muted-foreground">Exactly one WhatsApp Business account can be bound to an agent.</p><select aria-label="WhatsApp account to connect" value={whatsappAccountId} onChange={(e)=>setWhatsappAccountId(e.target.value)} className="mt-5 h-11 w-full rounded-md border bg-background px-3 text-sm"><option value="">Select a WhatsApp account</option>{whatsappAccounts.map(account=><option key={account.id} value={account.id} disabled={account.status !== "connected"}>{account.displayName || account.phoneNumberId} · {account.status === "connected" ? "Connected" : "Unavailable — connect first"}</option>)}</select><div className="mt-4 rounded-md border p-3 text-xs">{whatsappBinding ? <><span className="font-medium">{whatsappBinding.whatsappAccountId}</span><span className="flex items-center gap-3"><span className={savedWhatsAppAccount?.status === "connected" ? "text-emerald-600" : "text-amber-600"}>{savedWhatsAppAccount?.status === "connected" ? "Connected" : "Connection not verified"}</span><button type="button" disabled={busy} onClick={unbindWhatsApp} className="text-destructive hover:underline">Remove</button></span></> : <span className="text-muted-foreground">No WhatsApp account connected.</span>}</div><button type="button" disabled={busy || (!emailAccountId && !whatsappAccountId)} onClick={saveChannels} className="mt-5 h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Saving…":"Save channels"}</button></div></section>}
     {tab==="ai-settings" && <AgentAISettingsPanel organizationId={organizationId} agentId={agent.id} />}
     {tab==="test" && <section className="rounded-md border bg-background p-6 shadow-sm"><h2 className="flex items-center gap-2 font-semibold"><FlaskConical size={16} className="text-primary" /> Configuration test</h2><p className="mt-1 text-sm text-muted-foreground">This verifies persisted agent configuration and security prerequisites without pretending to execute a live AI/provider call.</p><button type="button" disabled={busy} onClick={runTest} className="mt-5 h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Testing…":"Run configuration test"}</button>{testResult && <div className="mt-5 space-y-2">{testResult.checks.map((c)=><div key={c.key} className="flex items-center justify-between rounded-md border p-3 text-sm"><span><span className="block">{c.label}</span>{c.detail && <span className="mt-1 block text-xs text-muted-foreground">{c.detail}</span>}</span><span className={c.ok?"text-emerald-600":"text-destructive"}>{c.ok?"Pass":"Needs attention"}</span></div>)}</div>}</section>}
     {tab==="activity" && <section className="rounded-md border bg-background shadow-sm">

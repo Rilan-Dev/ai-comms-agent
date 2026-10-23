@@ -72,7 +72,7 @@ describe("Clara realtime voice transport", () => {
   });
 
   it("uses the same shared authorized email runtime for spoken and typed turns", () => {
-    expect(turnRoute).toContain('import { runEmailAgentTurn } from "@ai-comms-agent/email-agent-runtime"');
+    expect(turnRoute).toMatch(/import \{[^}]*\brunEmailAgentTurn\b[^}]*\} from "@ai-comms-agent\/email-agent-runtime"/);
     expect(turnRoute).toContain("if (!subject.membership)");
     expect(turnRoute).toContain("subject.membership.role");
     expect(turnRoute).toContain('conversation_id: typeof session.conversation_id === "string"');
@@ -93,8 +93,43 @@ describe("Clara realtime voice transport", () => {
     expect(speechSpeakRoute).toContain("eleven_turbo_v2_5");
     expect(workspace).toContain("connectSpeechPipeline");
     expect(workspace).toContain("submitPipelineUtterance");
-    expect(workspace).toContain("Sarvam STT/TTS pipeline");
-    expect(workspace).toContain("ElevenLabs STT/TTS pipeline");
+    // REST speech endpoints still support separately chosen turn-based voice
+    // chat, but are never a silent fallback for the Sarvam live conversation.
+    expect(workspace).toContain('payload.transport.transportMode === "pipeline" && payload.transport.realtimeProvider === "elevenlabs"');
+    expect(workspace).toContain("Sarvam realtime voice requires a connected WebSocket relay");
+  });
+
+  it("only activates Sarvam live conversation after STT, TTS and microphone are all ready", () => {
+    const provider = workspace.slice(
+      workspace.indexOf("async function connectProviderRealtime("),
+      workspace.indexOf("async function connectSpeechPipeline("),
+    );
+    expect(provider).toContain('provider === "sarvam" && !payload.ttsRelayUrl');
+    expect(provider).toContain("let sttReady = false;");
+    expect(provider).toContain('let ttsReady = provider !== "sarvam";');
+    expect(provider).toContain("let microphoneReady = false;");
+    expect(provider).toContain("if (!isCurrentConnection() || !sttReady || !ttsReady || !microphoneReady || activationStartedRef.current) return;");
+    expect(provider).toContain('if (type === "status" && data.value === "connected")');
+    expect(provider).toContain("ttsReady = true;");
+    expect(provider).toContain("sttReady = true;");
+    expect(provider).toContain("microphoneReady = true;");
+    expect(provider).toContain('void patchSession({ action: "activate" })');
+    expect(provider).toContain('reportUnexpectedTransportLoss("Sarvam Bulbul realtime speech socket closed.');
+  });
+
+  it("never uses one-shot batch speech as fallback when Sarvam streaming TTS fails", () => {
+    const hostTurn = workspace.slice(
+      workspace.indexOf("const submitHostTurn ="),
+      workspace.indexOf("function pcm16ToBase64("),
+    );
+    const streaming = hostTurn.slice(
+      hostTurn.indexOf('if (realtimeProviderRef.current === "sarvam" || realtimeProviderRef.current === "elevenlabs")'),
+      hostTurn.indexOf('if (realtimeProviderRef.current === "gemini")'),
+    );
+    expect(streaming).toContain("if (streamProviderTts(answer, generationId)) return;");
+    expect(streaming).toContain('if (provider === "sarvam")');
+    expect(streaming).toContain("No batch TTS fallback is allowed");
+    expect(streaming.indexOf('if (provider === "sarvam")')).toBeLessThan(streaming.indexOf('fetch("/api/voice/speech/speak"'));
   });
 
   it("reuses one generation identifier for provider TTS fallback playback", () => {

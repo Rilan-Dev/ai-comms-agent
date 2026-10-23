@@ -14,6 +14,7 @@ import { canUseEmailAccountBinding, hasEmailToolCapabilities } from "./email-too
 import { preserveEmailBody } from "./email-body";
 import { normalizeEmailRecipients } from "./email-recipients";
 import { resolveAccountIdentifier } from "./account-identifier";
+import { eligibleReplyForwardSourceId, isLocalEmailMessageId, reviewedForwardSubject } from "./email-source-identity";
 
 type Input = Record<string, unknown>;
 type Row = Record<string, unknown>;
@@ -107,9 +108,14 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
   }
 
   async function checkMessage(accountId: string, messageId: string, context: ToolContext): Promise<Row> {
+    // The provider identifier is not a PostgreSQL message UUID; reject it
+    // before query parsing and offer a useful non-500 error to the agent.
+    if (!isLocalEmailMessageId(messageId)) throw new EmailWriteFailure("message_not_found",
+      "Choose a synchronized message from the selected mailbox before replying or forwarding.");
     const message = await getMailMessageForOrganization(context.organization_id, messageId);
-    if (!message || String(message.email_account_id) !== accountId) {
-      throw new EmailWriteFailure("message_not_found", "The message was not found in the selected mailbox.");
+    if (!message || !eligibleReplyForwardSourceId(message, accountId)) {
+      throw new EmailWriteFailure("message_not_found",
+        "The source must be a synchronized, provider-backed message in the selected mailbox; drafts cannot be replied to or forwarded.");
     }
     return message;
   }
@@ -200,8 +206,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     const source = await checkMessage(account.id, text(input.message_id, 100), context);
     if (!account.capabilities.drafts || !account.capabilities.forward) throw new EmailWriteFailure("capability_not_supported", "This mailbox does not support forward drafts.");
     const recipients = requireRecipients(input.to);
-    const originalSubject = text(source.subject, 998);
-    const subject = /^fwd?:/i.test(originalSubject) ? originalSubject : `Fwd: ${originalSubject}`;
+    const subject = reviewedForwardSubject(source.subject);
     const originalBody = preserveEmailBody(source.text_body);
     const note = preserveEmailBody(input.body_text, 10000);
     const forwardedBody = `${note ? note + "\n\n" : ""}---------- Forwarded message ----------\n${originalBody}`;
@@ -260,7 +265,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       agentId: context.agent_id,
       emailAccountId: account.id,
       actionType: "reply_email",
-      recipientSnapshot: { messageId: text(source.provider_message_id, 500) || messageId, to: [recipient], cc: [], bcc: [], subject, bodyText: preserveEmailBody(input.body_text) },
+      recipientSnapshot: { messageId, to: [recipient], cc: [], bcc: [], subject, bodyText: preserveEmailBody(input.body_text) },
       requestedBy: context.user_id,
       idempotencyKey: `${context.turn_id}:reply:${messageId}`,
       correlationId: context.correlation_id,
@@ -279,7 +284,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       agentId: context.agent_id,
       emailAccountId: account.id,
       actionType: "forward_email",
-      recipientSnapshot: { messageId: text(source.provider_message_id, 500) || messageId, to: recipients, subject: text(source.subject, 998), bodyText: preserveEmailBody(source.text_body) },
+      recipientSnapshot: { messageId, to: recipients, subject: reviewedForwardSubject(source.subject), bodyText: preserveEmailBody(source.text_body) },
       requestedBy: context.user_id,
       idempotencyKey: `${context.turn_id}:forward:${messageId}`,
       correlationId: context.correlation_id,

@@ -1,4 +1,4 @@
-import { listDraftsPendingProviderSync, recoverStaleProviderDraftSyncs } from "@ai-comms-agent/db";
+import { queueEligibleLocalDraftsForProviderSync, listDraftsPendingProviderSync, recoverStaleProviderDraftSyncs } from "@ai-comms-agent/db";
 import { syncLocalDraftToProvider } from "./draft-sync";
 
 const INTERVAL_MS = 5_000;
@@ -12,6 +12,10 @@ export async function processPendingProviderDraftSync(limit = 10) {
     // A crashed worker leaves syncing, never an automatic retry: the remote
     // provider may already have the draft. Mark stale attempts for review.
     await recoverStaleProviderDraftSyncs();
+    // Admit previously saved local-only drafts without requiring a user
+    // to discover a technical "Sync provider draft" button. Error/uncertain
+    // attempts are intentionally excluded to avoid duplicate remote drafts.
+    await queueEligibleLocalDraftsForProviderSync(limit);
     const jobs = await listDraftsPendingProviderSync(limit);
     for (const job of jobs) {
       try {

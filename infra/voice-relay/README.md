@@ -40,4 +40,24 @@ The web app mints a five-minute HMAC-signed token only after verifying the authe
 
 ## OPS-01 deployment handoff
 
-This service has been added as source only. It has not been built, deployed, tunnel-exposed or live-tested. OPS-01 should wire the relay into the target deployment environment and set `VOICE_RELAY_PUBLIC_URL` and `VOICE_RELAY_ALLOWED_ORIGINS`. Until that is configured, the app intentionally uses the Sarvam/ElevenLabs utterance pipeline fallback instead of claiming a native WebSocket connection.
+OPS-01 owns deployment and live provider verification. Source presence and the relay process health endpoint do not establish that a production relay is configured or connected. The repository does not automatically start this service through its application Compose files. Wire the dedicated relay into the approved deployment and set the web and relay settings above.
+
+**Sarvam live conversations fail closed when the relay is missing or either stream cannot connect. There is no REST utterance fallback in Sarvam live mode.** A separately selected voice-chat speech pipeline is a different feature. ElevenLabs retains its existing explicitly named pipeline fallback.
+
+## What the live path means
+
+The Clara reference uses two authenticated WebSocket streams: continuous PCM microphone frames to Saaras, and generation-tagged text/audio frames to/from Bulbul. Recognized final speech passes through the host-authorized Clara turn and email tools; the model never gains permission to read or send mail from a transcript alone. Using streaming speech recognition and synthesis is part of this live architecture; calling a one-shot REST transcribe/speak endpoint as a silent replacement is not.
+
+The browser waits for both relay connection statuses and microphone readiness before presenting the session as active. A relay `connected` event currently reflects the vendor WebSocket opening (and, for TTS, sending its configuration); it is **not** a separate vendor configuration acknowledgement or proof of successful audio generation. Validate actual transcription and synthesized audio before claiming end-to-end readiness.
+
+## Production acceptance checklist (OPS-01)
+
+- Verify the deployed web and relay image/source revisions from deployment provenance; `/api/health` and relay `/health` do not attest a Git SHA.
+- Verify the exact public web origin is allowlisted, TLS is valid, and the public proxy permits upgrades on both Sarvam paths. Provider keys and signed relay tokens must not appear in browser logs, command output or the runbook.
+- Verify web `VOICE_RELAY_PUBLIC_URL`, matching web/relay `AUTH_SECRET`, relay `AI_COMMS_WEB_URL`, and exact `VOICE_RELAY_ALLOWED_ORIGINS`. The default application environment example alone does not configure a relay.
+- Check authenticated, user/agent/session-scoped token issuance and server-side bootstrap; reject foreign/ended sessions, expired tokens and disallowed origins.
+- Confirm both vendor streams open, then actual PCM transcription and generation-tagged audio playback. Test missing/invalid provider configuration and disconnects; the UI must not claim success or fall back to REST speech.
+- Test delayed microphone consent, explicit mute, cancellation, stale-session events, and user speech during playback on a real device with echo cancellation. Mock lifecycle tests cannot establish acoustic echo behavior.
+- Confirm spoken mailbox questions use successful authorized reads, exact coverage and source facts; verify denied mailbox access. No email or WhatsApp send is required to validate live speech.
+
+The Sarvam relay currently resolves one server-side key using the configured realtime/STT/TTS/chat/general priority and pins its TTS model in the bootstrap adapter. Do not infer that independently selected Voice Chat keys/models automatically become live-relay settings. Check the resolved server-side provider configuration without printing key values.

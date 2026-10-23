@@ -7,7 +7,7 @@
  */
 import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { documentedRealtimeModels, fetchLiveModelCatalog, hasDocumentedRealtimeModels, supportsLiveCatalog } from '../src/lib/ai/live-model-catalog.ts';
+import { documentedRealtimeModels, documentedSarvamVoiceModels, fetchLiveModelCatalog, hasDocumentedRealtimeModels, hasDocumentedSarvamVoiceModels, supportsLiveCatalog } from '../src/lib/ai/live-model-catalog.ts';
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
@@ -97,4 +97,19 @@ test('documented choices are never falsely advertised for live or unrelated capa
   assert.deepEqual(documentedRealtimeModels('sarvam', 'chat'), []);
   assert.deepEqual(documentedRealtimeModels('elevenlabs', 'tts'), []);
   assert.equal(hasDocumentedRealtimeModels('tei', 'embedding'), false);
+});
+
+
+test('Sarvam TTS/STT documented setup IDs match the existing speech pipeline, not chat or realtime', () => {
+  assert.equal(supportsLiveCatalog('sarvam', 'tts'), false);
+  assert.equal(supportsLiveCatalog('sarvam', 'stt'), false);
+  assert.equal(hasDocumentedSarvamVoiceModels('sarvam', 'tts'), true);
+  assert.equal(hasDocumentedSarvamVoiceModels('sarvam', 'stt'), true);
+  assert.deepEqual(documentedSarvamVoiceModels('sarvam', 'tts').map(m => m.id), ['bulbul:v3']);
+  assert.deepEqual(documentedSarvamVoiceModels('sarvam', 'stt').map(m => m.id), ['saaras:v4']);
+  for (const purpose of ['chat', 'realtime', 'embedding', 'general']) {
+    assert.equal(hasDocumentedSarvamVoiceModels('sarvam', purpose), false);
+    assert.deepEqual(documentedSarvamVoiceModels('sarvam', purpose), []);
+  }
+  assert.deepEqual(documentedSarvamVoiceModels('elevenlabs', 'tts'), []);
 });

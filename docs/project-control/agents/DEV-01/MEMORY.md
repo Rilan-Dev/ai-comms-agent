@@ -369,3 +369,37 @@ The user actually ran all 29 focused C3 Node tests and four package TypeScript c
 - **Lesson:** An email mailbox's readiness/capability ranking is not permission to assume the user intended that From account. With multiple connected primary bindings leave sender empty and require an explicit choice. The AI cannot infer a recipient address from a name; require a valid, exact To before persisting drafts or requesting approval, and keep host permission/capability checks on every action.
 - **Trusted profile:** `AuthSubject.user.name/email` are the only saved personal attributes currently established for this flow. A Regards signature may include the saved name; other details are UNKNOWN and must not be invented. Sanitize/bound displayed model metadata and treat it as data, not authorization. Distinguish user email.write, agent draft/write tool allowlist and provider send capability; sending still needs separate human approval. Tests and actual account acceptance remain distinct.
 - **Implementation evidence:** `sessions/DEV01-CHAT-COMPOSE-IDENTITY-20261023.md`, source invariants 22/22 and new source contracts 54/54; native/test/production unverified. No implicit role grant or external send.
+
+### DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023 — task-first provider setup
+- For ordinary users, provider selection should start from *what task the AI performs* (chat, voice pipeline, realtime, knowledge), not a default vendor dropdown replicated under status cards. Keep one explicit provider card selection per capability; never preselect a provider or migrate unsaved API secrets across vendor/org switches.
+- A saved key is not a saved compatible model; Voice Chat requires **both** TTS and STT independently enabled with stored model IDs; a documented realtime speech model is not a verified provider WebSocket. Status must be credential+model aware with live-connectivity caveat, and backend allowlists remain authoritative.
+- Explain setup as choose capability → choose provider → save key → choose actual supported model(s) → save. A failed organization lookup should yield an accessible retry, not an indefinite spinner. Preserve tested provider-reuse paths, tenant fetch abort, offline/no-key honesty, no guessed model list, encryption and no cross-org key copying.
+- Evidence: `sessions/DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023.md`; 19/19 isolated callback tests, 6/6 helper cases, native TypeScript/Vitest/real browser not run. FIX-01 code defects, OPS-01 deployment. C3/R1b gating unchanged.
+
+- **Remount follow-on:** On a category/org change remount the entire provider editor, and remount each model select on provider change; effect-only clearing may leave one stale render of the previous vendor. Guided setup 20/20 isolated callback checks (7+5+8), native/browser acceptance pending. Source `DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023`.
+
+### DEV01-CATCHUP-SOURCE-DETAILS-20261023 — distinguish recognizable sources from AI priority
+- A selected private Catch-up manifest may expose 200 original email links, but message UUIDs are not meaningful to ordinary users. Provide bounded subject, sender and explicit UTC received date **only from canonical PostgreSQL headers after existing C1/C2 private owner+agent+mailbox/revision revalidation**; never add message bodies to the pagination response.
+- Missing or malformed headers should say “unavailable,” not fabricate fields. React must render untrusted subjects as escaped text; preserve exact original links and accessible keyboard focus.
+- This is P1 source usability, **not** C3 High/Medium/Low AI classification, app attendance detection, completed review or WhatsApp delivery. Keep `BRIEFINGS_ENABLED` guard, source 200-page cap and manual review-only boundary.
+- Evidence: `DEV01-CATCHUP-SOURCE-DETAILS-20261023`, plan `docs/superpowers/plans/2026-10-23-human-readable-catchup-sources.md`, fresh GitHub 17/17 source assertions, isolated helper Node 3/3 + standalone strict TS; full repo/native DB/browser unverified. Future C3 registration, personal presence/consent and WhatsApp external exports still gated.
+
+
+## DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023
+
+Owner-selected Development recovered at ab7292fbb00263bb817ab2874ab4f66e10946f0f. Fresh native tests 54/54 pass (source/behavior scope only). Live Chromium login returns HTTP 522 origin timeout, so authenticated AI mail/WhatsApp acceptance is blocked with no external messages created. Current state, completed/in-progress/pending work, F01–F21 matrix and exact next action: docs/project-control/sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md. OPS-01 owns origin recovery; DEV-01 resumes frontend acceptance; FIX-01 owns proven application defects. Existing records and roles preserved.
+
+
+## DEV01-LIVE-AUTH-RECHECK-20261023
+
+Normal login API and auth/me returned 200; actual authenticated Chat opened once. Other app routes remain intermittent. Existing QA conversation was observed, not created by this session; no new outgoing action performed. Current Development focused checks 38/38 pass. See docs/project-control/sessions/DEV01-LIVE-AUTH-RECHECK-20261023.md. OPS-01 origin-path diagnosis; DEV-01 resume F01–F21 with authoritative pending/delivery checks.
+
+### DEV01-AUTOMATIC-DRAFT-SYNC-20261023 — draft save is not a send or approval
+- Draft provider sync is safe to automate **after an already-authorized draft write**, but must be durable DB queue admission, not a per-page button or fragile browser POST. Select queued with the same transaction as create; on edits avoid automatically retrying `syncing`/`error` because a remote provider may have already committed before timeout. Worker lease/token guards and human approval for sending must remain distinct.
+- A legacy `local_only` row can be promoted only with same-organization connected draft-capable account, no active send action and row-level bounded locking; never replay unknown outcomes without review. Keep UI focused on outstanding drafts, not implementation states; show a concise review count and status. Polling must fence stale reads around mutations, or old responses can resurrect deleted drafts.
+- The AI `email.messages.list`/`email.search` tools can expose `drafts_only` under existing scoped `email.read` permissions; this does not grant `email.write` or `send`. Details `sessions/DEV01-AUTOMATIC-DRAFT-SYNC-20261023.md`; source-only regression PASS, real DB/browser/provider not verified.
+
+
+## DEV01-FIX01-SARVAM-LIVE-LIFECYCLE-20261023
+
+DEV-01 coordinated authoritative Clara comparison and integration; FIX-01 implemented/reproduced lifecycle bugs; OPS-01 documented deployment gaps. Source b58b4811 and concurrent integration4fefc41d preserve existing work. Readiness, duplex/mute, VAD/partial interruption, aborted/late responses, stale session/socket/activation/audio completion and abandoned microphone resources covered. Final54/54voice +7/7core/integrity checks, all package typechecks and production build pass. No live deployment/acoustic/provider acceptance. Exact next: OPS verifies approved web+relay revision/config and real-device streams; DEV/FIX then validates scoped spoken mailbox scenarios. Session: docs/project-control/sessions/DEV01-FIX01-SARVAM-LIVE-LIFECYCLE-20261023.md. Lesson: callback registration precedes awaits, every continuation is identity-fenced, cancellation never implies undoing authorized writes.

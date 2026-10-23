@@ -12,7 +12,7 @@ import { createEmailProviderRegistry } from "./registry";
 import { verifyEmailProviderConnection } from "./provider-verification";
 
 /**
- * Explicit manual synchronization only. The DB atomically converts queued to
+ * Explicit draft saving queues safe provider syncing. The DB converts queued to
  * syncing and issues a unique lease before any provider credentials are used.
  * An edit, delete, or newer request invalidates this lease; a late worker must
  * never stamp an outdated provider draft as the latest local draft.

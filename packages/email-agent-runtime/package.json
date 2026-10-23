@@ -13,6 +13,7 @@
     "./email-tool-policy": "./src/email-tool-policy.ts",
     "./tool-executor": "./src/tool-executor.ts",
     "./email-write-tools": "./src/email-write-tools.ts",
+    "./email-source-identity": "./src/email-source-identity.ts",
     "./briefings/selection": "./src/briefings/selection.ts",
     "./briefings/generation": "./src/briefings/generation.ts",
     "./routines/time": "./src/routines/time.ts",
