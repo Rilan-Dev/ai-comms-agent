@@ -279,6 +279,12 @@ export function ChatClient({
     const epoch = agentContextEpochRef.current;
     setComposeBusy(true);
     setComposeNotice("");
+    // Drop the previous agent/mailbox readiness immediately; a failed GET
+    // must not leave a stale selectable account or usable save button.
+    setComposeMailboxes([]);
+    setComposeAccount("");
+    setComposeCanDraft(false);
+    setComposeCanApprove(false);
     setComposeBlockers([]);
     setComposeDraftId(null);
     setComposeActionId(null);
@@ -310,6 +316,15 @@ export function ChatClient({
       setMailComposerOpen(true);
     } catch (error) {
       if (revision === composeRevisionRef.current && epoch === agentContextEpochRef.current) {
+        // Keep the user's recipient and a REVIEW-ONLY form visible even when
+        // permissions/account discovery fails. The save/approval buttons
+        // stay disabled until the server confirms readiness.
+        if (recipient) setComposeTo(recipient);
+        setComposeMailboxes([]);
+        setComposeAccount("");
+        setComposeCanDraft(false);
+        setComposeCanApprove(false);
+        setMailComposerOpen(true);
         setComposeNotice(error instanceof Error ? error.message : "Draft setup failed.");
       }
     } finally {
@@ -435,10 +450,17 @@ export function ChatClient({
     if (agentSwitchInFlightRef.current) return;
     if (chatTurnInFlightRef.current || newChatInFlightRef.current || voiceOpen || composeInFlightRef.current || mailPermissionBusy) return;
     const content = draft.trim();
-    // Chat instructions, including test-email requests, always pass through
-    // the hosted AI turn. The separate compose button remains an explicit
-    // human-reviewed draft and approval workflow.
     if (!content || busy || newChatBusy || !activeAgent) return;
+    // Only the explicitly recognized, bounded test-email phrases open the
+    // REVIEW composer. They do not create a draft, invoke an AI send tool,
+    // request approval, or send email. All other chat remains with the AI.
+    const testRecipient = parseTestEmailComposeRequest(content);
+    if (testRecipient) {
+      if (mailComposerOpen
+          && !window.confirm("Open a new test-email review? Your current unsaved email review will be replaced.")) return;
+      await openMailComposer(testRecipient);
+      return;
+    }
     // Claim before React sees setBusy(true): Enter and button clicks can
     // otherwise submit twice, or race a newly requested conversation.
     chatTurnInFlightRef.current = true;
