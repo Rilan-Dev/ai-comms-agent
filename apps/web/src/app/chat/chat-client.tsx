@@ -540,7 +540,9 @@ export function ChatClient({
     // edited draft is never overwritten.
     const latestAssistantReply = messages.at(-1)?.role === "assistant" ? messages.at(-1)?.content ?? "" : "";
     const prepared = assistantEmailPreview(latestAssistantReply);
-    if (prepared) {
+    // A hidden unsaved review can contain user's own edits. Only populate
+    // the untouched initial template; never replace previously edited text.
+    if (prepared && composeSubject === "Test Email" && composeBody === DEFAULT_COMPOSE_BODY) {
       setComposeSubject(prepared.subject);
       setComposeBody(prepared.body);
     }
