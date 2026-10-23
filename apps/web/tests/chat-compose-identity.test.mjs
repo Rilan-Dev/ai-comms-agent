@@ -8,7 +8,7 @@ const ui = () => readFileSync(new URL("../src/app/chat/chat-client.tsx", import.
 
 test("multiple senders always require an explicit From selection before saving", () => {
   const source = helper(), client = ui();
-  assert.match(source, /mailboxes\.length === 1 \? mailboxes\[0\]\.id : ""/);
+  assert.match(source, /mailboxes\.length === 1 \? mailboxes\[0\]!\.id : ""/);
   assert.match(client, /selectComposeSender\(mailboxes\)/);
   assert.match(client, /Choose the From address/);
   assert.match(client, /<option value="">Choose a sending address/);
@@ -44,7 +44,7 @@ test("only the authenticated user's stored profile is used for an editable signa
   assert.match(source, /trusted\.subject\.user\.email/);
   assert.match(identity, /Best regards,/);
   assert.match(identity, /profile\.name/);
-  assert.match(client, /signatureFromProfile\(data\.profile\)/);
+  assert.match(client, /withProfileSignature\(current, profile\)/);
   assert.match(client, /Use my profile signature/);
   assert.match(client, /Profile details come from your signed-in account/);
   assert.doesNotMatch(identity, /CEO|Manager|Phone:|Job title:/);
@@ -62,4 +62,30 @@ test("draft and approval remain reviewed, tenant-bound and never directly send",
   assert.doesNotMatch(handler, /sendDraft\(|\.send\(/);
   assert.match(client, /Request send approval/);
   assert.match(client, /window\.confirm\(/);
+});
+
+test("voice and chat receive authenticated profile context without overriding permission checks", () => {
+  const chat = readFileSync(new URL("../src/app/api/chat/stream/route.ts", import.meta.url), "utf8");
+  const voice = readFileSync(new URL("../src/app/api/voice/turn/route.ts", import.meta.url), "utf8");
+  const identity = helper();
+  assert.match(identity, /composeAssistantGuidance/);
+  assert.match(identity, /ask which sending address/);
+  assert.match(identity, /ask the user to supply or select it/);
+  assert.match(chat, /composeAssistantGuidance\(/);
+  assert.match(chat, /name: subject\.user\.name, email: subject\.user\.email/);
+  assert.match(voice, /composeAssistantGuidance\(/);
+  assert.match(voice, /runEmailAgentTurn\(/);
+  assert.match(chat, /trustedToolContext/);
+});
+
+test("tool layer fails closed for unknown From and To before creating drafts or approval", () => {
+  const tool = readFileSync(new URL("../../../packages/email-agent-runtime/src/email-write-tools.ts", import.meta.url), "utf8");
+  assert.match(tool, /Which From email should I use/);
+  assert.match(tool, /Who should receive this email/);
+  assert.match(tool, /const recipients = requireRecipients\(input\.to\)/);
+  assert.match(tool, /to: recipients/);
+  assert.match(tool, /requireRecipients\(draft\.to_recipients\)/);
+  assert.match(tool, /"recipient_required"/);
+  assert.match(tool, /canUseEmailAccountBinding\(/);
+  assert.match(tool, /account\.status !== "connected"/);
 });
