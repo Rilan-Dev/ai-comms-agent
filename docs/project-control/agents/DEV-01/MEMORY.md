@@ -377,3 +377,9 @@ The user actually ran all 29 focused C3 Node tests and four package TypeScript c
 - Evidence: `sessions/DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023.md`; 19/19 isolated callback tests, 6/6 helper cases, native TypeScript/Vitest/real browser not run. FIX-01 code defects, OPS-01 deployment. C3/R1b gating unchanged.
 
 - **Remount follow-on:** On a category/org change remount the entire provider editor, and remount each model select on provider change; effect-only clearing may leave one stale render of the previous vendor. Guided setup 20/20 isolated callback checks (7+5+8), native/browser acceptance pending. Source `DEV01-AI-PROVIDER-SETUP-REDESIGN-20261023`.
+
+### DEV01-CATCHUP-SOURCE-DETAILS-20261023 — distinguish recognizable sources from AI priority
+- A selected private Catch-up manifest may expose 200 original email links, but message UUIDs are not meaningful to ordinary users. Provide bounded subject, sender and explicit UTC received date **only from canonical PostgreSQL headers after existing C1/C2 private owner+agent+mailbox/revision revalidation**; never add message bodies to the pagination response.
+- Missing or malformed headers should say “unavailable,” not fabricate fields. React must render untrusted subjects as escaped text; preserve exact original links and accessible keyboard focus.
+- This is P1 source usability, **not** C3 High/Medium/Low AI classification, app attendance detection, completed review or WhatsApp delivery. Keep `BRIEFINGS_ENABLED` guard, source 200-page cap and manual review-only boundary.
+- Evidence: `DEV01-CATCHUP-SOURCE-DETAILS-20261023`, plan `docs/superpowers/plans/2026-10-23-human-readable-catchup-sources.md`, fresh GitHub 17/17 source assertions, isolated helper Node 3/3 + standalone strict TS; full repo/native DB/browser unverified. Future C3 registration, personal presence/consent and WhatsApp external exports still gated.
