@@ -61,6 +61,6 @@ test("settings page distinguishes four jobs; saved key never promises live avail
   assert.match(page,/Live voice/);
   assert.match(page,/Knowledge search/);
   assert.match(shared,/Model options are fetched from the provider's live API/);
-  assert.match(shared,/availability is confirmed when a session connects/);
+  assert.match(shared,/availability is confirmed when a session connects/i);
   assert.match(shared,/encrypted_api_key/);
 });
