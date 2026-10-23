@@ -29,6 +29,11 @@ test("approval queue keeps poll status separate from mutation and never erases d
   assert.match(client, /guardRef\.current\.isCurrent\(ticket\)/);
   assert.match(client, /guardRef\.current\.invalidate\(\)/);
   assert.match(client, /load\(\{ silent: true \}\)/);
+  // A passive 5-second GET must never replace an intentional foreground
+  // refresh ticket, leaving its Refresh button permanently disabled.
+  assert.match(client, /if \(silent && foregroundLoadTicketRef\.current !== null\) return/);
+  assert.match(client, /foregroundLoadTicketRef\.current = ticket/);
+  assert.match(client, /foregroundLoadTicketRef\.current === ticket/);
   assert.match(client, /if \(!silent\) setNotice\(null\)/);
   assert.match(client, /decisionInFlightRef\.current/);
   // An interrupted foreground Refresh must release its disabled button when
