@@ -18,7 +18,7 @@ export type EmailActionStatus =
 export class EmailActionIdempotencyConflictError extends Error {
   readonly code = "email_action_conflict";
   constructor() {
-    super("The idempotency key belongs to another action or an approval that is no longer pending. No new approval request was created.");
+    super("An approval already exists for this saved draft, the original review is no longer pending, or the request conflicts with an existing idempotency key. No new approval request was created. Review the existing action or create a new draft.");
     this.name = "EmailActionIdempotencyConflictError";
   }
 }
