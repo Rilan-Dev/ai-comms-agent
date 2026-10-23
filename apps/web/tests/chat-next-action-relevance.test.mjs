@@ -29,7 +29,7 @@ test("short conversational and error answers never show default choices", () => 
 
 test("a substantive requested mail summary may offer text-only follow-ups", () => {
   const answer = "Sender: reports@example.com\nSubject: Quarterly update\nReceived: today";
-  assert.deepEqual(suggestedChatNextActions(answer, "Summarize my recent emails").map(x=>x.id), ["prioritize", "checklist", "draft"]);
+  assert.deepEqual(suggestedChatNextActions(answer, "Summarize my recent emails").map(x=>x.id), ["prioritize"]);
   assert.equal(hasInteractiveEmailActions(answer, "Summarize my recent emails"), false);
   assert.deepEqual(suggestedChatNextActions(answer, "Send a WhatsApp notification about my email"), []);
 });

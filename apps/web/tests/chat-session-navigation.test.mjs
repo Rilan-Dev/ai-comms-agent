@@ -42,6 +42,6 @@ test("concurrent New chat creation fences double-click and agent switching even 
 });
 
 test("history links remain unavailable during a pending new-chat mutation", () => {
-  assert.match(client, /if \(busy \|\| newChatBusy \|\| agentSwitchBusy \|\| voiceOpen/);
+  assert.match(client, /if \(busy \|\| chatTurnInFlightRef\.current \|\| newChatBusy \|\| newChatInFlightRef\.current/);
   assert.match(client, /aria-current=\{session\.id === conversationId \? "page" : undefined\}/);
 });

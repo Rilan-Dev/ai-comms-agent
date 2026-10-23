@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import {test} from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const page = readFileSync(resolve(process.cwd(), "src/app/settings/page.tsx"), "utf8");
-const gmail = readFileSync(resolve(process.cwd(), "src/app/settings/gmail-oauth-settings.tsx"), "utf8");
-const zoho = readFileSync(resolve(process.cwd(), "src/app/settings/zoho-oauth-settings.tsx"), "utf8");
-const providers = readFileSync(resolve(process.cwd(), "src/app/settings/ai-provider-settings.tsx"), "utf8");
-const runtime = readFileSync(resolve(process.cwd(), "src/app/settings/ai-runtime-settings.tsx"), "utf8");
+const page = readFileSync(resolve(__dirname, "../src/app/settings/page.tsx"), "utf8");
+const gmail = readFileSync(resolve(__dirname, "../src/app/settings/gmail-oauth-settings.tsx"), "utf8");
+const zoho = readFileSync(resolve(__dirname, "../src/app/settings/zoho-oauth-settings.tsx"), "utf8");
+const providers = readFileSync(resolve(__dirname, "../src/app/settings/ai-provider-settings.tsx"), "utf8");
+const runtime = readFileSync(resolve(__dirname, "../src/app/settings/ai-runtime-settings.tsx"), "utf8");
 
 test("Settings has keyboard-reachable anchors for each major settings group", () => {
   assert.match(page, /aria-label="Settings sections"/);

@@ -77,12 +77,16 @@ test("Gemini tool adapter maps function-call parts and rejects HTTP failures", a
 });
 
 
-test("Sarvam tool adapter is explicitly unavailable until its contract is verified", async () => {
-  const provider = createProvider({ provider: "sarvam", apiKey: "test-key", baseUrl: "https://provider.test", chatModel: "test-model" });
-  await assert.rejects(
-    () => provider.chatWithTools?.([{ role: "user", content: "List my mailboxes" }], tools),
-    /not enabled for Sarvam/,
-  );
+test("Sarvam maps registered host tools through its verified request-local bridge", async () => {
+  let requestedName='';
+  globalThis.fetch=(async(_input: RequestInfo | URL,init?:RequestInit)=>{
+    const body=JSON.parse(String(init?.body));requestedName=body.tools[0].function.name;
+    return Response.json({choices:[{finish_reason:'tool_calls',message:{content:'',tool_calls:[{id:'sarvam-qa',function:{name:requestedName,arguments:'{}'}}]}}]});
+  }) as typeof fetch;
+  const provider=createProvider({provider:'sarvam',apiKey:'test-key',baseUrl:'https://provider.test',chatModel:'test-model'});
+  const completion=await provider.chatWithTools?.([{role:'user',content:'List mailboxes'}],tools);
+  assert.match(requestedName,/^[A-Za-z0-9_-]+$/);
+  assert.deepEqual(completion?.toolCalls,[{id:'sarvam-qa',name:'email.accounts.list',arguments:{}}]);
 });
 
 test("OpenAI host tool adapter buffers SSE deltas before returning complete validated calls", async () => {

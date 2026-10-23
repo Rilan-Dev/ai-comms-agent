@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import {test} from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const detail = readFileSync(resolve(process.cwd(), "src/app/agents/[id]/agent-detail-client.tsx"), "utf8");
-const page = readFileSync(resolve(process.cwd(), "src/app/agents/[id]/page.tsx"), "utf8");
+const detail = readFileSync(resolve(__dirname, "../src/app/agents/[id]/agent-detail-client.tsx"), "utf8");
+const page = readFileSync(resolve(__dirname, "../src/app/agents/[id]/page.tsx"), "utf8");
 
 test("agent detail keeps organization-scoped server loading and not-found state", () => {
   assert.match(page, /getAuthenticatedAppContext/);
-  assert.match(page, /repo\.get\(organizationId, id\)/);
+  assert.match(page, /repo\.get\(organizationId,\s*id\)/);
   assert.match(page, /Agent not found/);
 });
 
@@ -28,8 +28,8 @@ test("agent detail preserves version, policy, channel, simulation and explicit d
   assert.match(detail, /Version configuration must be valid JSON/);
 });
 
-const automationsPage = readFileSync(resolve(process.cwd(), "src/app/automations/page.tsx"), "utf8");
-const schedulesPage = readFileSync(resolve(process.cwd(), "src/app/schedules/page.tsx"), "utf8");
+const automationsPage = readFileSync(resolve(__dirname, "../src/app/automations/page.tsx"), "utf8");
+const schedulesPage = readFileSync(resolve(__dirname, "../src/app/schedules/page.tsx"), "utf8");
 
 test("automation and schedule pages use the authenticated organization context", () => {
   for (const source of [automationsPage, schedulesPage]) {

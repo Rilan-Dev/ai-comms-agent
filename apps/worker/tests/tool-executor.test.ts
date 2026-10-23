@@ -88,3 +88,12 @@ test("executor audits unexpected model-emitted tool names as unknown", async () 
   assert.equal(audited.length, 1);
   assert.equal(audited[0]?.name, "email.send.unexpected");
 });
+
+test("audit loss after a persisted mutation retains its returned ID for reconciliation",async()=>{
+ const registry=new ToolRegistry(()=>['email.draft.create']);
+ const output={status:'draft_created',draft_id:'dd0facf7-80c6-4c39-b9be-9a7a94614739'};
+ registry.register({...makeTool(),name:'email.draft.create',required_permission:'email.write',sensitivity:'sensitive',execute:async()=>({ok:true,output,audit:{tool_name:'email.draft.create',input_summary:'',output_summary:'saved',duration_ms:0}})});
+ const result=await executeRegisteredTool(registry,'email.draft.create',{}, {...context,auth_subject:{...context.auth_subject,permissions:['email.write']}},async()=>({allowed:true}),async()=>{throw new Error('audit offline');});
+ assert.equal(result.error?.code,'audit_persistence_failed');
+ assert.deepEqual(result.output,output);
+});

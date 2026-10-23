@@ -30,7 +30,7 @@ test("mock provider enforces connection lifecycle", async () => {
 
 test("registry creates registered providers and rejects duplicates", () => {
   const registry = createEmailProviderRegistry();
-  assert.deepEqual(registry.list(), ["gmail", "imap_smtp", "zoho"]);
+  assert.deepEqual(registry.list(), ["gmail", "imap_smtp", "zoho", "microsoft_graph"]);
   assert.ok(registry.create("imap_smtp"));
   assert.throws(() => registry.register("imap_smtp", () => new MockEmailProvider()), /already registered/);
 });

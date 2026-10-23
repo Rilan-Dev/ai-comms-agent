@@ -131,7 +131,7 @@ export default async function RoutinePreviewPage({ searchParams }: { searchParam
           </li>)}
         </ol>}
         <p className="mt-4 text-xs leading-5 text-muted-foreground">
-          These times are estimates for planning, not actual scheduled jobs. Fixed elapsed intervals (including every 24 hours) may appear at a different time through daylight-saving changes; a daily local-time rule follows the chosen time zone's calendar. Missing spring-forward times are skipped and the first duplicated fall-back instant is used.
+          These times are estimates for planning, not actual scheduled jobs. Fixed elapsed intervals (including every 24 hours) may appear at a different time through daylight-saving changes; a daily local-time rule follows the chosen time zone&apos;s calendar. Missing spring-forward times are skipped and the first duplicated fall-back instant is used.
         </p>
         {hasInputs && <p className="mt-2 text-xs text-muted-foreground">Changing the selection never edits an existing schedule or automation.</p>}
         <p className="mt-3 text-xs leading-5 text-muted-foreground">

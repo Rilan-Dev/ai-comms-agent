@@ -87,7 +87,7 @@ export default function AuditPage() {
         <div>
           <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.16em] text-muted-foreground"><ShieldCheck size={14} className="text-primary" /> Security & governance</p>
           <h1 className="font-display text-3xl font-medium tracking-tight">Audit<span className="text-tertiary">.</span></h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Organization-scoped security and configuration events from PostgreSQL. Exported records retain the API's authorization boundary.</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Organization-scoped security and configuration events from PostgreSQL. Exported records retain the API&apos;s authorization boundary.</p>
         </div>
         <button type="button" onClick={() => { setRefreshing(true); setReloadKey((value) => value + 1); }} disabled={loading || refreshing} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-3.5 text-sm font-medium transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60">
           <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} /> Refresh

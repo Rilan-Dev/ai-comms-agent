@@ -36,7 +36,7 @@ test("executing sends freeze their drafts even after the approval timestamp has 
   // The worker claims a valid approval BEFORE expiry but may still be
   // executing AFTER it. Both edits and deletes must stay forbidden.
   for (const sql of [update, deletion]) {
-    assert.match(sql, /ea\.status = 'executing'/);
+    assert.match(sql, /ea\.status IN \('executing', 'completed'\)/);
     assert.match(sql, /ea\.status IN \('pending_approval', 'approved'\)/);
     assert.match(sql, /ea\.expires_at IS NULL OR ea\.expires_at > now\(\)/);
     assert.doesNotMatch(sql, /ea\.status IN \('pending_approval', 'approved', 'executing'\)\s+AND \(ea\.expires_at/);

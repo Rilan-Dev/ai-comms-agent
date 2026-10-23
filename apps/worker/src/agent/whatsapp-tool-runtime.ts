@@ -6,7 +6,7 @@ import type { ToolAuthorizationDecision, ToolAuditWriter } from "./tool-executor
 
 type WhatsAppHistoryInput = { account_id?: string; contact_phone?: string; limit?: number };
 type WhatsAppSendApprovalInput = {
-  account_id: string;
+  account_id?: string;
   to: string;
   payload_type: "text" | "template";
   body?: string;
@@ -51,7 +51,7 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
   return {
     name: "whatsapp.send",
     domain: "messaging",
-    description: "Request a WhatsApp send for human approval. This creates a pending approval only; it never sends directly. Free-form text can be approved only within Meta's 24-hour customer-service window. Outside that window use a currently approved supported template.",
+    description: "Request a WhatsApp send for human approval. The sole connected agent-bound phone is selected automatically; do not ask the user for internal IDs. If necessary pass the phone's visible label or number as account_id. This creates a pending approval only and never sends directly. Free-form text requires Meta's active 24-hour customer-service window; otherwise select an approved template.",
     input_schema: {
       type: "object",
       properties: {
@@ -63,7 +63,7 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
         template_language: { type: "string", minLength: 2, maxLength: 32 },
         template_parameters: { type: "array", maxItems: 20, items: { type: "string", maxLength: 1024 } },
       },
-      required: ["account_id", "to", "payload_type"],
+      required: ["to", "payload_type"],
       additionalProperties: false,
     },
     sensitivity: "sensitive",
@@ -78,16 +78,14 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
       if (input.payload_type === "text" && (!input.body?.trim() || input.body.length > 4096)) return fail("invalid_message", "A text message of 1–4096 characters is required.");
       if (input.payload_type === "template" && (!input.template_name || !/^[a-z0-9_]{1,512}$/.test(input.template_name) || !input.template_language)) return fail("invalid_template", "A template name and language are required.");
       if (!context.auth_subject.permissions.includes("whatsapp.send")) return fail("permission_denied", "The current actor cannot request WhatsApp sends.");
-      const binding = await query<{ id: string }>(
-        "SELECT w.id FROM whatsapp_accounts w JOIN agent_whatsapp_accounts b ON b.whatsapp_account_id=w.id AND b.agent_id=$2 JOIN agents a ON a.id=b.agent_id AND a.organization_id=$1 WHERE w.id=$3 AND w.organization_id=$1 AND w.status='connected' AND w.deleted_at IS NULL LIMIT 1",
-        [context.organization_id, context.agent_id, input.account_id],
-      );
-      if (!binding.rows.length) return fail("account_not_bound", "The WhatsApp account must be connected to this organization and explicitly bound to this agent.");
+      const selection = await resolveWhatsAppSendAccount(context.organization_id, context.agent_id, input.account_id);
+      if (selection.accountId === null) return fail(selection.code, selection.message);
+      const accountId=selection.accountId;
       const templateParameters = Array.isArray(input.template_parameters) ? input.template_parameters : [];
       if (input.payload_type === "template") {
         const template = await query<{ components: unknown }>(
           "SELECT components FROM whatsapp_templates WHERE organization_id=$1 AND whatsapp_account_id=$2 AND name=$3 AND language=$4 AND status='approved' LIMIT 1",
-          [context.organization_id, input.account_id, input.template_name, input.template_language],
+          [context.organization_id, accountId, input.template_name, input.template_language],
         );
         if (!template.rows.length) return fail("template_not_approved", "Only a template synchronized from Meta with approved status can be requested.");
         const approvedTemplate = template.rows[0];
@@ -133,7 +131,7 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
            AND whatsapp_send_actions.template_language IS NOT DISTINCT FROM EXCLUDED.template_language
            AND whatsapp_send_actions.template_parameters IS NOT DISTINCT FROM EXCLUDED.template_parameters
          RETURNING id,status`,
-        [context.organization_id, input.account_id, context.agent_id, context.user_id,
+        [context.organization_id, accountId, context.agent_id, context.user_id,
           input.to, messageBody, input.payload_type,
           input.payload_type === "template" ? input.template_name : null,
           input.payload_type === "template" ? input.template_language : null,
@@ -143,7 +141,11 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
       const action = inserted.rows[0];
       if (!action) return fail("idempotency_conflict",
         "This WhatsApp approval key belongs to a different requester/payload or a review that is no longer pending. No new approval was created.");
-      await recordAuditEvent({ organizationId: context.organization_id, actorUserId: context.user_id, agentId: context.agent_id, correlationId, eventType: "whatsapp.send_approval.requested", targetType: "whatsapp_send_action", targetId: action.id, action: "request_send", decision: "pending", metadata: { accountId: input.account_id, recipientSuffix: input.to.slice(-4), payloadType: input.payload_type, source: "agent_tool" } });
+      try {
+        await recordAuditEvent({ organizationId: context.organization_id, actorUserId: context.user_id, agentId: context.agent_id, correlationId, eventType: "whatsapp.send_approval.requested", targetType: "whatsapp_send_action", targetId: action.id, action: "request_send", decision: "pending", metadata: { accountId, recipientSuffix: input.to.slice(-4), payloadType: input.payload_type, source: "agent_tool" } });
+      } catch(error) {
+        console.error('[whatsapp-action] persisted proposal audit needs reconciliation',{actionId:action.id,correlationId,errorType:error instanceof Error?error.name:typeof error});
+      }
       return {
         ok: true, output: { approval_required: true, action_id: String(action.id), status: String(action.status) },
         audit: { tool_name: "whatsapp.send", input_summary: "whatsapp.send approval proposal", output_summary: "approval pending", duration_ms: Math.max(0, Date.now() - startedAt) },
@@ -153,6 +155,19 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
 }
 
 export interface WhatsAppToolRuntime { registry: ToolRegistry; authorize: (tool: Tool, input: unknown, context: ToolContext) => Promise<ToolAuthorizationDecision>; writeAudit: ToolAuditWriter; }
+
+async function resolveWhatsAppSendAccount(organizationId:string,agentId:string,identifier?:string):Promise<{accountId:string;code?:never;message?:never}|{accountId:null;code:string;message:string}>{
+  const label=identifier?.trim() || null;
+  const accounts=await query<{id:string}>(`SELECT w.id FROM whatsapp_accounts w
+    JOIN agent_whatsapp_accounts b ON b.whatsapp_account_id=w.id AND b.agent_id=$2
+    JOIN agents a ON a.id=b.agent_id AND a.organization_id=$1
+    WHERE w.organization_id=$1 AND w.status='connected' AND w.deleted_at IS NULL
+      AND ($3::text IS NULL OR w.id::text=$3 OR lower(w.display_name)=lower($3) OR w.phone_number=$3)
+    ORDER BY w.id LIMIT 2`,[organizationId,agentId,label]);
+  if(accounts.rows.length===1)return {accountId:String(accounts.rows[0]!.id)};
+  return accounts.rows.length?{accountId:null,code:'account_selection_required',message:'Choose the visible label or phone number of one connected WhatsApp account assigned to this agent.'}
+    :{accountId:null,code:'account_not_bound',message:'Bind a connected WhatsApp account to this agent in Channels before requesting a send.'};
+}
 
 /** Missing policy and revoked allowlist entries fail closed. whatsapp.send only creates a pending approval; provider delivery remains worker-only after a human decision. */
 export async function createWhatsAppToolRuntime(organizationId: string, agentId: string): Promise<WhatsAppToolRuntime> {
@@ -171,11 +186,8 @@ export async function createWhatsAppToolRuntime(organizationId: string, agentId:
       if (!context.auth_subject.permissions.includes("whatsapp.send")) return { allowed: false, code: "permission_denied", message: "The current actor cannot request WhatsApp sends." };
       const inputValue = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
       const accountId = typeof inputValue.account_id === "string" ? inputValue.account_id : "";
-      const binding = await query<{ id: string }>(
-        "SELECT w.id FROM whatsapp_accounts w JOIN agent_whatsapp_accounts b ON b.whatsapp_account_id=w.id AND b.agent_id=$2 JOIN agents a ON a.id=b.agent_id AND a.organization_id=$1 WHERE w.id=$3 AND w.organization_id=$1 AND w.status='connected' AND w.deleted_at IS NULL LIMIT 1",
-        [organizationId, agentId, accountId],
-      );
-      if (!binding.rows.length) return { allowed: false, code: "account_not_bound", message: "The WhatsApp account must be connected and explicitly bound to this agent." };
+      const selection=await resolveWhatsAppSendAccount(organizationId,agentId,accountId);
+      if(selection.accountId === null)return {allowed:false,code:selection.code,message:selection.message};
     }
     return { allowed: true };
   };

@@ -88,8 +88,8 @@ describe("WhatsApp send approval safety boundary", () => {
   });
 
   it("registers whatsapp.send only as an approval-request tool", () => {
-    expect(whatsappRuntime).toContain("registry.register(createWhatsAppHistoryTool())");
-    expect(whatsappRuntime).toContain("registry.register(createWhatsAppSendApprovalTool())");
+    expect(whatsappRuntime).toContain("registry.register(createWhatsAppHistoryTool() as unknown as Tool)");
+    expect(whatsappRuntime).toContain("registry.register(createWhatsAppSendApprovalTool() as unknown as Tool)");
     expect(whatsappRuntime).toContain('name: "whatsapp.send"');
     expect(whatsappRuntime).toContain("INSERT INTO whatsapp_send_actions");
     expect(whatsappRuntime).toContain("approval_required: true");

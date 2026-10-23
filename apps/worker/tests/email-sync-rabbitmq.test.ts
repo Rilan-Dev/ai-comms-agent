@@ -3,11 +3,11 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const source = readFileSync(resolve(process.cwd(), "src/queues/email-sync-rabbitmq.ts"), "utf8");
-const worker = readFileSync(resolve(process.cwd(), "src/email/mailbox-sync-worker.ts"), "utf8");
-const entry = readFileSync(resolve(process.cwd(), "src/index.ts"), "utf8");
-const knowledgeIndexer = readFileSync(resolve(process.cwd(), "src/knowledge/email-knowledge-indexer.ts"), "utf8");
-const claraRuntime = readFileSync(resolve(process.cwd(), "../../packages/clara-core/src/runtime.ts"), "utf8");
+const source = readFileSync(new URL("../src/queues/email-sync-rabbitmq.ts", import.meta.url), "utf8");
+const worker = readFileSync(new URL("../src/email/mailbox-sync-worker.ts", import.meta.url), "utf8");
+const entry = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+const knowledgeIndexer = readFileSync(new URL("../src/knowledge/email-knowledge-indexer.ts", import.meta.url), "utf8");
+const claraRuntime = readFileSync(new URL("../../../packages/clara-core/src/runtime.ts", import.meta.url), "utf8");
 
 test("RabbitMQ declares durable main, retry, and dead-letter queues", () => {
   assert.match(source, /assertQueue\(MAIN_QUEUE, queueOptions\(\)\)/);
@@ -47,7 +47,7 @@ test("worker publishes due mailboxes and consumes account-scoped sync jobs", () 
   assert.match(worker, /processMailboxSyncMessage/);
   assert.match(entry, /startEmailSyncRabbitMq\(processMailboxSyncMessage\)/);
   assert.doesNotMatch(worker, /s\.cursor IS NOT NULL OR s\.last_success_at/);
-  assert.match(worker, /s\.last_success_at < now\(\)-interval '15 minutes'/);
+  assert.match(worker, /s\.last_success_at < now\(\)-interval '30 seconds'/);
 });
 
 
@@ -86,5 +86,5 @@ test("synced email is indexed idempotently through the Clara PostgreSQL knowledg
 test("Clara retrieval isolates shared knowledge from other agents", () => {
   assert.match(claraRuntime, /\(\$2::text IS NULL AND kd\.agent_id IS NULL\)/);
   assert.match(claraRuntime, /kd\.agent_id IS NULL OR kd\.agent_id::text = \$2/);
-  assert.match(claraRuntime, /\[ctx\.orgId, ctx\.agentId, queryText/);
+  assert.match(claraRuntime, /\[ctx\.orgId, ctx\.agentId, textQuery/);
 });

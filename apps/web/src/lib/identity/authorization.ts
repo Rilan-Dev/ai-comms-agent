@@ -23,6 +23,7 @@ import type {
   IdentityAdapter,
 } from "@ai-comms-agent/shared";
 import { UnauthorizedError, ForbiddenError } from "@ai-comms-agent/shared";
+import { randomUUID } from "node:crypto";
 import type { IdentityRepository } from "@ai-comms-agent/db";
 
 // ============================================================================
@@ -173,9 +174,10 @@ export function authorizationErrorToResponse(error: unknown): NextResponse {
     ? (error as { code?: unknown }).code : null;
   const code = typeof rawCode === "string" && /^[A-Z0-9]{5}$/.test(rawCode)
     ? rawCode : null;
-  console.error("[authorization] unexpected error", code ? { sqlstate: code } : { kind: "server_error" });
+  const reference=randomUUID();
+  console.error("[authorization] unexpected error", code ? { reference, sqlstate: code } : { reference, kind: "server_error" });
   return NextResponse.json(
-    { error: "internal_server_error" },
+    { error: "internal_server_error", reference, message: "The request could not be confirmed. Check the current action status before retrying to avoid a duplicate. Reference: " + reference },
     { status: 500 },
   );
 }

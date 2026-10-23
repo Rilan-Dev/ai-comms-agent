@@ -10,6 +10,7 @@ export type ChatEmailApproval = {
   draftId: string;
   emailAccountId: string;
   expiresAt: string | null;
+  senderAddress?: string;
   recipientSnapshot: {
     to: string[];
     cc: string[];
@@ -62,6 +63,7 @@ export function validateChatEmailApproval(
     draftId: expected.draftId,
     emailAccountId: expected.accountId,
     expiresAt: typeof expiresAt === "string" ? expiresAt : null,
+    senderAddress:validAddress(action.senderAddress)?action.senderAddress:undefined,
     recipientSnapshot: { to, cc, bcc, subject: snapshot.subject, bodyText: snapshot.bodyText },
   };
 }

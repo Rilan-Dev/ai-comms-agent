@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import {MailReview} from "@/components/mail-review";
 import { matchesManualComposeReview, normalizeManualComposeSnapshot, type ManualComposeSnapshot } from "@/lib/mail/manual-compose-review";
 
 type Account = { id: string; provider: string; email_address: string; display_name?: string | null; status: string; capabilities: Record<string, boolean> };
@@ -25,6 +26,7 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
   const [formRevision, setFormRevision] = useState(0);
   const scopeValid = formScope === scopeKey && formRevision === scopeRevisionRef.current;
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountsLoading,setAccountsLoading]=useState(true);
   const [accountId, setAccountId] = useState("");
   const [to, setTo] = useState("");
   const [cc, setCc] = useState("");
@@ -99,7 +101,7 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
   useEffect(() => {
     const controller = new AbortController();
     accountsOrganizationRef.current = null;
-    setAccounts([]);
+    setAccounts([]);setAccountsLoading(true);
     void fetch("/api/email-accounts?organizationId=" + encodeURIComponent(organizationId), {
       cache: "no-store", signal: controller.signal,
     }).then(async response => {
@@ -109,14 +111,14 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
     }).then((items: Account[]) => {
       if (controller.signal.aborted || organizationRef.current !== organizationId) return;
       accountsOrganizationRef.current = organizationId;
-      setAccounts(items);
+      setAccounts(items);setAccountsLoading(false);
       if (!requestedDraftIdRef.current) {
         const first = items.find(account => account.status === "connected");
         setAccountId(current => current || first?.id || "");
       }
     }).catch(error => {
       if (controller.signal.aborted || organizationRef.current !== organizationId) return;
-      setNotice(error instanceof Error ? error.message : "Could not load mailboxes.");
+      setAccountsLoading(false);setNotice(error instanceof Error ? error.message : "Could not load mailboxes.");
     });
     return () => controller.abort();
   }, [organizationId]);
@@ -219,12 +221,13 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
       <header className="border-b border-border p-5 sm:p-6"><p className="mb-3 text-xs font-semibold uppercase tracking-[.16em] text-muted-foreground">Mail workspace</p><h1 className="font-display text-2xl font-medium">New draft<span className="text-tertiary">.</span></h1><p className="mt-2 text-sm text-muted-foreground">Drafts save automatically to connected mailboxes that support them. Sending always requires separate approval.</p></header>
       {notice && <div role="alert" className="border-b bg-destructive/5 px-6 py-3 text-sm text-destructive">{notice}</div>}
       <div className="space-y-4 p-6">
-        <label className="block text-sm font-medium">From<select value={accountId} onChange={e=>{ setAccountId(e.target.value); markEdited(); }} disabled={busy || loadingDraft || !scopeValid || Boolean(draftId) || Boolean(approvalId)} className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-ring/20">{accounts.length===0?<option value="">No configured mailbox</option>:accounts.map(a=><option key={a.id} value={a.id}>{a.display_name || a.email_address} · {a.provider} · {a.status}</option>)}</select></label>
+        <label className="block text-sm font-medium">From<select value={accountId} onChange={e=>{ setAccountId(e.target.value); markEdited(); }} disabled={busy || loadingDraft || !scopeValid || Boolean(draftId) || Boolean(approvalId)} className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-ring/20">{accounts.length===0?<option value="">{accountsLoading?"Loading mailboxes…":"No available mailbox"}</option>:accounts.map(a=><option key={a.id} value={a.id}>{a.display_name || a.email_address} · {a.provider} · {a.status}</option>)}</select></label>
         <label className="block text-sm font-medium">To<input value={to} onChange={e=>{ setTo(e.target.value); markEdited(); }} disabled={busy || loadingDraft || !scopeValid || Boolean(approvalId)} placeholder="recipient@example.com, another@example.com" className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-ring/20"/></label>
         <label className="block text-sm font-medium">Cc<input value={cc} onChange={e=>{ setCc(e.target.value); markEdited(); }} disabled={busy || loadingDraft || !scopeValid || Boolean(approvalId)} className="mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm"/></label>
         <label className="block text-sm font-medium">Bcc<input value={bcc} onChange={e=>{ setBcc(e.target.value); markEdited(); }} disabled={busy || loadingDraft || !scopeValid || Boolean(approvalId)} className="mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm"/></label>
         <label className="block text-sm font-medium">Subject<input value={subject} onChange={e=>{ setSubject(e.target.value); markEdited(); }} disabled={busy || loadingDraft || !scopeValid || Boolean(approvalId)} className="mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm"/></label>
         <label className="block text-sm font-medium">Message<textarea value={bodyText} onChange={e=>{ setBodyText(e.target.value); markEdited(); }} disabled={busy || loadingDraft || !scopeValid || Boolean(approvalId)} rows={14} className="mt-2 w-full resize-y rounded-md border border-input bg-background p-3 text-sm leading-6 outline-none transition focus:ring-2 focus:ring-ring/20"/></label>
+        {scopeValid && reviewedSnapshot ? <MailReview sender={accounts.find(account=>account.id===accountId)?.email_address ?? "Sender unavailable"} snapshot={reviewedSnapshot} /> : null}
         <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-5"><button type="button" onClick={()=>void saveDraft()} disabled={busy || loadingDraft || !scopeValid || Boolean(approvalId) || Boolean(requestedDraftId && !draftId) || accounts.length===0} className="rounded-md border px-4 py-2.5 text-sm font-semibold disabled:opacity-50">{busy ? "Saving…" : "Save draft"}</button><button type="button" disabled={!canRequestApproval} className="rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-85 disabled:opacity-50" onClick={()=>void requestSendApproval()} title="Sending requires explicit approval" >{approvalId ? "Approval requested" : "Request send approval"}</button></div>
       </div>
     </section>

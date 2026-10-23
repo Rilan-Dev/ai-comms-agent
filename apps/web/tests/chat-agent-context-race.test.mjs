@@ -56,8 +56,8 @@ test("draft save and approval response require the original review revision", ()
 test("editing any mail recipient, subject, body or mailbox invalidates prior saved draft and approval", () => {
   assert.match(chat, /function invalidateComposeReview\(\)/);
   assert.match(chat, /composeRevisionRef\.current \+= 1/);
-  const composer = chat.slice(chat.indexOf('<section aria-label="Compose an email using this agent"'),chat.indexOf('Review approvals'));
-  assert.equal((composer.match(/invalidateComposeReview\(\)/g) ?? []).length, 4);
+  const composer = chat.slice(chat.indexOf('aria-label="Email review in this Chat conversation"'),chat.indexOf('Review approvals'));
+  assert.equal((composer.match(/invalidateComposeReview\(\)/g) ?? []).length, 5);
   assert.match(composer, /disabled=\{composeBusy/);
   assert.match(chat, /setComposeActionId\(null\)/);
 });

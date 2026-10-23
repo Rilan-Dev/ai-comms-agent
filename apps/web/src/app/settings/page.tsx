@@ -130,7 +130,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section id="email-provider-clients" className="scroll-mt-20 space-y-4">
+      <section id="mail-provider-settings" className="scroll-mt-20 space-y-4"><span id="email-provider-clients" className="block scroll-mt-20" />
         <div>
           <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Connected services</p>
           <h2 className="mt-1 font-display text-xl font-medium">Mail OAuth clients</h2>

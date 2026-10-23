@@ -26,12 +26,12 @@ describe("conversation sidebar and persistent controls", () => {
     const header = segment('<header className=', "</header>");
     const messageLog = segment('ref={messageScrollRef} role="log"', '</div>\n\n        <div className="shrink-0 bg-background');
     for (const control of [
-      "activeAgent?.name", "Compose email", "Mail permissions", "Live voice", 'aria-label="Choose agent"',
+      "activeAgent?.name", 'aria-label="Choose agent"', 'Open live realtime voice conversation',
     ]) expect(header).toContain(control);
-    for (const control of ["Compose email", "Mail permissions", 'aria-label="Choose agent"']) {
+    for (const control of ['aria-label="Choose agent"']) {
       expect(messageLog).not.toContain(control);
     }
-    expect(chat).toContain('max-h-[45%] shrink-0 overflow-y-auto overscroll-contain');
+    expect(chat).toContain('aria-label="Email review in this Chat conversation"');
     expect(chat).toContain('className="shrink-0 bg-background pb-4 pt-2"');
   });
 

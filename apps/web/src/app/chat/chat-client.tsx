@@ -99,6 +99,8 @@ export function ChatClient({
   // Send and cross-conversation navigation in the same event turn.
   const chatTurnInFlightRef = useRef(false);
   const agentContextEpochRef = useRef(0);
+  const chatAbortRef=useRef<AbortController|null>(null);
+  useEffect(()=>()=>{agentContextEpochRef.current++;chatAbortRef.current?.abort();},[organizationId]);
   // A returned draft/action ID may only be attached to the same review revision.
   const composeRevisionRef = useRef(0);
   const composeInFlightRef = useRef(false);
@@ -593,6 +595,9 @@ export function ChatClient({
     // Claim before React sees setBusy(true): Enter and button clicks can
     // otherwise submit twice, or race a newly requested conversation.
     chatTurnInFlightRef.current = true;
+    const turnEpoch=agentContextEpochRef.current;
+    const turnController=new AbortController();chatAbortRef.current=turnController;
+    const turnTimeout=setTimeout(()=>turnController.abort(),180000);
     setDraft("");
     setBusy(true);
     setResponseStarted(false);
@@ -610,6 +615,7 @@ export function ChatClient({
       const response = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "content-type": "application/json", accept: "text/event-stream" },
+        signal:turnController.signal,
         body: JSON.stringify({ organizationId, agentId: activeAgent.id, conversationId, message: content }),
       });
       if (!response.ok || !response.body) throw new Error((await response.text()) || "Chat request failed");
@@ -618,11 +624,12 @@ export function ChatClient({
       let assistant = "";
       let completed = false;
       for await (const event of readSseEvents(response.body)) {
+        if(turnEpoch!==agentContextEpochRef.current || turnController.signal.aborted)return;
         const payload = JSON.parse(event.data) as {
           text?: string; conversationId?: string; message?: string; phase?: string;
         };
         if (event.event === "error") throw new Error(payload.message || "AI generation failed.");
-        if (payload.conversationId) setConversationId(payload.conversationId);
+        if (payload.conversationId && payload.conversationId!==conversationId) throw new Error("Conversation changed. Reload its saved status before continuing.");
         if (event.event === "progress") {
           const phase = safeActivityPhase(payload.phase);
           if (phase) {
@@ -659,12 +666,17 @@ export function ChatClient({
       }
       if (!completed) throw new Error("The AI response stopped before completion. The partial answer above may be incomplete.");
     } catch (error) {
-      setMessages((current) => [...current, { id: "error-" + Date.now(), conversationId, role: "system", content: error instanceof Error ? error.message : "Chat failed", createdAt: new Date().toISOString() }]);
+      if(turnEpoch!==agentContextEpochRef.current)return;
+      setMessages((current) => [...current, { id: "error-" + Date.now(), conversationId, role: "system", content: error instanceof Error ? error.message + " Check the saved draft or approval status before repeating an action." : "The response could not be confirmed. Check saved action status before retrying.", createdAt: new Date().toISOString() }]);
     } finally {
+      clearTimeout(turnTimeout);
+      if(chatAbortRef.current===turnController)chatAbortRef.current=null;
+      if(turnEpoch===agentContextEpochRef.current){
       chatTurnInFlightRef.current = false;
       setBusy(false);
       setResponseStarted(false);
       setActivity("");
+      }
     }
   }
 
@@ -703,6 +715,7 @@ export function ChatClient({
           </div>
         </div>
       </header>
+      <p role="status" aria-live="polite" className="sr-only">{busy ? "Clara is preparing a response." : messages.at(-1)?.role === "assistant" ? "Clara’s response is ready." : messages.at(-1)?.role === "system" ? "Clara could not complete the response." : ""}</p>
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {chatHistoryOpen && (
@@ -758,7 +771,7 @@ export function ChatClient({
         </div>
       ) : (
       <section className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
-        <div ref={messageScrollRef} role="log" aria-live="polite" className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto overscroll-contain py-6">
+        <div ref={messageScrollRef} role="log" aria-label="Conversation messages" aria-live="polite" className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto overscroll-contain py-6">
           {messages.length === 0 ? (
             <div className="grid min-h-[50vh] place-items-center text-center">
               <div className="max-w-md">
@@ -803,13 +816,13 @@ export function ChatClient({
               <span>Agent send-request permission: {composePermissions.agentCanRequestApproval ? "Enabled" : "Disabled"}</span>
               <span>Send: human approval required; never automatic</span>
             </div>
-            <p className="mt-1 text-muted-foreground">Actual draft and approval actions also require the selected mailbox's capabilities. Permission choices do not grant access automatically.</p>
+            <p className="mt-1 text-muted-foreground">Actual draft and approval actions also require the selected mailbox&apos;s capabilities. Permission choices do not grant access automatically.</p>
           </div>}
           {composeProfile && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-xs">
             <div>
               <p className="font-semibold">Your saved profile: {composeProfile.name || "No saved display name"}</p>
               <p className="text-muted-foreground">{composeProfile.email}</p>
-              <p className="mt-1 text-muted-foreground">Profile details come from your signed-in account. The agent won't invent a name, title, company, phone number or signature.</p>
+              <p className="mt-1 text-muted-foreground">Profile details come from your signed-in account. The agent won&apos;t invent a name, title, company, phone number or signature.</p>
             </div>
             <button type="button" disabled={composeBusy || Boolean(composeDraftId)} onClick={useProfileSignature}
               className="rounded-md border px-3 py-2 font-medium disabled:opacity-50">Use my profile signature</button>
@@ -838,7 +851,7 @@ export function ChatClient({
                 {composeMailboxes.map(account => <option key={account.id} value={account.id}>{account.address}</option>)}
               </select></label>
             <label className="text-xs font-medium">To
-              {!composeTo.trim() && <span role="status" className="mt-1 block text-primary">Who should receive this email? Enter or explicitly choose the recipient's exact address; the AI will not guess.</span>}
+              {!composeTo.trim() && <span role="status" className="mt-1 block text-primary">Who should receive this email? Enter or explicitly choose the recipient&apos;s exact address; the AI will not guess.</span>}
               <input type="email" aria-label="Email recipient" value={composeTo} disabled={composeBusy || Boolean(composeDraftId)} required placeholder="recipient@example.com" onChange={e => { setComposeTo(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2" />
             </label>
             {composeProfile?.email && !composeTo.trim() && <button type="button" disabled={composeBusy || Boolean(composeDraftId)}

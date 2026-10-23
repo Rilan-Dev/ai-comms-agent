@@ -31,7 +31,9 @@ test("manual deployment does not print a resolved database URL", () => {
   assert.doesNotMatch(script, /echo ["'].*\$migration_db_url/);
 });
 
-test("containerized migration keeps the existing startup-on-failure policy", () => {
-  assert.match(script, /WARNING: Migration runner exited with status \$migration_status/);
-  assert.match(script, /Continuing with container startup, as requested/);
+test("containerized migration refuses startup after a failed migration", () => {
+ assert.match(script,/ERROR: Migration runner exited with status/);
+ assert.match(script,/exit "\$migration_status"/);
+ assert.doesNotMatch(script,/Continuing with container startup/);
+ assert.ok(script.indexOf('exit "$migration_status"')<script.indexOf('"'+ '$'+'{COMPOSE[@]}" up -d'));
 });
