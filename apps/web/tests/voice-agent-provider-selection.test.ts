@@ -68,12 +68,15 @@ describe("per-agent realtime voice provider selection", () => {
     expect(session).toContain('agentAiSettings === null ? agentVoiceRow?.voice_model?.trim() || "" : ""');
   });
 
-  it("keeps Sarvam on its own host-authorized native relay or speech pipeline", () => {
+  it("requires the real Sarvam WebSocket relay and never relabels REST STT/TTS as a live conversation", () => {
     expect(clara).toContain('provider === "sarvam" ? "/api/voice/sarvam/session"');
-    expect(clara).toContain('transportMode: "pipeline" as const');
-    expect(browser).toContain('payload.transport.realtimeProvider === "sarvam" || payload.transport.realtimeProvider === "elevenlabs"');
+    expect(clara).toContain('if (available && provider === "elevenlabs")');
+    expect(session).toContain('error: "sarvam_realtime_relay_required"');
+    expect(session).toContain('error: "sarvam_realtime_unavailable"');
+    expect(session).toContain('transport.transportMode !== "realtime"');
     expect(browser).toContain("connectProviderRealtime(payload.session, payload.transport, payload.transport.realtimeProvider)");
-    expect(browser).toContain("connectSpeechPipeline(payload.session, payload.transport.realtimeProvider)");
+    expect(browser).toContain('payload.transport.transportMode === "pipeline" && payload.transport.realtimeProvider === "elevenlabs"');
+    expect(browser).toContain("Sarvam realtime voice requires a connected WebSocket relay");
     expect(browser).toContain('if (payload.transport.realtimeProvider === "openai") await connectRealtime');
   });
 });
