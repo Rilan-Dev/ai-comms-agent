@@ -134,25 +134,50 @@ async function loadEmailContext(organizationId: string, agentId: string, content
            OR COALESCE(m.from_email, '') ILIKE '%' || term || '%')`
     : `AND (m.is_draft = true OR m.received_at >= now() - interval '7 days')`;
   const orderSql = hasTerms
-    ? `ORDER BY m.received_at DESC` // Relevance-ordered; drafts not preferred when filtering by sender.
-    : `ORDER BY m.is_draft DESC, m.received_at DESC`;
+    ? `ORDER BY c.received_at DESC NULLS LAST, c.id` // Relevance-ordered; drafts not preferred when filtering by sender.
+    : `ORDER BY c.is_draft DESC, c.received_at DESC NULLS LAST, c.id`;
   const params: (string | string[])[] = hasTerms
     ? [organizationId, agentId, searchTerms]
     : [organizationId, agentId];
 
+  // Gmail IMAP exposes one RFC822 Message-ID through INBOX and All Mail
+  // with different folder-qualified UIDs. Rank only after applying the same
+  // authenticated, agent-bound search scope, so one logical mail occupies
+  // one evidence slot in the 20-row chat limit. Do not merge other providers,
+  // different accounts, or emails lacking a Message-ID.
   const result = await query<EmailContextRow>(
-    `SELECT a.email_address, a.provider, m.from_email, m.to_recipients,
-       m.subject, m.text_body, m.snippet, m.received_at, m.is_draft, m.is_read
-     FROM email_messages m
-     JOIN email_accounts a ON a.id = m.email_account_id
-     ${agentScopeSql.replace(/\$agentId/g, "$2")}
-     WHERE m.organization_id = $1
-       AND a.organization_id = $1
-       AND a.deleted_at IS NULL
-       AND a.status = 'connected'
-       ${matchSql}
-     ${orderSql}
-     LIMIT 20`,
+    `WITH ranked AS (
+       SELECT a.email_address, a.provider, m.id, m.email_account_id,
+              m.from_email, m.to_recipients, m.subject, m.text_body, m.snippet,
+              m.received_at, m.is_draft, m.is_read,
+              ROW_NUMBER() OVER (
+                PARTITION BY m.email_account_id,
+                  CASE WHEN a.provider = 'imap_smtp'
+                            AND NULLIF(BTRIM(m.internet_message_id), '') IS NOT NULL
+                    THEN 'message:' || LOWER(BTRIM(m.internet_message_id))
+                    ELSE 'row:' || m.id::text END
+                ORDER BY CASE WHEN f.role = 'inbox'
+                                   OR UPPER(f.provider_folder_id) = 'INBOX'
+                         THEN 0 ELSE 1 END,
+                         m.received_at DESC NULLS LAST, m.id
+              ) AS duplicate_rank
+         FROM email_messages m
+         JOIN email_accounts a ON a.id = m.email_account_id
+         ${agentScopeSql.replace(/\$agentId/g, "$2")}
+         LEFT JOIN email_folders f
+           ON f.id = m.folder_id AND f.email_account_id = m.email_account_id
+        WHERE m.organization_id = $1
+          AND a.organization_id = $1
+          AND a.deleted_at IS NULL
+          AND a.status = 'connected'
+          ${matchSql}
+      )
+      SELECT c.email_address, c.provider, c.from_email, c.to_recipients,
+             c.subject, c.text_body, c.snippet, c.received_at, c.is_draft, c.is_read
+        FROM ranked c
+       WHERE c.duplicate_rank = 1
+       ${orderSql}
+       LIMIT 20`,
     params,
   );
   if (result.rows.length === 0) {
