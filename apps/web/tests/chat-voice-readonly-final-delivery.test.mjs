@@ -29,7 +29,7 @@ test("successful read-only voice tool answer emits only validated text, then per
   const callback = excerpt(source, "onSafeReadOnlyFinal: explicitEmailAction", "\n              });");
   assert.match(callback, /claraRuntime\.streamAuthorizedReadOnlyToolAnswer\(/);
   assert.match(callback, /const validated = userFacingChatAnswer\(generated\)/);
-  assert.match(callback, /if \(!validated\) throw/);
+  assert.match(callback, /if \(!validated && !request\.signal\.aborted\) throw/);
   assert.match(callback, /emit\("delta", \{ text: validated \}\)/);
   assert.doesNotMatch(callback, /emit\("delta", \{ text: token \}\)/);
   assert.match(source, /await saveAnswer\(deliveredText\)/);
