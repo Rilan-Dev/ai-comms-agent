@@ -825,3 +825,11 @@ See [current handoff](sessions/DEV01-CURRENT-HANDOFF-20261019.md) for completed,
 - **Agent/session:** DEV-01 / Forge, `DEV01-ROUTINE-TIMING-PREVIEW-20261023`; same R1a no-side-effects feature.
 - **User-facing result:** Preview now distinguishes 1/6/12/24 **elapsed-hour** intervals from daily or weekly fixed-local-clock triggers. Backend refuses unlisted intervals; minimum is 60 minutes per canonical engine. No runner activation or send.
 - **Commits:** `edde5453` tests, `2a193964` UX/server validation; source 19/19 assertions, native/browser not executed; Phase 4 unchanged. Follow `NEXT_ACTION.md` for acceptance and independent C3 gate.
+
+
+### EVT-DEV01-CATCHUP-COVERAGE-CLARITY-20261023 — 2026-10-23
+- **Type:** DEV-01 PRODUCT_SOURCE_CHECKPOINT / SAFE_C4_PAGINATION_UX
+- **Observation:** Existing immutable selected-source manifest and 200-item pagination were accurate but the UI did not explain selected-versus-loaded link counts. This confuses people checking five days of accumulated mail, especially with 320+ sources.
+- **Action:** Added deduplicated, cursor-aware progress copy to existing permission-scoped C4 page; test-first source and Superpowers plan/session. Not a proxy for AI summary coverage, unread count, foreground absence or review completion.
+- **Evidence/constraints:** `5fb5c549,b6aecacf,cfed27d7,5bb6b08b`; GitHub 14/14, isolated helper 5/5 and strict TS; full repo and browser pending. Phase 4 in progress; C3 off, R1b consent and WhatsApp gated, no deployment. DEV-01 owns product, FIX-01 errors, OPS-01 operations.
+- **Next:** Follow top `NEXT_ACTION.md`, `sessions/DEV01-CATCHUP-COVERAGE-CLARITY-20261023.md`.
