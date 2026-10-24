@@ -17,6 +17,7 @@ export type BusinessMailReport = {
   matched: number;
   included: number;
   period: string;
+  lastSyncUtc: string | null;
   notice: string;
   coverage: string;
   moreCount: number;
@@ -59,7 +60,7 @@ export function parseBusinessMailReport(raw: string): BusinessMailReport | null 
   const source = raw.replace(/\r\n/g, "\n");
   const lines = source.split("\n");
   const first = (lines.find(line => line.trim()) ?? "").trim();
-  const countMatch = /^Unread email count from locally synchronized data: (\d+) unread across (\d+) connected mailboxes?\.$/.exec(first);
+  const countMatch = /^Unread email count from locally synchronized data: (\d+) unread across (\d+) connected mailbox(?:es)?\.$/.exec(first);
   const isMessageReport = /^Locally synchronized (?:unread )?received messages in the /.test(first);
   if (!countMatch && !isMessageReport) return null;
   const numbers = countMatch
@@ -80,6 +81,7 @@ export function parseBusinessMailReport(raw: string): BusinessMailReport | null 
   let moreCount = 0;
   let coverage = "";
   let notice = "";
+  let lastSyncUtc: string | null = null;
   for (const line of lines.slice(1)) {
     const trimmed = line.trim();
     if (/^Per mailbox:$/.test(trimmed)) { section = "mailboxes"; continue; }
@@ -87,6 +89,8 @@ export function parseBusinessMailReport(raw: string): BusinessMailReport | null 
     if (/^Message-by-message overview/.test(trimmed)) { section = "messages"; continue; }
     if (/^Coverage: /.test(trimmed)) coverage = trimmed;
     if (/^This report uses local sync data;/.test(trimmed)) notice = trimmed;
+    const sync = /Oldest mailbox sync:\s*(\d{4}-\d\d-\d\dT[\d:.]+Z)\./.exec(trimmed);
+    if (sync) lastSyncUtc = sync[1] ?? null;
     const extra = trimmed.match(/^…and (\d+) more unread messages/);
     if (extra) moreCount = Number(extra[1]);
     if (section === "mailboxes") {
@@ -123,6 +127,7 @@ export function parseBusinessMailReport(raw: string): BusinessMailReport | null 
     matched: numbers.matched,
     included: countMatch ? records.length : numbers.included,
     period: countMatch ? "All locally synchronized unread mail" : first.replace(/^Locally synchronized /, ""),
+    lastSyncUtc,
     coverage: coverage || (countMatch ? "Only the newest messages are previewed." : ""),
     notice: notice || "This report uses local sync data; newer provider messages may not yet be synchronized.",
     moreCount,
