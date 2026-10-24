@@ -973,8 +973,8 @@ function MessageBubble({ role, content, messageId, showNextActions, userRequest,
   if (role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="flex max-w-[80%] items-start gap-2.5">
-          <div className="rounded-2xl rounded-br-sm bg-foreground px-4 py-2.5 text-sm text-background">
+        <div className="flex min-w-0 max-w-[80%] items-start gap-2.5">
+          <div className="min-w-0 break-words rounded-2xl rounded-br-sm bg-foreground px-4 py-2.5 text-sm text-background">
             <p className="whitespace-pre-wrap">{content}</p>
           </div>
           <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground"><User size={15} /></span>
@@ -986,9 +986,9 @@ function MessageBubble({ role, content, messageId, showNextActions, userRequest,
   // Assistant (Clara) message
   return (
     <div className="flex justify-start">
-      <div className="flex max-w-[90%] items-start gap-2.5">
+      <div className="flex min-w-0 max-w-[90%] items-start gap-2.5">
         <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
-        <div className="flex-1 text-sm leading-7">
+        <div className="min-w-0 flex-1 break-words text-sm leading-7">
           <MarkdownRenderer content={content} disabled={disabled} onPrepare={onPrepare} />
           {showNextActions ? <SuggestedNextActions answer={content} userRequest={userRequest} messageId={messageId}
             disabled={disabled} onPrepare={onPrepare} emailWorkflowState={emailWorkflowState}
