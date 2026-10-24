@@ -502,7 +502,7 @@ export async function POST(request: Request) {
       const report = (unreadOnlyMail?.kind==='count'
         ? formatUnreadMailCountReport(evidence.mailboxCounts,evidence.rows)
         : unreadOnlyMail?.kind==='summary'
-          ? formatUnreadMailSummary(evidence.rows,requestedMailScope,fromUtc,toUtc)
+          ? formatUnreadMailSummary(evidence.rows,unreadOnlyMail,fromUtc,toUtc)
           : formatRollingMailSummary(
         evidence.rows, requestedMailScope, fromUtc, toUtc,
         explicitRange?.kind === "valid" ? "explicit UTC calendar-date range (exclusive end)" : undefined,

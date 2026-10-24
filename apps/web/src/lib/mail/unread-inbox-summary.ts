@@ -47,12 +47,17 @@ const UNSUPPORTED =
 
 /** Very long prompts usually carry hidden constraints; stay conservative. */
 const MAX_FAST_PATH_LENGTH = 120;
+const PURE_REPORT_WORDS=new Set('how many count number of unread unreaded not read new email emails mail mails inbox mailbox messages do i we have right now please summarize summarise summery summary recap report review list show check find see go through my our all the a an is are me for us what in total'.split(' '));
 
 export function parseUnreadOnlyMailRequest(input: string): UnreadOnlyMailRequest | null {
   const message = (input ?? "").trim().toLowerCase();
   if (!message || message.length > MAX_FAST_PATH_LENGTH) return null;
   if (!MENTIONS_MAIL.test(message) || !MENTIONS_UNREAD.test(message) || !REPORT_VERB.test(message)) return null;
   if (UNSUPPORTED.test(message)) return null;
+  // Unknown words may be an unrecognized folder, date or analysis constraint.
+  // Fall back to the authorized tool path instead of broadening the report.
+  const words=message.replace(/e-mails?/g,'email').replace(/what's/g,'what is').replace(/[?.,!]/g,'').split(/\s+/);
+  if(words.some(word=>!PURE_REPORT_WORDS.has(word)))return null;
   return { kind: COUNT_QUESTION.test(message) ? "count" : "summary", unreadOnly: true,...(/\binbox\b/.test(message)?{inboxOnly:true}:{}) };
 }
 
