@@ -51,8 +51,11 @@ export default function HomePage() {
           <p className="mt-5 max-w-[580px] text-sm leading-6 text-muted-foreground">One considered workspace for your agents, inbox, messaging, knowledge and realtime AI. Your organization data stays the source of truth.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <a href="/agents/new" className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-85"><span aria-hidden="true">＋</span> Create agent</a>
+          <a href="/chat?prompt=How%20many%20unread%20emails%20do%20I%20have%3F&run=1" className="inline-flex h-10 items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-4 text-sm font-medium text-primary transition hover:bg-primary/10"><span aria-hidden="true">◎</span> Unread count — instant</a>
+          <a href="/chat?prompt=Summarize%20my%20unread%20emails&run=1" className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium transition hover:bg-secondary"><span aria-hidden="true">✳</span> Summarize unread mail</a>
+          <a href="/catch-up" className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium transition hover:bg-secondary"><span aria-hidden="true">↻</span> Catch up</a>
           <a href="/chat" className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium transition hover:bg-secondary"><span aria-hidden="true">✳</span> Ask Clara</a>
+          <a href="/agents/new" className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-muted-foreground transition hover:bg-secondary"><span aria-hidden="true">＋</span> Create agent</a>
         </div>
       </section>
 

@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { appendConversationMessage, getChatConversation, getOrCreateChatConversation, listChatMessages, PostgresAgentRepository, query } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { formatRollingMailSummary, MAX_REPORT_MESSAGES, parseRollingMailSummaryRequest, type RollingMailRow } from "@/lib/mail/rolling-summary";
+import { formatUnreadMailCountReport, formatUnreadMailSummary, parseUnreadOnlyMailRequest, UNREAD_REPORT_FROM_UTC, type MailboxUnreadCount } from "@/lib/mail/unread-inbox-summary";
 import { parseExplicitMailDateRangeRequest } from "@/lib/mail/explicit-date-range";
 import { canSupplyAmbientContext } from "@/lib/ai/ambient-context-access";
 import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
 import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation, verifiedEmailToolSummary } from "@/lib/mail/action-feedback";
 import { userFacingChatAnswer } from "@/lib/chat/user-facing-answer";
+import { buildStaleFailureRecoveryGuidance } from "@/lib/chat/stale-failure-recovery";
 
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -452,7 +454,12 @@ export async function POST(request: Request) {
       }, { status: 422, headers: { "Cache-Control": "private, no-store" } });
     }
     const rollingMail = parseRollingMailSummaryRequest(content);
-    const requestedMailScope = explicitRange?.kind === "valid" ? explicitRange : rollingMail;
+    // Pure unread count/summary questions take the instant local-database
+    // fast path instead of the multi-round model tool loop (5-24s observed).
+    // The parser only accepts constraint-free phrasings; anything narrower
+    // continues through the normal authorized tool path below.
+    const unreadOnlyMail = parseUnreadOnlyMailRequest(content);
+    const requestedMailScope = explicitRange?.kind === "valid" ? explicitRange : (rollingMail ?? unreadOnlyMail);
     if (requestedMailScope) {
       if (!subject.permissions.has("email.read")) {
         return NextResponse.json({
@@ -476,7 +483,9 @@ export async function POST(request: Request) {
       const toUtc = explicitRange?.kind === "valid"
         ? explicitRange.toUtc : windowEnd.toISOString();
       const fromUtc = explicitRange?.kind === "valid"
-        ? explicitRange.fromUtc : new Date(windowEnd.getTime() - 24 * 60 * 60 * 1000).toISOString();
+        ? explicitRange.fromUtc
+        : unreadOnlyMail ? UNREAD_REPORT_FROM_UTC
+          : new Date(windowEnd.getTime() - 24 * 60 * 60 * 1000).toISOString();
       const rows = await query<RollingMailRow>(
         `SELECT m.id, a.email_address AS account_email, m.from_email::text AS from_email,
                 m.from_name, m.subject, m.received_at,
@@ -506,10 +515,36 @@ export async function POST(request: Request) {
          requestedMailScope.sender ?? null, requestedMailScope.topic ?? null,
          requestedMailScope.unreadOnly, MAX_REPORT_MESSAGES, explicitRange?.kind === "valid"],
       );
-      const report = formatRollingMailSummary(
-        rows.rows, requestedMailScope, fromUtc, toUtc,
-        explicitRange?.kind === "valid" ? "explicit UTC calendar-date range (exclusive end)" : undefined,
-      );
+      let report: string;
+      if (unreadOnlyMail?.kind === "count") {
+        // Exact per-mailbox totals from a tiny aggregate query; the listing
+        // rows above only back the "newest unread" preview.
+        const counts = await query<MailboxUnreadCount>(
+          `SELECT a.email_address AS account_email, COUNT(*)::integer AS unread_count
+           FROM email_messages m
+           JOIN email_accounts a ON a.id = m.email_account_id
+            AND a.organization_id = $1 AND a.deleted_at IS NULL
+           WHERE m.organization_id = $1
+             AND m.is_draft IS FALSE AND m.is_sent IS FALSE AND m.is_read IS FALSE
+             AND EXISTS (
+               SELECT 1 FROM agent_email_accounts b
+               JOIN agents bound_agent ON bound_agent.id = b.agent_id AND bound_agent.organization_id = $1
+               WHERE b.email_account_id = a.id AND b.agent_id = $2
+                 AND b.role IN ('primary', 'read_only')
+             )
+           GROUP BY a.email_address
+           ORDER BY unread_count DESC, a.email_address ASC`,
+          [organizationId, agentId],
+        );
+        report = formatUnreadMailCountReport(counts.rows, rows.rows);
+      } else if (unreadOnlyMail?.kind === "summary") {
+        report = formatUnreadMailSummary(rows.rows);
+      } else {
+        report = formatRollingMailSummary(
+          rows.rows, requestedMailScope, fromUtc, toUtc,
+          explicitRange?.kind === "valid" ? "explicit UTC calendar-date range (exclusive end)" : undefined,
+        );
+      }
       await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "user", content });
       await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "assistant", content: report });
       const encoder = new TextEncoder();
@@ -589,10 +624,16 @@ export async function POST(request: Request) {
     const filteredHistory = safeHistory
       .filter((message) => message.role === "user" || message.role === "assistant" || message.role === "system")
       .map((message) => ({ role: message.role as "user" | "assistant" | "system", content: message.content }));
+    // A conversation whose recent assistant answers all report access
+    // failures keeps failing even after the underlying cause is fixed:
+    // the model quotes its own stale history instead of retrying tools.
+    // Detect that shape and demand a fresh tool attempt this turn.
+    const staleFailureRecovery = buildStaleFailureRecoveryGuidance(filteredHistory, content);
     const messages = [
       ...filteredHistory,
       ...(emailContext ? [{ role: "system" as const, content: emailContext }] : []),
       ...(whatsappContext ? [{ role: "system" as const, content: whatsappContext }] : []),
+      ...(staleFailureRecovery ? [{ role: "system" as const, content: staleFailureRecovery }] : []),
       { role: "user" as const, content },
     ];
 
