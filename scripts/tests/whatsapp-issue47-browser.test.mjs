@@ -59,6 +59,7 @@ test("acceptance run uses same-origin session, Meta GET, one pending proposal an
   assert.equal(calls[4].headers["Idempotency-Key"], calls[5].headers["Idempotency-Key"]);
   assert.ok(logs.some(x => x.includes("HTTP checks passed")));
   assert.ok(logs.some(x => x.includes("Action ID")));
+  assert.ok(logs.findIndex(x => x.includes("Action ID")) < logs.findIndex(x => x.includes("HTTP checks passed")));
   assert.ok(logs.every(x => !x.includes(recipient) && !x.includes("aca-access-token")));
 });
 

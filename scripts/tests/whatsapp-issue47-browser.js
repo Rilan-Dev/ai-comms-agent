@@ -69,6 +69,8 @@
       fail("202 response did not contain a pending approval record");
     }
     note("PASS: authorized proposal HTTP 202, pending approval (not a send)");
+    // Preserve the action ID immediately: later assertions can fail after the row exists.
+    note("Action ID (keep private, only for local psql -v action_id):", pending.actionId);
 
     const repeated = await sendProposal(proposal);
     if (repeated.status !== 202) fail("identical idempotent retry failed: HTTP " + repeated.status);
@@ -80,7 +82,6 @@
     if (conflict.status !== 409) fail("reused idempotency key with changed payload was not rejected: HTTP " + conflict.status);
     note("PASS: changed payload with same idempotency key HTTP 409");
     note("DB CHECK REQUIRED: locally verify actionId via scripts/tests/whatsapp-issue47-pending.postgres.sql");
-    note("Action ID (keep private, only for local psql -v action_id):", pending.actionId);
     note("HTTP checks passed. No approval or send endpoint was invoked by this test.");
   } catch (error) {
     note("NOT ACCEPTED:", error instanceof Error ? error.message : "unknown test error");
