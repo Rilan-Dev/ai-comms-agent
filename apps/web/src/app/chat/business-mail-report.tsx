@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, Inbox, MailOpen, ExternalLink } from "lucide-react";
+import { AlertTriangle, ChevronDown, Inbox, MailOpen, ExternalLink, Sparkles } from "lucide-react";
 import type { BusinessMailReport as Report } from "@/lib/chat/business-report-display";
 
 function formatReceivedUtc(value: string): string {
@@ -14,7 +14,7 @@ function formatReceivedUtc(value: string): string {
 }
 
 /** Only previously verified source data; presentation never changes mail state. */
-export function BusinessMailReport({ report }: { report: Report }) {
+export function BusinessMailReport({ report, onPrepare, disabled = false }: { report: Report; onPrepare: (text: string) => void; disabled?: boolean }) {
   const [visible, setVisible] = useState(5);
   const shown = report.messages.slice(0, visible);
   const remaining = Math.max(0, report.messages.length - shown.length);
@@ -117,6 +117,18 @@ export function BusinessMailReport({ report }: { report: Report }) {
         </button>
       ) : null}
 
+      <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold">Need a shorter business explanation?</p>
+            <p className="mt-1 text-xs text-muted-foreground">Ask the AI to analyze verified email facts. It will not change or send mail.</p>
+          </div>
+          <button type="button" disabled={disabled} onClick={() => onPrepare("Using only the emails and verified facts available in this conversation, write a short business briefing. Start with the main takeaway, then highlight urgent or time-sensitive items only if supported by actual email content, and list next actions with source thread links when known. Do not invent mail facts and do not send, approve, or change messages.")}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+            <Sparkles size={14} /> Ask AI for key actions
+          </button>
+        </div>
+      </div>
       {report.moreCount > 0 ? <p className="text-xs text-muted-foreground">
         {report.moreCount.toLocaleString()} other unread messages exist in the synchronized count. Ask for a full report to see more.
       </p> : null}
