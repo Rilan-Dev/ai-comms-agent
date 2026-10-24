@@ -26,7 +26,9 @@ test("batch reply and forward never pass local UUID to remote provider and requi
   assert.match(area, /source.provider_message_id/);
   assert.match(area, /paramsFromApprovedEmailSnapshot\(snapshot\)/);
   assert.match(area, /connected.reply\(providerMessageId, replyParams\)/);
-  assert.match(area, /connected.forward\(providerMessageId, params.to\)/);
+  assert.match(area, /connected.createDraft\(params\)/);
+  assert.match(area, /connected.sendDraft\(forwardDraftId\)/);
+  assert.doesNotMatch(area, /connected\.forward\(/);
   assert.doesNotMatch(area, /connected\.reply\(messageId,/);
   assert.doesNotMatch(area, /connected\.forward\(messageId,/);
 });
@@ -38,7 +40,9 @@ test("one-shot reply/forward applies identical source mailbox and immutable reci
   assert.match(area, /const providerMessageId = String\(source.provider_message_id\)/);
   assert.match(area, /paramsFromApprovedEmailSnapshot\(snapshot\)/);
   assert.match(area, /connected.reply\(providerMessageId, params\)/);
-  assert.match(area, /connected.forward\(providerMessageId, reviewedParams.to\)/);
+  assert.match(area, /connected.createDraft\(reviewedParams\)/);
+  assert.match(area, /connected.sendDraft\(forwardDraftId\)/);
+  assert.doesNotMatch(area, /connected\.forward\(/);
   assert.doesNotMatch(area, /snapshot\.to\.map\(String\)/);
 });
 
