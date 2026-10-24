@@ -25,6 +25,7 @@ test("historic plain-text reports become exact, bounded business briefing cards"
   assert.match(parsed.notice, /local sync data/i);
   assert.match(parsed.period, /rolling 24-hour UTC window/i);
   assert.equal(parsed.messages[0].receivedUtc, "2026-10-24T11:27:57.000Z");
+  assert.equal(parsed.lastSyncUtc, "2026-10-24T12:15:09.883Z");
 });
 
 test("95-message report remains complete and can be progressively disclosed by the UI", () => {
