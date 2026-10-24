@@ -122,7 +122,7 @@ export function BusinessMailReport({ report }: { report: Report }) {
       </p> : null}
       {report.coverage ? <p className="text-xs leading-5 text-muted-foreground">{report.coverage}</p> : null}
       <p className="border-t pt-3 text-xs leading-5 text-muted-foreground">
-        <strong>Data freshness:</strong> {report.notice} No newer provider mail is guaranteed by local sync.
+        <strong>Data freshness:</strong> {report.notice}\n        {report.lastSyncUtc ? <span className="mt-1 block">Oldest connected mailbox synchronization: {formatReceivedUtc(report.lastSyncUtc)}.</span> : null}\n        <span className="mt-1 block">No newer provider mail is guaranteed by local sync.</span>
       </p>
     </section>
   );
