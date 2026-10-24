@@ -28,6 +28,14 @@ test("historic plain-text reports become exact, bounded business briefing cards"
   assert.equal(parsed.lastSyncUtc, "2026-10-24T12:15:09.883Z");
 });
 
+test("thread links on their own line are retained, as produced by live mail report formatter", () => {
+  const reportWithNewline = report(1).replace(" [Open source thread](/mail/thread/" + ID + ")", "\n   [Open source thread](/mail/thread/" + ID + ")");
+  const parsed = parseBusinessMailReport(reportWithNewline);
+  assert.ok(parsed);
+  assert.equal(parsed.messages[0].source, "/mail/thread/" + ID);
+  assert.equal(parsed.messages[0].excerpt, "Please review the details.");
+});
+
 test("95-message report remains complete and can be progressively disclosed by the UI", () => {
   const parsed = parseBusinessMailReport(report(95));
   assert.ok(parsed);
