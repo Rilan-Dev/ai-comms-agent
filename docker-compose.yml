@@ -25,7 +25,13 @@ services:
       - .env
     environment:
       NODE_ENV: production
-      ACA_ENABLE_DEV_IDENTITY: "true"
+      # Dev identity (x-dev-user-id stub + dev seed) must stay OFF for
+      # production deployments. With NODE_ENV=production the auth adapter is
+      # the PostgreSQL-backed LocalIdentityAdapter regardless, but leaving
+      # this "true" also let ensureDevSeed() write a dev user/org into the
+      # production database. Default false; local development sets
+      # ACA_ENABLE_DEV_IDENTITY=true in .env (see .env.example).
+      ACA_ENABLE_DEV_IDENTITY: "${ACA_ENABLE_DEV_IDENTITY:-false}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
