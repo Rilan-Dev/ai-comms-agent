@@ -273,7 +273,7 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
       </div>
       <textarea aria-label="Task instruction" className="mt-4 min-h-[84px] w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder="Task instruction the AI executes at every fire time — e.g. Summarize my emails from the last 24 hours and send me a short note on WhatsApp at +919629534701." value={form.task} onChange={e => setForm({ ...form, task: e.target.value })} />
       <button disabled={busy} onClick={() => void createSchedule()} className="mt-4 h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">Create scheduled task</button>
-      <p className="mt-3 text-xs text-muted-foreground">At every fire time the agent runs this instruction with its enabled tools: reading mail, summarizing, sending WhatsApp notes and more. Sends follow the agent's approval policy (autonomous sending when enabled).</p>
+      <p className="mt-3 text-xs text-muted-foreground">At every fire time the agent runs this instruction with its enabled tools: reading mail, summarizing, sending WhatsApp notes and more. Sends follow the agent&apos;s approval policy (autonomous sending when enabled).</p>
     </section>
 
     <section className="grid gap-3">
@@ -319,7 +319,7 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
         </div>}
         {row.lastError && <p className="mt-3 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">{row.lastError}</p>}
       </article>)}
-      {activeSchedules.length === 0 && <div className="rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">No scheduled AI tasks yet. Create one above, or ask the agent in chat: "every day at 8, summarize my last 24 hours of email and send me a WhatsApp note".</div>}
+      {activeSchedules.length === 0 && <div className="rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">No scheduled AI tasks yet. Create one above, or ask the agent in chat: &quot;every day at 8, summarize my last 24 hours of email and send me a WhatsApp note&quot;.</div>}
     </section>
 
     <section className="rounded-md border border-border bg-card p-5">
