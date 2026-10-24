@@ -118,6 +118,10 @@ export const PERMISSION_CATALOGUE = [
   { name: "email.write", description: "Create email drafts and request human approval to send through agent tools" },
   { name: "whatsapp.read", description: "Read connected WhatsApp conversations and approval requests" },
   { name: "whatsapp.send", description: "Request WhatsApp outbound messages through human approval" },
+  // Scheduled AI agent feature: the agent may manage its own durable
+  // schedules through host tools (create/read/edit/delete).
+  { name: "schedules.read", description: "View scheduled AI agent tasks through agent tools" },
+  { name: "schedules.manage", description: "Create, edit, pause and delete scheduled AI agent tasks through agent tools" },
 ] as const;
 
 export type PermissionName = (typeof PERMISSION_CATALOGUE)[number]["name"];
@@ -142,6 +146,8 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission
     "email.write",
     "whatsapp.read",
     "whatsapp.send",
+    "schedules.read",
+    "schedules.manage",
   ],
   admin: [
     "organization.read",
@@ -155,12 +161,15 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission
     "email.write",
     "whatsapp.read",
     "whatsapp.send",
+    "schedules.read",
+    "schedules.manage",
   ],
   member: [
     "organization.read",
     "users.read",
     "email.read",
     "whatsapp.read",
+    "schedules.read",
   ],
   viewer: [
     "organization.read",

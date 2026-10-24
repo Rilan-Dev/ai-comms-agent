@@ -23,8 +23,8 @@ const approvals = readFileSync(resolve(__dirname, "../src/app/mail/approvals/app
 const whatsappPage = readFileSync(resolve(__dirname, "../src/app/whatsapp/page.tsx"), "utf8");
 const whatsapp = readFileSync(resolve(__dirname, "../src/app/whatsapp/whatsapp-client.tsx"), "utf8");
 const whatsappAccountsApi = readFileSync(resolve(__dirname, "../src/app/api/whatsapp/accounts/route.ts"), "utf8");
-const automations = readFileSync(resolve(__dirname, "../src/app/automations/automations-client.tsx"), "utf8");
-const schedules = readFileSync(resolve(__dirname, "../src/app/schedules/schedules-client.tsx"), "utf8");
+const automations = readFileSync(resolve(__dirname, "../src/app/scheduled/scheduled-client.tsx"), "utf8");
+const schedules = readFileSync(resolve(__dirname, "../src/app/scheduled/scheduled-client.tsx"), "utf8");
 const chat = readFileSync(resolve(__dirname, "../src/app/chat/chat-client.tsx"), "utf8");
 const voice = readFileSync(resolve(__dirname, "../src/app/ai-voice/voice-workspace.tsx"), "utf8");
 const knowledge = readFileSync(resolve(__dirname, "../src/app/knowledge/page.tsx"), "utf8");
@@ -199,7 +199,7 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(whatsapp).toContain("Save changes and verify");
     expect(whatsapp).not.toContain("Webhook Verify Token *");
     expect(whatsapp).toContain("Daily briefing");
-    expect(whatsapp).toContain('href="/schedules"');
+    expect(whatsapp).toContain('href="/scheduled"');
     expect(whatsapp).toContain("Meta verification failed or the account needs attention");
     expect(whatsapp).toContain("a.last_error");
   });
@@ -221,16 +221,16 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
   });
 
   it("keeps automation creation/archive and schedule recurrence/timezone controls in the Lovable theme", () => {
-    expect(automations).toContain('"/api/organizations/"+organizationId+"/automations"');
+    expect(automations).toContain('/api/organizations/${organizationId}/automations');
     expect(automations).toContain("Create rule");
     expect(automations).toContain("Archive");
     expect(automations).toContain("rounded-md");
-    expect(schedules).toContain('"/api/organizations/" + organizationId + "/schedules"');
+    expect(schedules).toContain('/api/organizations/${organizationId}/schedules');
     expect(schedules).toContain('aria-label="Cron expression"');
     expect(schedules).toContain('aria-label="One-time fire time"');
     expect(schedules).toContain("timezone");
     expect(schedules).toContain("lastError");
-    expect(schedules).toContain("No schedules yet.");
+    expect(schedules).toContain("No scheduled AI tasks yet.");
   });
   it("keeps Clara chat connected to the authenticated streaming API with Lovable iconography", () => {
     expect(chat).toContain('from "lucide-react"');

@@ -24,6 +24,7 @@ import type { ChatToolCompletion, ChatToolDefinition, ToolChatMessage } from "@a
 import type { ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { createEmailToolRuntime, invokeEmailReadTool } from "../../../../../../../apps/worker/src/agent/email-tool-runtime";
 import { createWhatsAppToolRuntime, invokeWhatsAppTool } from "../../../../../../../apps/worker/src/agent/whatsapp-tool-runtime";
+import { createSchedulesToolRuntime, invokeSchedulesTool } from "../../../../../../../apps/worker/src/agent/schedules-tool-runtime";
 
 export const dynamic = "force-dynamic";
 
@@ -288,13 +289,15 @@ async function runInteractiveHostToolLoop(args: {
   if (args.toolContext.organization_id !== args.organizationId || args.toolContext.agent_id !== args.agentId) {
     throw new Error("Trusted tool context does not match the requested organization and agent.");
   }
-  const [emailRuntime, whatsappRuntime] = await Promise.all([
+  const [emailRuntime, whatsappRuntime, schedulesRuntime] = await Promise.all([
     createEmailToolRuntime(args.organizationId, args.agentId),
     createWhatsAppToolRuntime(args.organizationId, args.agentId),
+    createSchedulesToolRuntime(args.organizationId, args.agentId),
   ]);
   const visibleTools = [
     ...emailRuntime.registry.listForAgent(args.agentId),
     ...whatsappRuntime.registry.listForAgent(args.agentId),
+    ...schedulesRuntime.registry.listForAgent(args.agentId),
   ].filter((tool) => args.toolContext.auth_subject.permissions.includes(tool.required_permission));
   const definitions: ChatToolDefinition[] = visibleTools
     .map((tool) => ({ name: tool.name, description: tool.description, parameters: tool.input_schema }));
@@ -371,7 +374,9 @@ async function runInteractiveHostToolLoop(args: {
           ? "reading_whatsapp" : "checking_permissions");
       const result: ToolResult = call.name.startsWith("whatsapp.")
         ? await invokeWhatsAppTool(whatsappRuntime, call.name, call.arguments, args.toolContext)
-        : await invokeEmailReadTool(emailRuntime, call.name, call.arguments, args.toolContext);
+        : call.name.startsWith("schedules.")
+          ? await invokeSchedulesTool(schedulesRuntime, call.name, call.arguments, args.toolContext)
+          : await invokeEmailReadTool(emailRuntime, call.name, call.arguments, args.toolContext);
       if (!result.ok || (result.output && typeof result.output === "object"
           && "status" in result.output && result.output.status === "pending_approval")) {
         args.onProgress?.("denied");

@@ -53,7 +53,7 @@ export async function getScheduledJob(organizationId: string, id: string) {
 export async function createScheduledJob(input: {
   organizationId: string;
   agentId: string;
-  userId: string;
+  userId: string | null;
   name: string;
   cron?: string | null;
   oneFireAt?: string | null;
@@ -165,7 +165,7 @@ export async function listAutomationRuns(organizationId: string, ruleId: string)
 
 export type ScheduledJobClaim = {
   runId:string; id:string; agentId:string; organizationId:string; intent:string; params:Record<string,unknown>;
-  cron:string|null; nextFireAt:string; revisionAt:string; timezone:string; catchUpMinutes:number;
+  cron:string|null; nextFireAt:string; revisionAt:string; timezone:string; catchUpMinutes:number; createdBy:string|null;
 };
 
 export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise<ScheduledJobClaim[]> {
@@ -176,8 +176,7 @@ export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise
     const jobs=await client.query<Row>(
       "SELECT j.* FROM scheduled_jobs j WHERE j.status='active' AND j.next_fire_at IS NOT NULL AND j.next_fire_at <= $1::timestamptz AND NOT EXISTS (SELECT 1 FROM scheduled_job_runs r WHERE r.scheduled_job_id=j.id AND r.fire_at=j.next_fire_at) ORDER BY j.next_fire_at ASC LIMIT $2 FOR UPDATE OF j SKIP LOCKED",
       [nowIso,limit],
-    );
-    const claims:ScheduledJobClaim[]=[];
+    );    const claims:ScheduledJobClaim[]=[];
     for(const row of jobs.rows){
       // Convert the DB-returned Date object to ISO 8601 string.
       // pg returns Date objects for timestamptz columns; String(date)
@@ -195,7 +194,7 @@ export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise
       );
       const runId = run.rows[0]?.id ? String(run.rows[0].id) : null;
       if (!runId) continue;
-      claims.push({runId,id:String(row.id),agentId:String(row.agent_id),organizationId:String(row.organization_id),intent:String(row.intent),params:(row.params??{}) as Record<string,unknown>,cron:row.cron?String(row.cron):null,nextFireAt:fireAt,revisionAt,timezone:String(row.timezone??"UTC"),catchUpMinutes:Number(row.catch_up_minutes??60)});
+      claims.push({runId,id:String(row.id),agentId:String(row.agent_id),organizationId:String(row.organization_id),intent:String(row.intent),params:(row.params??{}) as Record<string,unknown>,cron:row.cron?String(row.cron):null,nextFireAt:fireAt,revisionAt,timezone:String(row.timezone??"UTC"),catchUpMinutes:Number(row.catch_up_minutes??60),createdBy:row.created_by?String(row.created_by):null});
     }
     return claims;
   });

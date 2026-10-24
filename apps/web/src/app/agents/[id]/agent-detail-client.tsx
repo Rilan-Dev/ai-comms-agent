@@ -8,6 +8,7 @@ import { useNotifications } from "@/components/notifications";
 import { AgentAISettingsPanel } from "./agent-ai-settings-panel";
 import { EMAIL_PERMISSION_PRESETS, emailPermissionPresetSelection, summarizeEmailPermissionChanges } from "@/lib/agents/email-permission-presets";
 import { WHATSAPP_POLICY_CHOICES } from "@/lib/agents/whatsapp-permission-choices";
+import { SCHEDULES_POLICY_CHOICES } from "@/lib/agents/schedules-permission-choices";
 import { useWhatsAppReadiness } from "@/lib/whatsapp/use-readiness";
 
 // Only tools registered by the current email runtime are selectable here.
@@ -32,7 +33,7 @@ const EMAIL_POLICY_CHOICES = [
   { name: "email.forward.request", label: "Request forward approval", detail: "Request authorization to forward; does not send automatically.", group: "write" },
 ] as const;
 const KNOWN_EMAIL_POLICY_TOOLS = new Set<string>(EMAIL_POLICY_CHOICES.map((choice) => choice.name));
-const KNOWN_SELECTABLE_POLICY_TOOLS = new Set<string>([...KNOWN_EMAIL_POLICY_TOOLS, ...WHATSAPP_POLICY_CHOICES.map((choice) => choice.name)]);
+const KNOWN_SELECTABLE_POLICY_TOOLS = new Set<string>([...KNOWN_EMAIL_POLICY_TOOLS, ...WHATSAPP_POLICY_CHOICES.map((choice) => choice.name), ...SCHEDULES_POLICY_CHOICES.map((choice) => choice.name)]);
 
 type Check = { key: string; label: string; ok: boolean; detail?: string };
 type AuditEvent = { id:string; eventType:string; action:string|null; decision:string|null; createdAt:string; metadata:Record<string,unknown> };
@@ -389,6 +390,16 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
           <p role="status" className="mt-3 text-xs text-muted-foreground">
             {whatsappReadiness.message}
           </p>
+        </fieldset>
+        <fieldset className="rounded-md border p-4">
+          <legend className="px-1 text-sm font-semibold">Scheduled AI agent permissions</legend>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Let this agent manage its own scheduled tasks from chat: create, read, edit and delete schedules. At every fire time the agent executes the task instruction with the tools enabled above (email and WhatsApp). The signed-in user must also have schedules.manage for mutations.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">{SCHEDULES_POLICY_CHOICES.map((choice) => <label key={choice.name} className="flex items-start gap-3 rounded-md border p-3 text-sm hover:bg-muted/30">
+            <input type="checkbox" disabled={busy} checked={selectedTools.includes(choice.name)} onChange={(event) => togglePolicyTool(choice.name, event.target.checked)} className="mt-1 size-4 shrink-0" />
+            <span><span className="block font-medium">{choice.label}</span><span className="mt-1 block text-xs text-muted-foreground">{choice.detail}</span></span>
+          </label>)}</div>
         </fieldset>
         {selectedTools.filter((name) => !KNOWN_SELECTABLE_POLICY_TOOLS.has(name)).length > 0 && <fieldset className="rounded-md border p-4">
           <legend className="px-1 text-sm font-semibold">Existing other permissions</legend>

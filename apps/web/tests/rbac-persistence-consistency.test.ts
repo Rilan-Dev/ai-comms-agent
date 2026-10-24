@@ -96,7 +96,7 @@ describe("RBAC persistence consistency (Option A: system roles, deferred custom-
 
     // Verify the method signature does not accept a role_id or query a roles table
     const perms = await repo.getPermissionsForRole(asOrganizationId(fixture.orgA), "member");
-    expect(perms).toEqual(["organization.read", "users.read", "email.read", "whatsapp.read"]);
+    expect(perms).toEqual(["organization.read", "users.read", "email.read", "whatsapp.read", "schedules.read"]);
   });
 
   it("viewer has exactly one permission (least privilege enforced by TypeScript mapping)", () => {
