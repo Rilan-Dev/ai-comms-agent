@@ -229,6 +229,13 @@ async function readSseStream(response: Response): Promise<AsyncGenerator<string,
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
 
+  // Reasoning-first models (for example sarvam-105b) can spend the entire
+  // completion budget on `delta.reasoning` and stop with finish_reason
+  // "length" before emitting any `delta.content`. Yielding nothing would
+  // surface downstream as a silent empty assistant reply; fail loudly so
+  // callers can report a provider/configuration problem instead.
+  let sawContent = false;
+
   function* textDeltas(frame: string): Generator<string> {
     for (const line of frame.split(/\r?\n/)) {
       if (!line.startsWith("data:")) continue;
@@ -238,7 +245,7 @@ async function readSseStream(response: Response): Promise<AsyncGenerator<string,
       try {
         const payload = JSON.parse(data) as StreamChunk;
         const chunk = payload.choices?.[0]?.delta?.content;
-        if (chunk) yield chunk;
+        if (chunk) { sawContent = true; yield chunk; }
       } catch {
         // Ignore malformed auxiliary events without exposing raw provider data.
       }
@@ -262,6 +269,11 @@ async function readSseStream(response: Response): Promise<AsyncGenerator<string,
       }
       // Not every compatible provider ends its final SSE frame with two LF's.
       if (buffer.trim()) yield* textDeltas(buffer);
+      if (!sawContent) {
+        throw new Error(
+          "AI provider streamed a completion with no content. Reasoning-first models (for example sarvam-105b) can exhaust the completion budget on reasoning before any content is emitted — use a conversations/chat model variant or raise the completion budget.",
+        );
+      }
     } finally {
       // If the host aborts or stops consuming an early answer, cancel the
       // upstream provider body rather than merely releasing the reader lock.
