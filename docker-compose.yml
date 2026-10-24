@@ -1,9 +1,19 @@
 # Docker Compose for local development infrastructure
 # Per docs/architecture/DEPLOYMENT.md and Phase 2 scope.
 #
-# This is LOCAL DEVELOPMENT ONLY. Do not use for production.
-# Production infrastructure is provisioned separately (Phase 4+ for Supabase,
-# Phase 9+ for worker host / RabbitMQ / Redis / Qdrant).
+# Also used for single-VPS all-in-one deployments (web + worker + local-infra
+# profile on one host behind a reverse proxy).
+#
+# SECURITY (2026-10-24): the aca-redis container on the production VPS was
+# compromised through the previously unprefixed "6379:6379" port publish.
+# Docker port publishes are NOT filtered by firewalld on the host, so an
+# unprefixed binding exposes the service on every interface, including the
+# public one. All local-infra publishes below are therefore bound to
+# 127.0.0.1: application containers reach these services over the compose
+# network by DNS name (aca-postgres / aca-redis / aca-rabbitmq / aca-qdrant),
+# and host-side access (psql / redis-cli / management UI) still works via
+# localhost or an SSH tunnel. No host firewall is required with these
+# bindings.
 
 services:
   web:
@@ -42,7 +52,9 @@ services:
       POSTGRES_PASSWORD: aca_local_dev
       POSTGRES_DB: aca
     ports:
-      - "5433:5432"
+      # Loopback-only: host-side psql/SSH-tunnel access without exposing the
+      # production database to the internet. Containers use aca-postgres:5432.
+      - "127.0.0.1:5433:5432"
     volumes:
       - aca-postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -50,20 +62,27 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 20s
 
   redis:
     profiles: ["local-infra"]
     image: redis:7-alpine
     container_name: aca-redis
     ports:
-      - "6379:6379"
+      # Loopback-only. An unprefixed "6379:6379" publish let a Redis-scanning
+      # worm reach this container directly from the internet (contained
+      # 2026-10-24). Containers use aca-redis:6379 over the compose network.
+      - "127.0.0.1:6379:6379"
     volumes:
       - aca-redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      # Require the literal PONG reply so a hijacked/non-Redis PID 1 is
+      # reported unhealthy even if the CLI process itself exits 0.
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
       interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
   rabbitmq:
     profiles: ["local-infra"]
@@ -73,8 +92,11 @@ services:
       RABBITMQ_DEFAULT_USER: aca
       RABBITMQ_DEFAULT_PASS: aca_local_dev
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      # Loopback-only: AMQP and the management UI stay reachable from the
+      # host (localhost or SSH tunnel) but not from the internet. Containers
+      # use aca-rabbitmq:5672 over the compose network.
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
     volumes:
       - aca-rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
@@ -82,21 +104,28 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+      start_period: 30s
 
   qdrant:
     profiles: ["local-infra"]
     image: qdrant/qdrant:v1.12.4
     container_name: aca-qdrant
     ports:
-      - "6333:6333"
-      - "6334:6334"
+      # Loopback-only: REST/gRPC stay reachable from the host but not from
+      # the internet. Containers use aca-qdrant:6333 over the compose network.
+      - "127.0.0.1:6333:6333"
+      - "127.0.0.1:6334:6334"
     volumes:
       - aca-qdrant-data:/qdrant/storage
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:6333/health || exit 1"]
+      # Prefer the HTTP health endpoint; fall back to a raw TCP connect when
+      # the image lacks curl, so the check does not fail purely for missing
+      # tooling.
+      test: ["CMD-SHELL", "curl -sf http://localhost:6333/healthz || bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
 
 volumes:
   aca-postgres-data:
