@@ -59,7 +59,7 @@ CREATE TABLE organizations(id uuid PRIMARY KEY); CREATE TABLE users(id uuid PRIM
 CREATE TABLE agents(id uuid PRIMARY KEY,organization_id uuid);
 CREATE TABLE agent_email_accounts(agent_id uuid,email_account_id uuid,role text);
 CREATE TABLE agent_policies(agent_id uuid,allowed_tools text[]);
-CREATE TABLE email_accounts(id uuid PRIMARY KEY,organization_id uuid,status text DEFAULT 'connected',deleted_at timestamptz,capabilities jsonb DEFAULT '{"drafts":true}');
+CREATE TABLE email_accounts(id uuid PRIMARY KEY,organization_id uuid,email_address text DEFAULT 'qa-sender@example.com',status text DEFAULT 'connected',deleted_at timestamptz,capabilities jsonb DEFAULT '{"drafts":true}');
 CREATE TABLE organization_memberships(id uuid DEFAULT gen_random_uuid(),organization_id uuid,user_id uuid,role text,status text,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());
 CREATE TABLE email_messages(id uuid PRIMARY KEY,organization_id uuid,email_account_id uuid,is_draft boolean,
 to_recipients jsonb,cc_recipients jsonb,bcc_recipients jsonb,subject text,text_body text,
@@ -89,6 +89,7 @@ beforeAll(async()=>{
 });
 afterAll(async()=>{await closePostgresPool(); await db.end();});
 beforeEach(async()=>{
+await db.query("UPDATE aca.email_accounts SET organization_id=$1,status='connected'",[ORG]);
 await db.query('TRUNCATE aca.agent_email_accounts,aca.agent_policies');
 await db.query("INSERT INTO aca.agent_email_accounts VALUES($1,$2,'primary')",[AGENT,ACCOUNT]);
 await db.query("INSERT INTO aca.agent_policies VALUES($1,ARRAY['email.send.request','email.reply.request','email.forward.request'])",[AGENT]);
@@ -107,6 +108,12 @@ describe('real PostgreSQL email approval lifecycle',()=>{
   const queue=await listPendingEmailActionsForOrganization(ORG);
   expect(queue.map(row=>row.id)).toEqual([action.id]); expect(queue[0]?.recipientSnapshot).toEqual(input.recipientSnapshot);
   expect(await listPendingEmailActionsForOrganization(OTHER)).toEqual([]);
+ });
+ it('the approval review uses only the current sender in the same organization',async()=>{
+  const action=await createEmailAction(await draft());let rows=await listPendingEmailActionsForOrganization(ORG);
+  expect(rows[0]).toMatchObject({id:action.id,senderAddress:'qa-sender@example.com',senderStatus:'connected'});
+  await db.query('UPDATE aca.email_accounts SET organization_id=$1',[OTHER]);rows=await listPendingEmailActionsForOrganization(ORG);
+  expect(rows[0]).toMatchObject({senderAddress:null,senderStatus:null});
  });
  it('AI approval retains the requesting agent and actor',async()=>{
   const action=await createEmailAction({...await draft(),agentId:AGENT});

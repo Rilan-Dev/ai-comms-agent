@@ -3,7 +3,7 @@ ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable && corepack prepare pnpm@12.8.1 --activate
 WORKDIR /workspace
-COPY pnpm-lock.yaml package.json pnpm-workspace.yaml tsconfig.base.json ./
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml tsconfig.base.json eslint.config.mjs ./
 COPY apps ./apps
 COPY packages ./packages
 # Do not re-resolve dependencies during a release build; reject any lock drift.

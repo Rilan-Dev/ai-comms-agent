@@ -9,6 +9,7 @@ import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
 import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation } from "@/lib/mail/action-feedback";
 import { userFacingChatAnswer } from "@/lib/chat/user-facing-answer";
 import { currentTurnOperationAnswer, isExplicitWhatsAppMutationRequest } from "@/lib/chat/operation-feedback";
+import {readEvidenceAnswer} from '@/lib/mail/read-evidence-answer';
 import { operationResultFromToolCall, reviewExplicitEmailBody, type OperationResult } from "@ai-comms-agent/shared";
 
 import { asOrganizationId } from "@ai-comms-agent/shared";
@@ -269,7 +270,7 @@ const MAX_HOST_TOOL_ROUNDS = 4;
 const MAX_HOST_TOOL_CALLS = 8;
 const MAX_HOST_TOOL_RESULT_CHARS = 10000;
 
-type HostToolTurnResult = { text: string; streamed?: boolean; toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; readOnly?: boolean; status?: string; operation?: OperationResult }> };
+type HostToolTurnResult = { text: string; streamed?: boolean; hostReadEvidence?:boolean; toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; readOnly?: boolean; status?: string; operation?: OperationResult }> };
 
 async function runInteractiveHostToolLoop(args: {
   organizationId: string;
@@ -300,6 +301,11 @@ async function runInteractiveHostToolLoop(args: {
     content: message.content,
   }));
   const summaries: HostToolTurnResult["toolCalls"] = [];
+  const recoverRead=():HostToolTurnResult|null=>{
+    if(!args.onSafeReadOnlyFinal||!summaries.length||!summaries.every(call=>call.ok&&call.readOnly===true))return null;
+    const text=readEvidenceAnswer(history);
+    return text?{text,hostReadEvidence:true,toolCalls:summaries}:null;
+  };
   let totalCalls = 0;
   for (let round = 0; round < MAX_HOST_TOOL_ROUNDS; round += 1) {
     args.onProgress?.("planning_tools");
@@ -309,9 +315,10 @@ async function runInteractiveHostToolLoop(args: {
         { orgId: args.organizationId, agentId: args.agentId, kbId: args.kbId }, history, definitions,
       );
     } catch (error) {
+      const recovered=recoverRead();if(recovered)return recovered;
       // Unsupported tool providers can fall back to the read-only model
-      // ONLY before any host tool was executed. A failure during native final
-      // streaming after a tool result must instead terminate the SSE turn.
+      // ONLY before any host tool was executed. After successful reads only,
+      // the host may retain their verified facts without replaying any tool.
       if (round === 0 && totalCalls === 0 && error instanceof Error
         && /(?:not supported|not enabled for Sarvam|unsupported native tool)/i.test(error.message)) {
         return {
@@ -340,9 +347,12 @@ async function runInteractiveHostToolLoop(args: {
       if (args.onSafeReadOnlyFinal && !completion.text.trim()
           && summaries.length > 0 && summaries.length <= 4
           && summaries.every((summary) => summary.ok && summary.readOnly === true)) {
-        const text = await args.onSafeReadOnlyFinal(history);
-        return { text, streamed: false, toolCalls: summaries };
+        try {
+          const text = await args.onSafeReadOnlyFinal(history);
+          return { text, streamed: true, toolCalls: summaries };
+        } catch(error){const recovered=recoverRead();if(recovered)return recovered;throw error;}
       }
+      if(completion.text.trim()&&!userFacingChatAnswer(completion.text)){const recovered=recoverRead();if(recovered)return recovered;}
       return { text: completion.text.trim() || "I couldn't complete that request safely. Please try again.", toolCalls: summaries };
     }
     history.push({ role: "assistant", content: completion.text || null, tool_calls: completion.toolCalls });
@@ -656,8 +666,8 @@ export async function POST(request: Request) {
           } else if (toolTurn) {
             const operations = toolTurn.toolCalls.flatMap(call => call.operation ? [call.operation] : []);
             const verifiedSummary = operations.length > 0;
-            assistantOutput = currentTurnOperationAnswer(toolTurn.text, operations, trustedToolContext.turn_id, explicitMessagingAction);
-            if (!verifiedSummary && !explicitMessagingAction) {
+            assistantOutput = toolTurn.hostReadEvidence ? toolTurn.text : currentTurnOperationAnswer(toolTurn.text, operations, trustedToolContext.turn_id, explicitMessagingAction);
+            if (!toolTurn.hostReadEvidence && !verifiedSummary && !explicitMessagingAction) {
               const validated = userFacingChatAnswer(assistantOutput);
               if (!validated) throw new Error("Tool-loop model output was not a user-facing answer.");
               assistantOutput = validated;
@@ -711,7 +721,11 @@ export async function POST(request: Request) {
         } catch (error) {
           // Provider, SQL and tool exceptions can contain tokens, user mail or SQL parameters.
           // The browser must never receive the raw exception through an SSE frame.
-          if (!request.signal.aborted) emit("error", { message: "Chat execution failed. Review drafts and approvals before retrying an email action." });
+          const reference=trustedToolContext.correlation_id;
+          console.error('[chat/stream] execution failed',{reference,type:error instanceof Error?error.name:'UnknownError',stage:shouldResolveTools?'tools':'model'});
+          if (!request.signal.aborted) emit("error", { message: explicitMessagingAction
+            ? `Chat execution failed. Review drafts and approvals before retrying an email action. Reference: ${reference}`
+            : `The read-only response could not be completed. Try again or open Inbox to view saved messages. Reference: ${reference}` });
           controller.close();
         }
       },
