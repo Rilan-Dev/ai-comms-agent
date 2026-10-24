@@ -45,5 +45,12 @@ export function operationResultFromToolCall(args: {
   if (output.status==='pending_approval' || (base.channel==='whatsapp' && output.status==='pending' && output.approval_required===true)) {
     return {...base,state:'pending_approval',resourceId:id};
   }
+  // Autonomous-send policy: the agent administrator waived the human approval
+  // step for this agent, so the tool approved the request itself. The persisted
+  // action/queue rows exist exactly like a human-approved send; only the
+  // approval source differs. Delivery is still provider-confirmed separately.
+  if (output.auto_approved===true && (output.status==='auto_approved' || output.status==='approved' || output.status==='queued')) {
+    return {...base,state:'queued',resourceId:id};
+  }
   return {...base,state:'outcome_unknown',resourceId:id};
 }

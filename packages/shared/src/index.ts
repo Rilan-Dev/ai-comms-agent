@@ -20,6 +20,7 @@ export type {
 export { INTENT_TAXONOMY } from "./agent/intents";
 export { ToolRegistry, type AgentToolAllowlist, type ToolValidationResult } from "./agent/registry";
 export { EMAIL_TOOL_CATALOG, listEmailToolDescriptors } from "./agent/mail-operations";
+export { AUTONOMOUS_SEND_POLICY_KEY, AUTO_APPROVED_MARKER, isAutonomousSendEnabled } from "./agent/autonomous-send";
 
 // Email provider types
 export type {

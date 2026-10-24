@@ -87,14 +87,17 @@ describe("WhatsApp send approval safety boundary", () => {
     expect(whatsappClient).toContain("This message has not been sent");
   });
 
-  it("registers whatsapp.send only as an approval-request tool", () => {
+  it("registers whatsapp.send as a policy-gated send tool", () => {
     expect(whatsappRuntime).toContain("registry.register(createWhatsAppHistoryTool() as unknown as Tool)");
     expect(whatsappRuntime).toContain("registry.register(createWhatsAppSendApprovalTool() as unknown as Tool)");
     expect(whatsappRuntime).toContain('name: "whatsapp.send"');
     expect(whatsappRuntime).toContain("INSERT INTO whatsapp_send_actions");
     expect(whatsappRuntime).toContain("approval_required: true");
-    expect(whatsappRuntime).not.toContain("queueWhatsAppOutboundMessage");
     expect(whatsappRuntime).toContain("whatsapp.send_approval.requested");
+    // Provider queueing exists ONLY behind the saved autonomous-send policy
+    // check; without that flag the tool still creates a pending approval only.
+    expect(whatsappRuntime).toContain("isAutonomousSendEnabled(policy?.securityPolicy)");
+    expect(whatsappRuntime).toContain("queueWhatsAppOutboundMessage");
   });
   it("defaults destructured template selection values under strict indexed access", () => {
     expect(whatsappClient).toContain('const [name = "",language = "en_US"]=e.target.value.split("|");');

@@ -58,6 +58,7 @@ export {
   getEmailActionForOrganization,
   listPendingEmailActionsForOrganization,
   decideEmailAction,
+  autoApproveEmailAction,
   claimApprovedEmailAction,
   listApprovedEmailActions,
   completeEmailAction,

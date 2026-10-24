@@ -1,4 +1,4 @@
-import {emailReplyMetadata} from "@ai-comms-agent/shared";
+import {emailReplyMetadata, AUTO_APPROVED_MARKER} from "@ai-comms-agent/shared";
 import { createHash } from "node:crypto";
 import { query, withTransaction } from "../client";
 
@@ -229,6 +229,38 @@ export async function decideEmailAction(
      SELECT id, organization_id, $6, $3, $4 FROM transitioned
      RETURNING email_action_id`,
     [decision, actionId, decidedBy, comment ?? null, organizationId, decision, decision === "approved"],
+  );
+  if (!r.rows[0]) return null;
+  return getEmailActionForOrganization(organizationId, actionId);
+}
+
+/**
+ * Autonomous-send policy approval: an organization administrator enabled
+ * `autonomous_send` on this agent's saved policy, which waives the separate
+ * human approval step for the agent's own send requests. The transition is
+ * identical to decideEmailAction(...,"approved") except `approved_by` stays
+ * NULL, marking the action as policy-approved rather than user-approved; the
+ * dispatch-time authorization then re-verifies the policy is still enabled.
+ * `decidedBy` records the requesting user on the approval audit row.
+ */
+export async function autoApproveEmailAction(organizationId: string, actionId: string, decidedBy: string) {
+  const r = await query<Row>(
+    `WITH transitioned AS (
+       UPDATE email_actions
+       SET status = 'approved',
+           approved_at = now(),
+           error = NULL
+       WHERE id = $1
+         AND organization_id = $2
+         AND status = 'pending_approval'
+         AND (expires_at IS NULL OR expires_at > now())
+       RETURNING *
+     )
+     INSERT INTO email_action_approvals
+       (email_action_id, organization_id, decision, decided_by, comment)
+     SELECT id, organization_id, 'approved', $3, $4 FROM transitioned
+     RETURNING email_action_id`,
+    [actionId, organizationId, decidedBy, AUTO_APPROVED_MARKER],
   );
   if (!r.rows[0]) return null;
   return getEmailActionForOrganization(organizationId, actionId);

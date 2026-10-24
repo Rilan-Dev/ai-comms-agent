@@ -1,4 +1,5 @@
-import { PostgresAgentRepository, query, recordAuditEvent } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, query, queueWhatsAppOutboundMessage, recordAuditEvent } from "@ai-comms-agent/db";
+import { isAutonomousSendEnabled } from "@ai-comms-agent/shared";
 import { ToolRegistry } from "@ai-comms-agent/shared";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { executeRegisteredTool } from "./tool-executor";
@@ -15,6 +16,78 @@ type WhatsAppSendApprovalInput = {
   template_parameters?: string[];
 };
 type WhatsAppHistoryRow = { id: string; whatsapp_account_id: string; direction: string; message_type: string; body: string | null; status: string; provider_timestamp: string | null; created_at: string; phone_number: string | null; display_name: string | null };
+type AutoApprovalOutcome =
+  | { kind: "queued"; messageId: string | null }
+  | { kind: "skipped" }
+  | { kind: "failed"; code: string; message: string };
+
+/** Autonomous-send policy: when the agent's saved policy enables it, the
+ * just-created pending proposal is approved and queued immediately instead of
+ * waiting for a human decision. The same Meta rules the manual decision route
+ * enforces still apply here: free-form text needs an inbound customer message
+ * in the last 24 hours; templates must be approved. The requesting actor must
+ * hold whatsapp.send (re-verified by the worker at dispatch). */
+async function autoApproveWhatsAppSendAction(args: {
+  organizationId: string;
+  agentId: string;
+  accountId: string;
+  actionId: string;
+  requestedBy: string | null;
+  recipientPhone: string;
+  messageBody: string;
+  payloadType: "text" | "template";
+  templateName: string | null;
+  templateLanguage: string | null;
+  templateParameters: string[];
+  idempotencyKey: string;
+  correlationId: string | null;
+}): Promise<AutoApprovalOutcome> {
+  const policy = await new PostgresAgentRepository().policy(args.organizationId, args.agentId);
+  if (!isAutonomousSendEnabled(policy?.securityPolicy)) return { kind: "skipped" };
+  if (args.payloadType === "text") {
+    const inbound = await query<{ id: string }>(
+      `SELECT m.id FROM whatsapp_messages m
+       JOIN whatsapp_contacts c ON c.id=m.contact_id
+       WHERE m.organization_id=$1 AND m.whatsapp_account_id=$2
+         AND c.phone_number=$3 AND m.direction='inbound'
+         AND COALESCE(m.provider_timestamp,m.created_at) >= now() - interval '24 hours'
+         AND COALESCE(m.provider_timestamp,m.created_at) <= now()
+       ORDER BY COALESCE(m.provider_timestamp,m.created_at) DESC LIMIT 1`,
+      [args.organizationId, args.accountId, args.recipientPhone],
+    );
+    if (!inbound.rows.length) {
+      await query(
+        "UPDATE whatsapp_send_actions SET status='requires_template', updated_at=now() WHERE id=$1 AND organization_id=$2 AND status IN ('pending','approved')",
+        [args.actionId, args.organizationId],
+      );
+      return { kind: "failed", code: "template_required", message: "No inbound customer message was received in the last 24 hours. Meta requires an approved message template outside that window; no free-form text was queued." };
+    }
+  }
+  const approved = await query<{ id: string }>(
+    "UPDATE whatsapp_send_actions SET status='approved', approved_by=$3, approved_at=now(), updated_at=now() WHERE id=$1 AND organization_id=$2 AND status='pending' RETURNING id",
+    [args.actionId, args.organizationId, args.requestedBy],
+  );
+  if (!approved.rows.length) return { kind: "skipped" };
+  const messageId = await queueWhatsAppOutboundMessage({
+    organizationId: args.organizationId,
+    accountId: args.accountId,
+    to: args.recipientPhone,
+    body: args.messageBody,
+    messageType: args.payloadType === "template" ? "template" : "text",
+    media: args.payloadType === "template"
+      ? { template: { name: args.templateName ?? "", language: args.templateLanguage ?? "", parameters: args.templateParameters } }
+      : {},
+    idempotencyKey: args.idempotencyKey,
+    correlationId: args.correlationId,
+  });
+  const outcome = await query<{ status: string }>(
+    "UPDATE whatsapp_send_actions SET status=CASE WHEN status='approved' THEN 'queued' ELSE status END, queued_message_id=COALESCE(queued_message_id,$3), updated_at=now() WHERE id=$1 AND organization_id=$2 AND status IN ('approved','queued','sent','failed','requires_template') RETURNING status",
+    [args.actionId, args.organizationId, messageId],
+  );
+  const _outcomeStatus = outcome.rows[0]?.status ?? "queued";
+  void _outcomeStatus;
+  return { kind: "queued", messageId };
+}
 
 function toolResult(output: unknown, startedAt: number, error?: { code: string; message: string; retryable: boolean }): ToolResult<any> {
   return { ok: !error, ...(output === undefined ? {} : { output }), ...(error ? { error } : {}), audit: { tool_name: "whatsapp.history", input_summary: "whatsapp.history", output_summary: error ? error.code : `whatsapp.history: ${Array.isArray(output) ? output.length : 0} message(s)`, duration_ms: Math.max(0, Date.now() - startedAt) } };
@@ -47,11 +120,11 @@ export function createWhatsAppHistoryTool(): Tool<WhatsAppHistoryInput, WhatsApp
   };
 }
 
-export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput, { approval_required: true; action_id: string; status: string }> {
+export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput, { approval_required: boolean; auto_approved?: boolean; action_id: string; status: string; message_id?: string; message?: string }> {
   return {
     name: "whatsapp.send",
     domain: "messaging",
-    description: "Request a WhatsApp send for human approval. The sole connected agent-bound phone is selected automatically; do not ask the user for internal IDs. If necessary pass the phone's visible label or number as account_id. This creates a pending approval only and never sends directly. Free-form text requires Meta's active 24-hour customer-service window; otherwise select an approved template.",
+    description: "Request a WhatsApp send. The sole connected agent-bound phone is selected automatically; do not ask the user for internal IDs. If necessary pass the phone's visible label or number as account_id. Depending on this agent's saved policy the request either queues automatically (autonomous sending) or waits for human approval; the tool result reports which happened. Free-form text requires Meta's active 24-hour customer-service window; otherwise select an approved template.",
     input_schema: {
       type: "object",
       properties: {
@@ -145,6 +218,37 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
         await recordAuditEvent({ organizationId: context.organization_id, actorUserId: context.user_id, agentId: context.agent_id, correlationId, eventType: "whatsapp.send_approval.requested", targetType: "whatsapp_send_action", targetId: action.id, action: "request_send", decision: "pending", metadata: { accountId, recipientSuffix: input.to.slice(-4), payloadType: input.payload_type, source: "agent_tool" } });
       } catch(error) {
         console.error('[whatsapp-action] persisted proposal audit needs reconciliation',{actionId:action.id,correlationId,errorType:error instanceof Error?error.name:typeof error});
+      }
+      // Autonomous-send policy: approve and queue the proposal immediately.
+      // Every failure is reported with its own code; nothing is silently sent.
+      const autoApproval = await autoApproveWhatsAppSendAction({
+        organizationId: context.organization_id,
+        agentId: context.agent_id,
+        accountId,
+        actionId: String(action.id),
+        requestedBy: context.user_id ?? null,
+        recipientPhone: input.to,
+        messageBody,
+        payloadType: input.payload_type,
+        templateName: input.payload_type === "template" ? input.template_name ?? null : null,
+        templateLanguage: input.payload_type === "template" ? input.template_language ?? null : null,
+        templateParameters,
+        idempotencyKey,
+        correlationId: correlationId ?? null,
+      });
+      if (autoApproval.kind === "failed") {
+        return fail(autoApproval.code, autoApproval.message);
+      }
+      if (autoApproval.kind === "queued") {
+        try {
+          await recordAuditEvent({ organizationId: context.organization_id, actorUserId: context.user_id, agentId: context.agent_id, correlationId, eventType: "whatsapp.send_approval.auto_approved", targetType: "whatsapp_send_action", targetId: String(action.id), action: "approve", decision: "allowed", metadata: { accountId, recipientSuffix: input.to.slice(-4), payloadType: input.payload_type, source: "agent_policy_autonomous_send", messageId: autoApproval.messageId } });
+        } catch(error) {
+          console.error('[whatsapp-action] auto-approval audit needs reconciliation',{actionId:String(action.id),correlationId,errorType:error instanceof Error?error.name:typeof error});
+        }
+        return {
+          ok: true, output: { approval_required: false, auto_approved: true, action_id: String(action.id), status: "queued", message_id: autoApproval.messageId ?? undefined, message: "Auto-approved and queued for delivery by this agent's autonomous-send policy." },
+          audit: { tool_name: "whatsapp.send", input_summary: "whatsapp.send approval proposal", output_summary: "auto-approved and queued", duration_ms: Math.max(0, Date.now() - startedAt) },
+        };
       }
       return {
         ok: true, output: { approval_required: true, action_id: String(action.id), status: String(action.status) },

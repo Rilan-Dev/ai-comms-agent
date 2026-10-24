@@ -44,6 +44,10 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   const [versions, setVersions] = useState(initialVersions);
   const [policy, setPolicy] = useState(initialPolicy);
   const [selectedTools, setSelectedTools] = useState<string[]>(initialPolicy?.allowedTools ?? []);
+  // Autonomous sending: administrator-approved waiver of the human approval
+  // step for this agent's own email/WhatsApp send requests. Persisted in the
+  // policy security_policy JSON as autonomous_send: true.
+  const [autonomousSend, setAutonomousSend] = useState(initialPolicy?.securityPolicy?.autonomous_send === true);
   const [emailBindings, setEmailBindings] = useState(initialEmailBindings);
   const [whatsappBinding, setWhatsappBinding] = useState(initialWhatsAppBinding);
   const [tab, setTab] = useState<"overview"|"versions"|"policy"|"channels"|"ai-settings"|"test"|"activity">("overview");
@@ -238,6 +242,12 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
       notify({ kind: "error", title: "Invalid policy JSON", message: "Security policy and rate limits must be valid JSON objects." });
       return;
     }
+    // The autonomous-send toggle is the controlled editor for this single
+    // security_policy key; keep it authoritative over hand-edited JSON.
+    if (autonomousSend) securityPolicy = { ...securityPolicy, autonomous_send: true };
+    else { const { autonomous_send: _removed, ...rest } = securityPolicy; void _removed; securityPolicy = rest; }
+    const previousAutonomous = policy?.securityPolicy?.autonomous_send === true;
+    const autonomousChanged = autonomousSend !== previousAutonomous;
     const { added, removed, confirmation } =
       summarizeEmailPermissionChanges(policy?.allowedTools ?? [], allowedTools);
     const otherChanges = !policy || JSON.stringify({
@@ -250,7 +260,12 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
       notify({ kind: "info", title: "No permission changes to save" });
       return;
     }
-    if (!window.confirm(confirmation + (otherChanges
+    const autonomousNotice = autonomousChanged
+      ? (autonomousSend
+        ? "\n\n⚠️ AUTONOMOUS SENDING will be ENABLED: this agent's email and WhatsApp send requests will be approved and dispatched automatically, with no human approval step. Meta's 24-hour window and template rules still apply to WhatsApp."
+        : "\n\nAutonomous sending will be DISABLED: this agent's send requests will wait for human approval again.")
+      : "";
+    if (!window.confirm(confirmation + autonomousNotice + (otherChanges && !autonomousChanged
       ? "\n\nAdvanced sender restrictions or policy settings will also be updated." : ""))) return;
     setBusy(true);
     try {
@@ -267,7 +282,10 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
       });
       setPolicy(p.policy);
       setSelectedTools(p.policy.allowedTools);
-      notify({ kind: "success", title: "Policy saved", message: "New chat and voice turns use the updated policy. No message was sent." });
+      setAutonomousSend(p.policy.securityPolicy?.autonomous_send === true);
+      notify({ kind: "success", title: "Policy saved", message: p.policy.securityPolicy?.autonomous_send === true
+        ? "Autonomous sending is active: new send requests from this agent are approved and dispatched automatically."
+        : "New chat and voice turns use the updated policy. No message was sent." });
     } catch (error) {
       notify({ kind: "error", title: "Policy could not be saved",
         message: error instanceof Error ? error.message : "Unknown error" });
@@ -314,7 +332,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
         <p className="font-semibold">Mail setup checklist</p>
         <p className="mt-1 text-muted-foreground">{emailBindings.some((b) => b.role !== "send_only") ? "✓ A mailbox is assigned for reading." : "1. Select a readable mailbox in Channels."} {selectedTools.includes("email.search") || selectedTools.includes("email.messages.list") ? "✓ Mail search/list permission selected (save to apply)." : "2. Select Search mailbox or List emails below to allow mail summaries."}</p>
         <button type="button" onClick={() => setTab("channels")} className="mt-2 text-sm font-semibold text-primary underline">Choose connected mailbox →</button>
-        <p className="mt-2 text-xs text-muted-foreground">Binding a mailbox never grants tool access automatically. The account must also be connected, and the signed-in user must have email.read. Sending always follows its separate approval rules.</p>
+        <p className="mt-2 text-xs text-muted-foreground">Binding a mailbox never grants tool access automatically. The account must also be connected, and the signed-in user must have email.read. Sending follows the approval rules on this page: human approval by default, or automatic dispatch if Autonomous sending is enabled above.</p>
       </div>
       <div className="mt-4 rounded-md border bg-muted/30 p-4 text-sm">
         <p className="font-semibold">WhatsApp setup checklist</p>
@@ -324,10 +342,26 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
         <button type="button" onClick={() => setTab("channels")} className="mt-2 text-sm font-semibold text-primary underline">Choose connected WhatsApp account →</button>
         <p className="mt-2 text-xs text-muted-foreground">
           Account binding and saved tool permission are separate. The signed-in user must also have whatsapp.send.
-          The agent can create a pending proposal only; a human must approve it and Meta&apos;s conversation-window or template rules still apply.
+          By default the agent creates a pending proposal that a human must approve; with Autonomous sending enabled above, its proposals are approved and dispatched automatically. Meta&apos;s conversation-window or template rules always apply.
         </p>
       </div>
       <form onSubmit={savePolicy} className="mt-6 space-y-5">
+        <fieldset className={`rounded-md border p-4 ${autonomousSend ? "border-amber-500/50 bg-amber-50/50" : "border-border"}`}>
+          <legend className="px-1 text-sm font-semibold">Autonomous sending (no human approval step)</legend>
+          <label className="flex items-start gap-3 rounded-md border bg-background p-3 text-sm hover:bg-muted/30">
+            <input type="checkbox" disabled={busy} checked={autonomousSend} onChange={(event) => setAutonomousSend(event.target.checked)} className="mt-1 size-4 shrink-0" aria-describedby="autonomous-send-help" />
+            <span>
+              <span className="block font-medium">{autonomousSend ? "ON — this agent sends autonomously" : "OFF — every send waits for human approval"}</span>
+              <span id="autonomous-send-help" className="mt-1 block text-xs text-muted-foreground">
+                When enabled, email and WhatsApp send requests created by this agent in chat or voice are approved automatically and dispatched by the worker within seconds — no approval queue, no manual click. Every other safeguard stays active: the requesting user&apos;s own permissions, agent account bindings, idempotency, and Meta&apos;s 24-hour customer-service window / approved-template rules for WhatsApp.
+              </span>
+            </span>
+          </label>
+          {autonomousSend && <p role="status" className="mt-2 rounded-md border border-amber-500/40 bg-background p-2 text-xs text-amber-700">
+            Heads-up: with autonomous sending on, a chat message like &quot;send an email to X&quot; or &quot;WhatsApp Y&quot; goes out for real immediately after the agent prepares it. You can turn this off at any time; sends already dispatched are not recalled.
+          </p>}
+          <p className="mt-2 text-xs text-muted-foreground">This setting is stored in the agent&apos;s security policy and requires an administrator to save it. Changes apply to future chat and voice turns.</p>
+        </fieldset>
         <fieldset className="rounded-md border border-primary/25 bg-primary/5 p-4">
           <legend className="px-1 text-sm font-semibold">Quick permission presets</legend>
           <p className="mb-3 text-xs text-muted-foreground">Choose a starting point, fine-tune individual checkboxes below, then confirm and save. Existing custom permissions stay intact.</p>
