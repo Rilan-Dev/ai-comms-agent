@@ -12,6 +12,17 @@ function signatureValid(raw: string, signature: string | null, secret: string) {
   return timingSafeEqual(Buffer.from(actual, "hex"), Buffer.from(expected, "hex"));
 }
 
+// Meta webhook payloads deliver customer numbers (wa_id / messages[].from)
+// without the leading "+" of E.164, while outbound recipients are validated
+// and stored with it. Normalizing inbound numbers to full E.164 keeps both
+// directions on the same whatsapp_contacts row so the 24-hour customer-service
+// window checks (which compare c.phone_number = recipient) can match.
+function normalizeE164(phone: string) {
+  const trimmed = phone.trim();
+  if (!/^[0-9]+$/.test(trimmed)) return trimmed;
+  return "+" + trimmed;
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const mode = url.searchParams.get("hub.mode");
@@ -108,10 +119,18 @@ export async function POST(request: Request) {
       const account = await getWhatsAppAccountByPhoneNumberId(phoneNumberId);
       if (!account) continue;
       const providerEventId = typeof entry?.id === "string" && typeof change?.field === "string" ? entry.id + ":" + change.field + ":" + payloadHash.slice(0, 16) : payloadHash;
-      const event = await recordWhatsAppWebhookEvent({ organizationId: account.organization_id, accountId: account.id, providerEventId, eventType: String(change?.field ?? "unknown"), payloadHash, payload: value ?? {} });
-      if (!event.inserted) continue;
+      await recordWhatsAppWebhookEvent({ organizationId: account.organization_id, accountId: account.id, providerEventId, eventType: String(change?.field ?? "unknown"), payloadHash, payload: value ?? {} });
+      // A duplicate provider event must NOT short-circuit processing: if a
+      // previous delivery failed after the event row was written (for example
+      // a transient database error while inserting the inbound message), Meta
+      // retries the same payload. Every handler below is idempotent — message
+      // inserts deduplicate on (whatsapp_account_id, provider_message_id) via
+      // ON CONFLICT DO NOTHING and status updates target the provider message
+      // id — so reprocessing a retry is safe and heals the earlier failure.
       const contacts = Array.isArray(value?.contacts) ? value.contacts : [];
-      const contactMap = new Map<string, string>(contacts.map((c: any) => [String(c.wa_id ?? ""), String(c.profile?.name ?? "")] as [string, string]));
+      const contactMap = new Map<string, string>(contacts
+        .map((c: any) => [normalizeE164(String(c.wa_id ?? "")), String(c.profile?.name ?? "")] as [string, string])
+        .filter(([id]: [string]) => id.length > 1));
       const statuses = Array.isArray(value?.statuses) ? value.statuses : [];
       for (const status of statuses) {
         const providerMessageId = typeof status?.id === "string" ? status.id : "";
@@ -131,7 +150,7 @@ export async function POST(request: Request) {
       const messages = Array.isArray(value?.messages) ? value.messages : [];
       const agents = await listAgentsForWhatsAppAccount(account.organization_id, account.id);
       for (const message of messages) {
-        const from = typeof message?.from === "string" ? message.from : "";
+        const from = normalizeE164(typeof message?.from === "string" ? message.from : "");
         const providerMessageId = typeof message?.id === "string" ? message.id : "";
         if (!from || !providerMessageId) continue;
         const contactId = await upsertWhatsAppContact({ organizationId: account.organization_id, accountId: account.id, phoneNumber: from, displayName: contactMap.get(from) || null, providerContactId: from });
