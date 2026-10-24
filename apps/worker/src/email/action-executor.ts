@@ -54,7 +54,7 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
     const provider = createEmailProviderRegistry().create(account.provider);
 
     const snapshot = claimed.recipientSnapshot;
-    const result = await verifyEmailProviderConnection(provider, credentials, async ({ provider: connected }) => {
+    const result = await verifyEmailProviderConnection(provider, credentials, async ({ provider: connected, capabilities }) => {
       if (claimed.actionType === "send_email") {
         const draftId = claimed.draftId;
         if (!draftId) throw new Error("Approved send action has no draft");
@@ -91,9 +91,14 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
         return replied;
       }
 
+      // Forward the saved review, not a mutable provider source whose content
+      // or attachments could have changed after approval.
+      if (!capabilities.forward || !capabilities.drafts || !capabilities.send) {
+        throw new Error("This mailbox does not support forwarding the reviewed draft.");
+      }
+      const forwardDraftId = (await connected.createDraft(reviewedParams)).draft_id;
       providerDispatchStarted = true;
-
-      const forwarded = await connected.forward(providerMessageId, reviewedParams.to);
+      const forwarded = await connected.sendDraft(forwardDraftId);
       providerAccepted = true;
       return forwarded;
     });

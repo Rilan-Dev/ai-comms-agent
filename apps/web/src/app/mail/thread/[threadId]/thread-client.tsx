@@ -45,7 +45,7 @@ export function ThreadClient({ organizationId, threadId, initialMessages }: { or
 
   async function requestForward() {
     if (!latest?.id || !latest?.email_account_id) return;
-    const recipients = forwardTo.split(/[,\\n]/).map(v => v.trim().toLowerCase()).filter(Boolean);
+    const recipients = forwardTo.split(/[,\n]/).map(v => v.trim().toLowerCase()).filter(Boolean);
     if (recipients.length === 0) { setNotice("Add at least one forwarding recipient."); return; }
     setBusy(true); setNotice(null);
     try {

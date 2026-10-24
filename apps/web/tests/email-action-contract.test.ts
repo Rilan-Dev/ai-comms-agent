@@ -58,7 +58,9 @@ describe("approval-safe email action contract", () => {
     expect(executor).toContain("claimApprovedEmailAction(actionId, organizationId)");
     expect(executor).toContain("connected.sendDraft");
     expect(executor).toContain("connected.reply");
-    expect(executor).toContain("connected.forward");
+    expect(executor).toContain("connected.createDraft(reviewedParams)");
+    expect(executor).toContain("connected.sendDraft(forwardDraftId)");
+    expect(executor).not.toContain("connected.forward");
   });
 
   it("fails closed on abandoned worker execution instead of auto-replaying", () => {

@@ -50,7 +50,7 @@ test("batch worker does not mark a successfully accepted provider send failed if
   const failureSettlement = catchBlock.indexOf('completeEmailAction(action.id, action.organizationId, "failed"');
   assert.ok(failureSettlement > catchBlock.indexOf("if (providerAccepted || providerDispatchStarted)"),
     "once the provider accepts an action it must bypass the failure settlement");
-  for (const invoke of ["connected.sendDraft(", "connected.reply(", "connected.forward("]) {
+  for (const invoke of ["connected.sendDraft(providerDraftId)", "connected.reply(", "connected.sendDraft(forwardDraftId)"]) {
     const pos = worker.indexOf(invoke);
     const nextReturn = worker.indexOf("return { kind:", pos);
     const ack = worker.indexOf("providerAccepted = true;", pos);

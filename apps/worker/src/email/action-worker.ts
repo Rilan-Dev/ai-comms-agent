@@ -64,7 +64,7 @@ export async function processApprovedEmailActions(limit = 10) {
       const config = await repository.getConnectionConfig(account.id);
       const credentials: EmailCredentials = { ...(encrypted as unknown as EmailCredentials), ...(config as unknown as Partial<EmailCredentials>) };
       const provider = createEmailProviderRegistry().create(account.provider);
-      const result = await verifyEmailProviderConnection(provider, credentials, async ({ provider: connected }) => {
+      const result = await verifyEmailProviderConnection(provider, credentials, async ({ provider: connected, capabilities }) => {
         const snapshot = action.recipientSnapshot;
         if (action.actionType === "send_email") {
           if (!action.draftId) throw new Error("Approved send action has no draft");
@@ -105,8 +105,13 @@ export async function processApprovedEmailActions(limit = 10) {
           providerAccepted = true;
           return { kind: "reply", ref: replied };
         }
+        // Dispatch only the original human-reviewed forward snapshot.
+        if (!capabilities.forward || !capabilities.drafts || !capabilities.send) {
+          throw new CapabilityNotSupported(account.provider, "forward");
+        }
+        const forwardDraftId = (await connected.createDraft(params)).draft_id;
         providerDispatchStarted = true;
-        const forwarded = await connected.forward(providerMessageId, params.to);
+        const forwarded = await connected.sendDraft(forwardDraftId);
         providerAccepted = true;
         return { kind: "forward", ref: forwarded };
       });

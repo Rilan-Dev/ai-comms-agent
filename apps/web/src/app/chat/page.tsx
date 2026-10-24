@@ -3,10 +3,11 @@ import { getAuthenticatedAppContext } from "@/lib/identity/repository";
 import { headers } from "next/headers";
 import { ChatClient } from "./chat-client";
 import { briefingsEnabled } from "@/lib/briefings/config";
+import {resolveChatAutoRunPrompt} from '@/lib/chat/quick-actions';
 
 export const dynamic = "force-dynamic";
 
-export default async function ChatPage({ searchParams }: { searchParams: Promise<{agentId?:string;conversationId?:string}> }) {
+export default async function ChatPage({ searchParams }: { searchParams: Promise<{agentId?:string;conversationId?:string;prompt?:string;run?:string}> }) {
   if (!process.env.DATABASE_URL) {
     return <Unavailable title="Chat needs PostgreSQL" body="Configure DATABASE_URL to persist conversations and connect Clara." />;
   }
@@ -42,6 +43,10 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
       listChatConversations(organizationId, agent.id, 40),
     ]);
 
+    // run=1 + prompt: one-click Overview actions auto-send this prompt a
+    // single time. The prompt is capped so a link cannot inject an essay.
+    const autoRunPrompt = params.run === "1" ? resolveChatAutoRunPrompt(params.prompt) : "";
+
     return (
       <ChatClient
         key={`${organizationId}:${agent.id}:${conversation.id}`}
@@ -52,6 +57,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
         initialMessages={messages as never[]}
         initialConversations={conversations}
         catchUpEnabled={briefingsEnabled()}
+        autoRunPrompt={autoRunPrompt}
       />
     );
   } catch (error) {
