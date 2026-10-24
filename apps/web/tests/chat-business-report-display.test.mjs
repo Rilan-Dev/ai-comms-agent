@@ -86,6 +86,8 @@ test("Chat shows report cards, copy and client-only Markdown/text exports", () =
   assert.match(client, /<AnswerActions content=\{content\}/);
   assert.match(client, /safeChatLink\(match!\[2\]/);
   assert.match(card, /Show next/);
+  assert.doesNotMatch(card, /\\n\s*\{report\.lastSyncUtc/);
+  assert.match(card, /Data coverage and limitations/);
   assert.match(card, /local sync/i);
   assert.match(controls, /navigator\.clipboard\.writeText/);
   assert.match(controls, /new Blob\(/);
