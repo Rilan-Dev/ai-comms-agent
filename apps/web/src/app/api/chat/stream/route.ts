@@ -1,3 +1,4 @@
+import {safeChatFailure} from '@/lib/chat/safe-failure';
 import { NextResponse } from "next/server";
 import { appendConversationMessage, getChatConversation, getOrCreateChatConversation, listChatMessages, PostgresAgentRepository, query } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
@@ -737,7 +738,7 @@ export async function POST(request: Request) {
           // Provider, SQL and tool exceptions can contain tokens, user mail or SQL parameters.
           // The browser must never receive the raw exception through an SSE frame.
           const reference=trustedToolContext.correlation_id;
-          console.error('[chat/stream] execution failed',{reference,type:error instanceof Error?error.name:'UnknownError',stage:shouldResolveTools?'tools':'model'});
+          console.error('[chat/stream] execution failed',{reference,...safeChatFailure(error),stage:shouldResolveTools?'tools':'model'});
           if (!request.signal.aborted) emit("error", { message: explicitMessagingAction
             ? `Chat execution failed. Review drafts and approvals before retrying an email action. Reference: ${reference}`
             : `The read-only response could not be completed. Try again or open Inbox to view saved messages. Reference: ${reference}` });
