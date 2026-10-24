@@ -44,6 +44,18 @@ test("95-message report remains complete and can be progressively disclosed by t
   assert.equal(parsed.matched, 95);
 });
 
+test("full-history display hides the 0001 database sentinel without changing report scope", () => {
+  const input = report(1).replace(
+    "rolling 24-hour UTC window 2026-10-23T12:15:45.100Z",
+    "full locally synchronized history (no time window) 0001-01-01T00:00:00.000Z",
+  );
+  const parsed = parseBusinessMailReport(input);
+  assert.ok(parsed);
+  assert.match(parsed.period, /Full locally synchronized history/);
+  assert.doesNotMatch(parsed.period, /0001-01-01/);
+  assert.match(parsed.period, /2026-10-24T12:15:45\.100Z/);
+});
+
 test("per-mailbox count is never replaced by guessed totals or priority claims", () => {
   const raw = "Unread email count from locally synchronized data: 95 unread across 2 connected mailboxes.\nPer mailbox:\n- inbox@example.com: 54 unread\n- work@example.com: 41 unread\n\nNewest unread messages:\n1. Review proposal | From: manager@example.com | Mailbox: work@example.com | Received (UTC): 2026-10-24T11:27:57.000Z\n\n…and 94 more unread messages (ask for a full unread summary to list up to 500).\n\nThis report uses local sync data; it does not prove your email provider has no newer or unsynchronized messages.";
   const parsed = parseBusinessMailReport(raw);
