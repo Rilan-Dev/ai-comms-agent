@@ -9,7 +9,7 @@ const account = "10000000-0000-4000-8000-000000000002";
 const actionId = "10000000-0000-4000-8000-000000000003";
 const recipient = "+919876543210";
 
-async function execute({ templateStatus = 200, anonymousStatus = 401, proposalStatus = 202 } = {}) {
+async function execute({ templateStatus = 200, anonymousStatus = 401, proposalStatus = 202, foreignOrg = "", foreignStatus = 403 } = {}) {
   const logs = [];
   const calls = [];
   const reply = (status, json = {}) => ({ status, json: async () => json });
@@ -22,6 +22,7 @@ async function execute({ templateStatus = 200, anonymousStatus = 401, proposalSt
     const body = options?.body ? JSON.parse(options.body) : null;
     calls.push({ url, method, credentials: options.credentials, headers: options.headers, body });
     if (url.startsWith("/api/whatsapp/templates?")) {
+      if (foreignOrg && url.includes(encodeURIComponent(foreignOrg))) return reply(foreignStatus);
       return options.credentials === "omit" ? reply(anonymousStatus) : reply(templateStatus, responses.template);
     }
     assert.equal(url, "/api/whatsapp/messages");
@@ -30,7 +31,7 @@ async function execute({ templateStatus = 200, anonymousStatus = 401, proposalSt
     if (body.body.endsWith(" changed")) return reply(409, { error: "idempotency_conflict" });
     return reply(proposalStatus, responses.pending);
   };
-  const prompts = [org, account, recipient, "PENDING ONLY"];
+  const prompts = [org, account, recipient, "PENDING ONLY", foreignOrg];
   const context = {
     window: {
       location: { origin: "https://example.test" },
@@ -74,6 +75,17 @@ test("unauthenticated GET must fail closed before any authenticated operations",
   const { calls, logs } = await execute({ anonymousStatus: 200 });
   assert.equal(calls.length, 1);
   assert.ok(logs.some(x => x.includes("NOT ACCEPTED")));
+});
+
+test("cross-tenant read must fail closed before the test may create pending approval", async () => {
+  const foreignOrg = "30000000-0000-4000-8000-000000000008";
+  const accepted = await execute({ foreignOrg, foreignStatus: 403 });
+  assert.equal(accepted.calls.length, 7);
+  assert.ok(accepted.logs.some(x => x.includes("cross-tenant read denied")));
+  const rejected = await execute({ foreignOrg, foreignStatus: 200 });
+  assert.equal(rejected.calls.length, 3);
+  assert.ok(rejected.logs.some(x => x.includes("NOT ACCEPTED")));
+  assert.ok(!rejected.calls.some(c => c.method === "POST"));
 });
 
 test("non-pending HTTP outcome cannot be reported as acceptance PASS", async () => {

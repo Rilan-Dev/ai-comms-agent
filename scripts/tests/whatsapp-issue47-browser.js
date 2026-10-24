@@ -17,6 +17,7 @@
   const accountId = window.prompt("Connected WhatsApp account UUID (same tenant):", "")?.trim() ?? "";
   const recipient = window.prompt("E.164 WhatsApp recipient you control, e.g. +91... (not printed):", "")?.trim() ?? "";
   const confirmation = window.prompt('Type PENDING ONLY to authorize one pending-approval record (no send):', "")?.trim() ?? "";
+  const unauthorizedOrgId = window.prompt("OPTIONAL: known inaccessible organization UUID for cross-tenant denial test (blank = NOT_RUN):", "")?.trim() ?? "";
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuid.test(organizationId) || !uuid.test(accountId) || !/^\+[1-9]\d{7,14}$/.test(recipient) || confirmation !== "PENDING ONLY") {
     note("CANCELLED: invalid tenant/account/recipient or explicit confirmation missing."); return;
@@ -49,6 +50,14 @@
     }
     note("PASS: authenticated GET template sync HTTP 200; template status counts:", statuses);
     if (data.templates.length === 0) note("INCOMPLETE: no templates returned; cannot confirm real status reconciliation.");
+    if (unauthorizedOrgId) {
+      if (!uuid.test(unauthorizedOrgId) || unauthorizedOrgId === organizationId) fail("cross-tenant test UUID must be different and valid");
+      const foreignGet = await fetchSafe("/api/whatsapp/templates?organizationId=" + encodeURIComponent(unauthorizedOrgId) + "&accountId=" + encodeURIComponent(accountId), { method: "GET", credentials: "same-origin" });
+      if (![403, 404].includes(foreignGet.status)) fail("cross-tenant read was NOT denied: HTTP " + foreignGet.status);
+      note("PASS: cross-tenant read denied HTTP", foreignGet.status);
+    } else {
+      note("INCOMPLETE: cross-tenant negative check NOT_RUN (no inaccessible tenant UUID provided).");
+    }
 
     const invalidPhone = await fetchSafe(path, {
       method: "POST", credentials: "same-origin", headers: postHeaders,
