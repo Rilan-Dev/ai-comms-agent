@@ -42,6 +42,15 @@ async function message(options:{account?:string;folder?:string;identity?:string;
 }
 const report=(scope:MailReportScope={unreadOnly:false},limit=500)=>getMailReportEvidence({organizationId:org,agentId:agent,fromUtc:from,toUtc:to,scope,limit});
 describe('canonical report evidence',()=>{
+ it('counts each mailbox from the canonical unread snapshot even when the preview is limited',async()=>{
+  await message({identity:'<same-unread@provider>',folder:inbox});
+  await message({identity:'<same-unread@provider>',folder:allmail});
+  await message();await message({read:true});
+  await message({account:second});await message({account:second});await message({account:second});
+  const evidence=await report({unreadOnly:true},1);
+  expect(evidence.matchedCount).toBe(5);expect(evidence.includedCount).toBe(1);
+  expect(evidence.mailboxCounts).toEqual([{account_email:'one@example.com',unread_count:2},{account_email:'two@example.com',unread_count:3}]);
+ });
  it('excludes soft-deleted accounts while preserving a recoverable disconnected mailbox',async()=>{
   const deleted=randomUUID(),disconnected=randomUUID(),foreign=randomUUID();
   await db.query(`INSERT INTO aca.email_accounts(id,organization_id,email_address,provider,status,deleted_at) VALUES($1,$4,'deleted@example.com','gmail','connected',now()),($2,$4,'disconnected@example.com','gmail','disconnected',null),($3,$5,'foreign@example.com','gmail','connected',null)`,[deleted,disconnected,foreign,org,other]);

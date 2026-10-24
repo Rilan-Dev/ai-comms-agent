@@ -3,6 +3,8 @@ import { appendConversationMessage, getChatConversation, getOrCreateChatConversa
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import { formatRollingMailSummary, MAX_REPORT_MESSAGES, parseRollingMailSummaryRequest, looksLikeRollingMailReport } from "@/lib/mail/rolling-summary";
 import { getMailReportEvidence, MailReportScopeError } from "@/lib/mail/report-evidence";
+import {formatUnreadMailCountReport,formatUnreadMailSummary,parseUnreadOnlyMailRequest,UNREAD_REPORT_FROM_UTC} from '@/lib/mail/unread-inbox-summary';
+import {buildStaleFailureRecoveryGuidance} from '@/lib/chat/stale-failure-recovery';
 import { parseExplicitMailDateRangeRequest } from "@/lib/mail/explicit-date-range";
 import { canSupplyAmbientContext } from "@/lib/ai/ambient-context-access";
 import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
@@ -469,7 +471,8 @@ export async function POST(request: Request) {
     if (!rollingMail && looksLikeRollingMailReport(content) && explicitRange?.kind !== 'valid') {
       return NextResponse.json({error:'unsupported_mail_report_scope',message:'Please specify the mailbox, sender or subject filter clearly. This report supports the last 24 hours, unread and Inbox filters; unsupported filters are not ignored.'},{status:422});
     }
-    const requestedMailScope = explicitRange?.kind === "valid" ? explicitRange : rollingMail;
+    const unreadOnlyMail=parseUnreadOnlyMailRequest(content);
+    const requestedMailScope = explicitRange?.kind === "valid" ? explicitRange : (rollingMail??unreadOnlyMail);
     if (requestedMailScope) {
       if (!subject.permissions.has("email.read")) {
         return NextResponse.json({
@@ -493,13 +496,17 @@ export async function POST(request: Request) {
       const toUtc = explicitRange?.kind === "valid"
         ? explicitRange.toUtc : windowEnd.toISOString();
       const fromUtc = explicitRange?.kind === "valid"
-        ? explicitRange.fromUtc : new Date(windowEnd.getTime() - 24 * 60 * 60 * 1000).toISOString();
+        ? explicitRange.fromUtc : unreadOnlyMail ? UNREAD_REPORT_FROM_UTC : new Date(windowEnd.getTime() - 24 * 60 * 60 * 1000).toISOString();
       const evidence = await getMailReportEvidence({organizationId,agentId,scope:requestedMailScope,fromUtc,toUtc,
         exclusiveEnd:explicitRange?.kind === "valid",limit:MAX_REPORT_MESSAGES});
-      const report = formatRollingMailSummary(
+      const report = (unreadOnlyMail?.kind==='count'
+        ? formatUnreadMailCountReport(evidence.mailboxCounts,evidence.rows)
+        : unreadOnlyMail?.kind==='summary'
+          ? formatUnreadMailSummary(evidence.rows,requestedMailScope,fromUtc,toUtc)
+          : formatRollingMailSummary(
         evidence.rows, requestedMailScope, fromUtc, toUtc,
         explicitRange?.kind === "valid" ? "explicit UTC calendar-date range (exclusive end)" : undefined,
-      ) + `\nOldest mailbox sync: ${evidence.lastSyncAt ?? "unknown"}.`;
+      )) + `\nOldest mailbox sync: ${evidence.lastSyncAt ?? "unknown"}.`;
       await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "user", content });
       await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "assistant", content: report });
       const encoder = new TextEncoder();
@@ -579,10 +586,16 @@ export async function POST(request: Request) {
     const filteredHistory = safeHistory
       .filter((message) => message.role === "user" || message.role === "assistant" || message.role === "system")
       .map((message) => ({ role: message.role as "user" | "assistant" | "system", content: message.content }));
+    // A conversation whose recent assistant answers all report access
+    // failures keeps failing even after the underlying cause is fixed:
+    // the model quotes its own stale history instead of retrying tools.
+    // Detect that shape and demand a fresh tool attempt this turn.
+    const staleFailureRecovery = buildStaleFailureRecoveryGuidance(filteredHistory, content);
     const messages = [
       ...filteredHistory,
       ...(emailContext ? [{ role: "system" as const, content: emailContext }] : []),
       ...(whatsappContext ? [{ role: "system" as const, content: whatsappContext }] : []),
+      ...(staleFailureRecovery ? [{ role: "system" as const, content: staleFailureRecovery }] : []),
       { role: "user" as const, content },
     ];
 

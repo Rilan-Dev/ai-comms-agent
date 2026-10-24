@@ -2,7 +2,8 @@
 import type React from "react";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AudioLines, Bot, Send, Sparkles, User } from "lucide-react";
+import {READ_ONLY_CHAT_SHORTCUTS as QUICK_ACTION_PROMPTS,resolveChatAutoRunPrompt} from '@/lib/chat/quick-actions';
+import { AudioLines, Bot, MailPlus, Send, Sparkles, User } from "lucide-react";
 import dynamic from "next/dynamic";
 import { readSseEvents } from "@/lib/streaming/sse";
 import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "@/lib/ai/activity-progress";
@@ -22,6 +23,11 @@ const VoiceWorkspace = dynamic(
 );
 
 const DEFAULT_COMPOSE_BODY = "Hi,\n\nThis is a test email from my workspace.\n\nPlease let me know if you receive this correctly.\n\nBest regards";
+/**
+ * One-click prompts for busy users. The first two are answered by the
+ * instant local-database fast path (unread count / unread summary), the
+ * third by the rolling 24-hour report fast path — no model round-trips.
+ */
 type ComposePermissionHints = {
   userCanWrite: boolean; agentCanDraft: boolean; agentCanRequestApproval: boolean; directSend: false;
 };
@@ -37,6 +43,7 @@ export function ChatClient({
   initialMessages,
   initialConversations,
   catchUpEnabled = false,
+  autoRunPrompt = "",
 }: {
   organizationId: string;
   agents: Agent[];
@@ -45,6 +52,8 @@ export function ChatClient({
   initialMessages: Message[];
   initialConversations: ChatSession[];
   catchUpEnabled?: boolean;
+  /** Sent automatically once on mount (Overview deep links). */
+  autoRunPrompt?: string;
 }) {
   const [agentId, setAgentId] = useState(initialAgentId);
   const [conversationId, setConversationId] = useState(initialConversationId);
@@ -129,6 +138,19 @@ export function ChatClient({
   }, [voiceOpen]);
 
   const activeAgent = useMemo(() => agents.find((agent) => agent.id === agentId) ?? agents[0], [agents, agentId]);
+
+  // Overview deep links (/chat?prompt=...&run=1) auto-send exactly once:
+  // a busy user clicks "Summarize my unread mail" and the answer starts
+  // streaming without any typing. Strictly one attempt — a failed auto-run
+  // must not loop or duplicate the turn.
+  const autoRunDoneRef = useRef(false);
+  useEffect(() => {
+    const prompt=resolveChatAutoRunPrompt(autoRunPrompt);
+    if (autoRunDoneRef.current || !prompt || !activeAgent) return;
+    autoRunDoneRef.current = true;
+    void sendChatMessage(prompt);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAgent, autoRunPrompt]);
 
   useEffect(() => {
     // The inline mail actions open the existing review, not a second compose
@@ -584,9 +606,19 @@ export function ChatClient({
   }
 
   async function sendMessage() {
+    const content = draft.trim();
+    if (!content) return;
+    await sendChatMessage(content);
+  }
+
+  /**
+   * One-click quick actions and deep links send an explicit prompt directly
+   * (no typing required). Shares the exact turn pipeline of sendMessage so
+   * in-flight guards, optimistic messages, and approval semantics match.
+   */
+  async function sendChatMessage(content: string) {
     if (agentSwitchInFlightRef.current) return;
     if (chatTurnInFlightRef.current || newChatInFlightRef.current || voiceOpen || composeInFlightRef.current || mailPermissionBusy) return;
-    const content = draft.trim();
     if (!content || busy || newChatBusy || !activeAgent) return;
     // A natural-language email request is still a Chat/AI turn. Do not route
     // an intercepted test-email phrase to a silent compose GET: the user
@@ -780,8 +812,8 @@ export function ChatClient({
                 <p className="mt-1.5 text-sm text-muted-foreground">Summarize your inbox, find important emails, or ask about recent messages.</p>
                 <div className="mt-5 grid gap-2">
                   {catchUpEnabled ? <a href="/catch-up" className="mb-3 inline-flex items-center rounded-lg border border-primary/25 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/10">Catch up on my mail →</a> : null}
-                  {["What needs my attention today?", "Summarize my recent emails", "Show emails from the last hour"].map((prompt) =>
-                    <button key={prompt} onClick={() => setDraft(prompt)} className="rounded-lg border bg-card px-3.5 py-2.5 text-left text-sm transition hover:border-primary/30 hover:bg-accent/5">{prompt}</button>
+                  {QUICK_ACTION_PROMPTS.map((prompt) =>
+                    <button key={prompt} onClick={() => void sendChatMessage(prompt)} disabled={busy} className="rounded-lg border bg-card px-3.5 py-2.5 text-left text-sm transition hover:border-primary/30 hover:bg-accent/5">{prompt}</button>
                   )}
                 </div>
               </div>
@@ -920,6 +952,22 @@ export function ChatClient({
         </div>
 
         <div className="shrink-0 bg-background pb-4 pt-2">
+          {/* One-click actions for busy users: instant local-database answers
+              (unread count/summary fast paths) plus the reviewed composer.
+              Hidden while a turn is in flight so they cannot double-submit. */}
+          {messages.length > 0 && !busy && !agentSwitchBusy && !newChatBusy && !voiceOpen ? (
+            <div className="mb-2 flex flex-wrap gap-1.5" aria-label="Quick actions">
+              {QUICK_ACTION_PROMPTS.map((prompt) =>
+                <button key={prompt} type="button" onClick={() => void sendChatMessage(prompt)}
+                  className="rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:border-primary/40 hover:bg-accent/5 hover:text-primary">
+                  {prompt}
+                </button>)}
+              <button type="button" onClick={openInlineEmailComposer}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:border-primary/40 hover:bg-accent/5 hover:text-primary">
+                <MailPlus size={12} aria-hidden /> Compose email
+              </button>
+            </div>
+          ) : null}
           <div className="rounded-2xl border border-border bg-card shadow-sm focus-within:border-primary/30 focus-within:ring-2 focus-within:ring-primary/10">
             <textarea
               ref={composerRef}

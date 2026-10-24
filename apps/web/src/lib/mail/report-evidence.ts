@@ -2,7 +2,7 @@ import { query } from '@ai-comms-agent/db';
 import type { RollingMailRow } from './rolling-summary';
 
 export type MailReportScope={unreadOnly:boolean;sender?:string;topic?:string;mailbox?:string;inboxOnly?:boolean};
-export type MailReportEvidence={scope:MailReportScope;fromUtc:string;toUtc:string;matchedCount:number;includedCount:number;hasMore:boolean;lastSyncAt:string|null;rows:RollingMailRow[]};
+export type MailReportEvidence={scope:MailReportScope;fromUtc:string;toUtc:string;matchedCount:number;includedCount:number;hasMore:boolean;lastSyncAt:string|null;rows:RollingMailRow[];mailboxCounts:Array<{account_email:string;unread_count:number}>};
 export class MailReportScopeError extends Error {}
 
 /** A single database snapshot determines the selected rows and their count.
@@ -19,7 +19,7 @@ export async function getMailReportEvidence(args:{organizationId:string;agentId:
       AND EXISTS(SELECT 1 FROM agent_email_accounts b JOIN agents g ON g.id=b.agent_id AND g.organization_id=$1
         WHERE b.email_account_id=a.id AND b.agent_id=$2 AND b.role IN ('primary','read_only'))`,[args.organizationId,args.agentId,scope.mailbox??null]);
   if(scope.mailbox && accounts.rows.length!==1)throw new MailReportScopeError('Choose one connected mailbox assigned to this agent; the requested address is unavailable or ambiguous.');
-  const result=await query<RollingMailRow>(`WITH ranked AS (
+  const result=await query<RollingMailRow & {mailbox_counts:MailReportEvidence['mailboxCounts']}>(`WITH ranked AS (
     SELECT m.id,m.thread_id,m.from_email::text AS from_email,m.from_name,m.subject,m.received_at,m.is_read,m.text_body AS search_body,
       LEFT(m.snippet,600) AS snippet,LEFT(m.text_body,1200) AS text_body,
       a.email_address AS account_email,
@@ -44,11 +44,14 @@ export async function getMailReportEvidence(args:{organizationId:string;agentId:
       AND ($5::text IS NULL OR strpos(lower(coalesce(m.from_email,'')),lower($5))>0 OR strpos(lower(coalesce(m.from_name,'')),lower($5))>0)
       AND ($6::text IS NULL OR strpos(lower(coalesce(m.subject,'')),lower($6))>0 OR strpos(lower(coalesce(m.search_body,'')),lower($6))>0)
   ) SELECT m.id,m.thread_id,m.from_email,m.from_name,m.subject,m.received_at,m.snippet,m.text_body,m.account_email,
-    COUNT(*) OVER()::integer AS total_count FROM matched m ORDER BY m.received_at DESC,m.id DESC LIMIT $8`,[
+    COUNT(*) OVER()::integer AS total_count,
+    (SELECT jsonb_agg(jsonb_build_object('account_email',counts.account_email,'unread_count',counts.unread_count) ORDER BY counts.account_email)
+      FROM (SELECT account_email,COUNT(*)::integer AS unread_count FROM matched GROUP BY account_email) counts) AS mailbox_counts
+    FROM matched m ORDER BY m.received_at DESC,m.id DESC LIMIT $8`,[
     args.organizationId,args.agentId,args.fromUtc,args.toUtc,scope.sender??null,scope.topic??null,scope.unreadOnly,limit,args.exclusiveEnd??false,scope.mailbox??null,scope.inboxOnly??false,
   ]);
   const matchedCount=Number(result.rows[0]?.total_count??0);
   const syncTimes=accounts.rows.map(account=>account.last_synced_at?new Date(account.last_synced_at).getTime():NaN);
   const lastSyncAt=syncTimes.length && syncTimes.every(Number.isFinite)?new Date(Math.min(...syncTimes)).toISOString():null;
-  return {scope,fromUtc:args.fromUtc,toUtc:args.toUtc,matchedCount,includedCount:result.rows.length,hasMore:matchedCount>result.rows.length,lastSyncAt,rows:result.rows};
+  return {scope,fromUtc:args.fromUtc,toUtc:args.toUtc,matchedCount,includedCount:result.rows.length,hasMore:matchedCount>result.rows.length,lastSyncAt,rows:result.rows,mailboxCounts:result.rows[0]?.mailbox_counts??[]};
 }
