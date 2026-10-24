@@ -10,6 +10,7 @@ import { canSupplyAmbientContext } from "@/lib/ai/ambient-context-access";
 import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
 import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation } from "@/lib/mail/action-feedback";
 import { userFacingChatAnswer } from "@/lib/chat/user-facing-answer";
+import { businessAnswerGuidance } from "@/lib/chat/business-answer-guidance";
 import { currentTurnOperationAnswer, isExplicitWhatsAppMutationRequest } from "@/lib/chat/operation-feedback";
 import {readEvidenceAnswer} from '@/lib/mail/read-evidence-answer';
 import { operationResultFromToolCall, reviewExplicitEmailBody, type OperationResult } from "@ai-comms-agent/shared";
@@ -642,7 +643,7 @@ export async function POST(request: Request) {
             emit("status", { phase: "tools" });
             toolTurn = await runInteractiveHostToolLoop({
                 organizationId, agentId, kbId,
-                messages: [{ role: "system", content: composeAssistantGuidance({
+                messages: [{ role: "system", content: businessAnswerGuidance }, { role: "system", content: composeAssistantGuidance({
                   name: subject.user.name, email: subject.user.email,
                 }) }, ...messages],
                 toolContext: trustedToolContext,
@@ -702,6 +703,7 @@ export async function POST(request: Request) {
               surface: "chat", ragMode: "hybrid",
               messages: [
                 { role: "system", content: "This is a text-only model response. Do not claim to have sent, approved, deleted, moved or otherwise changed an external resource. All such actions require an explicit authorized tool result and approval." },
+                { role: "system", content: businessAnswerGuidance },
                 ...messages,
               ],
             });
