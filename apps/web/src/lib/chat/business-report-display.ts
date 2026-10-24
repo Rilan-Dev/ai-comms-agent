@@ -133,7 +133,11 @@ export function parseBusinessMailReport(raw: string): BusinessMailReport | null 
     kind: countMatch ? "unread-count" : "messages",
     matched: numbers.matched,
     included: countMatch ? records.length : numbers.included,
-    period: countMatch ? "All locally synchronized unread mail" : first.replace(/^Locally synchronized /, ""),
+    period: countMatch ? "All locally synchronized unread mail"
+      : first.includes("full locally synchronized history (no time window)")
+        ? "Full locally synchronized history (no time cutoff), through " +
+          (first.match(/ to (\d{4}-\d\d-\d\dT[\d:.]+Z)\.$/)?.[1] ?? "the latest included UTC timestamp")
+        : first.replace(/^Locally synchronized /, ""),
     lastSyncUtc,
     coverage: coverage || (countMatch ? "Only the newest messages are previewed." : ""),
     notice: notice || "This report uses local sync data; newer provider messages may not yet be synchronized.",
