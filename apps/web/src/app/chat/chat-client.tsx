@@ -1041,7 +1041,7 @@ function MessageBubble({ role, content, messageId, showNextActions, userRequest,
       <div className="flex min-w-0 max-w-[90%] items-start gap-2.5">
         <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
         <div className="min-w-0 flex-1 break-words text-sm leading-7">
-          {businessReport ? <BusinessMailReport report={businessReport} /> :
+          {businessReport ? <BusinessMailReport report={businessReport} onPrepare={onPrepare} disabled={disabled} /> :
             <MarkdownRenderer content={content} disabled={disabled} onPrepare={onPrepare} />}
           <AnswerActions content={content} messageId={messageId} />
           {showNextActions ? <SuggestedNextActions answer={content} userRequest={userRequest} messageId={messageId}
