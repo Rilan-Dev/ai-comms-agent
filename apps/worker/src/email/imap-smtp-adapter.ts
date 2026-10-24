@@ -119,13 +119,46 @@ function createReader(socket: tls.TLSSocket): SocketReader {
   return reader;
 }
 
+/**
+ * Resolve when the reader may have made progress — new data buffered, an
+ * error recorded, or the socket closed — or after `timeoutMs`, whichever
+ * comes first.
+ *
+ * Waiting is fully event-driven. The previous implementation polled with
+ * `await setImmediate(...)` in a `while` loop, which spins the event loop
+ * continuously: one active IMAP IDLE watch (RFC 2177 pushes can be silent
+ * for the full 25-minute reissue window) burned an entire CPU core on the
+ * production worker. Registering listeners for the socket's own events keeps
+ * the loop idle instead.
+ */
+function waitForReaderProgress(reader: SocketReader, timeoutMs: number): Promise<void> {
+  return new Promise((resolve) => {
+    const wake = () => {
+      clearTimeout(timer);
+      reader.socket.off("data", wake);
+      reader.socket.off("error", wake);
+      reader.socket.off("close", wake);
+      resolve();
+    };
+    const timer = setTimeout(wake, Math.max(0, timeoutMs));
+    // The persistent data/error/close listeners installed by createReader
+    // were registered first, so by the time `wake` runs the chunk is already
+    // appended to reader.buffer (or reader.error is already set).
+    reader.socket.once("data", wake);
+    reader.socket.once("error", wake);
+    reader.socket.once("close", wake);
+  });
+}
+
 async function readBytes(reader: SocketReader, length: number, timeoutMs = 10_000): Promise<Buffer> {
   if (!Number.isSafeInteger(length) || length < 0) throw new Error("Invalid IMAP literal length");
   const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
+  for (;;) {
     if (reader.buffer.length >= length) break;
     if (reader.error) throw reader.error;
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    const remaining = timeoutMs - (Date.now() - start);
+    if (remaining <= 0) break;
+    await waitForReaderProgress(reader, remaining);
   }
   if (reader.buffer.length < length) throw new Error("TLS response timeout");
   const result = reader.buffer.subarray(0, length);
@@ -136,7 +169,7 @@ async function readBytes(reader: SocketReader, length: number, timeoutMs = 10_00
 async function readLine(reader: SocketReader, timeoutMs = 10_000): Promise<string> {
   const delimiter = Buffer.from("\r\n");
   const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
+  for (;;) {
     const index = reader.buffer.indexOf(delimiter);
     if (index >= 0) {
       const line = reader.buffer.subarray(0, index).toString("utf8");
@@ -144,7 +177,9 @@ async function readLine(reader: SocketReader, timeoutMs = 10_000): Promise<strin
       return line;
     }
     if (reader.error) throw reader.error;
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    const remaining = timeoutMs - (Date.now() - start);
+    if (remaining <= 0) break;
+    await waitForReaderProgress(reader, remaining);
   }
   throw new Error("TLS response timeout");
 }
