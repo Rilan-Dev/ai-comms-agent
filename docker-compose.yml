@@ -21,10 +21,13 @@ services:
       context: .
       dockerfile: Dockerfile
       target: web
+      args:
+        ACA_RELEASE_REVISION: "${ACA_RELEASE_REVISION:-unrecorded}"
     env_file:
       - .env
     environment:
       NODE_ENV: production
+      ACA_RELEASE_REVISION: "${ACA_RELEASE_REVISION:-unrecorded}"
       # Dev identity (x-dev-user-id stub + dev seed) must stay OFF for
       # production deployments. With NODE_ENV=production the auth adapter is
       # the PostgreSQL-backed LocalIdentityAdapter regardless, but leaving
@@ -42,10 +45,13 @@ services:
       context: .
       dockerfile: Dockerfile
       target: worker
+      args:
+        ACA_RELEASE_REVISION: "${ACA_RELEASE_REVISION:-unrecorded}"
     env_file:
       - .env
     environment:
       NODE_ENV: production
+      ACA_RELEASE_REVISION: "${ACA_RELEASE_REVISION:-unrecorded}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

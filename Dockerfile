@@ -8,6 +8,9 @@ COPY apps ./apps
 COPY packages ./packages
 # Do not re-resolve dependencies during a release build; reject any lock drift.
 RUN pnpm install --frozen-lockfile
+ARG ACA_RELEASE_REVISION=unrecorded
+ENV ACA_RELEASE_REVISION=${ACA_RELEASE_REVISION}
+LABEL org.opencontainers.image.revision=${ACA_RELEASE_REVISION}
 
 FROM base AS web
 RUN pnpm --filter @ai-comms-agent/web build

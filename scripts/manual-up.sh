@@ -10,7 +10,7 @@ COMPOSE_FILE="docker-compose.yml"
 ENV_FILE=".env"
 
 # Check required commands.
-for cmd in docker node; do
+for cmd in docker node git; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "ERROR: Required command not found: $cmd" >&2
     exit 1
@@ -38,6 +38,10 @@ if [[ ! -f "$COMPOSE_FILE" ]]; then
 fi
 
 COMPOSE=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
+# Override stale shell/.env metadata with this checkout's actual revision.
+# Both image labels and the authenticated Operations signal use this value.
+ACA_RELEASE_REVISION="$(git rev-parse --verify HEAD)"
+export ACA_RELEASE_REVISION
 
 echo "Building application images..."
 "${COMPOSE[@]}" build --pull
