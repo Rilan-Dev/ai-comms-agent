@@ -193,6 +193,13 @@ test("IMAP RFC822 parser extracts identity, headers, recipients, body and draft 
 });
 
 
+test("IMAP draft flags remain drafts in All Mail without treating ordinary incoming mail as a draft", () => {
+  const provider=new ImapSmtpAdapter() as unknown as {parseRawMessage:(raw:string,folder:string,uid:string,flags:string)=>{is_draft:boolean}};
+  const raw="From: sender@example.test\r\nTo: recipient@example.test\r\nSubject: Test\r\n\r\nHarmless draft";
+  assert.equal(provider.parseRawMessage(raw,'[Gmail]/All Mail','42','* 1 FETCH (UID 42 FLAGS (\\Draft \\Seen))').is_draft,true);
+  assert.equal(provider.parseRawMessage(raw,'INBOX','43','* 1 FETCH (UID 43 FLAGS (\\Seen))').is_draft,false);
+});
+
 test("IMAP Gmail-style multipart email decodes UTF-8 QP and preserves formatted HTML", () => {
   const raw = [
     "From: Anthropic User Research <no-reply@research.anthropic.com>",

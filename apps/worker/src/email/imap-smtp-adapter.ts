@@ -466,7 +466,7 @@ export class ImapSmtpAdapter implements EmailProvider {
       received_at: safeDate.toISOString(),
       is_read: /\\Seen/i.test(flags),
       is_starred: /\\Flagged/i.test(flags),
-      is_draft: /drafts/i.test(folderId),
+      is_draft: /\\Draft\b/i.test(flags) || /drafts/i.test(folderId),
       is_outbound: /sent/i.test(folderId),
       importance_score: 0.3,
       action_required: false,
