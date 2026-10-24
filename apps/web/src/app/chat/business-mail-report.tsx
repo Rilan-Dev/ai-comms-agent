@@ -132,10 +132,15 @@ export function BusinessMailReport({ report, onPrepare, disabled = false }: { re
       {report.moreCount > 0 ? <p className="text-xs text-muted-foreground">
         {report.moreCount.toLocaleString()} other unread messages exist in the synchronized count. Ask for a full report to see more.
       </p> : null}
-      {report.coverage ? <p className="text-xs leading-5 text-muted-foreground">{report.coverage}</p> : null}
-      <p className="border-t pt-3 text-xs leading-5 text-muted-foreground">
-        <strong>Data freshness:</strong> {report.notice}\n        {report.lastSyncUtc ? <span className="mt-1 block">Oldest connected mailbox synchronization: {formatReceivedUtc(report.lastSyncUtc)}.</span> : null}\n        <span className="mt-1 block">No newer provider mail is guaranteed by local sync.</span>
-      </p>
+      <div className="border-t pt-3 text-xs leading-5 text-muted-foreground">
+        <p><strong>Local sync only.</strong> No newer provider mail is guaranteed by local sync.</p>
+        {report.lastSyncUtc ? <p className="mt-1">Oldest connected mailbox synchronization: {formatReceivedUtc(report.lastSyncUtc)}.</p> : null}
+        <details className="mt-2">
+          <summary className="cursor-pointer font-medium text-primary">Data coverage and limitations</summary>
+          {report.coverage ? <p className="mt-2">{report.coverage}</p> : null}
+          <p className="mt-1">{report.notice}</p>
+        </details>
+      </div>
     </section>
   );
 }
