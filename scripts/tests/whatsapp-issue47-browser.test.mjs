@@ -102,3 +102,23 @@ test("harness includes no explicit send, approval, Meta POST or credential read"
   assert.ok(source.includes('credentials: "same-origin"'));
   assert.ok(source.includes('confirmation !== "PENDING ONLY"'));
 });
+
+
+test("read-only PostgreSQL probe can select exactly one recent issue #47 action without requiring UUID", () => {
+  const sql = readFileSync(new URL("./whatsapp-issue47-pending.postgres.sql", import.meta.url), "utf8");
+  assert.match(sql, /BEGIN READ ONLY;/);
+  assert.match(sql, /\\if :\{\?action_id\}/);
+  assert.match(sql, /WHERE id = :'action_id'::uuid/);
+  assert.match(sql, /WHERE message_body = 'Issue 47 pending approval acceptance test\. DO NOT APPROVE OR SEND\.'/);
+  assert.match(sql, /created_at >= now\(\) - interval '30 minutes'/);
+  assert.match(sql, /count\(\*\) = 1/);
+  assert.match(sql, /status = 'pending'/);
+  assert.match(sql, /queued_message_id IS NULL/);
+  assert.match(sql, /approved_at IS NULL/);
+  assert.match(sql, /expires_at > now\(\)/);
+  assert.match(sql, /\\gset/);
+  assert.match(sql, /\\if :acceptance_pending_only/);
+  assert.match(sql, /SELECT 1 \/ 0;/);
+  assert.match(sql, /ROLLBACK;/);
+  assert.doesNotMatch(sql, /(?:INSERT INTO|UPDATE aca\.|DELETE FROM aca\.)/);
+});
