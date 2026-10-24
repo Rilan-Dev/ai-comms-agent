@@ -118,6 +118,13 @@ export function parseBusinessMailReport(raw: string): BusinessMailReport | null 
       const link = text.match(THREAD_LINK)?.[1] ?? null;
       current.source = link && safeChatLink(link) ? link : null;
       current.excerpt = displayText(text.replace(THREAD_LINK, "").trim());
+      continue;
+    }
+    // The host formats its citation on a separate, indented next line.
+    // Recognize only our same-origin, UUID-bounded mail/thread paths.
+    if (current && trimmed.startsWith("[Open source thread](")) {
+      const link = trimmed.match(THREAD_LINK)?.[1] ?? null;
+      if (link && safeChatLink(link)) current.source = link;
     }
   }
   if (isMessageReport && records.length !== numbers.included) return null;
