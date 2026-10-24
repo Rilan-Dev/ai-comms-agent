@@ -7,6 +7,9 @@ import {
 import type { RollingMailRow } from "@/lib/mail/rolling-summary";
 
 describe("parseUnreadOnlyMailRequest", () => {
+  it.each(['Show unread emails in Finance','List unread emails with attachments','Count unread emails 2026-01-01'])('does not drop an unrecognized constraint: %s',request=>{
+    expect(parseUnreadOnlyMailRequest(request)).toBeNull();
+  });
   it("accepts a pure unread summary request", () => {
     expect(parseUnreadOnlyMailRequest("Summarize my unread emails")).toEqual({
       kind: "summary",
@@ -24,6 +27,7 @@ describe("parseUnreadOnlyMailRequest", () => {
 
   it("accepts whats-new phrasing", () => {
     expect(parseUnreadOnlyMailRequest("What's new in my inbox?")?.kind).toBe("summary");
+    expect(parseUnreadOnlyMailRequest("What's new in my inbox?")?.inboxOnly).toBe(true);
   });
 
   it("rejects analysis asks like business highlighting", () => {

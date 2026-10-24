@@ -35,7 +35,7 @@ describe("identity-aware email compose selection", () => {
     expect(guidance).toContain("never invent a title, company, phone");
     expect(guidance).toContain('"name":"Mohammed Rilan"');
     expect(guidance).toContain('"email":"owner@example.test"');
-    expect(guidance).toContain("human approval");
+    expect(guidance).toContain("explicit approval");
   });
 
   it("treats profile fields as bounded data rather than allowing line-break injection", () => {

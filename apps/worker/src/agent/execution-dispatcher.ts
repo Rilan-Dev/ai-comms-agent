@@ -16,11 +16,14 @@ function buildPrompt(request:AgentExecutionRequest){
 export async function dispatchAgentExecution(request:AgentExecutionRequest):Promise<AgentExecutionDispatchResult>{
   const configured = await query<{ knowledge_base_id: string }>("SELECT knowledge_base_id FROM organization_ai_runtime_settings WHERE organization_id=$1", [request.organizationId]);
   const kbId=configured.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim();
-  if(!kbId) return {status:"configuration_required",executionId:request.executionId,reason:"CLARA_KB_ID is not configured"};
-  const turn=await claraRuntime.createChatTurn({
+  const customerReply=request.source==='whatsapp' && request.intent==='whatsapp.inbound_command';
+  if(!kbId && !customerReply) return {status:"configuration_required",executionId:request.executionId,reason:"CLARA_KB_ID is not configured"};
+  const turn=customerReply
+    ? await claraRuntime.createCustomerReplyTurn({orgId:request.organizationId,agentId:request.agentId,kbId:kbId??''},typeof request.params.message==='string'?request.params.message:'')
+    : await claraRuntime.createChatTurn({
     orgId:request.organizationId,
     agentId:request.agentId,
-    kbId,
+    kbId:kbId??'',
     userId:null,
     sessionId:request.executionId,
     surface:"chat",

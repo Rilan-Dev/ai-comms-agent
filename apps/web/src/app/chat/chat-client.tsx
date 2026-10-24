@@ -2,6 +2,7 @@
 import type React from "react";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {READ_ONLY_CHAT_SHORTCUTS as QUICK_ACTION_PROMPTS,resolveChatAutoRunPrompt} from '@/lib/chat/quick-actions';
 import { AudioLines, Bot, MailPlus, Send, Sparkles, User } from "lucide-react";
 import dynamic from "next/dynamic";
 import { readSseEvents } from "@/lib/streaming/sse";
@@ -13,6 +14,9 @@ import { selectComposeSender, signatureFromProfile, withProfileSignature, type C
 import { parseAssistantChecklistLine } from "@/lib/chat/interactive-replies";
 import { AssistantChecklist, SuggestedNextActions, type EmailWorkflowState } from "./interactive-message-controls";
 import { InlineMailApprovalReview } from "./chat-inline-mail-approval";
+import { parseBusinessMailReport, safeChatLink } from "@/lib/chat/business-report-display";
+import { BusinessMailReport } from "./business-mail-report";
+import { AnswerActions } from "./answer-actions";
 import type { AgentPolicy } from "@ai-comms-agent/shared";
 
 // Defer microphone and vendor transport code until the user requests voice.
@@ -27,11 +31,6 @@ const DEFAULT_COMPOSE_BODY = "Hi,\n\nThis is a test email from my workspace.\n\n
  * instant local-database fast path (unread count / unread summary), the
  * third by the rolling 24-hour report fast path — no model round-trips.
  */
-const QUICK_ACTION_PROMPTS = [
-  "How many unread emails do I have?",
-  "Summarize my unread emails",
-  "Summarize my emails from the last 24 hours",
-] as const;
 type ComposePermissionHints = {
   userCanWrite: boolean; agentCanDraft: boolean; agentCanRequestApproval: boolean; directSend: false;
 };
@@ -112,6 +111,8 @@ export function ChatClient({
   // Send and cross-conversation navigation in the same event turn.
   const chatTurnInFlightRef = useRef(false);
   const agentContextEpochRef = useRef(0);
+  const chatAbortRef=useRef<AbortController|null>(null);
+  useEffect(()=>()=>{agentContextEpochRef.current++;chatAbortRef.current?.abort();},[organizationId]);
   // A returned draft/action ID may only be attached to the same review revision.
   const composeRevisionRef = useRef(0);
   const composeInFlightRef = useRef(false);
@@ -147,9 +148,10 @@ export function ChatClient({
   // must not loop or duplicate the turn.
   const autoRunDoneRef = useRef(false);
   useEffect(() => {
-    if (autoRunDoneRef.current || !autoRunPrompt.trim() || !activeAgent) return;
+    const prompt=resolveChatAutoRunPrompt(autoRunPrompt);
+    if (autoRunDoneRef.current || !prompt || !activeAgent) return;
     autoRunDoneRef.current = true;
-    void sendChatMessage(autoRunPrompt.trim());
+    void sendChatMessage(prompt);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeAgent, autoRunPrompt]);
 
@@ -628,6 +630,9 @@ export function ChatClient({
     // Claim before React sees setBusy(true): Enter and button clicks can
     // otherwise submit twice, or race a newly requested conversation.
     chatTurnInFlightRef.current = true;
+    const turnEpoch=agentContextEpochRef.current;
+    const turnController=new AbortController();chatAbortRef.current=turnController;
+    const turnTimeout=setTimeout(()=>turnController.abort(),180000);
     setDraft("");
     setBusy(true);
     setResponseStarted(false);
@@ -645,6 +650,7 @@ export function ChatClient({
       const response = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "content-type": "application/json", accept: "text/event-stream" },
+        signal:turnController.signal,
         body: JSON.stringify({ organizationId, agentId: activeAgent.id, conversationId, message: content }),
       });
       if (!response.ok || !response.body) throw new Error((await response.text()) || "Chat request failed");
@@ -653,11 +659,12 @@ export function ChatClient({
       let assistant = "";
       let completed = false;
       for await (const event of readSseEvents(response.body)) {
+        if(turnEpoch!==agentContextEpochRef.current || turnController.signal.aborted)return;
         const payload = JSON.parse(event.data) as {
           text?: string; conversationId?: string; message?: string; phase?: string;
         };
         if (event.event === "error") throw new Error(payload.message || "AI generation failed.");
-        if (payload.conversationId) setConversationId(payload.conversationId);
+        if (payload.conversationId && payload.conversationId!==conversationId) throw new Error("Conversation changed. Reload its saved status before continuing.");
         if (event.event === "progress") {
           const phase = safeActivityPhase(payload.phase);
           if (phase) {
@@ -694,12 +701,17 @@ export function ChatClient({
       }
       if (!completed) throw new Error("The AI response stopped before completion. The partial answer above may be incomplete.");
     } catch (error) {
-      setMessages((current) => [...current, { id: "error-" + Date.now(), conversationId, role: "system", content: error instanceof Error ? error.message : "Chat failed", createdAt: new Date().toISOString() }]);
+      if(turnEpoch!==agentContextEpochRef.current)return;
+      setMessages((current) => [...current, { id: "error-" + Date.now(), conversationId, role: "system", content: error instanceof Error ? error.message + " Check the saved draft or approval status before repeating an action." : "The response could not be confirmed. Check saved action status before retrying.", createdAt: new Date().toISOString() }]);
     } finally {
+      clearTimeout(turnTimeout);
+      if(chatAbortRef.current===turnController)chatAbortRef.current=null;
+      if(turnEpoch===agentContextEpochRef.current){
       chatTurnInFlightRef.current = false;
       setBusy(false);
       setResponseStarted(false);
       setActivity("");
+      }
     }
   }
 
@@ -738,6 +750,7 @@ export function ChatClient({
           </div>
         </div>
       </header>
+      <p role="status" aria-live="polite" className="sr-only">{busy ? "Clara is preparing a response." : messages.at(-1)?.role === "assistant" ? "Clara’s response is ready." : messages.at(-1)?.role === "system" ? "Clara could not complete the response." : ""}</p>
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {chatHistoryOpen && (
@@ -793,7 +806,7 @@ export function ChatClient({
         </div>
       ) : (
       <section className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
-        <div ref={messageScrollRef} role="log" aria-live="polite" className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto overscroll-contain py-6">
+        <div ref={messageScrollRef} role="log" aria-label="Conversation messages" aria-live="polite" className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto overscroll-contain py-6">
           {messages.length === 0 ? (
             <div className="grid min-h-[50vh] place-items-center text-center">
               <div className="max-w-md">
@@ -838,13 +851,13 @@ export function ChatClient({
               <span>Agent send-request permission: {composePermissions.agentCanRequestApproval ? "Enabled" : "Disabled"}</span>
               <span>Send: human approval required; never automatic</span>
             </div>
-            <p className="mt-1 text-muted-foreground">Actual draft and approval actions also require the selected mailbox's capabilities. Permission choices do not grant access automatically.</p>
+            <p className="mt-1 text-muted-foreground">Actual draft and approval actions also require the selected mailbox&apos;s capabilities. Permission choices do not grant access automatically.</p>
           </div>}
           {composeProfile && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-xs">
             <div>
               <p className="font-semibold">Your saved profile: {composeProfile.name || "No saved display name"}</p>
               <p className="text-muted-foreground">{composeProfile.email}</p>
-              <p className="mt-1 text-muted-foreground">Profile details come from your signed-in account. The agent won't invent a name, title, company, phone number or signature.</p>
+              <p className="mt-1 text-muted-foreground">Profile details come from your signed-in account. The agent won&apos;t invent a name, title, company, phone number or signature.</p>
             </div>
             <button type="button" disabled={composeBusy || Boolean(composeDraftId)} onClick={useProfileSignature}
               className="rounded-md border px-3 py-2 font-medium disabled:opacity-50">Use my profile signature</button>
@@ -873,7 +886,7 @@ export function ChatClient({
                 {composeMailboxes.map(account => <option key={account.id} value={account.id}>{account.address}</option>)}
               </select></label>
             <label className="text-xs font-medium">To
-              {!composeTo.trim() && <span role="status" className="mt-1 block text-primary">Who should receive this email? Enter or explicitly choose the recipient's exact address; the AI will not guess.</span>}
+              {!composeTo.trim() && <span role="status" className="mt-1 block text-primary">Who should receive this email? Enter or explicitly choose the recipient&apos;s exact address; the AI will not guess.</span>}
               <input type="email" aria-label="Email recipient" value={composeTo} disabled={composeBusy || Boolean(composeDraftId)} required placeholder="recipient@example.com" onChange={e => { setComposeTo(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2" />
             </label>
             {composeProfile?.email && !composeTo.trim() && <button type="button" disabled={composeBusy || Boolean(composeDraftId)}
@@ -945,7 +958,7 @@ export function ChatClient({
           {/* One-click actions for busy users: instant local-database answers
               (unread count/summary fast paths) plus the reviewed composer.
               Hidden while a turn is in flight so they cannot double-submit. */}
-          {!busy && !agentSwitchBusy && !newChatBusy && !voiceOpen ? (
+          {messages.length > 0 && !busy && !agentSwitchBusy && !newChatBusy && !voiceOpen ? (
             <div className="mb-2 flex flex-wrap gap-1.5" aria-label="Quick actions">
               {QUICK_ACTION_PROMPTS.map((prompt) =>
                 <button key={prompt} type="button" onClick={() => void sendChatMessage(prompt)}
@@ -1011,8 +1024,8 @@ function MessageBubble({ role, content, messageId, showNextActions, userRequest,
   if (role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="flex max-w-[80%] items-start gap-2.5">
-          <div className="rounded-2xl rounded-br-sm bg-foreground px-4 py-2.5 text-sm text-background">
+        <div className="flex min-w-0 max-w-[80%] items-start gap-2.5">
+          <div className="min-w-0 break-words rounded-2xl rounded-br-sm bg-foreground px-4 py-2.5 text-sm text-background">
             <p className="whitespace-pre-wrap">{content}</p>
           </div>
           <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground"><User size={15} /></span>
@@ -1021,13 +1034,16 @@ function MessageBubble({ role, content, messageId, showNextActions, userRequest,
     );
   }
 
-  // Assistant (Clara) message
+  // Assistant (Clara) message. All historical answers use the same renderer.
+  const businessReport = parseBusinessMailReport(content);
   return (
     <div className="flex justify-start">
-      <div className="flex max-w-[90%] items-start gap-2.5">
+      <div className="flex min-w-0 max-w-[90%] items-start gap-2.5">
         <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
-        <div className="flex-1 text-sm leading-7">
-          <MarkdownRenderer content={content} disabled={disabled} onPrepare={onPrepare} />
+        <div className="min-w-0 flex-1 break-words text-sm leading-7">
+          {businessReport ? <BusinessMailReport report={businessReport} onPrepare={onPrepare} disabled={disabled} /> :
+            <MarkdownRenderer content={content} disabled={disabled} onPrepare={onPrepare} />}
+          <AnswerActions content={content} messageId={messageId} />
           {showNextActions ? <SuggestedNextActions answer={content} userRequest={userRequest} messageId={messageId}
             disabled={disabled} onPrepare={onPrepare} emailWorkflowState={emailWorkflowState}
             onComposeEmail={onComposeEmail} onRequestEmailApproval={onRequestEmailApproval} /> : null}
@@ -1061,7 +1077,7 @@ function MarkdownRenderer({ content, disabled, onPrepare }: {
   content: string; disabled: boolean; onPrepare: (prompt: string) => void;
 }) {
   const elements = parseMarkdown(content, disabled, onPrepare);
-  return <div className="space-y-2">{elements}</div>;
+  return <div className="min-w-0 space-y-3 leading-relaxed">{elements}</div>;
 }
 
 function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: string) => void): React.ReactNode[] {
@@ -1159,7 +1175,7 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
         i++;
       }
       elements.push(
-        <blockquote key={key++} className="border-l-4 border-border pl-3 text-muted-foreground">
+        <blockquote key={key++} className="rounded-r-lg border-l-4 border-primary/40 bg-muted/40 px-4 py-2 text-muted-foreground">
           {renderInline(quoteLines.join("\n"))}
         </blockquote>
       );
@@ -1185,8 +1201,10 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
     if (headerMatch) {
       const level = (headerMatch![1] ?? "").length;
       const content = renderInline(headerMatch![2] ?? "");
-      const sizes = ["text-lg font-bold", "text-base font-bold", "text-sm font-bold", "text-sm font-semibold"];
-      elements.push(<p key={key++} className={sizes[level - 1]}>{content}</p>);
+      const sizes = ["text-lg font-bold tracking-tight text-foreground", "text-base font-bold text-foreground", "text-sm font-semibold text-primary", "text-sm font-semibold text-foreground"];
+      elements.push(level <= 2
+        ? <h3 key={key++} className={sizes[level - 1]}>{content}</h3>
+        : <h4 key={key++} className={sizes[level - 1]}>{content}</h4>);
       i++;
       continue;
     }
@@ -1199,7 +1217,7 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
         i++;
       }
       elements.push(
-        <ul key={key++} className="list-disc space-y-1 pl-5">
+        <ul key={key++} className="list-disc space-y-2 pl-5 marker:text-primary">
           {items.map((item, idx) => <li key={idx}>{renderInline(item)}</li>)}
         </ul>
       );
@@ -1214,7 +1232,7 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
         i++;
       }
       elements.push(
-        <ol key={key++} className="list-decimal space-y-1 pl-5">
+        <ol key={key++} className="list-decimal space-y-2 pl-5 marker:font-semibold marker:text-primary">
           {items.map((item, idx) => <li key={idx}>{renderInline(item)}</li>)}
         </ol>
       );
@@ -1244,7 +1262,7 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
       i++;
     }
     if (paraLines.length > 0) {
-      elements.push(<p key={key++} className="leading-7">{renderInline(paraLines!.join("\n"))}</p>);
+      elements.push(<p key={key++} className="whitespace-pre-line break-words leading-7">{renderInline(paraLines.join("\n"))}</p>);
     }
   }
 
@@ -1293,7 +1311,10 @@ function renderInline(text: string): React.ReactNode[] {
     } else if (earliest!.type === "code") {
       parts.push(<code key={key++} className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{match![1]}</code>);
     } else if (earliest!.type === "link") {
-      parts.push(<a key={key++} href={match![2]} target="_blank" rel="noreferrer" className="text-primary underline hover:opacity-80">{match![1]}</a>);
+      const safeHref = safeChatLink(match![2] ?? "");
+      parts.push(safeHref
+        ? <a key={key++} href={safeHref} target="_blank" rel="noopener noreferrer" className="break-all font-medium text-primary underline underline-offset-2 hover:opacity-80">{match![1]}</a>
+        : <span key={key++}>{match![1]}</span>);
     } else if (earliest!.type === "italic") {
       parts.push(<em key={key++} className="italic">{match![1]}</em>);
     }

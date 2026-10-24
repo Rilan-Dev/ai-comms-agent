@@ -42,6 +42,8 @@ function action(row: Row) {
     organizationId: String(row.organization_id),
     agentId: row.agent_id ? String(row.agent_id) : null,
     emailAccountId: String(row.email_account_id),
+    senderAddress: typeof row.sender_address === 'string' ? row.sender_address : null,
+    senderStatus: typeof row.sender_status === 'string' ? row.sender_status : null,
     actionType: String(row.action_type) as EmailActionType,
     status: String(row.status) as EmailActionStatus,
     draftId: row.draft_id ? String(row.draft_id) : null,
@@ -171,11 +173,12 @@ export async function createEmailAction(input: CreateEmailActionInput) {
 
 export async function listPendingEmailActionsForOrganization(organizationId: string) {
   const r = await query<Row>(
-    `SELECT * FROM email_actions
-       WHERE organization_id = $1
-         AND status = 'pending_approval'
-         AND (expires_at IS NULL OR expires_at > now())
-       ORDER BY requested_at ASC`,
+    `SELECT ea.*, a.email_address AS sender_address, a.status AS sender_status FROM email_actions ea
+       LEFT JOIN email_accounts a ON a.id=ea.email_account_id AND a.organization_id=ea.organization_id AND a.deleted_at IS NULL
+       WHERE ea.organization_id = $1
+         AND ea.status = 'pending_approval'
+         AND (ea.expires_at IS NULL OR ea.expires_at > now())
+       ORDER BY ea.requested_at ASC`,
     [organizationId],
   );
   return r.rows.map(action);
@@ -202,9 +205,9 @@ export async function decideEmailAction(
     `WITH transitioned AS (
        UPDATE email_actions
        SET status = $1,
-           approved_by = CASE WHEN $1 = 'approved' THEN $3 ELSE approved_by END,
-           approved_at = CASE WHEN $1 = 'approved' THEN now() ELSE approved_at END,
-           error = CASE WHEN $1 = 'rejected' THEN COALESCE($4, 'Rejected by user') ELSE NULL END
+           approved_by = CASE WHEN $7::boolean THEN $3 ELSE approved_by END,
+           approved_at = CASE WHEN $7::boolean THEN now() ELSE approved_at END,
+           error = CASE WHEN NOT $7::boolean THEN COALESCE($4, 'Rejected by user') ELSE NULL END
        WHERE id = $2
          AND organization_id = $5
          AND status = 'pending_approval'
@@ -213,9 +216,9 @@ export async function decideEmailAction(
      )
      INSERT INTO email_action_approvals
        (email_action_id, organization_id, decision, decided_by, comment)
-     SELECT id, organization_id, $1, $3, $4 FROM transitioned
+     SELECT id, organization_id, $6, $3, $4 FROM transitioned
      RETURNING email_action_id`,
-    [decision, actionId, decidedBy, comment ?? null, organizationId],
+    [decision, actionId, decidedBy, comment ?? null, organizationId, decision, decision === "approved"],
   );
   if (!r.rows[0]) return null;
   return getEmailActionForOrganization(organizationId, actionId);

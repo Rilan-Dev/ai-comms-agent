@@ -29,6 +29,11 @@ function object(value: unknown): Input {
 function text(value: unknown, max = 4000): string {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
+function reviewedBody(value:unknown,context:ToolContext,maxLength=100000):string {
+  if(context.email_body_review?.kind==='review_required') throw new EmailWriteFailure('body_review_required',
+    'Please review the intended message and put only the email body in quotes or a fenced text block after Body:. Keep instructions about sending and approval outside it. No draft or approval was saved.');
+  return preserveEmailBody(context.email_body_review?.kind==='exact'?context.email_body_review.body:value,maxLength);
+}
 /** A draft's To must be explicit, not inferred from an email contact name.
  * Ask the user to choose the full recipient address before writing anything. */
 function requireRecipients(value: unknown): string[] {
@@ -161,7 +166,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       cc: optionalRecipients(input.cc),
       bcc: optionalRecipients(input.bcc),
       subject: text(input.subject, 998),
-      bodyText: preserveEmailBody(input.body_text),
+      bodyText: reviewedBody(input.body_text, context),
     });
     return { status: "draft_created", draft_id: String(draft.id), account_id: account.id, subject: draft.subject ?? "" };
   });
@@ -176,7 +181,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       ...(input.cc !== undefined ? { cc: optionalRecipients(input.cc) } : {}),
       ...(input.bcc !== undefined ? { bcc: optionalRecipients(input.bcc) } : {}),
       ...(typeof input.subject === "string" ? { subject: text(input.subject, 998) } : {}),
-      ...(typeof input.body_text === "string" ? { bodyText: preserveEmailBody(input.body_text) } : {}),
+      ...(typeof input.body_text === "string" || context.email_body_review ? { bodyText: reviewedBody(input.body_text, context) } : {}),
     });
     if (!updated) throw new EmailWriteFailure("draft_update_failed", "The draft could not be updated.");
     return { status: "draft_updated", draft_id: draftId, account_id: account.id, subject: updated.subject ?? "" };
@@ -196,7 +201,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       emailAccountId: account.id,
       to: [recipient],
       subject,
-      bodyText: preserveEmailBody(input.body_text),
+      bodyText: reviewedBody(input.body_text, context),
     });
     return { status: "reply_draft_created", draft_id: String(draft.id), account_id: account.id, subject };
   });
@@ -208,7 +213,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     const recipients = requireRecipients(input.to);
     const subject = reviewedForwardSubject(source.subject);
     const originalBody = preserveEmailBody(source.text_body);
-    const note = preserveEmailBody(input.body_text, 10000);
+    const note = reviewedBody(input.body_text, context, 10000);
     const forwardedBody = `${note ? note + "\n\n" : ""}---------- Forwarded message ----------\n${originalBody}`;
     if (forwardedBody.length > 100000) {
       throw new EmailWriteFailure("draft_body_too_long", "The forwarded email exceeds the maximum draft size. Reduce the quoted content before saving.");
@@ -265,7 +270,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       agentId: context.agent_id,
       emailAccountId: account.id,
       actionType: "reply_email",
-      recipientSnapshot: { messageId, to: [recipient], cc: [], bcc: [], subject, bodyText: preserveEmailBody(input.body_text) },
+      recipientSnapshot: { messageId, to: [recipient], cc: [], bcc: [], subject, bodyText: reviewedBody(input.body_text, context) },
       requestedBy: context.user_id,
       idempotencyKey: `${context.turn_id}:reply:${messageId}`,
       correlationId: context.correlation_id,

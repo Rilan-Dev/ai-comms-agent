@@ -25,7 +25,7 @@ describe("WhatsApp outbound idempotency conflict target", () => {
 
   it("keeps idempotency scoped to the organization and payload conflict handling", () => {
     expect(repository).toMatch(
-      /SELECT whatsapp_account_id, contact_id, body FROM whatsapp_messages WHERE organization_id = \$1 AND idempotency_key = \$2 AND direction = 'outbound'/,
+      /SELECT whatsapp_account_id, contact_id, body, message_type, media, media = \$3::jsonb AS media_matches FROM whatsapp_messages WHERE organization_id = \$1 AND idempotency_key = \$2 AND direction = 'outbound'/,
     );
     expect(repository).toContain("Idempotency key already exists for a different WhatsApp payload");
   });

@@ -7,7 +7,7 @@ import { spawnSync } from "node:child_process";
 
 const script = readFileSync(new URL("../update-and-up.sh", import.meta.url), "utf8");
 
-test("update-and-up refuses non-main checkouts before any fetch, pull or migration", () => {
+test("update-and-up refuses non-Development checkouts before any fetch, pull or migration", () => {
   const dir = mkdtempSync(join(tmpdir(), "aca-update-branch-"));
   try {
     const bin = join(dir, "bin");
@@ -31,7 +31,7 @@ test("update-and-up refuses non-main checkouts before any fetch, pull or migrati
     writeFileSync(join(scripts, "manual-up.sh"), "#!/bin/sh\necho UNEXPECTED_DEPLOY >&2\nexit 99\n");
     const result = spawnSync("bash", [join(scripts, "update-and-up.sh")], {
       encoding: "utf8",
-      env: { ...process.env, PATH: bin + ":" + process.env.PATH, MOCK_BRANCH: "Development", MOCK_GIT_LOG: gitLog },
+      env: { ...process.env, PATH: bin + ":" + process.env.PATH, MOCK_BRANCH: "main", MOCK_GIT_LOG: gitLog },
     });
     assert.equal(result.status, 1, result.stderr);
     assert.match(result.stderr + result.stdout, /Development/);
@@ -43,8 +43,8 @@ test("update-and-up refuses non-main checkouts before any fetch, pull or migrati
   }
 });
 
-test("main-only updater retains clean checkout guard and manual-up", () => {
-  assert.match(script, /BRANCH="main"/);
+test("Development-only updater retains clean checkout guard and manual-up", () => {
+  assert.match(script, /BRANCH="Development"/);
   assert.match(script, /git status --porcelain/);
   assert.match(script, /git pull --ff-only origin "\$BRANCH"/);
   assert.match(script, /bash scripts\/manual-up\.sh/);

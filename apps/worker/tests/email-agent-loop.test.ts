@@ -177,8 +177,7 @@ test("an approval-shaped result from a registered read tool cannot be marked saf
   });
   assert.equal(result.toolCalls.length, 1);
   assert.equal(result.toolCalls[0]?.readOnly, false);
-  assert.equal(result.pendingApprovals.length, 1);
-  assert.equal(result.pendingApprovals[0]?.actionId, "approval-1");
+  assert.equal(result.pendingApprovals.length, 0, "a read-only handler cannot attest to a saved approval");
 });
 
 test("a completed safe read-only batch reaches the final text stream once the model stops requesting tools", async () => {
@@ -319,8 +318,20 @@ test("a pending-approval result must never trigger direct read-only final stream
   });
   assert.equal(streamingCalled, false);
   assert.equal(result.toolCalls[0]?.readOnly, false);
-  assert.equal(result.pendingApprovals.length, 1);
-  assert.equal(result.pendingApprovals[0]?.actionId, "approval-1");
+  assert.equal(result.pendingApprovals.length, 0);
+});
+
+test('mutation receipts are tied to the current trusted turn, call and returned saved ID',async()=>{
+ const id='dd0facf7-80c6-4c39-b9be-9a7a94614739';
+ const runtime=fakeRuntime(['email.draft.create']);
+ runtime.registry.register({name:'email.draft.create',domain:'email',description:'Save draft',input_schema:{type:'object',properties:{}},required_permission:'email.write',sensitivity:'sensitive',execute:async()=>okResult()});
+ let round=0;
+ const result=await runEmailAgentTurn({organizationId:'org-1',agentId:'agent-1',messages:[...inputMessages,{role:'assistant',content:'A different old draft was saved'}],toolContext:{...context,auth_subject:{...context.auth_subject,permissions:['email.write']}}},{
+  createRuntime:async()=>runtime,
+  completeWithTools:async()=>++round===1?{text:'',toolCalls:[{id:'actual-call',name:'email.draft.create',arguments:{}}],finishReason:'tool_calls'}:{text:'Done',toolCalls:[],finishReason:'stop'},
+  invoke:async()=>({...okResult(),output:{status:'draft_created',draft_id:id}}),
+ });
+ assert.deepEqual(result.toolCalls[0]?.operation,{channel:'email',operation:'draft',state:'draft_saved',turnId:'turn-1',callId:'actual-call',correlationId:'corr-1',resourceId:id});
 });
 
 

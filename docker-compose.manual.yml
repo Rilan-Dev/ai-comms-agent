@@ -12,7 +12,10 @@ services:
       - .env
     environment:
       NODE_ENV: production
-      ACA_ENABLE_DEV_IDENTITY: "true"
+      # Local manual stack keeps dev identity available, but only via the
+      # explicit .env opt-in (ACA_ENABLE_DEV_IDENTITY=true, see .env.example)
+      # so an unset variable can never silently enable it.
+      ACA_ENABLE_DEV_IDENTITY: "${ACA_ENABLE_DEV_IDENTITY:-false}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

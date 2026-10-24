@@ -24,12 +24,13 @@ test("origin helper rejects a different Vercel project, preserving legitimate sa
 
 test("voice SSE errors never expose exception messages from tool/provider/DB failures", () => {
   const stream = source.slice(source.indexOf("const stream = new ReadableStream"));
-  assert.match(stream, /emit\("error", \{ message: "Voice turn failed\. No further action was confirmed\. Review saved drafts and pending approvals before retrying\." \}\)/);
+  assert.match(stream, /emit\("error", \{ message: needsAuthorizedTools/);
+  assert.match(stream,/No email summary or action was confirmed/);
   assert.doesNotMatch(stream, /emit\("error", \{ message: error instanceof Error \? error\.message/);
 });
 
 test("host-verified email outcome and linked chat answer are unchanged", () => {
-  assert.match(source, /verifiedEmailToolSummary\(result\.toolCalls\)/);
+  assert.match(source, /currentTurnOperationAnswer\(result\.text,/);
   assert.match(source, /await saveAnswer\(deliveredText\)/);
   assert.match(source, /await saveAnswer\(voiceAnswer\)/);
   assert.match(source, /pendingApprovals: result\.pendingApprovals/);

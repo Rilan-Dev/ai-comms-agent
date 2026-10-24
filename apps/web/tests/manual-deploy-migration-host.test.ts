@@ -1,12 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-
-describe("manual deployment migration host boundary", () => {
-  it("rewrites Docker-only hostname for host-side psql while preserving the container URL", () => {
-    const script = readFileSync(resolve(__dirname, "../../../scripts/manual-up.sh"), "utf8");
-    expect(script).toContain('migration_db_url="${migration_db_url//host.docker.internal/127.0.0.1}"');
-    expect(script).toContain('DATABASE_URL="$migration_db_url" bash scripts/migrate.sh');
-    expect(script).toContain('docker compose --env-file .env.docker -f infra/docker-compose.yml up -d');
-  });
+import {describe,it,expect} from 'vitest';
+import {readFileSync} from 'node:fs';
+const script=readFileSync(new URL('../../../scripts/manual-up.sh',import.meta.url),'utf8');
+describe('manual deployment migration network boundary',()=>{
+ it('uses the application network and preflights the same configured database before migration',()=>{
+  const preflight=script.indexOf('web node packages/db/manual-db-preflight.mjs');
+  const migration=script.indexOf('web node packages/db/migrate.js');
+  const startup=script.indexOf('"${COMPOSE[@]}" up -d');
+  expect(preflight).toBeGreaterThan(0);expect(migration).toBeGreaterThan(preflight);expect(startup).toBeGreaterThan(migration);
+  expect(script).toContain('--no-deps');expect(script).not.toContain('host.docker.internal/127.0.0.1');
+  expect(script).toContain('No automatic target replacement or retry');
+ });
 });

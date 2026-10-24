@@ -18,6 +18,7 @@ import { emitProviderEvent } from "../events/provider-events";
 import { isRetryableProviderError } from "./retry";
 import { isApprovedEmailActionAccountUsable } from "./action-account-guard";
 import { paramsFromApprovedEmailSnapshot } from "./approved-email-draft";
+import { assertCurrentEmailActionAuthorization } from "./action-authorization";
 
 /** Evidence writes and local draft reconciliation are secondary to the
  * durable action terminal state. Log only a type, never provider payloads. */
@@ -49,7 +50,9 @@ export async function processApprovedEmailActions(limit = 10) {
     // A provider call may succeed before connection cleanup throws. Its
     // outcome must never be reported as a failed delivery that invites replay.
     let providerAccepted = false;
+    let providerDispatchStarted = false;
     try {
+      await assertCurrentEmailActionAuthorization(action);
       const repository = new PostgresEmailAccountRepository();
       const account = await repository.getById(action.emailAccountId);
       if (!isApprovedEmailActionAccountUsable(account, action.organizationId)) throw new Error("Email account is unavailable");
@@ -61,7 +64,7 @@ export async function processApprovedEmailActions(limit = 10) {
       const config = await repository.getConnectionConfig(account.id);
       const credentials: EmailCredentials = { ...(encrypted as unknown as EmailCredentials), ...(config as unknown as Partial<EmailCredentials>) };
       const provider = createEmailProviderRegistry().create(account.provider);
-      const result = await verifyEmailProviderConnection(provider, credentials, async ({ provider: connected }) => {
+      const result = await verifyEmailProviderConnection(provider, credentials, async ({ provider: connected, capabilities }) => {
         const snapshot = action.recipientSnapshot;
         if (action.actionType === "send_email") {
           if (!action.draftId) throw new Error("Approved send action has no draft");
@@ -74,6 +77,7 @@ export async function processApprovedEmailActions(limit = 10) {
           // Remote drafts may be edited independently after human review.
           // Only submit a fresh copy of the immutable approved snapshot.
           const providerDraftId = (await connected.createDraft(params)).draft_id;
+          providerDispatchStarted = true;
           const sent = await connected.sendDraft(providerDraftId);
           providerAccepted = true;
           return { kind: "send", ref: sent };
@@ -96,17 +100,24 @@ export async function processApprovedEmailActions(limit = 10) {
         const params = paramsFromApprovedEmailSnapshot(snapshot);
         if (action.actionType === "reply_email") {
           const replyParams: DraftParams = { ...params, reply_to_message_id: providerMessageId };
+          providerDispatchStarted = true;
           const replied = await connected.reply(providerMessageId, replyParams);
           providerAccepted = true;
           return { kind: "reply", ref: replied };
         }
-        const forwarded = await connected.forward(providerMessageId, params.to);
+        // Dispatch only the original human-reviewed forward snapshot.
+        if (!capabilities.forward || !capabilities.drafts || !capabilities.send) {
+          throw new CapabilityNotSupported(account.provider, "forward");
+        }
+        const forwardDraftId = (await connected.createDraft(params)).draft_id;
+        providerDispatchStarted = true;
+        const forwarded = await connected.sendDraft(forwardDraftId);
         providerAccepted = true;
         return { kind: "forward", ref: forwarded };
       });
       providerResult = result.value as { kind: string; ref: { message_id: string; provider_message_id: string } };
     } catch (error) {
-      if (providerAccepted) {
+      if (providerAccepted || providerDispatchStarted) {
         // The provider acknowledged the external action before verification
         // cleanup threw. Leave the row executing for fail-closed stale recovery
         // rather than marking a delivered message failed or dispatching twice.

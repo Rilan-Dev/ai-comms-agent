@@ -33,7 +33,7 @@ test("Agent Policy displays explicitly toggleable WhatsApp tools without implici
   assert.match(ui, /selectedTools\.includes\(choice\.name\)/);
   assert.match(ui, /togglePolicyTool\(choice\.name, event\.target\.checked\)/);
   assert.match(ui, /WhatsApp permissions/);
-  assert.match(ui, /Request WhatsApp send approval/);
+  assert.equal(WHATSAPP_POLICY_CHOICES[1].label,'Request WhatsApp send approval');
   assert.match(ui, /onSubmit=\{savePolicy\}/);
   assert.match(ui, /window\.confirm\(confirmation/);
   assert.match(ui, /role="status"/);

@@ -1,3 +1,4 @@
+import { containsUnverifiedOperationClaim, currentTurnOperationAnswer } from './operation-feedback';
 /**
  * Presentation hygiene for untrusted model text. The host must collect a
  * complete response before displaying or persisting it. This is not a claim
@@ -16,5 +17,6 @@ export function isInternalChatPlanning(text: string): boolean {
 
 export function userFacingChatAnswer(raw: string): string | null {
   if (typeof raw !== "string" || raw.length > 40000 || !raw.trim()) return null;
-  return isInternalChatPlanning(raw) ? null : raw.trim();
+  if (isInternalChatPlanning(raw)) return null;
+  return containsUnverifiedOperationClaim(raw) ? currentTurnOperationAnswer(raw, [], '', false) : raw.trim();
 }

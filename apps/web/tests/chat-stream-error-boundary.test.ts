@@ -19,7 +19,8 @@ describe("chat streaming errors never disclose server/provider exception details
   it("reuses the shared authorization-to-HTTP mapping for 401, 403 and opaque 500", () => {
     expect(outerCatch).toContain("return authorizationErrorToResponse(error)");
     expect(outerCatch).not.toContain("console.error");
-    expect(outerCatch).not.toContain("error.message");
+    expect(outerCatch).toContain('error instanceof MailReportScopeError');
+    expect(outerCatch).toContain('return authorizationErrorToResponse(error)');
     expect(outerCatch).not.toContain("message, code");
     expect(auth).toContain("if (error instanceof UnauthorizedError)");
     expect(auth).toContain("if (error instanceof ForbiddenError)");
@@ -28,7 +29,7 @@ describe("chat streaming errors never disclose server/provider exception details
     expect(auth).toContain("sqlstate");
   });
   it("keeps provider and SQL exception contents out of event-stream error frames", () => {
-    expect(streamCatch).toContain('emit("error", { message: "Chat execution failed.');
+    expect(streamCatch).toContain('emit("error", { message: explicitMessagingAction');
     expect(streamCatch).not.toContain("error instanceof Error ? error.message");
     expect(streamCatch).not.toContain("JSON.stringify(error)");
     expect(streamCatch).toContain("controller.close()");

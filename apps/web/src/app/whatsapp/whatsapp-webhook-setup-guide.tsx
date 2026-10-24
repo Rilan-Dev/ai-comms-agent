@@ -108,7 +108,7 @@ export function WhatsAppWebhookSetupGuide({ organizationId, children, onVerifyTo
             <button type="button" onClick={() => copyToClipboard("Verify token", verifyToken)} className="inline-flex items-center gap-1.5 rounded-lg border px-3 text-xs font-medium"><Clipboard className="size-3.5" />{copied === "Verify token" ? "Copied" : "Copy"}</button>
             <button type="button" onClick={regenerateToken} title="Generate a new verify token" className="rounded-lg border p-2"><RefreshCw className="size-4" /></button>
           </div>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">Use the exact same token in this setup and in Meta's Verify Token field.</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">Use the exact same token in this setup and in Meta&apos;s Verify Token field.</p>
         </div>
         <div>
           <label className="mb-1 block text-xs font-semibold text-muted-foreground">META APP SECRET</label>
@@ -125,7 +125,7 @@ export function WhatsAppWebhookSetupGuide({ organizationId, children, onVerifyTo
         <ol className="list-decimal space-y-2 pl-5 text-sm leading-5 text-muted-foreground">
           <li>Open <a href="https://developers.facebook.com/apps/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">Meta for Developers <ExternalLink className="size-3" /></a> and select the app connected to your WhatsApp Business account.</li>
           <li>Open WhatsApp → Configuration (or Webhooks), paste the Callback URL and Verify Token above, then choose <strong className="text-foreground">Verify and Save</strong>.</li>
-          <li>Subscribe the app to the <code className="rounded bg-muted px-1">messages</code> webhook field. Meta's dashboard labels can vary by app setup.</li>
+          <li>Subscribe the app to the <code className="rounded bg-muted px-1">messages</code> webhook field. Meta&apos;s dashboard labels can vary by app setup.</li>
           <li>Return here and add the phone details below. The phone remains pending until provider verification succeeds.</li>
         </ol>
         <div className="rounded-lg border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">Keep your App Secret and access token private. Do not paste them into support messages or public logs.</div>

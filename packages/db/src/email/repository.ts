@@ -147,7 +147,7 @@ export class PostgresEmailAccountRepository {
 
   async listForOrganization(organizationId: string): Promise<EmailAccount[]> {
     const r = await query<Row>(
-      "SELECT * FROM email_accounts WHERE organization_id = $1 ORDER BY created_at DESC",
+      "SELECT * FROM email_accounts WHERE organization_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC",
       [organizationId],
     );
     return r.rows.map(account);
@@ -582,7 +582,12 @@ export async function updateLocalDraftForOrganization(
   values.push(messageId, organizationId);
   const draftIdParam = "$" + (values.length - 1);
   const organizationParam = "$" + values.length;
-  const r = await query<Row>(
+  return withTransaction(async client => {
+  // Take the same draft-first lock as proposal creation. A separate UPDATE
+  // statement then observes any review committed while this lock waited.
+  const locked = await client.query('SELECT id FROM email_messages WHERE id=$1 AND organization_id=$2 AND is_draft=true FOR UPDATE',[messageId,organizationId]);
+  if(!locked.rows.length)return null;
+  const r = await client.query<Row>(
     `UPDATE email_messages m SET ${sets.join(", ")}, provider_draft_sync_status = CASE
        WHEN m.provider_draft_sync_status IN ('syncing','error') THEN 'error'
        WHEN a.status = 'connected' AND a.capabilities->>'drafts' = 'true' THEN 'queued'
@@ -612,6 +617,7 @@ export async function updateLocalDraftForOrganization(
     values,
   );
   return r.rows[0] ?? null;
+  });
 }
 
 

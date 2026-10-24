@@ -7,7 +7,8 @@ describe("GmailAdapter", () => {
 
   it("returns refreshed credentials using the shared EmailCredentials contract", async () => {
     const adapter = new GmailAdapter();
-    await adapter.connect({ credential_type: "oauth_token", access_token: "test-token", refresh_token: "refresh-token" });
+    vi.spyOn(globalThis,"fetch").mockResolvedValue(Response.json({historyId:"fixture-history"}));
+    await adapter.connect({ credential_type: "oauth_token", access_token: "test-token", refresh_token: "refresh-token",oauth_client_id:"fixture-client",oauth_client_secret:"fixture-secret" });
     expect(adapter.getCredentialSnapshot()).toMatchObject({
       credential_type: "oauth_token",
       access_token: "test-token",
@@ -65,7 +66,7 @@ describe("GmailAdapter", () => {
     const adapter = new GmailAdapter();
     const capabilities = adapter.capabilities();
     expect(capabilities.folders).toBe(true);
-    expect(capabilities.sync_webhook).toBe(true);
+    expect(capabilities.sync_webhook).toBe(false);
     expect(capabilities.sync_idle).toBe(false);
     expect(capabilities.send).toBe(true);
     expect(capabilities.attachments_upload).toBe(false);

@@ -3,6 +3,7 @@ import { getAuthenticatedAppContext } from "@/lib/identity/repository";
 import { headers } from "next/headers";
 import { ChatClient } from "./chat-client";
 import { briefingsEnabled } from "@/lib/briefings/config";
+import {resolveChatAutoRunPrompt} from '@/lib/chat/quick-actions';
 
 export const dynamic = "force-dynamic";
 
@@ -44,8 +45,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
 
     // run=1 + prompt: one-click Overview actions auto-send this prompt a
     // single time. The prompt is capped so a link cannot inject an essay.
-    const autoRunPrompt = params.run === "1" && typeof params.prompt === "string"
-      ? params.prompt.slice(0, 200) : "";
+    const autoRunPrompt = params.run === "1" ? resolveChatAutoRunPrompt(params.prompt) : "";
 
     return (
       <ChatClient

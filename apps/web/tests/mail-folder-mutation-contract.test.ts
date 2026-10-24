@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const repository = readFileSync(resolve(__dirname, "../../../../packages/db/src/email/repository.ts"), "utf8");
+const repository = readFileSync(resolve(__dirname, "../../../packages/db/src/email/repository.ts"), "utf8");
 const route = readFileSync(resolve(__dirname, "../src/app/api/mail/messages/folder/route.ts"), "utf8");
 
 describe("mail folder mutation contract", () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import {MailReview} from "@/components/mail-review";
 import { validateChatEmailApproval, type ChatEmailApproval } from "@/lib/chat/inline-mail-approval";
 
 /**
@@ -48,7 +49,7 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
   }
 
   async function approve() {
-    if (inFlight.current || loading || decisionDone || !approval || !reviewConfirmed) return;
+    if (inFlight.current || loading || decisionDone || !approval || !approval.senderAddress || !reviewConfirmed) return;
     const recipients = approval.recipientSnapshot.to.join(", ");
     if (!window.confirm("Approve the exact email shown to " + recipients +
       "? This authorizes the worker to send it. Delivery is not guaranteed and dispatch cannot be undone.")) return;
@@ -96,18 +97,9 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
       ) : null}
       {snapshot && !decisionDone ? (
         <div className="mt-3 space-y-3 text-sm">
-          <div className="rounded-lg border p-3">
-            <p><strong>To:</strong> {snapshot.to.join(", ")}</p>
-            {snapshot.cc.length > 0 ? <p><strong>Cc:</strong> {snapshot.cc.join(", ")}</p> : null}
-            {snapshot.bcc.length > 0 ? <p><strong>Bcc:</strong> {snapshot.bcc.join(", ")}</p> : null}
-            <p><strong>Subject:</strong> {snapshot.subject}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold">Exact persisted email body</p>
-            <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-lg border bg-muted/30 p-3 font-sans text-xs">{snapshot.bodyText}</pre>
-          </div>
+          <MailReview sender={approval.senderAddress ?? "Sender unavailable — reload the saved request"} snapshot={snapshot} />
           <label className="flex items-start gap-2 text-xs">
-            <input type="checkbox" checked={reviewConfirmed} disabled={loading}
+            <input type="checkbox" checked={reviewConfirmed} disabled={loading || Boolean(approval && !approval.senderAddress)}
               onChange={event => setReviewConfirmed(event.target.checked)}
               className="mt-0.5 size-4 shrink-0 accent-primary" />
             <span>Reviewed recipient, subject and body. I authorize this saved request to be sent if I click Approve.</span>

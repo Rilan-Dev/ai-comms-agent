@@ -28,7 +28,7 @@ describe("WhatsApp history tool runtime", () => {
   });
   it("exposes outbound sending only as a pending-approval proposal", () => {
     expect(runtime).toContain('name: "whatsapp.send"');
-    expect(runtime).toContain("registry.register(createWhatsAppSendApprovalTool())");
+    expect(runtime).toContain("registry.register(createWhatsAppSendApprovalTool() as unknown as Tool)");
     expect(runtime).toContain("INSERT INTO whatsapp_send_actions");
     expect(runtime).toContain("approval_required: true");
     expect(runtime).not.toContain("queueWhatsAppOutboundMessage");

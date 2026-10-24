@@ -6,7 +6,10 @@ set -euo pipefail
 # other infrastructure. Use scripts/verify-infra.sh when disposable local
 # infrastructure is explicitly desired.
 pnpm -r typecheck
-pnpm --filter @ai-comms-agent/web test
+pnpm run lint
+pnpm run lint:packages
+pnpm -r test
+pnpm run test:standalone
 pnpm --filter @ai-comms-agent/web build
 pnpm --filter @ai-comms-agent/worker build
 echo "Full source verification: PASS"

@@ -35,9 +35,9 @@ describe("Activity/Audit/Operations product contracts", () => {
 
   it("does not present fabricated Overview metrics", () => {
     const page = read("../src/app/page.tsx");
-    expect(page).toContain('fetch("/api/overview")');
-    expect(page).toContain("Persisted state");
-    expect(page).toContain("No activity has been recorded yet.");
+    expect(page).toMatch(/redirect\("\/(?:chat|overview)"\)/);
+    expect(page).not.toContain("fakeMetrics");
+    expect(page).not.toContain("mockData");
     expect(page).not.toContain("Good morning, Rilan.");
     expect(page).not.toContain("24 emails");
   });

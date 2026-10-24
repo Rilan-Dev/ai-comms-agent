@@ -1,4 +1,5 @@
 "use client";
+import {formatWorkspaceTimestamp} from "@/lib/workspace-timestamp";
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -10,13 +11,7 @@ type MailRow = {
   action_required: boolean; has_attachments: boolean; account_email: string; account_name?: string | null;
 };
 
-function relative(value: string | null) {
-  if (!value) return "No date";
-  const date = new Date(value); const diff = Date.now() - date.getTime();
-  if (diff < 60_000) return "Just now"; if (diff < 3_600_000) return Math.floor(diff / 60_000) + "m ago";
-  if (diff < 86_400_000) return Math.floor(diff / 3_600_000) + "h ago";
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
+function relative(value:string|null){return formatWorkspaceTimestamp(value,true);}
 
 export function InboxClient({ organizationId, initialMessages }: { organizationId: string; initialMessages: MailRow[] }) {
   const searchParams = useSearchParams();
@@ -108,7 +103,7 @@ export function InboxClient({ organizationId, initialMessages }: { organizationI
       <section className="mt-8 overflow-hidden rounded-md border border-border bg-card">
         <div className="border-b border-border p-4 sm:p-5"><div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-sm font-semibold">All conversations</h2><p className="mt-1 text-xs text-muted-foreground">Search, filter, and take action on your mail</p></div><span className="text-xs text-muted-foreground">{busy ? "Updating…" : "Live data"}</span></div><div className="flex flex-col gap-3 lg:flex-row"><label className="flex-1"><span className="sr-only">Search inbox</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search sender, subject, or message…" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-ring/20"/></label><select value={accountId} onChange={e=>setAccountId(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm"><option value="all">All mailboxes</option>{accounts.map(a=><option key={a.id} value={a.id}>{a.label}</option>)}</select><label className="flex h-10 items-center gap-2 rounded-md border border-input px-3 text-sm"><input type="checkbox" checked={unread} onChange={e=>setUnread(e.target.checked)}/> Unread</label><label className="flex h-11 items-center gap-2 rounded-md border px-3 text-sm"><input type="checkbox" checked={action} onChange={e=>setAction(e.target.checked)}/> Action</label><button type="button" onClick={()=>void refresh()} disabled={busy} className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-85 disabled:opacity-50">{busy ? "Refreshing…" : "Refresh"}</button></div></div>
         {notice && <div role="alert" className="border-b bg-destructive/5 px-5 py-3 text-sm text-destructive">{notice}</div>}
-        {messages.length === 0 ? <div className="px-6 py-16 text-center"><div className="mx-auto grid size-12 place-items-center rounded-md bg-accent text-accent-foreground"><svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div><h2 className="mt-4 font-semibold">Your inbox is empty</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">Connect a mailbox and complete provider verification to begin syncing messages.</p><a href="/mail/accounts" className="mt-5 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground">Connect a mailbox</a></div> :
+        {messages.length === 0 ? <div className="px-6 py-16 text-center"><div className="mx-auto grid size-12 place-items-center rounded-md bg-accent text-accent-foreground"><svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div><h2 className="mt-4 font-semibold">{q.trim() || accountId!=='all' || unread || action ? 'No matching messages' : 'Your inbox is empty'}</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">{q.trim() || accountId!=='all' || unread || action ? 'No synchronized messages match these filters. Adjust the search or clear the filters.' : 'No synchronized incoming messages are available yet. Check your connected mailboxes and sync status.'}</p><a href="/mail/accounts" className="mt-5 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground">View mailboxes</a></div> :
         <div className="divide-y">{messages.map(m=><div key={m.id} className={"grid gap-3 border-b border-border px-4 py-4 transition-colors last:border-b-0 hover:bg-secondary/60 sm:px-5 md:grid-cols-[220px_1fr_auto] md:items-center " + (!m.is_read ? "bg-secondary/35" : "")}>
           <a href={"/mail/thread/" + m.thread_id} className="min-w-0"><p className={"truncate text-sm " + (!m.is_read ? "font-semibold" : "text-muted-foreground")}>{m.from_address}</p><p className="mt-1 text-xs text-muted-foreground">{m.account_email}</p></a>
           <a href={"/mail/thread/" + m.thread_id} className="min-w-0"><p className={"truncate text-sm " + (!m.is_read ? "font-semibold" : "font-medium")}>{m.subject || "(No subject)"}</p><p className="mt-1 truncate text-xs text-muted-foreground">{m.snippet || "No preview available"}</p></a>

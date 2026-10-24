@@ -193,6 +193,13 @@ test("IMAP RFC822 parser extracts identity, headers, recipients, body and draft 
 });
 
 
+test("IMAP draft flags remain drafts in All Mail without treating ordinary incoming mail as a draft", () => {
+  const provider=new ImapSmtpAdapter() as unknown as {parseRawMessage:(raw:string,folder:string,uid:string,flags:string)=>{is_draft:boolean}};
+  const raw="From: sender@example.test\r\nTo: recipient@example.test\r\nSubject: Test\r\n\r\nHarmless draft";
+  assert.equal(provider.parseRawMessage(raw,'[Gmail]/All Mail','42','* 1 FETCH (UID 42 FLAGS (\\Draft \\Seen))').is_draft,true);
+  assert.equal(provider.parseRawMessage(raw,'INBOX','43','* 1 FETCH (UID 43 FLAGS (\\Seen))').is_draft,false);
+});
+
 test("IMAP Gmail-style multipart email decodes UTF-8 QP and preserves formatted HTML", () => {
   const raw = [
     "From: Anthropic User Research <no-reply@research.anthropic.com>",
@@ -318,4 +325,46 @@ test("IMAP/SMTP rejects unsafe recipient header values", () => {
   assert.throws(() => adapter.validateAddresses(["victim@example.test\\r\\nBcc: attacker@example.test"]), /Invalid email recipient/);
   assert.throws(() => adapter.validateAddresses([]), /At least one recipient/);
   assert.deepEqual(adapter.validateAddresses(["alice@example.test"]), ["alice@example.test"]);
+});
+
+
+test("waiting for IMAP responses is event-driven and does not busy-spin the event loop", async () => {
+  const { PassThrough } = await import("node:stream");
+  const socket = new PassThrough();
+  const reader = { socket: socket as never, buffer: Buffer.alloc(0), error: undefined as Error | undefined };
+  // Mirror createReader(): one persistent listener accumulates socket chunks.
+  socket.on("data", (chunk: Buffer | string) => {
+    reader.buffer = Buffer.concat([reader.buffer, Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)]);
+  });
+  socket.on("error", (error: Error) => { reader.error = error; });
+  socket.on("close", () => { reader.error ??= new Error("closed"); });
+
+  const cpuBefore = process.cpuUsage();
+  const pending = readImapResponse(reader, 2_000);
+  // Deliver the response line only after 150 ms of complete silence: an
+  // event-driven wait stays idle for that whole window, while the former
+  // setImmediate polling loop burned a full CPU core waiting.
+  setTimeout(() => { socket.write("A0009 OK quiet done\r\n"); }, 150);
+  const response = await pending;
+  const cpu = process.cpuUsage(cpuBefore);
+  const cpuMs = (cpu.user + cpu.system) / 1000;
+  assert.match(response, /OK quiet done/);
+  assert.ok(cpuMs < 100, `waiting 150 ms for silent socket data must not busy-spin (cpu ${cpuMs.toFixed(1)} ms)`);
+  socket.destroy();
+});
+
+test("a socket error surfacing while waiting for an IMAP line rejects promptly", async () => {
+  const { PassThrough } = await import("node:stream");
+  const socket = new PassThrough();
+  const reader = { socket: socket as never, buffer: Buffer.alloc(0), error: undefined as Error | undefined };
+  socket.on("data", (chunk: Buffer | string) => {
+    reader.buffer = Buffer.concat([reader.buffer, Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)]);
+  });
+  socket.on("error", (error: Error) => { reader.error = error; });
+  socket.on("close", () => { reader.error ??= new Error("closed"); });
+
+  const pending = readImapResponse(reader, 5_000);
+  setTimeout(() => { socket.emit("error", new Error("ECONNRESET during IDLE")); }, 30);
+  await assert.rejects(pending, /ECONNRESET during IDLE/);
+  socket.destroy();
 });
