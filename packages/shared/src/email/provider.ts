@@ -149,6 +149,8 @@ export interface DraftParams {
   body_text: string;
   body_html?: string;
   reply_to_message_id?: string;
+  references_header?: string;
+  provider_thread_id?: string;
   forward_of_message_id?: string;
 }
 

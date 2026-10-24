@@ -62,7 +62,8 @@ CREATE TABLE agent_email_accounts(agent_id uuid,email_account_id uuid,role text)
 CREATE TABLE agent_policies(agent_id uuid,allowed_tools text[]);
 CREATE TABLE email_accounts(id uuid PRIMARY KEY,organization_id uuid,email_address text DEFAULT 'qa-sender@example.com',status text DEFAULT 'connected',deleted_at timestamptz,capabilities jsonb DEFAULT '{"drafts":true}');
 CREATE TABLE organization_memberships(id uuid DEFAULT gen_random_uuid(),organization_id uuid,user_id uuid,role text,status text,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());
-CREATE TABLE email_messages(id uuid PRIMARY KEY,organization_id uuid,email_account_id uuid,is_draft boolean,
+CREATE TABLE email_threads(id uuid PRIMARY KEY,organization_id uuid,email_account_id uuid,provider_thread_id text);
+CREATE TABLE email_messages(id uuid PRIMARY KEY,organization_id uuid,email_account_id uuid,thread_id uuid,in_reply_to text,references_header text,is_draft boolean,
 to_recipients jsonb,cc_recipients jsonb,bcc_recipients jsonb,subject text,text_body text,
 snippet text,provider_message_id text,from_email text,provider_draft_sync_status text,provider_draft_sync_token uuid,provider_draft_last_error text,updated_at timestamptz DEFAULT now());
 CREATE TYPE action_status AS ENUM('pending_approval','approved','rejected','completed','failed','expired','executing');
@@ -94,7 +95,7 @@ await db.query("UPDATE aca.email_accounts SET organization_id=$1,status='connect
 await db.query('TRUNCATE aca.agent_email_accounts,aca.agent_policies');
 await db.query("INSERT INTO aca.agent_email_accounts VALUES($1,$2,'primary')",[AGENT,ACCOUNT]);
 await db.query("INSERT INTO aca.agent_policies VALUES($1,ARRAY['email.send.request','email.reply.request','email.forward.request'])",[AGENT]);
-vi.clearAllMocks();transport.status='connected';await db.query(`UPDATE aca.organization_memberships SET status='active',role='owner'`);await db.query('TRUNCATE aca.email_action_approvals,aca.email_actions,aca.email_messages');});
+vi.clearAllMocks();transport.status='connected';await db.query(`UPDATE aca.organization_memberships SET status='active',role='owner'`);await db.query('TRUNCATE aca.email_action_approvals,aca.email_actions,aca.email_messages,aca.email_threads');});
 
 async function draft(){
  const id=randomUUID(); await db.query(`INSERT INTO aca.email_messages(id,organization_id,email_account_id,is_draft,to_recipients,cc_recipients,bcc_recipients,subject,text_body) VALUES($1,$2,$3,true,'["qa@example.com"]','[]','[]','QA test','Harmless test')`,[id,ORG,ACCOUNT]);
@@ -102,7 +103,24 @@ async function draft(){
   recipientSnapshot:{to:['qa@example.com'],cc:[],bcc:[],subject:'QA test',bodyText:'Harmless test'},requestedBy:USER};
 }
 
-describe('real PostgreSQL email approval lifecycle',()=>{
+describe('real PostgreSQL email approval lifecycle',()=>{ it('refuses an approval whose persisted reply headers changed after review',async()=>{
+  const input=await draft();const thread=randomUUID();
+  await db.query('INSERT INTO aca.email_threads VALUES($1,$2,$3,$4)',[thread,ORG,ACCOUNT,'original-thread']);
+  await db.query('UPDATE aca.email_messages SET thread_id=$1,in_reply_to=$2,references_header=$3 WHERE id=$4',[thread,'<changed@example.test>','<changed@example.test>',input.draftId]);
+  await expect(createEmailAction({...input,recipientSnapshot:{...input.recipientSnapshot,inReplyTo:'<reviewed@example.test>',referencesHeader:'<reviewed@example.test>',providerThreadId:'original-thread'}})).rejects.toBeInstanceOf(EmailActionIdempotencyConflictError);
+  expect(await listPendingEmailActionsForOrganization(ORG)).toHaveLength(0);
+ });
+ it('dispatches frozen approved reply headers and provider thread despite later source changes',async()=>{
+  const input=await draft();const thread=randomUUID();
+  await db.query('INSERT INTO aca.email_threads VALUES($1,$2,$3,$4)',[thread,ORG,ACCOUNT,'reviewed-thread']);
+  await db.query('UPDATE aca.email_messages SET thread_id=$1,in_reply_to=$2,references_header=$3 WHERE id=$4',[thread,'<reviewed@example.test>','<older@example.test> <reviewed@example.test>',input.draftId]);
+  const action=await createEmailAction({...input,recipientSnapshot:{...input.recipientSnapshot,inReplyTo:'<reviewed@example.test>',referencesHeader:'<older@example.test> <reviewed@example.test>',providerThreadId:'reviewed-thread'}});
+  await decideEmailAction(ORG,action.id,USER,'approved');
+  await db.query('UPDATE aca.email_threads SET provider_thread_id=$1 WHERE id=$2',['changed-thread',thread]);
+  await executeApprovedEmailAction(action.id,ORG);
+  expect(transport.createDraft).toHaveBeenCalledWith(expect.objectContaining({reply_to_message_id:'<reviewed@example.test>',references_header:'<older@example.test> <reviewed@example.test>',provider_thread_id:'reviewed-thread'}));
+  expect(transport.sendDraft).toHaveBeenCalledTimes(1);
+ });
  it('manual forward review contains the actual source body and the supplied note',async()=>{
   const input=await draft();await db.query("UPDATE aca.email_messages SET is_draft=false,provider_message_id='provider-source',text_body='Original source body' WHERE id=$1",[input.draftId]);
   const response=await requestApproval(new Request('https://test.local/api/mail/actions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({organizationId:ORG,emailAccountId:ACCOUNT,actionType:'forward_email',messageId:input.draftId,to:['qa@example.com'],bodyText:'Reviewed note'})}));

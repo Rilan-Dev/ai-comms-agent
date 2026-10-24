@@ -1,3 +1,4 @@
+import {emailReplyMetadata} from "@ai-comms-agent/shared";
 import { NextResponse } from "next/server";
 import {
   createEmailAction,
@@ -73,6 +74,7 @@ export async function POST(request: Request) {
         bcc,
         subject: draft.subject ?? "",
         bodyText: draft.text_body ?? "",
+        ...emailReplyMetadata(draft),
       };
       // Manual review must refer to the exact stored draft, not the previous
       // autosaved version; other audited tool callers retain their contract.

@@ -1,3 +1,4 @@
+import {emailReplyMetadata} from "@ai-comms-agent/shared";
 import { createHash } from "node:crypto";
 import { query, withTransaction } from "../client";
 
@@ -87,6 +88,10 @@ function matchesPersistedSendDraftSnapshot(persisted: Row, recipientSnapshot: Re
     if (!current || !reviewed || current.length !== reviewed.length
       || current.some((address, index) => address !== reviewed[index])) return false;
   }
+  const reply=emailReplyMetadata(persisted);
+  for(const key of ['inReplyTo','referencesHeader','providerThreadId'] as const){
+    if((reply[key]??'')!==(recipientSnapshot[key]??''))return false;
+  }
   return typeof recipientSnapshot.subject === "string"
     && typeof recipientSnapshot.bodyText === "string"
     && String(persisted.subject ?? "") === recipientSnapshot.subject
@@ -133,11 +138,16 @@ export async function createEmailAction(input: CreateEmailActionInput) {
   if (input.actionType === "send_email" && input.draftId) {
     return withTransaction(async client => {
       const locked = await client.query<Row>(
-        "SELECT id, to_recipients, cc_recipients, bcc_recipients, subject, text_body FROM email_messages WHERE id=$1 AND organization_id=$2 AND email_account_id=$3 AND is_draft=true FOR UPDATE",
+        "SELECT * FROM email_messages WHERE id=$1 AND organization_id=$2 AND email_account_id=$3 AND is_draft=true FOR UPDATE",
         [input.draftId, input.organizationId, input.emailAccountId],
       );
       const lockedDraft = locked.rows[0];
       if (!lockedDraft) throw new EmailActionIdempotencyConflictError();
+      if(lockedDraft.in_reply_to){
+        const thread=await client.query<Row>('SELECT provider_thread_id FROM email_threads WHERE id=$1 AND organization_id=$2 AND email_account_id=$3 FOR SHARE',[lockedDraft.thread_id,input.organizationId,input.emailAccountId]);
+        if(!thread.rows[0])throw new EmailActionIdempotencyConflictError();
+        lockedDraft.reply_provider_thread_id=thread.rows[0].provider_thread_id;
+      }
       if (!matchesPersistedSendDraftSnapshot(lockedDraft, input.recipientSnapshot)) {
         throw new EmailActionIdempotencyConflictError();
       }

@@ -700,7 +700,7 @@ export class ImapSmtpAdapter implements EmailProvider {
   async createDraft(params: DraftParams): Promise<DraftRef> {
     this.ensureConnected();
     const messageId = `<${randomUUID()}@ai-comms-agent.local>`;
-    return this.appendDraft(this.buildMime(params, messageId, params.reply_to_message_id ? { "In-Reply-To": params.reply_to_message_id, References: params.reply_to_message_id } : {}));
+    return this.appendDraft(this.buildMime(params, messageId, params.reply_to_message_id ? { "In-Reply-To": params.reply_to_message_id, References: params.references_header ?? params.reply_to_message_id } : {}));
   }
 
   async updateDraft(draftId: string, params: Partial<DraftParams>): Promise<DraftRef> {
@@ -714,6 +714,7 @@ export class ImapSmtpAdapter implements EmailProvider {
       body_text: params.body_text ?? existing.text_body,
       body_html: params.body_html,
       reply_to_message_id: params.reply_to_message_id ?? existing.in_reply_to,
+      references_header:params.references_header??existing.references?.join(" "),
     };
     const replacement = await this.createDraft(updated);
     await this.deleteDraft(draftId);
@@ -764,7 +765,7 @@ export class ImapSmtpAdapter implements EmailProvider {
     const result = await this.smtpSend({
       to: message.to_addresses, cc: message.cc_addresses, bcc: message.bcc_addresses,
       subject: message.subject, body_text: message.text_body,
-    }, message.in_reply_to ? { "In-Reply-To": message.in_reply_to, References: message.in_reply_to } : {});
+    }, message.in_reply_to ? { "In-Reply-To": message.in_reply_to, References: message.references?.length?message.references.join(" "):message.in_reply_to } : {});
     await this.deleteDraft(draftId);
     return result;
   }

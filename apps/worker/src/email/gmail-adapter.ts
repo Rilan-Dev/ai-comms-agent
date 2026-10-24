@@ -1,3 +1,4 @@
+import {emailReplyMetadata} from "@ai-comms-agent/shared";
 import type {
   CapabilitySet, DraftParams, EmailCredentials, EmailFolder, EmailLabel,
   EmailMessage, EmailProvider, ListOptions, SearchQuery, SentMessageRef, SyncResult, SyncState
@@ -88,11 +89,14 @@ function toMessage(raw: any): EmailMessage {
 }
 
 function mime(params: DraftParams): string {
+  const reply=emailReplyMetadata({in_reply_to:params.reply_to_message_id,references_header:params.references_header,reply_provider_thread_id:params.provider_thread_id});
+  if(reply.inReplyTo&&!reply.providerThreadId)throw Error("A Gmail reply draft requires the original provider thread");
   const lines = [
     `To: ${params.to.join(", ")}`,
     ...(params.cc?.length ? [`Cc: ${params.cc.join(", ")}`] : []),
     ...(params.bcc?.length ? [`Bcc: ${params.bcc.join(", ")}`] : []),
     `Subject: ${params.subject}`,
+    ...(reply.inReplyTo ? [`In-Reply-To: ${reply.inReplyTo}`,`References: ${reply.referencesHeader}`] : []),
     "MIME-Version: 1.0",
     "Content-Type: text/plain; charset=utf-8",
     "",
@@ -569,7 +573,7 @@ export class GmailAdapter implements EmailProvider {
   }
 
   async createDraft(params: DraftParams) {
-    const data = await this.request("/drafts", { method: "POST", body: JSON.stringify({ message: { raw: b64url(mime(params)) } }) });
+    const data = await this.request("/drafts", { method: "POST", body: JSON.stringify({ message: { raw: b64url(mime(params)), ...(params.provider_thread_id?{threadId:params.provider_thread_id}:{}) } }) });
     return { draft_id: data.id, account_id: "gmail" };
   }
 
@@ -580,8 +584,11 @@ export class GmailAdapter implements EmailProvider {
       to: params.to ?? currentMessage.to_addresses, cc: params.cc ?? currentMessage.cc_addresses,
       bcc: params.bcc ?? currentMessage.bcc_addresses, subject: params.subject ?? currentMessage.subject,
       body_text: params.body_text ?? currentMessage.text_body, body_html: params.body_html,
+      reply_to_message_id:params.reply_to_message_id??currentMessage.in_reply_to,
+      references_header:params.references_header??currentMessage.references?.join(" "),
+      provider_thread_id:params.provider_thread_id??currentMessage.thread_id,
     };
-    await this.request(`/drafts/${draftId}`, { method: "PUT", body: JSON.stringify({ id: draftId, message: { raw: b64url(mime(merged)) } }) });
+    await this.request(`/drafts/${draftId}`, { method: "PUT", body: JSON.stringify({ id: draftId, message: { raw: b64url(mime(merged)), ...(merged.provider_thread_id?{threadId:merged.provider_thread_id}:{}) } }) });
     return { draft_id: draftId, account_id: "gmail" };
   }
 

@@ -1,6 +1,7 @@
 import { query, withTransaction } from "../client";
 import { decryptCredential, encryptCredential } from "../security";
 import type { CapabilitySet, EmailAccount, EmailProviderType } from "@ai-comms-agent/shared";
+import {replyMessageId,replyReferences} from "@ai-comms-agent/shared";
 import { verifiedEmailHtml } from "@ai-comms-agent/shared";
 
 type Row = Record<string, unknown>;
@@ -528,6 +529,7 @@ export interface CreateLocalDraftInput {
   bcc?: string[];
   subject?: string;
   bodyText?: string;
+  replyToMessageId?: string;
 }
 
 export async function createLocalDraft(input: CreateLocalDraftInput): Promise<Record<string, unknown>> {
@@ -546,7 +548,22 @@ export async function createLocalDraft(input: CreateLocalDraftInput): Promise<Re
   // connected provider's Drafts folder is part of that write, not sending.
   // The durable queue flag is committed with the draft in one transaction.
   const syncStatus = connected && capabilities?.drafts === true ? "queued" : "local_only";
-  const threadResult = await client.query<Row>(
+  let replyThreadId:string|null=null;
+  let inReplyTo:string|null=null;
+  let referencesHeader:string|null=null;
+  if(input.replyToMessageId){
+    const sourceResult=await client.query<Row>(
+      `SELECT m.thread_id,m.internet_message_id,m.references_header FROM email_messages m
+       JOIN email_threads t ON t.id=m.thread_id AND t.email_account_id=m.email_account_id AND t.organization_id=m.organization_id
+       WHERE m.id=$1 AND m.organization_id=$2 AND m.email_account_id=$3 AND m.is_draft=false
+         AND m.provider_message_id IS NOT NULL AND m.provider_message_id NOT LIKE 'local-draft:%' FOR SHARE OF m,t`,
+      [input.replyToMessageId,input.organizationId,input.emailAccountId]);
+    const source=sourceResult.rows[0];if(!source)throw Error('Reply source is unavailable in the selected mailbox');
+    inReplyTo=replyMessageId(source.internet_message_id);
+    referencesHeader=replyReferences(source.references_header,inReplyTo);
+    replyThreadId=String(source.thread_id);
+  }
+  const threadResult = replyThreadId?{rows:[{id:replyThreadId}]}:await client.query<Row>(
     `INSERT INTO email_threads (email_account_id, organization_id, subject, normalized_subject, participant_emails)
      VALUES ($1, $2, $3, lower(regexp_replace(coalesce($3,''), '^([[:space:]]*(re|fwd):[[:space:]]*)+', '', 'gi')), $4::citext[])
      RETURNING id`,
@@ -555,10 +572,10 @@ export async function createLocalDraft(input: CreateLocalDraftInput): Promise<Re
   const threadId = String(requiredRow(threadResult.rows[0], "draft thread").id);
   const messageResult = await client.query<Row>(
     `INSERT INTO email_messages
-      (email_account_id, organization_id, thread_id, provider_message_id, from_email, to_recipients, cc_recipients, bcc_recipients, subject, text_body, snippet, is_read, is_draft, is_sent, received_at, provider_draft_sync_status)
-     VALUES ($1, $2, $3, 'local-draft:' || gen_random_uuid()::text, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8, $9, left($9, 240), true, true, false, now(), $10)
-     RETURNING id, thread_id, email_account_id, from_email, to_recipients, cc_recipients, bcc_recipients, subject, text_body, is_draft, provider_draft_sync_status, updated_at`,
-    [input.emailAccountId, input.organizationId, threadId, accountResult.rows[0].email_address, JSON.stringify(input.to), JSON.stringify(input.cc ?? []), JSON.stringify(input.bcc ?? []), input.subject?.trim() || null, input.bodyText ?? "", syncStatus],
+      (email_account_id, organization_id, thread_id, provider_message_id, from_email, to_recipients, cc_recipients, bcc_recipients, subject, text_body, snippet, is_read, is_draft, is_sent, received_at, provider_draft_sync_status, in_reply_to, references_header)
+     VALUES ($1, $2, $3, 'local-draft:' || gen_random_uuid()::text, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8, $9, left($9, 240), true, true, false, now(), $10, $11, $12)
+     RETURNING id, thread_id, email_account_id, from_email, to_recipients, cc_recipients, bcc_recipients, subject, text_body, is_draft, provider_draft_sync_status, in_reply_to, references_header, updated_at`,
+    [input.emailAccountId, input.organizationId, threadId, accountResult.rows[0].email_address, JSON.stringify(input.to), JSON.stringify(input.cc ?? []), JSON.stringify(input.bcc ?? []), input.subject?.trim() || null, input.bodyText ?? "", syncStatus, inReplyTo, referencesHeader],
   );
   return requiredRow(messageResult.rows[0], "draft message");
   });
@@ -718,6 +735,13 @@ export async function queueLocalDraftProviderSyncForOrganization(organizationId:
 
 /** At most one worker wins a queued draft, obtaining its immutable attempt token
  * and the current row contents atomically. */
+async function withReplyProviderThread(row:Row|null):Promise<Row|null>{
+  if(!row?.in_reply_to)return row;
+  const thread=await query<Row>('SELECT provider_thread_id FROM email_threads WHERE id=$1 AND organization_id=$2 AND email_account_id=$3',[row.thread_id,row.organization_id,row.email_account_id]);
+  if(!thread.rows[0])throw Error('Original reply thread is unavailable');
+  return {...row,reply_provider_thread_id:thread.rows[0].provider_thread_id};
+}
+
 export async function claimQueuedProviderDraftSyncForOrganization(organizationId: string, messageId: string) {
   const r = await query<Row>(
     `UPDATE email_messages m
@@ -739,7 +763,7 @@ export async function claimQueuedProviderDraftSyncForOrganization(organizationId
      RETURNING m.*`,
     [messageId, organizationId],
   );
-  return r.rows[0] ?? null;
+  return withReplyProviderThread(r.rows[0] ?? null);
 }
 
 export async function markDraftProviderSyncedForOrganization(
@@ -810,7 +834,7 @@ export async function getLocalDraftForOrganization(organizationId: string, messa
      LIMIT 1`,
     [messageId, organizationId],
   );
-  return r.rows[0] ?? null;
+  return withReplyProviderThread(r.rows[0] ?? null);
 }
 
 

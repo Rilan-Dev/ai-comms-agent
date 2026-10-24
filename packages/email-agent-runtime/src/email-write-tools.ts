@@ -9,6 +9,7 @@ import {
   updateLocalDraftForOrganization,
 } from "@ai-comms-agent/db";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
+import {emailReplyMetadata} from "@ai-comms-agent/shared";
 import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
 import { canUseEmailAccountBinding, hasEmailToolCapabilities } from "./email-tool-policy";
 import { preserveEmailBody } from "./email-body";
@@ -202,6 +203,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       to: [recipient],
       subject,
       bodyText: reviewedBody(input.body_text, context),
+      replyToMessageId:String(source.id),
     });
     return { status: "reply_draft_created", draft_id: String(draft.id), account_id: account.id, subject };
   });
@@ -247,6 +249,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       recipientSnapshot: {
         to: recipients, cc, bcc,
         subject: text(draft.subject, 998), bodyText: preserveEmailBody(draft.text_body),
+        ...emailReplyMetadata(draft),
       },
       requestedBy: context.user_id,
       idempotencyKey: `${context.turn_id}:send:${draftId}`,
