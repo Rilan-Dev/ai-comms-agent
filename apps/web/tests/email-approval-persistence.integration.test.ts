@@ -13,10 +13,11 @@ import { PATCH as approveAction, POST as requestApproval } from '../src/app/api/
 const transport = vi.hoisted(()=>({
  status:'connected', provider:'gmail',
  connect:vi.fn(async()=>{}),disconnect:vi.fn(async()=>{}),
- discoverCapabilities:vi.fn(async()=>({drafts:true,send:true})),
+ discoverCapabilities:vi.fn<()=>Promise<{drafts:boolean;send:boolean;forward?:boolean}>>(async()=>({drafts:true,send:true})),
  loadCredentials:vi.fn(async()=>({})),
  createDraft:vi.fn(async()=>({draft_id:'provider-test-draft'})),
  sendDraft:vi.fn(async()=>({message_id:'test-message',provider_message_id:'test-provider-id'})),
+ forward:vi.fn(async()=>({message_id:'wrong-current-content',provider_message_id:'wrong-current-content'})),
 }));
 const audit=vi.hoisted(()=>vi.fn(async()=>{}));
 vi.mock('@/lib/identity/local-auth',()=>({assertSameOrigin:()=>{}}));
@@ -63,7 +64,7 @@ CREATE TABLE email_accounts(id uuid PRIMARY KEY,organization_id uuid,email_addre
 CREATE TABLE organization_memberships(id uuid DEFAULT gen_random_uuid(),organization_id uuid,user_id uuid,role text,status text,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());
 CREATE TABLE email_messages(id uuid PRIMARY KEY,organization_id uuid,email_account_id uuid,is_draft boolean,
 to_recipients jsonb,cc_recipients jsonb,bcc_recipients jsonb,subject text,text_body text,
-snippet text,provider_draft_sync_status text,provider_draft_sync_token uuid,provider_draft_last_error text,updated_at timestamptz DEFAULT now());
+snippet text,provider_message_id text,from_email text,provider_draft_sync_status text,provider_draft_sync_token uuid,provider_draft_last_error text,updated_at timestamptz DEFAULT now());
 CREATE TYPE action_status AS ENUM('pending_approval','approved','rejected','completed','failed','expired','executing');
 CREATE TYPE approval_decision AS ENUM('approved','rejected');
 CREATE TABLE email_actions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),organization_id uuid NOT NULL REFERENCES organizations,
@@ -102,6 +103,28 @@ async function draft(){
 }
 
 describe('real PostgreSQL email approval lifecycle',()=>{
+ it('manual forward review contains the actual source body and the supplied note',async()=>{
+  const input=await draft();await db.query("UPDATE aca.email_messages SET is_draft=false,provider_message_id='provider-source',text_body='Original source body' WHERE id=$1",[input.draftId]);
+  const response=await requestApproval(new Request('https://test.local/api/mail/actions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({organizationId:ORG,emailAccountId:ACCOUNT,actionType:'forward_email',messageId:input.draftId,to:['qa@example.com'],bodyText:'Reviewed note'})}));
+  expect(response.status).toBe(201);const result=await response.json();
+  expect(result.action.recipientSnapshot.bodyText).toBe('Reviewed note\n\n---------- Forwarded message ----------\nOriginal source body');
+  expect(transport.forward).not.toHaveBeenCalled();expect(transport.sendDraft).not.toHaveBeenCalled();
+ });
+ it('dispatches a forward from the immutable review even if the provider source later changes',async()=>{
+  transport.discoverCapabilities.mockResolvedValueOnce({drafts:true,send:true,forward:true});
+  const input=await draft();await db.query("UPDATE aca.email_messages SET is_draft=false,provider_message_id='provider-source',text_body='Changed source content' WHERE id=$1",[input.draftId]);
+  const action=await createEmailAction({...input,draftId:null,actionType:'forward_email',recipientSnapshot:{messageId:input.draftId,to:['qa@example.com'],cc:['copy@example.com'],bcc:[],subject:'Fwd: reviewed subject',bodyText:'Exact reviewed forward'}});
+  await decideEmailAction(ORG,action.id,USER,'approved');await executeApprovedEmailAction(action.id,ORG);
+  expect(transport.createDraft).toHaveBeenCalledWith({to:['qa@example.com'],cc:['copy@example.com'],bcc:[],subject:'Fwd: reviewed subject',body_text:'Exact reviewed forward'});
+  expect(transport.sendDraft).toHaveBeenCalledTimes(1);expect(transport.forward).not.toHaveBeenCalled();
+ });
+ it('refuses unsupported forwarding before creating or sending a provider draft',async()=>{
+  const input=await draft();await db.query("UPDATE aca.email_messages SET is_draft=false,provider_message_id='provider-source' WHERE id=$1",[input.draftId]);
+  const action=await createEmailAction({...input,draftId:null,actionType:'forward_email',recipientSnapshot:{messageId:input.draftId,to:['qa@example.com'],subject:'Fwd: test',bodyText:'Reviewed source'}});
+  await decideEmailAction(ORG,action.id,USER,'approved');
+  await expect(executeApprovedEmailAction(action.id,ORG)).rejects.toThrow(/does not support forwarding/);
+  expect(transport.createDraft).not.toHaveBeenCalled();expect(transport.sendDraft).not.toHaveBeenCalled();expect(transport.forward).not.toHaveBeenCalled();
+ });
  it('manual approval persists and appears in the same organization queue',async()=>{
   const input=await draft(); const action=await createEmailAction(input);
   expect(action.status).toBe('pending_approval'); expect(action.draftId).toBe(input.draftId);

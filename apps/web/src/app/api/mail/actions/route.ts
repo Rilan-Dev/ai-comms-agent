@@ -121,7 +121,9 @@ export async function POST(request: Request) {
         cc,
         bcc,
         subject: typeof body?.subject === "string" ? body.subject : actionType === "reply_email" ? `Re: ${String(message.subject ?? "").replace(/^(re:\s*)+/i, "")}` : `Fwd: ${String(message.subject ?? "")}`,
-        bodyText: typeof body?.bodyText === "string" ? body.bodyText : "",
+        bodyText: actionType === "forward_email"
+          ? `${typeof body?.bodyText === "string" && body.bodyText ? body.bodyText + "\n\n" : ""}---------- Forwarded message ----------\n${typeof message.text_body === "string" ? message.text_body : ""}`
+          : typeof body?.bodyText === "string" ? body.bodyText : "",
       };
     }
 
