@@ -14,6 +14,9 @@ import { selectComposeSender, signatureFromProfile, withProfileSignature, type C
 import { parseAssistantChecklistLine } from "@/lib/chat/interactive-replies";
 import { AssistantChecklist, SuggestedNextActions, type EmailWorkflowState } from "./interactive-message-controls";
 import { InlineMailApprovalReview } from "./chat-inline-mail-approval";
+import { parseBusinessMailReport, safeChatLink } from "@/lib/chat/business-report-display";
+import { BusinessMailReport } from "./business-mail-report";
+import { AnswerActions } from "./answer-actions";
 import type { AgentPolicy } from "@ai-comms-agent/shared";
 
 // Defer microphone and vendor transport code until the user requests voice.
@@ -1031,13 +1034,16 @@ function MessageBubble({ role, content, messageId, showNextActions, userRequest,
     );
   }
 
-  // Assistant (Clara) message
+  // Assistant (Clara) message. All historical answers use the same renderer.
+  const businessReport = parseBusinessMailReport(content);
   return (
     <div className="flex justify-start">
       <div className="flex min-w-0 max-w-[90%] items-start gap-2.5">
         <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
         <div className="min-w-0 flex-1 break-words text-sm leading-7">
-          <MarkdownRenderer content={content} disabled={disabled} onPrepare={onPrepare} />
+          {businessReport ? <BusinessMailReport report={businessReport} /> :
+            <MarkdownRenderer content={content} disabled={disabled} onPrepare={onPrepare} />}
+          <AnswerActions content={content} messageId={messageId} />
           {showNextActions ? <SuggestedNextActions answer={content} userRequest={userRequest} messageId={messageId}
             disabled={disabled} onPrepare={onPrepare} emailWorkflowState={emailWorkflowState}
             onComposeEmail={onComposeEmail} onRequestEmailApproval={onRequestEmailApproval} /> : null}
@@ -1071,7 +1077,7 @@ function MarkdownRenderer({ content, disabled, onPrepare }: {
   content: string; disabled: boolean; onPrepare: (prompt: string) => void;
 }) {
   const elements = parseMarkdown(content, disabled, onPrepare);
-  return <div className="space-y-2">{elements}</div>;
+  return <div className="min-w-0 space-y-3 leading-relaxed">{elements}</div>;
 }
 
 function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: string) => void): React.ReactNode[] {
@@ -1169,7 +1175,7 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
         i++;
       }
       elements.push(
-        <blockquote key={key++} className="border-l-4 border-border pl-3 text-muted-foreground">
+        <blockquote key={key++} className="rounded-r-lg border-l-4 border-primary/40 bg-muted/40 px-4 py-2 text-muted-foreground">
           {renderInline(quoteLines.join("\n"))}
         </blockquote>
       );
@@ -1195,8 +1201,10 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
     if (headerMatch) {
       const level = (headerMatch![1] ?? "").length;
       const content = renderInline(headerMatch![2] ?? "");
-      const sizes = ["text-lg font-bold", "text-base font-bold", "text-sm font-bold", "text-sm font-semibold"];
-      elements.push(<p key={key++} className={sizes[level - 1]}>{content}</p>);
+      const sizes = ["text-lg font-bold tracking-tight text-foreground", "text-base font-bold text-foreground", "text-sm font-semibold text-primary", "text-sm font-semibold text-foreground"];
+      elements.push(level <= 2
+        ? <h3 key={key++} className={sizes[level - 1]}>{content}</h3>
+        : <h4 key={key++} className={sizes[level - 1]}>{content}</h4>);
       i++;
       continue;
     }
@@ -1209,7 +1217,7 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
         i++;
       }
       elements.push(
-        <ul key={key++} className="list-disc space-y-1 pl-5">
+        <ul key={key++} className="list-disc space-y-2 pl-5 marker:text-primary">
           {items.map((item, idx) => <li key={idx}>{renderInline(item)}</li>)}
         </ul>
       );
@@ -1224,7 +1232,7 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
         i++;
       }
       elements.push(
-        <ol key={key++} className="list-decimal space-y-1 pl-5">
+        <ol key={key++} className="list-decimal space-y-2 pl-5 marker:font-semibold marker:text-primary">
           {items.map((item, idx) => <li key={idx}>{renderInline(item)}</li>)}
         </ol>
       );
@@ -1254,7 +1262,7 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
       i++;
     }
     if (paraLines.length > 0) {
-      elements.push(<p key={key++} className="leading-7">{renderInline(paraLines!.join("\n"))}</p>);
+      elements.push(<p key={key++} className="whitespace-pre-line break-words leading-7">{renderInline(paraLines.join("\n"))}</p>);
     }
   }
 
@@ -1303,7 +1311,10 @@ function renderInline(text: string): React.ReactNode[] {
     } else if (earliest!.type === "code") {
       parts.push(<code key={key++} className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{match![1]}</code>);
     } else if (earliest!.type === "link") {
-      parts.push(<a key={key++} href={match![2]} target="_blank" rel="noreferrer" className="text-primary underline hover:opacity-80">{match![1]}</a>);
+      const safeHref = safeChatLink(match![2] ?? "");
+      parts.push(safeHref
+        ? <a key={key++} href={safeHref} target="_blank" rel="noopener noreferrer" className="break-all font-medium text-primary underline underline-offset-2 hover:opacity-80">{match![1]}</a>
+        : <span key={key++}>{match![1]}</span>);
     } else if (earliest!.type === "italic") {
       parts.push(<em key={key++} className="italic">{match![1]}</em>);
     }
