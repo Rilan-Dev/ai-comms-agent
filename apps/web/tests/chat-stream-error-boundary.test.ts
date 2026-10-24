@@ -29,7 +29,7 @@ describe("chat streaming errors never disclose server/provider exception details
     expect(auth).toContain("sqlstate");
   });
   it("keeps provider and SQL exception contents out of event-stream error frames", () => {
-    expect(streamCatch).toContain('emit("error", { message: "Chat execution failed.');
+    expect(streamCatch).toContain('emit("error", { message: explicitMessagingAction');
     expect(streamCatch).not.toContain("error instanceof Error ? error.message");
     expect(streamCatch).not.toContain("JSON.stringify(error)");
     expect(streamCatch).toContain("controller.close()");

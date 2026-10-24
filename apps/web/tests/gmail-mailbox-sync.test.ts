@@ -63,7 +63,7 @@ describe("Gmail automatic mailbox synchronization", () => {
     expect(adapter).toContain("parseRawMessage");
     expect(adapter).toContain("parseRawMessage");
     expect(adapter).toContain('subject: parsed.subject');
-    expect(adapter).toContain("is_draft: /drafts/i.test(folderId)");
+    expect(adapter).toContain("is_draft: /\\\\Draft\\b/i.test(flags) || /drafts/i.test(folderId)");
     expect(worker).toContain('candidate.provider === "gmail" ? new GmailAdapter() : candidate.provider === "zoho" ? new ZohoAdapter() : candidate.provider === "microsoft_graph" ? new MicrosoftGraphAdapter() : new ImapSmtpAdapter()');
     expect(worker).toContain("a.provider IN ('gmail','zoho','imap_smtp','microsoft_graph')");
   });

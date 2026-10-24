@@ -42,6 +42,8 @@ function action(row: Row) {
     organizationId: String(row.organization_id),
     agentId: row.agent_id ? String(row.agent_id) : null,
     emailAccountId: String(row.email_account_id),
+    senderAddress: typeof row.sender_address === 'string' ? row.sender_address : null,
+    senderStatus: typeof row.sender_status === 'string' ? row.sender_status : null,
     actionType: String(row.action_type) as EmailActionType,
     status: String(row.status) as EmailActionStatus,
     draftId: row.draft_id ? String(row.draft_id) : null,
@@ -171,11 +173,12 @@ export async function createEmailAction(input: CreateEmailActionInput) {
 
 export async function listPendingEmailActionsForOrganization(organizationId: string) {
   const r = await query<Row>(
-    `SELECT * FROM email_actions
-       WHERE organization_id = $1
-         AND status = 'pending_approval'
-         AND (expires_at IS NULL OR expires_at > now())
-       ORDER BY requested_at ASC`,
+    `SELECT ea.*, a.email_address AS sender_address, a.status AS sender_status FROM email_actions ea
+       LEFT JOIN email_accounts a ON a.id=ea.email_account_id AND a.organization_id=ea.organization_id AND a.deleted_at IS NULL
+       WHERE ea.organization_id = $1
+         AND ea.status = 'pending_approval'
+         AND (ea.expires_at IS NULL OR ea.expires_at > now())
+       ORDER BY ea.requested_at ASC`,
     [organizationId],
   );
   return r.rows.map(action);

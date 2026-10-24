@@ -11,7 +11,9 @@ test("chat refuses SSE completion without any assistant response", () => {
   assert.match(afterGeneration, /if \(!assistantOutput\.trim\(\)\) throw new Error\("AI provider returned an empty chat response\."\)/);
   assert.ok(afterGeneration.indexOf(mustExist) < afterGeneration.indexOf('await appendConversationMessage({'), "Never save blank assistant turn");
   assert.ok(afterGeneration.indexOf(mustExist) < afterGeneration.indexOf('emit("done", { conversationId:'), "Never claim a completed blank answer");
-  assert.match(route, /emit\("error", \{ message: "Chat execution failed/);
+  assert.match(route, /emit\("error", \{ message: explicitMessagingAction/);
+  assert.match(route, /Chat execution failed\. Review drafts and approvals/);
+  assert.match(route, /The read-only response could not be completed/);
 });
 
 test("voice SSE never completes a normal model turn if the provider yields zero tokens", () => {
