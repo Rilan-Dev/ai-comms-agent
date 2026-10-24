@@ -79,6 +79,10 @@ test("Chat shows report cards, copy and client-only Markdown/text exports", () =
   const controls = readFileSync(new URL("../src/app/chat/answer-actions.tsx", import.meta.url), "utf8");
   assert.match(client, /parseBusinessMailReport\(content\)/);
   assert.match(client, /<BusinessMailReport report=\{businessReport\}/);
+  assert.match(client, /onPrepare=\{onPrepare\}/);
+  assert.match(card, /Ask AI for key actions/);
+  assert.match(card, /onPrepare\(/);
+  assert.doesNotMatch(card, /fetch\(|sendDraft\(/);
   assert.match(client, /<AnswerActions content=\{content\}/);
   assert.match(client, /safeChatLink\(match!\[2\]/);
   assert.match(card, /Show next/);
