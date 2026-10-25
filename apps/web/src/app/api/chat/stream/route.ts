@@ -1,3 +1,4 @@
+import {draftPlanningContext} from "@/lib/chat/draft-planning-context";
 import {safeChatFailure} from '@/lib/chat/safe-failure';
 import { NextResponse } from "next/server";
 import { appendConversationMessage, getChatConversation, getOrCreateChatConversation, listChatMessages, PostgresAgentRepository, query } from "@ai-comms-agent/db";
@@ -548,7 +549,8 @@ export async function POST(request: Request) {
     // original query said "mohammed rilan ksa" without the @ symbol. By
     // including the assistant response, the email address gets extracted as
     // a search term and matches from_email with high precision.
-    const recentMessages = safeHistory.filter(
+    const {history:plannerHistory,independentCompose}=draftPlanningContext(safeHistory,content);
+    const recentMessages = plannerHistory.filter(
       m => m.role === "user" || m.role === "assistant",
     )
       .slice(-6)
@@ -558,14 +560,14 @@ export async function POST(request: Request) {
     // satisfy both the actor's read permission and the agent's current
     // registered read-tool allowlist. A bound account by itself is not consent.
     let emailContext: string | null = null;
-    if (subject.permissions.has("email.read") && asksAboutEmail(combinedSearchContext)) {
+    if (!independentCompose && subject.permissions.has("email.read") && asksAboutEmail(combinedSearchContext)) {
       const emailRuntime = await createEmailToolRuntime(organizationId, agentId);
       if (canSupplyAmbientContext("email", subject.permissions, emailRuntime.registry.listForAgent(agentId))) {
         emailContext = await loadEmailContext(organizationId, agentId, combinedSearchContext);
       }
     }
     let whatsappContext: string | null = null;
-    if (subject.permissions.has("whatsapp.read") && asksAboutWhatsApp(combinedSearchContext)) {
+    if (!independentCompose && subject.permissions.has("whatsapp.read") && asksAboutWhatsApp(combinedSearchContext)) {
       const whatsappRuntime = await createWhatsAppToolRuntime(organizationId, agentId);
       if (canSupplyAmbientContext("whatsapp", subject.permissions, whatsappRuntime.registry.listForAgent(agentId))) {
         whatsappContext = await loadWhatsAppContext(organizationId, agentId, combinedSearchContext);
@@ -585,14 +587,14 @@ export async function POST(request: Request) {
     // Previously the email context was placed BEFORE conversation history,
     // which biased the LLM toward dumping the 20-email context rather than
     // recognizing the user's reference to the previous turn's emails.
-    const filteredHistory = safeHistory
+    const filteredHistory = plannerHistory
       .filter((message) => message.role === "user" || message.role === "assistant" || message.role === "system")
       .map((message) => ({ role: message.role as "user" | "assistant" | "system", content: message.content }));
     // A conversation whose recent assistant answers all report access
     // failures keeps failing even after the underlying cause is fixed:
     // the model quotes its own stale history instead of retrying tools.
     // Detect that shape and demand a fresh tool attempt this turn.
-    const staleFailureRecovery = buildStaleFailureRecoveryGuidance(filteredHistory, content);
+    const staleFailureRecovery = independentCompose?null:buildStaleFailureRecoveryGuidance(filteredHistory, content);
     const messages = [
       ...filteredHistory,
       ...(emailContext ? [{ role: "system" as const, content: emailContext }] : []),

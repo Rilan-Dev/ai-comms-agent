@@ -138,7 +138,7 @@ export async function createEmailAction(input: CreateEmailActionInput) {
   if (input.actionType === "send_email" && input.draftId) {
     return withTransaction(async client => {
       const locked = await client.query<Row>(
-        "SELECT * FROM email_messages WHERE id=$1 AND organization_id=$2 AND email_account_id=$3 AND is_draft=true FOR UPDATE",
+        "SELECT id, to_recipients, cc_recipients, bcc_recipients, subject, text_body, thread_id, in_reply_to, references_header FROM email_messages WHERE id=$1 AND organization_id=$2 AND email_account_id=$3 AND is_draft=true FOR UPDATE",
         [input.draftId, input.organizationId, input.emailAccountId],
       );
       const lockedDraft = locked.rows[0];
