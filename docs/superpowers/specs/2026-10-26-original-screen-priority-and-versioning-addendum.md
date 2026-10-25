@@ -1,6 +1,6 @@
 # Original-screen priorities and versioned configuration
 
-Proposed design addendum,26 October2026. This supersedes conflicting parts of the25 October workspace proposal. The owner explicitly requires the original theme and every business function, wants the feedback applied to original code, prefers the existing AI Settings layout, and selected **Save draft → Review changes → Apply/deploy**. Written-design approval remains pending before implementation planning/product changes.
+Owner-approved design addendum,26 October2026. This supersedes conflicting parts of the25 October workspace proposal. The owner explicitly requires the original theme and every business function, wants the feedback applied to original code, prefers the existing AI Settings layout, and selected **Save draft → Review changes → Apply/deploy**. Owner approved the written design and instructed proceeding on26 October2026; implementation plan: docs/superpowers/plans/2026-10-26-original-workspace-implementation.md.
 
 Read with [the eight-comment source audit](../../reviews/2026-10-26-original-screen-feedback-and-control-audit.md) and [the original revised design](2026-10-25-business-owner-workspace-design.md). This addendum defines actual source requirements; prototype clicks and fictional statuses are not functional acceptance.
 
@@ -118,4 +118,4 @@ Required UX outcomes: daily entry shows actionable facts before settings; identi
 
 ## Design check
 
-Fresh builder check returned **nothing important left**. Remaining schema/caller inventories and field-enforcement proof are explicit planning/verification work, not assumptions that the old backend already implements these requirements. Owner review of this final written addendum is the remaining design gate.
+Fresh builder check returned **nothing important left**. Remaining schema/caller inventories and field-enforcement proof are explicit planning/verification work, not assumptions that the old backend already implements these requirements. Owner subsequently approved this written addendum and instructed proceeding; execution follows the linked implementation plan.
