@@ -2,7 +2,7 @@
 
 25 October 2026. Live agent: `240019d9-3fb5-426b-8600-5b858b5a2b51`. This is an observed-screen and source review, not a timed study with business owners. No policy, model, connection, credential or deployment was changed during discovery. The configuration check was run; no communication was sent or approval created.
 
-The owner selected **a business workspace with advanced settings separated**, and requested clickable mockups. Product implementation waits for review of the resulting design. Future conversational configuration/RAG execution is explicitly excluded from this release.
+**Updated owner constraint:** improve UX in place while preserving the current look/theme, all seven tabs and every business function. The earlier selected four-tab/separate-Advanced visual concept is superseded; the observed findings below remain valid. The owner requested clickable mockups. Product implementation waits for review of the resulting design. Future conversational configuration/RAG execution is explicitly excluded from this release.
 
 ## What was inspected
 
@@ -15,10 +15,10 @@ Screenshots are in the task's `outputs/business-owner-ux/`: overview.png, policy
 | Screen | Observed | Likely first-time-owner difficulty | Required direction |
 |---|---|---|---|
 | Overview | Active, version1, slug, empty purpose, setup checklist, identity editor, Configuration and Channels cards | Cannot quickly answer what this assistant does, what needs attention, or where to begin work. An already-live agent still foregrounds setup. Slug/version/persisted identity are implementation concepts. | Daily outcome summary and one primary Ask assistant action; setup only when unfinished; name/purpose edit on demand; technical identity in Advanced. |
-| Versions | Immutable configuration, selected/current states, optional technical JSON, Create version | Why create/deploy a version? Does Save affect the live assistant? No business benefit explains the workflow. | Keep revision history and deploy confirmations in Advanced; describe changes in plain language and label active versus draft accurately. |
+| Versions | Immutable configuration, selected/current states, optional technical JSON, Create version | Why create/deploy a version? Does Save affect the live assistant? No business benefit explains the workflow. | Keep the Versions tab and all its controls; describe changes in plain language and label active versus draft accurately. |
 | Policy | Long prerequisite paragraphs, autonomous switch, email-only presets, technical tools accordion, sender lists and security/rate-limit JSON | Requires understanding user grants versus agent policy versus mailbox assignment. WhatsApp and scheduling are buried inside Advanced. The text repeatedly says human approval while autonomous mode is on. | Business capabilities by Email/WhatsApp/Scheduled tasks, concise effective-access summaries, one sending-mode control, expandable admin detail. Preserve granular controls. |
 | Channels | Persisted mailbox dropdown, role Primary/Read only/Send only, multiple primary assignments, Remove, separate Save channels; one WhatsApp binding | Existing assignments and adding another are mixed. Primary does not explain effective access. Remove looks immediate; saved/unsaved state and effect are unclear. Credential connection lives elsewhere. | Existing account cards first; Add account flow; plain-language access and connection status; preview pending removals before saving, preserving actual API behavior. |
-| AI Settings |16 controls, provider/model overrides, TTS/STT, embeddings/dimension, prompt/temperature/tokens, repeated null/inherit language | A business owner cannot judge these options. Different inheritance states and catalog provenance create reading work. Duplicate voice concepts are hard to distinguish. | Advanced only; compact effective configuration with explicit Use workspace default/custom controls and task-based groups; preserve every override. |
+| AI Settings |16 controls, provider/model overrides, TTS/STT, embeddings/dimension, prompt/temperature/tokens, repeated null/inherit language | A business owner cannot judge these options. Different inheritance states and catalog provenance create reading work. Duplicate voice concepts are hard to distinguish. | Keep the AI Settings tab; compact effective configuration, optional detailed groups and explicit saved/default/custom state; preserve every override. |
 | Test | Configuration-only check reports Pass for records, policy and bindings | Pass may be mistaken for a working provider, imported inbox, voice call or delivered message. It does not check the observed model-catalog mismatch. | Check setup explains its scope; separate saved configuration, connection/sync, provider compatibility and real-task outcomes. No automatic test send. |
 | Activity | agent.tool call, email.search, allow, correlation-like technical concepts; description says configuration activity but list is dominated by tool calls | Cannot tell what happened, whether something was sent, what failed or what needs action. Long logs displace useful configuration events. | Outcome timeline with Needs review/Completed/Failed filters, links to actual actions; technical audit under details and preserved in full. |
 
@@ -71,15 +71,17 @@ Replace persisted, binding, policy and null with purpose-oriented language. Keep
 
 ## Approaches considered
 
-1. **Selected by owner: business workspace with Advanced separated.** Four everyday tabs, guided setup, concise effective state and direct task actions. More UI restructuring; strongest daily benefit.
+1. **Superseded visual concept:** four tabs with Advanced separated. The owner subsequently required preservation of the existing look and every feature; do not implement this navigation redesign.
 2. Guided setup while keeping seven tabs. Smaller change and easier migration, but daily users still face technical navigation and repeated text.
+
+3. **Current owner-directed approach:** improve the existing seven tabs and Chat in place, retaining the exact theme and every business control; add guided choices, purpose explanations and reviewed effects.
 
 A chat-only configuration assistant is not an option for this release: the owner explicitly deferred that future feature.
 
 ## Proposed delivery order
 
 1. Prove/fix mixed-task completion and explicit approval semantics with failing regressions; preserve the existing no-false-success guard.
-2. Business workspace navigation, short copy, effective-state summaries and explicit unsaved-change behavior.
+2. Existing seven-tab navigation and current theme retained; short copy, effective-state summaries and explicit unsaved-change behavior added in place.
 3. Account setup and business capability controls backed by existing APIs; preserve granular Advanced configuration.
 4. Advanced model/version/diagnostic panels and business-readable activity.
 5. Add descriptive metadata/help keys and preview/change-contract conventions as foundations only; no RAG execution or AI permission to configure the platform.

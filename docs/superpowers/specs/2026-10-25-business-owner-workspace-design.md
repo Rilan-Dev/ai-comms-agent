@@ -1,6 +1,6 @@
 # Business-owner assistant workspace
 
-Status: **proposed design, awaiting owner approval; no product implementation authorized by this document alone**. Owner selected the business-workspace approach and requested clickable mockups on25 October2026. Development is the integration branch; main remains untouched. This is a scoped repair/redesign, not closure or advancement of the overall project phase.
+Status: **proposed design, awaiting owner approval; no product implementation authorized by this document alone**. Owner clarified on25 October2026: preserve the current look/theme and every business function; improve usability in place, including interactive Chat. This supersedes the earlier four-tab visual redesign. Development is the integration branch; main remains untouched. This is a scoped in-place usability improvement, not closure or advancement of the overall project phase.
 
 ## Intent and evidence
 
@@ -8,68 +8,71 @@ Let an owner with no platform or technical knowledge understand what their assis
 
 The [screen audit](../../reviews/2026-10-25-business-owner-agent-ux-audit.md) records all seven inspected tabs, specific contradictions, model-catalog mismatch and the failed mixed email/WhatsApp case. Its evidence distinguishes facts, hypotheses and historical acceptance. The present change cannot be called merely cosmetic: the reported workflow and natural approval wording need functional regressions.
 
-The [standalone interactive mockup](../mockups/2026-10-25-business-owner-workspace.html) illustrates the selected approach; its local preview server is temporary. It uses fictional messages and simulated states, calls no production API and is not product implementation. Walkthroughs checked summary-only versus WhatsApp handoff, exact demo recipient/content review, sending-mode before/after and Discard, and320/390 mobile widths. The desktop/mobile visual check informed a shorter Overview with sending mode visible beside the primary action. Advanced controls are illustrated as groups; preservation of their complete real behavior is an implementation acceptance requirement, not a claim about this prototype.
+The [standalone interactive mockup](../mockups/2026-10-25-business-owner-workspace.html) now illustrates the in-place, current-theme approach. It uses the existing globals.css root theme values and fonts, all seven tabs and a current-style Chat example; fictional messages and simulated states call no production API. Walkthroughs checked a summary review, editing with approval blocked until saved, same-summary partial continuation, all seven mobile section options and320/390 document fit. Captured browser errors: none. Advanced field groups remain in their original tabs. Full production function preservation still requires the inventory and implementation regressions below.
 
-## Approaches
+## Binding owner constraints and chosen approach
 
-1. **Owner-selected:** four everyday tabs, guided setup and task shortcuts, with technical configuration in Advanced. More restructuring; removes technical decisions from daily work while preserving controls.
-2. Guided setup with today's seven tabs. Lower initial effort, but daily complexity remains.
+**Preserve the current visual identity and every business function.** Reuse the existing DM Sans/Space Grotesk typography, theme variables, neutral backgrounds, black primary buttons, radius, borders, sidebar, page frame and established components. No replacement theme, marketing-style dashboard, new brand treatment or global navigation redesign. The previous green-accent four-tab concept is superseded, not approved for implementation.
 
-Chat-only configuration is deferred by explicit owner instruction. The mockup is a throwaway interactive concept with clearly labelled example data; its simulated outcomes are not production evidence.
+Keep the original seven agent tabs and routes: Overview, Versions, Policy, Channels, AI Settings, Test and Activity. Improve each in place. Technical options can use clearer grouping/disclosure inside their existing tab, but cannot be deleted, moved out of reach or replaced by a simplified control that cannot express existing settings. This approach follows the owner's explicit correction; another new visual architecture would not meet it.
+
+Simplify interaction rather than functionality: show a short purpose, existing saved state, a choice or validated picker where available, and the consequence before applying a change. Keep precise detail on demand. Reuse known values only when already saved or uniquely determined, and visibly show them. Never infer new permissions, a recipient, provider choice or sending mode to reduce clicks.
 
 ## Scope and non-goals
 
-In scope: agent-detail navigation and forms, setup guidance, effective-state summaries, task handoff into existing Chat/review, business activity presentation, explicit human-review semantics and the mixed unread-summary/WhatsApp approval flow. Address the linked connection handoff only where needed; do not redesign every platform page in this release.
+In scope: in-place agent forms/navigation assistance, concise explanations, guided choices, business-readable outcomes, existing Chat's interactive task/review cards, explicit human-review wording and the mixed unread-summary/WhatsApp approval flow. Address the linked connection handoff only where needed; do not redesign every platform page in this release.
 
-Preserve global Chat, email, WhatsApp and scheduling routes and existing operations. Do not introduce new providers, replace Clara, auto-switch models, weaken permissions, automate external Meta setup, add general-purpose AI configuration tools, execute RAG configuration, ingest secrets into a knowledge base, or create a workflow builder. Existing authentication and provider-owned verification remain necessary.
+Preserve global Chat, email, WhatsApp, scheduling and administrative routes and all operations, provider choices, restrictions and custom configuration. No database reset, feature deletion, new provider, model replacement, theme change, Clara replacement, account-grant expansion, automated external Meta setup or new workflow builder. Future RAG/configuration execution is not built or activated now.
 
-## Business workspace
-
-Four everyday tabs: **Overview**, **Connected accounts**, **What it can do**, **Activity**. A separate labelled **Advanced settings** entry retains AI settings, versions/deployment, diagnostics and technical audit. These are presentation groupings, not new authorization roles. An administrator may also be the business owner; no existing right disappears because Advanced is separated.
-
-Navigation must preserve deep links: existing `?tab=policy` maps to What it can do; `channels` maps to Connected accounts; `ai-settings`, `versions` and `test` open their matching Advanced section. New links persist selected view/section and support Back/Forward. Use semantic tabs and keyboard behavior, or ordinary route navigation with equivalent accessible focus. Mobile shows the four primary choices without requiring an undisclosed horizontal swipe; Advanced remains discoverable. Do not rebuild the global sidebar as part of this scope.
+## In-place screen improvements
 
 ### Overview
 
-Show name, short purpose, actual active/paused state, connected account summary, current sending mode and a primary **Ask your assistant** link to existing Chat with this agent selected. Do not rename the agent or invent a purpose automatically; allow optional direct editing through the current identity endpoint. Slug stays in Advanced.
+Retain the current header, agent name/slug/version/status, Pause control, seven-tab strip, identity editor, configuration information and channel links. Add a compact task entry row using existing button/card styling: Open Chat; Summarize unread emails; Prepare WhatsApp review; Draft an email. Existing saved identity can be edited through the same validated endpoint; purpose remains optional and multiline. Technical slug editing remains accessible with a short explanation.
 
-Useful shortcuts: Summarize unread mail; Prepare a WhatsApp review; Draft an email; Review pending messages when any exist. Use explicit verified counts/status, not synthetic sample activity. Hide setup coaching once complete; when incomplete show only the next prerequisite and a clear action, retaining access to the full checklist. Configuration compatibility warnings remain visible but concise, with an authorized admin repair link.
+Make the setup checklist useful to the user's state: saved accounts, current capability coverage and the next missing prerequisite, not an implication that configuration alone proves delivery. A concise sending-mode line must show the actual saved policy near the task entry. Display compatibility/connection issues with a specific action, without silently changing values. Do not replace the page with a new dashboard or remove its current sections.
 
-Target at most about120 words of primary Overview copy outside optional help and activity data; a usability target, not a reason to omit an important warning. No technical text entry is required for an already configured assistant's daily tasks.
+### Versions
 
-### Connected accounts
+Keep immutable History, current/selected version, technical JSON, Create version, Deploy and lifecycle confirmations. Add short explanations of the effects: creating a version does not activate it; Deploy uses the selected version; ordinary live policy/channel/AI saves retain their existing application timing. Preserve each handler and history record. Avoid generic Confirm when an explicit Deploy selected version or Pause assistant label explains the action.
 
-List current assignments before the Add account action. Each card shows display name/address, provider-friendly label, connected/problem state and effective allowed use. Effective access is calculated from current user grants, saved agent tools, binding role, connected status and provider capabilities; binding alone never says permission granted.
+### Policy
 
-Add account first offers existing connected workspace accounts, then links to the existing supported provider connection flow. Preselect only when there is exactly one eligible option and still show it visibly. Never infer a different mailbox when the user's chosen one is unavailable. Explain external account-owner/administrator steps at the point needed; do not promise one-click Meta setup or implement credential delegation.
+Retain existing email presets, all22 current registered tool controls, sender allow/block lists, custom security policy JSON, rate limits, autonomous policy and Save/consent paths. Add a business-readable grouped summary and ordinary WhatsApp/scheduling guidance inside this tab; detailed controls stay here under their existing Advanced disclosures. Groups with partial selections display Custom; do not collapse a partial policy into a broader preset.
 
-Retain multiple email assignments and exactly one WhatsApp assignment. Label roles by their consequence while retaining original values. Do not invent a single Primary selection when the backend currently allows two primary bindings. No new default-sender persistence is introduced; ambiguous outgoing mailbox selection still asks or uses an existing explicit selection.
+Use concise sending descriptions consistent with the actual saved autonomous mode. Current autonomous_send=true stays true until an authorized user intentionally changes it. Explicit current requests for human review remain pending under either policy. A business selector is only another view of that same policy, never a second conflicting setting.
 
-Remove is labelled **Remove from this assistant**. Show affected access and stage the removal until the section's explicit Save/Review action. Do not delete provider accounts or messages. Preserve unsaved edits when inspecting details; guard navigation away with meaningful Save/Discard/Stay behavior.
+Before saving, show exact additions/removals, mode changes and affected account scope, then use existing administrator authorization and server validation. Preserve untouched tools and unknown/custom keys. A capability selection cannot grant the signed-in user a new workspace permission. Section-local dirty/Discard/Review behavior must preserve saved values and unrelated edits.
 
-### What it can do
+### Channels
 
-Expose Email, WhatsApp and Scheduled tasks as ordinary capability groups. Email covers read/search, drafts/reply/forward and requests for sending. WhatsApp covers reading and preparation of messages. Scheduling covers its existing read/create/update/archive controls. Detailed registered tools remain available in Advanced.
+Retain existing email and WhatsApp assignments, all three email role values, multiple primary assignments, exactly one WhatsApp binding, add/remove and Save channels. Explain current effective use in one short line; account binding alone never means access granted. Display current cards before additional selection controls, using the existing card/list style.
 
-A capability group with only some tools enabled displays **Custom** rather than falsely on/off. Opening it reveals the selected subset. Simple enable/disable choices map explicitly to known registered tools and preserve untouched tools, unknown custom policy keys, sender rules and rate limits. Never turn a partial/custom policy into a broad preset silently.
+Prefer existing connected-account choices before opening provider setup. Preselect a uniquely eligible account only while showing it visibly; retain explicit choice when ambiguous. Do not create a new default-sender policy or switch away from an unavailable selected mailbox. Keep every supported provider flow and its real external-owner/credential steps.
 
-One sending-mode choice: **Review before sending** or **Send automatically**. Initialize from saved policy; existing autonomous_send=true stays true until an authorized user deliberately changes it. State that explicit current requests for human approval remain pending in either mode. Remove contradictory never-auto-send copy from presets/readiness/tool descriptions when the actual policy permits it.
+Label removal by its effect, stage/preview it before save, and explain it removes the assistant's assignment rather than deleting mail. Retain unsaved changes during inspection; navigation away offers Save/Discard/Stay. No hidden autosave or invented cross-form transaction.
 
-Changes do not autosave. Show a section-local dirty bar with Discard and **Review changes**. Review identifies exact permissions added/removed, sending-mode change, relevant affected accounts and any higher-risk effect. Apply through the existing authorized policy endpoint, with current server checks and meaningful confirmation. User-role grants are neither offered nor granted by these capability controls.
+### AI Settings
+
+Retain all16 controls and their existing validation, providers, defaults/overrides, model catalogs and save path. Group them within this same tab into Chat, Voice replies, Live voice, Knowledge indexing and Response behavior. Each input has a short purpose, an explicit saved/default/custom state and optional detail. Use supported provider/model/voice choices when available, with the existing explicit-value path retained where a catalog is unavailable.
+
+Do not auto-replace unsupported saved model values, clear fields during catalog loading/failure, rewrite embeddings/dimensions, alter prompts or change voice behavior. Diagnose aliases and capabilities before proposing a supported model change. Preserve the distinction between inherit/null, blank editing and explicit values; unrelated saves must not reset overrides.
+
+### Test
+
+Keep the existing configuration test. State concisely that it checks saved configuration and is not a live send, inbox synchronization or voice test. Separate saved-state checks, connection/sync, model compatibility and actual task outcomes. Add a shortcut to try an explicitly chosen task in existing Chat. Any real communication test still requires its current authorization and applicable approval; no automatic send is introduced.
 
 ### Activity
 
-Present host-confirmed actions in business language, grouped by operation/turn where reliable correlation exists. Filters: All, Needs review, Completed, Failed; technical audit and configuration-only filtering remain reachable. Distinguish draft saved, pending review, queued, provider accepted, delivered, read, rejected, failed and uncertain. An allowed tool call is not a successful business outcome.
+Keep all existing audit data and filters/routes. Add readable outcome labels, grouping where supported by host correlation, Needs review/Completed/Failed filters and links to the actual draft, approval, message or scheduled task. Preserve raw technical details under expandable inspection in this tab. Allowed tool calls are not delivery receipts. Queued, provider accepted, delivered, read, rejected, failed and uncertain stay distinct; missing outcome evidence is labelled honestly.
 
-Link each item to the actual review/message/draft/schedule. If only an audit event exists, label it as activity with limited outcome information; never reconstruct delivery from the model's answer. Use stable operation identifiers internally and show readable task labels. Retain original detailed records, pagination/access boundaries and timestamps.
+## Interactive Chat within the current look
 
-### Advanced settings
+Keep the current Chat page, black user bubbles, assistant presentation, agent picker, composer, voice entry, conversation history and existing inline draft controls. Add task chips, validated account/scope choices and inline result/review cards using the same component styles. Existing free-text and voice input continue to work. The goal is fewer prompts to type and fewer settings to remember, not a new chat theme or a separate execution path.
 
-- Identity: name, purpose, slug; existing identity validation.
-- AI: all16 existing fields, grouped into Chat, Voice replies, Live voice, Knowledge indexing and Response behavior. Each override explicitly chooses Use workspace default or Customize; show the effective value and provenance. Preserve null versus explicit values, unsupported saved values and unchanged custom fields. Catalog failures/loading must not clear values. Explain compatibility issues with a repair action; investigate aliases/capabilities before any supported replacement is proposed. Never automatically rewrite embedding dimensions or voice choices.
-- Versions: immutable history, selected versus active configuration, technical JSON, Create version, explicit deployment confirmation and Pause. Editing a form must not suggest that a version was activated. Clarify which current settings already apply immediately through existing APIs.
-- Diagnostics: separate saved configuration, current connection/sync, provider compatibility and real task evidence. Existing configuration-only checks remain clearly scoped. No automatic communication test or provider mutation. A real send test follows the existing explicit review process.
-- Detailed permissions, sender lists, security policy and rate-limit JSON remain validated and recoverable.
+Show already-known agent, bound account and explicit recipient as editable context; ask only for missing or genuinely ambiguous information. Offer Summarize unread emails, Prepare WhatsApp review and Draft an email as direct task entry. A proposed selection never expands the current user's authority.
+
+Present safe actual stage progress, the returned summary, its displayed scope and the exact outbound review. Approval, rejection, editing/reapproval, cancellation and partial-task continuation remain explicit. Do not make the user retype account IDs, recreate the summary or copy it manually between pages. Keep detailed source/coverage facts expandable and available. Configuration-help shortcuts can explain or open existing settings; they cannot perform the deferred AI/RAG configuration feature.
 
 ## Mixed email-summary to WhatsApp review
 
@@ -114,29 +117,31 @@ Development was fast-forwarded during discovery through concurrent3f1f5a39. Pres
 
 No destructive migration or data rewrite is expected. If implementation discovers a schema requirement, document it for review before adding it. Tenant boundaries, roles, current tool allowlists/bindings, provider capabilities, approval snapshots/expiry/revocation, sender restrictions, limits, Meta rules and uncertain outcomes remain release gates.
 
-## Existing-function location map
+## Existing-function preservation map
 
-| Existing capability | New location |
+| Existing capability | Retained location and improvement |
 |---|---|
-| Identity/name/purpose | Overview edit; technical slug in Advanced identity |
-| Version history/config JSON/create/deploy | Advanced → Versions; status surfaced on Overview |
-| Pause/resume/deployment confirmation | Explicit assistant control and Advanced lifecycle; no hidden side effect |
-| Email presets/individual tools | What it can do → Email; granular controls in Advanced |
-| WhatsApp/scheduler tools | First-class groups in What it can do; individual controls retained |
-| Autonomous policy | Sending mode with explicit review/apply |
-| Sender rules/custom security/rate limits | Advanced restrictions, preserving exact stored values |
-| Email/WhatsApp assignment and role/removal | Connected accounts and reviewed section save |
-|16 AI overrides, inheritance/catalog status | Advanced → AI, grouped without dropping any field |
-| Configuration test | Advanced → Diagnostics, scope visible before running |
-| Audit/activity | Business Activity with technical detail access |
-| Existing Chat/mail/WhatsApp/schedules/review routes | Preserved and linked with current agent/action context |
+| Name, multiline purpose, slug | Overview; concise purpose labels, all editing/validation retained |
+| Immutable versions, JSON, create/deploy | Versions; clearer active/selected/effect wording |
+| Pause and lifecycle confirmations | Existing header/lifecycle controls, unchanged authorization |
+| Presets,22 tools, partial/custom selection | Policy; guided summaries plus full existing granular controls |
+| Autonomous sending | Policy; one saved setting with clear consequences and human-review override |
+| Sender rules, custom policy, rate limits | Policy Advanced sections; all fields/keys preserved |
+| Email/WhatsApp binding, roles, removal/save | Channels; known selections and reviewed effects |
+| All16 AI overrides, catalogs and inheritance | AI Settings; grouped explanations and existing custom paths |
+| Configuration test | Test; accurate scope and task handoff |
+| Original events/audit metadata | Activity; readable outcomes plus full technical inspection |
+| Chat/voice/history/inline drafts/reviews | Existing Chat, with optional interactive choices and cards |
+| Mail/WhatsApp/schedules/routine previews | Existing pages, functions and distinct execution/consent gates |
+
+Create a pre-change inventory of controls, API payloads, persisted fields, side effects and authorization checks. Each must map to an implemented, reachable post-change control and pass preservation checks. Inventory unknown/custom values as well as the current defaults. A visual simplification cannot mark a feature obsolete.
 
 ## Implementation sequence after approval
 
 1. RED→GREEN regressions for exact mixed prompt, noun-form review intent, no-matches/partial outcomes and retry safety; correct the functional gaps first.
-2. Agent workspace shell, routing/deep-link compatibility, effective state and concise copy.
+2. Preserve the current shell/theme/seven tabs; add in-place guidance, effective state and concise copy.
 3. Connected-account guidance, capability/custom-state mapping, dirty-state and consequence previews.
-4. Advanced groups and business activity; preserve all existing settings and data.
+4. Improve grouping inside existing AI/Policy/Versions/Test tabs and Activity outcomes; preserve every control and stored setting.
 5. Minimal reusable control/help metadata and future-boundary documentation; no AI configuration/RAG behavior.
 6. Real-browser keyboard/mobile/task journeys and existing security regression suite; full tests/types/lint/build and guarded Development deployment with unchanged infrastructure safeguards.
 
@@ -144,10 +149,12 @@ No destructive migration or data rewrite is expected. If implementation discover
 
 Automated: exact owner mixed prompt under autonomous=true stays pending/noqueue; quoted/negated instructions; explicit mailbox/all-mailbox ordering and counts; no/fewer than3 matches; unread unchanged; denied/revoked access; closed window/templates; provider failure; duplicate/cancelled/uncertain retry; snapshot edit/reapproval; no false saved/sent claims. Test typed and guided entry against the same host behavior.
 
-UI: a first-time owner can identify purpose, actual sending mode, connections and next action without opening Advanced; daily task does not require tool IDs/slug/JSON. All four tabs discoverable at320/390px; no document overflow; keyboard/focus/dialog/error/save announcements work. All16 AI fields,22 current registered tools and unknown/custom settings round-trip without silent loss. Partial/custom capabilities remain identifiable. No model/account/grant changes on tab navigation, loading failure, help or readiness checks.
+UI: unchanged production theme tokens, typography, sidebar and component styling are verified visually against the baseline; no feature or configuration control is removed. A first-time owner can identify purpose, actual sending mode, connections and next action without opening Advanced; daily task does not require tool IDs/slug/JSON. All seven existing tabs discoverable at320/390px, with an explicit mobile section picker or navigation affordance; no document overflow; keyboard/focus/dialog/error/save announcements work. All16 AI fields,22 current registered tools and unknown/custom settings round-trip without silent loss. Partial/custom capabilities remain identifiable. No model/account/grant changes on tab navigation, loading failure, help or readiness checks.
 
 Live acceptance uses labelled harmless owner-recipient fixtures and explicit review only. Prior test evidence is a baseline, not proof of the new mixed-task flow. Confirm actual persisted pending body/recipient, no queued message before approval and real provider result after an authorized single approval. Never manufacture inbound data, receipts or unrestricted test users. Preserve existing independent email/threading and security coverage.
 
-Author's proposed choices for owner review: four tabs; Advanced separation without new roles; all assigned readable mailboxes/3 total for unspecified latest3 unread; section-local explicit save; visible existing automatic mode retained; existing platform APIs and design system retained. Layout/copy may be refined in the mockup review. None of these proposals authorizes future AI configuration.
+Author's proposed choices for owner review: current theme, current shell and all seven tabs retained; in-place guidance without new roles; all assigned readable mailboxes/3 total for unspecified latest3 unread; section-local explicit save; visible existing automatic mode retained; existing platform APIs and design system retained. Layout/copy may be refined in the mockup review. None of these proposals authorizes future AI configuration.
 
 Builder check: one important ambiguity concerned continuing an incomplete task after refresh. Resolved above as an author-proposed exact15-minute checkpoint with current-access checks, explicit fresh-summary action and no silent reread. No other important questions were returned. Owner approval of this written design remains required before writing the implementation plan or changing product behavior.
+
+Revised builder check after the owner’s theme/function-preservation clarification: nothing important left. Review the revised in-place concept; the previous visual redesign is superseded. No production theme, functionality or configuration was changed during this design revision.
