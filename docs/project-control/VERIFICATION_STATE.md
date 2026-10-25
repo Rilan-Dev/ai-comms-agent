@@ -2002,3 +2002,7 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **PASS narrow:** Current GitHub fetched source 16/16 structural contracts covering strict options, priority/WhatsApp warnings, no side-effect route, old timing tests compatible, in-app vs elapsed choices. Isolated local Node 22 mirrored helper 5/5 behavior tests PASS and standalone TypeScript strict compile PASS.
 - **NOT RUN:** Actual committed six-case Node tests, web full typecheck, Next build, Vitest, authorized browser/mobile accessibility, PostgreSQL, provider, CI/Vercel, activated C3, recurring execution or WhatsApp delivery.
 - **Next:** `node --experimental-strip-types --test apps/web/tests/routine-digest-planning-preview.test.mjs apps/web/tests/routine-timing-preview.test.mjs`; `pnpm --filter @ai-comms-agent/web typecheck`; verify no mutating endpoint called and no authorization inferred from GET selections. Refer to `sessions/DEV01-DIGEST-PLAN-PREVIEW-20261025.md`. Phase 4 unchanged.
+
+### DEV01-DIGEST-PLAN-PREVIEW-20261025 — additional calendar-day caution
+- RED `41f5e432` and GREEN `c3341dc5` add a seventh committed test and explicit interval/local-calendar-day warning. Re-fetched source proves warning rendered conditionally; no action creation, no output delivered.
+- **NOT RUN** the exact committed seventh test, repository typecheck, authenticated browser or DB. Earlier 16/16 structural and 5/5 isolated helper baseline remains valid and narrower than runtime acceptance.
