@@ -1,3 +1,4 @@
+import {isDraftOnlyRequest,draftOnlyToolAllowed,authorizeDraftOnly} from "@/lib/chat/draft-only-scope";
 import {draftPlanningContext} from "@/lib/chat/draft-planning-context";
 import {safeChatFailure} from '@/lib/chat/safe-failure';
 import { NextResponse } from "next/server";
@@ -284,6 +285,7 @@ async function runInteractiveHostToolLoop(args: {
   kbId: string;
   messages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
   toolContext: ToolContext;
+  draftOnly?:boolean;
   onSafeReadOnlyFinal?: (completedHistory: ToolChatMessage[]) => Promise<string>;
   onProgress?: (phase: "planning_tools" | "reading_email" | "reading_whatsapp" | "checking_permissions" | "denied") => void;
 }): Promise<HostToolTurnResult | null> {
@@ -295,11 +297,15 @@ async function runInteractiveHostToolLoop(args: {
     createWhatsAppToolRuntime(args.organizationId, args.agentId),
     createSchedulesToolRuntime(args.organizationId, args.agentId),
   ]);
+  if(args.draftOnly){
+    for(const runtime of [emailRuntime,whatsappRuntime,schedulesRuntime])runtime.authorize=authorizeDraftOnly(runtime.authorize);
+  }
   const visibleTools = [
     ...emailRuntime.registry.listForAgent(args.agentId),
     ...whatsappRuntime.registry.listForAgent(args.agentId),
     ...schedulesRuntime.registry.listForAgent(args.agentId),
-  ].filter((tool) => args.toolContext.auth_subject.permissions.includes(tool.required_permission));
+  ].filter((tool) => args.toolContext.auth_subject.permissions.includes(tool.required_permission))
+    .filter(tool=>!args.draftOnly||draftOnlyToolAllowed(tool));
   const definitions: ChatToolDefinition[] = visibleTools
     .map((tool) => ({ name: tool.name, description: tool.description, parameters: tool.input_schema }));
   if (definitions.length === 0) return null;
@@ -655,6 +661,7 @@ export async function POST(request: Request) {
                   name: subject.user.name, email: subject.user.email,
                 }) }, ...messages],
                 toolContext: trustedToolContext,
+                draftOnly:isDraftOnlyRequest(content),
                 onProgress: (phase) => emit("progress", { phase }),
                 onSafeReadOnlyFinal: explicitMessagingAction ? undefined : async (completedHistory) => {
                   emit("status", { phase: "generating" });
