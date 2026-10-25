@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {getActiveAgentConfiguration,createAgentConfigurationDraft,getAgentConfigurationHistory,reviewAgentConfigurationRevision,restoreAgentConfigurationRevision} from '../../../packages/db/src/agent/configuration-revisions';
 import {AGENT_AI_CONFIGURATION_COLUMNS} from '../../../packages/shared/src/agent/configuration-revision';
 import {closePostgresPool} from '../../../packages/db/src/client';
+import {saveAgentConfigurationPatch} from '../../../packages/db/src/agent/configuration-drafts';
 const url=process.env.ACA_TEST_DATABASE_URL;const parsed=url?new URL(url):null;
 if(!parsed||!['127.0.0.1','localhost'].includes(parsed.hostname)||parsed.pathname!=='/aca_repair_test')throw Error('Dedicated loopback aca_repair_test database required');
 process.env.DATABASE_URL=url;process.env.DATABASE_SSL='false';
@@ -12,22 +13,52 @@ const org='10000000-0000-4000-8000-000000000001',other='10000000-0000-4000-8000-
 const scope={organizationId:org,agentId:agent,userId:user};
 beforeAll(async()=>{await db.connect();const columns=Object.values(AGENT_AI_CONFIGURATION_COLUMNS).map(column=>`${column} ${['embedding_dimension','temperature_override','max_tokens_override'].includes(column)?'numeric':'text'}`).join(',');await db.query(`
  DROP SCHEMA IF EXISTS aca CASCADE;CREATE SCHEMA aca;SET search_path=aca,public;
- CREATE TABLE organizations(id uuid PRIMARY KEY);CREATE TABLE users(id uuid PRIMARY KEY);
+ CREATE TABLE organizations(id uuid PRIMARY KEY);CREATE TABLE users(id uuid PRIMARY KEY,status text NOT NULL DEFAULT 'active');CREATE TABLE organization_memberships(organization_id uuid,user_id uuid,role text,status text,PRIMARY KEY(organization_id,user_id));
  CREATE TABLE agents(id uuid PRIMARY KEY,organization_id uuid REFERENCES organizations(id),name text,slug text,description text,status text,current_version_id uuid,current_deployment_id uuid,created_by uuid,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now(),voice_provider text,voice_model text,voice_id text,${columns});
  CREATE TABLE agent_versions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),agent_id uuid,version_number int,config jsonb,created_by uuid,created_at timestamptz DEFAULT now(),voice_provider text,voice_model text,voice_id text);
  CREATE TABLE agent_policies(agent_id uuid PRIMARY KEY,security_policy jsonb,allowed_tools text[],allowed_senders text[],blocked_senders text[],rate_limits jsonb,updated_at timestamptz DEFAULT now());
  CREATE TABLE email_accounts(id uuid PRIMARY KEY,organization_id uuid,status text,capabilities jsonb,deleted_at timestamptz);
- CREATE TABLE agent_email_accounts(agent_id uuid,email_account_id uuid,role text);
+ CREATE TABLE agent_email_accounts(agent_id uuid,email_account_id uuid,role text,UNIQUE(agent_id,email_account_id));
  CREATE TABLE whatsapp_accounts(id uuid PRIMARY KEY,organization_id uuid,status text,deleted_at timestamptz);
- CREATE TABLE agent_whatsapp_accounts(agent_id uuid,whatsapp_account_id uuid);
+ CREATE TABLE agent_whatsapp_accounts(agent_id uuid PRIMARY KEY,whatsapp_account_id uuid);
  CREATE TABLE agent_ai_settings(agent_id uuid PRIMARY KEY,organization_id uuid,ai_provider_config_id uuid,model_overrides jsonb DEFAULT '{}',feature_flags jsonb DEFAULT '{}',updated_at timestamptz DEFAULT now(),${columns});
  CREATE TABLE organization_ai_runtime_settings(organization_id uuid PRIMARY KEY,default_provider text,temperature numeric,updated_at timestamptz DEFAULT now());
  CREATE TABLE ai_provider_configs(id uuid PRIMARY KEY,organization_id uuid,provider text,purpose text,model text,enabled boolean,updated_at timestamptz DEFAULT now());
  CREATE FUNCTION can_manage_organization(uuid) RETURNS boolean LANGUAGE sql AS 'SELECT false';
- `);await db.query(readFileSync(new URL('../../../supabase/migrations/0056_agent_configuration_revisions.sql',import.meta.url),'utf8'));});
-beforeEach(async()=>{await db.query('TRUNCATE aca.organizations,aca.users,aca.agents,aca.agent_versions,aca.agent_policies,aca.email_accounts,aca.agent_email_accounts,aca.whatsapp_accounts,aca.agent_whatsapp_accounts,aca.agent_ai_settings,aca.organization_ai_runtime_settings,aca.ai_provider_configs,aca.agent_configuration_revisions,aca.agent_configuration_heads,aca.agent_configuration_reviews,aca.agent_configuration_applications CASCADE');await db.query('INSERT INTO aca.organizations VALUES($1),($2)',[org,other]);await db.query('INSERT INTO aca.users VALUES($1)',[user]);await db.query(`INSERT INTO aca.agents(id,organization_id,name,slug,status,current_version_id,voice_id) VALUES($1,$2,'Assistant','assistant','active',$3,'legacy-voice')`,[agent,org,legacy]);await db.query(`INSERT INTO aca.agent_versions(id,agent_id,version_number,config,voice_model) VALUES($1,$2,1,'{"business":"preserved"}','legacy-model')`,[legacy,agent]);await db.query(`INSERT INTO aca.agent_policies VALUES($1,'{"autonomous_send":true,"custom":{"retained":42},"api_key":"must-never-appear-in-history"}',ARRAY['email.search','custom.tool'],ARRAY['literal, entry'],ARRAY[]::text[],'{"customLimit":7}',now())`,[agent]);await db.query(`INSERT INTO aca.email_accounts VALUES($1,$2,'connected','{"read":true}',NULL)`,[mail,org]);await db.query(`INSERT INTO aca.agent_email_accounts VALUES($1,$2,'primary')`,[agent,mail]);await db.query(`INSERT INTO aca.agent_ai_settings(agent_id,organization_id,chat_model,model_overrides,feature_flags) VALUES($1,$2,'saved-custom-model','{"legacy":"retained"}','{"legacyFlag":true}')`,[agent,org]);await db.query(`INSERT INTO aca.organization_ai_runtime_settings(organization_id,default_provider,temperature) VALUES($1,'openai',0.7)`,[org]);});
+ `);await db.query(readFileSync(new URL('../../../supabase/migrations/0056_agent_configuration_revisions.sql',import.meta.url),'utf8'));await db.query(readFileSync(new URL('../../../supabase/migrations/0057_agent_configuration_review_context.sql',import.meta.url),'utf8'));});
+beforeEach(async()=>{await db.query('TRUNCATE aca.organization_memberships,aca.agent_configuration_draft_heads,aca.organizations,aca.users,aca.agents,aca.agent_versions,aca.agent_policies,aca.email_accounts,aca.agent_email_accounts,aca.whatsapp_accounts,aca.agent_whatsapp_accounts,aca.agent_ai_settings,aca.organization_ai_runtime_settings,aca.ai_provider_configs,aca.agent_configuration_revisions,aca.agent_configuration_heads,aca.agent_configuration_reviews,aca.agent_configuration_applications CASCADE');await db.query('INSERT INTO aca.organizations VALUES($1),($2)',[org,other]);await db.query('INSERT INTO aca.users(id) VALUES($1)',[user]);await db.query(`INSERT INTO aca.organization_memberships VALUES($1,$2,'owner','active')`,[org,user]);await db.query(`INSERT INTO aca.agents(id,organization_id,name,slug,status,current_version_id,voice_id) VALUES($1,$2,'Assistant','assistant','active',$3,'legacy-voice')`,[agent,org,legacy]);await db.query(`INSERT INTO aca.agent_versions(id,agent_id,version_number,config,voice_model) VALUES($1,$2,1,'{"business":"preserved"}','legacy-model')`,[legacy,agent]);await db.query(`INSERT INTO aca.agent_policies VALUES($1,'{"autonomous_send":true,"custom":{"retained":42},"api_key":"must-never-appear-in-history"}',ARRAY['email.search','custom.tool'],ARRAY['literal, entry'],ARRAY[]::text[],'{"customLimit":7}',now())`,[agent]);await db.query(`INSERT INTO aca.email_accounts VALUES($1,$2,'connected','{"read":true}',NULL)`,[mail,org]);await db.query(`INSERT INTO aca.agent_email_accounts VALUES($1,$2,'primary')`,[agent,mail]);await db.query(`INSERT INTO aca.agent_ai_settings(agent_id,organization_id,chat_model,model_overrides,feature_flags) VALUES($1,$2,'saved-custom-model','{"legacy":"retained"}','{"legacyFlag":true}')`,[agent,org]);await db.query(`INSERT INTO aca.organization_ai_runtime_settings(organization_id,default_provider,temperature) VALUES($1,'openai',0.7)`,[org]);});
 afterAll(async()=>{await closePostgresPool();await db.query('DROP SCHEMA IF EXISTS aca CASCADE');await db.end();});
 describe('immutable complete configuration candidates on the real database',()=>{
+ it('combines identity and partial AI edits in one recoverable working draft without clearing unrelated values',async()=>{
+  const active=(await getActiveAgentConfiguration(scope))!;
+  const first=await saveAgentConfigurationPatch(scope,{identity:{name:'Business helper'}},{activeRevisionId:active.id,draftRevisionId:null});
+  const second=await saveAgentConfigurationPatch(scope,{ai:{temperatureOverride:0.4}},{activeRevisionId:active.id,draftRevisionId:first.id});
+  expect(second.parentDraftId).toBe(first.id);expect(second.snapshot.identity.name).toBe('Business helper');
+  expect(second.snapshot.ai?.chatModel).toBe('saved-custom-model');expect(second.snapshot.ai?.temperatureOverride).toBe(0.4);
+  expect((await getActiveAgentConfiguration(scope))?.id).toBe(active.id);
+  expect((await db.query('SELECT draft_revision_id FROM aca.agent_configuration_draft_heads')).rows[0].draft_revision_id).toBe(second.id);
+ });
+ it('rejects a second tab saving against an out-of-date working draft',async()=>{
+  const active=(await getActiveAgentConfiguration(scope))!;
+  const first=await saveAgentConfigurationPatch(scope,{identity:{name:'First'}},{activeRevisionId:active.id,draftRevisionId:null});
+  await expect(saveAgentConfigurationPatch(scope,{identity:{name:'Lost edit'}},{activeRevisionId:active.id,draftRevisionId:null})).rejects.toThrow('changed');
+  expect((await db.query('SELECT draft_revision_id FROM aca.agent_configuration_draft_heads')).rows[0].draft_revision_id).toBe(first.id);
+ });
+ it('rejects unknown patch keys instead of silently discarding configuration intent',async()=>{
+  const active=(await getActiveAgentConfiguration(scope))!;
+  await expect(saveAgentConfigurationPatch(scope,{surprise:true} as never,{activeRevisionId:active.id,draftRevisionId:null})).rejects.toThrow();
+  expect((await db.query('SELECT count(*)::int n FROM aca.agent_configuration_revisions')).rows[0].n).toBe(1);
+ });
+ it('restoring an older candidate retains later protected fields in the exact review snapshot',async()=>{
+  const active=(await getActiveAgentConfiguration(scope))!;
+  const earlier=structuredClone(active.snapshot);earlier.identity.name='Earlier name';
+  const saved=await createAgentConfigurationDraft(scope,earlier,active.id);
+  await db.query(`UPDATE aca.agent_policies SET security_policy=security_policy || '{"refresh_token":"later-private-value"}'::jsonb WHERE agent_id=$1`,[agent]);
+  const restored=await restoreAgentConfigurationRevision(scope,saved.id,active.id);
+  expect(restored.snapshot.policy!.securityPolicy).toHaveProperty('refresh_token');
+  expect(JSON.stringify(restored)).not.toContain('later-private-value');
+  expect(restored.snapshot.identity.name).toBe('Earlier name');
+ });
  it('serializes simultaneous first loads into one baseline and gives drafts distinct immutable ordinals',async()=>{const [first,second]=await Promise.all([getActiveAgentConfiguration(scope),getActiveAgentConfiguration(scope)]);expect(first?.id).toBe(second?.id);const a=structuredClone(first!.snapshot),b=structuredClone(first!.snapshot);a.identity.name='First edit';b.identity.name='Second edit';const drafts=await Promise.all([createAgentConfigurationDraft(scope,a,first!.id),createAgentConfigurationDraft(scope,b,first!.id)]);expect(new Set(drafts.map(draft=>draft.revisionNumber)).size).toBe(2);expect((await getActiveAgentConfiguration(scope))?.id).toBe(first!.id);});
  it('preserves current secret storage while capture and history contain only references',async()=>{await getActiveAgentConfiguration(scope);expect((await db.query('SELECT security_policy FROM aca.agent_policies')).rows[0].security_policy.api_key).toBe('must-never-appear-in-history');expect(JSON.stringify(await getAgentConfigurationHistory(scope,{policy:true,ai:true,legacy:true}))).not.toContain('must-never-appear');});
  it('permits existing parent deletion and FK author cleanup without allowing direct history edits',async()=>{const active=(await getActiveAgentConfiguration(scope))!;await expect(db.query('UPDATE aca.agent_configuration_revisions SET created_by=NULL WHERE id=$1',[active.id])).rejects.toThrow();await db.query('DELETE FROM aca.users WHERE id=$1',[user]);expect((await db.query('SELECT created_by FROM aca.agent_configuration_revisions WHERE id=$1',[active.id])).rows[0].created_by).toBeNull();await db.query('DELETE FROM aca.agents WHERE id=$1',[agent]);expect((await db.query('SELECT count(*)::int n FROM aca.agent_configuration_revisions')).rows[0].n).toBe(0);});

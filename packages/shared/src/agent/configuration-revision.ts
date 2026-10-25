@@ -99,7 +99,22 @@ export function restoreProtectedConfigurationValues(snapshot:AgentConfigurationS
   if(object(value))return Object.fromEntries(Object.entries(value).map(([key,entry])=>[key,visit(entry,object(now)&&Object.hasOwn(now,key)?now[key]:undefined)]).filter(([,entry])=>entry!==undefined));
   return value;
  }
- return visit(snapshot,current) as AgentConfigurationSnapshotV1;
+ const restored=visit(snapshot,current) as AgentConfigurationSnapshotV1;
+ function keepCurrentProtected(value:unknown,path:string[]){
+  if(secret(value,path.at(-1)??'')&&!protectedMarker(value)){
+   let parent:unknown=restored;
+   for(const part of path.slice(0,-1)){
+    if(!parent||typeof parent!=='object'||!Object.hasOwn(parent,part))throw Error('Protected current settings cannot be removed by restoring history. Use the secure editor.');
+    parent=(parent as JsonObject)[part];
+   }
+   if(!parent||typeof parent!=='object')throw Error('Protected current settings must remain in secure configuration.');
+   Object.defineProperty(parent,path.at(-1)!,{value,writable:true,enumerable:true,configurable:true});return;
+  }
+  if(Array.isArray(value))value.forEach((entry,index)=>keepCurrentProtected(entry,[...path,String(index)]));
+  else if(object(value))for(const [key,entry] of Object.entries(value))keepCurrentProtected(entry,[...path,key]);
+ }
+ keepCurrentProtected(current,[]);
+ return restored;
 }
 
 function stable(value:unknown):string{
