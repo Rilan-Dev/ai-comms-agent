@@ -1,3 +1,4 @@
+import {whatsAppPlanningContext,authorizeWhatsAppOnly} from "@/lib/chat/whatsapp-planning-scope";
 import {requiresHumanApproval} from "@ai-comms-agent/shared";
 import {isDraftOnlyRequest,draftOnlyToolAllowed,authorizeDraftOnly} from "@/lib/chat/draft-only-scope";
 import {draftPlanningContext} from "@/lib/chat/draft-planning-context";
@@ -287,6 +288,7 @@ async function runInteractiveHostToolLoop(args: {
   messages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
   toolContext: ToolContext;
   draftOnly?:boolean;
+  whatsAppOnly?:boolean;
   onSafeReadOnlyFinal?: (completedHistory: ToolChatMessage[]) => Promise<string>;
   onProgress?: (phase: "planning_tools" | "reading_email" | "reading_whatsapp" | "checking_permissions" | "denied") => void;
 }): Promise<HostToolTurnResult | null> {
@@ -298,6 +300,9 @@ async function runInteractiveHostToolLoop(args: {
     createWhatsAppToolRuntime(args.organizationId, args.agentId),
     createSchedulesToolRuntime(args.organizationId, args.agentId),
   ]);
+  if(args.whatsAppOnly){
+    for(const runtime of [emailRuntime,whatsappRuntime,schedulesRuntime])runtime.authorize=authorizeWhatsAppOnly(runtime.authorize);
+  }
   if(args.draftOnly){
     for(const runtime of [emailRuntime,whatsappRuntime,schedulesRuntime])runtime.authorize=authorizeDraftOnly(runtime.authorize);
   }
@@ -306,7 +311,8 @@ async function runInteractiveHostToolLoop(args: {
     ...whatsappRuntime.registry.listForAgent(args.agentId),
     ...schedulesRuntime.registry.listForAgent(args.agentId),
   ].filter((tool) => args.toolContext.auth_subject.permissions.includes(tool.required_permission))
-    .filter(tool=>!args.draftOnly||draftOnlyToolAllowed(tool));
+    .filter(tool=>!args.draftOnly||draftOnlyToolAllowed(tool))
+    .filter(tool=>!args.whatsAppOnly||tool.name.startsWith("whatsapp."));
   const definitions: ChatToolDefinition[] = visibleTools
     .map((tool) => ({ name: tool.name, description: tool.description, parameters: tool.input_schema }));
   if (definitions.length === 0) return null;
@@ -327,7 +333,7 @@ async function runInteractiveHostToolLoop(args: {
     let completion: ChatToolCompletion;
     try {
       completion = await claraRuntime.completeWithTools(
-        { orgId: args.organizationId, agentId: args.agentId, kbId: args.kbId }, history, definitions,
+        { orgId: args.organizationId, agentId: args.agentId, kbId: args.kbId,skipGrounding:args.whatsAppOnly===true }, history, definitions,
       );
     } catch (error) {
       const recovered=recoverRead();if(recovered)return recovered;
@@ -561,7 +567,8 @@ export async function POST(request: Request) {
     // original query said "mohammed rilan ksa" without the @ symbol. By
     // including the assistant response, the email address gets extracted as
     // a search term and matches from_email with high precision.
-    const {history:plannerHistory,independentCompose}=draftPlanningContext(safeHistory,content);
+    const whatsappPlan=whatsAppPlanningContext(safeHistory,content);
+    const {history:plannerHistory,independentCompose}=draftPlanningContext(whatsappPlan.history,content);
     const recentMessages = plannerHistory.filter(
       m => m.role === "user" || m.role === "assistant",
     )
@@ -572,14 +579,14 @@ export async function POST(request: Request) {
     // satisfy both the actor's read permission and the agent's current
     // registered read-tool allowlist. A bound account by itself is not consent.
     let emailContext: string | null = null;
-    if (!independentCompose && subject.permissions.has("email.read") && asksAboutEmail(combinedSearchContext)) {
+    if (!whatsappPlan.whatsAppOnly && !independentCompose && subject.permissions.has("email.read") && asksAboutEmail(combinedSearchContext)) {
       const emailRuntime = await createEmailToolRuntime(organizationId, agentId);
       if (canSupplyAmbientContext("email", subject.permissions, emailRuntime.registry.listForAgent(agentId))) {
         emailContext = await loadEmailContext(organizationId, agentId, combinedSearchContext);
       }
     }
     let whatsappContext: string | null = null;
-    if (!independentCompose && subject.permissions.has("whatsapp.read") && asksAboutWhatsApp(combinedSearchContext)) {
+    if (!whatsappPlan.whatsAppOnly && !independentCompose && subject.permissions.has("whatsapp.read") && asksAboutWhatsApp(combinedSearchContext)) {
       const whatsappRuntime = await createWhatsAppToolRuntime(organizationId, agentId);
       if (canSupplyAmbientContext("whatsapp", subject.permissions, whatsappRuntime.registry.listForAgent(agentId))) {
         whatsappContext = await loadWhatsAppContext(organizationId, agentId, combinedSearchContext);
@@ -664,6 +671,7 @@ export async function POST(request: Request) {
                 }) }, ...messages],
                 toolContext: trustedToolContext,
                 draftOnly:isDraftOnlyRequest(content),
+                whatsAppOnly:whatsappPlan.whatsAppOnly,
                 onProgress: (phase) => emit("progress", { phase }),
                 onSafeReadOnlyFinal: explicitMessagingAction ? undefined : async (completedHistory) => {
                   emit("status", { phase: "generating" });

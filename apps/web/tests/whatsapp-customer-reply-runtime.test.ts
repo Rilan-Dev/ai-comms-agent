@@ -17,3 +17,11 @@ it('sends only bounded customer conversation text to generation and never calls 
  expect(text).toBe('Hi! How can I help?');expect(fetchMock).toHaveBeenCalledTimes(1);
  expect(m.query).toHaveBeenCalled();expect(JSON.stringify(m.query.mock.calls)).not.toMatch(/knowledge_chunks|email_messages/);
 });
+it('skips ambient retrieval for host-scoped WhatsApp-only tool planning while preserving provider resolution',async()=>{
+ const fetchMock=vi.fn(async(url:string)=>{
+  expect(url).toBe('https://provider.example.invalid/v1/chat/completions');
+  return Response.json({choices:[{finish_reason:'stop',message:{content:'Ready',tool_calls:[]}}]});
+ });vi.stubGlobal('fetch',fetchMock);
+ await claraRuntime.completeWithTools({orgId:'org',agentId:'agent',kbId:'private-mail-knowledge',skipGrounding:true},[{role:'user',content:'Create a WhatsApp approval request for a harmless test.'}],[{name:'whatsapp.send',description:'Request a send',parameters:{type:'object',properties:{}}}]);
+ expect(m.query).toHaveBeenCalled();expect(JSON.stringify(m.query.mock.calls)).not.toMatch(/knowledge_chunks|email_messages/);expect(fetchMock).toHaveBeenCalledTimes(1);
+});

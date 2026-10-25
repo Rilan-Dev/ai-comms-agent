@@ -64,7 +64,8 @@ test("deterministic authorization feedback is labeled and provides the in-chat r
 test("persisted internal-planning assistant turns are excluded from future model and ambient mail context", () => {
   const route = read("../src/app/api/chat/stream/route.ts");
   assert.match(route, /history\.filter\(message => message\.role !== "assistant" \|\| userFacingChatAnswer\(message\.content\) !== null\)/);
-  assert.match(route, /draftPlanningContext\(safeHistory,content\)/);
+  assert.match(route, /whatsAppPlanningContext\(safeHistory,content\)/);
+  assert.match(route, /draftPlanningContext\(whatsappPlan\.history,content\)/);
   assert.match(route, /const filteredHistory = plannerHistory/);
   assert.doesNotMatch(route, /const recentMessages = history\s*\n/);
 });

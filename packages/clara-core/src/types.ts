@@ -81,6 +81,8 @@ export interface GroundedContext {
 }
 
 export interface ClaraRuntimeContext {
+  /** Restrictive host scope for turns that do not request ambient retrieval. */
+  skipGrounding?:boolean;
   orgId: string | null;
   agentId: string | null;
   kbId: string;
