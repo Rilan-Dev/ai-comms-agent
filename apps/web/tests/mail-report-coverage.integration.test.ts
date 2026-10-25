@@ -42,6 +42,19 @@ async function message(options:{account?:string;folder?:string;identity?:string;
 }
 const report=(scope:MailReportScope={unreadOnly:false},limit=500)=>getMailReportEvidence({organizationId:org,agentId:agent,fromUtc:from,toUtc:to,scope,limit});
 describe('canonical report evidence',()=>{
+ it('selects the latest three total across readable mailboxes with a stable tie-break and unchanged unread state',async()=>{
+  const older=await message({at:'2026-10-23T08:00:00Z'});
+  const one=await message({at:'2026-10-23T10:00:00Z'});
+  const two=await message({account:second,at:'2026-10-23T11:00:00Z'});
+  const three=await message({account:second,at:'2026-10-23T11:00:00Z'});
+  await message({identity:'duplicate',folder:inbox,at:'2026-10-23T07:00:00Z'});
+  await message({identity:'duplicate',folder:allmail,at:'2026-10-23T07:00:00Z'});
+  const before=(await db.query('SELECT id,is_read FROM aca.email_messages ORDER BY id')).rows;
+  const evidence=await report({unreadOnly:true},3);
+  expect(evidence.rows.map(row=>row.id)).toEqual([two,three].sort().reverse().concat(one));
+  expect(evidence.rows.map(row=>row.id)).not.toContain(older);expect(evidence.matchedCount).toBe(5);
+  expect((await db.query('SELECT id,is_read FROM aca.email_messages ORDER BY id')).rows).toEqual(before);
+ });
  it('counts each mailbox from the canonical unread snapshot even when the preview is limited',async()=>{
   await message({identity:'<same-unread@provider>',folder:inbox});
   await message({identity:'<same-unread@provider>',folder:allmail});

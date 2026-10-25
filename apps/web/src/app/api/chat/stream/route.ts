@@ -16,7 +16,9 @@ import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
 import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation } from "@/lib/mail/action-feedback";
 import { userFacingChatAnswer } from "@/lib/chat/user-facing-answer";
 import { businessAnswerGuidance } from "@/lib/chat/business-answer-guidance";
-import { currentTurnOperationAnswer, isExplicitWhatsAppMutationRequest } from "@/lib/chat/operation-feedback";
+import { currentTurnOperationAnswer, formatOperationFeedback, isExplicitWhatsAppMutationRequest } from "@/lib/chat/operation-feedback";
+import {parseMailWhatsAppTask} from '@/lib/chat/mail-whatsapp-task';
+import {startMailWhatsAppReview,continueMailWhatsAppReview} from '@/lib/chat/mail-whatsapp-review';
 import {readEvidenceAnswer} from '@/lib/mail/read-evidence-answer';
 import { operationResultFromToolCall, reviewExplicitEmailBody, type OperationResult } from "@ai-comms-agent/shared";
 
@@ -436,7 +438,8 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => null);
     const organizationId = typeof body?.organizationId === "string" ? body.organizationId : "";
     const agentId = typeof body?.agentId === "string" ? body.agentId : "";
-    const content = typeof body?.message === "string" ? body.message.trim() : "";
+    const continuationRef=typeof body?.continuationRef==='string'?body.continuationRef.trim():'';
+    const content = typeof body?.message === "string" && body.message.trim() ? body.message.trim() : continuationRef?'Continue saved WhatsApp review':'';
     if (!organizationId || !agentId || !content) {
       return NextResponse.json({ error: "validation_error", message: "organizationId, agentId and message are required." }, { status: 422 });
     }
@@ -473,6 +476,39 @@ export async function POST(request: Request) {
       : await getOrCreateChatConversation(organizationId, agentId);
     if (!conversation) {
       return NextResponse.json({ error: "not_found", message: "Conversation was not found for this organization and agent." }, { status: 404 });
+    }
+
+    const mailWhatsAppTask=parseMailWhatsAppTask(content);
+    if(mailWhatsAppTask||continuationRef){
+      if(!(['email.read','whatsapp.send'] as const).every(permission=>subject.permissions.has(permission))){
+        return NextResponse.json({error:'forbidden',message:'Email read and WhatsApp send access are required for this review.'},{status:403});
+      }
+      const context:ToolContext={organization_id:organizationId,agent_id:agentId,user_id:subject.user.id,conversation_id:conversation.id,
+        turn_id:crypto.randomUUID(),correlation_id:crypto.randomUUID(),require_human_approval:true,channel:'chat',
+        auth_subject:{user_id:subject.user.id,role:subject.membership.role,permissions:[...subject.permissions]}};
+      await appendConversationMessage({organizationId,conversationId:conversation.id,role:'user',content});
+      const encoder=new TextEncoder();
+      const stream=new ReadableStream<Uint8Array>({async start(controller){
+        const emit=(event:string,payload:Record<string,unknown>)=>controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
+        emit('conversation',{conversationId:conversation.id});emit('progress',{phase:continuationRef?'checking_permissions':'reading_email'});
+        try{
+          const result=continuationRef
+            ?{operation:await continueMailWhatsAppReview(context,continuationRef),checkpointRef:continuationRef,summary:'',message:''}
+            :await startMailWhatsAppReview(context,mailWhatsAppTask!);
+          const feedback=result.operation?formatOperationFeedback([result.operation]):continuationRef
+            ?'This saved summary expired or its access changed. Refresh the summary before requesting a new WhatsApp review.'
+            :result.checkpointRef?'The summary is saved. WhatsApp review was not confirmed. Check WhatsApp requests before continuing.':result.message;
+          const answer=[result.summary,feedback].filter(Boolean).join('\n\n');
+          await appendConversationMessage({organizationId,conversationId:conversation.id,role:'assistant',content:feedback});
+          emit('delta',{text:answer});emit('progress',{phase:'completed'});
+          emit('done',{conversationId:conversation.id,source:'host_mail_whatsapp_review',mailWhatsAppTask:{checkpointRef:result.checkpointRef??null,operation:result.operation??null,needsRefresh:!!continuationRef&&!result.operation}});
+        }catch(error){
+          console.error('[chat/stream] mixed review failed',{reference:context.correlation_id,...safeChatFailure(error)});
+          emit('error',{message:`The WhatsApp review could not be confirmed. Check existing WhatsApp requests before retrying. Reference: ${context.correlation_id}`});
+        }
+        controller.close();
+      }});
+      return new Response(stream,{headers:{'content-type':'text/event-stream; charset=utf-8','cache-control':'private, no-store, no-transform','x-accel-buffering':'no'}});
     }
 
     // Exact rolling-window reports are not a prompt-generation task. A model

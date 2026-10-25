@@ -105,6 +105,8 @@ export {
 export { listScheduledJobs, getScheduledJob, createScheduledJob, updateScheduledJob, deleteScheduledJob, listScheduledJobRuns, claimDueScheduledJobs, recoverStaleScheduledJobRuns, advanceScheduledJob, completeScheduledJobRun, failScheduledJobRun, listAutomationRules, listActiveAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, listAutomationRuns, createAutomationRun, completeAutomationRun, failAutomationRun, type ScheduledJobClaim } from "./automation/repository";
 
 export { getOrCreateChatConversation, createChatConversation, listChatConversations, getChatConversation, listChatMessages, appendConversationMessage } from "./conversation/repository";
+export {saveMailTaskCheckpoint,loadMailTaskCheckpoint,reconcileMailTaskCheckpoint} from './conversation/task-checkpoint';
+export type {CheckpointScope,MailTaskCheckpoint,MailTaskCheckpointInput} from './conversation/task-checkpoint';
 
 export {
   createVoiceSession,
