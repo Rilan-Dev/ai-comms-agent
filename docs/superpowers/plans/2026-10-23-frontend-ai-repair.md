@@ -6,11 +6,11 @@
 
 **Architecture:** Repair existing PostgreSQL action ledgers, provider adapters, bounded tool execution and Next.js interfaces. Add a small shared host-owned operation-result contract rather than a second runtime. Reuse current authorization and worker dispatch; share presentation and review logic across Chat and manual UI.
 
-**Tech stack:** Existing TypeScript, Next.js 15/React 19, PostgreSQL, Node test runner and Vitest; repository-pinned pnpm 12.8.1; Node 22.23.3 for the planned verification environment.
+**Tech stack:** Existing TypeScript, Next.js 15/React 19, PostgreSQL, Node test runner and Vitest; repository-pinned pnpm 12.8.1; Node24 for Docker verification and runtime.
 
-**Spec:** [Repair assessment and proposed design](fix-assessment-design.md). Evidence: [26-scenario frontend report](frontend-ai-test-report.md).
+**Spec:** [Approved repair design](../specs/2026-10-23-frontend-ai-repair.md). [Current evidence and branch reconciliation](../../project-control/sessions/DEV01-FRONTEND-AI-REPAIR-20261025.md). The original 26-case report is retained in the private workspace.
 
-**Status:** Proposed; not implemented. Independent design builder check: no important unanswered questions. Recommended execution: native implementation in this chat, one task/test/review cycle at a time. No production deployment or database change has occurred from this assessment.
+**Status:** Owner-approved implementation. Tasks0–7 are complete; Task8 final verification and live acceptance remain in progress. Source and production changes are recorded in the evidence checkpoint. Development is the integration branch; main is not modified.
 
 ## Global constraints
 
@@ -38,12 +38,12 @@
 
 **Deliverable:** a revision/runner/schema inventory and fresh failure list. No product change until the failure is reproduced on a known revision.
 
-- [ ] Recover a suitable checkout with current authorization and a clean working state; inspect existing attached worktrees before creating isolation. Pin source SHA and compare current main/Development changes relevant to this repair. Do not overwrite concurrent work.
-- [ ] Inspect lockfile, lifecycle/build hooks and repository install policy. Use pnpm 12.8.1 with a frozen lockfile; do not run the local pnpm 11.25.0 against this repository. Record Node and pnpm versions.
-- [ ] Run fresh workspace tests, typechecks and web build. Save command, SHA, result counts and exit code. Replace historical reports of 45 web and 9 worker failures with this baseline.
-- [ ] Identify the revision/image serving each web and worker instance and migration-ledger revision. If supported metadata is absent, add a non-secret build revision to an authenticated operational endpoint in Task 6. A 200 from /api/health is not database/worker readiness.
-- [ ] Reproduce one failed approval with a harmless local draft and collect a shared correlation ID, safe error code/SQLSTATE and whether the action row/audit record committed. Collect only needed schema metadata: columns/types/defaults/nullability/indexes/enums/ledger; no secret values.
-- [ ] If the running website predates 090cb66, test the existing mailbox-identifier/rendering fixes on a matching candidate before making a duplicate repair. A production rollout remains subject to Task 8 gates.
+- [x] Recover a suitable checkout with current authorization and a clean working state; inspect existing attached worktrees before creating isolation. Pin source SHA and compare current main/Development changes relevant to this repair. Do not overwrite concurrent work.
+- [x] Inspect lockfile, lifecycle/build hooks and repository install policy. Use pnpm 12.8.1 with a frozen lockfile; do not run the local pnpm 11.25.0 against this repository. Record Node and pnpm versions.
+- [x] Run fresh workspace tests, typechecks and web build. Save command, SHA, result counts and exit code. Replace historical reports of 45 web and 9 worker failures with this baseline.
+- [x] Identify the revision/image serving each web and worker instance and migration-ledger revision. If supported metadata is absent, add a non-secret build revision to an authenticated operational endpoint in Task 6. A 200 from /api/health is not database/worker readiness.
+- [x] Reproduce one failed approval with a harmless local draft and collect a shared correlation ID, safe error code/SQLSTATE and whether the action row/audit record committed. Collect only needed schema metadata: columns/types/defaults/nullability/indexes/enums/ledger; no secret values.
+- [x] If the running website predates 090cb66, test the existing mailbox-identifier/rendering fixes on a matching candidate before making a duplicate repair. A production rollout remains subject to Task 8 gates.
 
 Verification commands after reviewed dependency setup:
 
@@ -71,14 +71,14 @@ Expected: a truthful baseline. A failing baseline is recorded and assigned, not 
 
 **Interfaces:** retain createEmailAction(CreateEmailActionInput), getEmailActionForOrganization, listPendingEmailActionsForOrganization and decideEmailAction. AI and manual callers must share the same persisted action contract. Internal email status names remain unchanged.
 
-- [ ] Add a failing real-database case: create a draft as an authorized actor, request approval via AI service and manual route, reload queue, assert the returned action ID exists with correct organization/account/draft/requester, immutable snapshot and pending_approval status.
-- [ ] Add cases for fresh migrations and a supported upgraded schema. Assert required action columns, unique idempotency index and executing status are usable. Inspect all later migrations before treating old CREATE TABLE definitions as the active schema.
-- [ ] Add races: simultaneous AI/manual requests; same key/same content; same key/different content; concurrent draft edit. Assert at most one valid pending review, conflicting content gets 409, no provider send before approval.
-- [ ] Add approve/reject/expiry/cross-tenant/revoked-grant cases. Assert expired/rejected actions cannot execute; a second approval cannot create a second send; worker receives the reviewed snapshot only.
-- [ ] Reproduce the original SQL/service error, then fix only its verified cause. If a forward migration is required, prove it on disposable fresh and upgrade databases before any production proposal. Do not assume a missing migration from the generic banner alone.
-- [ ] Make queue reads and action reads use the same organization/account scope as creation. A response must not claim pending approval unless the action committed; audit failure after commit must return a reconciliable result rather than invite a duplicate request.
-- [ ] Run integration and worker cases with a test SMTP transport and Gmail stub. Assert one provider invocation after authorized approval, zero on denial/rejection/expiry, persisted provider outcome and safe reconciliation after timeout.
-- [ ] Commit the tested approval repair with its migration evidence, if any.
+- [x] Add a failing real-database case: create a draft as an authorized actor, request approval via AI service and manual route, reload queue, assert the returned action ID exists with correct organization/account/draft/requester, immutable snapshot and pending_approval status.
+- [x] Add cases for fresh migrations and a supported upgraded schema. Assert required action columns, unique idempotency index and executing status are usable. Inspect all later migrations before treating old CREATE TABLE definitions as the active schema.
+- [x] Add races: simultaneous AI/manual requests; same key/same content; same key/different content; concurrent draft edit. Assert at most one valid pending review, conflicting content gets 409, no provider send before approval.
+- [x] Add approve/reject/expiry/cross-tenant/revoked-grant cases. Assert expired/rejected actions cannot execute; a second approval cannot create a second send; worker receives the reviewed snapshot only.
+- [x] Reproduce the original SQL/service error, then fix only its verified cause. If a forward migration is required, prove it on disposable fresh and upgrade databases before any production proposal. Do not assume a missing migration from the generic banner alone.
+- [x] Make queue reads and action reads use the same organization/account scope as creation. A response must not claim pending approval unless the action committed; audit failure after commit must return a reconciliable result rather than invite a duplicate request.
+- [x] Run integration and worker cases with a test SMTP transport and Gmail stub. Assert one provider invocation after authorized approval, zero on denial/rejection/expiry, persisted provider outcome and safe reconciliation after timeout.
+- [x] Commit the tested approval repair with its migration evidence, if any.
 
 Primary test command: `pnpm --filter @ai-comms-agent/web exec vitest run tests/email-approval-persistence.integration.test.ts`. The test must require an explicitly disposable database setting and refuse the production target. Run the actual worker test file identified in Task 0 as well. Success means behavioral and persistence assertions pass, not merely matching SQL source text.
 
@@ -92,13 +92,13 @@ Primary test command: `pnpm --filter @ai-comms-agent/web exec vitest run tests/e
 
 **Interfaces:** define a discriminated OperationResult using channel, operation, state, turnId, callId, correlationId, resourceId when persisted, and safe errorCode when failed. Use channel-specific state variants described in the design. `formatOperationFeedback(results: readonly OperationResult[]): string` renders only host outcomes. `verifiedEmailToolSummary` may remain as a compatibility wrapper during migration; remove it only after all callers share the tested result path.
 
-- [ ] Add failing cases for the exact live Create, Update, Prepare and WhatsApp prompts, mixed read/write prompts, unsupported provider tool calls and a no-tool assistant response that says “Verified ... results”. Assert no mutation success card or delivery claim without a current verified result.
-- [ ] Assert prior assistant content containing old draft/action IDs cannot satisfy a new request. Bind results to current turn/call IDs and to an actually returned, organization-scoped resource. A model-supplied resource ID alone is insufficient.
-- [ ] Preserve successful draft output when approval subsequently fails. Assert the response explicitly distinguishes the two outcomes and links the real saved draft.
-- [ ] Add response-loss/audit-loss-after-commit tests and reconnect/retry tests. Reconciliation must use a persisted idempotency record; no blind new provider send.
-- [ ] Preserve tool schema validation, call/round budgets, read-only classification and fail-closed authorization. Fix Create/Update/Prepare recognition for clarification, but enforce authoritative results for ALL mutations regardless of lexical matching.
-- [ ] Test Chat and voice compatibility, provider text with forged success, abort after execution, delayed SSE after scope switch, unknown outcome and safe error mapping. No private reasoning or raw technical tool names in ordinary output.
-- [ ] Run focused web/worker tests and shared/runtime/web/worker typechecks; commit only after passing.
+- [x] Add failing cases for the exact live Create, Update, Prepare and WhatsApp prompts, mixed read/write prompts, unsupported provider tool calls and a no-tool assistant response that says “Verified ... results”. Assert no mutation success card or delivery claim without a current verified result.
+- [x] Assert prior assistant content containing old draft/action IDs cannot satisfy a new request. Bind results to current turn/call IDs and to an actually returned, organization-scoped resource. A model-supplied resource ID alone is insufficient.
+- [x] Preserve successful draft output when approval subsequently fails. Assert the response explicitly distinguishes the two outcomes and links the real saved draft.
+- [x] Add response-loss/audit-loss-after-commit tests and reconnect/retry tests. Reconciliation must use a persisted idempotency record; no blind new provider send.
+- [x] Preserve tool schema validation, call/round budgets, read-only classification and fail-closed authorization. Fix Create/Update/Prepare recognition for clarification, but enforce authoritative results for ALL mutations regardless of lexical matching.
+- [x] Test Chat and voice compatibility, provider text with forged success, abort after execution, delayed SSE after scope switch, unknown outcome and safe error mapping. No private reasoning or raw technical tool names in ordinary output.
+- [x] Run focused web/worker tests and shared/runtime/web/worker typechecks; commit only after passing.
 
 ## Task 3 — Resolve account choices and preserve exact draft content
 
@@ -108,12 +108,12 @@ Primary test command: `pnpm --filter @ai-comms-agent/web exec vitest run tests/e
 
 **Interfaces:** reuse resolveAccountIdentifier(organizationId, agentId, identifier). Keep existing draft tools. Derive WhatsApp account from the trusted agent binding when uniquely bound; if choosing is necessary, expose a human-readable account choice and carry its resolved ID server-side.
 
-- [ ] Run existing address/UUID-resolution cases, including case/whitespace, unbound mailbox and cross-tenant UUID. Verify the existing resolver fix dynamically before changing it.
-- [ ] Add zero/one/multiple mailbox cases. A unique explicitly named bound mailbox resolves; two eligible senders require a visible choice; revoked/disconnected accounts cannot be selected.
-- [ ] Add the exact live Body-plus-instructions regression. Assert recipient, subject and email body are structured separately; operational instructions such as request approval/do not send do not silently become message text. Preserve exact quoted body, whitespace and Unicode. If boundaries are ambiguous, show the proposed body for review rather than strip words heuristically.
-- [ ] Add draft update, reply and forward cases that retain sender/thread/recipients and invalidate any prior approval snapshot after changes. Reply targets come from authorized message records and validated addresses, not an invented thread ID.
-- [ ] Eliminate raw account_id/message_id questions for ordinary users. Provide a selectable mailbox/message when ambiguity is real; do not widen account authorization.
-- [ ] Run focused tests and runtime/web/worker typechecks; commit.
+- [x] Run existing address/UUID-resolution cases, including case/whitespace, unbound mailbox and cross-tenant UUID. Verify the existing resolver fix dynamically before changing it.
+- [x] Add zero/one/multiple mailbox cases. A unique explicitly named bound mailbox resolves; two eligible senders require a visible choice; revoked/disconnected accounts cannot be selected.
+- [x] Add the exact live Body-plus-instructions regression. Assert recipient, subject and email body are structured separately; operational instructions such as request approval/do not send do not silently become message text. Preserve exact quoted body, whitespace and Unicode. If boundaries are ambiguous, show the proposed body for review rather than strip words heuristically.
+- [x] Add draft update, reply and forward cases that retain sender/thread/recipients and invalidate any prior approval snapshot after changes. Reply targets come from authorized message records and validated addresses, not an invented thread ID.
+- [x] Eliminate raw account_id/message_id questions for ordinary users. Provide a selectable mailbox/message when ambiguity is real; do not widen account authorization.
+- [x] Run focused tests and runtime/web/worker typechecks; commit.
 
 ## Task 4 — Make summaries, deduplication and counts trustworthy
 
@@ -123,12 +123,12 @@ Primary test command: `pnpm --filter @ai-comms-agent/web exec vitest run tests/e
 
 **Interfaces:** return an authorized report evidence object with scope, fromUtc, toUtc, matchedCount, includedCount, hasMore/cursor and sync freshness. Counts represent canonical message identities within the selected accounts. The formatter and model writer consume the same evidence; neither invents totals.
 
-- [ ] Add failing requests for the detailed live prompt, output-column words sender/subject, specified mailbox, unread-only, sender/date constraints, empty results, exact 24-hour boundaries and malformed dates.
-- [ ] Assert metadata formatting requests do not become filters; real filters are never silently discarded. Unsupported filters produce a clear clarification result, not an unfiltered “all mail” report.
-- [ ] Insert duplicate representations of one provider message, legitimate same-subject messages, and copies in two mailboxes. Establish provider/folder UID identity before choosing a reconciliation strategy. Reingest is idempotent; legitimate distinct mail stays distinct. Historical repair is non-destructive and previewed separately.
-- [ ] Assert draft/sent mail exclusion, stable page boundaries while new mail arrives, zero/three/500/510 results and explicit incomplete coverage. A top-three result cannot be described as the mailbox's total unread count.
-- [ ] Ground summaries in fetched snippets/bodies and source links. Missing full bodies must be labelled; private content remains untrusted data and cannot trigger sends.
-- [ ] Run Node tests, Vitest integration and affected sync-worker tests; commit.
+- [x] Add failing requests for the detailed live prompt, output-column words sender/subject, specified mailbox, unread-only, sender/date constraints, empty results, exact 24-hour boundaries and malformed dates.
+- [x] Assert metadata formatting requests do not become filters; real filters are never silently discarded. Unsupported filters produce a clear clarification result, not an unfiltered “all mail” report.
+- [x] Insert duplicate representations of one provider message, legitimate same-subject messages, and copies in two mailboxes. Establish provider/folder UID identity before choosing a reconciliation strategy. Reingest is idempotent; legitimate distinct mail stays distinct. Historical repair is non-destructive and previewed separately.
+- [x] Assert draft/sent mail exclusion, stable page boundaries while new mail arrives, zero/three/500/510 results and explicit incomplete coverage. A top-three result cannot be described as the mailbox's total unread count.
+- [x] Ground summaries in fetched snippets/bodies and source links. Missing full bodies must be labelled; private content remains untrusted data and cannot trigger sends.
+- [x] Run Node tests, Vitest integration and affected sync-worker tests; commit.
 
 ## Task 5 — Complete WhatsApp selection, readiness and allowed delivery
 
@@ -138,13 +138,13 @@ Primary test command: `pnpm --filter @ai-comms-agent/web exec vitest run tests/e
 
 **Interfaces:** one server-derived readiness response consumed by Policy, Channels and WhatsApp. Distinguish loading, disconnected, bound-without-permission, template_required, ready and provider_error. Readiness is explanatory; approval/worker authorization still rechecks actual state.
 
-- [ ] Add consistency tests: the same connected bound phone cannot appear disconnected in Policy; missing saved tool permission is distinct from disconnected account; delayed responses after agent switch are ignored.
-- [ ] Assert AI proposal returns a persisted action ID matching queue content. Repeated turns with different test bodies create distinct requests; idempotent retries reconcile only identical actor/account/recipient/payload.
-- [ ] Add exact window boundaries, no-inbound, revoked binding, invalid/unapproved template, mismatched template parameters, recipient eligibility failure, provider timeout and delayed receipt cases.
-- [ ] Provide one actionable next step for a closed window: select an approved template or explain the required inbound conversation. Keep approval-time and worker-time rechecks; do not disable the 24-hour rule.
-- [ ] Verify Reject produces zero worker/provider sends. Verify allowed approval queues exactly once and records provider acceptance separately from delivery/read receipts.
-- [ ] Configure/verify a real approved-template or inbound-window prerequisite through the supported authenticated setup during Task 8; no fake webhook/inbound data or hard-coded approved template.
-- [ ] Run focused web/worker tests; commit.
+- [x] Add consistency tests: the same connected bound phone cannot appear disconnected in Policy; missing saved tool permission is distinct from disconnected account; delayed responses after agent switch are ignored.
+- [x] Assert AI proposal returns a persisted action ID matching queue content. Repeated turns with different test bodies create distinct requests; idempotent retries reconcile only identical actor/account/recipient/payload.
+- [x] Add exact window boundaries, no-inbound, revoked binding, invalid/unapproved template, mismatched template parameters, recipient eligibility failure, provider timeout and delayed receipt cases.
+- [x] Provide one actionable next step for a closed window: select an approved template or explain the required inbound conversation. Keep approval-time and worker-time rechecks; do not disable the 24-hour rule.
+- [x] Verify Reject produces zero worker/provider sends. Verify allowed approval queues exactly once and records provider acceptance separately from delivery/read receipts.
+- [x] Configure/verify a real approved-template or inbound-window prerequisite through the supported authenticated setup during Task 8; no fake webhook/inbound data or hard-coded approved template.
+- [x] Run focused web/worker tests; commit.
 
 ## Task 6 — Simplify the frontend and repair error/loading behavior
 
@@ -154,23 +154,23 @@ Primary test command: `pnpm --filter @ai-comms-agent/web exec vitest run tests/e
 
 **Interfaces:** UI consumes Task 2 OperationResult and the existing immutable review snapshot helper. Show Draft saved, Awaiting approval, Rejected, Queued, Provider accepted, Delivered or Needs verification only when backed by the corresponding evidence. No raw internal enum names in normal labels.
 
-- [ ] Replace unconditional/repetitive follow-up panels with one relevant action on a successful answer; none after failure, denial or empty results. Preserve an explicit way to compose manually.
-- [ ] Share draft review presentation between Chat and Compose. Keep sender, exact recipients, subject and body visible together; edits invalidate approval; action links reference the current persisted record.
-- [ ] Add explicit loading states so empty accounts/drafts/queues are not shown while requests are pending. Distinguish loading error from an empty result and use stable server/client timestamp rendering to remove reproduced hydration mismatch.
-- [ ] Move granular agent tools and raw identifiers to Advanced/admin details. Preserve existing presets, grants, navigation, audit access and inactive feature gates. Sync provider draft remains a secondary action with truthful status.
-- [ ] Return a safe error message, operation reference and retry/reconciliation option from approval failures. Preserve HTTP status and tenant checks. Never present an unexpected database failure as a request to increase user permissions.
-- [ ] Diagnose the 502 using matching host/proxy/container timestamps and request IDs. Fix the demonstrated cause only; add bounded timeouts/cancellation and graceful error states where required. Do not claim readiness merely because the basic health route returns 200.
-- [ ] Verify keyboard flow, screen-reader labels, responsive widths 320/390/768 and desktop, loading/offline/scope-change races, and absence of recurring React hydration errors. Commit the tested UI slice.
+- [x] Replace unconditional/repetitive follow-up panels with one relevant action on a successful answer; none after failure, denial or empty results. Preserve an explicit way to compose manually.
+- [x] Share draft review presentation between Chat and Compose. Keep sender, exact recipients, subject and body visible together; edits invalidate approval; action links reference the current persisted record.
+- [x] Add explicit loading states so empty accounts/drafts/queues are not shown while requests are pending. Distinguish loading error from an empty result and use stable server/client timestamp rendering to remove reproduced hydration mismatch.
+- [x] Move granular agent tools and raw identifiers to Advanced/admin details. Preserve existing presets, grants, navigation, audit access and inactive feature gates. Sync provider draft remains a secondary action with truthful status.
+- [x] Return a safe error message, operation reference and retry/reconciliation option from approval failures. Preserve HTTP status and tenant checks. Never present an unexpected database failure as a request to increase user permissions.
+- [x] Diagnose the 502 using matching host/proxy/container timestamps and request IDs. Fix the demonstrated cause only; add bounded timeouts/cancellation and graceful error states where required. Do not claim readiness merely because the basic health route returns 200.
+- [x] Verify keyboard flow, screen-reader labels, responsive widths 320/390/768 and desktop, loading/offline/scope-change races, and absence of recurring React hydration errors. Commit the tested UI slice.
 
 ## Task 7 — Make the complete automated test baseline green
 
 **Scope:** all current failing tests in the affected web/worker/shared/db/Clara suites, not just new happy-path tests. No production feature expansion to accommodate stale fixtures.
 
-- [ ] Classify every Task 0 failure: actual regression, obsolete expectation, incomplete mock, runner/fixture/configuration problem or infrastructure dependency. Replace string-presence tests with behavior assertions where they concealed these failures.
-- [ ] Fix actual defects. Update an obsolete expectation only when current approved behavior proves it wrong; document why. Preserve rejection, revocation, tenant isolation and prompt-injection assertions.
-- [ ] Run all repository test entry points, including standalone Node .mjs suites not exercised by package-level Vitest scripts. Check each suite actually discovered and executed its expected tests.
-- [ ] Run typechecks, lint with a working pinned configuration, production web build, worker build and migration tests against fresh and upgrade fixtures.
-- [ ] Save final test totals, failures/skips, command logs and candidate SHA. All required tests must pass; explicitly scoped live-only prerequisites remain blockers rather than skipped green checks.
+- [x] Classify every Task 0 failure: actual regression, obsolete expectation, incomplete mock, runner/fixture/configuration problem or infrastructure dependency. Replace string-presence tests with behavior assertions where they concealed these failures.
+- [x] Fix actual defects. Update an obsolete expectation only when current approved behavior proves it wrong; document why. Preserve rejection, revocation, tenant isolation and prompt-injection assertions.
+- [x] Run all repository test entry points, including standalone Node .mjs suites not exercised by package-level Vitest scripts. Check each suite actually discovered and executed its expected tests.
+- [x] Run typechecks, lint with a working pinned configuration, production web build, worker build and migration tests against fresh and upgrade fixtures.
+- [x] Save final test totals, failures/skips, command logs and candidate SHA. All required tests must pass; explicitly scoped live-only prerequisites remain blockers rather than skipped green checks.
 
 Core commands, supplemented by each package's checked-in verification scripts:
 
@@ -219,4 +219,4 @@ Node and source-contract tests complement, rather than replace, the real databas
 
 ## Ready-to-start checkpoint
 
-The concrete assessment/design and task plan are prepared. Product implementation waits for owner review of this proposed design under the invoked Superpowers workflow. After approval, start Task 0; no additional architectural brainstorming is needed unless new evidence materially changes scope. Infrastructure access and WhatsApp delivery prerequisites may be resolved while independent code/test work continues.
+The owner approved native implementation, server deployment and labelled delivery tests. Tasks0–7 are complete. Continue Task8 from the current evidence checkpoint; do not repeat completed mutations or reset existing user data.

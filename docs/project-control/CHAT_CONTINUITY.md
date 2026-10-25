@@ -1,3 +1,8 @@
+## DEV-01 — frontend AI repair continuation — 2026-10-25
+
+Owner-approved work continues on **Development**; main is unchanged and its current commits are already included. SSH access is restored. Both approved email-provider tests have independent recipient-copy evidence; the latest approved WhatsApp message has a real provider **Read** receipt. See [current session](sessions/DEV01-FRONTEND-AI-REPAIR-20261025.md) for exact records and limitations. Customer-reply isolation and deployment revision propagation have RED→GREEN regressions; final combined Linux gates, controlled app deployment and remaining acceptance cases are still pending. Phase status remains implementation_in_progress. Preserve infrastructure hardening, existing data and human approval checks.
+
+---
 # CHAT_CONTINUITY.md — Fresh-Conversation Recovery Protocol
 
 > **Latest DEV-01 continuation (2026-10-18):** Start at [DEV01-CATCHUP-ROUTINES-20261018](sessions/DEV01-CATCHUP-ROUTINES-20261018.md) and the latest NEXT_ACTION checkpoint for the new personal catch-up/routines proposals, owner-selected consent, current baseline evidence and FIX-01/OPS-01 handoffs. Recover older active sessions without closing them. Planning is complete; feature implementation/acceptance remains pending the recorded review and dependency gates.

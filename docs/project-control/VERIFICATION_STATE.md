@@ -1,3 +1,8 @@
+## DEV-01 — frontend AI repair continuation — 2026-10-25
+
+Owner-approved work continues on **Development**; main is unchanged and its current commits are already included. SSH access is restored. Both approved email-provider tests have independent recipient-copy evidence; the latest approved WhatsApp message has a real provider **Read** receipt. See [current session](sessions/DEV01-FRONTEND-AI-REPAIR-20261025.md) for exact records and limitations. Customer-reply isolation and deployment revision propagation have RED→GREEN regressions; final combined Linux gates, controlled app deployment and remaining acceptance cases are still pending. Phase status remains implementation_in_progress. Preserve infrastructure hardening, existing data and human approval checks.
+
+---
 ## DEV-01 / FIX-01 — Sarvam live voice lifecycle fix verified — 2026-10-23
 
 Source on **Development** fixes lost readiness during mic consent, live Sarvam input/barge-in, late response replay, stale socket/activation/playback callbacks and abandoned microphone resources. [Session and exact next action](sessions/DEV01-FIX01-SARVAM-LIVE-LIFECYCLE-20261023.md); source `b58b4811`, upstream preserved in `4fefc41d`. **54/54 focused voice tests**, **7/7 core/integrity checks**, all package types and production web build pass. No live acoustic/vendor/production acceptance, deployment or messaging performed. OPS-01 verifies approved web+relay release, exact-origin WSS configuration, actual transcription/playback, real-device consent/mute/barge-in/end/reconnect and scoped mailbox reads. Phase 4 remains implementation_in_progress; standing routines/C3 activation unchanged. Earlier source/login checkpoints remain historical.
