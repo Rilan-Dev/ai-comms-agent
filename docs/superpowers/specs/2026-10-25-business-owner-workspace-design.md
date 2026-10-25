@@ -1,5 +1,7 @@
 # Business-owner assistant workspace
 
+**26 October owner-feedback precedence:** [Original-screen priority and versioning addendum](2026-10-26-original-screen-priority-and-versioning-addendum.md) supersedes conflicting details here. Apply the comments to original source: operational dashboard first, identity editing on demand, original AI Settings layout retained, consistent capability/mode controls, and owner-selected Save draft → Review → Apply/deploy configuration history. The earlier mockup is illustrative and is not evidence of working source behavior or approval of a replacement AI form.
+
 Status: **proposed design, awaiting owner approval; no product implementation authorized by this document alone**. Owner clarified on25 October2026: preserve the current look/theme and every business function; improve usability in place, including interactive Chat. This supersedes the earlier four-tab visual redesign. Development is the integration branch; main remains untouched. This is a scoped in-place usability improvement, not closure or advancement of the overall project phase.
 
 ## Intent and evidence
@@ -30,6 +32,8 @@ Preserve global Chat, email, WhatsApp, scheduling and administrative routes and 
 
 Retain the current header, agent name/slug/version/status, Pause control, seven-tab strip, identity editor, configuration information and channel links. Add a compact task entry row using existing button/card styling: Open Chat; Summarize unread emails; Prepare WhatsApp review; Draft an email. Existing saved identity can be edited through the same validated endpoint; purpose remains optional and multiline. Technical slug editing remains accessible with a short explanation.
 
+Order the actual operational dashboard as specified in the26 October addendum: needs-attention/reviews and current work first. Identity inputs are closed until **Edit details** is chosen; retaining the editor does not mean displaying it permanently. Frequent shortcuts remain accessible without dominating more useful work/outcome information. Missing-prerequisite coaching is conditional.
+
 Make the setup checklist useful to the user's state: saved accounts, current capability coverage and the next missing prerequisite, not an implication that configuration alone proves delivery. A concise sending-mode line must show the actual saved policy near the task entry. Display compatibility/connection issues with a specific action, without silently changing values. Do not replace the page with a new dashboard or remove its current sections.
 
 ### Versions
@@ -55,6 +59,8 @@ Label removal by its effect, stage/preview it before save, and explain it remove
 ### AI Settings
 
 Retain all16 controls and their existing validation, providers, defaults/overrides, model catalogs and save path. Group them within this same tab into Chat, Voice replies, Live voice, Knowledge indexing and Response behavior. Each input has a short purpose, an explicit saved/default/custom state and optional detail. Use supported provider/model/voice choices when available, with the existing explicit-value path retained where a catalog is unavailable.
+
+Owner correction: retain the **original production AgentAISettingsPanel layout**, including its existing groups/components, rather than implementing the prototype's generic replacement form. Help and draft/active/save feedback are added within that original layout. No regrouping or redesign beyond that layout is implied by the preceding description.
 
 Do not auto-replace unsupported saved model values, clear fields during catalog loading/failure, rewrite embeddings/dimensions, alter prompts or change voice behavior. Diagnose aliases and capabilities before proposing a supported model change. Preserve the distinction between inherit/null, blank editing and explicit values; unrelated saves must not reset overrides.
 
@@ -116,6 +122,8 @@ Keep existing APIs authoritative. Presentation changes may add backward-compatib
 Development was fast-forwarded during discovery through concurrent3f1f5a39. Preserve the new preview-only routine timing/digest controls and their distinctions between elapsed intervals and local calendar days. Those GET-only planning preferences are not executable scheduled tasks, standing WhatsApp consent or source-mailbox grants. Do not merge them into the active Scheduled tasks capability or convert their query parameters to operation authority. Reuse relevant descriptive conventions where appropriate without expanding their feature gate. This design does not claim those separate changes' unexecuted runtime acceptance.
 
 No destructive migration or data rewrite is expected. If implementation discovers a schema requirement, document it for review before adding it. Tenant boundaries, roles, current tool allowlists/bindings, provider capabilities, approval snapshots/expiry/revocation, sender restrictions, limits, Meta rules and uncertain outcomes remain release gates.
+
+The26 October full configuration-history requirement adds a real backend revision/apply/restore workstream. Existing JSON versions do not already provide it. Its additive schema/baseline migration, caller integration, atomic application, inheritance and immediate-revocation rules are governed by the addendum and require dedicated verification and guarded migration; do not ship labels promising full rollback over the old mutable endpoints.
 
 ## Existing-function preservation map
 
