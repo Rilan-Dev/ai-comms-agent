@@ -3,12 +3,83 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildRecurrencePlan, SCHEDULED_AGENT_TASK_INTENT } from "../src/agent/schedules-tool-runtime";
+import { buildRecurrencePlan, resolveScheduleReference, SCHEDULED_AGENT_TASK_INTENT } from "../src/agent/schedules-tool-runtime";
 import { nextCronFire } from "../src/scheduling/cron";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 const FIXED_NOW = new Date("2026-10-25T10:00:00.000Z");
+
+const job = (id: string, name: string, overrides: Record<string, unknown> = {}) => ({
+  id, agentId: "agent-1", name, cron: "*/5 * * * *", oneFireAt: null,
+  intent: SCHEDULED_AGENT_TASK_INTENT, params: { task: "summarize email" }, status: "active",
+  timezone: "UTC", nextFireAt: null, lastFireAt: null, lastError: null, catchUpMinutes: 60,
+  ...overrides,
+});
+
+test("resolveScheduleReference accepts the quoted task name the user actually said (live regression: delete 'Daily evening digest' rejected as invalid_input)", async () => {
+  const digest = job("b6439111-1aa6-47aa-a293-8e545d5ca617", "Daily evening digest");
+  const resolution = await resolveScheduleReference("org-1", "  'Daily evening digest' ", {
+    listScheduledJobs: async () => [job("11111111-1111-4111-8111-111111111111", "Morning brief"), digest],
+  });
+  assert.equal(resolution.ok, true);
+  if (resolution.ok) assert.equal(resolution.job.id, digest.id);
+});
+
+test("resolveScheduleReference matches names case-insensitively", async () => {
+  const resolution = await resolveScheduleReference("org-1", "daily evening DIGEST", {
+    listScheduledJobs: async () => [job("b6439111-1aa6-47aa-a293-8e545d5ca617", "Daily evening digest")],
+  });
+  assert.equal(resolution.ok, true);
+});
+
+test("resolveScheduleReference resolves exact UUIDs through getScheduledJob", async () => {
+  const digest = job("b6439111-1aa6-47aa-a293-8e545d5ca617", "Daily evening digest");
+  let asked = "";
+  const resolution = await resolveScheduleReference("org-1", "b6439111-1aa6-47aa-a293-8e545d5ca617", {
+    getScheduledJob: async (_org: string, id: string) => { asked = id; return digest; },
+  });
+  assert.equal(asked, "b6439111-1aa6-47aa-a293-8e545d5ca617");
+  assert.equal(resolution.ok, true);
+  const missing = await resolveScheduleReference("org-1", "00000000-0000-4000-8000-000000000000", {
+    getScheduledJob: async () => null,
+  });
+  assert.equal(missing.ok, false);
+  if (!missing.ok) assert.equal(missing.code, "not_found");
+});
+
+test("resolveScheduleReference rejects unknown and ambiguous names with actionable messages", async () => {
+  const unknown = await resolveScheduleReference("org-1", "No such task", {
+    listScheduledJobs: async () => [job("b6439111-1aa6-47aa-a293-8e545d5ca617", "Daily evening digest")],
+  });
+  assert.equal(unknown.ok, false);
+  if (!unknown.ok) {
+    assert.equal(unknown.code, "not_found");
+    assert.match(unknown.message, /schedules\.list/);
+  }
+  const ambiguous = await resolveScheduleReference("org-1", "Digest", {
+    listScheduledJobs: async () => [job("b6439111-1aa6-47aa-a293-8e545d5ca617", "Digest"), job("22222222-2222-4222-8222-222222222222", "digest")],
+  });
+  assert.equal(ambiguous.ok, false);
+  if (!ambiguous.ok) assert.equal(ambiguous.code, "ambiguous_name");
+});
+
+test("resolveScheduleReference ignores archived tasks when matching names and requires a reference", async () => {
+  const archivedOnly = await resolveScheduleReference("org-1", "Daily evening digest", {
+    listScheduledJobs: async () => [job("b6439111-1aa6-47aa-a293-8e545d5ca617", "Daily evening digest", { status: "archived" })],
+  });
+  assert.equal(archivedOnly.ok, false);
+  if (!archivedOnly.ok) assert.equal(archivedOnly.code, "not_found");
+  const empty = await resolveScheduleReference("org-1", "   ");
+  assert.equal(empty.ok, false);
+});
+
+test("schedules.delete and schedules.update accept name references in their input schema", () => {
+  const source = readFileSync(resolve(HERE, "../src/agent/schedules-tool-runtime.ts"), "utf8");
+  assert.equal((source.match(/minLength: 36, maxLength: 36/g) ?? []).length, 0, "no schedule tool field may require a bare 36-char UUID anymore");
+  assert.ok(source.includes("resolveScheduleReference(context.organization_id"), "both delete and update must resolve references");
+  assert.ok((source.match(/resolveScheduleReference\(context\.organization_id/g) ?? []).length >= 2, "delete and update each resolve the reference");
+});
 
 function plan(input: { recurrence?: unknown; oneFireAt?: unknown; timezone?: string }) {
   return buildRecurrencePlan({

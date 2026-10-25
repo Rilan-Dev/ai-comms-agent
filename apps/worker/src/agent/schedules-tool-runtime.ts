@@ -16,6 +16,55 @@ import type { ToolAuthorizationDecision, ToolAuditWriter } from "./tool-executor
 
 export const SCHEDULED_AGENT_TASK_INTENT = "scheduled_agent_task";
 
+const SCHEDULE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export type ScheduledJobRecord = {
+  id: string; agentId: string; name: string; cron: string | null; oneFireAt: string | null;
+  intent: string; params: Record<string, unknown>; status: string; timezone: string;
+  nextFireAt: string | null; lastFireAt: string | null; lastError: string | null; catchUpMinutes: number;
+};
+
+export type ScheduleReferenceResolution =
+  | { ok: true; job: ScheduledJobRecord }
+  | { ok: false; code: "not_found" | "ambiguous_name"; message: string };
+
+/** Resolve a schedule reference that is either the exact UUID (from
+ * schedules.list) or the task's name — quoted, trimmed, case-insensitive —
+ * matching exactly one active schedule. Models routinely reference schedules
+ * by the name the user quoted ("delete the 'Daily evening digest' task");
+ * rejecting those references as invalid_input forced visible self-correction
+ * loops and contradictory chat replies. */
+export async function resolveScheduleReference(
+  organizationId: string,
+  reference: string,
+  lookups: {
+    getScheduledJob?: (organizationId: string, id: string) => Promise<ScheduledJobRecord | null>;
+    listScheduledJobs?: (organizationId: string) => Promise<ScheduledJobRecord[]>;
+  } = {},
+): Promise<ScheduleReferenceResolution> {
+  const trimmed = String(reference ?? "").trim().replace(/^["'`]+|["'`]+$/g, "").trim();
+  if (!trimmed) {
+    return { ok: false, code: "not_found", message: "A schedule reference is required: pass the exact UUID from schedules.list or the task name." };
+  }
+  if (SCHEDULE_ID_PATTERN.test(trimmed)) {
+    const job = await (lookups.getScheduledJob ?? getScheduledJob)(organizationId, trimmed);
+    if (!job) {
+      return { ok: false, code: "not_found", message: "No scheduled task with that ID exists in this organization. Call schedules.list and use the returned id." };
+    }
+    return { ok: true, job: job as ScheduledJobRecord };
+  }
+  const jobs = await (lookups.listScheduledJobs ?? listScheduledJobs)(organizationId);
+  const wanted = trimmed.toLowerCase();
+  const matches = jobs.filter((job) => job.status !== "archived" && job.name.toLowerCase() === wanted);
+  if (matches.length === 0) {
+    return { ok: false, code: "not_found", message: `No active scheduled task is named "${trimmed.slice(0, 120)}". Call schedules.list and use the returned id or the exact task name.` };
+  }
+  if (matches.length > 1) {
+    return { ok: false, code: "ambiguous_name", message: `Multiple active scheduled tasks are named "${trimmed.slice(0, 120)}"; pass the exact UUID from schedules.list.` };
+  }
+  return { ok: true, job: matches[0] as ScheduledJobRecord };
+}
+
 type RecurrenceMode = "minutes" | "hours" | "daily" | "weekly" | "monthly" | "cron";
 type Recurrence = { mode: RecurrenceMode; interval?: number; time?: string; weekday?: number; day_of_month?: number; cron?: string };
 
@@ -270,11 +319,11 @@ function createSchedulesUpdateTool(now: () => Date = () => new Date()): Tool<Upd
   return {
     name: "schedules.update",
     domain: "schedule",
-    description: "Edit an existing scheduled AI agent task by ID: rename it, rewrite its task instruction, change its repeat rule or one-time fire time, change timezone, or pause/resume it (status active|paused). Omitted fields keep their current values.",
+    description: "Edit an existing scheduled AI agent task: rename it, rewrite its task instruction, change its repeat rule or one-time fire time, change timezone, or pause/resume it (status active|paused). Omitted fields keep their current values. Pass the schedule's id — the exact UUID from schedules.list — or the task's exact unique name (for example 'Daily evening digest').",
     input_schema: {
       type: "object",
       properties: {
-        id: { type: "string", minLength: 36, maxLength: 36 },
+        id: { type: "string", minLength: 1, maxLength: 120, description: "Schedule UUID from schedules.list, or the task's exact unique name." },
         name: { type: "string", minLength: 1, maxLength: 120 },
         task: { type: "string", minLength: 1, maxLength: 4000 },
         recurrence: {
@@ -304,9 +353,13 @@ function createSchedulesUpdateTool(now: () => Date = () => new Date()): Tool<Upd
       if (!context.auth_subject.permissions.includes("schedules.manage")) {
         return fail("schedules.update", startedAt, "permission_denied", "The current actor cannot edit schedules.");
       }
-      const existing = await getScheduledJob(context.organization_id, input.id);
-      if (!existing || existing.status === "archived") {
-        return fail("schedules.update", startedAt, "not_found", "No active schedule with that ID exists in this organization.");
+      const resolution = await resolveScheduleReference(context.organization_id, String(input.id ?? ""));
+      if (!resolution.ok) {
+        return fail("schedules.update", startedAt, resolution.code, resolution.message);
+      }
+      const existing = resolution.job;
+      if (existing.status === "archived") {
+        return fail("schedules.update", startedAt, "not_found", "No active schedule with that reference exists in this organization.");
       }
       if (existing.agentId !== context.agent_id) {
         return fail("schedules.update", startedAt, "agent_mismatch", "This schedule belongs to a different agent.");
@@ -332,7 +385,7 @@ function createSchedulesUpdateTool(now: () => Date = () => new Date()): Tool<Upd
       const status: "active" | "paused" | "error" = input.status === "paused" ? "paused" : input.status === "active" ? "active" : (existing.status === "paused" ? "paused" : existing.status === "error" ? "error" : "active");
       const job = await updateScheduledJob({
         organizationId: context.organization_id,
-        id: input.id,
+        id: existing.id,
         name: nextName,
         cron,
         oneFireAt,
@@ -349,7 +402,7 @@ function createSchedulesUpdateTool(now: () => Date = () => new Date()): Tool<Upd
         agentId: context.agent_id,
         eventType: "schedule.updated",
         targetType: "scheduled_job",
-        targetId: input.id,
+        targetId: existing.id,
         action: "update",
         decision: "allowed",
         correlationId: context.correlation_id,
@@ -368,8 +421,15 @@ function createSchedulesDeleteTool(): Tool<DeleteInput, { deleted: boolean; summ
   return {
     name: "schedules.delete",
     domain: "schedule",
-    description: "Delete (archive) a scheduled AI agent task by ID. Archived schedules never fire again and disappear from the active list.",
-    input_schema: { type: "object", properties: { id: { type: "string", minLength: 36, maxLength: 36 } }, required: ["id"], additionalProperties: false },
+    description: "Delete (archive) a scheduled AI agent task. Pass the schedule's id — the exact UUID from schedules.list — or the task's exact unique name (for example 'Daily evening digest'); the name must match exactly one active task. When unsure, call schedules.list first. Archived schedules never fire again and disappear from the active list.",
+    input_schema: {
+      type: "object",
+      properties: {
+        id: { type: "string", minLength: 1, maxLength: 120, description: "Schedule UUID from schedules.list, or the task's exact unique name." },
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
     sensitivity: "sensitive",
     required_permission: "schedules.manage",
     execute: async (input, context) => {
@@ -377,14 +437,18 @@ function createSchedulesDeleteTool(): Tool<DeleteInput, { deleted: boolean; summ
       if (!context.auth_subject.permissions.includes("schedules.manage")) {
         return fail("schedules.delete", startedAt, "permission_denied", "The current actor cannot delete schedules.");
       }
-      const existing = await getScheduledJob(context.organization_id, input.id);
-      if (!existing || existing.status === "archived") {
-        return fail("schedules.delete", startedAt, "not_found", "No schedule with that ID exists in this organization.");
+      const resolution = await resolveScheduleReference(context.organization_id, String(input.id ?? ""));
+      if (!resolution.ok) {
+        return fail("schedules.delete", startedAt, resolution.code, resolution.message);
+      }
+      const existing = resolution.job;
+      if (existing.status === "archived") {
+        return fail("schedules.delete", startedAt, "not_found", "That scheduled task is already archived.");
       }
       if (existing.agentId !== context.agent_id) {
         return fail("schedules.delete", startedAt, "agent_mismatch", "This schedule belongs to a different agent.");
       }
-      const ok = await deleteScheduledJob(context.organization_id, input.id);
+      const ok = await deleteScheduledJob(context.organization_id, existing.id);
       if (!ok) return fail("schedules.delete", startedAt, "not_found", "The schedule was already archived.");
       await recordAuditEvent({
         organizationId: context.organization_id,
@@ -392,7 +456,7 @@ function createSchedulesDeleteTool(): Tool<DeleteInput, { deleted: boolean; summ
         agentId: context.agent_id,
         eventType: "schedule.archived",
         targetType: "scheduled_job",
-        targetId: input.id,
+        targetId: existing.id,
         action: "archive",
         decision: "allowed",
         correlationId: context.correlation_id,

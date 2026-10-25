@@ -51,3 +51,64 @@ describe('current turn host outcomes',()=>{
   expect(currentTurnOperationAnswer(text,[],context.turn_id,false)).toBe(text);
  });
 });
+
+describe('scheduled AI task feedback',()=>{
+ const scheduleId='b6439111-1aa6-47aa-a293-8e545d5ca617';
+ const completedDelete=operationResultFromToolCall({context,callId:'call-2',registeredName:'schedules.delete',
+   result:{ok:true,output:{deleted:true,schedule:{id:scheduleId,name:'Daily evening digest'},summary:'deleted'}}})!;
+ const rejectedDelete=(code:string,callId:string)=>operationResultFromToolCall({context,callId,registeredName:'schedules.delete',
+   result:{ok:false,error:{code,message:'id must be a 36 character UUID'}}})!;
+
+ it('reports only the final outcome when the agent self-corrects an invalid first delete (live regression: contradictory "deleted failed ... deleted" reply)',()=>{
+  // Live trace 2026-10-25 00:46:43-45: schedules.delete invalid_input ->
+  // schedules.list -> schedules.delete completed, all in one turn.
+  const output=formatOperationFeedback([rejectedDelete('invalid_input','call-1'),completedDelete]);
+  expect(output).toContain('Scheduled AI task deleted.');
+  expect(output).not.toContain('deleted failed');
+  expect(output).not.toContain('review queue');
+ });
+
+ it('keeps the failure and explains it in schedule terms when no later attempt succeeded',()=>{
+  const output=formatOperationFeedback([rejectedDelete('not_found','call-1')]);
+  expect(output).toContain('Scheduled AI task deleted failed.');
+  expect(output).toContain('No scheduled task matched that reference');
+  expect(output).not.toContain('review queue');
+ });
+
+ it('keeps a superseded failure whose error code may have persisted side effects',()=>{
+  const conflict=operationResultFromToolCall({context,callId:'call-1',registeredName:'schedules.delete',
+    result:{ok:false,error:{code:'idempotency_conflict',message:'existing request'}}})!;
+  const output=formatOperationFeedback([conflict,completedDelete]);
+  expect(output).toContain('deleted failed');
+  expect(output).toContain('deleted.');
+ });
+
+ it('never applies the schedule collapse to email or WhatsApp results',()=>{
+  const failedSend=operationResultFromToolCall({context,callId:'call-1',registeredName:'whatsapp.send',
+    result:{ok:false,error:{code:'requires_template',message:'window closed'}}})!;
+  const pendingSend=operationResultFromToolCall({context,callId:'call-2',registeredName:'whatsapp.send',
+    result:{ok:true,output:{status:'pending',approval_required:true,action_id:actionId}}})!;
+  const output=formatOperationFeedback([failedSend,pendingSend]);
+  expect(output).toContain('WhatsApp send request failed');
+  expect(output).toContain('pending human review');
+ });
+
+ it('explains ambiguous task names and unknown schedule failures without email/WhatsApp wording',()=>{
+  const ambiguous=operationResultFromToolCall({context,callId:'call-1',registeredName:'schedules.delete',
+    result:{ok:false,error:{code:'ambiguous_name',message:'two tasks share the name'}}})!;
+  expect(formatOperationFeedback([ambiguous])).toContain('More than one scheduled task has that name');
+  const unmapped=operationResultFromToolCall({context,callId:'call-1',registeredName:'schedules.delete',
+    result:{ok:false,error:{code:'tool_execution_failed',message:'boom'}}})!;
+  expect(formatOperationFeedback([unmapped])).toContain('The scheduled-task action could not be confirmed. Check [scheduled tasks](/scheduled)');
+  expect(formatOperationFeedback([unmapped])).not.toContain('review queue');
+ });
+
+ it('answers the whole turn from the surviving schedule outcome only',()=>{
+  const answer=currentTurnOperationAnswer('I deleted it.',
+    [rejectedDelete('invalid_input','call-1'),completedDelete],context.turn_id,false);
+  expect(answer).toContain('Scheduled AI task deleted.');
+  expect(answer).not.toContain('deleted failed');
+  // Prior-turn results never leak into the current answer.
+  expect(currentTurnOperationAnswer('done.',[completedDelete],'another-turn',false)).toBe('done.');
+ });
+});
