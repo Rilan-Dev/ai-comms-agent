@@ -97,6 +97,8 @@ export interface Tool<I = unknown, O = unknown> {
 }
 
 export interface ToolContext {
+  /** Host-derived current instruction; true always overrides autonomous policy. */
+  require_human_approval?:boolean;
   /** Derived by the host from the current user message, never model arguments. */
   email_body_review?: import('../operations/email-content').EmailBodyReview;
   agent_id: string;

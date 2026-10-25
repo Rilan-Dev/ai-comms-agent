@@ -1,3 +1,4 @@
+import {requiresHumanApproval} from "@ai-comms-agent/shared";
 import { PostgresAgentRepository, query } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import type { ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/clara-core";
@@ -89,6 +90,7 @@ export async function runScheduledAgentTask(args: {
     turn_id: args.executionId,
     correlation_id: args.executionId,
     channel: "schedule",
+    require_human_approval:requiresHumanApproval(task),
     auth_subject: { user_id: actingUserId, role: "admin", permissions },
   };
   if (agentTools.length === 0) {

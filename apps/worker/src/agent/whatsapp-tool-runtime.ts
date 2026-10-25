@@ -41,7 +41,9 @@ async function autoApproveWhatsAppSendAction(args: {
   templateParameters: string[];
   idempotencyKey: string;
   correlationId: string | null;
+  requireHumanApproval?:boolean;
 }): Promise<AutoApprovalOutcome> {
+  if(args.requireHumanApproval)return {kind:"skipped"};
   const policy = await new PostgresAgentRepository().policy(args.organizationId, args.agentId);
   if (!isAutonomousSendEnabled(policy?.securityPolicy)) return { kind: "skipped" };
   if (args.payloadType === "text") {
@@ -235,6 +237,7 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
         templateParameters,
         idempotencyKey,
         correlationId: correlationId ?? null,
+        requireHumanApproval:context.require_human_approval,
       });
       if (autoApproval.kind === "failed") {
         return fail(autoApproval.code, autoApproval.message);

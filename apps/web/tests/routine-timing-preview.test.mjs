@@ -43,12 +43,12 @@ test("preview accepts bounded inputs, rejects bad zones, and labels every outcom
   assert.doesNotMatch(page, /<form method="post"/i);
 });
 
-test("Overview offers a safe timing preview ahead of direct Schedules/Automations links", () => {
+test("Overview offers the timing preview alongside the unified Scheduled AI Agent", () => {
   const overview = read("../src/app/overview/page.tsx");
   const section = overview.slice(overview.indexOf("03 · Plan"), overview.indexOf("</article>", overview.indexOf("03 · Plan")));
   assert.match(section, /href="\/routines\/preview"/);
-  assert.match(section, /href="\/schedules"/);
-  assert.match(section, /href="\/automations"/);
+  assert.match(section, /href="\/scheduled"/);
+  assert.doesNotMatch(section, /href="\/(?:schedules|automations)"/);
   assert.match(section, /New AI digest routines are not yet activated/);
 });
 

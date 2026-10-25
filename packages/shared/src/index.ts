@@ -179,3 +179,5 @@ export type { WhatsAppReadiness } from "./operations/whatsapp-readiness";
 export { deriveWhatsAppReadiness } from "./operations/whatsapp-readiness";
 
 export {replyMessageId,replyReferences,emailReplyMetadata} from './email/reply-metadata';
+
+export {requiresHumanApproval} from './operations/human-approval';

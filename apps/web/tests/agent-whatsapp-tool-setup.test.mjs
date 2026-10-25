@@ -48,7 +48,7 @@ test("connected account selection stays independently administrator-confirmed", 
   assert.match(read("../src/app/api/agents/[id]/channels/route.ts"), /role: "admin"/);
 });
 
-test("host executor requires actor whatsapp.send, connected bound account, and a pending human approval", () => {
+test("host executor requires current WhatsApp scope and explicit policy or human approval", () => {
   const runtime = read("../../../apps/worker/src/agent/whatsapp-tool-runtime.ts");
   assert.match(runtime, /name: "whatsapp.send"/);
   assert.match(runtime, /required_permission: "whatsapp.send"/);
@@ -56,7 +56,9 @@ test("host executor requires actor whatsapp.send, connected bound account, and a
   assert.match(runtime, /agent_whatsapp_accounts/);
   assert.match(runtime, /status: String\(action\.status\)/);
   assert.match(runtime, /INSERT INTO whatsapp_send_actions/);
-  assert.doesNotMatch(runtime, /queueWhatsAppOutboundMessage/);
+  assert.match(runtime, /if \(!isAutonomousSendEnabled\(policy\?\.securityPolicy\)\) return \{ kind: "skipped" \}/);
+  assert.match(runtime, /if\(args\.requireHumanApproval\)return \{kind:"skipped"\}/);
+  assert.ok(runtime.indexOf("if(args.requireHumanApproval)") < runtime.indexOf("const messageId = await queueWhatsAppOutboundMessage"));
   const roles = read("../../../packages/shared/src/identity/types.ts");
   assert.match(roles, /"whatsapp.send"/);
   const decision = read("../src/app/api/whatsapp/send-actions/decision/route.ts");

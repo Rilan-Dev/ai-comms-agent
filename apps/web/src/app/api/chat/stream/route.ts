@@ -1,3 +1,4 @@
+import {requiresHumanApproval} from "@ai-comms-agent/shared";
 import {isDraftOnlyRequest,draftOnlyToolAllowed,authorizeDraftOnly} from "@/lib/chat/draft-only-scope";
 import {draftPlanningContext} from "@/lib/chat/draft-planning-context";
 import {safeChatFailure} from '@/lib/chat/safe-failure';
@@ -621,6 +622,7 @@ export async function POST(request: Request) {
       conversation_id: conversation.id,
       turn_id: crypto.randomUUID(),
       email_body_review: reviewExplicitEmailBody(content),
+      require_human_approval:requiresHumanApproval(content),
       correlation_id: crypto.randomUUID(),
       channel: "chat",
       auth_subject: { user_id: subject.user.id, role: subject.membership.role, permissions: [...subject.permissions] },

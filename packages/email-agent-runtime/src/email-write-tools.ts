@@ -91,6 +91,7 @@ async function maybeAutoApproveEmailAction(
   context: ToolContext,
   action: { id: string; actionType: string; correlationId: string | null },
 ): Promise<boolean> {
+  if(context.require_human_approval)return false;
   if (!context.agent_id || !context.user_id) return false;
   const policy = await new PostgresAgentRepository().policy(context.organization_id, context.agent_id);
   if (!isAutonomousSendEnabled(policy?.securityPolicy)) return false;

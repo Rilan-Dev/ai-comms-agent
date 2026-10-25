@@ -1,3 +1,4 @@
+import {requiresHumanApproval} from "@ai-comms-agent/shared";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import type { ChatMessage, ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/clara-core";
 import { operationResultFromToolCall, reviewExplicitEmailBody, type OperationResult, type ToolContext, type ToolResult } from "@ai-comms-agent/shared";
@@ -54,7 +55,7 @@ export async function runEmailAgentTurn(
   },
 ): Promise<EmailAgentTurnResult> {
   const currentUserMessage=[...input.messages].reverse().find(message=>message.role==='user')?.content ?? '';
-  input={...input,toolContext:{...input.toolContext,email_body_review:reviewExplicitEmailBody(currentUserMessage)}};
+  input={...input,toolContext:{...input.toolContext,require_human_approval:input.toolContext.require_human_approval||requiresHumanApproval(currentUserMessage),email_body_review:reviewExplicitEmailBody(currentUserMessage)}};
   if (input.toolContext.organization_id !== input.organizationId || input.toolContext.agent_id !== input.agentId) {
     throw new Error("Trusted tool context does not match the requested organization and agent.");
   }
