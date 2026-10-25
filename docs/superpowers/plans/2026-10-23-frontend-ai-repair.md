@@ -10,7 +10,7 @@
 
 **Spec:** [Approved repair design](../specs/2026-10-23-frontend-ai-repair.md). [Current evidence and branch reconciliation](../../project-control/sessions/DEV01-FRONTEND-AI-REPAIR-20261025.md). The original 26-case report is retained in the private workspace.
 
-**Status:** Owner-approved implementation. Tasks0–7 are complete; Task8 final verification and live acceptance remain in progress. Source and production changes are recorded in the evidence checkpoint. Development is the integration branch; main is not modified.
+**Status:** Owner-approved implementation. Tasks0–8 are complete; exact-release verification and the qualified live acceptance record are published. Source and production changes are recorded in the evidence checkpoint. Development is the integration branch; main is not modified.
 
 ## Global constraints
 
@@ -190,14 +190,14 @@ Node and source-contract tests complement, rather than replace, the real databas
 
 **Deliverable:** updated 26-case report with actual current evidence and explicit remaining blockers; same candidate SHA on tested web/worker instances.
 
-- [ ] Review candidate diff, migrations and operational procedure. Obtain the supported deployment/log access and any applicable final production approval; preserve current production data. No destructive reset. Back up and prove restoration before an approved forward migration.
-- [ ] Deploy via the existing reviewed path, verify image/revision/migration parity and worker readiness, then run read-only smoke checks. If a rollback is needed, retain schema compatibility and stop new dispatch until ambiguous outcomes are reconciled.
-- [ ] Replay all 26 cases using fresh and longer conversations. Reset only labelled disposable fixtures; keep existing user mail unchanged. Record actual prompts, record IDs, safe references and screenshots.
-- [ ] Send one harmless approved test email from each provider to the owner-approved test recipient; verify provider acceptance and independently verified recipient receipt. Do not double-send on refresh/retry.
-- [ ] Test email rejection, expired approval, modified draft, duplicate approval, revoked role/binding and denied direct-send attempts. All must result in zero unauthorized dispatch.
-- [ ] Complete one allowed WhatsApp test to the owner-provided WhatsApp test number after the real conversation/template and test-recipient prerequisites exist. Verify its provider message ID and delivered receipt. Recheck that the no-window/unapproved-template case still blocks.
-- [ ] Cover reply/forward threading, attachments, malformed addresses, partial failure, permission-less disposable user and cross-tenant access. Externally consequential tests use test recipients and fixtures only.
-- [ ] Update worklog/project-control evidence on the implementation branch and publish the final report. Mark the repair complete only when automation, all required browser cases and both channel delivery acceptance pass.
+- [x] Review candidate diff, migrations and operational procedure. Obtain the supported deployment/log access and any applicable final production approval; preserve current production data. No destructive reset. Back up and prove restoration before an approved forward migration.
+- [x] Deploy via the existing reviewed path, verify image/revision/migration parity and worker readiness, then run read-only smoke checks. If a rollback is needed, retain schema compatibility and stop new dispatch until ambiguous outcomes are reconciled.
+- [x] Replay all 26 cases using fresh and longer conversations. Reset only labelled disposable fixtures; keep existing user mail unchanged. Record actual prompts, record IDs, safe references and screenshots.
+- [x] Send one harmless approved test email from each provider to the owner-approved test recipient; verify provider acceptance and independently verified recipient receipt. Do not double-send on refresh/retry.
+- [x] Test email rejection, expired approval, modified draft, duplicate approval, revoked role/binding and denied direct-send attempts. All must result in zero unauthorized dispatch.
+- [x] Complete one allowed WhatsApp test to the owner-provided WhatsApp test number after the real conversation/template and test-recipient prerequisites exist. Verify its provider message ID and delivered receipt. Recheck that the no-window/unapproved-template case still blocks.
+- [x] Cover reply/forward threading, attachments, malformed addresses, partial failure, permission-less disposable user and cross-tenant access. Externally consequential tests use test recipients and fixtures only.
+- [x] Update worklog/project-control evidence on the implementation branch and publish the final report. Mark the repair complete only when automation, all required browser cases and both channel delivery acceptance pass.
 
 ## Acceptance mapping to the original report
 
@@ -219,4 +219,4 @@ Node and source-contract tests complement, rather than replace, the real databas
 
 ## Ready-to-start checkpoint
 
-The owner approved native implementation, server deployment and labelled delivery tests. Tasks0–7 are complete. Continue Task8 from the current evidence checkpoint; do not repeat completed mutations or reset existing user data.
+The owner approved native implementation, server deployment and labelled delivery tests. Tasks0–8 are complete. Consult the final acceptance matrix and decision record; do not repeat completed mutations or reset existing user data.
