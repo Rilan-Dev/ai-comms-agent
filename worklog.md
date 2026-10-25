@@ -3570,3 +3570,24 @@ DEV-01 coordinated authoritative Clara comparison and integration; FIX-01 implem
 
 ### Owner actions
 - Re-paste the WhatsApp access token (Meta console) or move to a permanent System User token — the only blocker between the scheduled WhatsApp note and actual delivery.
+
+## 2026-10-25 — fix(scheduling): coherent chat feedback for self-corrected schedule deletes (e51fe75c)
+
+### Live defect traced (user report: "1 failed message and 1 success message from AI chat")
+Conversation `aca.conversation_messages` + `aca.audit_events` (2026-10-25 00:46:42–46, "Daily evening digest"):
+1. 00:46:43 `schedules.delete` → **`invalid_input`** (schema validation, 1 ms — never executed). The model passed the task name, not the 36-char UUID the old schema demanded.
+2. 00:46:44 model self-corrected: `schedules.list` → real UUID.
+3. 00:46:45 `schedules.delete` → allow → `schedule.archived`.
+4. The stored assistant reply rendered **BOTH** same-turn OperationResults → one contradictory message: "Scheduled AI task deleted failed. The action could not be confirmed. Check the account and review queue before retrying." followed by "Scheduled AI task deleted. [Review scheduled tasks](/scheduled)…".
+
+Two code defects: (a) `formatOperationFeedback` echoed superseded pre-execution failures next to the final outcome; (b) `failureExplanation` had no schedule error-code cases, so schedule failures fell to the email/WhatsApp default ("check the account and review queue").
+
+### Fix (e51fe75c, rebased over consent/draft-scope fixes d6131b6d)
+- **Web `operation-feedback.ts`**: `collapseSupersededScheduleFailures` drops a failed schedule result only when a later same-operation call completed in the same turn AND the error code proves no mutation persisted (invalid_input, not_found, agent_mismatch, permission_denied, tool_not_allowed, context_mismatch, ambiguous_name, invalid_schedule, agent_not_found, unknown_tool, authorization_unavailable). Business failures (idempotency_conflict…) and every email/WhatsApp result are never dropped. New `scheduleFailureExplanation` gives schedule-specific guidance (points to /scheduled + schedules.list); the email/WhatsApp default text can no longer leak into schedule failures.
+- **Worker `schedules-tool-runtime.ts`**: new exported `resolveScheduleReference` — `schedules.delete`/`schedules.update` accept the exact UUID **or the task's unique name** (quoted, trimmed, case-insensitive, active-only; ambiguous names fail with actionable `ambiguous_name`). Input schema relaxed from a bare 36-char UUID to 1–120 chars; tool descriptions teach the name path. This makes the natural user phrasing succeed on the first tool call.
+
+### Verification (all four steps)
+- **Code**: worker 372/372 (+6), web 877/877 (+6), tsc + eslint clean.
+- **Deploy**: `update-and-up.sh` → HEAD e51fe75c; verified `resolveScheduleReference` in worker dist (0 remaining 36-char constraints) and the collapse logic in the built web chunks; containers healthy.
+- **Live AI chat regression (dedicated QA conversation, minted session, both revoked)**: turn 1 create "Daily evening digest" daily 18:30 Asia/Calcutta → single clean "Scheduled AI task created." reply (cron `30 18 * * *`, tz Asia/Calcutta); turn 2 delete with the user's exact phrasing → **single** "Scheduled AI task deleted. [Review scheduled tasks](/scheduled)…" reply, `schedules.delete` **allow on the first call** (name resolution, no invalid_input, no retry loop), job archived. Turn 3 delete of a nonexistent name → model lists and answers honestly ("There are no active scheduled tasks…"), zero email/WhatsApp wording. Frontend smoke: /scheduled HTTP 200, 0 active schedules.
+- Harnesses persisted: `scripts/ssh-bridge/sched-delete-regression-{a,b}.sh`, `delete-fix-{deploy,verify*,codecheck}.sh`.
