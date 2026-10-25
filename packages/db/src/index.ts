@@ -107,6 +107,8 @@ export { listScheduledJobs, getScheduledJob, createScheduledJob, updateScheduled
 export { getOrCreateChatConversation, createChatConversation, listChatConversations, getChatConversation, listChatMessages, appendConversationMessage } from "./conversation/repository";
 export {saveMailTaskCheckpoint,loadMailTaskCheckpoint,reconcileMailTaskCheckpoint} from './conversation/task-checkpoint';
 export type {CheckpointScope,MailTaskCheckpoint,MailTaskCheckpointInput} from './conversation/task-checkpoint';
+export {getActiveAgentConfiguration,createAgentConfigurationDraft,getAgentConfigurationHistory,reviewAgentConfigurationRevision,restoreAgentConfigurationRevision,AgentConfigurationConflictError} from './agent/configuration-revisions';
+export type {AgentConfigurationScope,AgentConfigurationRevision,AgentConfigurationReview,ConfigurationHistoryAccess,ConfigurationHistoryView} from './agent/configuration-revisions';
 
 export {
   createVoiceSession,

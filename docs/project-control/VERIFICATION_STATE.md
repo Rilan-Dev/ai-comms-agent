@@ -1,3 +1,9 @@
+## Original workspace — source verification checkpoint — 2026-10-26
+
+[Scoped evidence](sessions/DEV01-ORIGINAL-WORKSPACE-20261026.md): Task3 full Vitest141files/1004tests PASS at03f93fae; Task4 domain12/12 and isolated PG14/14 PASS, exact-source shared/db/web types/lint/migration source gates PASS. Earlier Windows memory failure is not a passing run. No final full-suite/build/browser/current live acceptance or production0056 migration for this work yet. Remaining Tasks5–11 must pass before release. Main untouched; no phase/feature activation.
+
+---
+
 ## DEV-01 — frontend AI repair continuation — 2026-10-25
 
 Frontend AI repair acceptance is complete on Development; main untouched and its current commits are included. Exact runtime **4898fa33** passed **1,809 tests**, types/lint/build/migration gates and guarded deployment. Natural reply draft preserves provider body and thread headers with zero send requests; explicit human review overrides saved autonomous policy. After the owner refreshed the credential, fresh WhatsApp action4ef0668c stayed pending/noqueue, was approved once in the website, then confirmed **Delivered** by Meta and frontend. Both email providers have earlier independent connected CC receipt evidence. See [session](sessions/DEV01-FRONTEND-AI-REPAIR-20261025.md), [qualified acceptance matrix](sessions/DEV01-FRONTEND-AI-REPAIR-ACCEPTANCE-20261025.md) and [decisions](sessions/DEV01-FRONTEND-AI-REPAIR-DECISIONS-20261025.md). Earlier failed WhatsApp actions and historical502 process cause remain accurately recorded. Preserve existing policies, grants and concurrent scheduling features; other project work is not closed by this repair.

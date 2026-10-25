@@ -181,3 +181,5 @@ export { deriveWhatsAppReadiness } from "./operations/whatsapp-readiness";
 export {replyMessageId,replyReferences,emailReplyMetadata} from './email/reply-metadata';
 
 export {requiresHumanApproval,hasApprovalRequestDirective} from './operations/human-approval';
+export {AGENT_AI_CONFIGURATION_COLUMNS,AGENT_AI_CONFIGURATION_FIELDS,LEGACY_AGENT_CONFIGURATION_FIELDS,captureAgentConfigurationSnapshot,validateAgentConfigurationSnapshot,diffAgentConfiguration,restoreProtectedConfigurationValues} from './agent/configuration-revision';
+export type {AgentAiConfiguration,AgentConfigurationSnapshotV1,ConfigurationDiff} from './agent/configuration-revision';

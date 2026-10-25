@@ -1,3 +1,9 @@
+## DEV-01 — Original workspace implementation — 2026-10-26
+
+Owner approved the current-theme/original-controls design and implementation plan. Tasks0–4 have source evidence: mixed mail→WhatsApp review/continuation, accurate policy choices/sending mode, sender-list editing and immutable configuration foundation. [Current session and exact status](sessions/DEV01-ORIGINAL-WORKSPACE-20261026.md). Last broad suite:141files/1004tests at03f93fae; new foundation:12domain/14PG cases plus shared/db/web types/lint/migration source gates. No production0056 migration or release in this run. Next is Task5 governed atomic apply/current authority/revocation/runtime and all mutation adapters, then remaining original screens and release verification. Development only, main untouched; Phase4 and separate routine/RAG gates unchanged.
+
+---
+
 ## DEV-01 / FIX-01 — Sarvam live voice lifecycle fix verified — 2026-10-23
 
 Source on **Development** fixes lost readiness during mic consent, live Sarvam input/barge-in, late response replay, stale socket/activation/playback callbacks and abandoned microphone resources. [Session and exact next action](sessions/DEV01-FIX01-SARVAM-LIVE-LIFECYCLE-20261023.md); source `b58b4811`, upstream preserved in `4fefc41d`. **54/54 focused voice tests**, **7/7 core/integrity checks**, all package types and production web build pass. No live acoustic/vendor/production acceptance, deployment or messaging performed. OPS-01 verifies approved web+relay release, exact-origin WSS configuration, actual transcription/playback, real-device consent/mute/barge-in/end/reconnect and scoped mailbox reads. Phase 4 remains implementation_in_progress; standing routines/C3 activation unchanged. Earlier source/login checkpoints remain historical.

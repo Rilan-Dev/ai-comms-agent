@@ -1,3 +1,9 @@
+## Original-workspace workstream — 2026-10-26
+
+Owner-approved implementation continues under the current Phase4 implementation_in_progress status, not a phase acceptance/transition. [Current source evidence and pending work](sessions/DEV01-ORIGINAL-WORKSPACE-20261026.md): Tasks0–4 done in source; Task5 governed apply and original-screen integration next. Development only; main untouched. Source tests are distinguished from deployed/live acceptance. Future RAG setup execution and separate routine gates remain deferred.
+
+---
+
 ## DEV-01 — current Development and frontend acceptance checkpoint — 2026-10-23
 
 Owner now directs all work/pushes to **Development**. Latest recovery and completed/in-progress/pending checklist: [current handoff](sessions/DEV01-DEVELOPMENT-FRONTEND-ACCEPTANCE-20261023.md). C3 source exists but remains unregistered; C4 source details, R1a preview and reviewed Chat email/WhatsApp tools exist, with live acceptance pending. Current Development native checks: **54 passed, 0 failed/skipped**. Live `/login` returns **Cloudflare HTTP 522 Host Error**; no login, draft, email, approval or WhatsApp test was executed. **Exact next:** OPS-01 restores origin availability; DEV-01 resumes the documented F01–F21 frontend matrix, including permission-negative and human-approval cases, using owner-authorized WhatsApp recipient. No deployment, permission mutation or feature activation performed. Phase 4 remains implementation_in_progress; older entries retained as history.
