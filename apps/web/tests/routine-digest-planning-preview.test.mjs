@@ -64,3 +64,11 @@ test("the authenticated timing page integrates a real form and preview, never cr
   assert.doesNotMatch(page, /createScheduledJob|createAutomationRule|requestWhatsAppSend|sendDraft\(/);
   assert.match(overview, /href="\/routines\/preview"/);
 });
+
+
+test("elapsed interval with a previous-local-day window warns about unbound time zone", () => {
+  const page = readFileSync(new URL("../src/app/routines/preview/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /kind === "interval" && digestPreferences\.window === "previous_local_day"/);
+  assert.match(page, /An elapsed interval does not bind a summary time zone/);
+  assert.match(page, /confirm the local-day zone separately/i);
+});
