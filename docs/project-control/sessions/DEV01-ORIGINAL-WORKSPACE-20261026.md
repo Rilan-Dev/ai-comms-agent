@@ -1,0 +1,34 @@
+# Original workspace implementation —26 October2026
+
+Owner approved the original-screen design and instructed proceeding. Plan: [original workspace implementation](../../superpowers/plans/2026-10-26-original-workspace-implementation.md). Base source `2da726dba3a1e4b908cc9fb6a6722136a47e1a7e`; plan recorded as `acfa9ebf`. Native task execution continues in the established isolated Development clone. Main untouched. No product deployment or live configuration change in this checkpoint.
+
+## Initial control/API preservation inventory
+
+| Existing control | Stored field / handler | Current effect and authority | Implementation preservation |
+|---|---|---|---|
+| Name, multiline Purpose, Slug | AgentDetailClient identity submit → agent PATCH → repository update | Current authorized identity mutation, independent of version JSON | All values/validation remain; editor on demand; new candidate path before reviewed apply. |
+| Version JSON/create/history | versions POST and agent_versions | Immutable supplied config, not full settings capture | Legacy history preserved; full baseline/candidates explicitly distinguished. |
+| Deploy/Pause | deploy/agent handlers | Owner-authorized deployment pointer/lifecycle | Same authority and explicit effects; complete atomic revision apply, no business action replay. |
+| Email presets + individual tools | selectedTools, emailPermissionPresetSelection → policy PATCH | One allowlist, admin consent, expectedPolicy conflict check | One derived selection/custom state; all16 email tools plus2 WhatsApp/4 scheduling tools retained. |
+| Autonomous sending | security_policy.autonomous_send | Independent approval mode; current explicit human-review flag restricts it | One authoritative editor; mode never grants tool access; saved value preserved until reviewed change. |
+| Allowed/blocked senders and JSON | policy arrays/securityPolicy/rateLimits | Comma-separated list and object validation/persistence; inspected runtime enforcement not proven | Preserve100-entry accepted contract and unknown values; no invented restriction claim/grammar. |
+| Email assignment/role | channels PATCH → agent_email_accounts | Upsert exact mailbox+role; primary/read_only/send_only gates independently checked | Multiple primary assignments remain; full reviewed delta and effective access, no duplicate/bulk-atomic fiction. |
+| Remove email/WhatsApp | unbind functions → channels PATCH | Immediate mutation today | Staged removal only with real backend support; explicit immediate revoke remains current and recorded. |
+| WhatsApp assignment | agent_whatsapp_accounts | One org-scoped bound account; readiness/provider checks separate | Current binding, window/template and recipient restrictions preserved; no silent substitution. |
+|16 AI overrides | original AgentAISettingsPanel → ai-settings PUT | Independent current mutation; null inherits; catalogs and custom fields | Original layout/LiveModelSelect retained; all16 fields preserved in revisions and partial-save behavior. |
+| Configuration test | simulate POST | Saved prerequisite check, not real provider send | Accurate scoped results; never manufacture delivery/readiness. |
+| Activity/technical audit | audit GET | Organization/agent scoped events, bounded page | Retain original detail; derive business outcomes only from authoritative action evidence. |
+| Chat/voice/inline draft approvals | Chat stream, shared executor/receipts and provider workers | Authorized tools, current scope, frozen approvals, dispatch reconciliation | Existing paths preserved; interactive UI uses same host authority and operations. |
+| Routine planning preview | separate GET-only routine preview/helper | Planning only, not executable task/standing consent | Preserve independent upstream feature gates and local-day/elapsed-interval distinctions. |
+
+Other original routes remain in the26 October audit's project-wide inventory and require their own control inspection before edits; this table is not a claim of complete live inspection across the platform.
+
+## Baseline evidence and new root-cause finding
+
+- Existing preset Node suite:3/3 pass, no skipped/failed cases.
+- Existing human directive/draft scope/actual email+WhatsApp handler suites:30/30 pass across3 files; bounded local Vitest execution. These existing cases omit the reported mixed noun-form task.
+- Actual exported functions on the exact owner prompt return **draftOnly=true, humanReview=false**. This explains the visible lack of WhatsApp calls: the route filters WhatsApp out under the incorrectly inferred draft-only scope. The separate noun-form review parser also misses the request.
+- Task1 adds failing exact-prompt and close-boundary regressions before correction. Do not add a mutation replay workaround for a tool the guard wrongly hid, and do not weaken genuine draft-only executor denials.
+- Last verified serving source from the previous repair is4898fa33 on25 October; current serving revision has not been reverified in this new implementation. Previous1,809-test release proof is historical, not this new branch's final acceptance.
+
+No existing theme token, AI layout, account, policy, role, provider or credential changed at this baseline checkpoint.
