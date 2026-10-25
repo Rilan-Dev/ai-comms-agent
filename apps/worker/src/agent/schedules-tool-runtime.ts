@@ -189,7 +189,7 @@ function createSchedulesCreateTool(now: () => Date = () => new Date()): Tool<Cre
   return {
     name: "schedules.create",
     domain: "schedule",
-    description: "Create a scheduled AI agent task. At every fire time the agent executes the task instruction with its real tools (for example: summarize the last 24 hours of email and send a short WhatsApp note). Provide a natural-language task plus exactly one of: a recurrence preset (minutes, hours, daily, weekly, monthly or raw cron) or a one-time ISO date-time.",
+    description: "Create a scheduled AI agent task. At every fire time the agent executes the task instruction with its real tools (for example: summarize the last 24 hours of email and send a short WhatsApp note). Provide a natural-language task plus exactly one of: a recurrence preset (minutes, hours, daily, weekly, monthly or raw cron) or a one-time ISO date-time. Always pass the user's timezone when they name one (IANA name like Asia/Calcutta); it defaults to UTC. Recurrence times are local to that timezone.",
     input_schema: {
       type: "object",
       properties: {

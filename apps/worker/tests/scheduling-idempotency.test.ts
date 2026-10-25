@@ -84,7 +84,11 @@ test("an in-flight run cannot overwrite same-fire schedule edits, even if status
   assert.match(claim, /toISOString\(\)/);
   const advance = repository.slice(repository.indexOf("export async function advanceScheduledJob"),
     repository.indexOf("export async function completeScheduledJobRun"));
-  assert.match(advance, /AND status='active' AND updated_at=\$4::timestamptz RETURNING id/);
+  // The claim snapshot is millisecond-precision (JS Date) while PostgreSQL
+  // updated_at carries microseconds: the revision CAS must compare within the
+  // same millisecond instead of exact equality (which never matched).
+  assert.match(advance, /AND status='active' AND updated_at >= \$4::timestamptz AND updated_at < \$4::timestamptz \+ interval '1 millisecond' RETURNING id/);
+  assert.doesNotMatch(advance, /updated_at=\$4::timestamptz/);
   assert.match(advance, /next_fire_at=\$5::timestamptz/);
   assert.match(advance, /\[id,organizationId,expectedFireAt,expectedUpdatedAt,nextFireAt,status,lastError\]/);
   const worker = readFileSync(resolve(__dirname, "../src/scheduling/scheduler-worker.ts"), "utf8");

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { isAutonomousSendEnabled } from "@ai-comms-agent/shared";
 import { operationResultFromToolCall } from "@ai-comms-agent/shared";
-import { formatOperationFeedback } from "@/lib/chat/operation-feedback";
+import { formatOperationFeedback, currentTurnOperationAnswer } from "@/lib/chat/operation-feedback";
 
 const emailWriteTools = readFileSync(resolve(__dirname, "../../../packages/email-agent-runtime/src/email-write-tools.ts"), "utf8");
 const currentAuthorization = readFileSync(resolve(__dirname, "../../../packages/db/src/actions/current-authorization.ts"), "utf8");
@@ -14,6 +14,8 @@ const context = { turn_id: "auto-turn", correlation_id: "auto-correlation" };
 const actionId = "b8f22770-c484-49ac-bdcd-61ac2533a300";
 const call = (name: string, output: unknown) =>
   operationResultFromToolCall({ context, callId: "call-auto", registeredName: name, result: { ok: true, output } });
+const failedCall = (name: string, code: string) =>
+  operationResultFromToolCall({ context, callId: "call-auto", registeredName: name, result: { ok: false, error: { code, message: "x", retryable: false } } });
 
 describe("autonomous-send policy flag", () => {
   it("enables only on an explicit saved true flag", () => {
@@ -70,6 +72,33 @@ describe("email write tools autonomous gating", () => {
   it("audits auto-approvals with a distinct event type and source", () => {
     expect(emailWriteTools).toContain('"email.action.auto_approved"');
     expect(emailWriteTools).toContain('source: "agent_policy_autonomous_send"');
+  });
+});
+
+describe("scheduled AI agent operation results", () => {
+  it("maps a successful schedules.create to the completed schedule state", () => {
+    const result = call("schedules.create", { schedule: { id: actionId, name: "Daily evening digest" }, summary: "created" })!;
+    expect(result).toMatchObject({ channel: "schedule", operation: "create", state: "completed", resourceId: actionId });
+  });
+  it("maps schedules.update and schedules.delete the same way", () => {
+    expect(call("schedules.update", { schedule: { id: actionId }, summary: "updated" })).toMatchObject({ channel: "schedule", operation: "update", state: "completed" });
+    expect(call("schedules.delete", { deleted: true, summary: "deleted" })).toMatchObject({ channel: "schedule", operation: "delete", state: "completed" });
+  });
+  it("maps a failed schedule mutation to the failed state with its code", () => {
+    expect(failedCall("schedules.create", "invalid_schedule")).toMatchObject({ channel: "schedule", operation: "create", state: "failed", errorCode: "invalid_schedule" });
+  });
+  it("renders schedule confirmations instead of the no-send failure text", () => {
+    const result = call("schedules.create", { schedule: { id: actionId }, summary: "created" })!;
+    const text = formatOperationFeedback([result]);
+    expect(text).toContain("Scheduled AI task created");
+    expect(text).toContain("/scheduled");
+    expect(text).not.toContain("No message was sent");
+  });
+  it("keeps the scheduling answer authoritative for an explicit-mutation turn", () => {
+    const result = call("schedules.create", { schedule: { id: actionId }, summary: "created" })!;
+    const answer = currentTurnOperationAnswer("I created your digest.", [result], "auto-turn", true);
+    expect(answer).toContain("Scheduled AI task created");
+    expect(answer).not.toContain("No saved draft or send request was confirmed");
   });
 });
 
