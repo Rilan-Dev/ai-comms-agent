@@ -3,7 +3,7 @@
 export const EMAIL_PERMISSION_PRESETS = [
   { id: "read", label: "Read mail", description: "Search, list and inspect assigned mailboxes." },
   { id: "draft", label: "Draft mail", description: "Read mail and create or edit drafts; no send approval request." },
-  { id: "approval", label: "Request sending", description: "Draft mail and request explicit human send approval; never auto-send." },
+  { id: "approval", label: "Request sending", description: "Read, draft and prepare send requests. Your sending mode controls approval." },
   { id: "off", label: "No mail tools", description: "Disable every email permission; preserve non-email permissions." },
 ] as const;
 export type EmailPermissionPreset = typeof EMAIL_PERMISSION_PRESETS[number]["id"];
@@ -47,7 +47,7 @@ export const EMAIL_PERMISSION_LABELS: Record<string, string> = {
   "email.reply.request": "Request reply approval",
   "email.forward.request": "Request forward approval",
   "whatsapp.history": "Read bound WhatsApp conversation history",
-  "whatsapp.send": "Request WhatsApp send approval (human review required)",
+  "whatsapp.send": "Prepare WhatsApp sends (uses sending mode)",
 };
 
 export function summarizeEmailPermissionChanges(previous: readonly string[], selected: readonly string[]): {
@@ -64,7 +64,7 @@ export function summarizeEmailPermissionChanges(previous: readonly string[], sel
     "Update this agent's permissions?",
     added.length ? "Enable:\n" + added.map(name => "• " + label(name)).join("\n") : "Enable: none",
     removed.length ? "Disable:\n" + removed.map(name => "• " + label(name)).join("\n") : "Disable: none",
-    "Changes affect future chat and voice turns. Mailboxes and user permissions are separate; sending still requires human approval.",
+    "Changes affect future chat and voice turns. Account access is separate. Sending follows the saved sending mode: human approval by default, automatic when enabled. An explicit request for human review always waits.",
   ].join("\n\n");
   return { added, removed, confirmation };
 }

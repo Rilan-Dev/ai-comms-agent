@@ -1,4 +1,4 @@
-type Identity = { turnId: string; callId: string; correlationId: string; auditPending?: boolean };
+type Identity = { turnId: string; callId: string; correlationId: string; auditPending?: boolean; approvalSource?:'agent_policy'|'human' };
 type PersistedState = { state: "pending_approval" | "rejected" | "expired" | "queued" | "provider_accepted"; resourceId: string };
 type UnconfirmedState = { state: "failed" | "outcome_unknown"; resourceId?: string; errorCode?: string };
 export type OperationResult = Identity & (
@@ -68,7 +68,7 @@ export function operationResultFromToolCall(args: {
   // action/queue rows exist exactly like a human-approved send; only the
   // approval source differs. Delivery is still provider-confirmed separately.
   if (output.auto_approved===true && (output.status==='auto_approved' || output.status==='approved' || output.status==='queued')) {
-    return {...base,state:'queued',resourceId:id};
+    return {...base,state:'queued',resourceId:id,approvalSource:'agent_policy'};
   }
   return {...base,state:'outcome_unknown',resourceId:id};
 }

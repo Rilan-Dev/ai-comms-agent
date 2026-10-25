@@ -10,6 +10,9 @@ import { EMAIL_PERMISSION_PRESETS, emailPermissionPresetSelection, summarizeEmai
 import { WHATSAPP_POLICY_CHOICES } from "@/lib/agents/whatsapp-permission-choices";
 import { SCHEDULES_POLICY_CHOICES } from "@/lib/agents/schedules-permission-choices";
 import { useWhatsAppReadiness } from "@/lib/whatsapp/use-readiness";
+import {describeEffectiveAgentPolicy} from '@/lib/agents/effective-policy';
+import {collectSenderEntries} from '@/lib/agents/sender-entries';
+import {SenderListEditor} from './sender-list-editor';
 
 // Only tools registered by the current email runtime are selectable here.
 // The shared catalog also includes unimplemented contracts: showing those
@@ -28,9 +31,9 @@ const EMAIL_POLICY_CHOICES = [
   { name: "email.draft.update", label: "Edit drafts", detail: "Edit existing saved drafts.", group: "write" },
   { name: "email.draft_reply", label: "Draft replies", detail: "Prepare a reply without sending.", group: "write" },
   { name: "email.draft_forward", label: "Draft forwards", detail: "Prepare a forwarded message without sending.", group: "write" },
-  { name: "email.send.request", label: "Request sending approval", detail: "Request authorization to send a draft; does not send automatically.", group: "write" },
-  { name: "email.reply.request", label: "Request reply approval", detail: "Request authorization to reply; does not send automatically.", group: "write" },
-  { name: "email.forward.request", label: "Request forward approval", detail: "Request authorization to forward; does not send automatically.", group: "write" },
+  { name: "email.send.request", label: "Prepare email sends", detail: "Prepare send requests; approval follows the sending mode.", group: "write" },
+  { name: "email.reply.request", label: "Prepare email replies", detail: "Prepare reply requests; approval follows the sending mode.", group: "write" },
+  { name: "email.forward.request", label: "Prepare email forwards", detail: "Prepare forward requests; approval follows the sending mode.", group: "write" },
 ] as const;
 const KNOWN_EMAIL_POLICY_TOOLS = new Set<string>(EMAIL_POLICY_CHOICES.map((choice) => choice.name));
 const KNOWN_SELECTABLE_POLICY_TOOLS = new Set<string>([...KNOWN_EMAIL_POLICY_TOOLS, ...WHATSAPP_POLICY_CHOICES.map((choice) => choice.name), ...SCHEDULES_POLICY_CHOICES.map((choice) => choice.name)]);
@@ -49,6 +52,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   // step for this agent's own email/WhatsApp send requests. Persisted in the
   // policy security_policy JSON as autonomous_send: true.
   const [autonomousSend, setAutonomousSend] = useState(initialPolicy?.securityPolicy?.autonomous_send === true);
+  const effectivePolicy=describeEffectiveAgentPolicy({allowedTools:selectedTools,autonomousSend});
   const [emailBindings, setEmailBindings] = useState(initialEmailBindings);
   const [whatsappBinding, setWhatsappBinding] = useState(initialWhatsAppBinding);
   const [tab, setTab] = useState<"overview"|"versions"|"policy"|"channels"|"ai-settings"|"test"|"activity">("overview");
@@ -228,8 +232,8 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
     if (busy) return;
     const form = new FormData(event.currentTarget);
     const allowedTools = selectedTools;
-    const allowedSenders = String(form.get("allowedSenders") ?? "").split(",").map(v => v.trim()).filter(Boolean);
-    const blockedSenders = String(form.get("blockedSenders") ?? "").split(",").map(v => v.trim()).filter(Boolean);
+    const allowedSenders = collectSenderEntries(form,'allowedSenders');
+    const blockedSenders = collectSenderEntries(form,'blockedSenders');
     let securityPolicy: Record<string, unknown>;
     let rateLimits: Record<string, unknown>;
     try {
@@ -348,25 +352,25 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
       </div>
       <form onSubmit={savePolicy} className="mt-6 space-y-5">
         <fieldset className={`rounded-md border p-4 ${autonomousSend ? "border-amber-500/50 bg-amber-50/50" : "border-border"}`}>
-          <legend className="px-1 text-sm font-semibold">Autonomous sending (no human approval step)</legend>
+          <legend className="px-1 text-sm font-semibold">Sending mode</legend>
           <label className="flex items-start gap-3 rounded-md border bg-background p-3 text-sm hover:bg-muted/30">
             <input type="checkbox" disabled={busy} checked={autonomousSend} onChange={(event) => setAutonomousSend(event.target.checked)} className="mt-1 size-4 shrink-0" aria-describedby="autonomous-send-help" />
             <span>
-              <span className="block font-medium">{autonomousSend ? "ON — this agent sends autonomously" : "OFF — every send waits for human approval"}</span>
+              <span className="block font-medium">Send automatically {autonomousSend ? "— on" : "— off; review before sending"}</span>
               <span id="autonomous-send-help" className="mt-1 block text-xs text-muted-foreground">
-                When enabled, email and WhatsApp send requests created by this agent in chat or voice are approved automatically and dispatched by the worker within seconds — no approval queue, no manual click. Every other safeguard stays active: the requesting user&apos;s own permissions, agent account bindings, idempotency, and Meta&apos;s 24-hour customer-service window / approved-template rules for WhatsApp.
+                Applies only to enabled sending tools. Requests for human review always wait for approval. Account access and provider rules still apply.
               </span>
             </span>
           </label>
-          {autonomousSend && <p role="status" className="mt-2 rounded-md border border-amber-500/40 bg-background p-2 text-xs text-amber-700">
-            Heads-up: with autonomous sending on, a chat message like &quot;send an email to X&quot; or &quot;WhatsApp Y&quot; goes out for real immediately after the agent prepares it. You can turn this off at any time; sends already dispatched are not recalled.
-          </p>}
+          <p role="status" className="mt-2 rounded-md border bg-background p-2 text-xs">
+            Selected: Email {effectivePolicy.email.mode==='off'?'sending off':effectivePolicy.email.mode==='automatic'?'automatic':'human review'} · WhatsApp {effectivePolicy.whatsapp.mode==='off'?'sending off':effectivePolicy.whatsapp.mode==='automatic'?'automatic':'human review'}.
+          </p>
           <p className="mt-2 text-xs text-muted-foreground">This setting is stored in the agent&apos;s security policy and requires an administrator to save it. Changes apply to future chat and voice turns.</p>
         </fieldset>
         <fieldset className="rounded-md border border-primary/25 bg-primary/5 p-4">
           <legend className="px-1 text-sm font-semibold">Quick permission presets</legend>
-          <p className="mb-3 text-xs text-muted-foreground">Choose a starting point, fine-tune individual checkboxes below, then confirm and save. Existing custom permissions stay intact.</p>
-          <div className="grid gap-2 sm:grid-cols-2">{EMAIL_PERMISSION_PRESETS.map((preset) => <button key={preset.id} type="button" disabled={busy} onClick={() => chooseMailPreset(preset.id)} className="rounded-md border bg-background p-3 text-left text-xs transition hover:border-primary/50 disabled:opacity-50"><span className="block font-semibold">{preset.label}</span><span className="mt-1 block text-muted-foreground">{preset.description}</span></button>)}</div>
+          <p className="mb-3 text-xs text-muted-foreground">Choose the work this agent may do. Current selection: {effectivePolicy.emailPreset==='custom'?'Custom':EMAIL_PERMISSION_PRESETS.find(preset=>preset.id===effectivePolicy.emailPreset)?.label}. Individual choices remain below.</p>
+          <div className="grid gap-2 sm:grid-cols-2">{EMAIL_PERMISSION_PRESETS.map((preset) => <button key={preset.id} type="button" disabled={busy} aria-pressed={effectivePolicy.emailPreset===preset.id} onClick={() => chooseMailPreset(preset.id)} className={`rounded-md border bg-background p-3 text-left text-xs transition hover:border-primary/50 disabled:opacity-50 ${effectivePolicy.emailPreset===preset.id?'border-foreground ring-1 ring-foreground':''}`}><span className="block font-semibold">{preset.label}</span><span className="mt-1 block text-muted-foreground">{preset.description}</span></button>)}</div>
           <p role="status" className="mt-3 text-xs text-muted-foreground">{selectedTools.filter(name => KNOWN_EMAIL_POLICY_TOOLS.has(name)).length} email tools selected; changes are not active until you confirm and save.</p>
         </fieldset>
         <details className="space-y-4 rounded-md border p-4"><summary className="cursor-pointer text-sm font-semibold">Advanced: individual registered tools</summary>
@@ -408,10 +412,10 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
         </fieldset>}
         </details>
         <details className="rounded-md border p-4"><summary className="cursor-pointer text-sm font-semibold">Advanced sender rules and existing custom policy (optional)</summary>
-          <p className="mt-2 text-xs text-muted-foreground">The saved security and rate-limit rules stay unchanged unless you edit them here. Leave these fields as provided unless an administrator has specific restrictions.</p>
+          <p className="mt-2 text-xs text-muted-foreground">Existing values are preserved. Sender-list and rate-limit enforcement has not been verified; these fields do not replace access permissions or sending approval.</p>
           <div className="mt-4 space-y-4">
-            <label className="block text-sm font-medium">Allowed senders<input name="allowedSenders" defaultValue={policy?.allowedSenders.join(", ")??""} className="mt-1 h-11 w-full rounded-md border px-3 text-sm font-normal" placeholder="Optional email addresses" /></label>
-            <label className="block text-sm font-medium">Blocked senders<input name="blockedSenders" defaultValue={policy?.blockedSenders.join(", ")??""} className="mt-1 h-11 w-full rounded-md border px-3 text-sm font-normal" placeholder="Optional email addresses" /></label>
+            <SenderListEditor key={`allowed-${policy?.updatedAt??'new'}`} name="allowedSenders" label="Allowed senders" initialEntries={policy?.allowedSenders??[]} disabled={busy} />
+            <SenderListEditor key={`blocked-${policy?.updatedAt??'new'}`} name="blockedSenders" label="Blocked senders" initialEntries={policy?.blockedSenders??[]} disabled={busy} />
             <div className="grid gap-4 lg:grid-cols-2">
               <label className="block text-sm font-medium">Security policy<textarea name="securityPolicy" defaultValue={JSON.stringify(policy?.securityPolicy??{},null,2)} spellCheck={false} rows={7} className="mt-1 w-full rounded-md border bg-muted/20 p-3 font-mono text-xs font-normal" aria-label="Security policy JSON" /></label>
               <label className="block text-sm font-medium">Rate limits<textarea name="rateLimits" defaultValue={JSON.stringify(policy?.rateLimits??{},null,2)} spellCheck={false} rows={7} className="mt-1 w-full rounded-md border bg-muted/20 p-3 font-mono text-xs font-normal" aria-label="Rate limits JSON" /></label>

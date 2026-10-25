@@ -8,6 +8,7 @@ import dynamic from "next/dynamic";
 import { readSseEvents } from "@/lib/streaming/sse";
 import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "@/lib/ai/activity-progress";
 import { EMAIL_PERMISSION_PRESETS, EMAIL_PERMISSION_LABELS, REGISTERED_EMAIL_POLICY_NAMES, emailPermissionPresetSelection, summarizeEmailPermissionChanges } from "@/lib/agents/email-permission-presets";
+import {describeEffectiveAgentPolicy} from '@/lib/agents/effective-policy';
 import { explicitComposeRecipient, parseTestEmailComposeRequest } from "@/lib/mail/test-email-compose-intent";
 import { assistantEmailPreview } from "@/lib/mail/assistant-email-preview";
 import { selectComposeSender, signatureFromProfile, withProfileSignature, type ComposeProfile } from "@/lib/mail/compose-identity";
@@ -88,6 +89,7 @@ export function ChatClient({
   const [mailPermissionOpen, setMailPermissionOpen] = useState(false);
   const [mailPolicy, setMailPolicy] = useState<AgentPolicy | null>(null);
   const [mailToolSelection, setMailToolSelection] = useState<string[]>([]);
+  const selectedMailPolicy=describeEffectiveAgentPolicy({allowedTools:mailToolSelection,autonomousSend:mailPolicy?.securityPolicy?.autonomous_send===true});
   const [mailPermissionBusy, setMailPermissionBusy] = useState(false);
   const [mailPermissionNotice, setMailPermissionNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -920,9 +922,10 @@ export function ChatClient({
             </span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">Administrator-only. Choose a preset, adjust individual tools if needed, then confirm to save. Mailboxes and user permissions are separate requirements.</p>
-          <div className="mt-3 flex flex-wrap gap-2">{EMAIL_PERMISSION_PRESETS.map(preset => <button type="button" key={preset.id} disabled={mailPermissionBusy} title={preset.description}
+          <p role="status" className="mt-2 text-xs">Sending mode: {mailPolicy.securityPolicy?.autonomous_send===true?'Automatic':'Human review'}. Explicit requests for human review always wait.</p>
+          <div className="mt-3 flex flex-wrap gap-2">{EMAIL_PERMISSION_PRESETS.map(preset => <button type="button" key={preset.id} disabled={mailPermissionBusy} title={preset.description} aria-pressed={selectedMailPolicy.emailPreset===preset.id}
             onClick={() => setMailToolSelection(current => emailPermissionPresetSelection(current, preset.id))}
-            className="rounded-md border bg-background px-3 py-2 text-xs hover:border-primary disabled:opacity-50">{preset.label}</button>)}</div>
+            className={`rounded-md border bg-background px-3 py-2 text-xs hover:border-primary disabled:opacity-50 ${selectedMailPolicy.emailPreset===preset.id?'border-foreground ring-1 ring-foreground':''}`}>{preset.label}</button>)}</div>
           <details className="mt-3 rounded-md border p-3">
             <summary className="cursor-pointer text-xs font-semibold">Fine-tune email tool permissions</summary>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">{REGISTERED_EMAIL_POLICY_NAMES.map(name => <label key={name} className="flex items-center gap-2 text-xs"><input type="checkbox" disabled={mailPermissionBusy || busy} checked={mailToolSelection.includes(name)} onChange={event => setMailToolSelection(current => event.target.checked ? [...new Set([...current, name])] : current.filter(n => n !== name))} />{EMAIL_PERMISSION_LABELS[name] ?? name}</label>)}</div>
