@@ -30,12 +30,17 @@ test("agent detail preserves version, policy, channel, simulation and explicit d
 
 const automationsPage = readFileSync(resolve(__dirname, "../src/app/automations/page.tsx"), "utf8");
 const schedulesPage = readFileSync(resolve(__dirname, "../src/app/schedules/page.tsx"), "utf8");
+const scheduledPage = readFileSync(resolve(__dirname, "../src/app/scheduled/page.tsx"), "utf8");
 
-test("automation and schedule pages use the authenticated organization context", () => {
+test("the merged Scheduled AI agent page uses the authenticated organization context", () => {
+  assert.match(scheduledPage, /getAuthenticatedAppContext/);
+  assert.match(scheduledPage, /context\.organizationId/);
+  assert.match(scheduledPage, /not_provisioned/);
+  assert.doesNotMatch(scheduledPage, /ensureDevSeed|getDevOrgId/);
+});
+
+test("legacy Scheduling and Automations routes redirect into the merged workspace", () => {
   for (const source of [automationsPage, schedulesPage]) {
-    assert.match(source, /getAuthenticatedAppContext/);
-    assert.match(source, /context\.organizationId/);
-    assert.match(source, /not_provisioned/);
-    assert.doesNotMatch(source, /ensureDevSeed|getDevOrgId/);
+    assert.match(source, /redirect\("\/scheduled"\)/);
   }
 });

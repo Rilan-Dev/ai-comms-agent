@@ -4,11 +4,21 @@ import type { ToolContext } from "@ai-comms-agent/shared";
 const mocks = vi.hoisted(() => ({
   query: vi.fn(),
   recordAuditEvent: vi.fn(),
+  policy: vi.fn(),
+  queueWhatsAppOutboundMessage: vi.fn(),
 }));
 
 vi.mock("@ai-comms-agent/db", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@ai-comms-agent/db")>();
-  return { ...actual, query: mocks.query, recordAuditEvent: mocks.recordAuditEvent };
+  return {
+    ...actual,
+    query: mocks.query,
+    recordAuditEvent: mocks.recordAuditEvent,
+    queueWhatsAppOutboundMessage: mocks.queueWhatsAppOutboundMessage,
+    PostgresAgentRepository: class {
+      policy = mocks.policy;
+    },
+  };
 });
 
 import { createWhatsAppSendApprovalTool } from "../src/agent/whatsapp-tool-runtime";
@@ -28,6 +38,9 @@ describe("WhatsApp send approval tool behavior", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.recordAuditEvent.mockResolvedValue(undefined);
+    // Default: no saved autonomous-send policy → pending human approval.
+    mocks.policy.mockResolvedValue({ securityPolicy: {}, allowedTools: ["whatsapp.send"] });
+    mocks.queueWhatsAppOutboundMessage.mockReset();
   });
 
   it("creates a pending approval and never queues provider delivery", async () => {
@@ -119,5 +132,84 @@ describe("WhatsApp send approval tool behavior", () => {
     expect(result.error?.code).toBe("account_not_bound");
     expect(mocks.query).toHaveBeenCalledTimes(1);
     expect(mocks.recordAuditEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe("WhatsApp send tool under the autonomous-send policy", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.recordAuditEvent.mockResolvedValue(undefined);
+    mocks.policy.mockResolvedValue({ securityPolicy: { autonomous_send: true }, allowedTools: ["whatsapp.send"] });
+    mocks.queueWhatsAppOutboundMessage.mockResolvedValue("message-1");
+  });
+
+  it("approves and queues the send automatically when the policy is enabled", async () => {
+    mocks.query
+      .mockResolvedValueOnce({ rows: [{ id: "account-1" }] })
+      .mockResolvedValueOnce({ rows: [{ id: "action-1", status: "pending" }] })
+      // 24h customer-service window check finds a recent inbound message.
+      .mockResolvedValueOnce({ rows: [{ id: "inbound-1" }] })
+      // pending -> approved transition.
+      .mockResolvedValueOnce({ rows: [{ id: "action-1" }] })
+      // approved -> queued transition.
+      .mockResolvedValueOnce({ rows: [{ status: "queued" }] });
+
+    const result = await createWhatsAppSendApprovalTool().execute({
+      account_id: "account-1", to: "+919876543210",
+      payload_type: "text", body: "Autonomous hello",
+    }, context);
+
+    expect(result.ok).toBe(true);
+    expect(result.output).toMatchObject({
+      approval_required: false, auto_approved: true,
+      action_id: "action-1", status: "queued", message_id: "message-1",
+    });
+    // Meta's 24-hour window rule still gates free-form text.
+    expect(mocks.query.mock.calls[2][0]).toContain("interval '24 hours'");
+    expect(mocks.queueWhatsAppOutboundMessage).toHaveBeenCalledWith(expect.objectContaining({
+      organizationId: "org-1", accountId: "account-1", to: "+919876543210",
+      body: "Autonomous hello", messageType: "text",
+    }));
+    expect(mocks.recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "whatsapp.send_approval.auto_approved",
+      decision: "allowed",
+      metadata: expect.objectContaining({ source: "agent_policy_autonomous_send" }),
+    }));
+  });
+
+  it("fails closed with template_required when the 24-hour window is closed", async () => {
+    mocks.query
+      .mockResolvedValueOnce({ rows: [{ id: "account-1" }] })
+      .mockResolvedValueOnce({ rows: [{ id: "action-1", status: "pending" }] })
+      // No recent inbound message.
+      .mockResolvedValueOnce({ rows: [] })
+      // requires_template transition.
+      .mockResolvedValueOnce({ rows: [{ id: "action-1" }] });
+
+    const result = await createWhatsAppSendApprovalTool().execute({
+      account_id: "account-1", to: "+919876543210",
+      payload_type: "text", body: "Outside window",
+    }, context);
+
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("template_required");
+    expect(mocks.queueWhatsAppOutboundMessage).not.toHaveBeenCalled();
+    expect(mocks.query.mock.calls[3][0]).toContain("requires_template");
+  });
+
+  it("never queues when the saved policy flag is disabled", async () => {
+    mocks.policy.mockResolvedValue({ securityPolicy: {}, allowedTools: ["whatsapp.send"] });
+    mocks.query
+      .mockResolvedValueOnce({ rows: [{ id: "account-1" }] })
+      .mockResolvedValueOnce({ rows: [{ id: "action-1", status: "pending" }] });
+
+    const result = await createWhatsAppSendApprovalTool().execute({
+      account_id: "account-1", to: "+919876543210",
+      payload_type: "text", body: "Needs a human",
+    }, context);
+
+    expect(result.ok).toBe(true);
+    expect(result.output).toEqual({ approval_required: true, action_id: "action-1", status: "pending" });
+    expect(mocks.queueWhatsAppOutboundMessage).not.toHaveBeenCalled();
   });
 });

@@ -1,15 +1,18 @@
 import {
+  PostgresAgentRepository,
   PostgresEmailAccountRepository,
+  autoApproveEmailAction,
   createEmailAction,
   EmailActionIdempotencyConflictError,
   createLocalDraft,
   getLocalDraftForOrganization,
   getMailMessageForOrganization,
   query,
+  recordAuditEvent,
   updateLocalDraftForOrganization,
 } from "@ai-comms-agent/db";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
-import {emailReplyMetadata} from "@ai-comms-agent/shared";
+import {emailReplyMetadata, isAutonomousSendEnabled} from "@ai-comms-agent/shared";
 import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
 import { canUseEmailAccountBinding, hasEmailToolCapabilities } from "./email-tool-policy";
 import { preserveEmailBody } from "./email-body";
@@ -75,6 +78,44 @@ function result(toolName: string, startedAt: number, output?: unknown, error?: {
 
 export interface EmailWriteToolDependencies {
   accounts?: PostgresEmailAccountRepository;
+}
+
+/** Autonomous-send policy: when the agent's saved policy enables it, the
+ * freshly created pending approval is approved automatically (attributed to
+ * the saved administrator policy, not a human reviewer) so the worker's
+ * dispatch loop sends it without a manual approval step. The requesting
+ * actor's email.write permission and the agent binding are still re-verified
+ * by the worker at dispatch time. Returns null when the policy is disabled or
+ * the action was already decided, leaving the normal approval flow intact. */
+async function maybeAutoApproveEmailAction(
+  context: ToolContext,
+  action: { id: string; actionType: string; correlationId: string | null },
+): Promise<boolean> {
+  if (!context.agent_id || !context.user_id) return false;
+  const policy = await new PostgresAgentRepository().policy(context.organization_id, context.agent_id);
+  if (!isAutonomousSendEnabled(policy?.securityPolicy)) return false;
+  const approved = await autoApproveEmailAction(context.organization_id, action.id, context.user_id);
+  if (!approved) return false;
+  try {
+    await recordAuditEvent({
+      organizationId: context.organization_id,
+      actorUserId: context.user_id,
+      agentId: context.agent_id,
+      correlationId: action.correlationId ?? undefined,
+      eventType: "email.action.auto_approved",
+      targetType: "email_action",
+      targetId: action.id,
+      action: action.actionType,
+      decision: "allowed",
+      metadata: { source: "agent_policy_autonomous_send" },
+    });
+  } catch (error) {
+    console.error("[email-write] auto-approval audit needs reconciliation", {
+      actionId: action.id,
+      errorType: error instanceof Error ? error.name : typeof error,
+    });
+  }
+  return true;
 }
 
 export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): Tool[] {
@@ -255,6 +296,9 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       idempotencyKey: `${context.turn_id}:send:${draftId}`,
       correlationId: context.correlation_id,
     });
+    if (await maybeAutoApproveEmailAction(context, action)) {
+      return { status: "auto_approved", action_id: action.id, action_type: action.actionType, message: "Auto-approved by this agent's autonomous-send policy; the email is queued for delivery." };
+    }
     return { status: "pending_approval", action_id: action.id, action_type: action.actionType, message: "The send request is awaiting explicit user approval. The email has not been sent." };
   });
 
@@ -278,6 +322,9 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       idempotencyKey: `${context.turn_id}:reply:${messageId}`,
       correlationId: context.correlation_id,
     });
+    if (await maybeAutoApproveEmailAction(context, action)) {
+      return { status: "auto_approved", action_id: action.id, action_type: action.actionType, message: "Auto-approved by this agent's autonomous-send policy; the reply is queued for delivery." };
+    }
     return { status: "pending_approval", action_id: action.id, action_type: action.actionType, message: "The reply request is awaiting explicit user approval. The reply has not been sent." };
   });
 
@@ -297,6 +344,9 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       idempotencyKey: `${context.turn_id}:forward:${messageId}`,
       correlationId: context.correlation_id,
     });
+    if (await maybeAutoApproveEmailAction(context, action)) {
+      return { status: "auto_approved", action_id: action.id, action_type: action.actionType, message: "Auto-approved by this agent's autonomous-send policy; the forward is queued for delivery." };
+    }
     return { status: "pending_approval", action_id: action.id, action_type: action.actionType, message: "The forward request is awaiting explicit user approval. The message has not been forwarded." };
   });
 

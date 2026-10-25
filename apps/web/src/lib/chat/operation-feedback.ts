@@ -34,9 +34,16 @@ function failureExplanation(code?:string):string {
 export function formatOperationFeedback(results:readonly OperationResult[]):string {
   if(!results.length)return '';
   return results.map(result=>{
+    if(result.channel==='schedule'){
+      const what=result.operation==='create'?'Scheduled AI task created':result.operation==='update'?'Scheduled AI task updated':'Scheduled AI task deleted';
+      if(result.state==='completed')return `${what}. [Review scheduled tasks](/scheduled). The agent executes the task with its real tools at every fire time; sends follow the agent's approval policy.${result.auditPending?' Activity logging needs reconciliation; check the saved record before retrying.':''}`;
+      if(result.state==='failed')return `${what} failed. ${failureExplanation(result.errorCode)}`;
+      return `Scheduled AI task outcome is ${result.state.replaceAll('_',' ')}. Check [scheduled tasks](/scheduled) before retrying.`;
+    }
     const channel=result.channel==='email'?'Email':'WhatsApp';
     if(result.state==='draft_saved')return `Email draft saved. [Review saved drafts](/mail/drafts). No message was sent.${result.auditPending?' Activity logging needs reconciliation; check the saved record before retrying.':''}`;
     if(result.state==='pending_approval')return `${channel} send request is pending human review. ${result.channel==='email'?'[Review approval requests](/mail/approvals)':'[Review WhatsApp requests](/whatsapp)'}. No message was sent.${result.auditPending?' Activity logging needs reconciliation; check the saved record before retrying.':''}`;
+    if(result.state==='queued')return `${channel} send was auto-approved by this agent's autonomous-send policy and is queued for delivery. Delivery confirmation follows from the provider; nothing further is required from you.`;
     if(result.state==='failed')return `${channel} ${result.operation==='draft'?'draft':'send request'} failed. ${failureExplanation(result.errorCode)}`;
     if(result.state==='outcome_unknown')return `${channel} outcome is unknown. Check the saved record before retrying; delivery is not confirmed.`;
     if(result.state==='provider_accepted')return `${channel} provider accepted the message. Delivery is not confirmed.`;

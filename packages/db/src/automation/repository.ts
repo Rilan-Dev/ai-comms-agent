@@ -53,7 +53,7 @@ export async function getScheduledJob(organizationId: string, id: string) {
 export async function createScheduledJob(input: {
   organizationId: string;
   agentId: string;
-  userId: string;
+  userId: string | null;
   name: string;
   cron?: string | null;
   oneFireAt?: string | null;
@@ -165,7 +165,7 @@ export async function listAutomationRuns(organizationId: string, ruleId: string)
 
 export type ScheduledJobClaim = {
   runId:string; id:string; agentId:string; organizationId:string; intent:string; params:Record<string,unknown>;
-  cron:string|null; nextFireAt:string; revisionAt:string; timezone:string; catchUpMinutes:number;
+  cron:string|null; nextFireAt:string; revisionAt:string; timezone:string; catchUpMinutes:number; createdBy:string|null;
 };
 
 export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise<ScheduledJobClaim[]> {
@@ -176,8 +176,7 @@ export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise
     const jobs=await client.query<Row>(
       "SELECT j.* FROM scheduled_jobs j WHERE j.status='active' AND j.next_fire_at IS NOT NULL AND j.next_fire_at <= $1::timestamptz AND NOT EXISTS (SELECT 1 FROM scheduled_job_runs r WHERE r.scheduled_job_id=j.id AND r.fire_at=j.next_fire_at) ORDER BY j.next_fire_at ASC LIMIT $2 FOR UPDATE OF j SKIP LOCKED",
       [nowIso,limit],
-    );
-    const claims:ScheduledJobClaim[]=[];
+    );    const claims:ScheduledJobClaim[]=[];
     for(const row of jobs.rows){
       // Convert the DB-returned Date object to ISO 8601 string.
       // pg returns Date objects for timestamptz columns; String(date)
@@ -195,7 +194,7 @@ export async function claimDueScheduledJobs(limit:number, nowIso:string):Promise
       );
       const runId = run.rows[0]?.id ? String(run.rows[0].id) : null;
       if (!runId) continue;
-      claims.push({runId,id:String(row.id),agentId:String(row.agent_id),organizationId:String(row.organization_id),intent:String(row.intent),params:(row.params??{}) as Record<string,unknown>,cron:row.cron?String(row.cron):null,nextFireAt:fireAt,revisionAt,timezone:String(row.timezone??"UTC"),catchUpMinutes:Number(row.catch_up_minutes??60)});
+      claims.push({runId,id:String(row.id),agentId:String(row.agent_id),organizationId:String(row.organization_id),intent:String(row.intent),params:(row.params??{}) as Record<string,unknown>,cron:row.cron?String(row.cron):null,nextFireAt:fireAt,revisionAt,timezone:String(row.timezone??"UTC"),catchUpMinutes:Number(row.catch_up_minutes??60),createdBy:row.created_by?String(row.created_by):null});
     }
     return claims;
   });
@@ -250,8 +249,12 @@ export async function recoverStaleScheduledJobRuns(
 export async function advanceScheduledJob(id:string,organizationId:string,expectedFireAt:string,expectedUpdatedAt:string,nextFireAt:string|null,status:"active"|"archived"|"error",lastError:string|null){
   // A paused/archived schedule or a schedule edited after the claim must not
   // be resurrected by completion of the older in-flight occurrence.
+  // The claim snapshot (expectedUpdatedAt) is a JS Date with millisecond
+  // precision, while PostgreSQL updated_at carries microseconds: an exact
+  // equality would NEVER match and the schedule would silently stop advancing
+  // after its first fire. Compare within the same millisecond instead.
   const r=await query<{id:string}>(
-    "UPDATE scheduled_jobs SET next_fire_at=$5::timestamptz,last_fire_at=now(),status=$6,last_error=$7,updated_at=now() WHERE id=$1 AND organization_id=$2 AND next_fire_at=$3::timestamptz AND status='active' AND updated_at=$4::timestamptz RETURNING id",
+    "UPDATE scheduled_jobs SET next_fire_at=$5::timestamptz,last_fire_at=now(),status=$6,last_error=$7,updated_at=now() WHERE id=$1 AND organization_id=$2 AND next_fire_at=$3::timestamptz AND status='active' AND updated_at >= $4::timestamptz AND updated_at < $4::timestamptz + interval '1 millisecond' RETURNING id",
     [id,organizationId,expectedFireAt,expectedUpdatedAt,nextFireAt,status,lastError],
   );
   return r.rows.length===1;

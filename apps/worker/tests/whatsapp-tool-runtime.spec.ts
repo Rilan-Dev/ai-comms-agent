@@ -26,12 +26,23 @@ describe("WhatsApp history tool runtime", () => {
     expect(runtime).toContain("recordAuditEvent");
     expect(runtime).toContain("executeRegisteredTool");
   });
-  it("exposes outbound sending only as a pending-approval proposal", () => {
+  it("exposes outbound sending as a pending-approval proposal by default", () => {
     expect(runtime).toContain('name: "whatsapp.send"');
     expect(runtime).toContain("registry.register(createWhatsAppSendApprovalTool() as unknown as Tool)");
     expect(runtime).toContain("INSERT INTO whatsapp_send_actions");
     expect(runtime).toContain("approval_required: true");
-    expect(runtime).not.toContain("queueWhatsAppOutboundMessage");
     expect(runtime).toContain("whatsapp.send_approval.requested");
+  });
+  it("auto-approves and queues only when the saved autonomous-send policy enables it", () => {
+    // The autonomous path is gated on the persisted agent policy flag, never
+    // on model output or request parameters.
+    expect(runtime).toContain("isAutonomousSendEnabled(policy?.securityPolicy)");
+    expect(runtime).toContain("queueWhatsAppOutboundMessage");
+    expect(runtime).toContain("whatsapp.send_approval.auto_approved");
+    expect(runtime).toContain("source: \"agent_policy_autonomous_send\"");
+    // Free-form text still respects Meta's 24-hour customer-service window
+    // even under autonomous sending.
+    expect(runtime).toContain("interval '24 hours'");
+    expect(runtime).toContain("template_required");
   });
 });

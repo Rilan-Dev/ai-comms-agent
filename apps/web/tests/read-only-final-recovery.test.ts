@@ -9,6 +9,7 @@ vi.mock('../../worker/src/agent/email-tool-runtime',()=>({
  invokeEmailReadTool:async()=>({ok:m.ok,output:m.ok?{status:m.approval?'pending_approval':undefined,messages:[{id:'message',subject:'Test subject',from_address:'sender@example.com',account_email:'mailbox@example.com',received_at:'2026-10-24T00:00:00Z',snippet:'A harmless excerpt'}],matched_count:41,included_count:1,has_more:true,coverage:'Locally synchronized data.'}:undefined,error:m.ok?undefined:{code:'permission_denied',message:'Denied'},audit:{tool_name:'email.messages.list',duration_ms:1}}),
 }));
 vi.mock('../../worker/src/agent/whatsapp-tool-runtime',()=>({createWhatsAppToolRuntime:async()=>({registry:{listForAgent:()=>[]}}),invokeWhatsAppTool:vi.fn()}));
+vi.mock('../../worker/src/agent/schedules-tool-runtime',()=>({createSchedulesToolRuntime:async()=>({registry:{listForAgent:()=>[]}}),invokeSchedulesTool:vi.fn()}));
 vi.mock('@ai-comms-agent/clara-core',()=>({claraRuntime:{
  completeWithTools:async()=>{
   if(m.round++===0)return {text:'',toolCalls:[{id:'call',name:'email.messages.list',arguments:{account_id:'mailbox@example.com',unread_only:true,limit:1}}]};

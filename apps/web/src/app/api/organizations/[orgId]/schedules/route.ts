@@ -27,6 +27,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
     await ensureDevSeed();
     const { orgId } = await params;
     await authorize(request, { organizationId: asOrganizationId(orgId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    const jobId = new URL(request.url).searchParams.get("jobId");
+    if (jobId) {
+      // Run history for one scheduled AI task (execution evidence).
+      const runs = await listScheduledJobRuns(orgId, jobId);
+      return NextResponse.json({ runs });
+    }
     return NextResponse.json({ schedules: await listScheduledJobs(orgId) });
   } catch (error) { return authorizationErrorToResponse(error); }
 }

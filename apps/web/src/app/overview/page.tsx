@@ -89,8 +89,7 @@ export default function HomePage() {
             <p className="mt-2 text-sm leading-6 text-muted-foreground">Manage existing scheduled jobs and event-triggered automations. New AI digest routines are not yet activated.</p>
             <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold">
               <a href="/routines/preview" className="inline-flex min-h-10 items-center underline decoration-border underline-offset-4 hover:decoration-foreground">Preview routine timing ↗</a>
-              <a href="/schedules" className="inline-flex min-h-10 items-center underline decoration-border underline-offset-4 hover:decoration-foreground">Schedules ↗</a>
-              <a href="/automations" className="inline-flex min-h-10 items-center underline decoration-border underline-offset-4 hover:decoration-foreground">Automations ↗</a>
+              <a href="/scheduled" className="inline-flex min-h-10 items-center underline decoration-border underline-offset-4 hover:decoration-foreground">Scheduled AI agent ↗</a>
             </div>
           </article>
         </div>
@@ -126,7 +125,7 @@ export default function HomePage() {
           <div className="flex items-start justify-between gap-4"><div><p className="font-display text-xl font-medium">Workspace snapshot</p><p className="mt-1 text-xs text-muted-foreground">A live view of work in progress.</p></div><a href="/operations" className="shrink-0 text-xs font-semibold underline decoration-border underline-offset-4 hover:decoration-foreground">Operations ↗</a></div>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             {[
-              { label: "Active automations", key: "active_automations", href: "/automations" },
+              { label: "Active scheduled tasks", key: "active_automations", href: "/scheduled" },
               { label: "Active voice sessions", key: "active_voice_sessions", href: "/ai-voice" },
               { label: "Pending approvals", key: "pending_approvals", href: "/mail/drafts" },
             ].map((item) => <a key={item.key} href={item.href} className="rounded-md bg-secondary/70 p-4 transition hover:bg-secondary"><p className="text-xs text-muted-foreground">{item.label}</p><p className="mt-3 font-display text-2xl font-medium">{data ? metric(item.key) : "—"}</p><p className="mt-2 text-[10px] text-muted-foreground">{data?.metrics[item.key] == null && data ? "Requires access" : "View details ↗"}</p></a>)}
