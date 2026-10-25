@@ -249,8 +249,12 @@ export async function recoverStaleScheduledJobRuns(
 export async function advanceScheduledJob(id:string,organizationId:string,expectedFireAt:string,expectedUpdatedAt:string,nextFireAt:string|null,status:"active"|"archived"|"error",lastError:string|null){
   // A paused/archived schedule or a schedule edited after the claim must not
   // be resurrected by completion of the older in-flight occurrence.
+  // The claim snapshot (expectedUpdatedAt) is a JS Date with millisecond
+  // precision, while PostgreSQL updated_at carries microseconds: an exact
+  // equality would NEVER match and the schedule would silently stop advancing
+  // after its first fire. Compare within the same millisecond instead.
   const r=await query<{id:string}>(
-    "UPDATE scheduled_jobs SET next_fire_at=$5::timestamptz,last_fire_at=now(),status=$6,last_error=$7,updated_at=now() WHERE id=$1 AND organization_id=$2 AND next_fire_at=$3::timestamptz AND status='active' AND updated_at=$4::timestamptz RETURNING id",
+    "UPDATE scheduled_jobs SET next_fire_at=$5::timestamptz,last_fire_at=now(),status=$6,last_error=$7,updated_at=now() WHERE id=$1 AND organization_id=$2 AND next_fire_at=$3::timestamptz AND status='active' AND updated_at >= $4::timestamptz AND updated_at < $4::timestamptz + interval '1 millisecond' RETURNING id",
     [id,organizationId,expectedFireAt,expectedUpdatedAt,nextFireAt,status,lastError],
   );
   return r.rows.length===1;

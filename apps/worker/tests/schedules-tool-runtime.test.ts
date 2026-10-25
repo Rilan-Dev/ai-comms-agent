@@ -113,6 +113,20 @@ test("scheduled runs attribute sends and audits to the schedule creator", () => 
   assert.ok(repository.includes("row.created_by?String(row.created_by):null"));
 });
 
+test("advanceScheduledJob CAS tolerates microsecond updated_at precision", () => {
+  // Regression: the claim snapshot is a JS Date (milliseconds) while
+  // PostgreSQL updated_at carries microseconds. An exact equality CAS
+  // matched zero rows, so recurring schedules fired once and silently died
+  // and one-time schedules never archived. The CAS must compare within the
+  // same millisecond.
+  const repository = readFileSync(resolve(HERE, "../../../packages/db/src/automation/repository.ts"), "utf8");
+  const start = repository.indexOf("export async function advanceScheduledJob");
+  const body = repository.slice(start, repository.indexOf("export async function completeScheduledJobRun"));
+  assert.ok(body.includes("updated_at >= $4::timestamptz"), "advance CAS must use a lower-bound comparison");
+  assert.ok(body.includes("updated_at < $4::timestamptz + interval '1 millisecond'"), "advance CAS must bound the revision to one millisecond");
+  assert.equal(body.includes("updated_at=$4::timestamptz AND"), false, "exact equality on a millisecond snapshot can never match microsecond timestamps");
+});
+
 test("chat runtime wires the schedules tool surface", () => {
   const source = readFileSync(resolve(HERE, "../../web/src/app/api/chat/stream/route.ts"), "utf8");
   assert.ok(source.includes("createSchedulesToolRuntime"));
