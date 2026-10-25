@@ -3542,3 +3542,31 @@ DEV-01 coordinated authoritative Clara comparison and integration; FIX-01 implem
   4. Default-off behavior re-verified live: with the flag unset, the identical chat prompt produced the classic `pending_approval` + "pending human review" reply.
   5. Model note (pre-existing): the Sarvam chat model reliably executes single-step tool calls (whatsapp.send) but often stops after `email.accounts.list` on multi-step email flows; the tool-level test above covers the email path deterministically. When the model does complete the chain, the same auto-approval applies.
 - **Owner actions:** paste a fresh Meta access token (or move to a permanent System User token to stop the 24h expiry cycle); optionally add +919629534701 to the test number's allowed recipients for free-form text. Autonomous sending is currently ENABLED for the Sarvam AI agent; turn it off any time via Agents → Sarvam AI → Policy → Autonomous sending.
+
+---
+## Scheduled AI agent — merged Scheduling + Automations with full agent tool control
+
+**Task ID:** scheduled-ai-agent-merge
+**Date:** 2026-10-25
+**Commits (Development):** ae7b911e, 152954fe, a51bb48b, 94e64e37 — deployed to the VPS (HEAD 94e64e37)
+
+### What was built
+1. **Merge**: `/schedules` + `/automations` now redirect to the merged **Scheduled AI agent** workspace at `/scheduled`; single sidebar item; overview/routines/whatsapp deep links updated.
+2. **Agent scheduling tools** (`apps/worker/src/agent/schedules-tool-runtime.ts`): `schedules.list/create/update/delete` host-authorized tools. Recurrence presets map deterministically to validated 5-field cron: minutes (1–59), hours (1–23), daily/weekly/monthly at HH:MM, raw cron, or one-time future ISO fire; timezone validated (IANA); new `schedules.read`/`schedules.manage` permissions (owner/admin manage, member read). Tools wired into the interactive chat tool loop and the agent policy checklist UI.
+3. **Scheduled executions run the full tool loop** (`scheduled-agent-runtime.ts`): at fire time the stored task instruction becomes the user turn; the agent gets its REAL email + WhatsApp tools, least-privilege permissions derived from its saved policy, and send/audit attribution to the schedule creator (`created_by`, now carried through `claimDueScheduledJobs`). Legacy intents keep the prompt-only dispatcher. Autonomous-send policy applies inside scheduled runs exactly as in chat.
+4. **Chat feedback**: schedules.create/update/delete map to schedule-channel OperationResults; replies confirm "Scheduled AI task created/updated/deleted" with a link to `/scheduled` instead of the no-send failure classifier text.
+5. **Run-history evidence**: `GET /api/organizations/[orgId]/schedules?jobId=` returns scheduled_job_runs; the merged screen shows per-task execution history (fire time, status, tool-call chain, agent output).
+
+### Critical production bug found and fixed (a51bb48b)
+`advanceScheduledJob`'s revision CAS compared a millisecond-precision JS Date snapshot to PostgreSQL microsecond `updated_at` — exact equality matched **zero** rows. Consequence (pre-existing): recurring schedules fired exactly once and silently stopped advancing; one-time schedules never archived. Fixed with a same-millisecond range comparison; verified live (a `*/2` schedule fired at 00:30 → advanced to 00:32 → fired again → advanced to 00:34).
+
+### Testing evidence
+- **Code**: worker 366/366, web 871/871, tsc clean; 18 new worker tests + 12 new/updated specs.
+- **Deploy incident handled**: VPS root disk hit 100% (Postgres crash-looping "No space left on device"); reclaimed ~64GB (build cache, dangling images, prior-session aca-repair one-offs, stopped containers); Postgres recovered automatically.
+- **Terminal E2E (one-time, exact user scenario)**: schedule "Summarize my emails from the last 24 hours and send a short note on WhatsApp to +919629534701" fired on time; agent ran email.accounts.list → email.search ×2 → whatsapp.send (5 tool calls); produced a real summary of 7 emails across 2 mailboxes; WhatsApp send auto-approved by the autonomous-send policy (audit `whatsapp.send_approval.auto_approved`, approved_by NULL) and dispatched by the worker to the Meta Graph API — recorded `Authentication Error` there because the temporary Meta token is dead again (owner must re-paste; the 24h window is open and delivery itself was proven delivered in the prior session).
+- **Recurring E2E**: `*/2 * * * *` schedule fired twice with next_fire_at advancing each time (repeat functionality proven after the CAS fix).
+- **Frontend manual**: created recurring (*/10) and one-time schedules from the UI form; verified rows, pause→paused, resume→active, Runs history renders the tool-call chain + agent output, delete→empty state; screenshots saved.
+- **AI chat E2E**: natural-language create ("Daily evening digest, every day 6:30 PM Asia/Calcutta") → `schedules.create` allow; update request → agent chained `schedules.list` → `schedules.update` (timezone → Asia/Calcutta, next fire 13:00 UTC = 18:30 IST); delete request → model self-corrected an invalid delete (invalid_input) by listing then deleting successfully; chat replies confirmed each operation. All QA schedules archived; minted sessions revoked.
+
+### Owner actions
+- Re-paste the WhatsApp access token (Meta console) or move to a permanent System User token — the only blocker between the scheduled WhatsApp note and actual delivery.
