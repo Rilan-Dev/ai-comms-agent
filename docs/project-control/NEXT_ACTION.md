@@ -1,3 +1,9 @@
+## Business-owner agent UX — proposed design awaiting owner review — 2026-10-25
+
+Owner selected a business workspace with Advanced separated and requested interactive mockups. All seven live tabs were audited. Read [design](../superpowers/specs/2026-10-25-business-owner-workspace-design.md) and [screen critique](../reviews/2026-10-25-business-owner-agent-ux-audit.md); [standalone concept](../superpowers/mockups/2026-10-25-business-owner-workspace.html). Fix the newly observed mixed email-summary-to-WhatsApp completion and natural approval-request wording under RED→GREEN after design approval. No product implementation/deployment or future RAG configuration engine started. Preserve concurrent routine-preview feature gates and all current policies/custom controls. Next: owner reviews concept and written design; then produce the implementation plan under the approved scope. Overall project phase unchanged.
+
+---
+
 ## DEV-01 — DEV01-DIGEST-PLAN-PREVIEW-20261025 — bounded R1a/P4b UX committed; no activation
 
 - **Owner goal:** Everyday people, employees and businesses need personal source-linked five-day mail catch-up, then understandable recurring or event-triggered digests, optionally WhatsApp. Overview remains first. Use existing canonical email store, person+agent mailbox grants, C3 verified generation, current schedule/automation runtime and Meta approval-aware delivery. No second scheduler, employee-attendance surveillance or unapproved send.
