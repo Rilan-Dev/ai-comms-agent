@@ -199,6 +199,11 @@ export default async function RoutinePreviewPage({ searchParams }: { searchParam
         <h2 id="digest-plan-heading" className="mt-2 font-display text-xl font-semibold">Your proposed email digest</h2>
         <p className="mt-2 text-sm font-medium">Nothing is saved or scheduled from this preview.</p>
         {digestError && <p role="alert" className="mt-3 rounded-md border border-destructive/30 p-3 text-sm text-destructive">{digestError} Choose one of the available options and preview again.</p>}
+        {kind === "interval" && digestPreferences.window === "previous_local_day" && !digestError && (
+          <p role="note" className="mt-3 rounded-md border border-border bg-secondary/30 p-3 text-sm text-muted-foreground">
+            An elapsed interval does not bind a summary time zone. To summarize a previous local calendar day, confirm the local-day zone separately when the routine is proposed and reviewed. Every 24 hours is not the same as daily at 09:00 across daylight-saving changes.
+          </p>
+        )}
         {!digestError && <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
           <div><dt className="font-semibold">Mailbox scope</dt><dd className="mt-1 leading-6 text-muted-foreground">{digestDetails.scope}</dd></div>
           <div><dt className="font-semibold">Which mail is eligible?</dt><dd className="mt-1 leading-6 text-muted-foreground">{digestDetails.window}</dd></div>
