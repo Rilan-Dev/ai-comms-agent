@@ -180,4 +180,4 @@ export { deriveWhatsAppReadiness } from "./operations/whatsapp-readiness";
 
 export {replyMessageId,replyReferences,emailReplyMetadata} from './email/reply-metadata';
 
-export {requiresHumanApproval} from './operations/human-approval';
+export {requiresHumanApproval,hasApprovalRequestDirective} from './operations/human-approval';

@@ -32,3 +32,9 @@ Other original routes remain in the26 October audit's project-wide inventory and
 - Last verified serving source from the previous repair is4898fa33 on25 October; current serving revision has not been reverified in this new implementation. Previous1,809-test release proof is historical, not this new branch's final acceptance.
 
 No existing theme token, AI layout, account, policy, role, provider or credential changed at this baseline checkpoint.
+
+## Task1 — mixed request guard and review intent
+
+Added regressions using the exact owner prompt, noun/verb approval wording, reverse/no-period forms, quoted/fenced/Subject payloads, negations, genuine email draft restrictions and the actual WhatsApp handler with the host-derived flag under autonomous=true. Observed12 new failures with41 passing controls; corrected both classifiers. A shared affirmative approval-request helper keeps routing and review intent consistent. A narrow direct-WhatsApp object check avoids treating source-email mentions as an email compose task. True draft-only restrictions and executor denials remain intact.
+
+First post-fix pass exposed two request-send-approval wording gaps; added the send qualifier and verified **56/56 focused cases**: draft scope29, human-review22, actual handler5. Existing preset3 cases also remain a separate gate. Shared/db/email-runtime/Clara/worker/web typechecks pass. Changed source lint has0 errors; the existing config ignores the3 test files (reported warnings, not claimed lint coverage). No live request, queue, message or configuration mutation was performed. No theme/AI layout edits. Full branch tests, database/versioning work, browser acceptance and deployment remain outstanding.

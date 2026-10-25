@@ -6,6 +6,21 @@ import {isDraftOnlyRequest,authorizeDraftOnly,draftOnlyToolAllowed} from '../src
 const context:ToolContext={agent_id:'agent',organization_id:'org',user_id:'user',turn_id:'turn',correlation_id:'correlation',conversation_id:'conversation',channel:'chat',auth_subject:{user_id:'user',role:'owner',permissions:['email.write','whatsapp.send','schedules.manage']}};
 describe('draft-only chat scope remains authoritative with autonomous sending enabled',()=>{
  it.each(['Create a new email draft only. Body: "Exact"','Create a reply draft only. Body: "Exact"','Save a reply draft. Body: "Exact" Do not send.','Update this draft only. Body: "Exact"','Create an email draft. Body: "Exact"','Create a draft. Subject: Send it. Body: "Exact"'])('recognizes explicit draft-only instruction: %s',message=>expect(isDraftOnlyRequest(message)).toBe(true));
+ it.each([
+  'Create an email draft about WhatsApp. Body: "Create a WhatsApp approval request."',
+  'Create a draft. Subject: WhatsApp approval request. Body: "Exact"',
+  'Compose an email from owner@example.test to customer@example.test. Body: "Exact"',
+  'Create a draft-only email and create a WhatsApp approval request.',
+  'Create an email draft about WhatsApp. Do not create an approval request. Do not send.',
+ ])('retains real email drafting boundaries despite WhatsApp wording: %s',message=>expect(isDraftOnlyRequest(message)).toBe(true));
+ it.each([
+  'Create a WhatsApp approval request to +919629534701 from Meta Test Phone. Summarize my last 3 unread emails',
+  'Create a WhatsApp approval request and summarize my last 3 unread emails',
+  'Prepare a WhatsApp message with the summary of my unread emails.',
+  'Create an email draft and prepare a WhatsApp approval request.',
+  'Create an email approval request for the saved draft.',
+  'Create a draft and request send approval. Body: "Exact"',
+ ])('does not hide a requested approval or WhatsApp tool merely because email is mentioned: %s',message=>expect(isDraftOnlyRequest(message)).toBe(false));
  it.each(['Send an email. Body: "Do not send advertisements"','Create a draft and send it. Body: "Exact"','Create a draft and request approval. Body: "Exact"','Create a draft. Body: "Exact" Request human approval. Do not send.','Schedule a daily email task.','Summarize my inbox'])('does not invent a draft-only restriction: %s',message=>expect(isDraftOnlyRequest(message)).toBe(false));
  it.each(['email.send.request','email.reply.request','email.forward.request','whatsapp.send','schedules.create'])('denies even a registered authorized %s before its handler or auto-approval',async name=>{
   const execute=vi.fn(async()=>({ok:true,output:{status:'auto_approved'},audit:{tool_name:name,input_summary:name,output_summary:'queued',duration_ms:0}}));
