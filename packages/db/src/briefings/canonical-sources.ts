@@ -79,8 +79,8 @@ export async function loadCanonicalBriefingSources(
     // A manifest can span several authorized mailboxes while an individual
     // immutable batch contains sources from only one. Scope fingerprinting
     // MUST use the full manifest mailbox set, not the batch's subset.
-    const manifest = await client.query<{ scope_version: string; mailbox_ids: string[] }>(
-      `SELECT scope_version,mailbox_ids FROM summaries
+    const manifest = await client.query<{ scope_version: string; mailbox_ids: string[]; briefing_mode: string }>(
+      `SELECT scope_version,mailbox_ids,briefing_mode FROM summaries
        WHERE id=$1 AND organization_id=$2 AND owner_user_id=$3 AND agent_id=$4
          AND briefing_status IN ('pending','partial') FOR SHARE`,
       [claim.manifestId, principal.organizationId, principal.userId, principal.agentId],
@@ -121,9 +121,10 @@ export async function loadCanonicalBriefingSources(
          AND s.owner_user_id=$3 AND s.agent_id=$4
          AND s.id=ANY($5::uuid[]) AND s.mailbox_id=ANY($6::uuid[])
          AND NOT m.is_draft AND NOT m.is_sent
+         AND ($7 OR m.is_read=false)
        ORDER BY s.source_ordinal FOR SHARE OF s,m`,
       [claim.manifestId, principal.organizationId, principal.userId, principal.agentId,
-        sourceIds ?? [], scope.mailboxIds],
+        sourceIds ?? [], scope.mailboxIds, row.briefing_mode !== 'catch_up'],
     );
     // Never substitute a different manifest or batch, including after
     // an expired lease has been reclaimed by another worker.

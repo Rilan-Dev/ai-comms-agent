@@ -17,6 +17,7 @@ test('C2 persisted selection, review and crash recovery',async t=>{
     const access=await import('../src/briefings/access.ts');
     const api=await import('../src/briefings/coverage.ts');
     const reads=await import('../src/briefings/repository.ts');
+    const canonical=await import('../src/briefings/canonical-sources.ts');
     const {publishBriefingItems}=await import('../src/briefings/selection.ts');
     app=await import('../src/client.ts');
     const p={organizationId:ids.orgA,userId:ids.userA,agentId:ids.agentA};
@@ -74,6 +75,37 @@ test('C2 persisted selection, review and crash recovery',async t=>{
       assert.ok(created.filter(m=>m.kind!=='late').every(m=>!selected.includes(m.id)));
       await q('DELETE FROM aca.email_messages WHERE id=ANY($1::uuid[])',[created.map(m=>m.id)]);
     });
+    await t.test('catch-up excludes provider-read mail without acknowledging it for the user',async()=>{
+      await q('UPDATE aca.email_messages SET is_read=true WHERE id=$1',[ids.messageA]);
+      try {
+        const m=await prepare('provider-read-excluded');
+        assert.equal(m.sourceCount,0);
+        assert.equal((await q('SELECT count(*)::int n FROM aca.briefing_review_sources WHERE message_id=$1',[ids.messageA])).rows[0].n,0);
+      } finally { await q('UPDATE aca.email_messages SET is_read=false WHERE id=$1',[ids.messageA]); }
+    });
+    await t.test('provider read after selection prevents a catch-up generation claim',async()=>{
+      const m=await prepare('provider-read-before-claim');
+      await q('UPDATE aca.email_messages SET is_read=true WHERE id=$1',[ids.messageA]);
+      try { await assert.rejects(api.claimBriefingBatch(p,m.id,'stale-unread-worker'),/conflict/i); }
+      finally {
+        await q('UPDATE aca.email_messages SET is_read=false WHERE id=$1',[ids.messageA]);
+        await q('DELETE FROM aca.summaries WHERE id=$1',[m.id]);
+      }
+    });
+    await t.test('provider read during generation prevents publishing a stale catch-up',async()=>{
+      const m=await prepare('provider-read-before-publish');
+      const source=(await api.listBriefingSources(p,m.id)).items[0];
+      const claim=await api.claimBriefingBatch(p,m.id,'stale-publication-worker');
+      await q('UPDATE aca.email_messages SET is_read=true WHERE id=$1',[ids.messageA]);
+      try {
+        await assert.rejects(canonical.loadCanonicalBriefingSources(p,claim),/source.*changed/i);
+        await assert.rejects(api.completeBriefingBatch(p,claim,[evidenceItem(source)],false),/conflict/i);
+        assert.deepEqual((await q('SELECT content_json FROM aca.summaries WHERE id=$1',[m.id])).rows[0].content_json,[]);
+      } finally {
+        await q('UPDATE aca.email_messages SET is_read=false WHERE id=$1',[ids.messageA]);
+        await q('DELETE FROM aca.summaries WHERE id=$1',[m.id]);
+      }
+    });
     await t.test('upstream publication compatibility registers grounded output through the lease boundary',async()=>{
       const m=await prepare('compat-publication');const source=(await api.listBriefingSources(p,m.id)).items[0];
       await assert.rejects(publishBriefingItems(p,m.id,m.scope.scopeVersion,[{...evidenceItem(source),evidence:[{...evidenceItem(source).evidence[0],quote:'fabricated'}]}]),/canonical mail/);
@@ -124,7 +156,8 @@ test('C2 persisted selection, review and crash recovery',async t=>{
       await q('UPDATE aca.email_messages SET is_read=true WHERE id=$1',[ids.messageA]);
       assert.equal((await prepare('metadata-only')).sourceCount,0);
       await q("INSERT INTO aca.email_messages(organization_id,email_account_id,thread_id,text_body,received_at) VALUES($1,$2,$3,'reply',now())",[ids.orgA,ids.mailA,ids.threadA]);
-      const next=await prepare('new-reply');assert.equal(next.sourceCount,2);
+      const next=await prepare('new-reply');assert.equal(next.sourceCount,1);
+      assert.ok(!(await sourceIds(next.id)).includes(ids.messageA));
       await assert.rejects(api.acknowledgeBriefingItems(p,first.id,stableIds,first.scope.scopeVersion),/conflict/i);
     });
     await t.test('late committed old mail remains eligible; earlier manifest never changes',async()=>{

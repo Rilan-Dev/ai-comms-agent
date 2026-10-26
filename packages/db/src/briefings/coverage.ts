@@ -40,7 +40,8 @@ async function currentManifest(client: PoolClient, p: TrustedBriefingPrincipal, 
   const sourceCount = (await client.query('SELECT count(*)::int n FROM summary_sources WHERE summary_id=$1', [id])).rows[0].n;
   if (!Array.isArray(row.selected_source_manifest) || row.selected_source_manifest.length !== sourceCount) throw conflict('missing provenance');
   const invalid = await client.query(`SELECT 1 FROM summary_sources s LEFT JOIN email_messages m ON m.id=s.email_message_id AND m.organization_id=s.organization_id AND m.email_account_id=s.mailbox_id
-    WHERE s.summary_id=$1 AND (m.id IS NULL OR s.content_revision IS DISTINCT FROM briefing_content_revision(m.id)) LIMIT 1`, [id]);
+    WHERE s.summary_id=$1 AND (m.id IS NULL OR s.content_revision IS DISTINCT FROM briefing_content_revision(m.id)
+      OR ($2 AND m.is_read)) LIMIT 1`, [id, row.briefing_mode === 'catch_up']);
   if (invalid.rowCount) throw conflict();
   return { row, scope };
 }
@@ -90,6 +91,7 @@ export async function prepareBriefing(p: TrustedBriefingPrincipal, request: Brie
         greatest(1,ceil((octet_length(coalesce(m.text_body,m.html_body_sanitized,m.snippet,''))+octet_length(coalesce(m.subject,'')))/4.0))::int tokens
         FROM email_messages m WHERE m.organization_id=$1 AND m.email_account_id=ANY($4::uuid[])
         AND NOT m.is_draft AND NOT m.is_sent
+        AND ($8 OR m.is_read=false)
         AND ((coalesce(m.received_at,m.created_at)>=$5 AND coalesce(m.received_at,m.created_at)<$6)
           OR (NOT $8 AND m.created_at >= $5 AND m.created_at < $6)) AND ($7::uuid IS NULL OR m.id>$7)
         AND ($8 OR NOT EXISTS(SELECT 1 FROM briefing_review_sources r WHERE r.organization_id=$1 AND r.owner_user_id=$2 AND r.agent_id=$3 AND r.scope_version=$9 AND r.message_id=m.id AND r.content_revision=briefing_content_revision(m.id) AND r.reviewed_at IS NOT NULL))
