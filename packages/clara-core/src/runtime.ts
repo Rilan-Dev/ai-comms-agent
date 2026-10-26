@@ -425,7 +425,7 @@ async function chatWithTools(
       body: JSON.stringify({
         systemInstruction: system ? { parts: [{ text: system }] } : undefined,
         contents,
-        tools: [{ functionDeclarations: tools.map((tool) => ({ name: tool.name, description: tool.description, parameters: tool.parameters })) }],
+        tools: [{ functionDeclarations: tools.map((tool) => ({ name: tool.name, description: tool.description, parametersJsonSchema: tool.parameters })) }],
         generationConfig: { temperature: options.temperature, maxOutputTokens: options.maxTokens },
       }),
     });
