@@ -292,8 +292,11 @@ ${body}
 }
 
 
-const MAX_HOST_TOOL_ROUNDS = 4;
-const MAX_HOST_TOOL_CALLS = 8;
+// Discovery across two mailboxes can require accounts → search/retry → read
+// → reply draft → send request. Keep the chain bounded without stopping
+// just before its first verified write.
+const MAX_HOST_TOOL_ROUNDS = 6;
+const MAX_HOST_TOOL_CALLS = 12;
 const MAX_HOST_TOOL_RESULT_CHARS = 10000;
 
 type HostToolTurnResult = { text: string; streamed?: boolean; hostReadEvidence?:boolean; toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; readOnly?: boolean; status?: string; operation?: OperationResult }> };

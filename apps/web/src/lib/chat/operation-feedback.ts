@@ -1,4 +1,5 @@
 import type { OperationResult } from '@ai-comms-agent/shared';
+import {isInternalChatPlanning} from './internal-planning';
 
 const NO_CONFIRMATION='No saved draft or send request was confirmed for this turn. Check Drafts or Approvals before retrying. No message was sent by this request.';
 
@@ -102,5 +103,13 @@ export function formatOperationFeedback(results:readonly OperationResult[]):stri
 export function currentTurnOperationAnswer(modelText:string,results:readonly OperationResult[],turnId:string,mutationRequested:boolean):string {
   const current=results.filter(result=>result.turnId===turnId && result.callId && result.correlationId);
   const confirmed=formatOperationFeedback(current);
+  // A missing-detail question is not a claim that a mutation happened.
+  // Preserve bounded, public questions while continuing to reject forged
+  // confirmations, private planning and resource IDs from earlier turns.
+  const clarification=mutationRequested&&!current.length&&modelText.length<=3000
+    &&!containsUnverifiedOperationClaim(modelText)&&!isInternalChatPlanning(modelText)
+    &&/\b(?:which|what|could you|can you)\b[^?]{0,400}\?/i.test(modelText)
+    &&/\b(?:account|mailbox|sender|recipient|message|e-?mail|repl(?:y|ies)|body|wording)\b/i.test(modelText);
+  if(clarification)return `${modelText.trim()}\n\nNo change has been saved and no message has been sent by this request.`;
   return confirmed || (mutationRequested || containsUnverifiedOperationClaim(modelText) ? NO_CONFIRMATION : modelText);
 }

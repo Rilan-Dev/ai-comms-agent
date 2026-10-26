@@ -31,8 +31,8 @@ describe("interactive chat host-authorized tool loop", () => {
   });
 
   it("bounds tool execution and treats tool results as untrusted", () => {
-    expect(route).toContain("const MAX_HOST_TOOL_ROUNDS = 4");
-    expect(route).toContain("const MAX_HOST_TOOL_CALLS = 8");
+    expect(route).toContain("const MAX_HOST_TOOL_ROUNDS = 6");
+    expect(route).toContain("const MAX_HOST_TOOL_CALLS = 12");
     expect(route).toContain("MAX_HOST_TOOL_RESULT_CHARS = 10000");
     expect(route).toContain("UNTRUSTED TOOL RESULT");
   });

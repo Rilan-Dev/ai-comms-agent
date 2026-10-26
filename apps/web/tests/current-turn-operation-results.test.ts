@@ -9,6 +9,15 @@ const actionId='b8f22770-c484-49ac-bdcd-61ac2533a300';
 const call=(name:string,output:unknown,ok=true)=>operationResultFromToolCall({context,callId:'call-1',registeredName:name,result:{ok,output}});
 
 describe('current turn host outcomes',()=>{
+ it('preserves a genuine missing-detail question instead of turning it into a generic failure',()=>{
+  const question='Which of the two matching emails should I reply to?';
+  expect(currentTurnOperationAnswer(question,[],context.turn_id,true)).toContain(question);
+  expect(currentTurnOperationAnswer(question,[],context.turn_id,true)).toContain('No change has been saved');
+ });
+ it('does not let a question conceal an unverified saved/sent claim or private planning',()=>{
+  expect(currentTurnOperationAnswer('I sent your email. Which message should I reply to next?',[],context.turn_id,true)).toContain('No saved draft');
+  expect(currentTurnOperationAnswer('<think>Which account should I use?</think>',[],context.turn_id,true)).toContain('No saved draft');
+ });
  it.each(['Create an email draft','Update the draft email','Prepare an email for approval','Summarize my mail and then send an email to qa@example.com'])('recognizes %s for clarification only',(prompt)=>{
   expect(isExplicitEmailMutationRequest(prompt)).toBe(true);
  });
