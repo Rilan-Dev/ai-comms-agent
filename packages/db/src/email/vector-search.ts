@@ -1,6 +1,6 @@
 import type { EmailVectorCandidate, EmailVectorSearch } from "./hybrid-retrieval";
 
-type ClaraSearchResponse = {
+type VectorSearchResponse = {
   ok?: boolean;
   results?: unknown;
 };
@@ -10,19 +10,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Server-only adapter for Clara's authenticated email-vector search contract.
+ * Server-only adapter for the authenticated email-vector search contract.
  * Account scope must come from createEmailHybridRetriever, never model input.
  */
-export function createClaraEmailVectorSearch(config: {
+export function createEmailVectorSearch(config: {
   baseUrl?: string;
   apiKey?: string;
   timeoutMs?: number;
 } = {}): EmailVectorSearch {
-  const rawBaseUrl = (config.baseUrl ?? process.env.CLARA_EMAIL_VECTOR_API_URL ?? "").trim();
-  const apiKey = (config.apiKey ?? process.env.CLARA_EMAIL_VECTOR_API_KEY ?? "").trim();
+  const rawBaseUrl = (config.baseUrl ?? process.env.AGENT_EMAIL_VECTOR_API_URL ?? "").trim();
+  const apiKey = (config.apiKey ?? process.env.AGENT_EMAIL_VECTOR_API_KEY ?? "").trim();
   const timeoutMs = config.timeoutMs ?? 8_000;
-  if (!rawBaseUrl) throw new Error("CLARA_EMAIL_VECTOR_API_URL is required.");
-  if (apiKey.length < 32) throw new Error("CLARA_EMAIL_VECTOR_API_KEY must be at least 32 characters.");
+  if (!rawBaseUrl) throw new Error("AGENT_EMAIL_VECTOR_API_URL is required.");
+  if (apiKey.length < 32) throw new Error("AGENT_EMAIL_VECTOR_API_KEY must be at least 32 characters.");
 
   const baseUrl = rawBaseUrl.replace(/\/+$/, "");
   const endpoint = baseUrl.endsWith("/api/internal/email-vectors")
@@ -30,13 +30,13 @@ export function createClaraEmailVectorSearch(config: {
     : `${baseUrl}/api/internal/email-vectors`;
   const parsed = new URL(endpoint);
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error("CLARA_EMAIL_VECTOR_API_URL must use HTTP or HTTPS.");
+    throw new Error("AGENT_EMAIL_VECTOR_API_URL must use HTTP or HTTPS.");
   }
   if (process.env.NODE_ENV === "production" && parsed.protocol !== "https:") {
-    throw new Error("CLARA_EMAIL_VECTOR_API_URL must use HTTPS in production.");
+    throw new Error("AGENT_EMAIL_VECTOR_API_URL must use HTTPS in production.");
   }
   if (parsed.username || parsed.password || parsed.search || parsed.hash) {
-    throw new Error("CLARA_EMAIL_VECTOR_API_URL must not contain credentials, query, or fragment.");
+    throw new Error("AGENT_EMAIL_VECTOR_API_URL must not contain credentials, query, or fragment.");
   }
 
   return async (input) => {
@@ -49,13 +49,13 @@ export function createClaraEmailVectorSearch(config: {
           typeof id !== "string" || !id.trim() || id.length > 256 || id !== id.trim()
         ) ||
         new Set(input.allowedAccountIds).size !== input.allowedAccountIds.length) {
-      throw new Error("Clara email-vector search requires a trusted organization and unique allowed accounts.");
+      throw new Error("Email-vector search requires a trusted organization and unique allowed accounts.");
     }
     if (typeof input.query !== "string" || !input.query.trim() || input.query.length > 2000) {
-      throw new Error("Clara email-vector search requires a non-empty, bounded query.");
+      throw new Error("Email-vector search requires a non-empty, bounded query.");
     }
     if (!Number.isFinite(input.limit) || !Number.isInteger(input.limit) || input.limit < 1) {
-      throw new Error("Clara email-vector search requires a positive integer limit.");
+      throw new Error("Email-vector search requires a positive integer limit.");
     }
     let response: Response;
     try {
@@ -78,18 +78,18 @@ export function createClaraEmailVectorSearch(config: {
       });
     } catch (error) {
       const reason = error instanceof Error && error.name === "TimeoutError" ? "request timed out" : "network request failed";
-      throw new Error(`Clara email-vector search ${reason}.`);
+      throw new Error(`Email-vector search ${reason}.`);
     }
-    if (!response.ok) throw new Error(`Clara email-vector search returned HTTP ${response.status}.`);
+    if (!response.ok) throw new Error(`Email-vector search returned HTTP ${response.status}.`);
 
-    let body: ClaraSearchResponse;
+    let body: VectorSearchResponse;
     try {
-      body = await response.json() as ClaraSearchResponse;
+      body = await response.json() as VectorSearchResponse;
     } catch {
-      throw new Error("Clara email-vector search returned invalid JSON.");
+      throw new Error("Email-vector search returned invalid JSON.");
     }
     if (body.ok !== true || !Array.isArray(body.results)) {
-      throw new Error("Clara email-vector search did not confirm a valid result set.");
+      throw new Error("Email-vector search did not confirm a valid result set.");
     }
 
     const hits: EmailVectorCandidate[] = [];

@@ -220,7 +220,7 @@ export default async function RoutinePreviewPage({ searchParams }: { searchParam
       </section>
       <nav aria-label="Existing routine management" className="flex flex-wrap gap-4 text-sm">
         <a href="/scheduled" className="underline underline-offset-4">Scheduled AI agent ↗</a>
-        <a href="/chat" className="underline underline-offset-4">Ask Clara ↗</a>
+        <a href="/chat" className="underline underline-offset-4">Ask the assistant ↗</a>
       </nav>
     </main>
   );

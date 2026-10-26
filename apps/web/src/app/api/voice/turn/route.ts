@@ -8,7 +8,7 @@ import { runEmailAgentTurn, createEmailToolRuntime,prepareAgentConfigurationTurn
 import { formatRollingMailSummary, parseRollingMailSummaryRequest, looksLikeRollingMailReport } from "@/lib/mail/rolling-summary";
 import { getMailReportEvidence, MailReportScopeError } from "@/lib/mail/report-evidence";
 import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
-import { claraRuntime } from "@ai-comms-agent/clara-core";
+import { agentRuntime } from "@ai-comms-agent/agent-core";
 import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest } from "@/lib/mail/action-feedback";
 import { userFacingChatAnswer } from "@/lib/chat/user-facing-answer";
 import { currentTurnOperationAnswer } from "@/lib/chat/operation-feedback";
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     if(frozenConfiguration&&(frozenConfiguration.organizationId!==organizationId||frozenConfiguration.agentId!==agentId||frozenConfiguration.snapshot.lifecycle.status!=='active'))return NextResponse.json({error:'agent_unavailable',message:'Review this agent’s current deployment before starting a voice turn.'},{status:409});
     const runtimeSettings = await query<{ knowledge_base_id: string }>("SELECT knowledge_base_id FROM organization_ai_runtime_settings WHERE organization_id = $1", [organizationId]);
     // KB ID is OPTIONAL for voice turns. RAG features are skipped when no KB is configured.
-    const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim() || "default";
+    const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.AGENT_KB_ID?.trim() || "default";
 
     const turnRecorded = await incrementVoiceSessionTurnForOrganization(organizationId, sessionId, transcriptBridgeOnly);
     if (!turnRecorded) {
@@ -150,7 +150,7 @@ export async function POST(request: Request) {
     const requiresEmailContentEvidence = !explicitEmailAction && /\b(emails?|mailbox|inbox|mail)\b/i.test(transcript);
     // Voice clients opt in to progressive text. The existing JSON contract
     // remains compatible for older clients. Conversations without a mailbox
-    // or action intent use the same Clara token stream as Chat; tool-sensitive
+    // or action intent use the same token stream as Chat; tool-sensitive
     // turns continue to use the bounded email tool executor and never skip
     // approval/mailbox controls just to display speculative text.
     if (request.headers.get("accept")?.includes("text/event-stream")) {
@@ -201,7 +201,7 @@ export async function POST(request: Request) {
                 onProgress: (phase) => emit("progress", { phase }),
                 onSafeReadOnlyFinal: explicitEmailAction ? undefined : async (completedHistory,modelContext) => {
                   emit("status", { phase: "generating" });
-                  const finalStream = await claraRuntime.streamAuthorizedReadOnlyToolAnswer(
+                  const finalStream = await agentRuntime.streamAuthorizedReadOnlyToolAnswer(
                     modelContext,
                     completedHistory,
                     request.signal,
@@ -239,14 +239,14 @@ export async function POST(request: Request) {
               }
             } else {
               // Actual model-generated tokens arrive incrementally here.
-              const generation = await claraRuntime.createChatTurn({
+              const generation = await agentRuntime.createChatTurn({
                 orgId: organizationId, agentId, kbId, userId: subject.user.id,
                 sessionId, surface: "realtime", ragMode: "hybrid",
                 messages: [
                   { role: "system", content: "This streamed voice text is read-only. Never claim to have sent, approved, deleted, archived, moved or changed mail or other resources. Such actions require the host-authorized tool path." },
                   { role: "user", content: transcript },
                 ],
-              },configurationTurn?.claraContext);
+              },configurationTurn?.agentContext);
               let generated = "";
               for await (const token of generation.stream) {
                 if (request.signal.aborted) break;
@@ -275,8 +275,8 @@ export async function POST(request: Request) {
                 stage: needsAuthorizedTools ? "authorized_tools" : "model",
               });
               emit("error", { message: needsAuthorizedTools
-                ? "Clara could not complete the authorized mail-tool request. No email summary or action was confirmed. Check the connected mailbox, permissions and sync status before retrying."
-                : "Clara could not complete the voice answer. No external action was confirmed." });
+                ? "The assistant could not complete the authorized mail-tool request. No email summary or action was confirmed. Check the connected mailbox, permissions and sync status before retrying."
+                : "The assistant could not complete the voice answer. No external action was confirmed." });
             }
           } finally {
             controller.close();
@@ -311,16 +311,16 @@ export async function POST(request: Request) {
     }
 
     if (!needsAuthorizedTools) {
-      // Older JSON clients require the same normal Clara conversational path
+      // Older JSON clients require the same normal conversational path
       // as SSE clients. Tool-authorized actions remain in runEmailAgentTurn.
-      const generation = await claraRuntime.createChatTurn({
+      const generation = await agentRuntime.createChatTurn({
         orgId: organizationId, agentId, kbId, userId: subject.user.id,
         sessionId, surface: "realtime", ragMode: "hybrid",
         messages: [
           { role: "system", content: "This voice response is read-only. Never claim to have sent, approved, deleted, archived, moved or changed mail or other resources. Such actions require an explicit authorized host tool result. Never claim to have sent, approved or completed any side effect without such a result." },
           { role: "user", content: transcript },
         ],
-      },configurationTurn?.claraContext);
+      },configurationTurn?.agentContext);
       let modelAnswer = "";
       for await (const token of generation.stream) {
         if (request.signal.aborted) break;

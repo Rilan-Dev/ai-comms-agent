@@ -22,7 +22,7 @@ export const initialRuntimeSettings: RuntimeSettings = {
   voice_id: "alloy",
   temperature: 0.8,
   max_tokens: 1500,
-  system_prompt: "You are Clara, a helpful AI assistant for the user's communication workspace.",
+  system_prompt: "You are a helpful AI assistant for the user's communication workspace.",
 };
 
 export function normalizeRuntimeSettings(payload: unknown): RuntimeSettings {

@@ -232,7 +232,7 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(schedules).toContain("lastError");
     expect(schedules).toContain("No scheduled AI tasks yet.");
   });
-  it("keeps Clara chat connected to the authenticated streaming API with Lovable iconography", () => {
+  it("keeps chat connected to the authenticated streaming API with Lovable iconography", () => {
     expect(chat).toContain('from "lucide-react"');
     expect(chat).toContain("Sparkles");
     expect(chat).toContain("AudioLines");
@@ -252,7 +252,7 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(activity).toContain("from \"lucide-react\"");
     expect(activity).not.toContain("source mock data");
   });
-  it("shows real organization-scoped Clara knowledge status instead of hard-coded counts", () => {
+  it("shows real organization-scoped knowledge status instead of hard-coded counts", () => {
     expect(knowledge).toContain('fetch("/api/knowledge"');
     expect(knowledge).toContain("Recent email knowledge");
     expect(knowledge).toContain("No email knowledge yet");
@@ -382,7 +382,7 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(zohoOAuth).toContain("rounded-md");
   });
 
-  it("adapts realtime voice visuals without changing Clara-owned session and safety boundaries", () => {
+  it("adapts realtime voice visuals without changing agent-owned session and safety boundaries", () => {
     expect(voice).toContain('from "lucide-react"');
     expect(voice).toContain("AudioLines");
     expect(voice).toContain("isCurrentVoiceSequence");
@@ -422,8 +422,8 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(agentDetail).toContain("overflow-y-auto bg-black/40");
     expect(chat).toContain('role="log" aria-label="Conversation messages"');
     expect(chat).toContain('role="status" aria-live="polite"');
-    expect(chat).toContain("Clara’s response is ready.");
-    expect(chat).toContain("Clara could not complete the response.");
+    expect(chat).toContain("The response is ready.");
+    expect(chat).toContain("The assistant could not complete the response.");
     expect(chat).toContain('aria-label="Message"');
     expect(chat).toContain('aria-label="Choose agent"');
   });

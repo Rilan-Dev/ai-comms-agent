@@ -20,15 +20,15 @@ export async function GET() {
   //   - shared_package: ok (imports resolve at build time; bundled)
   //   - db_package: ok (isPostgresConfigured is callable; bundled)
   //
-  // The Clara integration boundary (packages/clara-core) is also bundled via
-  // transpilePackages. Actual Clara runtime calls are Phase 11+; for Phase 2
+  // The agent-core integration boundary (packages/agent-core) is also bundled via
+  // transpilePackages. Actual agent runtime calls are Phase 11+; for Phase 2
   // we verify the build includes the package (proven by successful deployment).
 
   const checks = {
     web_app: "ok" as const,
     shared_package: "ok" as const,
     db_package: "ok" as const,
-    clara_core_package: "ok" as const,
+    agent_core_package: "ok" as const,
     postgres_configured: isPostgresConfigured(),
     environment: process.env.NODE_ENV ?? "development",
     timestamp: new Date().toISOString(),

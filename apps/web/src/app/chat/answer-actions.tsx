@@ -26,7 +26,7 @@ export function AnswerActions({ content, messageId }: { content: string; message
     const href = URL.createObjectURL(data);
     const anchor = document.createElement("a");
     anchor.href = href;
-    anchor.download = "clara-answer-" + filenameId + "." + format;
+    anchor.download = "assistant-answer-" + filenameId + "." + format;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();

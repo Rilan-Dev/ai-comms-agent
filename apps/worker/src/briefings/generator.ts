@@ -1,4 +1,4 @@
-import { claraRuntime } from "@ai-comms-agent/clara-core";
+import { agentRuntime } from "@ai-comms-agent/agent-core";
 import { loadCanonicalBriefingSources } from "@ai-comms-agent/db";
 import type { TrustedBriefingPrincipal } from "@ai-comms-agent/shared";
 import type { BriefingGenerator } from "@ai-comms-agent/email-agent-runtime/briefings/generation";
@@ -11,13 +11,13 @@ const MODEL_TIMEOUT_MS = 60_000;
 const MAX_MODEL_OUTPUT = 128_000;
 
 /**
- * Existing Clara organization/agent provider boundary. No ambient RAG is
+ * Existing organization/agent provider boundary. No ambient RAG is
  * permitted; only the immutable, grant-checked batch sources reach the model.
  * The adapter has no email write tools, recipients, or scheduled send actions.
  */
-export function createClaraBriefingGenerator(
+export function createBriefingGenerator(
   principal: TrustedBriefingPrincipal,
-  createTurn: typeof claraRuntime.createBriefingTurn = claraRuntime.createBriefingTurn,
+  createTurn: typeof agentRuntime.createBriefingTurn = agentRuntime.createBriefingTurn,
   timeoutMs = MODEL_TIMEOUT_MS,
 ): BriefingGenerator {
   if (!Number.isFinite(timeoutMs) || timeoutMs < 1) throw new Error("Invalid provider deadline");
@@ -97,6 +97,6 @@ export function createCanonicalBriefingWorkerDependencies(
   return {
     ...DEFAULT_BRIEFING_WORKER_DEPENDENCIES,
     loadCanonicalSources: loadCanonicalBriefingSources,
-    generate: createClaraBriefingGenerator(principal),
+    generate: createBriefingGenerator(principal),
   };
 }

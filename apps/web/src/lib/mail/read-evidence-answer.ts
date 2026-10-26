@@ -1,4 +1,4 @@
-import type {ToolChatMessage} from '@ai-comms-agent/clara-core';
+import type {ToolChatMessage} from '@ai-comms-agent/agent-core';
 
 function data(value:unknown,max:number){return (typeof value==='string'?value:'').slice(0,max).replace(/[\r\n]+/g,' ').replace(/[\\`*_{}\[\]()<>#+!|]/g,'\\$&');}
 

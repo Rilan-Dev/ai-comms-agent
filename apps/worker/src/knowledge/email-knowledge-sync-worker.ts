@@ -155,7 +155,7 @@ function createDependencies(vectors: EmailKnowledgeVectorAdapter): EmailKnowledg
 }
 
 /**
- * Drain durable outbox events only when the host provides its configured Clara
+ * Drain durable outbox events only when the host provides its configured
  * RAG/vector adapter. This repository intentionally does not invent a Qdrant
  * endpoint or write to a parallel vector collection.
  */

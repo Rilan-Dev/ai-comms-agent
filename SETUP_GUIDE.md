@@ -2,6 +2,8 @@
 
 This guide walks you through cloning, configuring, and running the ai-comms-agent platform locally and on Vercel.
 
+> **Not technical?** If you are a business owner or non-technical user setting up a workspace on an already-running deployment, use [`FIRST_TIME_SETUP_GUIDE.md`](FIRST_TIME_SETUP_GUIDE.md) instead — it covers first-time registration, workspace naming, and everyday setup without any server work.
+
 ---
 
 ## Prerequisites
@@ -23,7 +25,6 @@ This guide walks you through cloning, configuring, and running the ai-comms-agen
 ```bash
 git clone https://github.com/Rilan-Dev/ai-comms-agent.git
 cd ai-comms-agent
-git submodule update --init --recursive   # initialize vendor/clara
 corepack enable pnpm                       # enable pnpm via corepack
 pnpm install --no-frozen-lockfile          # install all workspace deps
 ```
@@ -218,7 +219,7 @@ The `APP_ORIGIN` env var doesn't match the URL you're accessing. For Vercel, any
 ### "ensureDevSeed MUST NOT be called in production"
 Fixed — `ensureDevSeed()` is now a no-op in production. If you see this error, you're running an older build. Pull latest `main` and redeploy.
 
-### "CLARA_KB_ID is not configured"
+### "AGENT_KB_ID is not configured"
 Fixed — KB ID is now optional (defaults to "default"). RAG features are skipped when no KB is configured. Basic chat/voice works without a knowledge base.
 
 ### Zoho OAuth "rejected the authorization code"

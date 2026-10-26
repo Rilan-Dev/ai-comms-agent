@@ -6,24 +6,24 @@ import { buildReadOnlyToolFinalMessages } from "./tool-result-final";
 import { extractAmbientContextForFinalStream } from "./ambient-context";
 import type {
   AIProvider,
-  ClaraAgentAiOverrides,
+  AgentAiOverrides,
   ChatMessage,
   ChatOptions,
   ChatToolCompletion,
   ChatToolDefinition,
   ToolChatMessage,
-  ClaraAgentTurn,
-  ClaraAgentTurnRequest,
-  ClaraRuntimeContext,
+  AgentTurn,
+  AgentTurnRequest,
+  AgentRuntimeContext,
   GroundedContext,
   ProviderConfig,
   ResolvedAIConfig,
 } from "./types";
 
 export type {
-  ClaraRuntimeContext,
-  ClaraAgentTurnRequest,
-  ClaraAgentTurn,
+  AgentRuntimeContext,
+  AgentTurnRequest,
+  AgentTurn,
 } from "./types";
 
 type StreamChunk = { choices?: Array<{ delta?: { content?: string | null } }> };
@@ -74,11 +74,11 @@ function resolvedConfig(provider: AIProvider): ResolvedAIConfig {
     model: providerModel(provider),
     maxTokens: Number.isFinite(maxTokens) && maxTokens > 0 ? maxTokens : 1500,
     temperature: Number.isFinite(temperature) ? temperature : 0.8,
-    assistantConfig: { systemPrompt: env("CLARA_SYSTEM_PROMPT") ?? "You are Clara, a helpful AI assistant for the user's communication workspace." },
+    assistantConfig: { systemPrompt: env("AGENT_SYSTEM_PROMPT") ?? "You are a helpful AI assistant for the user's communication workspace." },
   };
 }
 
-async function organizationAIConfig(orgId: string | null, agentId?: string | null, frozenOverrides?:ClaraAgentAiOverrides|null): Promise<{ provider: AIProvider; providerConfig: ProviderConfig; resolved: ResolvedAIConfig; voice?: { provider: string; model: string; voiceId: string }; embedding?: { provider: string; model: string; dimension: number | null } } | null> {
+async function organizationAIConfig(orgId: string | null, agentId?: string | null, frozenOverrides?:AgentAiOverrides|null): Promise<{ provider: AIProvider; providerConfig: ProviderConfig; resolved: ResolvedAIConfig; voice?: { provider: string; model: string; voiceId: string }; embedding?: { provider: string; model: string; dimension: number | null } } | null> {
   if (!orgId || !process.env.DATABASE_URL) return null;
   const settingsResult = await query<{
     default_provider: string; temperature: number | string; max_tokens: number | string;
@@ -95,7 +95,7 @@ async function organizationAIConfig(orgId: string | null, agentId?: string | nul
     default_provider: selectedProvider(),
     temperature: 0.8,
     max_tokens: 1500,
-    system_prompt: "You are Clara, a helpful AI assistant for the user's communication workspace.",
+    system_prompt: "You are a helpful AI assistant for the user's communication workspace.",
     realtime_voice_provider: selectedProvider(),
     realtime_voice_model: "alloy",
     voice_id: "alloy",
@@ -117,7 +117,7 @@ async function organizationAIConfig(orgId: string | null, agentId?: string | nul
   const saved = providerResult.rows[0];
 
   // Per-agent overrides — agentId is optional. NULL columns mean "inherit".
-  let agentOverrides: ClaraAgentAiOverrides | null = frozenOverrides??null;
+  let agentOverrides: AgentAiOverrides | null = frozenOverrides??null;
   if (agentId && frozenOverrides===undefined) {
     const agentResult = await query<{
       chat_provider: string | null; chat_model: string | null;
@@ -177,7 +177,7 @@ async function organizationAIConfig(orgId: string | null, agentId?: string | nul
         provider: effectiveProvider, model,
         maxTokens: agentOverrides?.maxTokensOverride ?? (Number.isFinite(Number(settings.max_tokens)) ? Number(settings.max_tokens) : 1500),
         temperature: agentOverrides?.temperatureOverride ?? (Number.isFinite(Number(settings.temperature)) ? Number(settings.temperature) : 0.8),
-        assistantConfig: { systemPrompt: agentOverrides?.systemPromptOverride ?? settings.system_prompt ?? "You are Clara, a helpful AI assistant for the user's communication workspace." },
+        assistantConfig: { systemPrompt: agentOverrides?.systemPromptOverride ?? settings.system_prompt ?? "You are a helpful AI assistant for the user's communication workspace." },
       },
       voice: {
         provider: agentOverrides?.realtimeVoiceProviderOverride ?? settings.realtime_voice_provider,
@@ -199,7 +199,7 @@ async function organizationAIConfig(orgId: string | null, agentId?: string | nul
       model:effectiveChatModel,
       maxTokens: agentOverrides?.maxTokensOverride ?? (Number.isFinite(Number(settings.max_tokens)) ? Number(settings.max_tokens) : 1500),
       temperature: agentOverrides?.temperatureOverride ?? (Number.isFinite(Number(settings.temperature)) ? Number(settings.temperature) : 0.8),
-      assistantConfig: { systemPrompt: agentOverrides?.systemPromptOverride ?? settings.system_prompt ?? "You are Clara, a helpful AI assistant for the user's communication workspace." },
+      assistantConfig: { systemPrompt: agentOverrides?.systemPromptOverride ?? settings.system_prompt ?? "You are a helpful AI assistant for the user's communication workspace." },
     },
     voice: {
       provider: agentOverrides?.realtimeVoiceProviderOverride ?? settings.realtime_voice_provider,
@@ -216,11 +216,11 @@ async function organizationAIConfig(orgId: string | null, agentId?: string | nul
 
 // Credentials and resolved runtime defaults stay server-side, associated only
 // with the opaque host context. They never become JSON/context properties.
-const preparedTurnConfigurations=new WeakMap<ClaraRuntimeContext,Awaited<ReturnType<typeof organizationAIConfig>>>();
+const preparedTurnConfigurations=new WeakMap<AgentRuntimeContext,Awaited<ReturnType<typeof organizationAIConfig>>>();
 function freezeTurnConfiguration<T>(value:T):T{
   if(value&&typeof value==='object'){for(const child of Object.values(value))freezeTurnConfiguration(child);Object.freeze(value);}return value;
 }
-async function configurationForContext(ctx:ClaraRuntimeContext){
+async function configurationForContext(ctx:AgentRuntimeContext){
   return preparedTurnConfigurations.has(ctx)?preparedTurnConfigurations.get(ctx)!:organizationAIConfig(ctx.orgId,ctx.agentId);
 }
 function assertApiKey(config: ProviderConfig): asserts config is ProviderConfig & { apiKey: string } {
@@ -542,7 +542,7 @@ async function chatWithTools(
 }
 
 function tokenlessEmbeddingError(): Promise<number[]> {
-  return Promise.reject(new Error("Embedding is not configured in the local Clara boundary. Configure a Clara/Qdrant indexing pipeline before requesting embeddings."));
+  return Promise.reject(new Error("Embedding is not configured in the local runtime boundary. Configure a vector indexing pipeline before requesting embeddings."));
 }
 
 /**
@@ -611,7 +611,7 @@ async function embedBatchOnce(
   return (payload.data ?? []).map((item) => item.embedding ?? []);
 }
 
-async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: number): Promise<GroundedContext> {
+async function groundContext(ctx: AgentRuntimeContext, queryText: string, topK: number): Promise<GroundedContext> {
   if (!ctx.orgId || !process.env.DATABASE_URL) {
     return { ok: false, result: { sources: [] }, error: "PostgreSQL is not configured for local knowledge retrieval." };
   }
@@ -770,8 +770,8 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
   }
 }
 
-export const claraRuntime = {
-  async prepareTurn<T extends ClaraRuntimeContext>(ctx:T,agentOverrides?:ClaraAgentAiOverrides|null):Promise<Readonly<T>>{
+export const agentRuntime = {
+  async prepareTurn<T extends AgentRuntimeContext>(ctx:T,agentOverrides?:AgentAiOverrides|null):Promise<Readonly<T>>{
     const prepared=Object.freeze({...ctx,...(ctx.voiceOverride?{voiceOverride:Object.freeze({...ctx.voiceOverride})}:{})});
     const configured=await organizationAIConfig(ctx.orgId,ctx.agentId,agentOverrides);
     const provider=configured?.provider??selectedProvider();
@@ -779,7 +779,7 @@ export const claraRuntime = {
     return prepared;
   },
   /** External messages do not authorize ambient access to private mailbox RAG. */
-  async createCustomerReplyTurn(ctx: ClaraRuntimeContext, message: string) {
+  async createCustomerReplyTurn(ctx: AgentRuntimeContext, message: string) {
     if (!ctx.orgId || !ctx.agentId || typeof message !== "string" || !message.trim() || message.length > 4096) {
       throw new Error("A bounded incoming customer message and organization/agent are required.");
     }
@@ -799,7 +799,7 @@ export const claraRuntime = {
     return { providerName: provider, model: config.model, stream };
   },
 
-  async resolveProvider(ctx: ClaraRuntimeContext, surface: "chat" | "realtime" | "embed" = "chat") {
+  async resolveProvider(ctx: AgentRuntimeContext, surface: "chat" | "realtime" | "embed" = "chat") {
     const organizationConfig = await configurationForContext(ctx);
     const provider = organizationConfig?.provider ?? selectedProvider();
     return { ...(organizationConfig?.resolved ?? resolvedConfig(provider)), surface, orgId: ctx.orgId, agentId: ctx.agentId };
@@ -811,7 +811,7 @@ export const claraRuntime = {
    * outside a user's personal briefing grant. The trusted host supplies
    * already-authorized canonical sources and rechecks authority on commit.
    */
-  async createBriefingTurn(ctx: ClaraRuntimeContext, messages: ChatMessage[], signal?: AbortSignal) {
+  async createBriefingTurn(ctx: AgentRuntimeContext, messages: ChatMessage[], signal?: AbortSignal) {
     if (!ctx.orgId || !ctx.agentId || !ctx.userId ||
         messages.length !== 2 || messages[0]?.role !== "system" ||
         messages[1]?.role !== "user" ||
@@ -838,7 +838,7 @@ export const claraRuntime = {
     return { providerName: provider, model: resolved.model, stream };
   },
 
-  async resolveVoice(ctx: ClaraRuntimeContext) {
+  async resolveVoice(ctx: AgentRuntimeContext) {
     const organizationConfig = await configurationForContext(ctx);
     const provider = ctx.voiceOverride?.provider ?? organizationConfig?.voice?.provider ?? env("REALTIME_VOICE_PROVIDER") ?? selectedProvider();
     // A provider override must not inherit a model/speaker from a different
@@ -936,7 +936,7 @@ export const claraRuntime = {
     };
   },
 
-  async retrieve(ctx: ClaraRuntimeContext, queryText: string, options?: { topK?: number; ragMode?: "classic" | "hybrid" | "agentic"; channel?: "chat" | "voice" }) {
+  async retrieve(ctx: AgentRuntimeContext, queryText: string, options?: { topK?: number; ragMode?: "classic" | "hybrid" | "agentic"; channel?: "chat" | "voice" }) {
     return groundContext(ctx, queryText, options?.topK ?? 8);
   },
 
@@ -946,7 +946,7 @@ export const claraRuntime = {
    * embedding settings exist (preserves previous behavior for callers that
    * don't yet opt into embeddings).
    */
-  async embedText(ctx: ClaraRuntimeContext, text: string): Promise<number[]> {
+  async embedText(ctx: AgentRuntimeContext, text: string): Promise<number[]> {
     const organizationConfig = await configurationForContext(ctx);
     const embedding = organizationConfig?.embedding;
     if (!embedding?.provider || !embedding?.model) {
@@ -979,7 +979,7 @@ export const claraRuntime = {
     return embedTextOnce({ provider: embedding.provider, model: embedding.model, apiKey, baseUrl }, text);
   },
 
-  async embedBatch(ctx: ClaraRuntimeContext, texts: string[]): Promise<number[][]> {
+  async embedBatch(ctx: AgentRuntimeContext, texts: string[]): Promise<number[][]> {
     if (texts.length === 0) return [];
     const organizationConfig = await configurationForContext(ctx);
     const embedding = organizationConfig?.embedding;
@@ -1039,7 +1039,7 @@ export const claraRuntime = {
    * provided through the ambient path.
    */
   async streamAuthorizedReadOnlyToolAnswer(
-    ctx: ClaraRuntimeContext, history: readonly ToolChatMessage[], signal?: AbortSignal,
+    ctx: AgentRuntimeContext, history: readonly ToolChatMessage[], signal?: AbortSignal,
   ): Promise<AsyncGenerator<string, void, unknown>> {
     if (!ctx.orgId || !ctx.agentId || signal?.aborted) {
       throw new Error("A current organization and agent are required for a read-only response.");
@@ -1072,7 +1072,7 @@ export const claraRuntime = {
     }, signal);
   },
 
-  async streamCanonicalToolAnswer(ctx: ClaraRuntimeContext, canonical: string, signal?: AbortSignal): Promise<AsyncGenerator<string, void, unknown>> {
+  async streamCanonicalToolAnswer(ctx: AgentRuntimeContext, canonical: string, signal?: AbortSignal): Promise<AsyncGenerator<string, void, unknown>> {
     if (!ctx.orgId || !ctx.agentId || !canonical || canonical.length > 6000) {
       throw new Error("A bounded authorized tool answer and organization/agent are required.");
     }
@@ -1092,7 +1092,7 @@ export const claraRuntime = {
   },
 
   async completeWithTools(
-    ctx: ClaraRuntimeContext,
+    ctx: AgentRuntimeContext,
     messages: ToolChatMessage[],
     tools: ChatToolDefinition[],
   ): Promise<ChatToolCompletion> {
@@ -1121,7 +1121,7 @@ export const claraRuntime = {
     });
   },
 
-  async createChatTurn(request: ClaraAgentTurnRequest,preparedContext?:ClaraRuntimeContext): Promise<ClaraAgentTurn> {
+  async createChatTurn(request: AgentTurnRequest,preparedContext?:AgentRuntimeContext): Promise<AgentTurn> {
     const messages = request.messages.filter((message) => message.content.trim());
     const lastUserMessage = [...messages].reverse().find((message) => message.role === "user");
     if (!lastUserMessage) throw new Error("A user message is required.");
@@ -1152,7 +1152,7 @@ export const claraRuntime = {
     return { config, providerName: provider, model: config.model, stream, grounding };
   },
 
-  async startRealtimeSession(ctx: ClaraRuntimeContext) {
+  async startRealtimeSession(ctx: AgentRuntimeContext) {
     return this.resolveVoice(ctx);
   },
 
@@ -1161,12 +1161,12 @@ export const claraRuntime = {
       return [{ name: "rag_search", description: "Retrieve tenant-bound evidence from the local knowledge index." }];
     },
 
-    async invoke(ctx: ClaraRuntimeContext, name: string, input: unknown) {
-      if (name !== "rag_search") throw new Error("Unsupported Clara tool: " + name);
+    async invoke(ctx: AgentRuntimeContext, name: string, input: unknown) {
+      if (name !== "rag_search") throw new Error("Unsupported tool: " + name);
       const payload = input && typeof input === "object" ? input as Record<string, unknown> : {};
       const queryText = typeof payload.query === "string" ? payload.query.trim() : "";
       if (!queryText) throw new Error("rag_search requires a query.");
-      return claraRuntime.retrieve(ctx, queryText, {
+      return agentRuntime.retrieve(ctx, queryText, {
         ragMode: payload.ragMode === "classic" || payload.ragMode === "agentic" ? payload.ragMode : "hybrid",
         channel: "voice",
       });

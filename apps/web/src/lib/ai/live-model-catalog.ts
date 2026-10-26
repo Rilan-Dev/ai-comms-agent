@@ -1,6 +1,6 @@
 /**
  * Organization-scoped live model catalogue adapter.
- * Adapted from Clara-AI-Platform ai-governance/core/live-catalog.ts.
+ * Adapted from the reference AI platform ai-governance/core/live-catalog.ts.
  * Only provider-advertised model IDs are returned. No hard-coded fallback IDs.
  * Endpoint origins are fixed to avoid turning encrypted provider keys into SSRF.
  */
@@ -139,7 +139,7 @@ export async function fetchLiveModelCatalog(provider: LiveModelProvider, purpose
     const payload = await getJson("https://api.sarvam.ai/v2/models", {
       "api-subscription-key": apiKey,
     }) as { data?: Array<{ id?: string }> };
-    // Clara's list includes beta V2-only models; ai-comms chat runtime currently
+    // The reference list includes beta V2-only models; ai-comms chat runtime currently
     // calls /v1/chat/completions. Do not offer models that cannot run there.
     const v1Models = new Set(["sarvam-105b", "sarvam-105b-conversations"]);
     return clean((payload.data ?? []).filter((m) => m.id && v1Models.has(m.id)).map((m) => ({ id: m.id!, name: m.id! })));

@@ -68,7 +68,7 @@ describe("Gmail automatic mailbox synchronization", () => {
     expect(worker).toContain("a.provider IN ('gmail','zoho','imap_smtp','microsoft_graph')");
   });
 
-  it("keeps synchronized email context tenant-scoped and passes it to Clara chat", () => {
+  it("keeps synchronized email context tenant-scoped and passes it to agent chat", () => {
     const route = read("../src/app/api/chat/stream/route.ts");
     expect(route).toContain("m.organization_id = $1");
     expect(route).toContain("a.organization_id = $1");

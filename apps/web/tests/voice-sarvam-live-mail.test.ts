@@ -6,7 +6,7 @@ const read = (relative: string) => readFileSync(new URL(relative, import.meta.ur
 const voiceSession = read("../src/app/api/voice/session/route.ts");
 const voiceTurn = read("../src/app/api/voice/turn/route.ts");
 const workspace = read("../src/app/ai-voice/voice-workspace.tsx");
-const clara = read("../../../packages/clara-core/src/runtime.ts");
+const runtimeSource = read("../../../packages/agent-core/src/runtime.ts");
 const loop = read("../../../packages/email-agent-runtime/src/email-agent-loop.ts");
 const relay = read("../../../infra/voice-relay/src/server.mjs");
 const sarvamRelay = read("../../../infra/voice-relay/src/sarvam-relay.mjs");
@@ -23,7 +23,7 @@ describe("Sarvam live voice and grounded workspace mail", () => {
   });
 
   it("refuses Sarvam sessions without both the relay and an actual realtime descriptor", () => {
-    expect(clara).toContain('if (available && provider === "elevenlabs")');
+    expect(runtimeSource).toContain('if (available && provider === "elevenlabs")');
     expect(voiceSession).toContain('error: "sarvam_realtime_relay_required"');
     expect(voiceSession).toContain('error: "sarvam_realtime_unavailable"');
     expect(voiceSession).toContain('transport.transportMode !== "realtime"');

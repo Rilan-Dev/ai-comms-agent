@@ -1,7 +1,7 @@
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 const m=vi.hoisted(()=>({kb:'private-mail-knowledge',normal:vi.fn(),customer:vi.fn(),actions:vi.fn(),prepare:vi.fn()}));
 vi.mock('@ai-comms-agent/db',()=>({query:async()=>({rows:m.kb?[{knowledge_base_id:m.kb}]:[]})}));
-vi.mock('@ai-comms-agent/clara-core',()=>({claraRuntime:{createChatTurn:m.normal,createCustomerReplyTurn:m.customer}}));
+vi.mock('@ai-comms-agent/agent-core',()=>({agentRuntime:{createChatTurn:m.normal,createCustomerReplyTurn:m.customer}}));
 vi.mock('@ai-comms-agent/email-agent-runtime',()=>({prepareAgentConfigurationTurn:m.prepare}));
 vi.mock('../../worker/src/agent/product-action-executor',()=>({executeProductActions:m.actions}));
 import {dispatchAgentExecution} from '../../worker/src/agent/execution-dispatcher';
@@ -14,7 +14,7 @@ beforeEach(()=>{
 });
 afterEach(()=>vi.unstubAllEnvs());
 it('shares the prepared configuration with customer generation and the pending-only action boundary',async()=>{
- vi.stubEnv('AGENT_CONFIGURATION_REVISIONS_ENABLED','true');const prepared={orgId:'org',agentId:'agent',kbId:m.kb,skipGrounding:true},configuration={revisionId:'frozen'};m.prepare.mockResolvedValue({claraContext:prepared,configuration});
+ vi.stubEnv('AGENT_CONFIGURATION_REVISIONS_ENABLED','true');const prepared={orgId:'org',agentId:'agent',kbId:m.kb,skipGrounding:true},configuration={revisionId:'frozen'};m.prepare.mockResolvedValue({agentContext:prepared,configuration});
  await dispatchAgentExecution(request);expect(m.customer.mock.calls[0]?.[0]).toBe(prepared);expect(m.actions).toHaveBeenCalledWith(expect.objectContaining({configuration}),request.params);expect(m.normal).not.toHaveBeenCalled();
 });
 it('drafts a customer reply from only the inbound text, without ambient mailbox retrieval or task metadata',async()=>{

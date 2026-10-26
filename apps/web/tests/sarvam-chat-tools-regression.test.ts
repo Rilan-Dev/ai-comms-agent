@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const chat = readFileSync(resolve(__dirname, "../src/app/api/chat/stream/route.ts"), "utf8");
-const clara = readFileSync(resolve(__dirname, "../../../packages/clara-core/src/runtime.ts"), "utf8");
+const runtimeSource = readFileSync(resolve(__dirname, "../../../packages/agent-core/src/runtime.ts"), "utf8");
 const emailWrite = readFileSync(resolve(__dirname, "../../../packages/email-agent-runtime/src/email-write-tools.ts"), "utf8");
 const authorizer = readFileSync(resolve(__dirname, "../../../packages/email-agent-runtime/src/email-tool-runtime.ts"), "utf8");
 
@@ -18,13 +18,13 @@ describe("Sarvam-enabled agent email chat", () => {
   });
 
   it("uses the real Sarvam Chat V1 tool API and maps identifiers before host execution", () => {
-    expect(clara).toContain('config.provider !== "openai" && config.provider !== "gemini" && config.provider !== "sarvam"');
-    expect(clara).toContain('createSarvamToolBridge(tools.map((tool) => tool.name))');
-    expect(clara).toContain('"api-subscription-key"');
-    expect(clara).toContain("bridge.fromProvider(call.function.name)");
-    expect(clara).toContain("stream: !sarvam");
-    expect(clara).toContain("max_tokens: options.maxTokens");
-    expect(clara).not.toContain("Native tool calling is not enabled for Sarvam until provider function-call semantics are verified.");
+    expect(runtimeSource).toContain('config.provider !== "openai" && config.provider !== "gemini" && config.provider !== "sarvam"');
+    expect(runtimeSource).toContain('createSarvamToolBridge(tools.map((tool) => tool.name))');
+    expect(runtimeSource).toContain('"api-subscription-key"');
+    expect(runtimeSource).toContain("bridge.fromProvider(call.function.name)");
+    expect(runtimeSource).toContain("stream: !sarvam");
+    expect(runtimeSource).toContain("max_tokens: options.maxTokens");
+    expect(runtimeSource).not.toContain("Native tool calling is not enabled for Sarvam until provider function-call semantics are verified.");
   });
 
   it("requires registered allowlisted tools, user authority, and human send approval", () => {
@@ -42,9 +42,9 @@ describe("Sarvam-enabled agent email chat", () => {
     // The model must not answer "no inbox contents were provided" after only
     // discovering mailboxes: it is told to chain the message list/search call
     // with the discovered account_id and requested filters first.
-    const start = clara.indexOf("async completeWithTools(");
-    const end = clara.indexOf("async createChatTurn(", start);
-    const method = clara.slice(start, end);
+    const start = runtimeSource.indexOf("async completeWithTools(");
+    const end = runtimeSource.indexOf("async createChatTurn(", start);
+    const method = runtimeSource.slice(start, end);
     expect(method).toContain("retrieve the actual records with the available read tools before answering");
     expect(method).toContain("chain a second call such as the message list or search tool with the discovered account_id");
     expect(method).toContain("never state that inbox contents are unavailable without first retrieving them with the available tools");

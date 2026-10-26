@@ -9,7 +9,7 @@ import {
 
 /**
  * C3 worker core: intentionally not scheduled or registered until canonical
- * source loading, Clara credentials and acceptance are authorized.
+ * source loading, credentials and acceptance are authorized.
  * Every dependency operates with the trusted principal, never a model-provided one.
  */
 export interface BriefingWorkerDependencies {

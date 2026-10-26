@@ -10,7 +10,7 @@ const sessionRoute = readFileSync(resolve(__dirname, "../src/app/api/voice/sessi
 const workspace = readFileSync(resolve(__dirname, "../src/app/ai-voice/voice-workspace.tsx"), "utf8");
 const turnRoute = readFileSync(resolve(__dirname, "../src/app/api/voice/turn/route.ts"), "utf8");
 
-describe("Clara realtime voice transport", () => {
+describe("Realtime voice transport", () => {
   it("negotiates WebRTC SDP only after host authorization and session ownership checks", () => {
     expect(realtimeRoute).toContain("await authorize(");
     expect(realtimeRoute).toContain("new PostgresAgentRepository().get(organizationId, agentId)");
@@ -67,7 +67,7 @@ describe("Clara realtime voice transport", () => {
     expect(turnRoute).toContain('channel: "voice"');
     expect(turnRoute).toContain("permissions,");
     // The voice turn route uses runEmailAgentTurn as the primary path.
-    // A fallback to claraRuntime.createChatTurn exists for agents without
+    // A fallback to agentRuntime.createChatTurn exists for agents without
     // email tools enabled — this is a valid code path, not a regression.
   });
 

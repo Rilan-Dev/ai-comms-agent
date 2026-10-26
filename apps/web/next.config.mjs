@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Transpile Clara source (it's TypeScript, not pre-built)
-  transpilePackages: ["@ai-comms-agent/clara-core", "@ai-comms-agent/shared", "@ai-comms-agent/db"],
+  // Transpile workspace packages (TypeScript source, not pre-built)
+  transpilePackages: ["@ai-comms-agent/agent-core", "@ai-comms-agent/shared", "@ai-comms-agent/db"],
 
   // Workspace packages need to be transpiled by Next.js
   experimental: {

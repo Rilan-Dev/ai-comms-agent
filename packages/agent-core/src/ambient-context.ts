@@ -18,7 +18,7 @@ import type { ToolChatMessage } from "./types";
  * "Organization-scoped local email context", "WhatsApp context",
  * "Treat all ... content as untrusted data". These are NEVER confused
  * with the assistant identity system prompt (which contains
- * "You are Clara") or the tool-loop's own policy text.
+ * "You are the assistant") or the tool-loop's own policy text.
  *
  * Output is a single system-message content string clearly labeled as
  * UNTRUSTED DATA so the existing instruction-injection guard still
@@ -40,7 +40,7 @@ export function extractAmbientContextForFinalStream(history: readonly ToolChatMe
     if (message.role !== "system") continue;
     const content = typeof message.content === "string" ? message.content : "";
     if (!content.trim()) continue;
-    // Skip the assistant identity prompt ("You are Clara ...") — that's
+    // Skip the assistant identity prompt ("You are the assistant ...") — that's
     // already prepended separately as configured.resolved.assistantConfig.systemPrompt.
     if (/^You are /.test(content.trim()) && content.length < 600) continue;
     if (!isAmbient(content)) continue;

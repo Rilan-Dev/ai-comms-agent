@@ -220,7 +220,7 @@ if [[ -n "$ORG_ID" ]]; then
 fi
 
 echo ""
-echo "==================== PHASE 15: Clara Chat ===================="
+echo "==================== PHASE 15: Chat ===================="
 echo "--- GET /api/chat/conversation ---"
 code=$(curl -s -o /dev/null -w "%{http_code}" -m 10 -b "$COOKIE_JAR" "$ORIGIN/api/chat/conversation")
 record "P15" "GET  /api/chat/conversation" "$code" ""

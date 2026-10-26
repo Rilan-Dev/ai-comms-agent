@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { hasInteractiveEmailActions, suggestedChatNextActions } from "../src/lib/chat/interactive-replies.ts";
 
-const selectedWhatsAppQuestion = "Send a WhatsApp message to +919629534701 saying 'Hello! This is a test message from Clara AI.'";
+const selectedWhatsAppQuestion = "Send a WhatsApp message to +919629534701 saying 'Hello! This is a test message from the AI assistant.'";
 const selectedAnswer = "I can't send WhatsApp messages. I'm a text-only assistant and don't have access to messaging tools outside of email. If you'd like, I can draft a test email for you instead. Would you like me to prepare anything else?";
 const source = (relative) => readFileSync(new URL(relative, import.meta.url), "utf8");
 

@@ -1,5 +1,5 @@
 -- Product completion: realtime voice session lifecycle alignment.
--- Keeps voice sessions authoritative in PostgreSQL while Clara owns realtime transport.
+-- Keeps voice sessions authoritative in PostgreSQL while the agent runtime owns realtime transport.
 
 ALTER TABLE voice_sessions
   ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES users(id) ON DELETE SET NULL,
@@ -34,5 +34,5 @@ CREATE TRIGGER voice_sessions_finalize
 BEFORE UPDATE ON voice_sessions
 FOR EACH ROW EXECUTE FUNCTION finalize_voice_session();
 
-COMMENT ON TABLE voice_sessions IS 'Host-owned voice session metadata; Clara owns realtime transport and provider lifecycle.';
-COMMENT ON TABLE voice_telemetry IS 'Host-owned persistence for Clara realtime latency/quality telemetry; audio is never persisted.';
+COMMENT ON TABLE voice_sessions IS 'Host-owned voice session metadata; The agent runtime owns realtime transport and provider lifecycle.';
+COMMENT ON TABLE voice_telemetry IS 'Host-owned persistence for agent realtime latency/quality telemetry; audio is never persisted.';

@@ -14,7 +14,7 @@ const repository = readFileSync(
 describe("voice session start lifecycle", () => {
   it("persists a starting session before requesting realtime transport", () => {
     const createIndex = route.indexOf("const persisted = await createVoiceSession");
-    const transportIndex = route.indexOf("await claraRuntime.startRealtimeSession");
+    const transportIndex = route.indexOf("await agentRuntime.startRealtimeSession");
     expect(createIndex).toBeGreaterThanOrEqual(0);
     expect(transportIndex).toBeGreaterThan(createIndex);
     expect(route).toContain("voiceOverride: { provider: voiceProvider, model: voiceModel, voiceId }");
@@ -22,7 +22,7 @@ describe("voice session start lifecycle", () => {
 
   it("does not label the HTTP transcript bridge as a realtime session endpoint", () => {
     const runtime = readFileSync(
-      resolve(__dirname, "../../../packages/clara-core/src/runtime.ts"),
+      resolve(__dirname, "../../../packages/agent-core/src/runtime.ts"),
       "utf8",
     );
     expect(runtime).toContain('transportMode: "transcript_bridge" as const');

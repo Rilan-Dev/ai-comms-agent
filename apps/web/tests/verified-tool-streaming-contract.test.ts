@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 const read = (relative: string) => readFileSync(resolve(__dirname, relative), "utf8");
-const runtime = read("../../../packages/clara-core/src/runtime.ts");
-const ambient = read("../../../packages/clara-core/src/ambient-context.ts");
+const runtime = read("../../../packages/agent-core/src/runtime.ts");
+const ambient = read("../../../packages/agent-core/src/ambient-context.ts");
 const chat = read("../src/app/api/chat/stream/route.ts");
 const voice = read("../src/app/api/voice/turn/route.ts");
 const loop = read("../../../packages/email-agent-runtime/src/email-agent-loop.ts");
-const prompt = read("../../../packages/clara-core/src/tool-result-final.ts");
+const prompt = read("../../../packages/agent-core/src/tool-result-final.ts");
 
 describe("native final read-only answer streaming after host tool execution", () => {
   it("uses a genuine provider text stream from completed tool results without repeating a canonical copy call", () => {
@@ -16,8 +16,8 @@ describe("native final read-only answer streaming after host tool execution", ()
     expect(method).toContain("buildReadOnlyToolFinalMessages(history)");
     expect(method).toContain("chatStream(settings, messages");
     expect(method).not.toContain("chatWithTools(");
-    expect(chat).toContain("claraRuntime.streamAuthorizedReadOnlyToolAnswer(");
-    expect(voice).toContain("claraRuntime.streamAuthorizedReadOnlyToolAnswer(");
+    expect(chat).toContain("agentRuntime.streamAuthorizedReadOnlyToolAnswer(");
+    expect(voice).toContain("agentRuntime.streamAuthorizedReadOnlyToolAnswer(");
     expect(chat).not.toContain("emitVerifiedToolAnswer(");
     expect(voice).not.toContain("emitVerifiedToolAnswer(");
   });
@@ -53,7 +53,7 @@ describe("native final read-only answer streaming after host tool execution", ()
     expect(loop).toContain('registeredTool.required_permission === "email.read"');
     expect(loop).toContain("pendingApprovals.length === 0");
     expect(loop).toContain("summaries.every((call) => call.ok && call.readOnly === true)");
-    expect(loop).toContain("onSafeReadOnlyFinal(history,claraContext)");
+    expect(loop).toContain("onSafeReadOnlyFinal(history,agentContext)");
     expect(voice).toContain("if (!result.streamed)");
     expect(voice).toContain('"canonical-tool-answer"');
     expect(voice).toContain('mode: "host-authorized-tools"');

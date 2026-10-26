@@ -754,7 +754,7 @@ export function ChatClient({
           <div className="flex items-center gap-2.5">
             <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground"><Bot size={18} /></span>
             <div>
-              <p className="text-sm font-semibold">{activeAgent?.name ?? "Clara"}</p>
+              <p className="text-sm font-semibold">{activeAgent?.name ?? "Assistant"}</p>
               <p className="text-[11px] text-muted-foreground">{busy ? (activity || "Thinking…") : "Ready"}</p>
             </div>
           </div>
@@ -775,7 +775,7 @@ export function ChatClient({
           </div>
         </div>
       </header>
-      <p role="status" aria-live="polite" className="sr-only">{busy ? "Clara is preparing a response." : messages.at(-1)?.role === "assistant" ? "Clara’s response is ready." : messages.at(-1)?.role === "system" ? "Clara could not complete the response." : ""}</p>
+      <p role="status" aria-live="polite" className="sr-only">{busy ? "The assistant is preparing a response." : messages.at(-1)?.role === "assistant" ? "The response is ready." : messages.at(-1)?.role === "system" ? "The assistant could not complete the response." : ""}</p>
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {chatHistoryOpen && (
@@ -836,7 +836,7 @@ export function ChatClient({
             <div className="grid min-h-[50vh] place-items-center text-center">
               <div className="max-w-md">
                 <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary text-primary-foreground"><Sparkles size={24} /></div>
-                <h2 className="mt-4 text-lg font-semibold">Ask Clara anything</h2>
+                <h2 className="mt-4 text-lg font-semibold">Ask anything</h2>
                 <p className="mt-1.5 text-sm text-muted-foreground">Summarize your inbox, find important emails, or ask about recent messages.</p>
                 <div className="mt-5 grid gap-2">
                   {catchUpEnabled ? <a href="/catch-up" className="mb-3 inline-flex items-center rounded-lg border border-primary/25 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/10">Catch up on my mail →</a> : null}
@@ -962,7 +962,7 @@ export function ChatClient({
               <summary className="cursor-pointer list-none font-medium text-muted-foreground">
                 <span className="inline-flex items-center gap-2">
                   <span aria-hidden="true" className={`size-2 rounded-full ${busy ? "animate-pulse bg-primary" : "bg-muted-foreground/50"}`} />
-                  {busy ? "Clara is working" : "How this answer was prepared"}
+                  {busy ? "Assistant is working" : "How this answer was prepared"}
                 </span>
               </summary>
               <ol aria-label="Observed agent steps" className="mt-3 space-y-2 border-l border-border pl-4 text-xs text-muted-foreground">
@@ -1023,7 +1023,7 @@ export function ChatClient({
               </button>
             </div>
           </div>
-          <p className="mt-1.5 text-center text-[10px] text-muted-foreground">Clara can make mistakes. Verify important information.</p>
+          <p className="mt-1.5 text-center text-[10px] text-muted-foreground">AI can make mistakes. Verify important information.</p>
         </div>
       </section>
       )}
@@ -1060,7 +1060,7 @@ function MessageBubble({ role, content, messageId, showNextActions, userRequest,
     );
   }
 
-  // Assistant (Clara) message. All historical answers use the same renderer.
+  // Assistant message. All historical answers use the same renderer.
   const businessReport = parseBusinessMailReport(content);
   return (
     <div className="flex justify-start">

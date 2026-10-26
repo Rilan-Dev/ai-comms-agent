@@ -21,19 +21,9 @@ run_typecheck_excluding_vendor() {
     return 0
   fi
 
-  # vendor/clara is a reference-only source tree. Its transitive TypeScript
-  # diagnostics are intentionally outside this preflight's application scope.
-  # Keep any application diagnostics visible and failing.
-  if awk '
-    /^[^[:space:]].* - error TS[0-9]+:/ {
-      if ($0 !~ /(^|\/|\.\.\/)vendor\/clara\//) { non_vendor=1 }
-    }
-    END { exit non_vendor ? 1 : 0 }
-  ' "$output_file"; then
-    warn "$label typecheck has only vendor/clara diagnostics (excluded from preflight)"
-    return 0
-  fi
-
+  # The historical vendor reference tree was removed from the repository;
+  # any TypeScript diagnostic seen here belongs to application source and
+  # must fail the preflight.
   cat "$output_file"
   return 1
 }
@@ -65,5 +55,5 @@ fi
 
 echo
 echo "Preflight PASSED: host application checks and Docker configuration are ready."
-echo "Note: vendor/clara is reference-only and excluded from preflight TypeScript diagnostics."
+echo "Note: application TypeScript diagnostics fail the preflight."
 echo "Next command: bash scripts/manual-up.sh"

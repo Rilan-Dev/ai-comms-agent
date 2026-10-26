@@ -14,7 +14,7 @@ const excerpt = (source, start, end) => {
 test("a successful authorized read-only chat tool answer emits one validated delta", () => {
   const source = read("../src/app/api/chat/stream/route.ts");
   const callback = excerpt(source, "onSafeReadOnlyFinal:", "\n              });");
-  assert.match(callback, /claraRuntime\.streamAuthorizedReadOnlyToolAnswer\(/);
+  assert.match(callback, /agentRuntime\.streamAuthorizedReadOnlyToolAnswer\(/);
   assert.match(callback, /const validated = userFacingChatAnswer\(generated\)/);
   assert.match(callback, /if \(!validated\) throw/);
   assert.match(callback, /emit\("delta", \{ text: validated \}\)/);
@@ -27,7 +27,7 @@ test("a successful authorized read-only chat tool answer emits one validated del
 test("successful read-only voice tool answer emits only validated text, then persists it", () => {
   const source = read("../src/app/api/voice/turn/route.ts");
   const callback = excerpt(source, "onSafeReadOnlyFinal:", "\n              });");
-  assert.match(callback, /claraRuntime\.streamAuthorizedReadOnlyToolAnswer\(/);
+  assert.match(callback, /agentRuntime\.streamAuthorizedReadOnlyToolAnswer\(/);
   assert.match(callback, /const validated = userFacingChatAnswer\(generated\)/);
   assert.match(callback, /if \(!validated && !request\.signal\.aborted\) throw/);
   assert.match(callback, /emit\("delta", \{ text: validated \}\)/);

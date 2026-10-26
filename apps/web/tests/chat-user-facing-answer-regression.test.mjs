@@ -41,7 +41,7 @@ test("chat holds model text until user-facing validation, and does not persist p
   assert.match(route, /if \(!toolTurn\.streamed\)/);
   const native = route.slice(route.indexOf("onSafeReadOnlyFinal:"), route.indexOf("});\n          }\n          if (blockedWriteExplanation)"));
   assert.doesNotMatch(native, /emit\("delta", \{ text: token \}\)/);
-  const generic = route.slice(route.indexOf("const turn = await claraRuntime.createChatTurn("), route.indexOf("if (request.signal.aborted)", route.indexOf("const turn = await claraRuntime.createChatTurn(")));
+  const generic = route.slice(route.indexOf("const turn = await agentRuntime.createChatTurn("), route.indexOf("if (request.signal.aborted)", route.indexOf("const turn = await agentRuntime.createChatTurn(")));
   assert.doesNotMatch(generic, /emit\("delta", \{ text: chunk \}\)/);
   assert.match(route, /await appendConversationMessage\(\{[\s\S]*?role: "assistant", content: assistantOutput/);
 });

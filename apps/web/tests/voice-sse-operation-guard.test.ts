@@ -10,7 +10,7 @@ vi.mock('@ai-comms-agent/db',()=>({
  getVoiceSessionForOrganization:async()=>({user_id:'user',agent_id:'agent',status:'active',conversation_id:'conversation'}),
  incrementVoiceSessionTurnForOrganization:async()=>true,query:async()=>({rows:[]}),
 }));
-vi.mock('@ai-comms-agent/clara-core',()=>({claraRuntime:{createChatTurn:async()=>({stream:(async function*(){yield m.answer.slice(0,9);yield m.answer.slice(9);})()})}}));
+vi.mock('@ai-comms-agent/agent-core',()=>({agentRuntime:{createChatTurn:async()=>({stream:(async function*(){yield m.answer.slice(0,9);yield m.answer.slice(9);})()})}}));
 vi.mock('@ai-comms-agent/email-agent-runtime',()=>({runEmailAgentTurn:vi.fn(),createEmailToolRuntime:vi.fn()}));
 import {POST} from '../src/app/api/voice/turn/route';
 import {POST as chat} from '../src/app/api/chat/stream/route';

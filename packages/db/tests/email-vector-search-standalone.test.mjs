@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createClaraEmailVectorSearch } from "../src/email/clara-vector-search.ts";
+import { createEmailVectorSearch } from "../src/email/vector-search.ts";
 
 const key = "safe-service-token-value-for-tests-12345";
-const createSearch = (baseUrl = "https://clara.example") =>
-  createClaraEmailVectorSearch({ baseUrl, apiKey: key });
+const createSearch = (baseUrl = "https://vector.example") =>
+  createEmailVectorSearch({ baseUrl, apiKey: key });
 const valid = { orgId: "org-1", allowedAccountIds: ["account-1"], query: "invoice", limit: 8 };
 
 test("fail closed on untrusted or empty account scopes without network I/O", async () => {
@@ -39,9 +39,9 @@ test("invalid queries and limits reject before a service-credential request", as
 
 test("credential-bearing URLs and non-HTTP schemes are rejected", () => {
   for (const baseUrl of [
-    "https://user:password@clara.example",
-    "https://clara.example?token=exposed",
-    "https://clara.example#fragment",
+    "https://user:password@vector.example",
+    "https://vector.example?token=exposed",
+    "https://vector.example#fragment",
     "file:///tmp/private",
   ]) {
     assert.throws(() => createSearch(baseUrl), /HTTP or HTTPS|credentials, query, or fragment/);
@@ -63,7 +63,7 @@ test("scoped request refuses redirects and filters cross-organization hits", asy
   try {
     const hits = await createSearch()({ ...valid, limit: 100 });
     assert.equal(requests.length, 1);
-    assert.equal(requests[0].url, "https://clara.example/api/internal/email-vectors");
+    assert.equal(requests[0].url, "https://vector.example/api/internal/email-vectors");
     assert.equal(requests[0].options.redirect, "error");
     assert.equal(requests[0].options.headers.authorization, "Bearer " + key);
     assert.deepEqual(JSON.parse(requests[0].options.body), { action: "search", ...valid, limit: 20 });

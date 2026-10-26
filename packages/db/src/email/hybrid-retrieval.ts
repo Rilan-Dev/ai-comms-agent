@@ -75,7 +75,7 @@ function validDate(value: string | undefined, field: string): string | undefined
  *
  * Authorization is resolved from persisted agent_email_accounts bindings on
  * every call. Callers cannot supply an authoritative account allowlist.
- * Qdrant/Clara only returns candidate pointers; every candidate is reloaded
+ * The vector index only returns candidate pointers; every candidate is reloaded
  * from PostgreSQL under the same organization, agent, account, and date scope.
  *
  * This module is deliberately not connected to a transport until FIX-01 closes

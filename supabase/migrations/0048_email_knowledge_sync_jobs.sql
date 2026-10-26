@@ -39,4 +39,4 @@ CREATE INDEX IF NOT EXISTS email_knowledge_sync_due_idx
   WHERE status IN ('pending','retry');
 
 COMMENT ON TABLE email_knowledge_sync_jobs IS
-  'Durable email vector upsert, message deletion, and account purge outbox. Complete only after Clara RAG/vector operations are confirmed.';
+  'Durable email vector upsert, message deletion, and account purge outbox. Complete only after agent RAG/vector operations are confirmed.';

@@ -33,11 +33,11 @@ function logError(service: string, message: string, error: unknown) {
 }
 
 function healthCheck() {
-  const possibleClaraPaths = [
-    "node_modules/@ai-comms-agent/clara-core",
-    "../../node_modules/@ai-comms-agent/clara-core",
+  const possibleAgentCorePaths = [
+    "node_modules/@ai-comms-agent/agent-core",
+    "../../node_modules/@ai-comms-agent/agent-core",
   ];
-  const claraCorePkg = possibleClaraPaths.some((p) => existsSync(resolve(p)));
+  const agentCorePkg = possibleAgentCorePaths.some((p) => existsSync(resolve(p)));
 
   let credentialsMasterKeyConfigured = false;
   const rawCredentialsMasterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
@@ -54,7 +54,7 @@ function healthCheck() {
     worker: "ok" as const,
     shared_package: "ok" as const,
     db_package: "ok" as const,
-    clara_core_package: claraCorePkg ? ("ok" as const) : ("missing" as const),
+    agent_core_package: agentCorePkg ? ("ok" as const) : ("missing" as const),
     postgres_configured: isPostgresConfigured(),
     rabbitmq_configured: Boolean(process.env.RABBITMQ_URL),
     redis_configured: Boolean(process.env.REDIS_URL),
@@ -78,8 +78,8 @@ function main() {
   const checks = healthCheck();
   log("health check", checks);
 
-  if (checks.clara_core_package !== "ok") {
-    log("Clara core package not found — exiting", { level: "error" });
+  if (checks.agent_core_package !== "ok") {
+    log("Agent core package not found — exiting", { level: "error" });
     process.exit(1);
   }
 
