@@ -155,5 +155,5 @@ export { getBriefing, listBriefings } from './briefings/repository';
 export * from './briefings/coverage';
 
 export { listGrantedBriefingMailboxes, publishBriefingItems } from './briefings/selection';
-export {ActionAuthorizationRevokedError,assertCurrentEmailActionAuthorization,assertCurrentWhatsAppActionAuthorization} from './actions/current-authorization';
+export {ActionAuthorizationRevokedError,assertCurrentAgentToolAuthorization,assertCurrentEmailActionAuthorization,assertCurrentWhatsAppActionAuthorization} from './actions/current-authorization';
 export { loadCanonicalBriefingSources, validateCanonicalBriefingRows, requireClaimedMailboxScope, validateClaimedBriefingSourceIds, type CanonicalBriefingMail, type CanonicalBriefingRow } from './briefings/canonical-sources';

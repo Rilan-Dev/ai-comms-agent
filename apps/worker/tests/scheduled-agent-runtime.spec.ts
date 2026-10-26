@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach,beforeEach, describe, expect, it, vi } from "vitest";
 import type { ToolResult } from "@ai-comms-agent/shared";
 
 const mocks = vi.hoisted(() => ({
@@ -8,16 +8,19 @@ const mocks = vi.hoisted(() => ({
   invokeEmailReadTool: vi.fn(),
   createWhatsAppToolRuntime: vi.fn(),
   invokeWhatsAppTool: vi.fn(),
+  prepare:vi.fn(),user:vi.fn(),membership:vi.fn(),permissions:vi.fn(),
 }));
 
 vi.mock("@ai-comms-agent/db", () => ({
   query: mocks.query,
   PostgresAgentRepository: class {},
+  PostgresIdentityRepository:class{getUserById=mocks.user;getMembership=mocks.membership;getPermissionsForRole=mocks.permissions;},
 }));
 
 vi.mock("@ai-comms-agent/clara-core", () => ({
   claraRuntime: { completeWithTools: mocks.completeWithTools },
 }));
+vi.mock('@ai-comms-agent/email-agent-runtime',()=>({prepareAgentConfigurationTurn:mocks.prepare}));
 
 vi.mock("../src/agent/email-tool-runtime", () => ({
   createEmailToolRuntime: mocks.createEmailToolRuntime,
@@ -48,12 +51,29 @@ function completion(text: string, toolCalls: Array<{ id: string; name: string; a
 describe("runScheduledAgentTask result reporting", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.completeWithTools.mockReset();mocks.user.mockResolvedValue({status:'active'});mocks.membership.mockResolvedValue({status:'active',role:'member'});mocks.permissions.mockResolvedValue(['organization.read','email.read']);
     // Runtime settings lookup: no KB configured -> default.
     mocks.query.mockResolvedValue({ rows: [] });
     mocks.createEmailToolRuntime.mockResolvedValue({ registry: { listForAgent: () => [EMAIL_TOOL] } });
     mocks.createWhatsAppToolRuntime.mockResolvedValue({ registry: { listForAgent: () => [WHATSAPP_TOOL] } });
     mocks.invokeEmailReadTool.mockImplementation(async () => okResult());
     mocks.invokeWhatsAppTool.mockImplementation(async () => failedResult("template_required"));
+  });
+  afterEach(()=>vi.unstubAllEnvs());
+
+  it('uses the saved revision and actual creator permissions without inventing send access',async()=>{
+    vi.stubEnv('AGENT_CONFIGURATION_REVISIONS_ENABLED','true');const claraContext={orgId:'org-1',agentId:'agent-1',kbId:'default'};
+    mocks.prepare.mockResolvedValue({claraContext,configuration:{organizationId:'org-1',agentId:'agent-1',revisionId:'frozen',revocationGeneration:0,snapshot:{lifecycle:{status:'active'},policy:{allowedTools:['email.messages.list','whatsapp.send']}}}});
+    mocks.completeWithTools.mockResolvedValueOnce(completion('',[{id:'read',name:'email.messages.list',arguments:{}}])).mockResolvedValueOnce(completion('Source-backed digest',[]));
+    const result=await runScheduledAgentTask({organizationId:'org-1',agentId:'agent-1',executionId:'execution',userId:'user',task:'Summarize unread mail'});
+    expect(result.output).toBe('Source-backed digest');expect(mocks.completeWithTools.mock.calls[0]?.[0]).toBe(claraContext);expect(mocks.completeWithTools.mock.calls[1]?.[0]).toBe(claraContext);
+    expect(mocks.completeWithTools.mock.calls[0]?.[2].map((tool:{name:string})=>tool.name)).toEqual(['email.messages.list']);
+    expect(mocks.invokeEmailReadTool.mock.calls[0]?.[3]).toMatchObject({agent_configuration:{revisionId:'frozen'},auth_subject:{role:'member',permissions:['email.read']}});expect(mocks.invokeWhatsAppTool).not.toHaveBeenCalled();
+  });
+  it('blocks configuration-bound schedules whose original creator is no longer active',async()=>{
+    vi.stubEnv('AGENT_CONFIGURATION_REVISIONS_ENABLED','true');mocks.user.mockResolvedValue({status:'suspended'});
+    const result=await runScheduledAgentTask({organizationId:'org-1',agentId:'agent-1',executionId:'execution',userId:'user',task:'Summarize unread mail'});
+    expect(result.status).toBe('configuration_required');expect(mocks.prepare).not.toHaveBeenCalled();expect(mocks.completeWithTools).not.toHaveBeenCalled();
   });
 
   it("returns the model's final report when the loop completes normally", async () => {

@@ -1,5 +1,5 @@
-import {requiresHumanApproval} from "@ai-comms-agent/shared";
-import { PostgresAgentRepository, query } from "@ai-comms-agent/db";
+import {requiresHumanApproval,turnAllowsTool,asOrganizationId,asUserId} from "@ai-comms-agent/shared";
+import { PostgresAgentRepository,PostgresIdentityRepository, query } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import type { ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/clara-core";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
@@ -7,6 +7,7 @@ import { createEmailToolRuntime, invokeEmailReadTool } from "./email-tool-runtim
 import type { EmailToolRuntime } from "@ai-comms-agent/email-agent-runtime";
 import { createWhatsAppToolRuntime, invokeWhatsAppTool } from "./whatsapp-tool-runtime";
 import type { WhatsAppToolRuntime } from "./whatsapp-tool-runtime";
+import {prepareAgentConfigurationTurn} from '@ai-comms-agent/email-agent-runtime';
 
 // Models that hit a blocked send (e.g. Meta's 24-hour window) routinely spend
 // one round retrying it; the extra headroom lets them still produce the final
@@ -83,6 +84,20 @@ export async function runScheduledAgentTask(args: {
     [args.organizationId],
   );
   const kbId = configured.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim() || "default";
+  const actingUserId = typeof args.userId === "string" && args.userId.trim() ? args.userId.trim() : null;
+  let actualPermissions:ReadonlySet<string>|null=null;
+  let actingRole:ToolContext['auth_subject']['role']='admin';
+  if(process.env.AGENT_CONFIGURATION_REVISIONS_ENABLED==='true'){
+    const unavailable=():ScheduledAgentTaskResult=>({status:'configuration_required',output:'',reason:'This scheduled task needs an active creator with current workspace access. Review the task before running it again.',toolCalls:[],pendingApprovals:[]});
+    if(!actingUserId)return unavailable();
+    const identities=new PostgresIdentityRepository();
+    const user=await identities.getUserById(asUserId(actingUserId));
+    const membership=await identities.getMembership(asOrganizationId(args.organizationId),asUserId(actingUserId));
+    if(!user||user.status!=='active'||!membership||membership.status!=='active')return unavailable();
+    actualPermissions=new Set<string>(await identities.getPermissionsForRole(asOrganizationId(args.organizationId),membership.role));
+    if(!actualPermissions.has('organization.read'))return unavailable();actingRole=membership.role;
+  }
+  const configurationTurn=actualPermissions?await prepareAgentConfigurationTurn({orgId:args.organizationId,agentId:args.agentId,kbId,userId:actingUserId}):undefined;
 
   const [emailRuntime, whatsappRuntime] = await Promise.all([
     createEmailToolRuntime(args.organizationId, args.agentId),
@@ -94,8 +109,7 @@ export async function runScheduledAgentTask(args: {
   ];
   // Least-privilege system subject: only the permissions the agent's saved
   // policy actually needs for its enabled tools.
-  const permissions = [...new Set(agentTools.map((tool) => tool.required_permission))];
-  const actingUserId = typeof args.userId === "string" && args.userId.trim() ? args.userId.trim() : null;
+  const permissions = [...new Set(agentTools.map((tool) => tool.required_permission))].filter(permission=>!actualPermissions||actualPermissions.has(permission));
   const toolContext: ToolContext = {
     organization_id: args.organizationId,
     agent_id: args.agentId,
@@ -105,9 +119,11 @@ export async function runScheduledAgentTask(args: {
     correlation_id: args.executionId,
     channel: "schedule",
     require_human_approval:requiresHumanApproval(task),
-    auth_subject: { user_id: actingUserId, role: "admin", permissions },
+    auth_subject: { user_id: actingUserId, role: actingRole, permissions },
+    ...(configurationTurn?{agent_configuration:configurationTurn.configuration}:{}),
   };
-  if (agentTools.length === 0) {
+  const availableTools=agentTools.filter(tool=>permissions.includes(tool.required_permission)&&turnAllowsTool(toolContext,tool.name));
+  if (availableTools.length === 0) {
     return {
       status: "configuration_required",
       output: "",
@@ -116,7 +132,7 @@ export async function runScheduledAgentTask(args: {
       pendingApprovals: [],
     };
   }
-  const definitions: ChatToolDefinition[] = agentTools.map((tool) => ({
+  const definitions: ChatToolDefinition[] = availableTools.map((tool) => ({
     name: tool.name,
     description: tool.description,
     parameters: tool.input_schema,
@@ -146,7 +162,7 @@ export async function runScheduledAgentTask(args: {
 
   for (let round = 0; round < MAX_ROUNDS; round += 1) {
     const completion = await claraRuntime.completeWithTools(
-      { orgId: args.organizationId, agentId: args.agentId, kbId },
+      configurationTurn?.claraContext??{ orgId: args.organizationId, agentId: args.agentId, kbId },
       history,
       definitions,
     );

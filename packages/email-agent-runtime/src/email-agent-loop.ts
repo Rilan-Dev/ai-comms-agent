@@ -1,9 +1,10 @@
-import {requiresHumanApproval} from "@ai-comms-agent/shared";
+import {requiresHumanApproval,turnAllowsTool} from "@ai-comms-agent/shared";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
-import type { ChatMessage, ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/clara-core";
+import type { ChatMessage, ChatToolDefinition, ToolChatMessage,ClaraRuntimeContext } from "@ai-comms-agent/clara-core";
 import { operationResultFromToolCall, reviewExplicitEmailBody, type OperationResult, type ToolContext, type ToolResult } from "@ai-comms-agent/shared";
 import { createEmailToolRuntime, invokeEmailReadTool } from "./email-tool-runtime";
 import type { EmailToolRuntime } from "./email-tool-runtime";
+import {prepareAgentConfigurationTurn,type AgentConfigurationTurn} from './configuration-turn';
 
 const MAX_ROUNDS = 4;
 const MAX_TOOL_CALLS = 8;
@@ -16,13 +17,14 @@ export interface EmailAgentTurnInput {
   kbId?: string;
   /** Constructed from authenticated server state, never from model arguments. */
   toolContext: ToolContext;
+  configurationTurn?:AgentConfigurationTurn;
   maxRounds?: number;
   maxToolCalls?: number;
   /** For requests for actual mailbox contents, require successful authorized
    * message/search retrieval before showing any model-generated email claims. */
   requireEmailContentEvidence?: boolean;
   /** Only invoked after a complete audited batch of successful read-only tools. */
-  onSafeReadOnlyFinal?: (history: ToolChatMessage[]) => Promise<string>;
+  onSafeReadOnlyFinal?: (history: ToolChatMessage[],context:ClaraRuntimeContext) => Promise<string>;
   /** Public lifecycle only: no model reasoning or tool arguments. */
   onProgress?: (phase: "planning_tools" | "reading_email" | "checking_permissions" | "denied") => void;
 }
@@ -62,6 +64,13 @@ export async function runEmailAgentTurn(
   if (!input.messages.some((message) => message.role === "user" && message.content.trim())) {
     throw new Error("A non-empty user message is required.");
   }
+  const configurationTurn=input.configurationTurn??(process.env.AGENT_CONFIGURATION_REVISIONS_ENABLED==='true'
+    ?await prepareAgentConfigurationTurn({orgId:input.organizationId,agentId:input.agentId,kbId:input.kbId??'',userId:input.toolContext.user_id}):undefined);
+  if(configurationTurn){
+    if(configurationTurn.configuration.organizationId!==input.organizationId||configurationTurn.configuration.agentId!==input.agentId||configurationTurn.claraContext.orgId!==input.organizationId||configurationTurn.claraContext.agentId!==input.agentId||configurationTurn.claraContext.kbId!==(input.kbId??''))throw Error('The prepared turn scope does not match the tool request.');
+    input={...input,toolContext:{...input.toolContext,agent_configuration:configurationTurn.configuration}};
+  }
+  const claraContext=configurationTurn?.claraContext??{orgId:input.organizationId,agentId:input.agentId,kbId:input.kbId??''};
 
   const maxRounds = boundedLimit(input.maxRounds, MAX_ROUNDS, MAX_ROUNDS);
   const maxToolCalls = boundedLimit(input.maxToolCalls, MAX_TOOL_CALLS, MAX_TOOL_CALLS);
@@ -69,7 +78,7 @@ export async function runEmailAgentTurn(
   const registered = runtime.registry.listForAgent(input.agentId);
   // Match chat: absent actor permission must never be presented as an
   // executable choice to a voice/realtime model. Invocation still rechecks.
-  const visible = registered.filter((tool) => input.toolContext.auth_subject.permissions.includes(tool.required_permission));
+  const visible = registered.filter((tool) => input.toolContext.auth_subject.permissions.includes(tool.required_permission)&&turnAllowsTool(input.toolContext,tool.name));
   const definitions: ChatToolDefinition[] = visible.map((tool) => ({
     name: tool.name,
     description: tool.description,
@@ -91,7 +100,7 @@ export async function runEmailAgentTurn(
   for (let round = 0; round < maxRounds; round += 1) {
     input.onProgress?.("planning_tools");
     const completion = await dependencies.completeWithTools(
-      { orgId: input.organizationId, agentId: input.agentId, kbId: input.kbId ?? "" },
+      claraContext,
       history,
       definitions,
     );
@@ -124,7 +133,7 @@ export async function runEmailAgentTurn(
       if (input.onSafeReadOnlyFinal && !completion.text.trim() && pendingApprovals.length === 0
         && summaries.length > 0 && summaries.length <= 4
         && summaries.every((call) => call.ok && call.readOnly === true)) {
-        const text = await input.onSafeReadOnlyFinal(history);
+        const text = await input.onSafeReadOnlyFinal(history,claraContext);
         return { text, streamed: true, toolCalls: summaries, pendingApprovals, finishReason: "completed" };
       }
       const finalText = completion.text.trim()

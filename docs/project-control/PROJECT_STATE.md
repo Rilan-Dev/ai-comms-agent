@@ -1,6 +1,7 @@
 ## DEV-01 — Original workspace implementation — 2026-10-26
 
-Owner approved the current-theme/original-controls design and implementation plan. Tasks0–4 have source evidence: mixed mail→WhatsApp review/continuation, accurate policy choices/sending mode, sender-list editing and immutable configuration foundation. [Current session and exact status](sessions/DEV01-ORIGINAL-WORKSPACE-20261026.md). Last broad suite:141files/1004tests at03f93fae; new foundation:12domain/14PG cases plus shared/db/web types/lint/migration source gates. No production0056 migration or release in this run. Next is Task5 governed atomic apply/current authority/revocation/runtime and all mutation adapters, then remaining original screens and release verification. Development only, main untouched; Phase4 and separate routine/RAG gates unchanged.
+Owner approved the current-theme/original-controls design and implementation plan. Tasks0–4 are complete in source; Task5 governed commands, atomic apply, draft recovery and runtime adoption are verified but remain default-off pending original mutation/form integration. Latest exact-source checks:153 web test files/1103tests,115 dedicated PostgreSQL cases,372 worker tests, all six package types, changed-source lint and migration checks PASS. [Current session and exact remaining work](sessions/DEV01-ORIGINAL-WORKSPACE-20261026.md). Original UI/browser/build/release acceptance and returning-owner catch-up phases remain outstanding. Concurrent upstream scheduled digest changes are preserved; their reported separate deployment is not independent verification by this run. Development only, main untouched; no project phase transition or RAG configuration-write feature activation.
+
 
 ---
 

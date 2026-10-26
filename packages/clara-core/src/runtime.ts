@@ -1121,16 +1121,18 @@ export const claraRuntime = {
     });
   },
 
-  async createChatTurn(request: ClaraAgentTurnRequest): Promise<ClaraAgentTurn> {
+  async createChatTurn(request: ClaraAgentTurnRequest,preparedContext?:ClaraRuntimeContext): Promise<ClaraAgentTurn> {
     const messages = request.messages.filter((message) => message.content.trim());
     const lastUserMessage = [...messages].reverse().find((message) => message.role === "user");
     if (!lastUserMessage) throw new Error("A user message is required.");
 
-    const organizationConfig = await configurationForContext(request);
+    if(preparedContext&&(preparedContext.orgId!==request.orgId||preparedContext.agentId!==request.agentId||preparedContext.kbId!==request.kbId))throw Error('The prepared turn scope does not match this request.');
+    const runtimeContext=preparedContext??request;
+    const organizationConfig = await configurationForContext(runtimeContext);
     const provider = organizationConfig?.provider ?? selectedProvider();
     const config = organizationConfig?.resolved ?? resolvedConfig(provider);
     const providerSettings = organizationConfig?.providerConfig ?? providerConfig(provider);
-    const grounding = await groundContext(request, lastUserMessage.content, request.surface === "realtime" ? 4 : 8);
+    const grounding = await groundContext(runtimeContext, lastUserMessage.content, request.surface === "realtime" ? 4 : 8);
     const evidence = grounding.ok
       ? grounding.result.sources.map((source, index) => `[S${index + 1}] ${source.snippet}`).join("\n\n")
       : "";

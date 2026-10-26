@@ -2,6 +2,7 @@ import { query } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
 import type { AgentExecutionDispatchResult, AgentExecutionRequest } from "@ai-comms-agent/shared";
 import { executeProductActions } from "./product-action-executor";
+import {prepareAgentConfigurationTurn} from '@ai-comms-agent/email-agent-runtime';
 
 function buildPrompt(request:AgentExecutionRequest){
   const params=JSON.stringify(request.params);
@@ -18,8 +19,10 @@ export async function dispatchAgentExecution(request:AgentExecutionRequest):Prom
   const kbId=configured.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim();
   const customerReply=request.source==='whatsapp' && request.intent==='whatsapp.inbound_command';
   if(!kbId && !customerReply) return {status:"configuration_required",executionId:request.executionId,reason:"CLARA_KB_ID is not configured"};
+  const configurationTurn=process.env.AGENT_CONFIGURATION_REVISIONS_ENABLED==='true'
+    ?await prepareAgentConfigurationTurn({orgId:request.organizationId,agentId:request.agentId,kbId:kbId??'',skipGrounding:customerReply}):undefined;
   const turn=customerReply
-    ? await claraRuntime.createCustomerReplyTurn({orgId:request.organizationId,agentId:request.agentId,kbId:kbId??''},typeof request.params.message==='string'?request.params.message:'')
+    ? await claraRuntime.createCustomerReplyTurn(configurationTurn?.claraContext??{orgId:request.organizationId,agentId:request.agentId,kbId:kbId??''},typeof request.params.message==='string'?request.params.message:'')
     : await claraRuntime.createChatTurn({
     orgId:request.organizationId,
     agentId:request.agentId,
@@ -29,9 +32,9 @@ export async function dispatchAgentExecution(request:AgentExecutionRequest):Prom
     surface:"chat",
     ragMode:"hybrid",
     messages:[{role:"user",content:buildPrompt(request)}],
-  });
+  },configurationTurn?.claraContext);
   let output=""; for await(const chunk of turn.stream) output+=chunk;
-  const actions=await executeProductActions({ organizationId:request.organizationId, agentId:request.agentId, executionId:request.executionId, output }, request.params);
+  const actions=await executeProductActions({ organizationId:request.organizationId, agentId:request.agentId, executionId:request.executionId, output,...(configurationTurn?{configuration:configurationTurn.configuration}:{}) }, request.params);
   const blocked=actions.find((action)=>action.status==="configuration_required");
   if(blocked) return {status:"configuration_required",executionId:request.executionId,reason:String(blocked.reason ?? "Product action requires configuration"),actions};
   return {status:"completed",executionId:request.executionId,output,provider:turn.providerName,model:turn.model,actions};

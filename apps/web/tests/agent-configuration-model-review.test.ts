@@ -8,6 +8,14 @@ function dependencies():ConfigurationModelReviewDependencies{return {
  catalog:vi.fn(async()=>({available:true,source:'live' as const,models:['valid-model','current-default']})),
 };}
 describe('host-owned model validation for exact configuration review',()=>{
+ it('returns an actionable exact-field requirement for an unverified model',async()=>{
+  const before=settings(),deps=dependencies();
+  await expect(reviewConfigurationModels(before,{...before,chatModel:'custom-model'},[],deps)).rejects.toMatchObject({code:'configuration_review_required',reason:'confirm_model',fields:['chatModel']});
+ });
+ it('distinguishes missing provider setup from custom model confirmation',async()=>{
+  const before=settings(),deps=dependencies();deps.catalog=vi.fn(async()=>({available:false,source:'unavailable' as const,models:[]}));
+  await expect(reviewConfigurationModels(before,{...before,chatModel:'custom-model'},[],deps)).rejects.toMatchObject({code:'configuration_review_required',reason:'configure_provider',fields:['chatProvider']});
+ });
  it('keeps unchanged custom models without replacing or validating them',async()=>{
   const before=settings();before.chatModel='saved-unsupported-model';const deps=dependencies();
   expect(await reviewConfigurationModels(before,{...before,temperatureOverride:0.4},[],deps)).toEqual({});

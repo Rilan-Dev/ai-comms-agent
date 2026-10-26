@@ -1,8 +1,15 @@
-import { createEmailAction, getWhatsAppAccountForAgent, PostgresEmailAccountRepository, query, recordAuditEvent } from "@ai-comms-agent/db";
+import { createEmailAction, getWhatsAppAccountForAgent, PostgresEmailAccountRepository, query, recordAuditEvent,loadActiveAgentConfiguration,type ActiveAgentConfiguration } from "@ai-comms-agent/db";
 import type { ProductActionResult } from "@ai-comms-agent/shared";
 
 type Action = Record<string, unknown>;
-type Context = { organizationId: string; agentId: string; executionId: string; output: string };
+type Context = { organizationId: string; agentId: string; executionId: string; output: string;configuration?:ActiveAgentConfiguration };
+
+async function configurationPermits(context:Context,tool:string):Promise<boolean>{
+  const frozen=context.configuration;if(!frozen)return true;
+  if(frozen.organizationId!==context.organizationId||frozen.agentId!==context.agentId||frozen.snapshot.lifecycle.status!=='active'||!frozen.snapshot.policy?.allowedTools.includes(tool))return false;
+  const current=await loadActiveAgentConfiguration({organizationId:context.organizationId,agentId:context.agentId});
+  return current.revocationGeneration===frozen.revocationGeneration&&current.snapshot.lifecycle.status==='active'&&current.snapshot.policy?.allowedTools.includes(tool)===true;
+}
 
 function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -22,7 +29,9 @@ export async function executeProductActions(context: Context, params: Record<str
     const type = stringValue(action.type);
 
     if (type === "send_whatsapp") {
+      if(!await configurationPermits(context,'whatsapp.send')){results.push({type,status:'configuration_required',reason:'Agent access changed. Review the current setup before preparing another message.'});continue;}
       const account = await getWhatsAppAccountForAgent(context.organizationId, context.agentId);
+      if(context.configuration&&account?.id!==context.configuration.snapshot.channels.whatsappAccountId){results.push({type,status:'configuration_required',reason:'The assigned WhatsApp phone changed. Prepare a new reply under the current configuration.'});continue;}
       const to = stringValue(action.to);
       if (!account || account.status !== "connected" || !to || !/^\+[1-9]\d{7,14}$/.test(to)) {
         results.push({
@@ -83,6 +92,9 @@ export async function executeProductActions(context: Context, params: Record<str
         results.push({ type, status: "configuration_required", reason: "Email account and supported actionType are required" });
         continue;
       }
+      const tool=({send_email:'email.send.request',reply_email:'email.reply.request',forward_email:'email.forward.request'} as const)[actionType];
+      const frozenRole=context.configuration?.snapshot.channels.email.find(binding=>binding.accountId===emailAccountId)?.role;
+      if(!await configurationPermits(context,tool)||context.configuration&&frozenRole!=='primary'&&frozenRole!=='send_only'){results.push({type,status:'configuration_required',reason:'This mailbox or operation was not available for this execution. Review the current setup.'});continue;}
       const boundAccount = await emailAccounts.getForAgent(context.organizationId, context.agentId, emailAccountId);
       if (!boundAccount) {
         results.push({ type, status: "configuration_required", reason: "Email account is not owned by the organization or bound to this agent" });

@@ -10,6 +10,15 @@ beforeEach(()=>{vi.stubEnv('DATABASE_URL','test-only');vi.stubEnv('CREDENTIALS_M
  throw Error('Unexpected query');
 });});afterEach(()=>vi.unstubAllEnvs());
 describe('one Clara configuration per host turn',()=>{
+ it('does not reuse a prepared context for a different organization',async()=>{
+  const prepared=await claraRuntime.prepareTurn({...context,orgId:'other'}),fetch=vi.fn(async()=>{throw Error('unnecessary provider request');});vi.stubGlobal('fetch',fetch);
+  try{await expect(claraRuntime.createChatTurn({...context,messages:[{role:'user',content:'Hello'}]},prepared)).rejects.toThrow('scope');expect(fetch).not.toHaveBeenCalled();}finally{vi.unstubAllGlobals();}
+ });
+ it('reuses prepared settings for the final text answer as well as tool completions',async()=>{
+  const prepared=await claraRuntime.prepareTurn(context);mock.settings.temperature=0.1;
+  vi.stubGlobal('fetch',vi.fn(async()=>new Response('data: {"choices":[{"delta":{"content":"Hello"}}]}\n\ndata: [DONE]\n\n',{status:200})));
+  try{const turn=await claraRuntime.createChatTurn({...context,messages:[{role:'user',content:'Hello'}]},prepared);expect(turn.config.temperature).toBe(0.7);let result='';for await(const part of turn.stream)result+=part;expect(result).toBe('Hello');}finally{vi.unstubAllGlobals();}
+ });
  it('does not expose mutable nested resolved settings that could alter later rounds',async()=>{
   const turn=await claraRuntime.prepareTurn(context);const first=await claraRuntime.resolveProvider(turn);
   expect(()=>{first.assistantConfig.systemPrompt='Tampered prompt';}).toThrow();

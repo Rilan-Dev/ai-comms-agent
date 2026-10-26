@@ -1,9 +1,9 @@
 import {beforeEach,expect,it,vi} from 'vitest';
-const m=vi.hoisted(()=>({append:vi.fn(),start:vi.fn(),continue:vi.fn(),model:vi.fn()}));
+const m=vi.hoisted(()=>({append:vi.fn(),start:vi.fn(),continue:vi.fn(),model:vi.fn(),configuration:vi.fn()}));
 vi.mock('@/lib/identity/local-auth',()=>({assertSameOrigin:()=>{}}));
 vi.mock('@/lib/identity/repository',()=>({ensureDevSeed:async()=>{},getIdentityAdapter:()=>({}),getIdentityRepository:()=>({})}));
 vi.mock('@/lib/identity/authorization',()=>({authorize:async()=>({user:{id:'user'},membership:{role:'owner'},permissions:new Set(['organization.read','email.read','whatsapp.send'])}),authorizationErrorToResponse:()=>Response.json({error:'failed'},{status:500})}));
-vi.mock('@ai-comms-agent/db',()=>({PostgresAgentRepository:class{async get(){return {id:'agent'};}},appendConversationMessage:m.append,getChatConversation:async()=>({id:'conversation'}),getOrCreateChatConversation:async()=>({id:'conversation'}),listChatMessages:async()=>[],query:async()=>({rows:[]})}));
+vi.mock('@ai-comms-agent/db',()=>({loadActiveAgentConfiguration:m.configuration,PostgresAgentRepository:class{async get(){return {id:'agent'};}},appendConversationMessage:m.append,getChatConversation:async()=>({id:'conversation'}),getOrCreateChatConversation:async()=>({id:'conversation'}),listChatMessages:async()=>[],query:async()=>({rows:[]})}));
 vi.mock('@/lib/chat/mail-whatsapp-review',()=>({startMailWhatsAppReview:m.start,continueMailWhatsAppReview:m.continue}));
 vi.mock('@ai-comms-agent/clara-core',()=>({claraRuntime:{completeWithTools:m.model}}));
 const operation={channel:'whatsapp',operation:'send',state:'pending_approval',resourceId:'10000000-0000-4000-8000-000000000001',turnId:'original',callId:'checkpoint',correlationId:'correlation'};
@@ -15,3 +15,8 @@ it('completes the exact mixed request with host stages and real review feedback 
 it('accepts only a saved continuation reference, never replacement body or recipient fields',async()=>{const response=await run({continuationRef:'checkpoint',body:'Tampered body',to:'+15555550123'});expect(response.status).toBe(200);await response.text();expect(m.continue).toHaveBeenCalledWith(expect.objectContaining({user_id:'user'}),'checkpoint');expect(m.start).not.toHaveBeenCalled();});
 it('reports expired or inaccessible continuation as refresh-required without claiming a pending action',async()=>{m.continue.mockResolvedValue(null);const response=await run({message:'Continue',continuationRef:'checkpoint'});const stream=await response.text();expect(stream).toContain('Refresh');expect(stream).not.toContain('pending human review');expect(m.start).not.toHaveBeenCalled();});
 it('does not invent automatic approval when a previously human-reviewed request is now queued',async()=>{m.continue.mockResolvedValue({...operation,state:'queued'});const response=await run({message:'Continue',continuationRef:'checkpoint'});const stream=await response.text();expect(stream).toContain('queued for delivery');expect(stream).not.toContain('auto-approved');});
+it('shares a frozen revision with the host-only summary workflow without requiring a model call',async()=>{
+ vi.stubEnv('AGENT_CONFIGURATION_REVISIONS_ENABLED','true');m.configuration.mockResolvedValue({organizationId:'org',agentId:'agent',revisionId:'frozen-revision',revocationGeneration:0,snapshot:{lifecycle:{status:'active'},channels:{email:[],whatsappAccountId:null}}});
+ try{const response=await run({message:prompt});expect(response.status).toBe(200);await response.text();expect(m.start).toHaveBeenCalledWith(expect.objectContaining({agent_configuration:expect.objectContaining({revisionId:'frozen-revision'})}),expect.anything());expect(m.model).not.toHaveBeenCalled();}
+ finally{vi.stubEnv('AGENT_CONFIGURATION_REVISIONS_ENABLED','false');}
+});

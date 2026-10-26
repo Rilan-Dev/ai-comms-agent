@@ -53,7 +53,7 @@ describe("native final read-only answer streaming after host tool execution", ()
     expect(loop).toContain('registeredTool.required_permission === "email.read"');
     expect(loop).toContain("pendingApprovals.length === 0");
     expect(loop).toContain("summaries.every((call) => call.ok && call.readOnly === true)");
-    expect(loop).toContain("onSafeReadOnlyFinal(history)");
+    expect(loop).toContain("onSafeReadOnlyFinal(history,claraContext)");
     expect(voice).toContain("if (!result.streamed)");
     expect(voice).toContain('"canonical-tool-answer"');
     expect(voice).toContain('mode: "host-authorized-tools"');

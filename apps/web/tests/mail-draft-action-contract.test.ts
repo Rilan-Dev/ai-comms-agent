@@ -30,7 +30,7 @@ describe("Mail draft and sensitive action contracts", () => {
     expect(compose).toContain("setDraftId(String(draft.id))");
   });
   it("injects only organization-scoped synchronized mail into email-related chat turns", () => {
-    expect(chatRoute).toContain("loadEmailContext(organizationId, agentId, combinedSearchContext)");
+    expect(chatRoute).toContain("loadEmailContext(organizationId, agentId, combinedSearchContext,trustedToolContext)");
     expect(chatRoute).toContain("m.organization_id = $1");
     expect(chatRoute).toContain("a.organization_id = $1");
     expect(chatRoute).toContain("a.status = 'connected'");

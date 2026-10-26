@@ -3,8 +3,9 @@ import {
   PostgresEmailAccountRepository,
   query,
   recordAuditEvent,
+  assertCurrentAgentToolAuthorization,
 } from "@ai-comms-agent/db";
-import { EMAIL_TOOL_CATALOG, ToolRegistry } from "@ai-comms-agent/shared";
+import { EMAIL_TOOL_CATALOG, ToolRegistry,turnAllowsTool,turnAllowsEmailAccount } from "@ai-comms-agent/shared";
 import type { ToolContext } from "@ai-comms-agent/shared";
 import { registerEmailReadTools } from "./email-read-tools";
 import { registerEmailWriteTools } from "./email-write-tools";
@@ -36,6 +37,11 @@ export async function createEmailToolRuntime(organizationId: string, agentId: st
     if (context.organization_id !== organizationId || context.agent_id !== agentId) {
       return { allowed: false, code: "context_mismatch", message: "The tool context does not match the initialized agent runtime." };
     }
+    if(!turnAllowsTool(context,tool.name))return {allowed:false,code:'tool_not_allowed',message:'This tool was not enabled when the turn started.'};
+    if(context.agent_configuration){
+      try{await assertCurrentAgentToolAuthorization({organizationId,agentId,userId:context.user_id,revocationGeneration:context.agent_configuration.revocationGeneration??-1},tool.required_permission);}
+      catch{return {allowed:false,code:'current_access_revoked',message:'Current access changed or could not be confirmed. Start a new turn after reviewing the agent configuration.'};}
+    }
     // Re-read persisted policy for every invocation so a revoked allowlist entry
     // is not honored for the remainder of a long-running model turn.
     const currentPolicy = await agents.policy(organizationId, agentId);
@@ -59,6 +65,8 @@ export async function createEmailToolRuntime(organizationId: string, agentId: st
       if (!resolvedAccountId) {
         return { allowed: false, code: "account_not_available", message: "No mailbox matching that identifier is bound to this agent. Call email.accounts.list to discover the available mailbox IDs." };
       }
+      const operation=tool.required_permission==='email.read'?'read':/^email\.(?:send|reply|forward)\.request$/.test(tool.name)?'send':'draft';
+      if(!turnAllowsEmailAccount(context,resolvedAccountId,operation))return {allowed:false,code:'account_not_available',message:'This mailbox did not allow this operation when the turn started.'};
       const binding = await query<{ role: string }>(
         `SELECT b.role FROM agent_email_accounts b
          JOIN agents g ON g.id=b.agent_id

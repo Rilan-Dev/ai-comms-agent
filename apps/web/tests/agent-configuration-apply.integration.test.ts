@@ -39,6 +39,13 @@ async function reviewedEdit(name='Edited',creator=scope){
 }
 const apply=(task:Awaited<ReturnType<typeof reviewedEdit>>,actor=scope)=>applyAgentConfigurationRevision(actor,task.draft.id,task.active.id,{reviewId:task.review.id,environment:'production'});
 describe('governed atomic apply and independently recorded immediate revocation',()=>{
+ it('exposes current inherited-default metadata separately from the immutable active revision',async()=>{
+  const before=await loadActiveAgentConfiguration({organizationId:org,agentId:agent});
+  await db.query('UPDATE aca.organization_ai_runtime_settings SET temperature=0.9 WHERE organization_id=$1',[org]);
+  const after=await loadActiveAgentConfiguration({organizationId:org,agentId:agent});
+  expect(before.dependencyFingerprint).toMatch(/^[0-9a-f]{64}$/);expect(after.dependencyFingerprint).not.toBe(before.dependencyFingerprint);
+  expect(after.revisionId).toBe(before.revisionId);expect(before.snapshot.ai?.temperatureOverride).toBeNull();expect(after.snapshot.ai?.temperatureOverride).toBeNull();
+ });
  it('rejects a soft-deleted original editor even if their old membership remains active',async()=>{
   const task=await reviewedEdit();await db.query('UPDATE aca.users SET deleted_at=now() WHERE id=$1',[user]);
   await expect(applyAgentConfigurationRevision(scope,task.draft.id,task.active.id,{reviewId:task.review.id,environment:'production'})).rejects.toThrow();

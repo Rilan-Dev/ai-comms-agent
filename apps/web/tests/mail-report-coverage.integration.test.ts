@@ -42,6 +42,16 @@ async function message(options:{account?:string;folder?:string;identity?:string;
 }
 const report=(scope:MailReportScope={unreadOnly:false},limit=500)=>getMailReportEvidence({organizationId:org,agentId:agent,fromUtc:from,toUtc:to,scope,limit});
 describe('canonical report evidence',()=>{
+ it('does not broaden rows or counts beyond the readable account ceiling captured for a turn',async()=>{
+  const old=await message();await message({account:second});
+  const evidence=await getMailReportEvidence({organizationId:org,agentId:agent,fromUtc:from,toUtc:to,scope:{unreadOnly:true},readableAccountIds:[account]});
+  expect(evidence.rows.map(row=>row.id)).toEqual([old]);expect(evidence.matchedCount).toBe(1);expect(evidence.mailboxCounts).toEqual([{account_email:'one@example.com',unread_count:1}]);
+ });
+ it('treats an empty turn ceiling as no mail access and denies a requested mailbox outside it',async()=>{
+  await message();await message({account:second});
+  expect((await getMailReportEvidence({organizationId:org,agentId:agent,fromUtc:from,toUtc:to,scope:{unreadOnly:true},readableAccountIds:[]})).matchedCount).toBe(0);
+  await expect(getMailReportEvidence({organizationId:org,agentId:agent,fromUtc:from,toUtc:to,scope:{unreadOnly:true,mailbox:'two@example.com'},readableAccountIds:[account]})).rejects.toThrow('mailbox');
+ });
  it('selects the latest three total across readable mailboxes with a stable tie-break and unchanged unread state',async()=>{
   const older=await message({at:'2026-10-23T08:00:00Z'});
   const one=await message({at:'2026-10-23T10:00:00Z'});

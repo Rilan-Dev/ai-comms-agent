@@ -1,5 +1,5 @@
-import { PostgresAgentRepository, createScheduledJob, deleteScheduledJob, getScheduledJob, listScheduledJobs, recordAuditEvent, updateScheduledJob } from "@ai-comms-agent/db";
-import { ToolRegistry, nextCronFire } from "@ai-comms-agent/shared";
+import { PostgresAgentRepository, createScheduledJob, deleteScheduledJob, getScheduledJob, listScheduledJobs, recordAuditEvent, updateScheduledJob,assertCurrentAgentToolAuthorization } from "@ai-comms-agent/db";
+import { ToolRegistry, nextCronFire,turnAllowsTool } from "@ai-comms-agent/shared";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { executeRegisteredTool } from "./tool-executor";
 import type { ToolAuthorizationDecision, ToolAuditWriter } from "./tool-executor";
@@ -488,6 +488,11 @@ export async function createSchedulesToolRuntime(organizationId: string, agentId
   const authorize: SchedulesToolRuntime["authorize"] = async (tool, _input, context) => {
     if (context.organization_id !== organizationId || context.agent_id !== agentId) {
       return { allowed: false, code: "context_mismatch", message: "The tool context does not match the initialized agent runtime." };
+    }
+    if(!turnAllowsTool(context,tool.name))return {allowed:false,code:'tool_not_allowed',message:'This tool was not enabled when the turn started.'};
+    if(context.agent_configuration){
+      try{await assertCurrentAgentToolAuthorization({organizationId,agentId,userId:context.user_id,revocationGeneration:context.agent_configuration.revocationGeneration??-1},tool.required_permission);}
+      catch{return {allowed:false,code:'current_access_revoked',message:'Current access changed or could not be confirmed. Start a new turn after reviewing the agent configuration.'};}
     }
     const currentPolicy = await agents.policy(organizationId, agentId);
     if (!currentPolicy?.allowedTools.includes(tool.name)) {

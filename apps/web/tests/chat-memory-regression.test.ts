@@ -115,13 +115,13 @@ describe("ISS-026 — agent-scoped email context (cross-agent mailbox isolation)
     // The signature must be (organizationId, agentId, content) — agentId
     // is required to JOIN agent_email_accounts. Without this parameter,
     // the function cannot scope to the active agent's mailbox bindings.
-    expect(routeSource).toContain("async function loadEmailContext(organizationId: string, agentId: string, content: string)");
+    expect(routeSource).toContain("async function loadEmailContext(organizationId: string, agentId: string, content: string,context?:ToolContext)");
   });
 
   it("loadEmailContext caller in the chat route passes agentId", () => {
     // The caller at the POST handler must pass agentId, not just
     // organizationId + content. This is the actual ISS-026 fix point.
-    expect(routeSource).toContain("loadEmailContext(organizationId, agentId, combinedSearchContext)");
+    expect(routeSource).toContain("loadEmailContext(organizationId, agentId, combinedSearchContext,trustedToolContext)");
   });
 
   it("loadEmailContext SQL JOINs agent_email_accounts with role filter", () => {

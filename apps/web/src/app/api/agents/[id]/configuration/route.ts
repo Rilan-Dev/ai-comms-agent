@@ -1,6 +1,7 @@
 import {NextResponse} from 'next/server';
 import {ForbiddenError,UnauthorizedError} from '@ai-comms-agent/shared';
 import {ConfigurationCommandInputError,getAgentConfigurationView,runAgentConfigurationCommand} from '@/lib/agents/configuration-commands';
+import {ConfigurationModelReviewRequiredError} from '@/lib/agents/configuration-model-review';
 import {assertSameOrigin} from '@/lib/identity/local-auth';
 import {ensureDevSeed} from '@/lib/identity/repository';
 
@@ -13,6 +14,7 @@ function failure(error:unknown){
  if(error instanceof UnauthorizedError)return response({error:'unauthorized',message:'Sign in to continue.'},401);
  if(error instanceof ForbiddenError)return response({error:'forbidden',message:'Your current access does not allow this configuration change.'},403);
  if(error instanceof ConfigurationCommandInputError)return response({error:'validation_error',message:error.message},422);
+ if(error instanceof ConfigurationModelReviewRequiredError)return response({error:error.code,reason:error.reason,fields:error.fields,message:error.message},422);
  if(error&&typeof error==='object'&&'code' in error&&error.code==='configuration_changed')return response({error:'configuration_changed',message:'Settings changed. Reload and review your choices again.'},409);
  // Provider, JSON validation and SQL diagnostics can contain private details.
  // No raw exception crosses this endpoint.
@@ -21,11 +23,13 @@ function failure(error:unknown){
 async function target(request:Request,context:Context){const {id}=await context.params;const organizationId=new URL(request.url).searchParams.get('organizationId')??'';return uuid.test(id)&&uuid.test(organizationId)?{organizationId,agentId:id}:null;}
 
 export async function GET(request:Request,context:Context){
+ if(process.env.AGENT_CONFIGURATION_REVISIONS_ENABLED!=='true')return response({error:'not_found'},404);
  if(!process.env.DATABASE_URL)return response({error:'database_not_configured'},503);
  const scope=await target(request,context);if(!scope)return response({error:'validation_error',message:'Choose an organization and agent.'},422);
  try{await ensureDevSeed();return response(await getAgentConfigurationView(request,scope));}catch(error){return failure(error);}
 }
 export async function POST(request:Request,context:Context){
+ if(process.env.AGENT_CONFIGURATION_REVISIONS_ENABLED!=='true')return response({error:'not_found'},404);
  try{assertSameOrigin(request);}catch{return response({error:'invalid_origin'},403);}
  if(!process.env.DATABASE_URL)return response({error:'database_not_configured'},503);
  const scope=await target(request,context);if(!scope)return response({error:'validation_error',message:'Choose an organization and agent.'},422);

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository, appendConversationMessage, getChatConversation, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, query } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, appendConversationMessage, getChatConversation, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, query,loadActiveAgentConfiguration,assertCurrentAgentToolAuthorization,type ActiveAgentConfiguration } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { assertSameOrigin } from "@/lib/identity/local-auth";
-import { runEmailAgentTurn, createEmailToolRuntime } from "@ai-comms-agent/email-agent-runtime";
+import { runEmailAgentTurn, createEmailToolRuntime,prepareAgentConfigurationTurn,type AgentConfigurationTurn } from "@ai-comms-agent/email-agent-runtime";
 import { formatRollingMailSummary, parseRollingMailSummaryRequest, looksLikeRollingMailReport } from "@/lib/mail/rolling-summary";
 import { getMailReportEvidence, MailReportScopeError } from "@/lib/mail/report-evidence";
 import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
@@ -67,6 +67,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "session_not_active", message: "Voice turns require a connected session or an explicitly initialized transcript bridge." }, { status: 409 });
     }
 
+    let frozenConfiguration:ActiveAgentConfiguration|undefined=process.env.AGENT_CONFIGURATION_REVISIONS_ENABLED==='true'?await loadActiveAgentConfiguration({organizationId,agentId}):undefined;
+    if(frozenConfiguration&&(frozenConfiguration.organizationId!==organizationId||frozenConfiguration.agentId!==agentId||frozenConfiguration.snapshot.lifecycle.status!=='active'))return NextResponse.json({error:'agent_unavailable',message:'Review this agent’s current deployment before starting a voice turn.'},{status:409});
     const runtimeSettings = await query<{ knowledge_base_id: string }>("SELECT knowledge_base_id FROM organization_ai_runtime_settings WHERE organization_id = $1", [organizationId]);
     // KB ID is OPTIONAL for voice turns. RAG features are skipped when no KB is configured.
     const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim() || "default";
@@ -108,7 +110,7 @@ export async function POST(request: Request) {
     let rollingMailDenied = false;
     if (rollingMail) {
       const registered = subject.permissions.has("email.read")
-        ? (await createEmailToolRuntime(organizationId, agentId)).registry.listForAgent(agentId)
+        ? (await createEmailToolRuntime(organizationId, agentId)).registry.listForAgent(agentId).filter(tool=>!frozenConfiguration||frozenConfiguration.snapshot.policy?.allowedTools.includes(tool.name))
         : [];
       const allowed = subject.permissions.has("email.read") && registered.some(tool =>
         tool.required_permission === "email.read"
@@ -119,7 +121,9 @@ export async function POST(request: Request) {
       } else {
         const toUtc = new Date().toISOString();
         const fromUtc = new Date(new Date(toUtc).getTime() - 24 * 60 * 60 * 1000).toISOString();
-        const evidence = await getMailReportEvidence({organizationId,agentId,scope:rollingMail,fromUtc,toUtc,limit:5});
+        if(frozenConfiguration)await assertCurrentAgentToolAuthorization({organizationId,agentId,userId:subject.user.id,revocationGeneration:frozenConfiguration.revocationGeneration},'email.read');
+        const evidence = await getMailReportEvidence({organizationId,agentId,scope:rollingMail,fromUtc,toUtc,limit:5,readableAccountIds:frozenConfiguration?.snapshot.channels.email.filter(binding=>binding.role==='primary'||binding.role==='read_only').map(binding=>binding.accountId)});
+        if(frozenConfiguration)await assertCurrentAgentToolAuthorization({organizationId,agentId,userId:subject.user.id,revocationGeneration:frozenConfiguration.revocationGeneration},'email.read');
         rollingMailAnswer = formatRollingMailSummary(
           evidence.rows, rollingMail, fromUtc, toUtc, "rolling 24-hour UTC voice overview",
         ) + `\nOldest mailbox sync: ${evidence.lastSyncAt ?? "unknown"}.`;
@@ -132,6 +136,11 @@ export async function POST(request: Request) {
     const permissions = [...subject.permissions];
     const explicitEmailAction = isExplicitEmailMutationRequest(transcript);
     const blockedWriteExplanation = deniedEmailWriteExplanation(transcript, subject.permissions);
+    let configurationTurn:AgentConfigurationTurn|undefined;
+    if(frozenConfiguration&&!rollingMailAnswer&&!blockedWriteExplanation){
+      configurationTurn=await prepareAgentConfigurationTurn({orgId:organizationId,agentId,kbId,userId:subject.user.id,sessionId});
+      frozenConfiguration=configurationTurn.configuration;
+    }
     // Keep JSON and SSE on the same host-trusted intent boundary. The JSON
     // fallback previously routed ordinary "hello" turns into email tools.
     const needsAuthorizedTools = explicitEmailAction || /\b(email|mail|inbox|draft|message|messages|sender|recipient|attachment|account|contact|whatsapp|send|reply|forward|archive|trash|delete|move|mark|read|unread|approve|schedule|appointment|thread|folder|those|them)\b/i.test(transcript);
@@ -173,6 +182,7 @@ export async function POST(request: Request) {
               emit("done", { executionId, toolCalls: [], pendingApprovals: [], finishReason: "permission_denied", mode: "host-authorized-tools" });
             } else if (needsAuthorizedTools) {
               const result = await runEmailAgentTurn({
+                configurationTurn,
                 organizationId, agentId, messages: [{ role: "system", content: composeAssistantGuidance({
                   name: subject.user.name, email: subject.user.email,
                 }) }, { role: "user", content: transcript }], kbId,
@@ -189,10 +199,10 @@ export async function POST(request: Request) {
                 maxRounds: 4, maxToolCalls: 8,
                 requireEmailContentEvidence: requiresEmailContentEvidence,
                 onProgress: (phase) => emit("progress", { phase }),
-                onSafeReadOnlyFinal: explicitEmailAction ? undefined : async (completedHistory) => {
+                onSafeReadOnlyFinal: explicitEmailAction ? undefined : async (completedHistory,modelContext) => {
                   emit("status", { phase: "generating" });
                   const finalStream = await claraRuntime.streamAuthorizedReadOnlyToolAnswer(
-                    { orgId: organizationId, agentId, kbId },
+                    modelContext,
                     completedHistory,
                     request.signal,
                   );
@@ -236,7 +246,7 @@ export async function POST(request: Request) {
                   { role: "system", content: "This streamed voice text is read-only. Never claim to have sent, approved, deleted, archived, moved or changed mail or other resources. Such actions require the host-authorized tool path." },
                   { role: "user", content: transcript },
                 ],
-              });
+              },configurationTurn?.claraContext);
               let generated = "";
               for await (const token of generation.stream) {
                 if (request.signal.aborted) break;
@@ -310,7 +320,7 @@ export async function POST(request: Request) {
           { role: "system", content: "This voice response is read-only. Never claim to have sent, approved, deleted, archived, moved or changed mail or other resources. Such actions require an explicit authorized host tool result. Never claim to have sent, approved or completed any side effect without such a result." },
           { role: "user", content: transcript },
         ],
-      });
+      },configurationTurn?.claraContext);
       let modelAnswer = "";
       for await (const token of generation.stream) {
         if (request.signal.aborted) break;
@@ -331,6 +341,7 @@ export async function POST(request: Request) {
     }
 
     const turn = await runEmailAgentTurn({
+      configurationTurn,
       organizationId,
       agentId,
       messages: [{ role: "system", content: composeAssistantGuidance({

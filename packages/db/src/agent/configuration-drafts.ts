@@ -1,7 +1,8 @@
-import {AGENT_AI_CONFIGURATION_FIELDS,type AgentConfigurationSnapshotV1} from '@ai-comms-agent/shared';
+import {AGENT_AI_CONFIGURATION_FIELDS,captureAgentConfigurationEdit,type AgentConfigurationSnapshotV1} from '@ai-comms-agent/shared';
 import {withTransaction} from '../client';
 import {lockConfigurationActors,assertConfigurationChangeAuthority} from './configuration-authority';
-import {AgentConfigurationConflictError,activeAgentConfigurationInTransaction,agentConfigurationDependencyFingerprint,draftAgentConfigurationInTransaction,lockAgentConfiguration,mapAgentConfigurationRevision,readAgentConfigurationHead,type AgentConfigurationRevision,type AgentConfigurationScope} from './configuration-revisions';
+import {AgentConfigurationConflictError,activeAgentConfigurationInTransaction,agentConfigurationDependencyFingerprint,agentConfigurationDigest,draftAgentConfigurationInTransaction,lockAgentConfiguration,mapAgentConfigurationRevision,readAgentConfigurationHead,type AgentConfigurationRevision,type AgentConfigurationScope} from './configuration-revisions';
+import {requestedRevokedAccess} from './configuration-denials';
 
 export type AgentConfigurationPatch={
  identity?:Partial<AgentConfigurationSnapshotV1['identity']>;
@@ -12,7 +13,7 @@ export type AgentConfigurationPatch={
  legacyVersion?:AgentConfigurationSnapshotV1['legacy']['version'];
 };
 export type AgentConfigurationDraftContext={activeRevisionId:string;draftRevisionId:string|null};
-export type AgentConfigurationEditor={active:AgentConfigurationRevision;draft:AgentConfigurationRevision|null;candidate:AgentConfigurationRevision;dependencyFingerprint:string;revocationGeneration:number};
+export type AgentConfigurationEditor={active:AgentConfigurationRevision;draft:AgentConfigurationRevision|null;candidate:AgentConfigurationRevision;dependencyFingerprint:string;revocationGeneration:number;requiredRevocations:string[]};
 const fields=['identity','lifecycle','policy','channels','ai','legacyVersion'];
 function isObject(value:unknown):value is Record<string,unknown>{return !!value&&typeof value==='object'&&!Array.isArray(value)&&(Object.getPrototypeOf(value)===Object.prototype||Object.getPrototypeOf(value)===null);}
 function checkPatch(input:unknown):asserts input is AgentConfigurationPatch{
@@ -42,7 +43,7 @@ export async function getAgentConfigurationEditor(scope:AgentConfigurationScope,
    if(!result.rows[0])throw Error('Revision not found');candidate=mapAgentConfigurationRevision(result.rows[0]);
   }
   const head=await readAgentConfigurationHead(client,scope);
-  return {active,draft,candidate,dependencyFingerprint:await agentConfigurationDependencyFingerprint(client,scope,candidate.snapshot,head.revocationGeneration),revocationGeneration:head.revocationGeneration};
+  return {active,draft,candidate,dependencyFingerprint:await agentConfigurationDependencyFingerprint(client,scope,candidate.snapshot,head.revocationGeneration),revocationGeneration:head.revocationGeneration,requiredRevocations:requestedRevokedAccess(candidate.snapshot,head.barrier)};
  });
 }
 
@@ -88,6 +89,9 @@ export async function saveAgentConfigurationPatch(scope:AgentConfigurationScope,
    snapshot.ai={...initial,...input.ai};
   }
   if(Object.hasOwn(input,'legacyVersion'))snapshot.legacy.version=input.legacyVersion!;
+  // Compare normalized protected values, so an unchanged secret from a legacy
+  // JSON editor cannot create duplicate history or bypass protected storage.
+  if(pending&&agentConfigurationDigest(captureAgentConfigurationEdit(snapshot,source.snapshot))===agentConfigurationDigest(source.snapshot))return pending;
   const candidate=await draftAgentConfigurationInTransaction(client,scope,active,snapshot,active.id,{...(pending?{parentDraftId:pending.id}:{})});
   if(candidate.id===active.id){
    await client.query('DELETE FROM agent_configuration_draft_heads WHERE organization_id=$1 AND agent_id=$2 AND created_by=$3',[scope.organizationId,scope.agentId,scope.userId]);

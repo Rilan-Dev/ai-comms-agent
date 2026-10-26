@@ -17,6 +17,18 @@ async function actor(organizationId:string,userId:string|null,permission:string)
  if(!permissions.includes(permission as typeof permissions[number]))throw denied();
 }
 
+/** Current actor/lifecycle checks for a configuration-bound tool invocation.
+ * A revocation generation never goes backwards: even if access is later
+ * re-granted, an old turn must restart instead of recovering its old grant. */
+export async function assertCurrentAgentToolAuthorization(scope:{organizationId:string;agentId:string;userId:string|null;revocationGeneration:number},permission:string):Promise<void>{
+ if(!Number.isInteger(scope.revocationGeneration)||scope.revocationGeneration<0)throw denied();
+ await actor(scope.organizationId,scope.userId,permission);
+ const current=await query<{status:string;revocation_generation:number}>(`SELECT a.status,h.revocation_generation FROM agents a
+  JOIN agent_configuration_heads h ON h.organization_id=a.organization_id AND h.agent_id=a.id
+  WHERE a.organization_id=$1 AND a.id=$2`,[scope.organizationId,scope.agentId]);
+ const row=current.rows[0];if(!row||row.status!=='active'||Number(row.revocation_generation)!==scope.revocationGeneration)throw denied();
+}
+
 async function agent(organizationId:string,agentId:string|null,accountId:string,tool:string,channel:'email'|'whatsapp',required=false){
  // Manual actions carry no agent. The persisted action, never a browser flag,
  // determines whether agent authorization is required.

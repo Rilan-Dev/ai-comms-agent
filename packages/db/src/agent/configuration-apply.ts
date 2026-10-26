@@ -9,7 +9,7 @@ import {assertConfigurationReviewValidation,type ConfigurationReviewValidation} 
 
 type Row=Record<string,unknown>;
 export type AppliedAgentConfiguration={id:string;revisionId:string;reviewId:string;environment:'production'|'preview';createdBy:string|null;createdAt:string;legacyVersionId:string|null;legacyDeploymentId:string|null;revocationGeneration:number;alreadyApplied:boolean};
-export type ActiveAgentConfiguration={organizationId:string;agentId:string;revisionId:string;snapshot:AgentConfigurationSnapshotV1;revocationGeneration:number;barrier:ConfigurationDenials};
+export type ActiveAgentConfiguration={organizationId:string;agentId:string;revisionId:string;snapshot:AgentConfigurationSnapshotV1;dependencyFingerprint:string;revocationGeneration:number;barrier:ConfigurationDenials};
 export type AgentAccessRevocation={removeTools?:string[];email?:Array<{accountId:string;access:'all'|'read'|'send'}>;whatsappAccountId?:string;pause?:true;autonomousSend?:false};
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function receipt(row:Row,alreadyApplied=false):AppliedAgentConfiguration{return {id:String(row.id),revisionId:String(row.revision_id),reviewId:String(row.review_id),environment:row.environment as AppliedAgentConfiguration['environment'],createdBy:row.created_by?String(row.created_by):null,createdAt:new Date(String(row.created_at)).toISOString(),legacyVersionId:row.legacy_version_id?String(row.legacy_version_id):null,legacyDeploymentId:row.legacy_deployment_id?String(row.legacy_deployment_id):null,revocationGeneration:Number(row.revocation_generation??0),alreadyApplied};}
@@ -18,7 +18,7 @@ function freeze<T>(value:T):T{if(value&&typeof value==='object'){for(const child
 /** One immutable revision plus its independent CURRENT denial barrier. A host
  * turn shares this object across runtimes; later applies cannot mutate it. */
 export async function loadActiveAgentConfiguration(scope:Pick<AgentConfigurationScope,'organizationId'|'agentId'>):Promise<ActiveAgentConfiguration>{
- return withTransaction(async client=>{const internal={...scope,userId:null};const agent=await lockAgentConfiguration(client,internal);if(!agent)throw Error('Agent not found');const active=await activeAgentConfigurationInTransaction(client,internal,agent);const head=await readAgentConfigurationHead(client,internal);return freeze({organizationId:scope.organizationId,agentId:scope.agentId,revisionId:active.id,snapshot:active.snapshot,revocationGeneration:head.revocationGeneration,barrier:head.barrier});});
+ return withTransaction(async client=>{const internal={...scope,userId:null};const agent=await lockAgentConfiguration(client,internal);if(!agent)throw Error('Agent not found');const active=await activeAgentConfigurationInTransaction(client,internal,agent);const head=await readAgentConfigurationHead(client,internal);return freeze({organizationId:scope.organizationId,agentId:scope.agentId,revisionId:active.id,snapshot:active.snapshot,dependencyFingerprint:await agentConfigurationDependencyFingerprint(client,internal,active.snapshot,head.revocationGeneration),revocationGeneration:head.revocationGeneration,barrier:head.barrier});});
 }
 
 function legacyRuntimeValue(snapshot:AgentConfigurationSnapshotV1){const {sourceId:_sourceId,...runtime}=snapshot.legacy.version;void _sourceId;return runtime;}

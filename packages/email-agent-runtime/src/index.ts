@@ -8,3 +8,5 @@ export * from './briefings/selection';
 
 export { nextRoutineOccurrences } from './routines/time';
 export { normalizeRoutineDraft, routineConfigHash, previewRoutineDraft } from './routines/proposals';
+
+export {prepareAgentConfigurationTurn,AgentConfigurationTurnChangedError,type AgentConfigurationTurn} from './configuration-turn';

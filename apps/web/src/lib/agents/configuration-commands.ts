@@ -34,7 +34,7 @@ export async function getAgentConfigurationView(request:Request,target:Target){
  const subject=await subjectFor(request,target),scope={...target,userId:subject.user.id};
  const state=await getAgentConfigurationEditor(scope),includeAi=subject.permissions.has('organization.update');
  const history=await getAgentConfigurationHistory(scope,{policy:true,ai:includeAi,legacy:includeAi});
- return {active:visibleRevision(state.active,includeAi),draft:state.draft?visibleRevision(state.draft,includeAi):null,dependencyFingerprint:state.dependencyFingerprint,revocationGeneration:state.revocationGeneration,history,canApply:subject.membership?.role==='owner',canEditAi:includeAi};
+ return {active:visibleRevision(state.active,includeAi),draft:state.draft?visibleRevision(state.draft,includeAi):null,dependencyFingerprint:state.dependencyFingerprint,revocationGeneration:state.revocationGeneration,requiredRevocations:state.requiredRevocations,history,canApply:subject.membership?.role==='owner',canEditAi:includeAi};
 }
 
 async function modelChecks(scope:AgentConfigurationScope,before:AgentConfigurationRevision,after:AgentConfigurationRevision,acceptedCustomFields:string[]){

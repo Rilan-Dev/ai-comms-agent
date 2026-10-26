@@ -52,7 +52,7 @@ describe("Sarvam live voice and grounded workspace mail", () => {
     expect(voiceTurn).toContain('subject.permissions.has("email.read")');
     expect(voiceTurn).toContain("createEmailToolRuntime(organizationId, agentId)");
     expect(voiceTurn).toContain('tool.name === "email.search" || tool.name === "email.messages.list"');
-    expect(voiceTurn).toContain('getMailReportEvidence({organizationId,agentId,scope:rollingMail,fromUtc,toUtc,limit:5})');
+    expect(voiceTurn).toContain('getMailReportEvidence({organizationId,agentId,scope:rollingMail,fromUtc,toUtc,limit:5,readableAccountIds:');
     expect(voiceTurn).toContain('evidence.rows, rollingMail, fromUtc, toUtc');
     expect(voiceTurn).toContain('formatRollingMailSummary(');
     // The shared query is exercised against PostgreSQL by mail-report-coverage.integration.test.ts.

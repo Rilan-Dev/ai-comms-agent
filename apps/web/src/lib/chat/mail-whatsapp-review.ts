@@ -1,5 +1,5 @@
 import {query,reconcileMailTaskCheckpoint,saveMailTaskCheckpoint,type CheckpointScope,type MailTaskCheckpoint} from '@ai-comms-agent/db';
-import {ForbiddenError,operationResultFromToolCall,type OperationResult,type ToolContext} from '@ai-comms-agent/shared';
+import {ForbiddenError,operationResultFromToolCall,turnAllowsTool,type OperationResult,type ToolContext} from '@ai-comms-agent/shared';
 import {createEmailToolRuntime,invokeEmailReadTool} from '../../../../worker/src/agent/email-tool-runtime';
 import {createWhatsAppToolRuntime,invokeWhatsAppTool} from '../../../../worker/src/agent/whatsapp-tool-runtime';
 import {getMailReportEvidence} from '../mail/report-evidence';
@@ -16,8 +16,8 @@ function scopeOf(context:ToolContext):CheckpointScope{
 async function currentAuthority(context:ToolContext,accountId?:string,mailboxes:readonly string[]=[]):Promise<boolean>{
  const scope=scopeOf(context);
  const [mail,whatsapp]=await Promise.all([createEmailToolRuntime(scope.organizationId,scope.agentId),createWhatsAppToolRuntime(scope.organizationId,scope.agentId)]);
- const reader=mail.registry.listForAgent(scope.agentId).find(tool=>tool.name==='email.search'||tool.name==='email.messages.list');
- const sender=whatsapp.registry.listForAgent(scope.agentId).find(tool=>tool.name==='whatsapp.send');
+ const reader=mail.registry.listForAgent(scope.agentId).filter(tool=>turnAllowsTool(context,tool.name)).find(tool=>tool.name==='email.search'||tool.name==='email.messages.list');
+ const sender=whatsapp.registry.listForAgent(scope.agentId).filter(tool=>turnAllowsTool(context,tool.name)).find(tool=>tool.name==='whatsapp.send');
  if(!reader||!sender)return false;
  if(!(await mail.authorize(reader,{},context)).allowed||!(await whatsapp.authorize(sender,accountId?{account_id:accountId}:{},context)).allowed)return false;
  for(const mailbox of new Set(mailboxes))if(!(await mail.authorize(reader,{account_id:mailbox},context)).allowed)return false;
@@ -72,9 +72,10 @@ export async function startMailWhatsAppReview(context:ToolContext,task:MailWhats
  const account=accounts.rows.length===1?accounts.rows[0]!.id:null;
  if(!account||!await currentAuthority(context,account))throw new ForbiddenError('missing_permission','Choose an assigned WhatsApp phone and enable the required current access before preparing this review.');
  const prepared=await prepareMailWhatsAppTask({...task,account},async args=>{
-  const evidence=await getMailReportEvidence({...args,organizationId:scope.organizationId,agentId:scope.agentId});
+  const evidence=await getMailReportEvidence({...args,organizationId:scope.organizationId,agentId:scope.agentId,
+   readableAccountIds:context.agent_configuration?.snapshot.channels.email.filter(binding=>binding.role==='primary'||binding.role==='read_only').map(binding=>binding.accountId)});
   const runtime=await createEmailToolRuntime(scope.organizationId,scope.agentId);
-  const reader=runtime.registry.listForAgent(scope.agentId).find(tool=>tool.name==='email.search'||tool.name==='email.messages.list');
+  const reader=runtime.registry.listForAgent(scope.agentId).filter(tool=>turnAllowsTool(context,tool.name)).find(tool=>tool.name==='email.search'||tool.name==='email.messages.list');
   if(!reader)throw new ForbiddenError('missing_permission','Mailbox summary access changed.');
   // Aggregate selection stays a single canonical snapshot; every selected
   // mailbox is also read through the existing audited registered executor.

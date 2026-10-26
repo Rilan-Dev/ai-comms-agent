@@ -10,14 +10,15 @@ export class MailReportScopeError extends Error {}
  * IMAP folder UIDs are representations; RFC Message-ID identifies copies in
  * one mailbox. Other providers and different mailboxes retain their identity.
  * Historical rows are never deleted or changed by reporting. */
-export async function getMailReportEvidence(args:{organizationId:string;agentId:string;scope:MailReportScope;fromUtc:string;toUtc:string;exclusiveEnd?:boolean;limit?:number}):Promise<MailReportEvidence>{
+export async function getMailReportEvidence(args:{organizationId:string;agentId:string;scope:MailReportScope;fromUtc:string;toUtc:string;exclusiveEnd?:boolean;limit?:number;readableAccountIds?:readonly string[]}):Promise<MailReportEvidence>{
   const limit=Math.min(500,Math.max(1,args.limit??500));
   const {scope}=args;
   const accounts=await query<{id:string;last_synced_at:string|Date|null}>(`SELECT a.id,a.last_synced_at FROM email_accounts a
     WHERE a.organization_id=$1 AND a.deleted_at IS NULL AND a.status='connected'
       AND ($3::text IS NULL OR lower(a.email_address)=lower($3))
+      AND ($4::uuid[] IS NULL OR a.id=ANY($4::uuid[]))
       AND EXISTS(SELECT 1 FROM agent_email_accounts b JOIN agents g ON g.id=b.agent_id AND g.organization_id=$1
-        WHERE b.email_account_id=a.id AND b.agent_id=$2 AND b.role IN ('primary','read_only'))`,[args.organizationId,args.agentId,scope.mailbox??null]);
+        WHERE b.email_account_id=a.id AND b.agent_id=$2 AND b.role IN ('primary','read_only'))`,[args.organizationId,args.agentId,scope.mailbox??null,args.readableAccountIds??null]);
   if(scope.mailbox && accounts.rows.length!==1)throw new MailReportScopeError('Choose one connected mailbox assigned to this agent; the requested address is unavailable or ambiguous.');
   const result=await query<RollingMailRow & {mailbox_counts:MailReportEvidence['mailboxCounts']}>(`WITH ranked AS (
     SELECT m.id,m.thread_id,m.from_email::text AS from_email,m.from_name,m.subject,m.received_at,m.is_read,m.text_body AS search_body,
@@ -35,6 +36,7 @@ export async function getMailReportEvidence(args:{organizationId:string;agentId:
       AND (CASE WHEN $9::boolean THEN m.received_at < $4::timestamptz ELSE m.received_at <= $4::timestamptz END)
       AND m.is_draft IS FALSE AND m.is_sent IS FALSE
       AND ($10::text IS NULL OR lower(a.email_address)=lower($10))
+      AND ($12::uuid[] IS NULL OR a.id=ANY($12::uuid[]))
       AND EXISTS(SELECT 1 FROM agent_email_accounts b JOIN agents bound_agent ON bound_agent.id=b.agent_id AND bound_agent.organization_id=$1
         WHERE b.email_account_id=a.id AND b.agent_id=$2 AND b.role IN ('primary','read_only'))
   ), matched AS (
@@ -48,7 +50,7 @@ export async function getMailReportEvidence(args:{organizationId:string;agentId:
     (SELECT jsonb_agg(jsonb_build_object('account_email',counts.account_email,'unread_count',counts.unread_count) ORDER BY counts.account_email)
       FROM (SELECT account_email,COUNT(*)::integer AS unread_count FROM matched GROUP BY account_email) counts) AS mailbox_counts
     FROM matched m ORDER BY m.received_at DESC,m.id DESC LIMIT $8`,[
-    args.organizationId,args.agentId,args.fromUtc,args.toUtc,scope.sender??null,scope.topic??null,scope.unreadOnly,limit,args.exclusiveEnd??false,scope.mailbox??null,scope.inboxOnly??false,
+    args.organizationId,args.agentId,args.fromUtc,args.toUtc,scope.sender??null,scope.topic??null,scope.unreadOnly,limit,args.exclusiveEnd??false,scope.mailbox??null,scope.inboxOnly??false,args.readableAccountIds??null,
   ]);
   const matchedCount=Number(result.rows[0]?.total_count??0);
   const syncTimes=accounts.rows.map(account=>account.last_synced_at?new Date(account.last_synced_at).getTime():NaN);

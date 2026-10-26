@@ -1,7 +1,7 @@
 import {beforeEach,describe,expect,it,vi} from 'vitest';
 import type {Tool,ToolContext} from '@ai-comms-agent/shared';
 import {registerEmailWriteTools} from '../../../packages/email-agent-runtime/src/email-write-tools';
-import {createWhatsAppSendApprovalTool} from '../../worker/src/agent/whatsapp-tool-runtime';
+import {createWhatsAppSendApprovalTool,createWhatsAppHistoryTool} from '../../worker/src/agent/whatsapp-tool-runtime';
 import {requiresHumanApproval} from '../../../packages/shared/src/operations/human-approval';
 const mocks=vi.hoisted(()=>({auto:vi.fn(async()=>({id:'action'})),queue:vi.fn(async()=>'message'),policy:vi.fn(async()=>({securityPolicy:{autonomous_send:true}})),query:vi.fn(async(sql:string)=>({rows:sql.includes('agent_email_accounts')?[{role:'primary'}]:[{id:'11111111-1111-4111-8111-111111111111',status:sql.includes('INSERT INTO whatsapp_send_actions')?'pending':'queued'}]}))}));
 vi.mock('@ai-comms-agent/db',()=>({
@@ -14,6 +14,15 @@ vi.mock('@ai-comms-agent/db',()=>({
 const context:ToolContext={agent_id:'agent',organization_id:'org',user_id:'user',turn_id:'turn',correlation_id:'correlation',conversation_id:'conversation',channel:'chat',auth_subject:{user_id:'user',role:'owner',permissions:['email.write','whatsapp.send']}};
 beforeEach(()=>vi.clearAllMocks());
 describe('explicit human-review consent takes precedence over autonomous policy',()=>{
+ it('pins WhatsApp history to the phone from the start of the turn when no account was requested',async()=>{
+  const frozen={...context,auth_subject:{...context.auth_subject,permissions:['whatsapp.read']},agent_configuration:{organizationId:'org',agentId:'agent',revisionId:'revision',snapshot:{channels:{whatsappAccountId:'22222222-2222-4222-8222-222222222222'}} as never}};
+  const result=await createWhatsAppHistoryTool().execute({},frozen);expect(result.ok).toBe(true);
+  expect(mocks.query).toHaveBeenCalledWith(expect.stringContaining('FROM whatsapp_messages'),['org','agent','22222222-2222-4222-8222-222222222222','',20]);
+ });
+ it('does not read a phone newly assigned to a turn that started without WhatsApp',async()=>{
+  const frozen={...context,auth_subject:{...context.auth_subject,permissions:['whatsapp.read']},agent_configuration:{organizationId:'org',agentId:'agent',revisionId:'revision',snapshot:{channels:{whatsappAccountId:null}} as never}};
+  const result=await createWhatsAppHistoryTool().execute({},frozen);expect(result.error?.code).toBe('account_not_available');expect(mocks.query).not.toHaveBeenCalled();
+ });
  it('does not gain automatic approval if the turn started in human-review mode',async()=>{
   const frozen={...context,agent_configuration:{organizationId:'org',agentId:'agent',revisionId:'revision',snapshot:{policy:{securityPolicy:{autonomous_send:false}},channels:{email:[{accountId:'11111111-1111-4111-8111-111111111111',role:'primary'}],whatsappAccountId:'11111111-1111-4111-8111-111111111111'}} as never}};
   const tools:Tool[]=[];registerEmailWriteTools(t=>tools.push(t));

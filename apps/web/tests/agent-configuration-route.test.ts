@@ -1,5 +1,6 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {ForbiddenError} from '@ai-comms-agent/shared';
+import {ConfigurationModelReviewRequiredError} from '../src/lib/agents/configuration-model-review';
 const mock=vi.hoisted(()=>({get:vi.fn(),run:vi.fn(),origin:vi.fn()}));
 vi.mock('@/lib/agents/configuration-commands',()=>({getAgentConfigurationView:mock.get,runAgentConfigurationCommand:mock.run,ConfigurationCommandInputError:class extends Error{code='invalid_configuration_command'}}));
 vi.mock('@/lib/identity/local-auth',()=>({assertSameOrigin:mock.origin}));
@@ -9,8 +10,14 @@ const org='10000000-0000-4000-8000-000000000001',agent='20000000-0000-4000-8000-
 const context={params:Promise.resolve({id:agent})};
 const read=()=>new Request(`https://example.test/api/agents/${agent}/configuration?organizationId=${org}`);
 const write=(body:unknown)=>new Request(`https://example.test/api/agents/${agent}/configuration?organizationId=${org}`,{method:'POST',headers:{origin:'https://example.test','content-type':'application/json'},body:JSON.stringify(body)});
-beforeEach(()=>{vi.clearAllMocks();mock.origin.mockReset();vi.stubEnv('DATABASE_URL','test-only');mock.get.mockResolvedValue({active:{id:'active'}});mock.run.mockResolvedValue({draft:{id:'draft'}});});afterEach(()=>vi.unstubAllEnvs());
+beforeEach(()=>{vi.clearAllMocks();mock.origin.mockReset();vi.stubEnv('AGENT_CONFIGURATION_REVISIONS_ENABLED','true');vi.stubEnv('DATABASE_URL','test-only');mock.get.mockResolvedValue({active:{id:'active'}});mock.run.mockResolvedValue({draft:{id:'draft'}});});afterEach(()=>vi.unstubAllEnvs());
 describe('manual configuration endpoint transport',()=>{
+ it('returns a bounded actionable model-review requirement without provider details',async()=>{
+  mock.run.mockRejectedValueOnce(new ConfigurationModelReviewRequiredError('confirm_model',['chatModel'],'Confirm this model choice.'));
+  const result=await POST(write({command:'review'}),context);
+  expect(result.status).toBe(422);expect(await result.json()).toEqual({error:'configuration_review_required',reason:'confirm_model',fields:['chatModel'],message:'Confirm this model choice.'});
+ });
+ it('does not expose an incomplete configuration rollout when the server gate is off',async()=>{vi.stubEnv('AGENT_CONFIGURATION_REVISIONS_ENABLED','false');expect((await GET(read(),context)).status).toBe(404);expect((await POST(write({command:'save'}),context)).status).toBe(404);expect(mock.get).not.toHaveBeenCalled();expect(mock.run).not.toHaveBeenCalled();});
  it('uses URL scope and returns private uncached state',async()=>{const response=await GET(read(),context);expect(response.status).toBe(200);expect(response.headers.get('cache-control')).toContain('no-store');expect(mock.get).toHaveBeenCalledWith(expect.any(Request),{organizationId:org,agentId:agent});});
  it('checks origin before any mutation',async()=>{mock.origin.mockImplementation(()=>{throw Error('origin');});expect((await POST(write({command:'save'}),context)).status).toBe(403);expect(mock.run).not.toHaveBeenCalled();});
  it('accepts only URL organization scope and does not forward spoofed body scope',async()=>{expect((await POST(write({command:'save',organizationId:'other'}),context)).status).toBe(422);expect(mock.run).not.toHaveBeenCalled();});

@@ -29,6 +29,20 @@ beforeAll(async()=>{await db.connect();const columns=Object.values(AGENT_AI_CONF
 beforeEach(async()=>{await db.query('TRUNCATE aca.organization_memberships,aca.agent_configuration_draft_heads,aca.organizations,aca.users,aca.agents,aca.agent_versions,aca.agent_policies,aca.email_accounts,aca.agent_email_accounts,aca.whatsapp_accounts,aca.agent_whatsapp_accounts,aca.agent_ai_settings,aca.organization_ai_runtime_settings,aca.ai_provider_configs,aca.agent_configuration_revisions,aca.agent_configuration_heads,aca.agent_configuration_reviews,aca.agent_configuration_applications CASCADE');await db.query('INSERT INTO aca.organizations VALUES($1),($2)',[org,other]);await db.query('INSERT INTO aca.users(id) VALUES($1)',[user]);await db.query(`INSERT INTO aca.organization_memberships VALUES($1,$2,'owner','active')`,[org,user]);await db.query(`INSERT INTO aca.agents(id,organization_id,name,slug,status,current_version_id,voice_id) VALUES($1,$2,'Assistant','assistant','active',$3,'legacy-voice')`,[agent,org,legacy]);await db.query(`INSERT INTO aca.agent_versions(id,agent_id,version_number,config,voice_model) VALUES($1,$2,1,'{"business":"preserved"}','legacy-model')`,[legacy,agent]);await db.query(`INSERT INTO aca.agent_policies VALUES($1,'{"autonomous_send":true,"custom":{"retained":42},"api_key":"must-never-appear-in-history"}',ARRAY['email.search','custom.tool'],ARRAY['literal, entry'],ARRAY[]::text[],'{"customLimit":7}',now())`,[agent]);await db.query(`INSERT INTO aca.email_accounts VALUES($1,$2,'connected','{"read":true}',NULL)`,[mail,org]);await db.query(`INSERT INTO aca.agent_email_accounts VALUES($1,$2,'primary')`,[agent,mail]);await db.query(`INSERT INTO aca.agent_ai_settings(agent_id,organization_id,chat_model,model_overrides,feature_flags) VALUES($1,$2,'saved-custom-model','{"legacy":"retained"}','{"legacyFlag":true}')`,[agent,org]);await db.query(`INSERT INTO aca.organization_ai_runtime_settings(organization_id,default_provider,temperature) VALUES($1,'openai',0.7)`,[org]);});
 afterAll(async()=>{await closePostgresPool();await db.query('DROP SCHEMA IF EXISTS aca CASCADE');await db.end();});
 describe('immutable complete configuration candidates on the real database',()=>{
+ it('does not create another history entry when an existing draft is saved unchanged',async()=>{
+  const initial=await getAgentConfigurationEditor(scope);
+  const first=await saveAgentConfigurationPatch(scope,{identity:{name:'Business helper'}},{activeRevisionId:initial.active.id,draftRevisionId:null});
+  const repeated=await saveAgentConfigurationPatch(scope,{identity:{name:'Business helper'}},{activeRevisionId:initial.active.id,draftRevisionId:first.id});
+  expect(repeated.id).toBe(first.id);expect((await db.query('SELECT count(*)::int n FROM aca.agent_configuration_revisions')).rows[0].n).toBe(2);
+ });
+ it('provides exact revoked grants that need confirmation without returning the full denial barrier',async()=>{
+  const initial=await getAgentConfigurationEditor(scope);
+  // The editor fixture isolates the recorded denial from its apply/audit suite.
+  await db.query(`UPDATE aca.agent_configuration_heads SET revocation_barrier='{"tools":["email.search"]}'::jsonb WHERE agent_id=$1`,[agent]);
+  const draft=await saveAgentConfigurationPatch(scope,{identity:{name:'Review required'}},{activeRevisionId:initial.active.id,draftRevisionId:null});
+  const editor=await getAgentConfigurationEditor(scope,draft.id);
+  expect(editor).toMatchObject({requiredRevocations:['tool:email.search']});expect(editor).not.toHaveProperty('barrier');
+ });
  it('recovers the current editor draft and discards only its pointer while retaining immutable history',async()=>{
   const initial=await getAgentConfigurationEditor(scope);expect(initial.draft).toBeNull();
   const saved=await saveAgentConfigurationPatch(scope,{identity:{name:'Recover me'}},{activeRevisionId:initial.active.id,draftRevisionId:null});

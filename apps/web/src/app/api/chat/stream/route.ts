@@ -4,8 +4,10 @@ import {isDraftOnlyRequest,draftOnlyToolAllowed,authorizeDraftOnly} from "@/lib/
 import {draftPlanningContext} from "@/lib/chat/draft-planning-context";
 import {safeChatFailure} from '@/lib/chat/safe-failure';
 import { NextResponse } from "next/server";
-import { appendConversationMessage, getChatConversation, getOrCreateChatConversation, listChatMessages, PostgresAgentRepository, query } from "@ai-comms-agent/db";
+import { appendConversationMessage, getChatConversation, getOrCreateChatConversation, listChatMessages, PostgresAgentRepository, query,loadActiveAgentConfiguration,assertCurrentAgentToolAuthorization,type ActiveAgentConfiguration } from "@ai-comms-agent/db";
 import { claraRuntime } from "@ai-comms-agent/clara-core";
+import {prepareAgentConfigurationTurn} from '@ai-comms-agent/email-agent-runtime';
+import {turnAllowsTool} from '@ai-comms-agent/shared';
 import { formatRollingMailSummary, MAX_REPORT_MESSAGES, parseRollingMailSummaryRequest, looksLikeRollingMailReport } from "@/lib/mail/rolling-summary";
 import { getMailReportEvidence, MailReportScopeError } from "@/lib/mail/report-evidence";
 import {formatUnreadMailCountReport,formatUnreadMailSummary,parseUnreadOnlyMailRequest,UNREAD_REPORT_FROM_UTC} from '@/lib/mail/unread-inbox-summary';
@@ -26,7 +28,7 @@ import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { assertSameOrigin } from "@/lib/identity/local-auth";
-import type { ChatToolCompletion, ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/clara-core";
+import type { ChatToolCompletion, ChatToolDefinition, ToolChatMessage,ClaraRuntimeContext } from "@ai-comms-agent/clara-core";
 import type { ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { createEmailToolRuntime, invokeEmailReadTool } from "../../../../../../../apps/worker/src/agent/email-tool-runtime";
 import { createWhatsAppToolRuntime, invokeWhatsAppTool } from "../../../../../../../apps/worker/src/agent/whatsapp-tool-runtime";
@@ -51,8 +53,9 @@ function asksAboutEmail(content: string): boolean {
   return /\b(email|emails|mail|mails|inbox|message|messages|draft|drafts|sender|recipient|unread)\b/i.test(content);
 }
 
-async function loadEmailContext(organizationId: string, agentId: string, content: string): Promise<string | null> {
+async function loadEmailContext(organizationId: string, agentId: string, content: string,context?:ToolContext): Promise<string | null> {
   if (!asksAboutEmail(content)) return null;
+  if(context?.agent_configuration)await assertCurrentAgentToolAuthorization({organizationId,agentId,userId:context.user_id,revocationGeneration:context.agent_configuration.revocationGeneration??-1},'email.read');
   // Stop-word list covers common English verbs, question words, quantifiers,
   // time words, and connectors that pollute ILIKE matches against email body
   // text. For example, the user query "Check how many email received from
@@ -154,6 +157,11 @@ async function loadEmailContext(organizationId: string, agentId: string, content
   const params: (string | string[])[] = hasTerms
     ? [organizationId, agentId, searchTerms]
     : [organizationId, agentId];
+  let turnCeilingSql='';
+  if(context?.agent_configuration){
+    params.push(context.agent_configuration.snapshot.channels.email.filter(binding=>binding.role==='primary'||binding.role==='read_only').map(binding=>binding.accountId));
+    turnCeilingSql=`AND a.id=ANY($${params.length}::uuid[])`;
+  }
 
   // Gmail IMAP exposes one RFC822 Message-ID through INBOX and All Mail
   // with different folder-qualified UIDs. Rank only after applying the same
@@ -185,6 +193,7 @@ async function loadEmailContext(organizationId: string, agentId: string, content
           AND a.organization_id = $1
           AND a.deleted_at IS NULL
           AND a.status = 'connected'
+          ${turnCeilingSql}
           ${matchSql}
       )
       SELECT c.email_address, c.provider, c.from_email, c.to_recipients,
@@ -231,8 +240,13 @@ function asksAboutWhatsApp(content: string): boolean {
  * Supply only messages from the WhatsApp account explicitly bound to this
  * agent. Organization membership alone does not authorize cross-agent reads.
  */
-async function loadWhatsAppContext(organizationId: string, agentId: string, content: string): Promise<string | null> {
+async function loadWhatsAppContext(organizationId: string, agentId: string, content: string,context?:ToolContext): Promise<string | null> {
   if (!asksAboutWhatsApp(content)) return null;
+  const frozen=context?.agent_configuration;
+  if(frozen){
+    await assertCurrentAgentToolAuthorization({organizationId,agentId,userId:context!.user_id,revocationGeneration:frozen.revocationGeneration??-1},'whatsapp.read');
+    if(!frozen.snapshot.channels.whatsappAccountId)return null;
+  }
 
   const result = await query<WhatsAppContextRow>(
     `SELECT m.direction, m.body, m.status, m.created_at,
@@ -255,9 +269,10 @@ async function loadWhatsAppContext(organizationId: string, agentId: string, cont
       AND c.organization_id = $1
      WHERE m.organization_id = $1
        AND m.whatsapp_account_id = w.id
+       ${frozen?'AND w.id=$3::uuid':''}
      ORDER BY m.created_at DESC
      LIMIT 20`,
-    [organizationId, agentId],
+    frozen?[organizationId,agentId,frozen.snapshot.channels.whatsappAccountId]:[organizationId, agentId],
   );
 
   if (result.rows.length === 0) {
@@ -289,6 +304,7 @@ async function runInteractiveHostToolLoop(args: {
   kbId: string;
   messages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
   toolContext: ToolContext;
+  claraContext?:ClaraRuntimeContext;
   draftOnly?:boolean;
   whatsAppOnly?:boolean;
   onSafeReadOnlyFinal?: (completedHistory: ToolChatMessage[]) => Promise<string>;
@@ -313,6 +329,7 @@ async function runInteractiveHostToolLoop(args: {
     ...whatsappRuntime.registry.listForAgent(args.agentId),
     ...schedulesRuntime.registry.listForAgent(args.agentId),
   ].filter((tool) => args.toolContext.auth_subject.permissions.includes(tool.required_permission))
+    .filter(tool=>turnAllowsTool(args.toolContext,tool.name))
     .filter(tool=>!args.draftOnly||draftOnlyToolAllowed(tool))
     .filter(tool=>!args.whatsAppOnly||tool.name.startsWith("whatsapp."));
   const definitions: ChatToolDefinition[] = visibleTools
@@ -335,7 +352,7 @@ async function runInteractiveHostToolLoop(args: {
     let completion: ChatToolCompletion;
     try {
       completion = await claraRuntime.completeWithTools(
-        { orgId: args.organizationId, agentId: args.agentId, kbId: args.kbId,skipGrounding:args.whatsAppOnly===true }, history, definitions,
+        args.claraContext??{ orgId: args.organizationId, agentId: args.agentId, kbId: args.kbId,skipGrounding:args.whatsAppOnly===true }, history, definitions,
       );
     } catch (error) {
       const recovered=recoverRead();if(recovered)return recovered;
@@ -464,6 +481,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "not_found", message: "Agent was not found in this organization." }, { status: 404 });
     }
 
+    let frozenConfiguration:ActiveAgentConfiguration|undefined=process.env.AGENT_CONFIGURATION_REVISIONS_ENABLED==='true'
+      ?await loadActiveAgentConfiguration({organizationId,agentId}):undefined;
+    if(frozenConfiguration&&(frozenConfiguration.organizationId!==organizationId||frozenConfiguration.agentId!==agentId||frozenConfiguration.snapshot.lifecycle.status!=='active')){
+      return NextResponse.json({error:'agent_unavailable',message:'This agent is paused or has not been deployed. Review its current setup before starting a new turn.'},{status:409});
+    }
     const runtimeSettings = await query<{ knowledge_base_id: string }>("SELECT knowledge_base_id FROM organization_ai_runtime_settings WHERE organization_id = $1", [organizationId]);
     // KB ID is OPTIONAL for basic chat. RAG features are skipped when no KB
     // is configured. The previous 503 hard-block prevented chat from working
@@ -478,14 +500,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "not_found", message: "Conversation was not found for this organization and agent." }, { status: 404 });
     }
 
+    const trustedToolContext: ToolContext = {
+      organization_id: organizationId,
+      agent_id: agentId,
+      user_id: subject.user.id,
+      conversation_id: conversation.id,
+      turn_id: crypto.randomUUID(),
+      email_body_review: reviewExplicitEmailBody(content),
+      require_human_approval:requiresHumanApproval(content),
+      correlation_id: crypto.randomUUID(),
+      channel: "chat",
+      auth_subject: { user_id: subject.user.id, role: subject.membership.role, permissions: [...subject.permissions] },
+      ...(frozenConfiguration?{agent_configuration:frozenConfiguration}:{}),
+    };
     const mailWhatsAppTask=parseMailWhatsAppTask(content);
     if(mailWhatsAppTask||continuationRef){
       if(!(['email.read','whatsapp.send'] as const).every(permission=>subject.permissions.has(permission))){
         return NextResponse.json({error:'forbidden',message:'Email read and WhatsApp send access are required for this review.'},{status:403});
       }
-      const context:ToolContext={organization_id:organizationId,agent_id:agentId,user_id:subject.user.id,conversation_id:conversation.id,
-        turn_id:crypto.randomUUID(),correlation_id:crypto.randomUUID(),require_human_approval:true,channel:'chat',
-        auth_subject:{user_id:subject.user.id,role:subject.membership.role,permissions:[...subject.permissions]}};
+      const context:ToolContext={...trustedToolContext,require_human_approval:true};
       await appendConversationMessage({organizationId,conversationId:conversation.id,role:'user',content});
       const encoder=new TextEncoder();
       const stream=new ReadableStream<Uint8Array>({async start(controller){
@@ -541,7 +574,7 @@ export async function POST(request: Request) {
       // registered read/search tool in its persisted allowlist. This is the
       // same agent policy used by the normal email tool executor.
       const mailRuntime = await createEmailToolRuntime(organizationId, agentId);
-      if (!mailRuntime.registry.listForAgent(agentId).some((tool) =>
+      if (!mailRuntime.registry.listForAgent(agentId).filter(tool=>turnAllowsTool(trustedToolContext,tool.name)).some((tool) =>
         tool.required_permission === "email.read"
         && (tool.name === "email.search" || tool.name === "email.messages.list"))) {
         return NextResponse.json({
@@ -554,8 +587,11 @@ export async function POST(request: Request) {
         ? explicitRange.toUtc : windowEnd.toISOString();
       const fromUtc = explicitRange?.kind === "valid"
         ? explicitRange.fromUtc : unreadOnlyMail ? UNREAD_REPORT_FROM_UTC : new Date(windowEnd.getTime() - 24 * 60 * 60 * 1000).toISOString();
+      if(frozenConfiguration)await assertCurrentAgentToolAuthorization({organizationId,agentId,userId:subject.user.id,revocationGeneration:frozenConfiguration.revocationGeneration},'email.read');
       const evidence = await getMailReportEvidence({organizationId,agentId,scope:requestedMailScope,fromUtc,toUtc,
-        exclusiveEnd:explicitRange?.kind === "valid",limit:MAX_REPORT_MESSAGES});
+        exclusiveEnd:explicitRange?.kind === "valid",limit:MAX_REPORT_MESSAGES,
+        readableAccountIds:frozenConfiguration?.snapshot.channels.email.filter(binding=>binding.role==='primary'||binding.role==='read_only').map(binding=>binding.accountId)});
+      if(frozenConfiguration)await assertCurrentAgentToolAuthorization({organizationId,agentId,userId:subject.user.id,revocationGeneration:frozenConfiguration.revocationGeneration},'email.read');
       const report = (unreadOnlyMail?.kind==='count'
         ? formatUnreadMailCountReport(evidence.mailboxCounts,evidence.rows)
         : unreadOnlyMail?.kind==='summary'
@@ -605,6 +641,12 @@ export async function POST(request: Request) {
     // a search term and matches from_email with high precision.
     const whatsappPlan=whatsAppPlanningContext(safeHistory,content);
     const {history:plannerHistory,independentCompose}=draftPlanningContext(whatsappPlan.history,content);
+    const blockedWriteExplanation = deniedEmailWriteExplanation(content, subject.permissions);
+    let preparedClaraContext:ClaraRuntimeContext|undefined;
+    if(frozenConfiguration&&!blockedWriteExplanation){
+      const turn=await prepareAgentConfigurationTurn({orgId:organizationId,agentId,kbId,userId:subject.user.id,sessionId:conversation.id,skipGrounding:whatsappPlan.whatsAppOnly});
+      frozenConfiguration=turn.configuration;trustedToolContext.agent_configuration=frozenConfiguration;preparedClaraContext=turn.claraContext;
+    }
     const recentMessages = plannerHistory.filter(
       m => m.role === "user" || m.role === "assistant",
     )
@@ -617,15 +659,15 @@ export async function POST(request: Request) {
     let emailContext: string | null = null;
     if (!whatsappPlan.whatsAppOnly && !independentCompose && subject.permissions.has("email.read") && asksAboutEmail(combinedSearchContext)) {
       const emailRuntime = await createEmailToolRuntime(organizationId, agentId);
-      if (canSupplyAmbientContext("email", subject.permissions, emailRuntime.registry.listForAgent(agentId))) {
-        emailContext = await loadEmailContext(organizationId, agentId, combinedSearchContext);
+      if (canSupplyAmbientContext("email", subject.permissions, emailRuntime.registry.listForAgent(agentId).filter(tool=>turnAllowsTool(trustedToolContext,tool.name)))) {
+        emailContext = await loadEmailContext(organizationId, agentId, combinedSearchContext,trustedToolContext);
       }
     }
     let whatsappContext: string | null = null;
     if (!whatsappPlan.whatsAppOnly && !independentCompose && subject.permissions.has("whatsapp.read") && asksAboutWhatsApp(combinedSearchContext)) {
       const whatsappRuntime = await createWhatsAppToolRuntime(organizationId, agentId);
-      if (canSupplyAmbientContext("whatsapp", subject.permissions, whatsappRuntime.registry.listForAgent(agentId))) {
-        whatsappContext = await loadWhatsAppContext(organizationId, agentId, combinedSearchContext);
+      if (canSupplyAmbientContext("whatsapp", subject.permissions, whatsappRuntime.registry.listForAgent(agentId).filter(tool=>turnAllowsTool(trustedToolContext,tool.name)))) {
+        whatsappContext = await loadWhatsAppContext(organizationId, agentId, combinedSearchContext,trustedToolContext);
       }
     }
     await appendConversationMessage({ organizationId, conversationId: conversation.id, role: "user", content });
@@ -658,25 +700,12 @@ export async function POST(request: Request) {
       { role: "user" as const, content },
     ];
 
-    const trustedToolContext: ToolContext = {
-      organization_id: organizationId,
-      agent_id: agentId,
-      user_id: subject.user.id,
-      conversation_id: conversation.id,
-      turn_id: crypto.randomUUID(),
-      email_body_review: reviewExplicitEmailBody(content),
-      require_human_approval:requiresHumanApproval(content),
-      correlation_id: crypto.randomUUID(),
-      channel: "chat",
-      auth_subject: { user_id: subject.user.id, role: subject.membership.role, permissions: [...subject.permissions] },
-    };
     // Routine conversational prompts should reach the streaming LLM directly.
     // Mail, WhatsApp, and potential account mutations still go through the
     // bounded, host-authorized tool loop (which has not yet gained model-token
     // streaming). Never shortcut a potentially actionable follow-up.
     const explicitEmailAction = isExplicitEmailMutationRequest(content);
     const explicitMessagingAction=explicitEmailAction || isExplicitWhatsAppMutationRequest(content);
-    const blockedWriteExplanation = deniedEmailWriteExplanation(content, subject.permissions);
     const shouldResolveTools = explicitEmailAction || asksAboutEmail(combinedSearchContext)
       || asksAboutWhatsApp(combinedSearchContext)
       || /\b(send|reply|forward|archive|trash|delete|mark|move|approve|schedule|contact|conversation|account)\b/i.test(content);
@@ -706,6 +735,7 @@ export async function POST(request: Request) {
                   name: subject.user.name, email: subject.user.email,
                 }) }, ...messages],
                 toolContext: trustedToolContext,
+                claraContext:preparedClaraContext,
                 draftOnly:isDraftOnlyRequest(content),
                 whatsAppOnly:whatsappPlan.whatsAppOnly,
                 onProgress: (phase) => emit("progress", { phase }),
@@ -713,7 +743,7 @@ export async function POST(request: Request) {
                   emit("status", { phase: "generating" });
                   emit("progress", { phase: "generating" });
                   const finalStream = await claraRuntime.streamAuthorizedReadOnlyToolAnswer(
-                    { orgId: organizationId, agentId, kbId },
+                    preparedClaraContext??{ orgId: organizationId, agentId, kbId },
                     completedHistory,
                     request.signal,
                   );
@@ -767,7 +797,7 @@ export async function POST(request: Request) {
                 { role: "system", content: businessAnswerGuidance },
                 ...messages,
               ],
-            });
+            },preparedClaraContext);
             provider = turn.providerName;
             model = turn.model;
             for await (const chunk of turn.stream) {

@@ -1,5 +1,5 @@
-import { PostgresAgentRepository, query, queueWhatsAppOutboundMessage, recordAuditEvent } from "@ai-comms-agent/db";
-import { isAutonomousSendEnabled,turnAllowsWhatsAppAccount,turnRequiresHumanApproval } from "@ai-comms-agent/shared";
+import { PostgresAgentRepository, query, queueWhatsAppOutboundMessage, recordAuditEvent,assertCurrentAgentToolAuthorization } from "@ai-comms-agent/db";
+import { isAutonomousSendEnabled,turnAllowsWhatsAppAccount,turnRequiresHumanApproval,turnAllowsTool } from "@ai-comms-agent/shared";
 import { ToolRegistry } from "@ai-comms-agent/shared";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { executeRegisteredTool } from "./tool-executor";
@@ -102,7 +102,9 @@ export function createWhatsAppHistoryTool(): Tool<WhatsAppHistoryInput, WhatsApp
     execute: async (input, context) => {
       const startedAt = Date.now();
       if (!context.auth_subject.permissions.includes("whatsapp.read")) return toolResult(undefined, startedAt, { code: "permission_denied", message: "The current actor is not authorized to read WhatsApp history.", retryable: false });
-      const accountId = typeof input.account_id === "string" ? input.account_id.trim() : "";
+      const requestedAccountId = typeof input.account_id === "string" ? input.account_id.trim() : "";
+      const accountId=requestedAccountId||context.agent_configuration?.snapshot.channels.whatsappAccountId||'';
+      if(context.agent_configuration&&!turnAllowsWhatsAppAccount(context,accountId))return toolResult(undefined,startedAt,{code:'account_not_available',message:'This phone was not available when the turn started.',retryable:false});
       const contactPhone = typeof input.contact_phone === "string" ? input.contact_phone.trim() : "";
       const limit = Number.isInteger(input.limit) ? Math.min(Math.max(input.limit as number, 1), 50) : 20;
       const result = await query<WhatsAppHistoryRow>(
@@ -303,6 +305,11 @@ export async function createWhatsAppToolRuntime(organizationId: string, agentId:
   registry.register(createWhatsAppSendApprovalTool() as unknown as Tool);
   const authorize: WhatsAppToolRuntime["authorize"] = async (tool, input, context) => {
     if (context.organization_id !== organizationId || context.agent_id !== agentId) return { allowed: false, code: "context_mismatch", message: "The tool context does not match the initialized agent runtime." };
+    if(!turnAllowsTool(context,tool.name))return {allowed:false,code:'tool_not_allowed',message:'This tool was not enabled when the turn started.'};
+    if(context.agent_configuration){
+      try{await assertCurrentAgentToolAuthorization({organizationId,agentId,userId:context.user_id,revocationGeneration:context.agent_configuration.revocationGeneration??-1},tool.required_permission);}
+      catch{return {allowed:false,code:'current_access_revoked',message:'Current access changed or could not be confirmed. Start a new turn after reviewing the agent configuration.'};}
+    }
     const currentPolicy = await agents.policy(organizationId, agentId);
     if (!currentPolicy?.allowedTools.includes(tool.name)) return { allowed: false, code: "tool_not_allowed", message: "This tool is not enabled for the current agent." };
     if (tool.sensitivity !== "safe" && tool.name !== "whatsapp.send") return { allowed: false, code: "approval_required", message: "This sensitive operation has no registered approval workflow." };
@@ -312,6 +319,7 @@ export async function createWhatsAppToolRuntime(organizationId: string, agentId:
       const accountId = typeof inputValue.account_id === "string" ? inputValue.account_id : "";
       const selection=await resolveWhatsAppSendAccount(organizationId,agentId,accountId);
       if(selection.accountId === null)return {allowed:false,code:selection.code,message:selection.message};
+      if(!turnAllowsWhatsAppAccount(context,selection.accountId))return {allowed:false,code:'account_not_available',message:'This phone was not assigned when the turn started.'};
     }
     return { allowed: true };
   };
