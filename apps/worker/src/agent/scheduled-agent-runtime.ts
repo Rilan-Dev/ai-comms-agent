@@ -12,7 +12,11 @@ import type { WhatsAppToolRuntime } from "./whatsapp-tool-runtime";
 // one round retrying it; the extra headroom lets them still produce the final
 // report. MAX_TOOL_CALLS stays the hard safety bound on side effects.
 const MAX_ROUNDS = 6;
-const MAX_TOOL_CALLS = 8;
+// Live digest fires showed the model legitimately spending ~8 read-only calls
+// on retrieval (accounts, search, message.get) before composing the summary
+// and sending; 12 keeps a hard bound while leaving room for retrieve -> send
+// -> report. Writes remain gated per-call by the approval policy.
+const MAX_TOOL_CALLS = 12;
 const MAX_TOOL_RESULT_CHARS = 10_000;
 
 export interface ScheduledAgentToolCall {

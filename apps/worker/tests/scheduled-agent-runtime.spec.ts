@@ -101,11 +101,12 @@ describe("runScheduledAgentTask result reporting", () => {
   });
 
   it("records a factual work recap when the tool-call safety cap stops the run", async () => {
-    // Two tool calls per round: the 9th call trips MAX_TOOL_CALLS = 8.
+    // Three tool calls per round: the 13th call trips MAX_TOOL_CALLS = 12.
     for (let i = 0; i < 6; i += 1) {
       mocks.completeWithTools.mockResolvedValueOnce(completion("", [
         { id: `a${i}`, name: "email.messages.list", arguments: {} },
         { id: `b${i}`, name: "email.messages.list", arguments: {} },
+        { id: `c${i}`, name: "email.messages.list", arguments: {} },
       ]));
     }
 
@@ -117,6 +118,6 @@ describe("runScheduledAgentTask result reporting", () => {
     expect(result.status).toBe("completed");
     expect(result.output).toContain("tool-call safety limit");
     expect(result.output).toContain("Work performed this run:");
-    expect(result.toolCalls).toHaveLength(8);
+    expect(result.toolCalls).toHaveLength(12);
   });
 });
