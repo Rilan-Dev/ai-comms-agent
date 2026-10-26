@@ -215,8 +215,24 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
           idempotencyKey, correlationId],
       );
       const action = inserted.rows[0];
-      if (!action) return fail("idempotency_conflict",
-        "This WhatsApp approval key belongs to a different requester/payload or a review that is no longer pending. No new approval was created.");
+      if (!action) {
+        // PostgreSQL's atomic ON CONFLICT predicate returned zero rows: the key
+        // belongs to a different requester/payload, or the existing action is no
+        // longer 'pending'. Identical agent retries after a blocked/terminal
+        // outcome land here too — give the model an accurate, non-retryable
+        // explanation instead of a generic conflict it will keep retrying.
+        const existing = await query<{ status: string }>(
+          "SELECT status FROM whatsapp_send_actions WHERE organization_id=$1 AND idempotency_key=$2 LIMIT 1",
+          [context.organization_id, idempotencyKey],
+        );
+        const existingStatus = existing.rows[0]?.status;
+        if (existingStatus === "requires_template") {
+          return fail("idempotency_conflict",
+            "An identical WhatsApp send request was already created but could not be queued: no inbound customer message was received in the last 24 hours (Meta's 24-hour customer-service window). Do not retry the same free-form message. State in your report that WhatsApp delivery is blocked, or retry with an approved template payload.");
+        }
+        return fail("idempotency_conflict",
+          `This WhatsApp approval key belongs to a different requester/payload or a review that is no longer pending (status: ${existingStatus ?? "unknown"}). No new approval was created.`);
+      }
       try {
         await recordAuditEvent({ organizationId: context.organization_id, actorUserId: context.user_id, agentId: context.agent_id, correlationId, eventType: "whatsapp.send_approval.requested", targetType: "whatsapp_send_action", targetId: action.id, action: "request_send", decision: "pending", metadata: { accountId, recipientSuffix: input.to.slice(-4), payloadType: input.payload_type, source: "agent_tool" } });
       } catch(error) {

@@ -92,6 +92,8 @@ describe("WhatsApp send approval tool behavior", () => {
     // different actor, agent, payload, or non-pending/expired existing action.
     mocks.query
       .mockResolvedValueOnce({ rows: [{ id: "account-1" }] })
+      .mockResolvedValueOnce({ rows: [] })
+      // Conflict diagnostic lookup: no existing row found for the key.
       .mockResolvedValueOnce({ rows: [] });
     const result = await createWhatsAppSendApprovalTool().execute({
       account_id: "account-1", to: "+919876543210",
@@ -100,7 +102,28 @@ describe("WhatsApp send approval tool behavior", () => {
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("idempotency_conflict");
     expect(result.error?.message).toContain("No new approval was created");
-    expect(mocks.query).toHaveBeenCalledTimes(2);
+    expect(mocks.query).toHaveBeenCalledTimes(3);
+    expect(mocks.query.mock.calls[2][0]).toContain("SELECT status FROM whatsapp_send_actions");
+    expect(mocks.recordAuditEvent).not.toHaveBeenCalled();
+  });
+
+  it("tells the agent not to retry an identical send blocked by the closed 24-hour window", async () => {
+    // First identical request flipped the action to requires_template (window
+    // closed); an identical retry must get an accurate, non-retryable reason.
+    mocks.query
+      .mockResolvedValueOnce({ rows: [{ id: "account-1" }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ status: "requires_template" }] });
+    const result = await createWhatsAppSendApprovalTool().execute({
+      account_id: "account-1", to: "+919876543210",
+      payload_type: "text", body: "Outside window retry",
+    }, context);
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("idempotency_conflict");
+    expect(result.error?.message).toContain("could not be queued");
+    expect(result.error?.message).toContain("24-hour");
+    expect(result.error?.message).toContain("Do not retry the same free-form message");
+    expect(mocks.queueWhatsAppOutboundMessage).not.toHaveBeenCalled();
     expect(mocks.recordAuditEvent).not.toHaveBeenCalled();
   });
 
