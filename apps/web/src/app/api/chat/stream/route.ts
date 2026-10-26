@@ -2,6 +2,7 @@ import {whatsAppPlanningContext,authorizeWhatsAppOnly} from "@/lib/chat/whatsapp
 import {requiresHumanApproval} from "@ai-comms-agent/shared";
 import {isDraftOnlyRequest,draftOnlyToolAllowed,authorizeDraftOnly} from "@/lib/chat/draft-only-scope";
 import {draftPlanningContext} from "@/lib/chat/draft-planning-context";
+import {boundedChatHistory} from "@/lib/chat/bounded-history";
 import {safeChatFailure} from '@/lib/chat/safe-failure';
 import { NextResponse } from "next/server";
 import { appendConversationMessage, getChatConversation, getOrCreateChatConversation, listChatMessages, PostgresAgentRepository, query,loadActiveAgentConfiguration,assertCurrentAgentToolAuthorization,type ActiveAgentConfiguration } from "@ai-comms-agent/db";
@@ -633,7 +634,7 @@ export async function POST(request: Request) {
     // A previously persisted provider response may contain private planning.
     // Preserve it in the user's existing transcript for audit, but never
     // reintroduce it into the model prompt or mailbox search context.
-    const safeHistory = history.filter(message => message.role !== "assistant" || userFacingChatAnswer(message.content) !== null);
+    const safeHistory = boundedChatHistory(history.filter(message => message.role !== "assistant" || userFacingChatAnswer(message.content) !== null));
     // Build combined search context from the current message + recent user
     // AND assistant messages. Including the assistant's previous response is
     // critical: when the user asks "show me the exact emails" as a follow-up,
