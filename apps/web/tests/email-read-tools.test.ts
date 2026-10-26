@@ -26,6 +26,22 @@ const context = {
 };
 
 describe("email read tools", () => {
+  it('does not read an account granted after the turn began',async()=>{
+    queryMock.mockReset();queryMock.mockResolvedValue({rows:[{role:'primary'}]});
+    const accounts={getForAgent:vi.fn().mockResolvedValue(account)};
+    const tools=createEmailReadTools({accounts:accounts as unknown as PostgresEmailAccountRepository});
+    const frozen={...context,agent_configuration:{organizationId:'org-1',agentId:'agent-1',revisionId:'revision',snapshot:{channels:{email:[],whatsappAccountId:null}} as never}};
+    const result=await tools.find(tool=>tool.name==='email.capabilities.get')!.execute({account_id:'10000000-0000-4000-8000-000000000001'},frozen);
+    expect(result.error?.code).toBe('account_not_available');expect(accounts.getForAgent).not.toHaveBeenCalled();
+  });
+  it('keeps discovery within the frozen readable accounts even when live bindings broaden',async()=>{
+    const accounts={getForAgent:vi.fn().mockImplementation(async(_org,_agent,id)=>({id,provider:'gmail'}))};
+    const agents={emailBindings:vi.fn().mockResolvedValue([{emailAccountId:'old',role:'primary'},{emailAccountId:'new',role:'primary'},{emailAccountId:'was-send-only',role:'primary'}])};
+    const tools=createEmailReadTools({accounts:accounts as unknown as PostgresEmailAccountRepository,agents:agents as unknown as PostgresAgentRepository});
+    const frozen={...context,agent_configuration:{organizationId:'org-1',agentId:'agent-1',revisionId:'revision',snapshot:{channels:{email:[{accountId:'old',role:'read_only'},{accountId:'was-send-only',role:'send_only'}],whatsappAccountId:null}} as never}};
+    const result=await tools.find(tool=>tool.name==='email.accounts.list')!.execute({},frozen);
+    expect(result.ok).toBe(true);expect(result.output).toEqual([expect.objectContaining({id:'old'})]);expect(accounts.getForAgent).toHaveBeenCalledTimes(1);
+  });
   afterEach(() => vi.clearAllMocks());
 
   it("denies reads before touching account data when permission is missing", async () => {

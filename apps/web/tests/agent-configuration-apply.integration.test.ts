@@ -13,7 +13,7 @@ const org='10000000-0000-4000-8000-000000000001',other='10000000-0000-4000-8000-
 const scope={organizationId:org,agentId:agent,userId:user};
 beforeAll(async()=>{await db.connect();const columns=Object.values(AGENT_AI_CONFIGURATION_COLUMNS).map(column=>`${column} ${['embedding_dimension','temperature_override','max_tokens_override'].includes(column)?'numeric':'text'}`).join(',');await db.query(`
  DROP SCHEMA IF EXISTS aca CASCADE;CREATE SCHEMA aca;SET search_path=aca,public;
- CREATE TABLE organizations(id uuid PRIMARY KEY);CREATE TABLE users(id uuid PRIMARY KEY,status text NOT NULL DEFAULT 'active');CREATE TABLE organization_memberships(organization_id uuid,user_id uuid,role text,status text,PRIMARY KEY(organization_id,user_id));
+ CREATE TABLE organizations(id uuid PRIMARY KEY);CREATE TABLE users(id uuid PRIMARY KEY,status text NOT NULL DEFAULT 'active',deleted_at timestamptz);CREATE TABLE organization_memberships(organization_id uuid,user_id uuid,role text,status text,PRIMARY KEY(organization_id,user_id));
  CREATE TABLE agents(id uuid PRIMARY KEY,organization_id uuid REFERENCES organizations(id),name text,slug text,description text,status text,current_version_id uuid,current_deployment_id uuid,created_by uuid,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now(),voice_provider text,voice_model text,voice_id text,${columns});
  CREATE TABLE agent_versions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),agent_id uuid,version_number int,config jsonb,created_by uuid,created_at timestamptz DEFAULT now(),voice_provider text,voice_model text,voice_id text);
  CREATE TABLE agent_deployments(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),agent_id uuid,version_id uuid,environment text,deployed_by uuid,deployed_at timestamptz DEFAULT now(),retired_at timestamptz);
@@ -39,6 +39,10 @@ async function reviewedEdit(name='Edited',creator=scope){
 }
 const apply=(task:Awaited<ReturnType<typeof reviewedEdit>>,actor=scope)=>applyAgentConfigurationRevision(actor,task.draft.id,task.active.id,{reviewId:task.review.id,environment:'production'});
 describe('governed atomic apply and independently recorded immediate revocation',()=>{
+ it('rejects a soft-deleted original editor even if their old membership remains active',async()=>{
+  const task=await reviewedEdit();await db.query('UPDATE aca.users SET deleted_at=now() WHERE id=$1',[user]);
+  await expect(applyAgentConfigurationRevision(scope,task.draft.id,task.active.id,{reviewId:task.review.id,environment:'production'})).rejects.toThrow();
+ });
  it('does not rewrite owner-only AI settings while an administrator revokes a tool',async()=>{const active=(await getActiveAgentConfiguration(scope))!;await db.query(`CREATE OR REPLACE FUNCTION aca.reject_unrelated_ai_write() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'unrelated AI write';END$$;CREATE TRIGGER reject_unrelated_ai_write BEFORE INSERT OR UPDATE ON aca.agent_ai_settings FOR EACH ROW EXECUTE FUNCTION aca.reject_unrelated_ai_write()`);try{await expect(revokeAgentAccessNow({...scope,userId:admin},{removeTools:['email.search']},active.id)).resolves.toMatchObject({changed:true});}finally{await db.query('DROP TRIGGER reject_unrelated_ai_write ON aca.agent_ai_settings;DROP FUNCTION aca.reject_unrelated_ai_write()');}});
  it('applies reviewed settings atomically with an attributed receipt and no business action replay',async()=>{
   const task=await reviewedEdit();const result=await apply(task);

@@ -97,6 +97,8 @@ export interface Tool<I = unknown, O = unknown> {
 }
 
 export interface ToolContext {
+  /** Frozen by the trusted host once per turn; never accepted from tool args. */
+  agent_configuration?:{organizationId:string;agentId:string;revisionId:string;snapshot:import('./configuration-revision').AgentConfigurationSnapshotV1};
   /** Host-derived current instruction; true always overrides autonomous policy. */
   require_human_approval?:boolean;
   /** Derived by the host from the current user message, never model arguments. */

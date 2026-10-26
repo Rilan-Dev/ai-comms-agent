@@ -92,6 +92,16 @@ export interface ClaraRuntimeContext {
   voiceOverride?: { provider?: string | null; model?: string | null; voiceId?: string | null };
 }
 
+/** Optional host-resolved settings for a single turn. Null retains current
+ * organization inheritance; this carries no policy or permission grants. */
+export type ClaraAgentAiOverrides={
+ chatProvider?:string|null;chatModel?:string|null;
+ voiceChatProvider?:string|null;voiceChatTtsModel?:string|null;voiceChatSttModel?:string|null;voiceChatVoiceId?:string|null;
+ realtimeVoiceProviderOverride?:string|null;realtimeSttModel?:string|null;realtimeTtsModel?:string|null;realtimeVoiceIdOverride?:string|null;
+ embeddingProvider?:string|null;embeddingModel?:string|null;embeddingDimension?:number|null;
+ systemPromptOverride?:string|null;temperatureOverride?:number|null;maxTokensOverride?:number|null;
+};
+
 export interface ClaraAgentTurnRequest extends ClaraRuntimeContext {
   messages: ChatMessage[];
   surface?: "chat" | "realtime" | "embed";

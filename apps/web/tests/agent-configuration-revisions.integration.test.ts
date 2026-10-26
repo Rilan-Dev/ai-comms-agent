@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {getActiveAgentConfiguration,createAgentConfigurationDraft,getAgentConfigurationHistory,reviewAgentConfigurationRevision,restoreAgentConfigurationRevision} from '../../../packages/db/src/agent/configuration-revisions';
 import {AGENT_AI_CONFIGURATION_COLUMNS} from '../../../packages/shared/src/agent/configuration-revision';
 import {closePostgresPool} from '../../../packages/db/src/client';
-import {saveAgentConfigurationPatch} from '../../../packages/db/src/agent/configuration-drafts';
+import {saveAgentConfigurationPatch,getAgentConfigurationEditor,discardAgentConfigurationDraft} from '../../../packages/db/src/agent/configuration-drafts';
 const url=process.env.ACA_TEST_DATABASE_URL;const parsed=url?new URL(url):null;
 if(!parsed||!['127.0.0.1','localhost'].includes(parsed.hostname)||parsed.pathname!=='/aca_repair_test')throw Error('Dedicated loopback aca_repair_test database required');
 process.env.DATABASE_URL=url;process.env.DATABASE_SSL='false';
@@ -13,7 +13,7 @@ const org='10000000-0000-4000-8000-000000000001',other='10000000-0000-4000-8000-
 const scope={organizationId:org,agentId:agent,userId:user};
 beforeAll(async()=>{await db.connect();const columns=Object.values(AGENT_AI_CONFIGURATION_COLUMNS).map(column=>`${column} ${['embedding_dimension','temperature_override','max_tokens_override'].includes(column)?'numeric':'text'}`).join(',');await db.query(`
  DROP SCHEMA IF EXISTS aca CASCADE;CREATE SCHEMA aca;SET search_path=aca,public;
- CREATE TABLE organizations(id uuid PRIMARY KEY);CREATE TABLE users(id uuid PRIMARY KEY,status text NOT NULL DEFAULT 'active');CREATE TABLE organization_memberships(organization_id uuid,user_id uuid,role text,status text,PRIMARY KEY(organization_id,user_id));
+ CREATE TABLE organizations(id uuid PRIMARY KEY);CREATE TABLE users(id uuid PRIMARY KEY,status text NOT NULL DEFAULT 'active',deleted_at timestamptz);CREATE TABLE organization_memberships(organization_id uuid,user_id uuid,role text,status text,PRIMARY KEY(organization_id,user_id));
  CREATE TABLE agents(id uuid PRIMARY KEY,organization_id uuid REFERENCES organizations(id),name text,slug text,description text,status text,current_version_id uuid,current_deployment_id uuid,created_by uuid,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now(),voice_provider text,voice_model text,voice_id text,${columns});
  CREATE TABLE agent_versions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),agent_id uuid,version_number int,config jsonb,created_by uuid,created_at timestamptz DEFAULT now(),voice_provider text,voice_model text,voice_id text);
  CREATE TABLE agent_policies(agent_id uuid PRIMARY KEY,security_policy jsonb,allowed_tools text[],allowed_senders text[],blocked_senders text[],rate_limits jsonb,updated_at timestamptz DEFAULT now());
@@ -29,6 +29,22 @@ beforeAll(async()=>{await db.connect();const columns=Object.values(AGENT_AI_CONF
 beforeEach(async()=>{await db.query('TRUNCATE aca.organization_memberships,aca.agent_configuration_draft_heads,aca.organizations,aca.users,aca.agents,aca.agent_versions,aca.agent_policies,aca.email_accounts,aca.agent_email_accounts,aca.whatsapp_accounts,aca.agent_whatsapp_accounts,aca.agent_ai_settings,aca.organization_ai_runtime_settings,aca.ai_provider_configs,aca.agent_configuration_revisions,aca.agent_configuration_heads,aca.agent_configuration_reviews,aca.agent_configuration_applications CASCADE');await db.query('INSERT INTO aca.organizations VALUES($1),($2)',[org,other]);await db.query('INSERT INTO aca.users(id) VALUES($1)',[user]);await db.query(`INSERT INTO aca.organization_memberships VALUES($1,$2,'owner','active')`,[org,user]);await db.query(`INSERT INTO aca.agents(id,organization_id,name,slug,status,current_version_id,voice_id) VALUES($1,$2,'Assistant','assistant','active',$3,'legacy-voice')`,[agent,org,legacy]);await db.query(`INSERT INTO aca.agent_versions(id,agent_id,version_number,config,voice_model) VALUES($1,$2,1,'{"business":"preserved"}','legacy-model')`,[legacy,agent]);await db.query(`INSERT INTO aca.agent_policies VALUES($1,'{"autonomous_send":true,"custom":{"retained":42},"api_key":"must-never-appear-in-history"}',ARRAY['email.search','custom.tool'],ARRAY['literal, entry'],ARRAY[]::text[],'{"customLimit":7}',now())`,[agent]);await db.query(`INSERT INTO aca.email_accounts VALUES($1,$2,'connected','{"read":true}',NULL)`,[mail,org]);await db.query(`INSERT INTO aca.agent_email_accounts VALUES($1,$2,'primary')`,[agent,mail]);await db.query(`INSERT INTO aca.agent_ai_settings(agent_id,organization_id,chat_model,model_overrides,feature_flags) VALUES($1,$2,'saved-custom-model','{"legacy":"retained"}','{"legacyFlag":true}')`,[agent,org]);await db.query(`INSERT INTO aca.organization_ai_runtime_settings(organization_id,default_provider,temperature) VALUES($1,'openai',0.7)`,[org]);});
 afterAll(async()=>{await closePostgresPool();await db.query('DROP SCHEMA IF EXISTS aca CASCADE');await db.end();});
 describe('immutable complete configuration candidates on the real database',()=>{
+ it('recovers the current editor draft and discards only its pointer while retaining immutable history',async()=>{
+  const initial=await getAgentConfigurationEditor(scope);expect(initial.draft).toBeNull();
+  const saved=await saveAgentConfigurationPatch(scope,{identity:{name:'Recover me'}},{activeRevisionId:initial.active.id,draftRevisionId:null});
+  const resumed=await getAgentConfigurationEditor(scope);expect(resumed.draft?.id).toBe(saved.id);
+  expect(resumed.dependencyFingerprint).toMatch(/^[0-9a-f]{64}$/);
+  await expect(discardAgentConfigurationDraft(scope,{activeRevisionId:initial.active.id,draftRevisionId:null})).rejects.toThrow('changed');
+  await discardAgentConfigurationDraft(scope,{activeRevisionId:initial.active.id,draftRevisionId:saved.id});
+  expect((await getAgentConfigurationEditor(scope)).draft).toBeNull();
+  expect((await getAgentConfigurationHistory(scope)).some(row=>row.id===saved.id)).toBe(true);
+ });
+ it('does not expose editor context or another tenant candidate to members',async()=>{
+  const initial=await getAgentConfigurationEditor(scope);
+  await expect(getAgentConfigurationEditor({...scope,organizationId:other},initial.active.id)).rejects.toThrow();
+  await db.query(`UPDATE aca.organization_memberships SET role='member' WHERE organization_id=$1 AND user_id=$2`,[org,user]);
+  await expect(getAgentConfigurationEditor(scope)).rejects.toThrow();
+ });
  it('combines identity and partial AI edits in one recoverable working draft without clearing unrelated values',async()=>{
   const active=(await getActiveAgentConfiguration(scope))!;
   const first=await saveAgentConfigurationPatch(scope,{identity:{name:'Business helper'}},{activeRevisionId:active.id,draftRevisionId:null});

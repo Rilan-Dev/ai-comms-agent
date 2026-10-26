@@ -12,7 +12,7 @@ import {
   updateLocalDraftForOrganization,
 } from "@ai-comms-agent/db";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
-import {emailReplyMetadata, isAutonomousSendEnabled} from "@ai-comms-agent/shared";
+import {emailReplyMetadata, isAutonomousSendEnabled,turnAllowsEmailAccount,turnRequiresHumanApproval} from "@ai-comms-agent/shared";
 import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
 import { canUseEmailAccountBinding, hasEmailToolCapabilities } from "./email-tool-policy";
 import { preserveEmailBody } from "./email-body";
@@ -91,7 +91,7 @@ async function maybeAutoApproveEmailAction(
   context: ToolContext,
   action: { id: string; actionType: string; correlationId: string | null },
 ): Promise<boolean> {
-  if(context.require_human_approval)return false;
+  if(turnRequiresHumanApproval(context))return false;
   if (!context.agent_id || !context.user_id) return false;
   const policy = await new PostgresAgentRepository().policy(context.organization_id, context.agent_id);
   if (!isAutonomousSendEnabled(policy?.securityPolicy)) return false;
@@ -137,6 +137,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     const resolvedAccountId = await resolveAccountIdentifier(context.organization_id, context.agent_id, accountId);
     if (!resolvedAccountId) throw new EmailWriteFailure("account_not_available",
       "No mailbox matching that identifier is bound to this agent. Available mailboxes are returned by email.accounts.list.");
+    if(!turnAllowsEmailAccount(context,resolvedAccountId,allowSendOnly?'send':'draft'))throw new EmailWriteFailure('account_not_available','This mailbox did not allow this operation when the turn started. Start a new turn after reviewing the updated configuration.');
     const binding = await query<{ role: string }>(
       `SELECT b.role FROM agent_email_accounts b
        JOIN agents g ON g.id=b.agent_id

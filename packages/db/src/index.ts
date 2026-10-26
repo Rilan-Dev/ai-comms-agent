@@ -109,6 +109,10 @@ export {saveMailTaskCheckpoint,loadMailTaskCheckpoint,reconcileMailTaskCheckpoin
 export type {CheckpointScope,MailTaskCheckpoint,MailTaskCheckpointInput} from './conversation/task-checkpoint';
 export {getActiveAgentConfiguration,createAgentConfigurationDraft,getAgentConfigurationHistory,reviewAgentConfigurationRevision,restoreAgentConfigurationRevision,AgentConfigurationConflictError} from './agent/configuration-revisions';
 export type {AgentConfigurationScope,AgentConfigurationRevision,AgentConfigurationReview,ConfigurationHistoryAccess,ConfigurationHistoryView} from './agent/configuration-revisions';
+export {getAgentConfigurationEditor,saveAgentConfigurationPatch,discardAgentConfigurationDraft} from './agent/configuration-drafts';
+export type {AgentConfigurationEditor,AgentConfigurationPatch,AgentConfigurationDraftContext} from './agent/configuration-drafts';
+export {applyAgentConfigurationRevision,revokeAgentAccessNow,loadActiveAgentConfiguration} from './agent/configuration-apply';
+export type {AppliedAgentConfiguration,ActiveAgentConfiguration,AgentAccessRevocation} from './agent/configuration-apply';
 
 export {
   createVoiceSession,

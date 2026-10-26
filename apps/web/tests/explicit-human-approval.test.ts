@@ -14,6 +14,25 @@ vi.mock('@ai-comms-agent/db',()=>({
 const context:ToolContext={agent_id:'agent',organization_id:'org',user_id:'user',turn_id:'turn',correlation_id:'correlation',conversation_id:'conversation',channel:'chat',auth_subject:{user_id:'user',role:'owner',permissions:['email.write','whatsapp.send']}};
 beforeEach(()=>vi.clearAllMocks());
 describe('explicit human-review consent takes precedence over autonomous policy',()=>{
+ it('does not gain automatic approval if the turn started in human-review mode',async()=>{
+  const frozen={...context,agent_configuration:{organizationId:'org',agentId:'agent',revisionId:'revision',snapshot:{policy:{securityPolicy:{autonomous_send:false}},channels:{email:[{accountId:'11111111-1111-4111-8111-111111111111',role:'primary'}],whatsappAccountId:'11111111-1111-4111-8111-111111111111'}} as never}};
+  const tools:Tool[]=[];registerEmailWriteTools(t=>tools.push(t));
+  const email=await tools.find(t=>t.name==='email.send.request')!.execute({account_id:'11111111-1111-4111-8111-111111111111',draft_id:'draft'},frozen);
+  expect(email.output).toMatchObject({status:'pending_approval'});expect(mocks.auto).not.toHaveBeenCalled();
+  const whatsapp=await createWhatsAppSendApprovalTool().execute({to:'+15555550123',payload_type:'text',body:'Test'},frozen);
+  expect(whatsapp.output).toMatchObject({approval_required:true});expect(mocks.queue).not.toHaveBeenCalled();
+ });
+ it('does not use a mailbox that was read-only at the start of the turn',async()=>{
+  const tools:Tool[]=[];registerEmailWriteTools(t=>tools.push(t));
+  const frozen={...context,agent_configuration:{organizationId:'org',agentId:'agent',revisionId:'revision',snapshot:{channels:{email:[{accountId:'11111111-1111-4111-8111-111111111111',role:'read_only'}]}} as never}};
+  const result=await tools.find(t=>t.name==='email.send.request')!.execute({account_id:'11111111-1111-4111-8111-111111111111',draft_id:'draft'},frozen);
+  expect(result.error?.code).toBe('account_not_available');expect(mocks.auto).not.toHaveBeenCalled();
+ });
+ it('does not substitute a newly assigned WhatsApp sender when the model omitted the account',async()=>{
+  const frozen={...context,agent_configuration:{organizationId:'org',agentId:'agent',revisionId:'revision',snapshot:{channels:{whatsappAccountId:'22222222-2222-4222-8222-222222222222'}} as never}};
+  const result=await createWhatsAppSendApprovalTool().execute({to:'+15555550123',payload_type:'text',body:'Test'},frozen);
+  expect(result.ok).toBe(false);expect(result.error?.code).toBe('account_not_available');expect(mocks.query.mock.calls.some(([sql])=>sql.includes('INSERT INTO whatsapp_send_actions'))).toBe(false);expect(mocks.queue).not.toHaveBeenCalled();
+ });
  it('keeps the exact mixed-task noun-form request pending under the actual host-derived flag',async()=>{
   const prompt='Create a WhatsApp approval request to +919629534701 from Meta Test Phone. Summarize my last 3 unread emails';
   const result=await createWhatsAppSendApprovalTool().execute({to:'+919629534701',payload_type:'text',body:'Three-message summary fixture'},{...context,require_human_approval:requiresHumanApproval(prompt)});

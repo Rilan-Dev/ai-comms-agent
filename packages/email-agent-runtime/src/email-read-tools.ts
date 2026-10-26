@@ -8,7 +8,7 @@ import {
   query,
 } from "@ai-comms-agent/db";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
-import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
+import { EMAIL_TOOL_CATALOG,turnAllowsEmailAccount } from "@ai-comms-agent/shared";
 import { canUseEmailAccountBinding } from "./email-tool-policy";
 import { resolveAccountIdentifier } from "./account-identifier";
 import { createHash } from "node:crypto";
@@ -101,6 +101,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
     // uuid syntax error surfaced as authorization_unavailable.
     const resolvedAccountId = await resolveAccountIdentifier(context.organization_id, context.agent_id, accountId);
     if (!resolvedAccountId) throw new EmailToolFailure("account_not_available", "No mailbox matching that identifier is bound to this agent. Available mailboxes are returned by email.accounts.list.");
+    if(!turnAllowsEmailAccount(context,resolvedAccountId,'read'))throw new EmailToolFailure('account_not_available','This mailbox was not available for reading when the turn started. Start a new turn after reviewing the updated configuration.');
     const binding = await query<{ role: string }>(
       `SELECT b.role FROM agent_email_accounts b
        JOIN agents g ON g.id = b.agent_id
@@ -156,7 +157,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
     const bindings = await agents.emailBindings(context.organization_id, context.agent_id);
     const visible = [];
     for (const binding of bindings) {
-      if (!canUseEmailAccountBinding(binding.role, "email.read")) continue;
+      if (!canUseEmailAccountBinding(binding.role, "email.read")||!turnAllowsEmailAccount(context,binding.emailAccountId,'read')) continue;
       const account = await accounts.getForAgent(context.organization_id, context.agent_id, binding.emailAccountId);
       if (!account) continue;
       visible.push({

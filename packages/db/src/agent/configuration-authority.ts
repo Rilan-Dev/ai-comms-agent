@@ -11,7 +11,7 @@ export async function lockConfigurationActors(client:PoolClient,scope:AgentConfi
  if(userIds.some(id=>!id))throw new ForbiddenError('missing_permission','The original editor is unavailable. Save the visible changes as your own new draft.');
  const result=await client.query<{id:string;role:MembershipRole;user_status:string;membership_status:string}>(`SELECT u.id,u.status AS user_status,m.role,m.status AS membership_status FROM users u
   JOIN organization_memberships m ON m.user_id=u.id AND m.organization_id=$1
-  WHERE u.id=ANY($2::uuid[]) ORDER BY u.id FOR SHARE OF u,m`,[scope.organizationId,[...new Set(userIds)].sort()]);
+  WHERE u.deleted_at IS NULL AND u.id=ANY($2::uuid[]) ORDER BY u.id FOR SHARE OF u,m`,[scope.organizationId,[...new Set(userIds)].sort()]);
  const actors=new Map<string,ConfigurationActor>();
  for(const row of result.rows){if(row.user_status==='active'&&row.membership_status==='active'&&Object.hasOwn(SYSTEM_ROLE_PERMISSIONS,row.role))actors.set(row.id,{id:row.id,role:row.role,permissions:new Set(SYSTEM_ROLE_PERMISSIONS[row.role])});}
  if(userIds.some(id=>!actors.has(id!)))throw new ForbiddenError('missing_permission','Current access for the editor or applying user is no longer available.');

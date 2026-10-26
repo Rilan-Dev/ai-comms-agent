@@ -23,7 +23,7 @@ export type ConfigurationDiff=Array<{path:string[];before:unknown;after:unknown}
 type JsonObject=Record<string,unknown>;
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const numeric=new Set(['embeddingDimension','temperatureOverride','maxTokensOverride']);
-const secretKey=/^(?:password|passphrase|secret|client[_-]?secret|api[_-]?key|access[_-]?token|refresh[_-]?token|token|authorization|credentials?)$/i;
+const secretKey=/(?:^|[_-])(?:password|passphrase|secret|client[_-]?secret|api[_-]?key|access[_-]?token|refresh[_-]?token|token|authorization|credentials?)$/i;
 const reusableCredential=/^(?:EAA[A-Za-z0-9]{40,}|sk-[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/;
 function object(value:unknown):value is JsonObject{return !!value&&typeof value==='object'&&!Array.isArray(value)&&(Object.getPrototypeOf(value)===Object.prototype||Object.getPrototypeOf(value)===null);}
 function keys(value:unknown,expected:readonly string[],label:string):asserts value is JsonObject{
@@ -32,7 +32,7 @@ function keys(value:unknown,expected:readonly string[],label:string):asserts val
 function nullableString(value:unknown):boolean{return value===null||typeof value==='string';}
 function protectedMarker(value:unknown):value is {kind:'protectedCurrentValue';path:string[]}{return object(value)&&value.kind==='protectedCurrentValue'&&Array.isArray(value.path)&&value.path.every(part=>typeof part==='string')&&Object.keys(value).length===2;}
 function protectedAt(value:unknown,path:string[]):boolean{return protectedMarker(value)&&JSON.stringify(value.path)===JSON.stringify(path);}
-function secret(value:unknown,key:string):boolean{return value!==null&&value!==''&&typeof value!=='boolean'&&(secretKey.test(key)||(typeof value==='string'&&reusableCredential.test(value)));}
+function secret(value:unknown,key:string):boolean{return value!==null&&value!==''&&typeof value!=='boolean'&&(secretKey.test(key.replace(/([a-z0-9])([A-Z])/g,'$1_$2'))||(typeof value==='string'&&reusableCredential.test(value)));}
 
 /** Generic JSON editors do not become credential editors. Capture uses opaque
  * current-resource references; candidate edits cannot supply reusable secrets.
@@ -88,6 +88,27 @@ export function validateAgentConfigurationSnapshot(input:unknown):AgentConfigura
 }
 
 export function captureAgentConfigurationSnapshot(input:unknown):AgentConfigurationSnapshotV1{return validateAgentConfigurationSnapshot(safeJson(input,[],true));}
+
+/** Compatibility for existing JSON editors: an unchanged current credential
+ * may round-trip into an opaque reference, but a generic draft cannot replace
+ * or introduce credentials. No raw value is returned or retained in history. */
+export function captureAgentConfigurationEdit(input:unknown,current:AgentConfigurationSnapshotV1):AgentConfigurationSnapshotV1{
+ const captured=captureAgentConfigurationSnapshot(input);
+ function at(value:unknown,path:string[]):unknown{
+  for(const part of path){if(!value||typeof value!=='object'||!Object.hasOwn(value,part))return undefined;value=(value as JsonObject)[part];}return value;
+ }
+ function check(value:unknown,path:string[]):void{
+  if(protectedMarker(value)){
+   const submitted=at(input,path);
+   if(!protectedMarker(submitted)&&stable(submitted)!==stable(at(current,path)))throw Error('Use the secure editor for protected values');
+   return;
+  }
+  if(Array.isArray(value))value.forEach((entry,index)=>check(entry,[...path,String(index)]));
+  else if(object(value))for(const [key,entry] of Object.entries(value))check(entry,[...path,key]);
+ }
+ check(captured,[]);
+ return captureAgentConfigurationSnapshot(restoreProtectedConfigurationValues(captured,current));
+}
 
 /** Apply hydrates only from CURRENT protected resources. Missing current
  * values stay missing; restoring an old revision never resurrects a secret. */

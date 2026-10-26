@@ -26,7 +26,8 @@ const ORG=randomUUID(),USER=randomUUID(),APPROVER=randomUUID(),AGENT=randomUUID(
 const context:ToolContext={organization_id:ORG,agent_id:AGENT,user_id:USER,conversation_id:randomUUID(),turn_id:randomUUID(),correlation_id:randomUUID(),channel:'chat',auth_subject:{user_id:USER,role:'owner',permissions:['whatsapp.send']}};
 beforeAll(async()=>{
  await db.connect();await db.query(`DROP SCHEMA IF EXISTS aca CASCADE;CREATE SCHEMA aca;SET search_path=aca,public;
- CREATE TABLE agents(id uuid,organization_id uuid);
+ CREATE TABLE agents(id uuid,organization_id uuid,status text NOT NULL DEFAULT 'active');
+ CREATE TABLE users(id uuid PRIMARY KEY,status text NOT NULL DEFAULT 'active',deleted_at timestamptz);
  CREATE TABLE agent_policies(agent_id uuid,allowed_tools text[]);
  CREATE TABLE organization_memberships(id uuid DEFAULT gen_random_uuid(),organization_id uuid,user_id uuid,role text,status text,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());
  CREATE TABLE whatsapp_accounts(id uuid PRIMARY KEY,organization_id uuid,phone_number_id text,business_account_id text,display_name text,phone_number text,status text,deleted_at timestamptz);
@@ -37,7 +38,8 @@ beforeAll(async()=>{
  CREATE TABLE whatsapp_contacts(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),organization_id uuid,whatsapp_account_id uuid,phone_number text,display_name text,provider_contact_id text,last_interaction_at timestamptz,UNIQUE(whatsapp_account_id,phone_number));
  CREATE TABLE whatsapp_messages(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),organization_id uuid,whatsapp_account_id uuid,contact_id uuid,direction text,message_type text,body text,media jsonb,status text,idempotency_key text,correlation_id uuid,provider_timestamp timestamptz,created_at timestamptz DEFAULT now());
  CREATE UNIQUE INDEX whatsapp_messages_idempotency ON whatsapp_messages(organization_id,idempotency_key) WHERE idempotency_key IS NOT NULL;`);
- await db.query('INSERT INTO aca.agents VALUES($1,$2)',[AGENT,ORG]);
+ await db.query('INSERT INTO aca.agents(id,organization_id) VALUES($1,$2)',[AGENT,ORG]);
+ await db.query('INSERT INTO aca.users(id) VALUES($1),($2)',[USER,APPROVER]);
  await db.query("INSERT INTO aca.organization_memberships(organization_id,user_id,role,status) VALUES($1,$2,'owner','active'),($1,$3,'owner','active')",[ORG,USER,APPROVER]);
  await db.query("INSERT INTO aca.whatsapp_accounts VALUES($1,$2,'phone','business','QA Phone','+15555555555','connected',NULL)",[ACCOUNT,ORG]);
 });

@@ -1,7 +1,7 @@
 import {AGENT_AI_CONFIGURATION_FIELDS,type AgentConfigurationSnapshotV1} from '@ai-comms-agent/shared';
 import {withTransaction} from '../client';
 import {lockConfigurationActors,assertConfigurationChangeAuthority} from './configuration-authority';
-import {AgentConfigurationConflictError,activeAgentConfigurationInTransaction,draftAgentConfigurationInTransaction,lockAgentConfiguration,mapAgentConfigurationRevision,type AgentConfigurationRevision,type AgentConfigurationScope} from './configuration-revisions';
+import {AgentConfigurationConflictError,activeAgentConfigurationInTransaction,agentConfigurationDependencyFingerprint,draftAgentConfigurationInTransaction,lockAgentConfiguration,mapAgentConfigurationRevision,readAgentConfigurationHead,type AgentConfigurationRevision,type AgentConfigurationScope} from './configuration-revisions';
 
 export type AgentConfigurationPatch={
  identity?:Partial<AgentConfigurationSnapshotV1['identity']>;
@@ -12,6 +12,7 @@ export type AgentConfigurationPatch={
  legacyVersion?:AgentConfigurationSnapshotV1['legacy']['version'];
 };
 export type AgentConfigurationDraftContext={activeRevisionId:string;draftRevisionId:string|null};
+export type AgentConfigurationEditor={active:AgentConfigurationRevision;draft:AgentConfigurationRevision|null;candidate:AgentConfigurationRevision;dependencyFingerprint:string;revocationGeneration:number};
 const fields=['identity','lifecycle','policy','channels','ai','legacyVersion'];
 function isObject(value:unknown):value is Record<string,unknown>{return !!value&&typeof value==='object'&&!Array.isArray(value)&&(Object.getPrototypeOf(value)===Object.prototype||Object.getPrototypeOf(value)===null);}
 function checkPatch(input:unknown):asserts input is AgentConfigurationPatch{
@@ -21,6 +22,41 @@ function checkPatch(input:unknown):asserts input is AgentConfigurationPatch{
   const value=input[key],allowed:readonly string[]=key==='identity'?['name','slug','description']:AGENT_AI_CONFIGURATION_FIELDS;
   if(!isObject(value)||!Object.keys(value).length||Object.keys(value).some(field=>!allowed.includes(field)))throw Error('Invalid partial configuration settings');
  }
+}
+
+/** Complete internal state. The web adapter must filter sections before
+ * serialization using the requesting editor's existing field authority. */
+export async function getAgentConfigurationEditor(scope:AgentConfigurationScope,candidateId?:string):Promise<AgentConfigurationEditor>{
+ return withTransaction(async client=>{
+  const agent=await lockAgentConfiguration(client,scope);if(!agent)throw Error('Agent not found');
+  const actors=await lockConfigurationActors(client,scope,[scope.userId]);assertConfigurationChangeAuthority(actors.get(scope.userId!)!,[]);
+  const active=await activeAgentConfigurationInTransaction(client,scope,agent);
+  const draftResult=await client.query(`SELECT r.* FROM agent_configuration_draft_heads h JOIN agent_configuration_revisions r
+   ON r.organization_id=h.organization_id AND r.agent_id=h.agent_id AND r.id=h.draft_revision_id
+   WHERE h.organization_id=$1 AND h.agent_id=$2 AND h.created_by=$3`,[scope.organizationId,scope.agentId,scope.userId]);
+  const pointed=draftResult.rows[0]?mapAgentConfigurationRevision(draftResult.rows[0]):null;
+  const draft=pointed?.id===active.id?null:pointed;
+  let candidate=draft??active;
+  if(candidateId){
+   const result=await client.query('SELECT * FROM agent_configuration_revisions WHERE organization_id=$1 AND agent_id=$2 AND id=$3',[scope.organizationId,scope.agentId,candidateId]);
+   if(!result.rows[0])throw Error('Revision not found');candidate=mapAgentConfigurationRevision(result.rows[0]);
+  }
+  const head=await readAgentConfigurationHead(client,scope);
+  return {active,draft,candidate,dependencyFingerprint:await agentConfigurationDependencyFingerprint(client,scope,candidate.snapshot,head.revocationGeneration),revocationGeneration:head.revocationGeneration};
+ });
+}
+
+export async function discardAgentConfigurationDraft(scope:AgentConfigurationScope,context:AgentConfigurationDraftContext):Promise<void>{
+ await withTransaction(async client=>{
+  const agent=await lockAgentConfiguration(client,scope);if(!agent)throw Error('Agent not found');
+  const actors=await lockConfigurationActors(client,scope,[scope.userId]);assertConfigurationChangeAuthority(actors.get(scope.userId!)!,[]);
+  const active=await activeAgentConfigurationInTransaction(client,scope,agent);
+  if(active.id!==context.activeRevisionId)throw new AgentConfigurationConflictError();
+  const current=await client.query<{draft_revision_id:string}>('SELECT draft_revision_id FROM agent_configuration_draft_heads WHERE organization_id=$1 AND agent_id=$2 AND created_by=$3',[scope.organizationId,scope.agentId,scope.userId]);
+  const pointed=current.rows[0]?.draft_revision_id??null;
+  if((pointed===active.id?null:pointed)!==context.draftRevisionId)throw new AgentConfigurationConflictError();
+  await client.query('DELETE FROM agent_configuration_draft_heads WHERE organization_id=$1 AND agent_id=$2 AND created_by=$3',[scope.organizationId,scope.agentId,scope.userId]);
+ });
 }
 
 /** One immutable descendant for each save; the per-editor pointer only selects

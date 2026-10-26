@@ -56,8 +56,8 @@ const migration=resolve(__dirname,'../../../supabase/migrations/0055_email_appro
 // manual/AI inserts cannot satisfy. The test exercises real PostgreSQL locks,
 // enums and persistence, not a mock of the failing boundary.
 const fixture=`CREATE SCHEMA aca; SET search_path=aca,public;
-CREATE TABLE organizations(id uuid PRIMARY KEY); CREATE TABLE users(id uuid PRIMARY KEY);
-CREATE TABLE agents(id uuid PRIMARY KEY,organization_id uuid);
+CREATE TABLE organizations(id uuid PRIMARY KEY); CREATE TABLE users(id uuid PRIMARY KEY,status text NOT NULL DEFAULT 'active',deleted_at timestamptz);
+CREATE TABLE agents(id uuid PRIMARY KEY,organization_id uuid,status text NOT NULL DEFAULT 'active');
 CREATE TABLE agent_email_accounts(agent_id uuid,email_account_id uuid,role text);
 CREATE TABLE agent_policies(agent_id uuid,allowed_tools text[]);
 CREATE TABLE email_accounts(id uuid PRIMARY KEY,organization_id uuid,email_address text DEFAULT 'qa-sender@example.com',status text DEFAULT 'connected',deleted_at timestamptz,capabilities jsonb DEFAULT '{"drafts":true}');
@@ -83,7 +83,7 @@ beforeAll(async()=>{
   await db.connect(); await db.query('DROP SCHEMA IF EXISTS aca CASCADE'); await db.query(fixture);
   if (existsSync(migration)) await db.query(readFileSync(migration,'utf8'));
   await db.query('INSERT INTO organizations VALUES($1),($2)',[ORG,OTHER]);
-  await db.query('INSERT INTO users VALUES($1)',[USER]);
+  await db.query('INSERT INTO users(id) VALUES($1)',[USER]);
   await db.query('INSERT INTO agents(id) VALUES($1)',[AGENT]);
   await db.query('INSERT INTO email_accounts(id,organization_id) VALUES($1,$2)',[ACCOUNT,ORG]);
   await db.query('UPDATE aca.agents SET organization_id=$1 WHERE id=$2',[ORG,AGENT]);

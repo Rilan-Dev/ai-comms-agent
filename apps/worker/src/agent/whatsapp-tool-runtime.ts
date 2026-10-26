@@ -1,5 +1,5 @@
 import { PostgresAgentRepository, query, queueWhatsAppOutboundMessage, recordAuditEvent } from "@ai-comms-agent/db";
-import { isAutonomousSendEnabled } from "@ai-comms-agent/shared";
+import { isAutonomousSendEnabled,turnAllowsWhatsAppAccount,turnRequiresHumanApproval } from "@ai-comms-agent/shared";
 import { ToolRegistry } from "@ai-comms-agent/shared";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { executeRegisteredTool } from "./tool-executor";
@@ -156,6 +156,7 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
       const selection = await resolveWhatsAppSendAccount(context.organization_id, context.agent_id, input.account_id);
       if (selection.accountId === null) return fail(selection.code, selection.message);
       const accountId=selection.accountId;
+      if(!turnAllowsWhatsAppAccount(context,accountId))return fail('account_not_available','This phone was not assigned when the turn started. Start a new turn after reviewing the updated configuration.');
       const templateParameters = Array.isArray(input.template_parameters) ? input.template_parameters : [];
       if (input.payload_type === "template") {
         const template = await query<{ components: unknown }>(
@@ -237,7 +238,7 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
         templateParameters,
         idempotencyKey,
         correlationId: correlationId ?? null,
-        requireHumanApproval:context.require_human_approval,
+        requireHumanApproval:turnRequiresHumanApproval(context),
       });
       if (autoApproval.kind === "failed") {
         return fail(autoApproval.code, autoApproval.message);

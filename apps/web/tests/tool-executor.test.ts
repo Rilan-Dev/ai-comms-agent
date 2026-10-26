@@ -18,6 +18,23 @@ function makeTool(): Tool {
 }
 
 describe("executeRegisteredTool", () => {
+  it('does not acquire a newly enabled tool during a frozen turn',async()=>{
+    const registry=new ToolRegistry(()=>['kb.search']);const tool=makeTool();registry.register(tool);
+    const frozen={...context,agent_configuration:{organizationId:context.organization_id,agentId:context.agent_id,revisionId:'revision',snapshot:{lifecycle:{status:'active'},policy:{allowedTools:[],securityPolicy:{}}} as never}};
+    const outcome=await executeRegisteredTool(registry,'kb.search',{query:'mail'},frozen,vi.fn(async()=>({allowed:true})),vi.fn(async()=>{}));
+    expect(outcome.error?.code).toBe('tool_not_allowed');expect(tool.execute).not.toHaveBeenCalled();
+  });
+  it('retains human review when automatic sending was off at the start of the turn',async()=>{
+    const registry=new ToolRegistry(()=>['kb.search']);const tool=makeTool();registry.register(tool);
+    const frozen={...context,agent_configuration:{organizationId:context.organization_id,agentId:context.agent_id,revisionId:'revision',snapshot:{lifecycle:{status:'active'},policy:{allowedTools:['kb.search'],securityPolicy:{autonomous_send:false}}} as never}};
+    const outcome=await executeRegisteredTool(registry,'kb.search',{query:'mail'},frozen,vi.fn(async()=>({allowed:true})),vi.fn(async()=>{}));
+    expect(outcome.ok).toBe(true);expect(tool.execute).toHaveBeenCalledWith({query:'mail'},expect.objectContaining({require_human_approval:true}));
+  });
+  it('rejects frozen configuration from another scope before host authorization',async()=>{
+    const registry=new ToolRegistry(()=>['kb.search']);const tool=makeTool();registry.register(tool);const authorize=vi.fn(async()=>({allowed:true}));
+    const frozen={...context,agent_configuration:{organizationId:'other',agentId:context.agent_id,revisionId:'revision',snapshot:{lifecycle:{status:'active'},policy:{allowedTools:['kb.search'],securityPolicy:{}}} as never}};
+    expect((await executeRegisteredTool(registry,'kb.search',{query:'mail'},frozen,authorize,vi.fn(async()=>{}))).ok).toBe(false);expect(authorize).not.toHaveBeenCalled();expect(tool.execute).not.toHaveBeenCalled();
+  });
   it("fails closed when the agent allowlist excludes the tool", async () => {
     const registry = new ToolRegistry(() => []);
     const handler = makeTool();

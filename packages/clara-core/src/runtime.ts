@@ -6,6 +6,7 @@ import { buildReadOnlyToolFinalMessages } from "./tool-result-final";
 import { extractAmbientContextForFinalStream } from "./ambient-context";
 import type {
   AIProvider,
+  ClaraAgentAiOverrides,
   ChatMessage,
   ChatOptions,
   ChatToolCompletion,
@@ -77,7 +78,7 @@ function resolvedConfig(provider: AIProvider): ResolvedAIConfig {
   };
 }
 
-async function organizationAIConfig(orgId: string | null, agentId?: string | null): Promise<{ provider: AIProvider; providerConfig: ProviderConfig; resolved: ResolvedAIConfig; voice?: { provider: string; model: string; voiceId: string }; embedding?: { provider: string; model: string; dimension: number | null } } | null> {
+async function organizationAIConfig(orgId: string | null, agentId?: string | null, frozenOverrides?:ClaraAgentAiOverrides|null): Promise<{ provider: AIProvider; providerConfig: ProviderConfig; resolved: ResolvedAIConfig; voice?: { provider: string; model: string; voiceId: string }; embedding?: { provider: string; model: string; dimension: number | null } } | null> {
   if (!orgId || !process.env.DATABASE_URL) return null;
   const settingsResult = await query<{
     default_provider: string; temperature: number | string; max_tokens: number | string;
@@ -116,15 +117,8 @@ async function organizationAIConfig(orgId: string | null, agentId?: string | nul
   const saved = providerResult.rows[0];
 
   // Per-agent overrides — agentId is optional. NULL columns mean "inherit".
-  let agentOverrides: {
-    chatProvider: string | null; chatModel: string | null;
-    realtimeVoiceProviderOverride: string | null; realtimeVoiceIdOverride: string | null;
-    voiceChatProvider: string | null; voiceChatTtsModel: string | null;
-    voiceChatSttModel: string | null; voiceChatVoiceId: string | null;
-    embeddingProvider: string | null; embeddingModel: string | null; embeddingDimension: number | null;
-    systemPromptOverride: string | null; temperatureOverride: number | null; maxTokensOverride: number | null;
-  } | null = null;
-  if (agentId) {
+  let agentOverrides: ClaraAgentAiOverrides | null = frozenOverrides??null;
+  if (agentId && frozenOverrides===undefined) {
     const agentResult = await query<{
       chat_provider: string | null; chat_model: string | null;
       realtime_voice_provider_override: string | null; realtime_voice_id_override: string | null;
@@ -157,7 +151,7 @@ async function organizationAIConfig(orgId: string | null, agentId?: string | nul
   const effectiveProvider = (agentOverrides?.chatProvider && ["openai", "gemini", "sarvam"].includes(agentOverrides.chatProvider)
     ? agentOverrides.chatProvider
     : provider) as AIProvider;
-  const effectiveChatModel = (agentOverrides?.chatModel ?? saved?.model?.trim() ?? providerModel(effectiveProvider));
+
 
   // Re-fetch provider config if agent overrode the provider (different row in ai_provider_configs).
   let effectiveSaved = saved;
@@ -169,6 +163,7 @@ async function organizationAIConfig(orgId: string | null, agentId?: string | nul
     if (altResult.rows[0]) effectiveSaved = altResult.rows[0];
   }
 
+  const effectiveChatModel = agentOverrides?.chatModel ?? effectiveSaved?.model?.trim() ?? providerModel(effectiveProvider);
   if (effectiveSaved?.enabled && effectiveSaved.encrypted_api_key?.length) {
     const rawMasterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
     if (!rawMasterKey) throw new Error("AI provider credentials are saved, but CREDENTIALS_MASTER_KEY is not configured on the runtime.");
@@ -198,9 +193,10 @@ async function organizationAIConfig(orgId: string | null, agentId?: string | nul
   }
   return {
     provider: effectiveProvider,
-    providerConfig: providerConfig(effectiveProvider),
+    providerConfig: {...providerConfig(effectiveProvider),chatModel:effectiveChatModel},
     resolved: {
       ...resolvedConfig(effectiveProvider),
+      model:effectiveChatModel,
       maxTokens: agentOverrides?.maxTokensOverride ?? (Number.isFinite(Number(settings.max_tokens)) ? Number(settings.max_tokens) : 1500),
       temperature: agentOverrides?.temperatureOverride ?? (Number.isFinite(Number(settings.temperature)) ? Number(settings.temperature) : 0.8),
       assistantConfig: { systemPrompt: agentOverrides?.systemPromptOverride ?? settings.system_prompt ?? "You are Clara, a helpful AI assistant for the user's communication workspace." },
@@ -218,6 +214,15 @@ async function organizationAIConfig(orgId: string | null, agentId?: string | nul
   };
 }
 
+// Credentials and resolved runtime defaults stay server-side, associated only
+// with the opaque host context. They never become JSON/context properties.
+const preparedTurnConfigurations=new WeakMap<ClaraRuntimeContext,Awaited<ReturnType<typeof organizationAIConfig>>>();
+function freezeTurnConfiguration<T>(value:T):T{
+  if(value&&typeof value==='object'){for(const child of Object.values(value))freezeTurnConfiguration(child);Object.freeze(value);}return value;
+}
+async function configurationForContext(ctx:ClaraRuntimeContext){
+  return preparedTurnConfigurations.has(ctx)?preparedTurnConfigurations.get(ctx)!:organizationAIConfig(ctx.orgId,ctx.agentId);
+}
 function assertApiKey(config: ProviderConfig): asserts config is ProviderConfig & { apiKey: string } {
   if (!config.apiKey) {
     throw new Error(`AI provider ${config.provider} is not configured. Set the corresponding server-side API key.`);
@@ -766,12 +771,19 @@ async function groundContext(ctx: ClaraRuntimeContext, queryText: string, topK: 
 }
 
 export const claraRuntime = {
+  async prepareTurn<T extends ClaraRuntimeContext>(ctx:T,agentOverrides?:ClaraAgentAiOverrides|null):Promise<Readonly<T>>{
+    const prepared=Object.freeze({...ctx,...(ctx.voiceOverride?{voiceOverride:Object.freeze({...ctx.voiceOverride})}:{})});
+    const configured=await organizationAIConfig(ctx.orgId,ctx.agentId,agentOverrides);
+    const provider=configured?.provider??selectedProvider();
+    preparedTurnConfigurations.set(prepared,freezeTurnConfiguration(configured??{provider,providerConfig:providerConfig(provider),resolved:resolvedConfig(provider)}));
+    return prepared;
+  },
   /** External messages do not authorize ambient access to private mailbox RAG. */
   async createCustomerReplyTurn(ctx: ClaraRuntimeContext, message: string) {
     if (!ctx.orgId || !ctx.agentId || typeof message !== "string" || !message.trim() || message.length > 4096) {
       throw new Error("A bounded incoming customer message and organization/agent are required.");
     }
-    const configured = await organizationAIConfig(ctx.orgId, ctx.agentId);
+    const configured = await configurationForContext(ctx);
     const provider = configured?.provider ?? selectedProvider();
     const config = configured?.resolved ?? resolvedConfig(provider);
     const stream = await chatStream(configured?.providerConfig ?? providerConfig(provider), [
@@ -788,7 +800,7 @@ export const claraRuntime = {
   },
 
   async resolveProvider(ctx: ClaraRuntimeContext, surface: "chat" | "realtime" | "embed" = "chat") {
-    const organizationConfig = await organizationAIConfig(ctx.orgId, ctx.agentId);
+    const organizationConfig = await configurationForContext(ctx);
     const provider = organizationConfig?.provider ?? selectedProvider();
     return { ...(organizationConfig?.resolved ?? resolvedConfig(provider)), surface, orgId: ctx.orgId, agentId: ctx.agentId };
   },
@@ -806,7 +818,7 @@ export const claraRuntime = {
         messages.some(m => typeof m.content !== "string" || m.content.length > 80000)) {
       throw new Error("Invalid authorized briefing generation context");
     }
-    const organizationConfig = await organizationAIConfig(ctx.orgId, ctx.agentId);
+    const organizationConfig = await configurationForContext(ctx);
     const provider = organizationConfig?.provider ?? selectedProvider();
     const resolved = organizationConfig?.resolved ?? resolvedConfig(provider);
     const stream = await chatStream(
@@ -827,7 +839,7 @@ export const claraRuntime = {
   },
 
   async resolveVoice(ctx: ClaraRuntimeContext) {
-    const organizationConfig = await organizationAIConfig(ctx.orgId, ctx.agentId);
+    const organizationConfig = await configurationForContext(ctx);
     const provider = ctx.voiceOverride?.provider ?? organizationConfig?.voice?.provider ?? env("REALTIME_VOICE_PROVIDER") ?? selectedProvider();
     // A provider override must not inherit a model/speaker from a different
     // organization's default voice provider (typically OpenAI).
@@ -935,7 +947,7 @@ export const claraRuntime = {
    * don't yet opt into embeddings).
    */
   async embedText(ctx: ClaraRuntimeContext, text: string): Promise<number[]> {
-    const organizationConfig = await organizationAIConfig(ctx.orgId, ctx.agentId);
+    const organizationConfig = await configurationForContext(ctx);
     const embedding = organizationConfig?.embedding;
     if (!embedding?.provider || !embedding?.model) {
       // Fall back to env-provided OPENAI_API_KEY / GEMINI_API_KEY + a default model.
@@ -969,7 +981,7 @@ export const claraRuntime = {
 
   async embedBatch(ctx: ClaraRuntimeContext, texts: string[]): Promise<number[][]> {
     if (texts.length === 0) return [];
-    const organizationConfig = await organizationAIConfig(ctx.orgId, ctx.agentId);
+    const organizationConfig = await configurationForContext(ctx);
     const embedding = organizationConfig?.embedding;
     if (!embedding?.provider || !embedding?.model) {
       const provider = (env("EMBEDDING_PROVIDER") ?? "openai") as string;
@@ -1033,7 +1045,7 @@ export const claraRuntime = {
       throw new Error("A current organization and agent are required for a read-only response.");
     }
     const prompt = buildReadOnlyToolFinalMessages(history);
-    const configured = await organizationAIConfig(ctx.orgId, ctx.agentId);
+    const configured = await configurationForContext(ctx);
     const provider = configured?.provider ?? selectedProvider();
     const settings = configured?.providerConfig ?? providerConfig(provider);
     // Re-surface ambient context system messages that completeWithTools
@@ -1064,7 +1076,7 @@ export const claraRuntime = {
     if (!ctx.orgId || !ctx.agentId || !canonical || canonical.length > 6000) {
       throw new Error("A bounded authorized tool answer and organization/agent are required.");
     }
-    const organizationConfig = await organizationAIConfig(ctx.orgId, ctx.agentId);
+    const organizationConfig = await configurationForContext(ctx);
     const provider = organizationConfig?.provider ?? selectedProvider();
     const configuration = organizationConfig?.providerConfig ?? providerConfig(provider);
     return chatStream(configuration, [
@@ -1084,7 +1096,7 @@ export const claraRuntime = {
     messages: ToolChatMessage[],
     tools: ChatToolDefinition[],
   ): Promise<ChatToolCompletion> {
-    const organizationConfig = await organizationAIConfig(ctx.orgId, ctx.agentId);
+    const organizationConfig = await configurationForContext(ctx);
     const provider = organizationConfig?.provider ?? selectedProvider();
     const config = organizationConfig?.resolved ?? resolvedConfig(provider);
     const providerSettings = organizationConfig?.providerConfig ?? providerConfig(provider);
@@ -1114,7 +1126,7 @@ export const claraRuntime = {
     const lastUserMessage = [...messages].reverse().find((message) => message.role === "user");
     if (!lastUserMessage) throw new Error("A user message is required.");
 
-    const organizationConfig = await organizationAIConfig(request.orgId, request.agentId);
+    const organizationConfig = await configurationForContext(request);
     const provider = organizationConfig?.provider ?? selectedProvider();
     const config = organizationConfig?.resolved ?? resolvedConfig(provider);
     const providerSettings = organizationConfig?.providerConfig ?? providerConfig(provider);

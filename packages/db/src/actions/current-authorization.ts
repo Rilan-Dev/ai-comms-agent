@@ -9,6 +9,8 @@ const denied=()=>new ActionAuthorizationRevokedError();
 async function actor(organizationId:string,userId:string|null,permission:string){
  if(!userId)throw denied();
  const identities=new PostgresIdentityRepository();
+ const currentUser=await identities.getUserById(asUserId(userId));
+ if(!currentUser||currentUser.status!=='active')throw denied();
  const membership=await identities.getMembership(asOrganizationId(organizationId),asUserId(userId));
  if(!membership||membership.status!=='active')throw denied();
  const permissions=await identities.getPermissionsForRole(asOrganizationId(organizationId),membership.role);
@@ -20,9 +22,9 @@ async function agent(organizationId:string,agentId:string|null,accountId:string,
  // determines whether agent authorization is required.
  if(!agentId){if(required)throw denied();return;}
  const binding=channel==='email'
-  ? await query<{role:string}>(`SELECT b.role FROM agent_email_accounts b JOIN agents a ON a.id=b.agent_id AND a.organization_id=$1 WHERE b.agent_id=$2 AND b.email_account_id=$3`,[organizationId,agentId,accountId])
-  : await query<{role:string}>(`SELECT 'primary' AS role FROM agent_whatsapp_accounts b JOIN agents a ON a.id=b.agent_id AND a.organization_id=$1 WHERE b.agent_id=$2 AND b.whatsapp_account_id=$3`,[organizationId,agentId,accountId]);
- if(!binding.rows.some(row=>row.role==='primary'||row.role==='send_only'))throw denied();
+  ? await query<{role:string;agent_status:string}>(`SELECT b.role,a.status AS agent_status FROM agent_email_accounts b JOIN agents a ON a.id=b.agent_id AND a.organization_id=$1 WHERE b.agent_id=$2 AND b.email_account_id=$3`,[organizationId,agentId,accountId])
+  : await query<{role:string;agent_status:string}>(`SELECT 'primary' AS role,a.status AS agent_status FROM agent_whatsapp_accounts b JOIN agents a ON a.id=b.agent_id AND a.organization_id=$1 WHERE b.agent_id=$2 AND b.whatsapp_account_id=$3`,[organizationId,agentId,accountId]);
+ if(!binding.rows.some(row=>row.agent_status==='active'&&(row.role==='primary'||row.role==='send_only')))throw denied();
  const policy=await query<{allowed_tools:string[]}>(`SELECT p.allowed_tools FROM agent_policies p JOIN agents a ON a.id=p.agent_id WHERE a.organization_id=$1 AND a.id=$2`,[organizationId,agentId]);
  const tools=policy.rows[0]?.allowed_tools;
  if(!Array.isArray(tools)||!tools.includes(tool))throw denied();

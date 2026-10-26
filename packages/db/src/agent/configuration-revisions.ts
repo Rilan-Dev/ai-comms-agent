@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import type {PoolClient} from 'pg';
-import {AGENT_AI_CONFIGURATION_COLUMNS,AGENT_AI_CONFIGURATION_FIELDS,LEGACY_AGENT_CONFIGURATION_FIELDS,captureAgentConfigurationSnapshot,restoreProtectedConfigurationValues,validateAgentConfigurationSnapshot,diffAgentConfiguration,type AgentConfigurationSnapshotV1,type AgentAiConfiguration,type ConfigurationDiff} from '@ai-comms-agent/shared';
+import {AGENT_AI_CONFIGURATION_COLUMNS,AGENT_AI_CONFIGURATION_FIELDS,LEGACY_AGENT_CONFIGURATION_FIELDS,captureAgentConfigurationSnapshot,captureAgentConfigurationEdit,validateAgentConfigurationSnapshot,diffAgentConfiguration,type AgentConfigurationSnapshotV1,type AgentAiConfiguration,type ConfigurationDiff} from '@ai-comms-agent/shared';
 import {withTransaction} from '../client';
 import {lockConfigurationActors,assertConfigurationChangeAuthority} from './configuration-authority';
 import {readConfigurationDenials,type ConfigurationDenials} from './configuration-denials';
@@ -83,12 +83,12 @@ export async function getActiveAgentConfiguration(scope:AgentConfigurationScope)
 
 export async function draftAgentConfigurationInTransaction(client:PoolClient,scope:AgentConfigurationScope,active:AgentConfigurationRevision,input:unknown,expectedActiveRevision:string,options:{kind?:AgentConfigurationRevision['kind'];parentDraftId?:string;restoredFromId?:string;legacySourceVersionId?:string;coverage?:AgentConfigurationRevision['coverage']}={}):Promise<AgentConfigurationRevision>{
  if(active.id!==expectedActiveRevision)throw new AgentConfigurationConflictError();
- const requested=validateAgentConfigurationSnapshot(input);
+
  const currentAgent=await lockAgentConfiguration(client,scope);if(!currentAgent)throw Error('Agent not found');
  const current=await captureAgentConfigurationProjection(client,scope,currentAgent,0,true);
  // Review must describe the exact protected values that apply retains, including
  // credentials introduced after the historical revision was captured.
- const snapshot=captureAgentConfigurationSnapshot(restoreProtectedConfigurationValues(requested,current));
+ const snapshot=captureAgentConfigurationEdit(input,current);
  const diff=diffAgentConfiguration(active.snapshot,snapshot);const actors=await lockConfigurationActors(client,scope,[scope.userId]);assertConfigurationChangeAuthority(actors.get(scope.userId!)!,diff);
  if(!diff.length)return active;
  const head=await readAgentConfigurationHead(client,scope);
