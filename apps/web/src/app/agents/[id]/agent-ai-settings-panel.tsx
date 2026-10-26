@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef,useState } from "react";
 import { Loader2, Save, AlertCircle, CheckCircle2 } from "lucide-react";
 import { LiveModelSelect } from "@/components/live-model-select";
+import type {ConfigurationEditor} from './use-configuration-editor';
 
 type AiSettings = {
   chatProvider: string | null;
@@ -34,15 +35,19 @@ const EMPTY: AiSettings = {
 export function AgentAISettingsPanel({
   organizationId,
   agentId,
+  configurationEditor,
 }: {
   organizationId: string;
   agentId: string;
+  configurationEditor?:ConfigurationEditor;
 }) {
   const [settings, setSettings] = useState<AiSettings>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const baseline=useRef<AiSettings>(EMPTY),hydrated=useRef(false);
+  const governed=configurationEditor!==undefined,configurationView=configurationEditor?.view;
   const [orgProviders, setOrgProviders] = useState({ chat: "openai", voice: "elevenlabs", realtime: "openai", embedding: "openai" });
 
   useEffect(() => {
@@ -60,6 +65,12 @@ export function AgentAISettingsPanel({
 
   useEffect(() => {
     if (!agentId) return;
+    if(governed){
+      if(hydrated.current)return;
+      if(!configurationView)return;
+      const candidate=(configurationView.draft??configurationView.active).snapshot.ai;
+      if(candidate){baseline.current=candidate;setSettings(candidate);hydrated.current=true;setLoading(false);return;}
+    }
     setLoading(true);
     void fetch(`/api/agents/${agentId}/ai-settings?organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" })
       .then(async (r) => {
@@ -67,14 +78,19 @@ export function AgentAISettingsPanel({
         const body = await r.json();
         return body.aiSettings as AiSettings | null;
       })
-      .then((s) => setSettings(s ?? EMPTY))
+      .then((s) => {baseline.current=s??EMPTY;setSettings(s ?? EMPTY);hydrated.current=true;})
       .catch((e) => setError(e instanceof Error ? e.message : "AI settings could not load."))
       .finally(() => setLoading(false));
-  }, [agentId, organizationId]);
+  }, [agentId, organizationId,configurationView,governed]);
 
   async function save() {
     setSaving(true); setNotice(""); setError("");
     try {
+      if(configurationEditor){
+        const patch=Object.fromEntries(Object.entries(settings).filter(([key,value])=>baseline.current[key as keyof AiSettings]!==value));
+        if(!Object.keys(patch).length){configurationEditor.markDirty('ai',false);setNotice('No AI changes to save.');return;}
+        await configurationEditor.save('ai',{ai:patch});baseline.current={...settings};setNotice('AI settings draft saved. Review and apply when ready; blank fields still inherit workspace defaults.');return;
+      }
       const response = await fetch(`/api/agents/${agentId}/ai-settings?organizationId=${encodeURIComponent(organizationId)}`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
@@ -106,7 +122,7 @@ export function AgentAISettingsPanel({
   }
 
   return (
-    <section className="space-y-5 rounded-md border bg-background p-6 shadow-sm">
+    <section onChange={()=>configurationEditor?.markDirty('ai')} className="space-y-5 rounded-md border bg-background p-6 shadow-sm">
       <div>
         <h2 className="flex items-center gap-2 font-semibold">
           <Save size={16} className="text-primary" /> Per-agent AI overrides
@@ -257,10 +273,11 @@ export function AgentAISettingsPanel({
         </div>
       </fieldset>
 
-      <button type="button" onClick={() => void save()} disabled={saving}
+      <button type="button" onClick={() => void save()} disabled={saving||configurationEditor?.busy||!!configurationEditor&&!configurationEditor.view?.canEditAi}
         className="inline-flex h-10 items-center gap-2 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">
-        <Save size={14} /> {saving ? "Saving…" : "Save AI overrides"}
+        <Save size={14} /> {saving ? "Saving…" : configurationEditor?"Save draft":"Save AI overrides"}
       </button>
+      {configurationEditor&&<button type="button" disabled={saving||configurationEditor.busy} onClick={()=>{setSettings({...baseline.current});configurationEditor.markDirty('ai',false);setError('');}} className="ml-3 h-10 rounded-md border px-4 text-sm">Cancel edits</button>}
     </section>
   );
 }

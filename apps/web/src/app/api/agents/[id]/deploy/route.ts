@@ -1,3 +1,4 @@
+import {requireConfigurationWorkflow} from '@/lib/agents/configuration-write-boundary';
 import { NextResponse } from "next/server";
 import { PostgresAgentRepository, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
@@ -20,6 +21,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const environment = body?.environment === "preview" ? "preview" : body?.environment === "production" ? "production" : "";
     if (!orgId || !versionId || !environment) return NextResponse.json({ error: "validation_error", fieldErrors: { organizationId: !orgId ? "Organization is required." : undefined, versionId: !versionId ? "Version is required." : undefined, environment: !environment ? "Environment is required." : undefined } }, { status: 400 });
     const subject = await authorize(request, { organizationId: asOrganizationId(orgId), role: "owner" }, getIdentityAdapter(), getIdentityRepository());
+    const workflowRequired=requireConfigurationWorkflow();if(workflowRequired)return workflowRequired;
     const deployment = await new PostgresAgentRepository().deploy(orgId, id, subject.user.id, versionId, environment);
     await recordAuditEvent({ organizationId: orgId, actorUserId: subject.user.id, agentId: id, eventType: "agent.deployed", targetType: "agent_deployment", targetId: deployment.id, action: "deploy", decision: "allowed", metadata: { environment, versionId } });
     return NextResponse.json({ deployment }, { status: 201 });

@@ -1,3 +1,4 @@
+import {requireConfigurationWorkflow} from '@/lib/agents/configuration-write-boundary';
 import { NextResponse } from "next/server";
 import { PostgresAgentRepository, PostgresEmailAccountRepository, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
@@ -32,6 +33,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const orgId = typeof body?.organizationId === "string" ? body.organizationId : "";
     if (!orgId) return NextResponse.json({ error: "validation_error", fieldErrors: { organizationId: "Organization is required." } }, { status: 400 });
     const subject = await authorize(request, { organizationId: asOrganizationId(orgId), role: "admin" }, getIdentityAdapter(), getIdentityRepository());
+    const workflowRequired=requireConfigurationWorkflow();if(workflowRequired)return workflowRequired;
     const repo = new PostgresAgentRepository();
     if (body?.action === "unbind_email" && typeof body?.emailAccountId === "string" && body.emailAccountId.trim()) {
       await repo.unbindEmail(orgId, id, body.emailAccountId.trim());

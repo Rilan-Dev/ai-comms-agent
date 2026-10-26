@@ -1,3 +1,4 @@
+import {requireConfigurationWorkflow} from '@/lib/agents/configuration-write-boundary';
 import { NextResponse } from "next/server";
 import {
   PostgresAgentRepository,
@@ -56,6 +57,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const orgId = typeof body.organizationId === "string" ? body.organizationId.trim() : (new URL(request.url).searchParams.get("organizationId")?.trim() ?? "");
     if (!orgId) return NextResponse.json({ error: "validation_error", fieldErrors: { organizationId: "Organization is required." } }, { status: 400 });
     await authorize(request, { organizationId: asOrganizationId(orgId), permission: "organization.update" }, getIdentityAdapter(), getIdentityRepository());
+    const workflowRequired=requireConfigurationWorkflow();if(workflowRequired)return workflowRequired;
     const repo = new PostgresAgentRepository();
     const agent = await repo.get(orgId, id);
     if (!agent) return NextResponse.json({ error: "not_found" }, { status: 404 });

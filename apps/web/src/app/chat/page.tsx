@@ -58,6 +58,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
         initialConversations={conversations}
         catchUpEnabled={briefingsEnabled()}
         autoRunPrompt={autoRunPrompt}
+        configurationRevisionsEnabled={process.env.AGENT_CONFIGURATION_REVISIONS_ENABLED==='true'}
       />
     );
   } catch (error) {

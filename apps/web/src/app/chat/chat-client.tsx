@@ -9,6 +9,7 @@ import { readSseEvents } from "@/lib/streaming/sse";
 import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "@/lib/ai/activity-progress";
 import { EMAIL_PERMISSION_PRESETS, EMAIL_PERMISSION_LABELS, REGISTERED_EMAIL_POLICY_NAMES, emailPermissionPresetSelection, summarizeEmailPermissionChanges } from "@/lib/agents/email-permission-presets";
 import {describeEffectiveAgentPolicy} from '@/lib/agents/effective-policy';
+import {configurationEditorUrl,saveConfigurationForm,type ConfigurationFormContext} from '@/lib/agents/configuration-editor-client';
 import { explicitComposeRecipient, parseTestEmailComposeRequest } from "@/lib/mail/test-email-compose-intent";
 import { assistantEmailPreview } from "@/lib/mail/assistant-email-preview";
 import { selectComposeSender, signatureFromProfile, withProfileSignature, type ComposeProfile } from "@/lib/mail/compose-identity";
@@ -48,6 +49,7 @@ export function ChatClient({
   initialConversations,
   catchUpEnabled = false,
   autoRunPrompt = "",
+  configurationRevisionsEnabled=false,
 }: {
   organizationId: string;
   agents: Agent[];
@@ -56,6 +58,7 @@ export function ChatClient({
   initialMessages: Message[];
   initialConversations: ChatSession[];
   catchUpEnabled?: boolean;
+  configurationRevisionsEnabled?:boolean;
   /** Sent automatically once on mount (Overview deep links). */
   autoRunPrompt?: string;
 }) {
@@ -88,6 +91,7 @@ export function ChatClient({
   const [composeDiscoveryFailed, setComposeDiscoveryFailed] = useState(false);
   const [mailPermissionOpen, setMailPermissionOpen] = useState(false);
   const [mailPolicy, setMailPolicy] = useState<AgentPolicy | null>(null);
+  const [mailConfigurationContext,setMailConfigurationContext]=useState<(ConfigurationFormContext&{agentId:string})|null>(null);
   const [mailToolSelection, setMailToolSelection] = useState<string[]>([]);
   const selectedMailPolicy=describeEffectiveAgentPolicy({allowedTools:mailToolSelection,autonomousSend:mailPolicy?.securityPolicy?.autonomous_send===true});
   const [mailPermissionBusy, setMailPermissionBusy] = useState(false);
@@ -248,6 +252,7 @@ export function ChatClient({
       setComposeNotice("");
       setMailPermissionOpen(false);
       setMailPolicy(null);
+    setMailConfigurationContext(null);
       setMailToolSelection([]);
       setMailPermissionNotice("");
       setActivitySteps([]);
@@ -480,16 +485,26 @@ export function ChatClient({
     }
     setMailPermissionBusy(true);
     setMailPermissionNotice("");
+    const requestedAgentId=activeAgent.id,requestedEpoch=agentContextEpochRef.current;
     try {
+      if(configurationRevisionsEnabled){
+        const response=await fetch(configurationEditorUrl({organizationId,agentId:requestedAgentId}),{cache:'no-store'});const data=await response.json();
+        if(requestedEpoch!==agentContextEpochRef.current)return;
+        if(!response.ok)throw Error(data.message??'Saved permissions could not load.');
+        const candidate=data.draft??data.active;if(!candidate.snapshot.policy)throw Error('Create a policy in this agent’s settings first.');
+        setMailConfigurationContext({agentId:requestedAgentId,activeRevisionId:data.active.id,draftRevisionId:data.draft?.id??null});
+        setMailPolicy({...candidate.snapshot.policy,id:requestedAgentId,agentId:requestedAgentId,createdAt:'',updatedAt:''});setMailToolSelection(candidate.snapshot.policy.allowedTools);setMailPermissionOpen(true);return;
+      }
       const response = await fetch("/api/agents/" + encodeURIComponent(activeAgent.id)
         + "/policy?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" });
       const data = await response.json();
+      if(requestedEpoch!==agentContextEpochRef.current)return;
       if (!response.ok) throw new Error(data.message ?? "Administrator access is required to change agent permissions.");
       setMailPolicy(data.policy);
       setMailToolSelection(data.policy.allowedTools);
       setMailPermissionOpen(true);
     } catch (error) {
-      setMailPermissionNotice(error instanceof Error ? error.message : "Permissions are unavailable.");
+      if(requestedEpoch===agentContextEpochRef.current)setMailPermissionNotice(error instanceof Error ? error.message : "Permissions are unavailable.");
     } finally {
       setMailPermissionBusy(false);
     }
@@ -503,10 +518,18 @@ export function ChatClient({
     const { added, removed, confirmation } =
       summarizeEmailPermissionChanges(mailPolicy.allowedTools, mailToolSelection);
     if (!added.length && !removed.length) { setMailPermissionNotice("No changes to save."); return; }
-    if (!window.confirm(confirmation)) return;
+    if (!configurationRevisionsEnabled&&!window.confirm(confirmation)) return;
     setMailPermissionBusy(true);
     setMailPermissionNotice("");
+    const requestedAgentId=activeAgent.id,requestedEpoch=agentContextEpochRef.current;
     try {
+      if(configurationRevisionsEnabled){
+        if(mailConfigurationContext?.agentId!==requestedAgentId)throw Error('Load this agent’s saved permissions before saving.');
+        const result=await saveConfigurationForm({organizationId,agentId:requestedAgentId},mailConfigurationContext,{policy:{securityPolicy:mailPolicy.securityPolicy,rateLimits:mailPolicy.rateLimits,allowedTools:mailToolSelection,allowedSenders:mailPolicy.allowedSenders,blockedSenders:mailPolicy.blockedSenders}});
+        if(requestedEpoch!==agentContextEpochRef.current)return;
+        setMailConfigurationContext({...mailConfigurationContext,draftRevisionId:result.draft.id===mailConfigurationContext.activeRevisionId?null:result.draft.id});
+        setMailPolicy(current=>({...current!,...result.draft.snapshot.policy}));setMailToolSelection(result.draft.snapshot.policy.allowedTools);setMailPermissionNotice('Permissions draft saved. Open Full policy and mailbox setup to review and apply. Current Chat permissions have not changed.');return;
+      }
       const response = await fetch("/api/agents/" + encodeURIComponent(activeAgent.id) + "/policy", {
         method: "PATCH", headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -530,7 +553,7 @@ export function ChatClient({
       setMailToolSelection(data.policy.allowedTools);
       setMailPermissionNotice("Permissions saved for future chat and voice turns. No email was sent.");
     } catch (error) {
-      setMailPermissionNotice(error instanceof Error ? error.message : "Permissions could not be saved.");
+      if(requestedEpoch===agentContextEpochRef.current)setMailPermissionNotice(error instanceof Error ? error.message : "Permissions could not be saved.");
     } finally { setMailPermissionBusy(false); }
   }
 
@@ -931,7 +954,7 @@ export function ChatClient({
             <div className="mt-3 grid gap-2 sm:grid-cols-2">{REGISTERED_EMAIL_POLICY_NAMES.map(name => <label key={name} className="flex items-center gap-2 text-xs"><input type="checkbox" disabled={mailPermissionBusy || busy} checked={mailToolSelection.includes(name)} onChange={event => setMailToolSelection(current => event.target.checked ? [...new Set([...current, name])] : current.filter(n => n !== name))} />{EMAIL_PERMISSION_LABELS[name] ?? name}</label>)}</div>
           </details>
           <p className="mt-2 text-xs text-muted-foreground">{mailToolSelection.filter(name => REGISTERED_EMAIL_POLICY_NAMES.some(registered => registered === name)).length} email tools selected. Unrelated custom permissions are preserved. No permission changes take effect before saving.</p>
-          <button type="button" disabled={mailPermissionBusy || busy || agentSwitchBusy} onClick={() => void saveMailPermissions()} className="mt-3 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">Confirm and save permissions</button>
+          <button type="button" disabled={mailPermissionBusy || busy || agentSwitchBusy} onClick={() => void saveMailPermissions()} className="mt-3 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">{configurationRevisionsEnabled?"Save permissions draft":"Confirm and save permissions"}</button>
         </section>
       )}
           {activitySteps.length > 0 ? (

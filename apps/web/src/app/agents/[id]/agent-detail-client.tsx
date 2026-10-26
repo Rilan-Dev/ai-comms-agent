@@ -13,6 +13,9 @@ import { useWhatsAppReadiness } from "@/lib/whatsapp/use-readiness";
 import {describeEffectiveAgentPolicy} from '@/lib/agents/effective-policy';
 import {collectSenderEntries} from '@/lib/agents/sender-entries';
 import {SenderListEditor} from './sender-list-editor';
+import {useConfigurationEditor} from './use-configuration-editor';
+import {ConfigurationReviewBar} from './configuration-review-bar';
+import {assignConfigurationChannels,planConfigurationChannelRemoval} from '@/lib/agents/configuration-channel-edits';
 
 // Only tools registered by the current email runtime are selectable here.
 // The shared catalog also includes unimplemented contracts: showing those
@@ -41,7 +44,7 @@ const KNOWN_SELECTABLE_POLICY_TOOLS = new Set<string>([...KNOWN_EMAIL_POLICY_TOO
 type Check = { key: string; label: string; ok: boolean; detail?: string };
 type AuditEvent = { id:string; eventType:string; action:string|null; decision:string|null; createdAt:string; metadata:Record<string,unknown> };
 
-export function AgentDetailClient({ organizationId, initialAgent, initialVersions, initialPolicy, initialEmailBindings, initialWhatsAppBinding }: { organizationId: string; initialAgent: Agent; initialVersions: AgentVersion[]; initialPolicy: AgentPolicy | null; initialEmailBindings: AgentEmailBinding[]; initialWhatsAppBinding: AgentWhatsAppBinding | null }) {
+export function AgentDetailClient({ organizationId, initialAgent, initialVersions, initialPolicy, initialEmailBindings, initialWhatsAppBinding,configurationRevisionsEnabled=false }: { organizationId: string; initialAgent: Agent; initialVersions: AgentVersion[]; initialPolicy: AgentPolicy | null; initialEmailBindings: AgentEmailBinding[]; initialWhatsAppBinding: AgentWhatsAppBinding | null;configurationRevisionsEnabled?:boolean }) {
   const router = useRouter();
   const { notify } = useNotifications();
   const [agent, setAgent] = useState(initialAgent);
@@ -61,7 +64,9 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("tab") === "policy") setTab("policy");
   }, []);
-  const [busy, setBusy] = useState(false);
+  const editor=useConfigurationEditor(organizationId,initialAgent.id,configurationRevisionsEnabled);
+  const [operationBusy, setBusy] = useState(false);
+  const busy=operationBusy||editor.busy||(configurationRevisionsEnabled&&!editor.view);
   const [showConfirm, setShowConfirm] = useState<"deploy"|"retire"|null>(null);
   const confirmDialogRef = useRef<HTMLDivElement>(null);
   const cancelConfirmRef = useRef<HTMLButtonElement>(null);
@@ -81,6 +86,18 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   const [editDescription, setEditDescription] = useState(initialAgent.description ?? "");
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [formResetEpoch,setFormResetEpoch]=useState(0);
+  const hydratedConfiguration=useRef(false);
+  useEffect(()=>{
+    if(!editor.view||hydratedConfiguration.current)return;
+    hydratedConfiguration.current=true;
+    const candidate=(editor.view.draft??editor.view.active).snapshot;
+    setEditName(candidate.identity.name);setEditSlug(candidate.identity.slug);setEditDescription(candidate.identity.description??'');
+    if(candidate.policy){setPolicy({...candidate.policy,id:initialPolicy?.id??initialAgent.id,agentId:initialAgent.id,createdAt:initialPolicy?.createdAt??'',updatedAt:initialPolicy?.updatedAt??''});setSelectedTools(candidate.policy.allowedTools);setAutonomousSend(candidate.policy.securityPolicy.autonomous_send===true);}
+    setEmailBindings(candidate.channels.email.map(binding=>({...initialEmailBindings.find(row=>row.emailAccountId===binding.accountId),id:binding.accountId,agentId:initialAgent.id,emailAccountId:binding.accountId,role:binding.role,createdAt:''})));
+    setWhatsappBinding(candidate.channels.whatsappAccountId?{id:candidate.channels.whatsappAccountId,agentId:initialAgent.id,whatsappAccountId:candidate.channels.whatsappAccountId,createdAt:''}:null);
+    setVersionConfig(JSON.stringify(candidate.legacy.version.config??{},null,2));
+  },[editor.view,initialAgent.id,initialPolicy,initialEmailBindings]);
 
   useEffect(() => {
     if (!showConfirm) return;
@@ -128,10 +145,14 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   async function deploy() {
     const version=versions.find((v)=>v.id===selectedVersionId) ?? versions[0]; if(!version) { notify({kind:"error",title:"No version available",message:"Create a configuration version before deploying."}); return; }
     setBusy(true);
+    if(configurationRevisionsEnabled){
+      try{const current=editor.view?.draft?.snapshot??editor.view?.active.snapshot;if(!current)throw Error('Wait for saved settings to load.');await editor.save('version',{lifecycle:{status:'active'},legacyVersion:editor.view?.draft?current.legacy.version:{...current.legacy.version,sourceId:version.id,config:version.config}});notify({kind:'success',title:'Deployment draft saved',message:'Review the exact changes above, then apply them.'});setShowConfirm(null);}catch(error){notify({kind:'error',title:'Deployment draft unavailable',message:error instanceof Error?error.message:'Reload the saved settings.'});}finally{setBusy(false);}return;
+    }
     try { const p=await call(`/api/agents/${agent.id}/deploy`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,versionId:version.id,environment:"production"})}); setAgent({...agent,status:"active",currentVersionId:version.id,currentDeploymentId:p.deployment.id}); setSelectedVersionId(version.id); notify({kind:"success",title:"Agent deployed",message:`Version ${version.versionNumber} is now active.`}); setShowConfirm(null); } catch(e){notify({kind:"error",title:"Deployment failed",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
   async function retire() {
     setBusy(true);
+    if(configurationRevisionsEnabled){try{await editor.revoke({pause:true});setAgent(current=>({...current,status:'paused'}));setShowConfirm(null);notify({kind:'success',title:'Agent paused',message:'Access stopped immediately and was recorded in history.'});}catch(error){notify({kind:'error',title:'Could not pause agent',message:error instanceof Error?error.message:'Reload saved settings.'});}finally{setBusy(false);}return;}
     try { const p=await call(`/api/agents/${agent.id}`,{method:"DELETE",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId})}); setAgent(p.agent); notify({kind:"success",title:"Agent paused"}); setShowConfirm(null); } catch(e){notify({kind:"error",title:"Could not pause agent",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
   useEffect(() => {
@@ -172,6 +193,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   async function saveAgent(event:React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true);
     try {
+      if(configurationRevisionsEnabled){await editor.save('identity',{identity:{name:editName,slug:editSlug,description:editDescription||null}});notify({kind:'success',title:'Details draft saved',message:'Review and apply when ready.'});return;}
       const p=await call(`/api/agents/${agent.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,name:editName,slug:editSlug,description:editDescription})});
       setAgent(p.agent);
       notify({kind:"success",title:"Agent details saved",message:"The persisted agent identity was updated."});
@@ -185,6 +207,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) { notify({kind:"error",title:"Invalid configuration",message:"Version configuration must be a JSON object."}); return; }
     setBusy(true);
     try {
+      if(configurationRevisionsEnabled){const current=editor.view?.draft?.snapshot??editor.view?.active.snapshot;if(!current)throw Error('Wait for the saved configuration to load.');await editor.save('version',{legacyVersion:{...current.legacy.version,config:parsed as Record<string,unknown>}});notify({kind:'success',title:'Configuration draft saved',message:'Review and apply the complete saved changes above.'});return;}
       const p=await call(`/api/agents/${agent.id}/versions`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,config:parsed})});
       setVersions((v)=>[p.version,...v]); setVersionConfig(JSON.stringify(p.version.config ?? {},null,2));
       notify({kind:"success",title:"Version created",message:`Version ${p.version.versionNumber} is ready for deployment.`});
@@ -195,16 +218,24 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
     try { const p=await call(`/api/agents/${agent.id}/simulate`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId})}); setTestResult(p); } catch(e){notify({kind:"error",title:"Configuration test failed",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
   async function unbindEmail(emailAccountId:string) {
+    const view=editor.view;
+    const removal=configurationRevisionsEnabled&&view?planConfigurationChannelRemoval(view.active.snapshot.channels,(view.draft??view.active).snapshot.channels,{emailAccountId}):null;
+    if(removal?.kind==='revoke'&&!window.confirm('Revoke this mailbox access now? This takes effect immediately and is recorded in history.'))return;
     setBusy(true);
     try {
+      if(configurationRevisionsEnabled){if(!removal)throw Error('Wait for saved settings to load.');if(removal.kind==='draft')await editor.save('channels',{channels:removal.channels});else await editor.revoke(removal.changes);setEmailBindings(current=>current.filter(binding=>binding.emailAccountId!==emailAccountId));notify({kind:'success',title:removal.kind==='draft'?'Mailbox removed from draft':'Mailbox access revoked'});return;}
       const p=await call(`/api/agents/${agent.id}/channels`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,action:"unbind_email",emailAccountId})});
       setEmailBindings(p.emailBindings); notify({kind:"success",title:"Email account unbound",message:"The agent no longer has access to that mailbox."});
     } catch(e){notify({kind:"error",title:"Could not unbind email",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
   }
 
   async function unbindWhatsApp() {
+    const view=editor.view,candidate=view?(view.draft??view.active).snapshot:null;
+    const removal=configurationRevisionsEnabled&&view&&candidate?.channels.whatsappAccountId?planConfigurationChannelRemoval(view.active.snapshot.channels,candidate.channels,{whatsappAccountId:candidate.channels.whatsappAccountId}):null;
+    if(removal?.kind==='revoke'&&!window.confirm('Revoke this WhatsApp phone access now? This takes effect immediately and is recorded in history.'))return;
     setBusy(true);
     try {
+      if(configurationRevisionsEnabled){if(!removal)throw Error('No saved phone assignment is available.');if(removal.kind==='draft'){await editor.save('channels',{channels:removal.channels});const phone=removal.channels.whatsappAccountId;setWhatsappBinding(phone?{id:phone,agentId:agent.id,whatsappAccountId:phone,createdAt:''}:null);}else{await editor.revoke(removal.changes);setWhatsappBinding(null);}notify({kind:'success',title:removal.kind==='draft'?'Phone replacement removed from draft':'WhatsApp access revoked'});return;}
       const p=await call(`/api/agents/${agent.id}/channels`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,action:"unbind_whatsapp"})});
       setWhatsappBinding(p.whatsappBinding); notify({kind:"success",title:"WhatsApp account unbound",message:"The agent is no longer connected to WhatsApp."});
     } catch(e){notify({kind:"error",title:"Could not unbind WhatsApp",message:e instanceof Error?e.message:"Unknown error"});} finally{setBusy(false);}
@@ -213,6 +244,12 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   async function saveChannels() {
     setBusy(true);
     try {
+      if(configurationRevisionsEnabled){
+        const current=editor.view?.draft?.snapshot??editor.view?.active.snapshot;if(!current)throw Error('Wait for saved settings to load.');
+        const result=await editor.save('channels',{channels:assignConfigurationChannels(current.channels,{emailAccountId,emailRole,whatsappAccountId})});
+        setEmailBindings(result.draft.snapshot.channels.email.map((binding:{accountId:string;role:AgentEmailBinding['role']})=>({id:binding.accountId,agentId:agent.id,emailAccountId:binding.accountId,role:binding.role,createdAt:''})));
+        const phone=result.draft.snapshot.channels.whatsappAccountId;setWhatsappBinding(phone?{id:phone,agentId:agent.id,whatsappAccountId:phone,createdAt:''}:null);setEmailAccountId('');setWhatsappAccountId('');notify({kind:'success',title:'Channels draft saved',message:'Active assignments change only after review and apply.'});return;
+      }
       const p=await call(`/api/agents/${agent.id}/channels`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({organizationId,emailAccountId,whatsappAccountId,emailRole})});
       setEmailBindings(p.emailBindings); setWhatsappBinding(p.whatsappBinding);
       notify({kind:"success",title:"Channels saved"});
@@ -220,6 +257,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
     finally { setBusy(false); }
   }
   function chooseMailPreset(preset: "read"|"draft"|"approval"|"off") {
+    if(configurationRevisionsEnabled)editor.markDirty('policy');
     setSelectedTools((current) => emailPermissionPresetSelection(current, preset));
   }
   function togglePolicyTool(toolName: string, checked: boolean) {
@@ -252,6 +290,9 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
     if (autonomousSend) securityPolicy = { ...securityPolicy, autonomous_send: true };
     else { const { autonomous_send: _removed, ...rest } = securityPolicy; void _removed; securityPolicy = rest; }
     const previousAutonomous = policy?.securityPolicy?.autonomous_send === true;
+    if(configurationRevisionsEnabled){
+      setBusy(true);try{const result=await editor.save('policy',{policy:{securityPolicy,allowedTools,allowedSenders,blockedSenders,rateLimits}});setPolicy(current=>({...current!,...result.draft.snapshot.policy}));notify({kind:'success',title:'Permissions draft saved',message:'Review the exact permissions and sending mode before applying.'});}catch(error){notify({kind:'error',title:'Draft could not be saved',message:error instanceof Error?error.message:'Your choices remain in this form.'});}finally{setBusy(false);}return;
+    }
     const autonomousChanged = autonomousSend !== previousAutonomous;
     const { added, removed, confirmation } =
       summarizeEmailPermissionChanges(policy?.allowedTools ?? [], allowedTools);
@@ -297,6 +338,17 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
     } finally { setBusy(false); }
   }
 
+  function cancelFormEdits(){
+    const saved=editor.view?.draft?.snapshot??editor.view?.active.snapshot;if(!saved)return;
+    setEditName(saved.identity.name);setEditSlug(saved.identity.slug);setEditDescription(saved.identity.description??'');
+    if(saved.policy){setPolicy(current=>({...current!,...saved.policy!}));setSelectedTools(saved.policy.allowedTools);setAutonomousSend(saved.policy.securityPolicy.autonomous_send===true);}
+    setEmailAccountId('');setWhatsappAccountId('');setEmailRole('primary');setVersionConfig(JSON.stringify(saved.legacy.version.config??{},null,2));
+    for(const section of editor.dirty)if(section!=='ai')editor.markDirty(section,false);
+    setFormResetEpoch(value=>value+1);
+  }
+
+  if(configurationRevisionsEnabled&&!editor.view)return <main className="mx-auto max-w-[1500px] space-y-6 p-5 sm:p-7 lg:p-9"><h1 className="text-2xl font-semibold">{agent.name}</h1><ConfigurationReviewBar editor={editor}/></main>;
+
   return <main className="mx-auto max-w-[1500px] space-y-6 p-5 sm:p-7 lg:p-9">
     <button type="button" onClick={()=>router.push("/agents")} className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground"><ArrowLeft size={14} /> All agents</button>
     <header className="rounded-md border bg-background p-6 shadow-sm sm:p-8">
@@ -305,7 +357,9 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
         <div className="flex flex-wrap gap-2">{agent.status==="active" ? <button type="button" onClick={()=>setShowConfirm("retire")} className="inline-flex h-10 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-secondary"><PauseCircle size={15} /> Pause</button> : <button type="button" onClick={()=>setShowConfirm("deploy")} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"><Rocket size={15} /> Deploy latest</button>}</div>
       </div>
     </header>
-    <nav aria-label="Agent sections" className="flex gap-1 overflow-x-auto rounded-md border border-border bg-card p-1 shadow-sm">{(["overview","versions","policy","channels","ai-settings","test","activity"] as const).map((item)=><button key={item} type="button" aria-pressed={tab===item} onClick={()=>setTab(item)} className={`inline-flex shrink-0 items-center gap-2 rounded-md px-3.5 py-2.5 text-sm font-medium capitalize transition-colors ${tab===item?"bg-foreground text-background":"text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>{item==="overview"?<Bot className="h-4 w-4" />:item==="versions"?<GitBranch className="h-4 w-4" />:item==="policy"?<ShieldCheck className="h-4 w-4" />:item==="channels"?<Plug className="h-4 w-4" />:item==="ai-settings"?<KeyRound className="h-4 w-4" />:item==="test"?<FlaskConical className="h-4 w-4" />:<ActivityIcon className="h-4 w-4" />}{item==="ai-settings"?"AI Settings":item}</button>)}</nav>
+    <nav aria-label="Agent sections" className="flex gap-1 overflow-x-auto rounded-md border border-border bg-card p-1 shadow-sm">{(["overview","versions","policy","channels","ai-settings","test","activity"] as const).map((item)=><button key={item} type="button" aria-pressed={tab===item} onClick={()=>{if(configurationRevisionsEnabled&&editor.dirty.length){notify({kind:"info",title:"Save or cancel your current edits first"});return;}setTab(item);}} className={`inline-flex shrink-0 items-center gap-2 rounded-md px-3.5 py-2.5 text-sm font-medium capitalize transition-colors ${tab===item?"bg-foreground text-background":"text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>{item==="overview"?<Bot className="h-4 w-4" />:item==="versions"?<GitBranch className="h-4 w-4" />:item==="policy"?<ShieldCheck className="h-4 w-4" />:item==="channels"?<Plug className="h-4 w-4" />:item==="ai-settings"?<KeyRound className="h-4 w-4" />:item==="test"?<FlaskConical className="h-4 w-4" />:<ActivityIcon className="h-4 w-4" />}{item==="ai-settings"?"AI Settings":item}</button>)}</nav>
+    <ConfigurationReviewBar key={editor.view?.draft?.id??editor.view?.active.id??'loading'} editor={editor}/>
+    {configurationRevisionsEnabled&&editor.dirty.some(section=>section!=='ai')&&<button type="button" disabled={busy} onClick={cancelFormEdits} className="h-10 rounded-md border px-4 text-sm">Cancel form edits</button>}
     {tab==="overview" && <section className="space-y-4">
       <div className="rounded-md border bg-background p-6 shadow-sm">
         <h2 className="font-semibold">Get your agent ready</h2>
@@ -317,10 +371,10 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
         </div>
         <p className="mt-3 text-xs text-muted-foreground">The checklist reflects saved configuration, not a live connection or successful mail import.</p>
       </div>
-      <form onSubmit={saveAgent} className="rounded-md border bg-background p-6 shadow-sm">
+      <form key={formResetEpoch} onChange={()=>configurationRevisionsEnabled&&editor.markDirty('identity')} onSubmit={saveAgent} className="rounded-md border bg-background p-6 shadow-sm">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div><h2 className="font-semibold">Agent details</h2><p className="mt-1 text-sm text-muted-foreground">Edit the persisted identity without changing deployed version history.</p></div>
-          <button type="submit" disabled={busy} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Save size={14} />{busy?"Saving…":"Save details"}</button>
+          <button type="submit" disabled={busy} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Save size={14} />{busy?"Saving…":configurationRevisionsEnabled?"Save draft":"Save details"}</button>
         </div>
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <label className="text-sm font-medium">Name<input value={editName} onChange={(e)=>setEditName(e.target.value)} maxLength={120} required className="mt-1 h-11 w-full rounded-md border px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-primary/20" /></label>
@@ -329,7 +383,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
         </div>
       </form>
       <div className="grid gap-4 lg:grid-cols-3"><div className="rounded-md border bg-background p-6 shadow-sm lg:col-span-2"><h2 className="font-semibold">Configuration</h2><p className="mt-1 text-sm text-muted-foreground">Versioned runtime configuration is stored with the agent.</p><div className="mt-6 grid gap-3 sm:grid-cols-3"><div className="rounded-md bg-muted/50 p-4"><p className="text-xs text-muted-foreground">Versions</p><p className="mt-1 text-xl font-semibold">{versions.length}</p></div><div className="rounded-md bg-muted/50 p-4"><p className="text-xs text-muted-foreground">Policy</p><p className="mt-1 text-xl font-semibold">{policy ? "Ready" : "Missing"}</p></div><div className="rounded-md bg-muted/50 p-4"><p className="text-xs text-muted-foreground">Deployment</p><p className="mt-1 text-xl font-semibold">{agent.status==="active" ? "Live" : "Draft"}</p></div></div></div></div><div className="rounded-md border bg-background p-6 shadow-sm"><h2 className="font-semibold">Channels</h2><p className="mt-1 text-sm text-muted-foreground">Connect email and WhatsApp accounts from the channel configuration.</p><div className="mt-5 space-y-2"><button type="button" onClick={()=>setTab("channels")} className="flex w-full items-center justify-between rounded-md border p-3 text-left text-sm hover:bg-muted/30">Email <span className="text-xs font-semibold text-primary">{emailBindings.length ? `${emailBindings.length} connected` : "Configure →"}</span></button><button type="button" onClick={()=>setTab("channels")} className="flex w-full items-center justify-between rounded-md border p-3 text-left text-sm hover:bg-muted/30">WhatsApp <span className="text-xs font-semibold text-primary">{whatsappBinding ? "Connected" : "Configure →"}</span></button></div></div></section>}
-    {tab==="versions" && <section className="space-y-4"><div className="rounded-md border bg-background p-6 shadow-sm"><div><h2 className="font-semibold">Version configuration</h2><p className="mt-1 text-xs text-muted-foreground">Select a version from History to reuse its configuration, then create a new immutable version. Technical editing is optional.</p><p className="mt-2 text-xs text-muted-foreground">Selected version: {versions.find((v)=>v.id===selectedVersionId)?.versionNumber ?? "none"} · Deploy uses the selected version.</p></div><details className="mt-5 rounded-md border p-4"><summary className="cursor-pointer text-sm font-semibold">Advanced: edit technical version JSON (optional)</summary><textarea value={versionConfig} onChange={(e)=>setVersionConfig(e.target.value)} spellCheck={false} className="mt-3 min-h-56 w-full rounded-md border bg-muted/20 p-4 font-mono text-xs outline-none focus:ring-2 focus:ring-primary/20" aria-label="Version configuration JSON" /></details><div className="mt-3 flex justify-end"><button type="button" disabled={busy} onClick={createVersion} className="h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Creating…":"Create version"}</button></div></div><div className="rounded-md border bg-background shadow-sm"><div className="border-b p-5"><h3 className="font-semibold">History</h3></div><div className="divide-y">{versions.length===0?<p className="p-6 text-sm text-muted-foreground">No versions yet.</p>:versions.map((v)=><button type="button" key={v.id} onClick={()=>{setSelectedVersionId(v.id); setVersionConfig(JSON.stringify(v.config ?? {},null,2));}} className="flex w-full items-center justify-between p-5 text-left hover:bg-muted/30"><div><p className="text-sm font-semibold">Version {v.versionNumber}</p><p className="text-xs text-muted-foreground">{new Date(v.createdAt).toLocaleString()}</p></div><span className="flex items-center gap-2"><span className="rounded-full bg-muted px-2.5 py-1 text-[11px]">{v.id===agent.currentVersionId?"Current":"Draft"}</span>{selectedVersionId===v.id && <span className="text-[11px] font-semibold text-primary">Selected</span>}</span></button>)}</div></div></section>}
+    {tab==="versions" && <section className="space-y-4"><div className="rounded-md border bg-background p-6 shadow-sm"><div><h2 className="font-semibold">Version configuration</h2><p className="mt-1 text-xs text-muted-foreground">Select a version from History to reuse its configuration, then create a new immutable version. Technical editing is optional.</p><p className="mt-2 text-xs text-muted-foreground">Selected version: {versions.find((v)=>v.id===selectedVersionId)?.versionNumber ?? "none"} · Deploy uses the selected version.</p></div><details className="mt-5 rounded-md border p-4"><summary className="cursor-pointer text-sm font-semibold">Advanced: edit technical version JSON (optional)</summary><textarea value={versionConfig} onChange={(e)=>{setVersionConfig(e.target.value);if(configurationRevisionsEnabled)editor.markDirty('version');}} spellCheck={false} className="mt-3 min-h-56 w-full rounded-md border bg-muted/20 p-4 font-mono text-xs outline-none focus:ring-2 focus:ring-primary/20" aria-label="Version configuration JSON" /></details><div className="mt-3 flex justify-end"><button type="button" disabled={busy} onClick={createVersion} className="h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Creating…":configurationRevisionsEnabled?"Save draft":"Create version"}</button></div></div><div className="rounded-md border bg-background shadow-sm"><div className="border-b p-5"><h3 className="font-semibold">History</h3></div><div className="divide-y">{versions.length===0?<p className="p-6 text-sm text-muted-foreground">No versions yet.</p>:versions.map((v)=><button type="button" key={v.id} onClick={()=>{setSelectedVersionId(v.id); setVersionConfig(JSON.stringify(v.config ?? {},null,2));}} className="flex w-full items-center justify-between p-5 text-left hover:bg-muted/30"><div><p className="text-sm font-semibold">Version {v.versionNumber}</p><p className="text-xs text-muted-foreground">{new Date(v.createdAt).toLocaleString()}</p></div><span className="flex items-center gap-2"><span className="rounded-full bg-muted px-2.5 py-1 text-[11px]">{v.id===agent.currentVersionId?"Current":"Draft"}</span>{selectedVersionId===v.id && <span className="text-[11px] font-semibold text-primary">Selected</span>}</span></button>)}</div></div></section>}
     {tab==="policy" && <section className="rounded-md border bg-background p-6 shadow-sm">
       <h2 className="flex items-center gap-2 font-semibold"><ShieldCheck size={16} className="text-primary" /> Agent safety policy</h2>
       <p className="mt-1 text-sm text-muted-foreground">Select what this agent may do. Nothing is enabled unless an administrator selects it and saves the policy.</p>
@@ -350,7 +404,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
           By default the agent creates a pending proposal that a human must approve; with Autonomous sending enabled above, its proposals are approved and dispatched automatically. Meta&apos;s conversation-window or template rules always apply.
         </p>
       </div>
-      <form onSubmit={savePolicy} className="mt-6 space-y-5">
+      <form key={formResetEpoch} onChange={()=>configurationRevisionsEnabled&&editor.markDirty('policy')} onSubmit={savePolicy} className="mt-6 space-y-5">
         <fieldset className={`rounded-md border p-4 ${autonomousSend ? "border-amber-500/50 bg-amber-50/50" : "border-border"}`}>
           <legend className="px-1 text-sm font-semibold">Sending mode</legend>
           <label className="flex items-start gap-3 rounded-md border bg-background p-3 text-sm hover:bg-muted/30">
@@ -422,21 +476,21 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
             </div>
           </div>
         </details>
-        <button disabled={busy} className="h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Saving…":"Save selected permissions"}</button>
+        <button disabled={busy} className="h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Saving…":configurationRevisionsEnabled?"Save draft":"Save selected permissions"}</button>
       </form>
     </section>}
     {tab==="channels" && <section className="grid gap-4 lg:grid-cols-2"><div className="rounded-md border bg-background p-6 shadow-sm"><h2 className="font-semibold">Email accounts</h2><p className="mt-1 text-sm text-muted-foreground">An agent can use multiple email accounts. Select a persisted mailbox below.</p>{!policy?.allowedTools.some((tool)=>tool==="email.search"||tool==="email.messages.list") && <p className="mt-3 text-xs text-muted-foreground" role="status">Mailbox connection does not enable chat summaries. An administrator must add <code>email.search</code> or <code>email.messages.list</code> under <button type="button" className="font-semibold underline" onClick={()=>setTab("policy")}>Agent Policy</button> and save it.</p>}<div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
-  <select aria-label="Email account to connect" value={emailAccountId} onChange={(e)=>setEmailAccountId(e.target.value)} className="h-11 rounded-md border bg-background px-3 text-sm">
+  <select aria-label="Email account to connect" value={emailAccountId} onChange={(e)=>{setEmailAccountId(e.target.value);if(configurationRevisionsEnabled)editor.markDirty('channels');}} className="h-11 rounded-md border bg-background px-3 text-sm">
     <option value="">Select a persisted email account</option>
     {emailAccounts.map((account)=><option key={account.id} value={account.id} disabled={account.status !== "connected"}>{account.email_address} · {account.provider} · {account.status !== "connected" ? "Unavailable — connect first" : "Connected"}</option>)}
   </select>
-  <select aria-label="Role for selected email account" value={emailRole} onChange={(e)=>setEmailRole(e.target.value as typeof emailRole)} className="h-11 rounded-md border bg-background px-3 text-sm">
+  <select aria-label="Role for selected email account" value={emailRole} onChange={(e)=>{setEmailRole(e.target.value as typeof emailRole);if(configurationRevisionsEnabled)editor.markDirty('channels');}} className="h-11 rounded-md border bg-background px-3 text-sm">
     <option value="primary">Primary</option>
     <option value="read_only">Read only</option>
     <option value="send_only">Send only</option>
   </select>
-</div><p className="mt-2 text-xs text-muted-foreground">Only connected mailboxes can be assigned. Unavailable accounts must be restored under <a href="/mail/accounts" className="font-semibold text-primary underline">Mailboxes</a> first.</p><div className="mt-4 space-y-2">{emailBindings.map((b)=><div key={b.id} className="flex items-center justify-between rounded-md border p-3 text-xs"><span className="min-w-0 truncate font-medium">{emailAccounts.find((a)=>a.id===b.emailAccountId)?.email_address ?? b.emailAccountId}</span><span className="ml-3 flex items-center gap-2"><span className="rounded-full bg-muted px-2 py-1">{b.role}</span><button type="button" disabled={busy} onClick={()=>unbindEmail(b.emailAccountId)} className="text-destructive hover:underline">Remove</button></span></div>)}</div></div><div className="rounded-md border bg-background p-6 shadow-sm"><h2 className="font-semibold">WhatsApp</h2><p className="mt-1 text-sm text-muted-foreground">Exactly one WhatsApp Business account can be bound to an agent.</p><select aria-label="WhatsApp account to connect" value={whatsappAccountId} onChange={(e)=>setWhatsappAccountId(e.target.value)} className="mt-5 h-11 w-full rounded-md border bg-background px-3 text-sm"><option value="">Select a WhatsApp account</option>{whatsappAccounts.map(account=><option key={account.id} value={account.id} disabled={account.status !== "connected"}>{account.displayName || account.phoneNumberId} · {account.status === "connected" ? "Connected" : "Unavailable — connect first"}</option>)}</select><div className="mt-4 rounded-md border p-3 text-xs">{whatsappBinding ? <><span className="font-medium">{whatsappReadiness.accountLabel ?? "Bound WhatsApp account"}</span><span className="flex items-center gap-3"><span className={whatsappReadiness.connected ? "text-emerald-600" : "text-amber-600"}>{whatsappReadiness.message}</span><button type="button" disabled={busy} onClick={unbindWhatsApp} className="text-destructive hover:underline">Remove</button></span></> : <span className="text-muted-foreground">No WhatsApp account connected.</span>}</div><button type="button" disabled={busy || (!emailAccountId && !whatsappAccountId)} onClick={saveChannels} className="mt-5 h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Saving…":"Save channels"}</button></div></section>}
-    {tab==="ai-settings" && <AgentAISettingsPanel organizationId={organizationId} agentId={agent.id} />}
+</div><p className="mt-2 text-xs text-muted-foreground">Only connected mailboxes can be assigned. Unavailable accounts must be restored under <a href="/mail/accounts" className="font-semibold text-primary underline">Mailboxes</a> first.</p><div className="mt-4 space-y-2">{emailBindings.map((b)=><div key={b.id} className="flex items-center justify-between rounded-md border p-3 text-xs"><span className="min-w-0 truncate font-medium">{emailAccounts.find((a)=>a.id===b.emailAccountId)?.email_address ?? b.emailAccountId}</span><span className="ml-3 flex items-center gap-2"><span className="rounded-full bg-muted px-2 py-1">{b.role}</span><button type="button" disabled={busy} onClick={()=>unbindEmail(b.emailAccountId)} className="text-destructive hover:underline">{configurationRevisionsEnabled?(editor.view?.active.snapshot.channels.email.some(binding=>binding.accountId===b.emailAccountId)?"Revoke now":"Remove from draft"):"Remove"}</button></span></div>)}</div></div><div className="rounded-md border bg-background p-6 shadow-sm"><h2 className="font-semibold">WhatsApp</h2><p className="mt-1 text-sm text-muted-foreground">Exactly one WhatsApp Business account can be bound to an agent.</p><select aria-label="WhatsApp account to connect" value={whatsappAccountId} onChange={(e)=>{setWhatsappAccountId(e.target.value);if(configurationRevisionsEnabled)editor.markDirty('channels');}} className="mt-5 h-11 w-full rounded-md border bg-background px-3 text-sm"><option value="">Select a WhatsApp account</option>{whatsappAccounts.map(account=><option key={account.id} value={account.id} disabled={account.status !== "connected"}>{account.displayName || account.phoneNumberId} · {account.status === "connected" ? "Connected" : "Unavailable — connect first"}</option>)}</select><div className="mt-4 rounded-md border p-3 text-xs">{whatsappBinding ? <><span className="font-medium">{whatsappReadiness.accountLabel ?? "Bound WhatsApp account"}</span><span className="flex items-center gap-3"><span className={whatsappReadiness.connected ? "text-emerald-600" : "text-amber-600"}>{whatsappReadiness.message}</span><button type="button" disabled={busy} onClick={unbindWhatsApp} className="text-destructive hover:underline">{configurationRevisionsEnabled?(editor.view?.active.snapshot.channels.whatsappAccountId===whatsappBinding.whatsappAccountId?"Revoke now":"Remove from draft"):"Remove"}</button></span></> : <span className="text-muted-foreground">No WhatsApp account connected.</span>}</div><button type="button" disabled={busy || (!emailAccountId && !whatsappAccountId)} onClick={saveChannels} className="mt-5 h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Saving…":configurationRevisionsEnabled?"Save draft":"Save channels"}</button></div></section>}
+    {tab==="ai-settings" && <AgentAISettingsPanel organizationId={organizationId} agentId={agent.id} configurationEditor={configurationRevisionsEnabled?editor:undefined} />}
     {tab==="test" && <section className="rounded-md border bg-background p-6 shadow-sm"><h2 className="flex items-center gap-2 font-semibold"><FlaskConical size={16} className="text-primary" /> Configuration test</h2><p className="mt-1 text-sm text-muted-foreground">This verifies persisted agent configuration and security prerequisites without pretending to execute a live AI/provider call.</p><button type="button" disabled={busy} onClick={runTest} className="mt-5 h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Testing…":"Run configuration test"}</button>{testResult && <div className="mt-5 space-y-2">{testResult.checks.map((c)=><div key={c.key} className="flex items-center justify-between rounded-md border p-3 text-sm"><span><span className="block">{c.label}</span>{c.detail && <span className="mt-1 block text-xs text-muted-foreground">{c.detail}</span>}</span><span className={c.ok?"text-emerald-600":"text-destructive"}>{c.ok?"Pass":"Needs attention"}</span></div>)}</div>}</section>}
     {tab==="activity" && <section className="rounded-md border bg-background shadow-sm">
       <div className="border-b p-6"><h2 className="flex items-center gap-2 font-semibold"><ActivityIcon size={16} className="text-primary" /> Activity</h2><p className="mt-1 text-sm text-muted-foreground">Security-sensitive configuration, deployment, policy, and channel changes for this agent.</p></div>

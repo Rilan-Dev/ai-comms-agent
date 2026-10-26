@@ -5,11 +5,12 @@ import { WHATSAPP_POLICY_CHOICES, whatsappPolicyReadiness } from "../src/lib/age
 
 const read = (file) => readFileSync(new URL(file, import.meta.url), "utf8");
 
-test("only existing WhatsApp host tools are offered, including approval-only whatsapp.send", () => {
+test("only existing WhatsApp host tools are offered with sending-mode guidance", () => {
   assert.deepEqual(WHATSAPP_POLICY_CHOICES.map(item => item.name), ["whatsapp.history", "whatsapp.send"]);
   assert.equal(WHATSAPP_POLICY_CHOICES[0].group, "read");
   assert.equal(WHATSAPP_POLICY_CHOICES[1].group, "approval");
-  assert.match(WHATSAPP_POLICY_CHOICES[1].detail, /human approval/i);
+  assert.match(WHATSAPP_POLICY_CHOICES[1].detail, /sending mode/i);
+  assert.match(WHATSAPP_POLICY_CHOICES[1].detail, /sending permission.*assigned connected phone/i);
 });
 
 test("WhatsApp setup explains independent saved policy, binding and account connection", () => {
@@ -33,7 +34,7 @@ test("Agent Policy displays explicitly toggleable WhatsApp tools without implici
   assert.match(ui, /selectedTools\.includes\(choice\.name\)/);
   assert.match(ui, /togglePolicyTool\(choice\.name, event\.target\.checked\)/);
   assert.match(ui, /WhatsApp permissions/);
-  assert.equal(WHATSAPP_POLICY_CHOICES[1].label,'Request WhatsApp send approval');
+  assert.equal(WHATSAPP_POLICY_CHOICES[1].label,'Prepare WhatsApp sends');
   assert.match(ui, /onSubmit=\{savePolicy\}/);
   assert.match(ui, /window\.confirm\(confirmation/);
   assert.match(ui, /role="status"/);
