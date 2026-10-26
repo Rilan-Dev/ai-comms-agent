@@ -8,7 +8,7 @@ vi.mock('../../worker/src/agent/email-tool-runtime',()=>({createEmailToolRuntime
 vi.mock('../../worker/src/agent/whatsapp-tool-runtime',()=>({createWhatsAppToolRuntime:async()=>({registry:{listForAgent:()=>[]}}),invokeWhatsAppTool:vi.fn()}));
 vi.mock('../../worker/src/agent/schedules-tool-runtime',()=>({createSchedulesToolRuntime:async()=>({registry:{listForAgent:()=>[]}}),invokeSchedulesTool:vi.fn()}));
 const source='10000000-0000-4000-8000-000000000001',draft='20000000-0000-4000-8000-000000000001',action='30000000-0000-4000-8000-000000000001';
-vi.mock('@ai-comms-agent/clara-core',()=>({claraRuntime:{completeWithTools:async(_context:unknown,messages:unknown[])=>{
+vi.mock('@ai-comms-agent/agent-core',()=>({agentRuntime:{completeWithTools:async(_context:unknown,messages:unknown[])=>{
  m.prompt(structuredClone(messages));
  const round=++m.round;
  if(m.excessive)return {text:'',toolCalls:Array.from({length:5},(_,index)=>({id:`excess-${round}-${index}`,name:'email.accounts.list',arguments:{}}))};
