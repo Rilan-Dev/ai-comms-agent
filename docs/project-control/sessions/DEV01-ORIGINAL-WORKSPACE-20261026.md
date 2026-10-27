@@ -161,3 +161,6 @@ The subsequent live draft-only request still failed. Read-only diagnostics isola
 
 
 Latest-sender bounded lookup candidate: eight resolver/real-executor boundary tests PASS; full web165 files1170 tests PASS; web typecheck, changed-source lint and diff checks PASS. Read-only reviewer cleared correction. Live read-only three-read/source/draft proposal PASS, stopped before mutation. Deployment and actual saved-draft acceptance remain pending; no send claimed.
+
+
+3009e173 was deployed healthy with restore-tested backup and flags off. Direct Chrome and persisted DB acceptance: exactly one latest-sender reply draft5fffe0a0-fc64-4f83-88e9-194b8ef42176, provider synced, correct QA recipient, original reply headers/thread,0send actions. Screenshot outside Git latest-sender-draft-verified.jpg. AI saved-draft approval follow-up remains broken: no tools/actions; isolated readonly replay proposed newdraft and was stopped. Manual approval exposed missing provider thread metadata from generic message loader; corrected send-email branch to use existing scoped draft loader, preserving locked snapshot/idempotency and human-review controls. ActualPOST regression RED→GREEN,166webfiles1171tests/types/lintPASS, review clear. Deployment/manual pending-review acceptance remains next. A2/provider-read/routines/WhatsApp pending and flags off. Main untouched.

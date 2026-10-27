@@ -8,6 +8,7 @@ import {
   decideEmailAction,
   getEmailActionForOrganization,
   getMailMessageForOrganization,
+  getLocalDraftForOrganization,
   recordAuditEvent,
   query,
 } from "@ai-comms-agent/db";
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
 
     if (actionType === "send_email") {
       if (!draftId) return NextResponse.json({ error: "validation_error", message: "draftId is required for send_email." }, { status: 422 });
-      const draft = await getMailMessageForOrganization(organizationId, draftId);
+      const draft = await getLocalDraftForOrganization(organizationId, draftId);
       if (!draft || !Boolean(draft.is_draft) || String(draft.email_account_id) !== emailAccountId) {
         return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization/mailbox." }, { status: 404 });
       }
