@@ -223,7 +223,8 @@ async function removeDeletedMessages(account: Candidate, providerMessageIds: str
   await Promise.all(uniqueIds.map((id) => deleteEmailKnowledge(account.organization_id, account.id, id, account.provider)));
 }
 
-async function processAccount(candidate: Candidate): Promise<boolean> {
+async function processAccount(candidate: Candidate,metadataOnly=false): Promise<boolean> {
+  if(metadataOnly&&process.env.BRIEFINGS_ENABLED!=='true')return false;
   const claimed = await query<{
     cursor: string | null;
     history_id: string | null;
@@ -326,6 +327,26 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     const discoveredCapabilities = normalizeCapabilitySet(await adapter.discoverCapabilities());
     if (EMAIL_CAPABILITIES.some(capability => candidate.capabilities?.[capability] !== discoveredCapabilities[capability])) {
       await accounts.updateCapabilities(candidate.id, discoveredCapabilities);
+    }
+    if(metadataOnly){
+      const current=await query("SELECT id FROM email_accounts WHERE id=$1 AND organization_id=$2 AND deleted_at IS NULL AND status='connected'",[candidate.id,candidate.organization_id]);
+      if(!current.rows.length||!adapter.getMessageFlags||!claimed.rows[0].last_attempt_at)throw Error('Focused verification unavailable');
+      const leaseAt=claimed.rows[0].last_attempt_at;const started=Date.now();
+      for(let page=0;page<4;page++){
+        const coverage=await reconcileReadState({
+          prepare:()=>prepareMailboxFlagPage({organizationId:candidate.organization_id,emailAccountId:candidate.id},leaseAt,200,true),
+          fetchFlags:ids=>adapter.getMessageFlags!(ids),withLease:withMailboxFlagLease,
+          refetch:async id=>{const message=await adapter.getMessage(id);if(!message)return undefined;
+            const drafts=message.is_draft&&adapter.listDraftIdsByMessage?await adapter.listDraftIdsByMessage():null;
+            await persistMessage(candidate,message,message.is_draft?drafts?.get(message.provider_message_id||message.id)??null:null);
+            return message.message_id_header||null;},
+          remove:ids=>removeDeletedMessages(candidate,ids),complete:completeMailboxFlagPage,
+        },candidate.provider==='imap_smtp',true);
+        if(coverage!=='pending'||Date.now()-started>=30_000)break;
+      }
+      await query(`UPDATE email_sync_states SET status='idle',provider_flags_retry_at=NULL,provider_flags_focus_error=NULL
+        WHERE organization_id=$1 AND email_account_id=$2 AND last_attempt_at=$3::timestamptz AND status='running'`,[candidate.organization_id,candidate.id,leaseAt]);
+      return true;
     }
     const structure = await query<{ count: string }>(
       "SELECT count(*)::text AS count FROM email_folders WHERE email_account_id=$1",
@@ -710,6 +731,11 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     }
     return true;
   } catch (error) {
+    if(metadataOnly){
+      await query(`UPDATE email_sync_states SET status='idle',provider_flags_retry_at=now()+interval '30 seconds',provider_flags_focus_error='Source read status could not be verified'
+        WHERE organization_id=$1 AND email_account_id=$2 AND last_attempt_at=$3::timestamptz AND status='running'`,[candidate.organization_id,candidate.id,claimed.rows[0].last_attempt_at]);
+      return false;
+    }
     const message = error instanceof Error ? error.message.slice(0, 500) : "Gmail synchronization failed.";
     const revoked = /invalid_grant|no refresh token is available|refresh token.*revoked/i.test(message);
     const quotaLimited = /Gmail API (?:403|429) \(quota\/rate limit|quota exceeded|userRateLimitExceeded|rateLimitExceeded|RESOURCE_EXHAUSTED/i.test(message);
@@ -909,11 +935,32 @@ export async function processMailboxSyncBatch(limit = BATCH_SIZE): Promise<{ att
   }
 }
 
+export async function runFocusedMailboxFlagPass<T>(enabled:boolean,deps:{list:()=>Promise<T[]>;process:(candidate:T)=>Promise<unknown>}):Promise<void>{
+  if(!enabled)return;
+  for(const candidate of (await deps.list()).slice(0,1))await deps.process(candidate);
+}
+
 export function startMailboxSyncLoop() {
   if (!process.env.DATABASE_URL || !process.env.CREDENTIALS_MASTER_KEY || process.env.GMAIL_MAILBOX_SYNC_DISABLED === "true") {
     return () => undefined;
   }
   let stopped = false;
+  let focusing=false;
+  const focus=async()=>{
+    if(stopped||focusing||process.env.BRIEFINGS_ENABLED!=='true')return;focusing=true;
+    try{await runFocusedMailboxFlagPass(true,{
+      list:async()=>(await query<Candidate>(`SELECT a.id,a.organization_id,a.email_address,a.provider,a.capabilities,
+        s.cursor_token sync_cursor,s.history_id,s.last_success_at FROM email_accounts a JOIN email_sync_states s ON s.email_account_id=a.id AND s.organization_id=a.organization_id
+        WHERE a.deleted_at IS NULL AND a.status='connected' AND a.provider IN ('gmail','imap_smtp')
+          AND s.status<>'paused' AND (s.status<>'running' OR s.last_attempt_at<now()-interval '10 minutes')
+          AND (s.last_attempt_at IS NULL OR s.last_attempt_at<now()-interval '2 seconds')
+          AND (s.provider_flags_retry_at IS NULL OR s.provider_flags_retry_at<=now())
+          AND EXISTS(SELECT 1 FROM email_messages m WHERE m.organization_id=a.organization_id AND m.email_account_id=a.id AND m.provider_flags_requested_at IS NOT NULL
+            AND NOT m.is_draft AND NOT m.is_sent AND m.provider_message_id IS NOT NULL)
+        ORDER BY s.provider_flags_retry_at NULLS FIRST,s.last_attempt_at NULLS FIRST,a.id LIMIT 1`)).rows,
+      process:candidate=>processAccount(candidate,true),
+    });}catch{console.warn(JSON.stringify({service:'worker.email-flags',message:'Focused provider verification deferred'}));}finally{focusing=false;}
+  };
   const queueEnabled = Boolean(process.env.RABBITMQ_URL?.trim());
   const tick = async () => {
     if (stopped) return;
@@ -968,6 +1015,7 @@ export function startMailboxSyncLoop() {
     }
   };
   void tick();
+  void focus();const focusedTimer=setInterval(()=>{void focus();},5_000);
   const timer = setInterval(() => { void tick(); }, INTERVAL_MS);
-  return () => { stopped = true; clearInterval(timer); };
+  return () => { stopped = true; clearInterval(timer);clearInterval(focusedTimer); };
 }

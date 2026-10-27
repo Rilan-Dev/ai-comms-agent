@@ -92,5 +92,42 @@ test('durable provider read-state reconciliation',async t=>{
       await api.completeMailboxFlagPage(second,{flags:flags(second),missing:[],refetched:[]});
       assert.equal((await state()).provider_flags_cursor,null);assert.ok((await state()).provider_flags_checked_at);
     });
+    await t.test('a focused source check is fresh even while an unrelated historical sweep is older than five minutes',async()=>{
+      const selected=(await q('SELECT id FROM aca.email_messages WHERE email_account_id=$1 ORDER BY id LIMIT 1',[ids.mailA])).rows[0].id;
+      await q("UPDATE aca.email_sync_states SET provider_flags_started_at=now()-interval '20 minutes',provider_flags_cursor=$2 WHERE email_account_id=$1",[ids.mailA,selected]);
+      await q('UPDATE aca.email_messages SET provider_flags_requested_at=now() WHERE id=$1',[selected]);
+      const before=await state();const page=await api.prepareMailboxFlagPage(scope,await claim(),50,true);
+      assert.equal(page.focused,true);assert.deepEqual(page.messages.map(row=>row.id),[selected]);
+      await api.completeMailboxFlagPage(page,{flags:flags(page),missing:[],refetched:[]});
+      assert.deepEqual(await state(),before);
+      const observed=(await q(`SELECT provider_flags_requested_at,provider_flags_observed_at>now()-interval '5 minutes' fresh,
+        provider_flags_observation_revision=aca.mail_provider_observation_revision(id) current FROM aca.email_messages WHERE id=$1`,[selected])).rows[0];
+      assert.deepEqual(observed,{provider_flags_requested_at:null,fresh:true,current:true});
+    });
+    await t.test('source verification uses current personal grants and exact revisions, never whole-inventory freshness',async()=>{
+      const verify=await import('../src/briefings/source-verification.ts');
+      const access=await import('../src/briefings/access.ts');
+      const p={organizationId:ids.orgA,userId:ids.userA,agentId:ids.agentA};
+      const row=(await q('SELECT id,aca.briefing_content_revision(id) revision FROM aca.email_messages WHERE email_account_id=$1 ORDER BY id LIMIT 1',[ids.mailA])).rows[0];
+      const sources=[{messageId:row.id,mailboxId:ids.mailA,contentRevision:row.revision}];
+      const check=()=>app.withTransaction(client=>verify.ensureBriefingSourceFlags(client,p,[ids.mailA],sources));
+      await assert.rejects(check());
+      await access.assignBriefingMailboxGrant({organizationId:ids.orgA,userId:ids.adminA},ids.userA,ids.mailA,'source verification test');
+      assert.equal(await check(),true);
+      await q('UPDATE aca.email_messages SET provider_flags_observed_at=NULL,provider_flags_observation_revision=NULL WHERE id=$1',[row.id]);
+      assert.equal(await check(),false);
+      assert.ok((await q('SELECT provider_flags_requested_at FROM aca.email_messages WHERE id=$1',[row.id])).rows[0].provider_flags_requested_at);
+      await assert.rejects(app.withTransaction(client=>verify.ensureBriefingSourceFlags(client,p,[ids.mailA],[{...sources[0],contentRevision:'0'.repeat(64)}])),/changed/i);
+      for(const invalid of ['is_draft=true','is_sent=true','provider_message_id=NULL']){
+        await q(`UPDATE aca.email_messages SET ${invalid},provider_flags_requested_at=NULL WHERE id=$1`,[row.id]);
+        const revision=(await q('SELECT aca.briefing_content_revision(id) revision FROM aca.email_messages WHERE id=$1',[row.id])).rows[0].revision;
+        await assert.rejects(app.withTransaction(client=>verify.ensureBriefingSourceFlags(client,p,[ids.mailA],[{...sources[0],contentRevision:revision}])),/changed/i);
+        assert.equal((await q('SELECT provider_flags_requested_at FROM aca.email_messages WHERE id=$1',[row.id])).rows[0].provider_flags_requested_at,null);
+        await q("UPDATE aca.email_messages SET is_draft=false,is_sent=false,provider_message_id='INBOX:12' WHERE id=$1",[row.id]);
+      }
+      await access.revokeBriefingMailboxGrant({organizationId:ids.orgA,userId:ids.adminA},ids.userA,ids.mailA,'test revoke');
+      await assert.rejects(check());
+      assert.equal((await q('SELECT count(*)::int n FROM aca.mail_review_items')).rows[0].n,0);
+    });
   }finally{await app?.closePostgresPool();await pool.end();}
 });

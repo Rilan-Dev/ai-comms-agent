@@ -3,6 +3,7 @@ import {requiresHumanApproval} from "@ai-comms-agent/shared";
 import {isDraftOnlyRequest,draftOnlyToolAllowed,authorizeDraftOnly} from "@/lib/chat/draft-only-scope";
 import {draftPlanningContext,latestSenderReplyAddress} from "@/lib/chat/draft-planning-context";
 import {resolveLatestSenderSource,authorizeSelectedReply,LatestSenderLookupError} from "@/lib/chat/latest-sender-source";
+import {parseSavedDraftApproval,requestSavedDraftApproval,SavedDraftApprovalLookupError,type SavedDraftApproval} from "@/lib/chat/saved-draft-approval";
 import {boundedChatHistory} from "@/lib/chat/bounded-history";
 import {safeChatFailure} from '@/lib/chat/safe-failure';
 import { NextResponse } from "next/server";
@@ -312,6 +313,7 @@ async function runInteractiveHostToolLoop(args: {
   agentContext?:AgentRuntimeContext;
   draftOnly?:boolean;
   latestSender?:string|null;
+  savedDraftApproval?:SavedDraftApproval|null;
   whatsAppOnly?:boolean;
   signal?:AbortSignal;
   onSafeReadOnlyFinal?: (completedHistory: ToolChatMessage[]) => Promise<string>;
@@ -354,6 +356,21 @@ async function runInteractiveHostToolLoop(args: {
     return text?{text,hostReadEvidence:true,toolCalls:summaries}:null;
   };
   let totalCalls = 0;
+  if(args.savedDraftApproval){
+    const context={...args.toolContext,require_human_approval:true};
+    const required=['email.accounts.list','email.message.get','email.send.request'];
+    if(!required.every(name=>visibleTools.some(tool=>tool.name===name)))return {text:'Could you check this agent’s mailbox read and send-request permissions? No review request was created.',toolCalls:summaries};
+    const invoke=async(name:string,input:Record<string,unknown>)=>{
+      if(args.signal?.aborted)throw new DOMException('The request was canceled.','AbortError');
+      const id=crypto.randomUUID();args.onProgress?.(name==='email.send.request'?'checking_permissions':'reading_email');
+      const result=await invokeEmailReadTool(emailRuntime,name,input,context);
+      summaries.push({name,ok:result.ok,readOnly:name!=='email.send.request',operation:operationResultFromToolCall({context,callId:id,registeredName:name,result})??undefined,...(result.error?{errorCode:result.error.code}:{})});
+      return result;
+    };
+    try{await requestSavedDraftApproval(args.savedDraftApproval,{read:invoke,request:input=>invoke('email.send.request',input)});}
+    catch(error){if(error instanceof SavedDraftApprovalLookupError)return {text:error.message,toolCalls:summaries};throw error;}
+    return {text:'',toolCalls:summaries};
+  }
   if(args.draftOnly&&args.latestSender){
     const required=['email.accounts.list','email.search','email.message.get','email.draft_reply'];
     if(required.every(name=>visibleTools.some(tool=>tool.name===name))){
@@ -769,6 +786,7 @@ export async function POST(request: Request) {
                 agentContext:preparedAgentContext,
                 draftOnly:isDraftOnlyRequest(content),
                 latestSender:latestSenderReplyAddress(content),
+                savedDraftApproval:parseSavedDraftApproval(content),
                 whatsAppOnly:whatsappPlan.whatsAppOnly,
                 signal:request.signal,
                 onProgress: (phase) => emit("progress", { phase }),
