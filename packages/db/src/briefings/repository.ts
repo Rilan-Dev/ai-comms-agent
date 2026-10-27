@@ -2,6 +2,7 @@ import type { PoolClient } from 'pg';
 import { ForbiddenError, type BriefingItem, type BriefingRead, type BriefingList, type BriefingListOptions, type TrustedBriefingPrincipal } from '@ai-comms-agent/shared';
 import { withTransaction } from '../client';
 import { requireBriefingActor, requireBriefingIds, resolveBriefingScopeInTransaction } from './access';
+import { requireFreshMailboxFlags, MailboxReadStatePendingError } from './read-state';
 
 async function readBriefing(client: PoolClient, principal: TrustedBriefingPrincipal, id: string): Promise<BriefingRead> {
   requireBriefingIds(principal.organizationId, principal.userId, principal.agentId, id);
@@ -16,15 +17,20 @@ async function readBriefing(client: PoolClient, principal: TrustedBriefingPrinci
   try { scope = await resolveBriefingScopeInTransaction(client, principal, row.mailbox_ids); }
   catch (error) { if (error instanceof ForbiddenError) return invalid(); throw error; }
   if (scope.scopeVersion !== row.scope_version || new Date(row.derived_expires_at).getTime() <= Date.now()) return invalid();
+  if (row.briefing_mode === 'catch_up') {
+    try { await requireFreshMailboxFlags(client,principal.organizationId,scope.mailboxIds); }
+    catch(error) { if(error instanceof MailboxReadStatePendingError) return invalid(); throw error; }
+  }
   const sources = await client.query(`SELECT s.email_message_id AS id, s.mailbox_id, s.content_revision,
-      briefing_content_revision(m.id) AS current_revision
+      briefing_content_revision(m.id) AS current_revision,m.is_read,m.is_draft,m.is_sent
     FROM summary_sources s LEFT JOIN email_messages m ON m.id=s.email_message_id
       AND m.organization_id=s.organization_id AND m.email_account_id=s.mailbox_id
     WHERE s.summary_id=$1 AND s.organization_id=$2 AND s.owner_user_id=$3 AND s.agent_id=$4`,
     [id, principal.organizationId, principal.userId, principal.agentId]);
   if (!Array.isArray(row.selected_source_manifest) || row.selected_source_manifest.length !== sources.rows.length) return invalid();
   const validEmpty = row.briefing_status === 'ready' && Array.isArray(row.content_json) && row.content_json.length === 0;
-  if ((!sources.rowCount && !validEmpty) || sources.rows.some(source => !scope.mailboxIds.includes(source.mailbox_id) || !source.id || !source.current_revision || source.content_revision !== source.current_revision)) return invalid();
+  if ((!sources.rowCount && !validEmpty) || sources.rows.some(source => !scope.mailboxIds.includes(source.mailbox_id) || !source.id || !source.current_revision || source.content_revision !== source.current_revision
+    || source.is_draft || source.is_sent || (row.briefing_mode === 'catch_up' && source.is_read))) return invalid();
   const permitted = new Map(sources.rows.map(source => [source.id, source.content_revision]));
   const items = row.content_json;
   if (!Array.isArray(items) || items.some(item => !item || !Array.isArray(item.sourceIds) || !item.sourceIds.length || item.sourceIds.some((source: unknown) => !permitted.has(source)))) return invalid();

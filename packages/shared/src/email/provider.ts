@@ -125,6 +125,18 @@ export interface SyncResult {
   new_state: SyncState;
 }
 
+/** Metadata observed through a successful provider read, not a user review.
+ * Missing IDs are authoritative only when the entire provider operation succeeds.
+ * RFC identity lets the host detect an IMAP UID reused for another message. */
+export interface EmailMessageFlags {
+  provider_message_id: string;
+  message_id_header: string | null;
+  is_read: boolean;
+  is_starred: boolean;
+  is_draft: boolean;
+  is_outbound: boolean;
+}
+
 export interface SearchQuery {
   from?: string;
   subject?: string;
@@ -183,6 +195,7 @@ export interface EmailProvider {
   listLabels?(): Promise<EmailLabel[]>;
 
   sync(state: SyncState): Promise<SyncResult>;
+  getMessageFlags?(messageIds: string[]): Promise<EmailMessageFlags[]>;
 
   listMessages(folderId: string, opts: ListOptions): Promise<EmailMessage[]>;
   getMessage(messageId: string): Promise<EmailMessage | null>;

@@ -4,6 +4,9 @@ import {
   PostgresEmailAccountRepository,
   PostgresEmailFolderLabelRepository,
   query,
+  prepareMailboxFlagPage,
+  completeMailboxFlagPage,
+  withMailboxFlagLease,
 } from "@ai-comms-agent/db";
 import { EMAIL_CAPABILITIES, normalizeCapabilitySet, sanitizeEmailHtml, type CapabilitySet, type EmailCredentials, type EmailMessage, type SyncState } from "@ai-comms-agent/shared";
 import { GmailAdapter } from "./gmail-adapter";
@@ -18,6 +21,7 @@ import { deleteEmailKnowledge } from "../knowledge/email-knowledge-indexer";
 import { unavailableMessageIds, successfullyPersistedMessageIds } from "./mailbox-sync-checkpoint";
 import { parseInitialImportLimit, eligibleSyncMessageIds } from "./initial-import-limit";
 import type { EmailSyncPayload } from "../queues/email-sync-message";
+import { reconcileReadState } from './read-state-reconciliation';
 
 type Candidate = {
   id: string;
@@ -241,7 +245,7 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
           OR email_sync_states.last_attempt_at < now()-interval '10 minutes'
      RETURNING cursor_token AS cursor, history_id, last_success_at, sync_mode,
        pending_message_ids, pending_cursor_token, pending_history_id, pending_sync_mode,
-       pending_push_at, last_attempt_at`,
+       pending_push_at, last_attempt_at::text AS last_attempt_at`,
     [candidate.id, candidate.organization_id],
   );
   if (!claimed.rows[0]) return false;
@@ -574,6 +578,31 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     }
 
     await removeDeletedMessages(candidate, providerDeleted);
+
+    if (adapter.getMessageFlags && claimed.rows[0].last_attempt_at) {
+      const leaseAt = claimed.rows[0].last_attempt_at;
+      try {
+        await reconcileReadState({
+          prepare: () => prepareMailboxFlagPage({organizationId:candidate.organization_id,emailAccountId:candidate.id},leaseAt),
+          fetchFlags: ids => adapter.getMessageFlags!(ids),
+          withLease: withMailboxFlagLease,
+          refetch: async id => {
+            const message = await adapter.getMessage(id);
+            if (!message) return undefined;
+            if (!await persistMessageSafe(id,message)) throw new Error('Canonical flag reconciliation refetch failed');
+            return message.message_id_header || null;
+          },
+          remove: ids => removeDeletedMessages(candidate,ids),
+          complete: completeMailboxFlagPage,
+        },candidate.provider === 'imap_smtp');
+      } catch {
+        // A failed metadata check must not turn absence into deletion or claim
+        // fresh read coverage. Normal message ingestion can still complete.
+        await query(`UPDATE email_sync_states SET provider_flags_error=$4
+          WHERE organization_id=$1 AND email_account_id=$2 AND status='running' AND last_attempt_at=$3::timestamptz`,
+          [candidate.organization_id,candidate.id,leaseAt,'Read status could not be verified; retrying']);
+      }
+    }
 
     await query(
       `UPDATE email_sync_states SET cursor_token=$1, history_id=$2, sync_mode=$5, status='idle',

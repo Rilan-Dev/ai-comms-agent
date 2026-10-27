@@ -32,6 +32,7 @@ export type {
   EmailFolder,
   EmailLabel,
   EmailMessage,
+  EmailMessageFlags,
   EmailThread,
   EmailAccount,
   SyncState,

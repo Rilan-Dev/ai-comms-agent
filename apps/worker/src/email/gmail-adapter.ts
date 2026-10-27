@@ -1,7 +1,7 @@
 import {emailReplyMetadata} from "@ai-comms-agent/shared";
 import type {
   CapabilitySet, DraftParams, EmailCredentials, EmailFolder, EmailLabel,
-  EmailMessage, EmailProvider, ListOptions, SearchQuery, SentMessageRef, SyncResult, SyncState
+  EmailMessage, EmailMessageFlags, EmailProvider, ListOptions, SearchQuery, SentMessageRef, SyncResult, SyncState
 } from "@ai-comms-agent/shared";
 
 const BASE = "https://gmail.googleapis.com/gmail/v1/users/me";
@@ -258,6 +258,24 @@ export class GmailAdapter implements EmailProvider {
     return (data.labels ?? []).filter((l: any) => l.type === "user").map((l: any) => ({
       id: l.id, email_account_id: "gmail", provider_label_id: l.id, name: l.name, label_type: "user",
     }));
+  }
+
+  async getMessageFlags(messageIds:string[]):Promise<EmailMessageFlags[]> {
+    if(messageIds.length>200||messageIds.some(id=>!id||id.length>512||/[\r\n\0]/.test(id)))throw new Error('Invalid or unbounded Gmail metadata identifiers');
+    const result:EmailMessageFlags[]=[];const ids=[...new Set(messageIds)];
+    for(let offset=0;offset<ids.length;offset+=4){
+      const page=await Promise.all(ids.slice(offset,offset+4).map(async id=>{
+        let message;
+        try{message=await this.request(`/messages/${encodeURIComponent(id)}?`+new URLSearchParams({format:'metadata',metadataHeaders:'Message-ID',fields:'id,labelIds,payload(headers)'}));}
+        catch(error){if(error instanceof Error&&/^Gmail API 404:/.test(error.message))return null;throw error;}
+        if(message.id!==id||(message.labelIds!==undefined&&!Array.isArray(message.labelIds)))throw new Error('Invalid Gmail flags response');
+        const labels=new Set<string>(message.labelIds??[]);
+        const identity=message.payload?.headers?.find((header:{name?:string})=>header.name?.toLowerCase()==='message-id')?.value;
+        return {provider_message_id:id,message_id_header:typeof identity==='string'?identity.trim():null,is_read:!labels.has('UNREAD'),is_starred:labels.has('STARRED'),is_draft:labels.has('DRAFT'),is_outbound:labels.has('SENT')};
+      }));
+      result.push(...page.filter((item):item is EmailMessageFlags=>item!==null));
+    }
+    return result;
   }
 
   async sync(state: SyncState): Promise<SyncResult> {

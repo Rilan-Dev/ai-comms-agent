@@ -27,6 +27,11 @@ test('C2 persisted selection, review and crash recovery',async t=>{
     await q("UPDATE aca.email_messages SET received_at=now()-interval '5 days' WHERE id=$1",[ids.messageA]);
     const req=(key,extra={})=>({mode:'catch_up',mailboxIds:[ids.mailA],period:null,language:'en',requestKey:key,...extra});
     const prepare=key=>api.prepareBriefing(p,req(key));
+    await t.test('catch-up preparation waits for complete current provider read coverage',async()=>{
+      await q("UPDATE aca.email_sync_states SET provider_flags_started_at=now() WHERE email_account_id=$1",[ids.mailA]);
+      try {await assert.rejects(prepare('incomplete-read-coverage'),/read status/i);}
+      finally {await q("UPDATE aca.email_sync_states SET provider_flags_started_at=NULL WHERE email_account_id=$1",[ids.mailA]);}
+    });
     const sourceIds=async id=>(await api.listBriefingSources(p,id,null,200)).items.map(s=>s.messageId);
     const evidenceItem=(source,start=0,representation='complete')=>({id:'model-id',sourceIds:[source.messageId],title:'Obligation',summary:'Please act',reason:'Explicit request',priority:'high',deadline:null,confidence:'supported',suggestedAction:'reply',representation,snoozedUntil:null,evidence:[{sourceId:source.messageId,contentRevision:source.contentRevision,start,end:start+1,quote:'p',supports:'summary'}]});
     const finish=async(manifest,items,partial=false)=>{
@@ -88,6 +93,21 @@ test('C2 persisted selection, review and crash recovery',async t=>{
       await q('UPDATE aca.email_messages SET is_read=true WHERE id=$1',[ids.messageA]);
       try { await assert.rejects(api.claimBriefingBatch(p,m.id,'stale-unread-worker'),/conflict/i); }
       finally {
+        await q('UPDATE aca.email_messages SET is_read=false WHERE id=$1',[ids.messageA]);
+        await q('DELETE FROM aca.summaries WHERE id=$1',[m.id]);
+      }
+    });
+    await t.test('provider read after publication invalidates saved catch-up without erasing its history',async()=>{
+      const m=await prepare('provider-read-after-publication');
+      const source=(await api.listBriefingSources(p,m.id)).items[0];
+      await finish(m,[evidenceItem(source)]);
+      const saved=(await q('SELECT content_json FROM aca.summaries WHERE id=$1',[m.id])).rows[0].content_json;
+      await q('UPDATE aca.email_messages SET is_read=true WHERE id=$1',[ids.messageA]);
+      try {
+        assert.equal((await reads.getBriefing(p,m.id)).manifest.status,'invalidated');
+        assert.deepEqual((await reads.getBriefing(p,m.id)).items,[]);
+        assert.deepEqual((await q('SELECT content_json FROM aca.summaries WHERE id=$1',[m.id])).rows[0].content_json,saved);
+      } finally {
         await q('UPDATE aca.email_messages SET is_read=false WHERE id=$1',[ids.messageA]);
         await q('DELETE FROM aca.summaries WHERE id=$1',[m.id]);
       }

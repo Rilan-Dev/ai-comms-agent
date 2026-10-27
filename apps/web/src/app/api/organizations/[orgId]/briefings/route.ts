@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { asOrganizationId } from "@ai-comms-agent/shared";
-import { listBriefings, prepareBriefing } from "@ai-comms-agent/db";
+import { listBriefings, prepareBriefing, MailboxReadStatePendingError } from "@ai-comms-agent/db";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { assertSameOrigin } from "@/lib/identity/local-auth";
@@ -62,5 +62,8 @@ export async function POST(request: Request, context: Context) {
       status: manifest.status === "ready" ? 200 : 202,
       headers: { "Cache-Control": "private, no-store" },
     });
-  } catch (error) { return authorizationErrorToResponse(error); }
+  } catch (error) {
+    if (error instanceof MailboxReadStatePendingError) return NextResponse.json({error:'mailbox_read_status_pending',message:error.message},{status:409,headers:{'Cache-Control':'private, no-store','Retry-After':'10'}});
+    return authorizationErrorToResponse(error);
+  }
 }

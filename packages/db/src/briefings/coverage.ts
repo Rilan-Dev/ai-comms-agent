@@ -6,6 +6,7 @@ import { briefingPeriod, planBriefingBatches, routineSourceEligible,
 import { withTransaction } from '../client';
 import { stableBriefingItemId } from './identity';
 import { requireBriefingActor, requireBriefingIds, resolveBriefingScopeInTransaction } from './access';
+import { requireFreshMailboxFlags } from './read-state';
 
 type ScheduledRequest = Extract<BriefingRequest, { mode: 'scheduled' }>;
 /** Host-only R3 integration. Implementations must authorize routine identity/revision
@@ -37,11 +38,12 @@ async function currentManifest(client: PoolClient, p: TrustedBriefingPrincipal, 
   const row = found.rows[0]; if (!row) throw conflict('unavailable manifest');
   const scope = await resolveBriefingScopeInTransaction(client, p, row.mailbox_ids);
   if (scope.scopeVersion !== row.scope_version) throw conflict();
+  if (row.briefing_mode === 'catch_up') await requireFreshMailboxFlags(client,p.organizationId,scope.mailboxIds);
   const sourceCount = (await client.query('SELECT count(*)::int n FROM summary_sources WHERE summary_id=$1', [id])).rows[0].n;
   if (!Array.isArray(row.selected_source_manifest) || row.selected_source_manifest.length !== sourceCount) throw conflict('missing provenance');
   const invalid = await client.query(`SELECT 1 FROM summary_sources s LEFT JOIN email_messages m ON m.id=s.email_message_id AND m.organization_id=s.organization_id AND m.email_account_id=s.mailbox_id
     WHERE s.summary_id=$1 AND (m.id IS NULL OR s.content_revision IS DISTINCT FROM briefing_content_revision(m.id)
-      OR ($2 AND m.is_read)) LIMIT 1`, [id, row.briefing_mode === 'catch_up']);
+      OR m.is_draft OR m.is_sent OR ($2 AND m.is_read)) LIMIT 1`, [id, row.briefing_mode === 'catch_up']);
   if (invalid.rowCount) throw conflict();
   return { row, scope };
 }
@@ -53,6 +55,7 @@ export async function prepareBriefing(p: TrustedBriefingPrincipal, request: Brie
   return retrySnapshot(() => withTransaction(async client => {
     await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
     const scope = await resolveBriefingScopeInTransaction(client, p, request.mailboxIds);
+    if (request.mode === 'catch_up') await requireFreshMailboxFlags(client,p.organizationId,scope.mailboxIds);
     const fingerprint = createHash('sha256').update(JSON.stringify([request.mode, scope.mailboxIds, request.period, request.language, request.mode === 'scheduled' ? request.routine : null])).digest('hex');
     const existing = await client.query(`SELECT j.request_fingerprint,s.* FROM briefing_generation_jobs j JOIN summaries s ON s.id=j.summary_id
       WHERE j.organization_id=$1 AND j.owner_user_id=$2 AND j.agent_id=$3 AND j.scope_version=$4 AND j.request_key=$5`, [...params(p), scope.scopeVersion, request.requestKey]);

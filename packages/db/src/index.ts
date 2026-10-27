@@ -157,3 +157,5 @@ export * from './briefings/coverage';
 export { listGrantedBriefingMailboxes, publishBriefingItems } from './briefings/selection';
 export {ActionAuthorizationRevokedError,assertCurrentAgentToolAuthorization,assertCurrentEmailActionAuthorization,assertCurrentWhatsAppActionAuthorization} from './actions/current-authorization';
 export { loadCanonicalBriefingSources, validateCanonicalBriefingRows, requireClaimedMailboxScope, validateClaimedBriefingSourceIds, type CanonicalBriefingMail, type CanonicalBriefingRow } from './briefings/canonical-sources';
+export {prepareMailboxFlagPage,completeMailboxFlagPage,withMailboxFlagLease} from './email/flag-reconciliation';
+export {MailboxReadStatePendingError} from './briefings/read-state';

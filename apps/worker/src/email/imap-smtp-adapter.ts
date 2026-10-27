@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { promises as dns } from "node:dns";
 import type {
   CapabilitySet, DraftParams, DraftRef, EmailCredentials, EmailFolder, EmailLabel,
-  EmailMessage, EmailProvider, ListOptions, SearchQuery, SentMessageRef, SyncResult, SyncState,
+  EmailMessage, EmailMessageFlags, EmailProvider, ListOptions, SearchQuery, SentMessageRef, SyncResult, SyncState,
 } from "@ai-comms-agent/shared";
 import { parseRfc822 } from "@ai-comms-agent/shared";
 
@@ -185,7 +185,7 @@ async function readLine(reader: SocketReader, timeoutMs = 10_000): Promise<strin
 }
 
 /** Read an IMAP response while consuming literal payloads by octet length. */
-export async function readImapResponse(reader: SocketReader, timeoutMs = 60_000): Promise<string> {
+export async function readImapResponse(reader: SocketReader, timeoutMs = 60_000, maxLiteralBytes = 50 * 1024 * 1024): Promise<string> {
   let response = await readLine(reader, timeoutMs);
   const literalMarker = /\{(\d+)\+?\}$/;
   while (true) {
@@ -193,6 +193,7 @@ export async function readImapResponse(reader: SocketReader, timeoutMs = 60_000)
     if (!match) return response;
     const length = Number(match[1]);
     if (!Number.isSafeInteger(length) || length > 50 * 1024 * 1024) throw new Error("IMAP literal exceeds the 50 MiB safety limit");
+    if(length>maxLiteralBytes)throw new Error('IMAP literal exceeds the metadata safety limit');
     const literal = await readBytes(reader, length, timeoutMs);
     response += "\r\n" + literal.toString("utf8");
     response += "\r\n" + await readLine(reader, timeoutMs);
@@ -449,13 +450,13 @@ export class ImapSmtpAdapter implements EmailProvider {
     }
   }
 
-  private async command(command: string): Promise<string[]> {
+  private async command(command: string, maxLiteralBytes?:number): Promise<string[]> {
     const { imap } = this.ensureConnected();
     const tag = this.nextTag(imap);
     imap.socket.write(`${tag} ${command}\r\n`);
     const lines: string[] = [];
     while (true) {
-      const line = await readImapResponse(imap.reader, 60_000);
+      const line = await readImapResponse(imap.reader, 60_000, maxLiteralBytes);
       if (line.startsWith(`${tag} OK`)) return lines;
       if (line.startsWith(`${tag} NO`) || line.startsWith(`${tag} BAD`)) {
         throw new Error(`IMAP command failed (${command.split(" ")[0]}): ${line}`);
@@ -508,6 +509,46 @@ export class ImapSmtpAdapter implements EmailProvider {
       has_attachments: /content-disposition:\s*attachment/i.test(raw),
       embedding_status: "pending",
     };
+  }
+
+  async getMessageFlags(messageIds: string[]): Promise<EmailMessageFlags[]> {
+    if(messageIds.length>200)throw new Error('IMAP metadata read is bounded to 200 messages');
+    const folders=new Map<string,Set<string>>();
+    for(const id of messageIds){
+      const colon=id.lastIndexOf(':');const folder=id.slice(0,colon),uid=id.slice(colon+1);
+      if(colon<1||/[\r\n\0]/.test(folder)||! /^[1-9][0-9]*$/.test(uid)||!Number.isSafeInteger(Number(uid)))throw new Error('Invalid IMAP message identifier or UID');
+      if(!folders.has(folder))folders.set(folder,new Set());folders.get(folder)!.add(uid);
+    }
+    this.ensureConnected();
+    const result:EmailMessageFlags[]=[];
+    for(const [folder,uids] of folders){
+      await this.command(`SELECT ${quote(folder)}`);
+      const responses=await this.command(`UID FETCH ${[...uids].join(',')} (UID FLAGS BODY.PEEK[HEADER.FIELDS (MESSAGE-ID)])`,65536);
+      const found=new Map<string,EmailMessageFlags>();const observed=new Set<string>();
+      for(const response of responses){
+        if(!/^\* \d+ FETCH \(/i.test(response))continue;
+        const marker=/BODY\[HEADER\.FIELDS \(MESSAGE-ID\)\]\s+\{(\d+)\+?\}\r\n/i.exec(response);
+        let protocol=response;let header:string|null=null;
+        if(marker){
+          const size=Number(marker[1]);if(!Number.isSafeInteger(size)||size>65536)throw new Error('Invalid IMAP metadata literal');
+          const remainder=Buffer.from(response.slice(marker.index+marker[0].length));
+          if(remainder.length<size)throw new Error('Incomplete IMAP metadata literal');
+          header=remainder.subarray(0,size).toString('utf8');
+          protocol=response.slice(0,marker.index)+' '+remainder.subarray(size).toString('utf8');
+        }
+        const uid=protocol.match(/\bUID (\d+)\b/i)?.[1];
+        if(!uid||!uids.has(uid))continue;
+        observed.add(uid);
+        const flags=protocol.match(/\bFLAGS \(([^)]*)\)/i)?.[1];
+        if(flags===undefined)throw new Error('Incomplete IMAP flags response');
+        if(header===null)continue;
+        const identity=header.match(/^message-id:\s*([^\r\n]+)/im)?.[1]?.trim()??null;
+        found.set(uid,{provider_message_id:`${folder}:${uid}`,message_id_header:identity,is_read:/\\Seen\b/i.test(flags),is_starred:/\\Flagged\b/i.test(flags),is_draft:/\\Draft\b/i.test(flags)||/drafts/i.test(folder),is_outbound:/sent/i.test(folder)});
+      }
+      if([...observed].some(uid=>!found.has(uid)))throw new Error('Incomplete IMAP metadata flags response');
+      result.push(...found.values());
+    }
+    return result;
   }
 
   async sync(state: SyncState): Promise<SyncResult> {
