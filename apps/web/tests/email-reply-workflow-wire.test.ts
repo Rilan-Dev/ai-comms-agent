@@ -7,6 +7,29 @@ beforeEach(()=>{
   mock.query.mockImplementation(async(sql:string)=>({rows:sql.includes('organization_ai_runtime_settings')?[{default_provider:'openai',temperature:0.2,max_tokens:1500,system_prompt:'Use registered tools.'}]:sql.includes('ai_provider_configs')?[{model:'gpt-4.1-mini',encrypted_api_key:Buffer.from('fixture'),config:{},enabled:true}]:[]}));
 });
 afterEach(()=>{vi.useRealTimers();vi.unstubAllEnvs();vi.unstubAllGlobals();vi.clearAllMocks();});
+it('keeps a short Sarvam tool budget available for decisions rather than hidden reasoning',async()=>{
+  mock.query.mockImplementation(async(sql:string)=>({rows:sql.includes('organization_ai_runtime_settings')?[{default_provider:'sarvam',max_tokens:1500}]:sql.includes('ai_provider_configs')?[{model:'sarvam-105b',encrypted_api_key:Buffer.from('fixture'),config:{},enabled:true}]:[]}));
+  const fetch=vi.fn(async(_url:unknown,options?:RequestInit)=>{
+    const payload=JSON.parse(String(options?.body));
+    expect(payload.reasoning_effort).toBeNull();
+    expect(payload.max_tokens).toBe(1500);
+    expect(payload.model).toBe('sarvam-105b');
+    return Response.json({choices:[{finish_reason:'stop',message:{content:'Which source?'}}]});
+  });vi.stubGlobal('fetch',fetch);
+  await agentRuntime.completeWithTools({orgId:'org',agentId:'agent',kbId:'',skipGrounding:true},[{role:'user',content:'Draft a reply'}],[{name:'email.draft_reply',description:'Draft',parameters:{type:'object'}}]);
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+it('rejects an exhausted provider completion before returning any executable partial decision',async()=>{
+  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({choices:[{finish_reason:'length',message:{content:''}}]})));
+  await expect(agentRuntime.completeWithTools({orgId:'org',agentId:'agent',kbId:'',skipGrounding:true},[{role:'user',content:'Draft a reply'}],[{name:'email.draft_reply',description:'Draft',parameters:{type:'object'}}])).rejects.toMatchObject({code:'provider_output_limit'});
+});
+it.each(['json','stream'])('retains the output-limit diagnosis for exhausted %s responses containing partial calls',async wire=>{
+  mock.query.mockImplementation(async(sql:string)=>({rows:sql.includes('organization_ai_runtime_settings')?[{default_provider:wire==='json'?'sarvam':'openai',max_tokens:1500}]:sql.includes('ai_provider_configs')?[{model:wire==='json'?'sarvam-105b':'gpt-4.1-mini',encrypted_api_key:Buffer.from('fixture'),config:{},enabled:true}]:[]}));
+  vi.stubGlobal('fetch',vi.fn(async()=>wire==='json'
+    ?Response.json({choices:[{finish_reason:'length',message:{content:'',tool_calls:[{id:'partial',function:{name:'email_draft_reply',arguments:'{'}}]}}]})
+    :new Response('data: '+JSON.stringify({choices:[{delta:{tool_calls:[{index:0,id:'partial',function:{name:'email.draft_reply',arguments:'{'}}]},finish_reason:'length'}]})+'\n\ndata: [DONE]\n\n',{headers:{'content-type':'text/event-stream'}})));
+  await expect(agentRuntime.completeWithTools({orgId:'org',agentId:'agent',kbId:'',skipGrounding:true},[{role:'user',content:'Draft a reply'}],[{name:'email.draft_reply',description:'Draft',parameters:{type:'object'}}])).rejects.toMatchObject({code:'provider_output_limit'});
+});
 it('the actual provider request receives trusted reply workflow while dynamic host/email context stays untrusted',async()=>{
   const fetch=vi.fn(async(_url:unknown,options?:RequestInit)=>{
     const payload=JSON.parse(String(options?.body));const system=payload.messages[0].content as string;

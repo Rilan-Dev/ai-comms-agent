@@ -404,7 +404,13 @@ async function chatWithTools(
   options: ChatOptions = {},
   signal?:AbortSignal,
 ): Promise<ChatToolCompletion> {
-  return withToolCompletionDeadline(deadlineSignal=>chatWithToolsRequest(config,messages,tools,options,deadlineSignal),signal);
+  const completion=await withToolCompletionDeadline(deadlineSignal=>chatWithToolsRequest(config,messages,tools,options,deadlineSignal),signal);
+  // An exhausted response may contain a truncated decision. Never expose any
+  // of its proposed operations to the host executor, including partial calls.
+  if(completion.finishReason==='length'||completion.finishReason==='MAX_TOKENS'){
+    throw Object.assign(new Error('The AI reached its response limit before completing a tool decision.'),{code:'provider_output_limit'});
+  }
+  return completion;
 }
 
 async function chatWithToolsRequest(
@@ -499,7 +505,13 @@ async function chatWithToolsRequest(
       stream: !sarvam,
       ...(sarvam ? {} : { parallel_tool_calls: false }),
       temperature: options.temperature,
-      ...(sarvam ? { max_tokens: options.maxTokens } : { max_completion_tokens: options.maxTokens }),
+      ...(sarvam ? {
+        max_tokens: options.maxTokens,
+        // Sarvam counts hidden reasoning against this same completion budget.
+        // Short interactive tool decisions need room for actual JSON output;
+        // retain the selected model and budget rather than inflating either.
+        ...(config.chatModel==='sarvam-105b'&&options.maxTokens!=null&&options.maxTokens<=2048?{reasoning_effort:null}:{}),
+      } : { max_completion_tokens: options.maxTokens }),
     }),
   });
   if (!response.ok) {
@@ -524,6 +536,7 @@ async function chatWithToolsRequest(
     choices?: Array<{ finish_reason?: string; message?: { content?: string | null; tool_calls?: Array<{ id?: string; function?: { name?: string; arguments?: string } }> } }>;
   };
   const choice = payload.choices?.[0];
+  if(choice?.finish_reason==='length')return {text:'',toolCalls:[],finishReason:'length'};
   const rawCalls = choice?.message?.tool_calls ?? [];
   if (sarvam && rawCalls.length && choice?.finish_reason !== "tool_calls") {
     return { text: "The provider did not complete a valid tool call.", toolCalls: [], finishReason: "invalid_tool_call" };

@@ -2,6 +2,9 @@ import {describe,expect,it} from 'vitest';
 import {safeChatFailure} from '../src/lib/chat/safe-failure';
 
 describe('safe chat failure diagnostics',()=>{
+ it('recognizes the bounded output-limit code without exposing vendor details',()=>{
+  expect(safeChatFailure(Object.assign(new Error('private provider output'),{code:'provider_output_limit'}))).toEqual({category:'output_limit',type:'Error'});
+ });
  it('reports provider HTTP status without request, token or response text',()=>{
   const details=safeChatFailure(new Error('Sarvam tool request failed (400): secret-token private mailbox content invalid role'));
   expect(details).toEqual({category:'provider_http',provider:'sarvam',httpStatus:400,type:'Error'});

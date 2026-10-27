@@ -134,6 +134,7 @@ export async function readOpenAIToolCompletion(
     if (!bad && !sawDone && buffer.trim()) processFrame(buffer);
     if (bad) return invalid(bad);
     if (!sawDone || !finishReason) return invalid("invalid_tool_call");
+    if(finishReason==='length')return {text:'',toolCalls:[],finishReason};
     if (calls.size === 0) {
       if (finishReason !== "stop") return invalid("invalid_tool_call");
       return { text, toolCalls: [], finishReason };

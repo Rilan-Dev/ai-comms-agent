@@ -837,7 +837,9 @@ export async function POST(request: Request) {
           // The browser must never receive the raw exception through an SSE frame.
           const reference=trustedToolContext.correlation_id;
           console.error('[chat/stream] execution failed',{reference,...safeChatFailure(error),stage:shouldResolveTools?'tools':'model'});
-          if (!request.signal.aborted) emit("error", { message: explicitMessagingAction
+          if (!request.signal.aborted) emit("error", { message: safeChatFailure(error).category==='output_limit'
+            ? `The AI reached its response limit. Check Drafts or Approvals before retrying; this response does not confirm a saved reply or delivery. Reference: ${reference}`
+            : explicitMessagingAction
             ? `Chat execution failed. Review drafts and approvals before retrying an email action. Reference: ${reference}`
             : `The read-only response could not be completed. Try again or open Inbox to view saved messages. Reference: ${reference}` });
           controller.close();

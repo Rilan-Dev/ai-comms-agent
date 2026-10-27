@@ -84,13 +84,15 @@ test("tool-call index gaps or duplicate IDs fail closed", async () => {
   assert.equal(duplicate.finishReason, "invalid_tool_call");
 });
 
-test("an incomplete function-call finish reason is not a permission to invoke tools", async () => {
+test("an exhausted function-call retains its diagnosis without permission to invoke tools", async () => {
   const out = await readOpenAIToolCompletion(stream(
     chunk(toolPart({ index: 0, id: "call-a", function: { name: "email.accounts.list", arguments: "{}" } })),
     chunk({ choices: [{ delta: {}, finish_reason: "length" }] }),
     "data: [DONE]\n\n",
   ));
-  assert.equal(out.finishReason, "invalid_tool_call");
+  assert.equal(out.finishReason, "length");
+  assert.deepEqual(out.toolCalls, []);
+  assert.equal(out.text, "");
 });
 
 test("oversized tool argument fragments fail closed before reaching host execution", async () => {
