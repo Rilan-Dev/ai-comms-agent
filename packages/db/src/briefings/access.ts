@@ -91,7 +91,9 @@ export async function recordForegroundActivity(principal: TrustedBriefingPrincip
     await requireBriefingActor(client, principal);
     const accounts = await client.query<{ mailbox_id: string }>(`SELECT g.mailbox_id FROM briefing_mailbox_grants g
       JOIN agent_email_accounts b ON b.email_account_id=g.mailbox_id AND b.agent_id=$3
-      WHERE g.organization_id=$1 AND g.user_id=$2 AND g.revoked_at IS NULL AND b.role IN ('primary','read_only')`,
+      JOIN email_accounts e ON e.id=g.mailbox_id AND e.organization_id=g.organization_id
+      WHERE g.organization_id=$1 AND g.user_id=$2 AND g.revoked_at IS NULL AND b.role IN ('primary','read_only')
+        AND e.deleted_at IS NULL AND e.status::text IN ('active','connected')`,
     [principal.organizationId, principal.userId, principal.agentId]);
     await resolveBriefingScopeInTransaction(client, principal, accounts.rows.map(row => row.mailbox_id));
     await client.query(`INSERT INTO user_mail_activity(organization_id,user_id,agent_id,last_foreground_at) VALUES($1,$2,$3,$4)

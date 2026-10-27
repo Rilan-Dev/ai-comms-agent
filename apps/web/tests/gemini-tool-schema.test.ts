@@ -11,6 +11,7 @@ it('sends full JSON Schema through Gemini parametersJsonSchema, preserving neste
   const parameters={type:'object',additionalProperties:false,properties:{account_id:{type:'string'},filter:{type:'object',additionalProperties:false,properties:{unread:{type:'boolean'}}}},required:['account_id']};
   const fetch=vi.fn(async(_url:unknown,options?:RequestInit)=>{
     const payload=JSON.parse(String(options?.body));
+    expect(options?.signal).toBeInstanceOf(AbortSignal);
     const declaration=payload.tools[0].functionDeclarations[0];
     if(declaration.parameters)return new Response(JSON.stringify({error:{message:'Unknown name additionalProperties in parameters'}}),{status:400});
     expect(declaration.parametersJsonSchema).toEqual(parameters);

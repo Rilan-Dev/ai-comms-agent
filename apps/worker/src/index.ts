@@ -12,6 +12,7 @@ import { processScheduledJobs } from "./scheduling/scheduler-worker";
 import { startEmailKnowledgeIndexerLoop } from "./knowledge/email-knowledge-indexer-worker";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { processPendingBriefings } from './briefings/dispatch';
 
 const WORKER_NAME = "ai-comms-agent-worker";
 const HEALTH_INTERVAL_MS = 60_000;
@@ -115,10 +116,14 @@ function main() {
     15_000,
   );
   const interval = setInterval(() => { log("health check", healthCheck()); }, HEALTH_INTERVAL_MS);
+  const briefingTimer = process.env.BRIEFINGS_ENABLED === 'true'
+    ? setInterval(() => safeTick('worker.briefings','Personal catch-up generation',processPendingBriefings),5_000)
+    : undefined;
 
   const shutdown = (signal: string) => {
     log(`received ${signal} — shutting down`);
     clearInterval(interval);
+    if (briefingTimer) clearInterval(briefingTimer);
     stopProviderDraftSync();
     stopGmailWatchRenewal();
     stopImapIdleWorker();

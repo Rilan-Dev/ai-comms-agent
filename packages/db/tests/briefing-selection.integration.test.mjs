@@ -34,6 +34,41 @@ test('C2 persisted selection, review and crash recovery',async t=>{
     });
     const sourceIds=async id=>(await api.listBriefingSources(p,id,null,200)).items.map(s=>s.messageId);
     const evidenceItem=(source,start=0,representation='complete')=>({id:'model-id',sourceIds:[source.messageId],title:'Obligation',summary:'Please act',reason:'Explicit request',priority:'high',deadline:null,confidence:'supported',suggestedAction:'reply',representation,snoozedUntil:null,evidence:[{sourceId:source.messageId,contentRevision:source.contentRevision,start,end:start+1,quote:'p',supports:'summary'}]});
+    await t.test('an old grant for a deleted mailbox does not block foreground tracking on the current inbox',async()=>{
+      await access.assignBriefingMailboxGrant(admin,ids.userA,ids.mailC,'previous mailbox');
+      await q('UPDATE aca.email_accounts SET deleted_at=now() WHERE id=$1',[ids.mailC]);
+      try {
+        await access.recordForegroundActivity(p);
+        assert.equal((await q('SELECT count(*)::int n FROM aca.user_mail_activity WHERE organization_id=$1 AND user_id=$2 AND agent_id=$3',[p.organizationId,p.userId,p.agentId])).rows[0].n,1);
+        assert.equal((await q('SELECT count(*)::int n FROM aca.mail_review_items')).rows[0].n,0);
+      } finally {
+        await q('UPDATE aca.email_accounts SET deleted_at=NULL WHERE id=$1',[ids.mailC]);
+        await access.revokeBriefingMailboxGrant(admin,ids.userA,ids.mailC,'test cleanup');
+      }
+    });
+    await t.test('first automatic catch-up includes unread mail from a ten-day absence',async()=>{
+      await q("UPDATE aca.email_messages SET received_at=now()-interval '10 days',created_at=now()-interval '10 days' WHERE id=$1",[ids.messageA]);
+      let m;
+      try {m=await prepare('ten-day-first-catchup');assert.equal(m.sourceCount,1);}
+      finally {
+        if(m)await q('DELETE FROM aca.summaries WHERE id=$1',[m.id]);
+        await q("UPDATE aca.email_messages SET received_at=now()-interval '5 days',created_at=now() WHERE id=$1",[ids.messageA]);
+      }
+    });
+    await t.test('worker discovery returns persisted principal and recovers only expired batch leases',async()=>{
+      const work=await import('../src/briefings/work.ts');
+      const m=await prepare('dispatch-discovery');
+      try {
+        assert.deepEqual((await work.listPendingBriefingWork()).find(item=>item.manifestId===m.id),{...p,manifestId:m.id,language:'en'});
+        const claim=await api.claimBriefingBatch(p,m.id,'active-worker');
+        assert.ok(!(await work.listPendingBriefingWork()).some(item=>item.manifestId===m.id));
+        await q("UPDATE aca.briefing_generation_batches SET lease_expires_at=now()-interval '1 second' WHERE id=$1",[claim.batchId]);
+        assert.ok((await work.listPendingBriefingWork()).some(item=>item.manifestId===m.id));
+        const before=(await q('SELECT updated_at FROM aca.briefing_generation_jobs WHERE summary_id=$1',[m.id])).rows[0].updated_at;
+        await work.deferBriefingWork({...p,organizationId:ids.orgB,manifestId:m.id,language:'en'});
+        assert.deepEqual((await q('SELECT updated_at FROM aca.briefing_generation_jobs WHERE summary_id=$1',[m.id])).rows[0].updated_at,before);
+      } finally {await q('DELETE FROM aca.summaries WHERE id=$1',[m.id]);}
+    });
     const finish=async(manifest,items,partial=false)=>{
       const claim=await api.claimBriefingBatch(p,manifest.id,'test-worker');
       assert.ok(claim);

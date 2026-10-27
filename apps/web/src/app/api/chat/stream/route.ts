@@ -311,6 +311,7 @@ async function runInteractiveHostToolLoop(args: {
   agentContext?:AgentRuntimeContext;
   draftOnly?:boolean;
   whatsAppOnly?:boolean;
+  signal?:AbortSignal;
   onSafeReadOnlyFinal?: (completedHistory: ToolChatMessage[]) => Promise<string>;
   onProgress?: (phase: "planning_tools" | "reading_email" | "reading_whatsapp" | "checking_permissions" | "denied") => void;
 }): Promise<HostToolTurnResult | null> {
@@ -352,11 +353,12 @@ async function runInteractiveHostToolLoop(args: {
   };
   let totalCalls = 0;
   for (let round = 0; round < MAX_HOST_TOOL_ROUNDS; round += 1) {
+    if(args.signal?.aborted)throw new DOMException('The request was canceled.','AbortError');
     args.onProgress?.("planning_tools");
     let completion: ChatToolCompletion;
     try {
       completion = await agentRuntime.completeWithTools(
-        args.agentContext??{ orgId: args.organizationId, agentId: args.agentId, kbId: args.kbId,skipGrounding:args.whatsAppOnly===true }, history, definitions,
+        args.agentContext??{ orgId: args.organizationId, agentId: args.agentId, kbId: args.kbId,skipGrounding:args.whatsAppOnly===true }, history, definitions,args.signal,
       );
     } catch (error) {
       const recovered=recoverRead();if(recovered)return recovered;
@@ -405,6 +407,7 @@ async function runInteractiveHostToolLoop(args: {
         return { text: "I stopped before running more operations because this turn reached its tool-call safety limit.", toolCalls: summaries };
       }
       totalCalls += 1;
+      if(args.signal?.aborted)throw new DOMException('The request was canceled.','AbortError');
       const known = visibleTools.find(tool => tool.name === call.name);
       args.onProgress?.(known?.required_permission === "email.read"
         ? "reading_email" : known?.required_permission === "whatsapp.read"
@@ -742,6 +745,7 @@ export async function POST(request: Request) {
                 agentContext:preparedAgentContext,
                 draftOnly:isDraftOnlyRequest(content),
                 whatsAppOnly:whatsappPlan.whatsAppOnly,
+                signal:request.signal,
                 onProgress: (phase) => emit("progress", { phase }),
                 onSafeReadOnlyFinal: explicitMessagingAction ? undefined : async (completedHistory) => {
                   emit("status", { phase: "generating" });

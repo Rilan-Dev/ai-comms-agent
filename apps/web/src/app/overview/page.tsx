@@ -2,8 +2,10 @@
 import Link from "next/link";
 
 import { useEffect, useState } from "react";
+import {AutomaticCatchUp} from './automatic-catch-up';
 
 type Overview = {
+  organizationId: string;
   catchUpAvailable: boolean;
   metrics: Record<string, number | null>;
   activity: { id: string; title: string; detail: string; createdAt: string }[] | null;
@@ -42,6 +44,7 @@ export default function HomePage() {
 
   return <main className="min-h-full bg-[radial-gradient(circle_at_90%_0%,oklch(0.88_0.105_152/.16),transparent_28%)]">
     <div className="mx-auto max-w-[1500px] space-y-9 px-5 py-7 sm:px-7 sm:py-9 lg:px-10">
+      {data?.catchUpAvailable&&data.organizationId&&<AutomaticCatchUp key={data.organizationId} organizationId={data.organizationId}/>}
       <section className="flex flex-col justify-between gap-6 border-b border-border pb-8 lg:flex-row lg:items-end">
         <div>
           <div className="mb-4 inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[.14em] text-muted-foreground">
@@ -98,7 +101,7 @@ export default function HomePage() {
             <p role="status" className="text-sm text-muted-foreground">{error ? "Private catch-up availability could not be checked. Please try again later." : "Checking private catch-up availability…"}</p>
           ) : data?.catchUpAvailable ? (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm leading-6"><strong>Private catch-up preview available.</strong> Review sources from the last 5 days or choose another window. This is your selected lookback, not a measurement of how long you were away. AI summaries may still be pending.</p>
+              <p className="text-sm leading-6"><strong>Choose a different window.</strong> Your automatic catch-up appears above. You can also review the last 5 days or choose another window.</p>
               <div className="flex flex-wrap gap-4">
                 <a href="/catch-up?days=5" className="inline-flex min-h-10 shrink-0 items-center font-semibold text-sm underline underline-offset-4">Review last 5 days ↗</a>
                 <a href="/catch-up" className="inline-flex min-h-10 shrink-0 items-center font-semibold text-sm underline underline-offset-4">Other catch-up windows ↗</a>

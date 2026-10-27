@@ -582,8 +582,10 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
     if (adapter.getMessageFlags && claimed.rows[0].last_attempt_at) {
       const leaseAt = claimed.rows[0].last_attempt_at;
       try {
-        await reconcileReadState({
-          prepare: () => prepareMailboxFlagPage({organizationId:candidate.organization_id,emailAccountId:candidate.id},leaseAt),
+        const metadataStarted = Date.now();
+        for (let metadataPage=0;metadataPage<4;metadataPage++) {
+         const coverage = await reconcileReadState({
+          prepare: () => prepareMailboxFlagPage({organizationId:candidate.organization_id,emailAccountId:candidate.id},leaseAt,200),
           fetchFlags: ids => adapter.getMessageFlags!(ids),
           withLease: withMailboxFlagLease,
           refetch: async id => {
@@ -594,7 +596,9 @@ async function processAccount(candidate: Candidate): Promise<boolean> {
           },
           remove: ids => removeDeletedMessages(candidate,ids),
           complete: completeMailboxFlagPage,
-        },candidate.provider === 'imap_smtp');
+        },candidate.provider === 'imap_smtp',process.env.BRIEFINGS_ENABLED === 'true');
+         if (coverage !== 'pending' || Date.now()-metadataStarted>=30_000) break;
+        }
       } catch {
         // A failed metadata check must not turn absence into deletion or claim
         // fresh read coverage. Normal message ingestion can still complete.

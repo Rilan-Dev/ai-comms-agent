@@ -159,3 +159,4 @@ export {ActionAuthorizationRevokedError,assertCurrentAgentToolAuthorization,asse
 export { loadCanonicalBriefingSources, validateCanonicalBriefingRows, requireClaimedMailboxScope, validateClaimedBriefingSourceIds, type CanonicalBriefingMail, type CanonicalBriefingRow } from './briefings/canonical-sources';
 export {prepareMailboxFlagPage,completeMailboxFlagPage,withMailboxFlagLease} from './email/flag-reconciliation';
 export {MailboxReadStatePendingError} from './briefings/read-state';
+export {listPendingBriefingWork,deferBriefingWork} from './briefings/work';

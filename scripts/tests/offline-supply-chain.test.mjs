@@ -8,7 +8,7 @@ const workspaces = [
   [".", "package.json"],
   ["apps/web", "apps/web/package.json"],
   ["apps/worker", "apps/worker/package.json"],
-  ["packages/clara-core", "packages/clara-core/package.json"],
+  ["packages/agent-core", "packages/agent-core/package.json"],
   ["packages/db", "packages/db/package.json"],
   ["packages/email-agent-runtime", "packages/email-agent-runtime/package.json"],
   ["packages/shared", "packages/shared/package.json"],

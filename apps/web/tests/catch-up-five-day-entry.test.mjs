@@ -21,12 +21,13 @@ test("five-day lookback is exact in UTC and does not read or mutate visit/review
   assert.throws(() => catchUpPeriodUtc(90, new Date()), /Unsupported catch-up window/);
 });
 
-test("Overview offers only a feature-gated five-day journey, not a fake personalized count", () => {
+test("Overview offers gated automatic catch-up alongside an explicit five-day lookback", () => {
   const overview = read("../src/app/overview/page.tsx");
   assert.match(overview, /data\?\.catchUpAvailable/);
   assert.match(overview, /href="\/catch-up\?days=5"/);
   assert.match(overview, /last 5 days/);
-  assert.match(overview, /not a measurement of how long you were away/);
+  assert.match(overview, /<AutomaticCatchUp key=\{data.organizationId\} organizationId=\{data.organizationId\}/);
+  assert.match(overview, /Your automatic catch-up appears above/);
   assert.match(overview, /organization-wide counts/);
 });
 

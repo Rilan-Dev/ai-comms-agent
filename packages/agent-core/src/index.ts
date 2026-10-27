@@ -4,6 +4,7 @@
  * Local agent runtime boundary. The ai-reusable-libraries repository is
  * reference-only; it is not imported, copied, or compiled by this application.
  */
+export {EMAIL_TOOL_GUIDANCE} from './email-tool-guidance';
 export {
   agentRuntime,
   createProvider,

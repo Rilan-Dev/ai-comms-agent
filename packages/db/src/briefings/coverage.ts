@@ -70,7 +70,16 @@ export async function prepareBriefing(p: TrustedBriefingPrincipal, request: Brie
     // can omit a reply committed earlier in this same millisecond.
     const now: string = (await client.query(`SELECT to_char(now() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') value`)).rows[0].value;
     const history = await client.query(`SELECT history_start FROM briefing_selection_scopes WHERE organization_id=$1 AND owner_user_id=$2 AND agent_id=$3 AND scope_version=$4`, [...params(p), scope.scopeVersion]);
-    const period = briefingPeriod(request.period, now, history.rows[0] ? iso(history.rows[0].history_start) : null);
+    let historyStart = history.rows[0] ? iso(history.rows[0].history_start) : null;
+    if(request.mode==='catch_up'&&!request.period&&!historyStart){
+      // The first automatic visit must not discard a ten-day (or longer)
+      // absence just because the historical preview default was seven days.
+      const earliest=(await client.query(`SELECT min(least(coalesce(received_at,created_at),created_at)) started_at
+        FROM email_messages WHERE organization_id=$1 AND email_account_id=ANY($2::uuid[])
+          AND NOT is_read AND NOT is_draft AND NOT is_sent`,[p.organizationId,scope.mailboxIds])).rows[0].started_at;
+      if(earliest)historyStart=iso(earliest);
+    }
+    const period = briefingPeriod(request.period, now, historyStart);
     let coverage: RoutineCoverageSnapshot | undefined;
     if (request.mode === 'scheduled') {
       coverage = await routine!.load(client, p, request, scope);

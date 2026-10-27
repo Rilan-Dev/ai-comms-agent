@@ -41,3 +41,15 @@ test('a replaced lease prevents refetch and deletion side effects',async()=>{
   const f=fixture([]);f.deps.withLease=async()=>{throw Error('lease changed');};
   await assert.rejects(reconcileReadState(f.deps,true),/lease changed/);assert.deepEqual(f.events,[]);
 });
+test('only the last committed keyset page reports completed coverage',async()=>{
+  const f=fixture();
+  assert.equal(await reconcileReadState({...f.deps,prepare:async()=>({...page,nextCursor:'next'})},false),'pending');
+  assert.equal(await reconcileReadState(f.deps,false),'completed');
+  const unavailable=fixture();
+  assert.equal(await reconcileReadState({...unavailable.deps,prepare:async()=>null},false),'unavailable');
+  assert.deepEqual(unavailable.events,[]);
+});
+test('disabled rollout does not read metadata or alter existing mailbox read controls',async()=>{
+  const f=fixture();f.deps.prepare=async()=>{throw Error('No work allowed while rollout is off');};
+  assert.equal(await reconcileReadState(f.deps,false,false),'unavailable');assert.deepEqual(f.events,[]);
+});

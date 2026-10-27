@@ -1,6 +1,6 @@
 import type {EmailMessageFlags} from '@ai-comms-agent/shared';
 
-type Page={messages:Array<{providerMessageId:string;messageIdHeader:string|null}>};
+type Page={nextCursor?:string|null;messages:Array<{providerMessageId:string;messageIdHeader:string|null}>};
 type Result={flags:EmailMessageFlags[];missing:string[];refetched:Array<{providerMessageId:string;messageIdHeader:string|null}>};
 type Dependencies<P extends Page>={
   prepare:()=>Promise<P|null>;
@@ -14,8 +14,9 @@ type Dependencies<P extends Page>={
 const identity=(value:string|null)=>value?.trim()||null;
 
 /** Provider metadata can update local state, never provider read state or user review. */
-export async function reconcileReadState<P extends Page>(deps:Dependencies<P>,imap:boolean):Promise<boolean>{
-  const page=await deps.prepare();if(!page)return false;
+export async function reconcileReadState<P extends Page>(deps:Dependencies<P>,imap:boolean,enabled=true):Promise<'completed'|'pending'|'unavailable'>{
+  if(!enabled)return 'unavailable';
+  const page=await deps.prepare();if(!page)return 'unavailable';
   const expected=new Map(page.messages.map(message=>[message.providerMessageId,message]));
   const response=await deps.fetchFlags([...expected.keys()]);
   if(!Array.isArray(response))throw new Error('Invalid provider flag response');
@@ -38,5 +39,5 @@ export async function reconcileReadState<P extends Page>(deps:Dependencies<P>,im
   }
    if(result.missing.length)await deps.remove(result.missing);
   });
-  await deps.complete(page,result);return true;
+  await deps.complete(page,result);return page.nextCursor?'pending':'completed';
 }

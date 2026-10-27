@@ -67,7 +67,7 @@ test("draft and approval remain reviewed, tenant-bound and never directly send",
 test("voice and chat receive authenticated profile context without overriding permission checks", () => {
   const chat = readFileSync(new URL("../src/app/api/chat/stream/route.ts", import.meta.url), "utf8");
   const voice = readFileSync(new URL("../src/app/api/voice/turn/route.ts", import.meta.url), "utf8");
-  const identity = helper();
+  const identity = helper() + readFileSync(new URL("../../../packages/agent-core/src/email-tool-guidance.ts", import.meta.url), "utf8");
   assert.match(identity, /composeAssistantGuidance/);
   assert.match(identity, /ask which sending address/);
   assert.match(identity, /ask the user to supply or select it/);
