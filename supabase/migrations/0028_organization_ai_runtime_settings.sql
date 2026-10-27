@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS organization_ai_runtime_settings (
   voice_id text NOT NULL DEFAULT 'alloy',
   temperature numeric(4,3) NOT NULL DEFAULT 0.8 CHECK (temperature >= 0 AND temperature <= 2),
   max_tokens integer NOT NULL DEFAULT 1500 CHECK (max_tokens BETWEEN 1 AND 32768),
-  system_prompt text NOT NULL DEFAULT 'You are a helpful AI assistant for the user''s communication workspace.',
+  system_prompt text NOT NULL DEFAULT 'You are Clara, a helpful AI assistant for the user''s communication workspace.',
   updated_by uuid REFERENCES users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()

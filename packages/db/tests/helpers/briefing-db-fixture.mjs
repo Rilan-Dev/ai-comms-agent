@@ -91,7 +91,7 @@ export async function seedBriefingFixture(pool) {
   }
   await q("INSERT INTO email_accounts(id,organization_id,provider,email_address,status) VALUES($1,$2,'gmail',$3,'connected')",[ids.mailC,ids.orgA,`${ids.mailC}@example.test`]);
   await q("INSERT INTO agent_email_accounts(agent_id,email_account_id,role) VALUES($1,$2,'read_only')",[ids.agentA,ids.mailC]);
-  // Upgrade fixtures also seed before migration 0058 exists.
+  // Upgrade fixtures also seed before migration 0059 exists.
   if((await q("SELECT 1 FROM information_schema.columns WHERE table_schema='aca' AND table_name='email_sync_states' AND column_name='provider_flags_checked_at'")).rowCount){
     await q("INSERT INTO email_sync_states(email_account_id,organization_id,status,provider_flags_checked_at) SELECT id,organization_id,'idle',now() FROM email_accounts WHERE id=ANY($1::uuid[])",[[ids.mailA,ids.mailB,ids.mailC]]);
   }
