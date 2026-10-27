@@ -1,5 +1,10 @@
 import {reviewExplicitEmailBody} from '@ai-comms-agent/shared';
 
+export function latestSenderReplyAddress(message:string):string|null{
+  if(!draftPlanningContext([],message).independentCompose)return null;
+  return /\breply\s+to\s+(?:the\s+)?(?:last|latest|newest)\s+(?:incoming\s+)?e-?mail\s+from\s+([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/i.exec(message)?.[1]??null;
+}
+
 /** Complete new compose fields belong to the current request. Old transcript
  * failures or unrelated actions are not part of this new draft's authority.
  * Reference-dependent follow-ups retain history and all normal tool checks. */
