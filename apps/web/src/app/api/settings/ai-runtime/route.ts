@@ -26,7 +26,7 @@ const DEFAULTS = {
   voiceId: "alloy",
   temperature: 0.8,
   maxTokens: 1500,
-  systemPrompt: "You are Clara, a helpful AI assistant for the user's communication workspace.",
+  systemPrompt: "You are a helpful AI assistant for the user's communication workspace.",
   voiceChatProvider: null as string | null,
   voiceChatTtsModel: null as string | null,
   voiceChatSttModel: null as string | null,

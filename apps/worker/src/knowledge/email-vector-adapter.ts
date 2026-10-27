@@ -3,7 +3,7 @@ import type {
   EmailKnowledgeVectorSnapshot,
 } from "./email-index-lifecycle";
 
-type ClaraVectorApiResponse = { ok?: boolean; error?: string };
+type VectorApiResponse = { ok?: boolean; error?: string };
 
 type AdapterConfig = {
   baseUrl?: string;
@@ -40,23 +40,23 @@ function labelsField(metadata: Record<string, unknown>): string[] | undefined {
 /** Reject malformed source identities before sending a privileged API request. */
 function requireSourceIdentity(value: unknown, label: string, maxLength = 256): void {
   if (typeof value !== "string" || !value.trim() || value !== value.trim() || value.length > maxLength || /[\u0000-\u001f\u007f]/.test(value)) {
-    throw new Error(`Clara email-vector API requires a valid ${label}.`);
+    throw new Error(`Email-vector API requires a valid ${label}.`);
   }
 }
 
 /**
- * Creates the trusted worker adapter for Clara's documented internal API.
+ * Creates the trusted worker adapter for the documented internal API.
  * It is deliberately not wired into worker startup: ISS-026 must close before
  * user-facing retrieval is exposed, and callers must authorize mailbox grants
  * at execution time before using search operations.
  */
-export function createClaraEmailVectorAdapter(config: AdapterConfig = {}): EmailKnowledgeVectorAdapter {
-  const rawBaseUrl = (config.baseUrl ?? process.env.CLARA_EMAIL_VECTOR_API_URL ?? "").trim();
-  const apiKey = (config.apiKey ?? process.env.CLARA_EMAIL_VECTOR_API_KEY ?? "").trim();
+export function createEmailVectorAdapter(config: AdapterConfig = {}): EmailKnowledgeVectorAdapter {
+  const rawBaseUrl = (config.baseUrl ?? process.env.AGENT_EMAIL_VECTOR_API_URL ?? "").trim();
+  const apiKey = (config.apiKey ?? process.env.AGENT_EMAIL_VECTOR_API_KEY ?? "").trim();
   const timeoutMs = config.timeoutMs ?? 15_000;
 
-  if (!rawBaseUrl) throw new Error("CLARA_EMAIL_VECTOR_API_URL is required.");
-  if (apiKey.length < 32) throw new Error("CLARA_EMAIL_VECTOR_API_KEY must be at least 32 characters.");
+  if (!rawBaseUrl) throw new Error("AGENT_EMAIL_VECTOR_API_URL is required.");
+  if (apiKey.length < 32) throw new Error("AGENT_EMAIL_VECTOR_API_KEY must be at least 32 characters.");
 
   const baseUrl = rawBaseUrl.replace(/\/+$/, "");
   const endpoint = baseUrl.endsWith("/api/internal/email-vectors")
@@ -64,13 +64,13 @@ export function createClaraEmailVectorAdapter(config: AdapterConfig = {}): Email
     : `${baseUrl}/api/internal/email-vectors`;
   const parsed = new URL(endpoint);
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error("CLARA_EMAIL_VECTOR_API_URL must use HTTP or HTTPS.");
+    throw new Error("AGENT_EMAIL_VECTOR_API_URL must use HTTP or HTTPS.");
   }
   if (process.env.NODE_ENV === "production" && parsed.protocol !== "https:") {
-    throw new Error("CLARA_EMAIL_VECTOR_API_URL must use HTTPS in production.");
+    throw new Error("AGENT_EMAIL_VECTOR_API_URL must use HTTPS in production.");
   }
   if (parsed.username || parsed.password || parsed.search || parsed.hash) {
-    throw new Error("CLARA_EMAIL_VECTOR_API_URL must not contain credentials, query, or fragment.");
+    throw new Error("AGENT_EMAIL_VECTOR_API_URL must not contain credentials, query, or fragment.");
   }
 
   async function send(payload: Record<string, unknown>): Promise<void> {
@@ -90,19 +90,19 @@ export function createClaraEmailVectorAdapter(config: AdapterConfig = {}): Email
     } catch (error) {
       // Do not include URL, credential, message content, or response body in errors.
       const reason = error instanceof Error && error.name === "TimeoutError" ? "request timed out" : "network request failed";
-      throw new Error(`Clara email-vector API ${reason}.`);
+      throw new Error(`Email-vector API ${reason}.`);
     }
 
     if (!response.ok) {
-      throw new Error(`Clara email-vector API returned HTTP ${response.status}.`);
+      throw new Error(`Email-vector API returned HTTP ${response.status}.`);
     }
-    let result: ClaraVectorApiResponse;
+    let result: VectorApiResponse;
     try {
-      result = await response.json() as ClaraVectorApiResponse;
+      result = await response.json() as VectorApiResponse;
     } catch {
-      throw new Error("Clara email-vector API returned an invalid response.");
+      throw new Error("Email-vector API returned an invalid response.");
     }
-    if (result.ok !== true) throw new Error("Clara email-vector API did not confirm the operation.");
+    if (result.ok !== true) throw new Error("Email-vector API did not confirm the operation.");
   }
 
   return {
@@ -112,7 +112,7 @@ export function createClaraEmailVectorAdapter(config: AdapterConfig = {}): Email
       requireSourceIdentity(snapshot.providerMessageId, "message ID", 512);
       requireSourceIdentity(snapshot.sourceIdentityHash, "source identity hash");
       if (!/^[a-f0-9]{64}$/i.test(snapshot.contentHash) || !/^[a-f0-9]{64}$/i.test(snapshot.metadataHash)) {
-        throw new Error("Clara email-vector API requires valid content and metadata hashes.");
+        throw new Error("Email-vector API requires valid content and metadata hashes.");
       }
       const metadata: Record<string, unknown> = {
         orgId: snapshot.organizationId,
@@ -146,7 +146,7 @@ export function createClaraEmailVectorAdapter(config: AdapterConfig = {}): Email
       requireSourceIdentity(input.organizationId, "organization ID", 128);
       requireSourceIdentity(input.accountId, "account ID");
       requireSourceIdentity(input.providerMessageId, "message ID", 512);
-      // The Clara contract scopes message identity by organization + account +
+      // The contract scopes message identity by organization + account +
       // provider message ID. Provider is already represented by the account's
       // owning source system and does not replace the account boundary.
       void input.provider;

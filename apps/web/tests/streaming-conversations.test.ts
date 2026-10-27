@@ -7,7 +7,7 @@ const chat = read("../src/app/chat/chat-client.tsx");
 const chatRoute = read("../src/app/api/chat/stream/route.ts");
 const voice = read("../src/app/ai-voice/voice-workspace.tsx");
 const voiceRoute = read("../src/app/api/voice/turn/route.ts");
-const clara = read("../../../packages/clara-core/src/runtime.ts");
+const runtimeSource = read("../../../packages/agent-core/src/runtime.ts");
 
 describe("Chat and realtime Voice progressive generation", () => {
   it("starts chat SSE before generation and publishes only a host-checked final answer", () => {
@@ -76,7 +76,7 @@ describe("Chat and realtime Voice progressive generation", () => {
   });
 
   it("uses native Gemini SSE instead of buffering generateContent JSON", () => {
-    const gemini = clara.slice(clara.indexOf("async function geminiStream("), clara.indexOf("async function chatStream("));
+    const gemini = runtimeSource.slice(runtimeSource.indexOf("async function geminiStream("), runtimeSource.indexOf("async function chatStream("));
     expect(gemini).toContain("streamGenerateContent?alt=sse");
     expect(gemini).toContain("response.body.getReader()");
     expect(gemini).toContain("if (text) yield text");

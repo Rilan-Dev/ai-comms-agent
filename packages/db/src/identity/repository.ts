@@ -38,6 +38,16 @@ export interface IdentityRepository {
   getOrganizationBySlug(slug: string): Promise<Organization | null>;
 
   /**
+   * Updates the organization's display profile (name and optional product /
+   * workspace display name). The slug and status are immutable here. Requires
+   * the `organization.update` permission at the API boundary.
+   */
+  updateOrganizationProfile(
+    id: OrganizationId,
+    input: { name?: string; productName?: string | null },
+  ): Promise<Organization | null>;
+
+  /**
    * INTERNAL: creates an organization row without an owner.
    *
    * This method is NOT the public organization-creation workflow. It exists

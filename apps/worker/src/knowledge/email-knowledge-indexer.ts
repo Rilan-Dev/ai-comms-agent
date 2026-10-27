@@ -47,9 +47,9 @@ export function chunkEmailKnowledgeBody(body: string): string[] {
 }
 
 /**
- * Host adapter for Clara's existing knowledge_documents / knowledge_chunks
+ * Host adapter for the existing knowledge_documents / knowledge_chunks
  * contract. Writes tenant-scoped PostgreSQL knowledge records only; it never
- * writes directly to Qdrant or changes the immutable Clara reference sources.
+ * writes directly to Qdrant or changes the immutable reference sources.
  */
 async function enqueueEmailKnowledgeUpsert(
   organizationId: string,
@@ -241,7 +241,7 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
       await deleteEmailKnowledge(organizationId, accountId, providerMessageId, provider);
       return;
     }
-    throw new Error("Clara email knowledge document could not be persisted.");
+    throw new Error("Email knowledge document could not be persisted.");
   }
 
   const chunks = chunkEmailKnowledgeBody(body);
@@ -265,7 +265,7 @@ export async function indexEmailKnowledge(source: EmailKnowledgeSource): Promise
 }
 
 /**
- * Remove the derived Clara document for a provider message that no longer
+ * Remove the derived knowledge document for a provider message that no longer
  * exists remotely. PostgreSQL remains authoritative; this deletes only the
  * email-specific knowledge document/chunks and never touches user-uploaded KBs.
  * Replays are safe when the document was already removed.
@@ -311,10 +311,10 @@ export async function deleteEmailKnowledge(
 }
 
 /**
- * Purge every email-derived Clara document for one removed connected account.
+ * Purge every email-derived knowledge document for one removed connected account.
  * This is deliberately limited to the email-account bucket and organization.
  * The repository has no direct Qdrant client; vector deletion must be performed
- * by the configured Clara knowledge/RAG lifecycle integration before purge is
+ * by the configured knowledge/RAG lifecycle integration before purge is
  * reported complete.
  */
 export async function deleteEmailKnowledgeForAccount(

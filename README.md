@@ -1,6 +1,6 @@
 # ai-comms-agent
 
-> Multi-channel AI communications agent — email, WhatsApp, chat, and realtime voice — built on the [Clara reusable AI library](https://github.com/Rilan-Dev/ai-reusable-libraries).
+> Multi-channel AI communications agent — email, WhatsApp, chat, and realtime voice — built on the local agent runtime core (`packages/agent-core`).
 
 **Repository:** `Rilan-Dev/ai-comms-agent` (private)
 **Vercel project:** `ai-comms-agent` (linked to this repo, production branch `main`)
@@ -18,7 +18,7 @@
 | **Email** | Connect multiple Gmail / IMAP-SMTP / Zoho accounts per agent. Continuously sync, preserve threads/folders/labels, search, summarize, classify, draft replies, send when authorized. |
 | **WhatsApp** | Exactly one WhatsApp Business account per agent. Receive commands, respond, invoke approved agent tools, push scheduled summaries. |
 | **Chat** | Web UI for asking natural-language questions ("summarize today's important emails", "draft a reply to X", "send when authorized"). |
-| **Voice** | Same agent operations exposed through Clara realtime voice. Reuses Clara's existing realtime architecture — not a second voice system. |
+| **Voice** | Same agent operations exposed through realtime voice. Reuses the shared runtime's realtime architecture — not a second voice system. |
 | **Scheduling** | Durable, recoverable scheduled jobs ("every day at 08:00, summarize last 24h of important/action-required emails and send to WhatsApp"). |
 
 The product is **not** a SaaS billing product. There are no subscription plans, no Stripe, no marketplace billing, no per-tenant invoicing. The system does have organizations, users, roles, permissions, agents, connected accounts, audit logs, usage telemetry, and security boundaries — those are operational requirements, not billing.
@@ -185,20 +185,20 @@ No `apps/`, `packages/`, `services/`, or `src/` directories exist yet. They will
 
 ---
 
-## 6. Reference library
+## 6. Agent runtime core
 
-This project depends on the **Clara reusable AI library** at <https://github.com/Rilan-Dev/ai-reusable-libraries>. Clara provides reusable, immutable, byte-for-byte-extracted modules for:
+The AI runtime boundary is owned by this repository at [`packages/agent-core`](packages/agent-core): a self-contained local package providing:
 
 - AI provider/model resolution and governance (OpenAI, Gemini, Sarvam, TEI)
 - Agent runtime, versioning, and deployment
-- RAG grounding and retrieval (Qdrant-backed)
+- RAG grounding and retrieval
 - Knowledge-base runtime contracts
 - Realtime voice — provider-neutral contracts plus OpenAI/Gemini/Sarvam/ElevenLabs transports
 - Usage, quotas, entitlements, audit, observability
 - Events, queues, and background execution contracts
 - Public/embed runtime
 
-Before implementing any AI-related functionality, the developer must inspect the relevant Clara source. The integration plan is in [`docs/architecture/CLARA-INTEGRATION.md`](docs/architecture/CLARA-INTEGRATION.md). The rule is: do not recreate Clara functionality; reuse it directly, adapt through a thin adapter, or — only if genuinely necessary — write application-specific code.
+The rule is: do not recreate runtime functionality; reuse `packages/agent-core` directly, adapt through a thin adapter, or — only if genuinely necessary — write application-specific code. The historical integration plan is retained in [`docs/architecture/CLARA-INTEGRATION.md`](docs/architecture/CLARA-INTEGRATION.md) (the external reference repository is no longer a submodule and is not a runtime dependency).
 
 ---
 

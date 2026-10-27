@@ -1,8 +1,8 @@
 {
-  "name": "@ai-comms-agent/clara-core",
+  "name": "@ai-comms-agent/agent-core",
   "version": "0.0.0",
   "private": true,
-  "description": "Local Clara integration boundary for the ai-comms-agent host application",
+  "description": "Local agent runtime boundary for the ai-comms-agent host application",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",

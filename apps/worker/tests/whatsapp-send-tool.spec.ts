@@ -53,7 +53,7 @@ describe("WhatsApp send approval tool behavior", () => {
       account_id: "account-1",
       to: "+919876543210",
       payload_type: "text",
-      body: "Hello from Clara",
+      body: "Hello from the assistant",
     }, context);
 
     expect(result.ok).toBe(true);

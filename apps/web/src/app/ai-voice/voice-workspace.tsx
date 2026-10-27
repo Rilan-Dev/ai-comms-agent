@@ -33,7 +33,7 @@ export function VoiceWorkspace({
   const [speaking, setSpeaking] = useState(false);
   const [micMuted, setMicMuted] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("Your voice session will connect through Clara's authorized runtime.");
+  const [notice, setNotice] = useState("Your voice session will connect through the authorized runtime.");
   const [voiceActivitySteps, setVoiceActivitySteps] = useState<AgentActivityPhase[]>([]);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const geminiSocketRef = useRef<WebSocket | null>(null);
@@ -177,7 +177,7 @@ export function VoiceWorkspace({
     try {
       await patchSession({ action: "activate", providerSessionId: providerSessionIdRef.current });
       setConnected(true);
-      setNotice("Realtime audio connected. Speak naturally; Clara routes recognized speech through the host-authorized turn pipeline.");
+      setNotice("Realtime audio connected. Speak naturally; recognized speech is routed through the host-authorized turn pipeline.");
       if (channel.readyState === "open") {
         ttsGenerationRef.current = `${sessionRef.current?.id ?? "voice"}-welcome`;
         streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = false; });
@@ -185,7 +185,7 @@ export function VoiceWorkspace({
           type: "response.create",
           response: {
             output_modalities: ["audio"],
-            instructions: "Say exactly: Hello, I'm Clara. How can I help you with your email and communication tasks today?",
+            instructions: "Say exactly: Hello, I'm your AI assistant. How can I help you with your email and communication tasks today?",
           },
         }));
       }
@@ -243,7 +243,7 @@ export function VoiceWorkspace({
       track.enabled = realtimeProviderRef.current === "sarvam" && !micMutedRef.current;
     });
     setSpeaking(true);
-    setNotice(`${realtimeProviderRef.current} is streaming Clara's answer as audio.`);
+    setNotice(`${realtimeProviderRef.current} is streaming the answer as audio.`);
     socket.send(JSON.stringify({ type: "generation_start", generationId }));
     socket.send(JSON.stringify({ type: "text", generationId, text }));
     socket.send(JSON.stringify({ type: "flush", generationId }));
@@ -253,7 +253,7 @@ export function VoiceWorkspace({
   function speakGeminiWelcome(current: VoiceSession) {
     if (!window.speechSynthesis) return;
     const generationId = `${current.id}-welcome`;
-    const utterance = new SpeechSynthesisUtterance("Hello, I'm Clara. How can I help you with your email and communication tasks today?");
+    const utterance = new SpeechSynthesisUtterance("Hello, I'm your AI assistant. How can I help you with your email and communication tasks today?");
     ttsGenerationRef.current = generationId;
     utterance.onstart = () => {
       setSpeaking(true);
@@ -284,7 +284,7 @@ export function VoiceWorkspace({
     const userTurn: Turn = { id: `user-${sequence}`, role: "user", text, state: "done" };
     const assistantTurn: Turn = { id: `assistant-${sequence}`, role: "assistant", text: "", state: "thinking" };
     setTurns((old) => [...old, userTurn, assistantTurn]);
-    setNotice("Clara is processing your request through the authorized host runtime.");
+    setNotice("Your request is being processed through the authorized host runtime.");
     setVoiceActivitySteps(["preparing"]);
     let streamedText = "";
     try {
@@ -320,7 +320,7 @@ export function VoiceWorkspace({
         if (event.event === "status") {
           setNotice(message.phase === "tools"
             ? "Checking authorized email tools and approvals…"
-            : "Clara is generating a live response…");
+            : "Generating a live response…");
           continue;
         }
         if (event.event === "done") {
@@ -346,7 +346,7 @@ export function VoiceWorkspace({
       const denied = payload.toolCalls?.filter((call) => !call.ok).length ?? 0;
       const approvalSummary = payload.pendingApprovals?.length ? ` ${payload.pendingApprovals.length} email action(s) need explicit approval; none were sent yet.` : "";
       const toolSummary = (payload.toolCalls?.length ? ` Email tools: ${succeeded} succeeded, ${denied} denied or failed.` : "") + approvalSummary;
-      setNotice((speakAnswer ? "Answer received from Clara. Playing the spoken response." : "Response received.") + toolSummary);
+      setNotice((speakAnswer ? "Answer received. Playing the spoken response." : "Response received.") + toolSummary);
       if (speakAnswer) {
         const channel = channelRef.current;
         if (realtimeProviderRef.current === "sarvam" || realtimeProviderRef.current === "elevenlabs") {
@@ -604,8 +604,8 @@ export function VoiceWorkspace({
       void patchSession({ action: "activate" }).then(() => {
         if (!isCurrentConnection()) return;
         setConnected(true);
-        setNotice(`${provider === "sarvam" ? "Sarvam Saaras and Bulbul" : "ElevenLabs Scribe"} realtime voice is connected. Spoken turns use Clara's authorized email runtime.`);
-        streamProviderTts("Hello, I'm Clara. How can I help you with your email and communication tasks today?", `${current.id}-welcome`);
+        setNotice(`${provider === "sarvam" ? "Sarvam Saaras and Bulbul" : "ElevenLabs Scribe"} realtime voice is connected. Spoken turns use the authorized email runtime.`);
+        streamProviderTts("Hello, I'm your AI assistant. How can I help you with your email and communication tasks today?", `${current.id}-welcome`);
       }).catch((e) => {
         if (!isCurrentConnection()) return;
         activationStartedRef.current = false;
@@ -797,7 +797,7 @@ export function VoiceWorkspace({
     };
     await patchSession({ action: "activate" });
     setConnected(true);
-    setNotice(`${provider === "sarvam" ? "Sarvam Saaras" : "ElevenLabs Scribe"} microphone pipeline is ready. Speech is transcribed, processed by Clara's authorized runtime, then spoken using the selected provider.`);
+    setNotice(`${provider === "sarvam" ? "Sarvam Saaras" : "ElevenLabs Scribe"} microphone pipeline is ready. Speech is transcribed, processed by the authorized runtime, then spoken using the selected provider.`);
   }
 
   async function connectGeminiRealtime(current: VoiceSession, descriptor: Transport) {
@@ -857,7 +857,7 @@ export function VoiceWorkspace({
       if (data.setupComplete) {
         void patchSession({ action: "activate" }).then(() => {
           setConnected(true);
-          setNotice("Gemini Live transcription is connected. Clara processes each recognized utterance through the authorized email/chat runtime.");
+          setNotice("Gemini Live transcription is connected. Each recognized utterance is processed through the authorized email/chat runtime.");
           speakGeminiWelcome(current);
         }).catch((e) => {
           setError(e instanceof Error ? e.message : "Could not persist the connected Gemini session.");
@@ -962,7 +962,7 @@ export function VoiceWorkspace({
         setNotice("Listening…");
       } else if (type === "response.created") {
         setSpeaking(true);
-        setNotice("Clara is speaking.");
+        setNotice("The assistant is speaking.");
       } else if (type === "response.done") {
         ttsGenerationRef.current = null;
         streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !micMutedRef.current; });
@@ -1132,7 +1132,7 @@ export function VoiceWorkspace({
     micMutedRef.current = next;
     streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next && (realtimeProviderRef.current === "sarvam" || !ttsGenerationRef.current); });
     setMicMuted(next);
-    setNotice(next ? "Microphone muted. The realtime session remains connected." : ttsGenerationRef.current && realtimeProviderRef.current !== "sarvam" ? "Microphone will resume after Clara finishes speaking." : "Microphone unmuted. Listening for speech.");
+    setNotice(next ? "Microphone muted. The realtime session remains connected." : ttsGenerationRef.current && realtimeProviderRef.current !== "sarvam" ? "Microphone will resume after the response finishes." : "Microphone unmuted. Listening for speech.");
   }
 
   function interrupt() {
@@ -1183,7 +1183,7 @@ export function VoiceWorkspace({
         ) : null}
         <header className="flex flex-col gap-4 border-b pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.18em] text-primary"><Waves size={14} /> Clara voice workspace</p>
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.18em] text-primary"><Waves size={14} /> Voice workspace</p>
             <h1 className="mt-2 font-display text-3xl font-medium tracking-tight sm:text-4xl">Talk to your communication agent<span className="text-tertiary">.</span></h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">A live conversation surface with explicit transport state, turn history, and host-authorized answers.</p>
             <p className="mt-2 text-xs text-muted-foreground">Mail actions spoken here use the authenticated voice-turn tool pipeline. Creating a draft or requesting send approval never bypasses human confirmation.</p>
@@ -1232,7 +1232,7 @@ export function VoiceWorkspace({
                   <span className="absolute inset-5 rounded-full border border-primary/15" />
                   {speaking ? <AudioLines size={42} className="relative" /> : connected ? <Waves size={42} className="relative" /> : <Mic size={42} className="relative opacity-70" />}
                 </div>
-                <h2 className="mt-6 text-xl font-semibold">{connected ? speaking ? "Clara is speaking" : micMuted ? "Microphone muted" : "Listening to you" : busy ? "Establishing secure audio…" : session?.status === "starting" ? "Session initialized" : session?.status === "ended" ? "Conversation ended" : "Ready when you are"}</h2>
+                <h2 className="mt-6 text-xl font-semibold">{connected ? speaking ? "Assistant speaking" : micMuted ? "Microphone muted" : "Listening to you" : busy ? "Establishing secure audio…" : session?.status === "starting" ? "Session initialized" : session?.status === "ended" ? "Conversation ended" : "Ready when you are"}</h2>
                 <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{notice}</p>
                 {voiceActivitySteps.length ? (
                   <details className="mx-auto mt-4 max-w-lg rounded-xl border border-border/70 bg-muted/25 p-3 text-left" open={busy}>
@@ -1284,7 +1284,7 @@ export function VoiceWorkspace({
                 <div className="mb-4 max-h-64 space-y-3 overflow-y-auto pr-1">
                   {turns.map((turn) => (
                     <article key={turn.id} className={`max-w-[92%] rounded-2xl border px-4 py-3 text-left ${turn.role === "user" ? "ml-auto bg-primary/5" : "mr-auto bg-background"}`}>
-                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-[.13em] text-muted-foreground">{turn.role === "user" ? "You" : "Clara"}{turn.state === "thinking" ? " · thinking…" : turn.state === "streaming" ? " · streaming…" : ""}</p>
+                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-[.13em] text-muted-foreground">{turn.role === "user" ? "You" : "Assistant"}{turn.state === "thinking" ? " · thinking…" : turn.state === "streaming" ? " · streaming…" : ""}</p>
                       <p className="whitespace-pre-wrap text-sm leading-6">{turn.text || "Preparing response…"}</p>
                     </article>
                   ))}
@@ -1294,7 +1294,7 @@ export function VoiceWorkspace({
               )}
               {liveSession && bridgeOnly ? (
                 <form onSubmit={(event) => { event.preventDefault(); void sendTextTurn(); }} className="flex flex-col gap-2 sm:flex-row">
-                  <textarea value={transcript} onChange={(event) => setTranscript(event.target.value)} placeholder="Type a message to Clara…" rows={2} className="min-h-12 flex-1 resize-y rounded-xl border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                  <textarea value={transcript} onChange={(event) => setTranscript(event.target.value)} placeholder="Type a message…" rows={2} className="min-h-12 flex-1 resize-y rounded-xl border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
                   <button type="submit" disabled={!transcript.trim() || busy} className="self-stretch rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-background disabled:opacity-40">Send text</button>
                 </form>
               ) : null}

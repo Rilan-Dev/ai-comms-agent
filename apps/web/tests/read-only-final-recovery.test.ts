@@ -10,7 +10,7 @@ vi.mock('../../worker/src/agent/email-tool-runtime',()=>({
 }));
 vi.mock('../../worker/src/agent/whatsapp-tool-runtime',()=>({createWhatsAppToolRuntime:async()=>({registry:{listForAgent:()=>[]}}),invokeWhatsAppTool:vi.fn()}));
 vi.mock('../../worker/src/agent/schedules-tool-runtime',()=>({createSchedulesToolRuntime:async()=>({registry:{listForAgent:()=>[]}}),invokeSchedulesTool:vi.fn()}));
-vi.mock('@ai-comms-agent/clara-core',()=>({claraRuntime:{
+vi.mock('@ai-comms-agent/agent-core',()=>({agentRuntime:{
  completeWithTools:async()=>{
   if(m.round++===0)return {text:'',toolCalls:[{id:'call',name:'email.messages.list',arguments:{account_id:'mailbox@example.com',unread_only:true,limit:1}}]};
   if(m.mode==='provider_failure')throw new Error('Provider final generation failed');

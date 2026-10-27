@@ -15,7 +15,7 @@
     "test": "node --import tsx --test --test-concurrency=1 tests/*.test.ts"
   },
   "dependencies": {
-    "@ai-comms-agent/clara-core": "workspace:*",
+    "@ai-comms-agent/agent-core": "workspace:*",
     "@ai-comms-agent/db": "workspace:*",
     "@ai-comms-agent/shared": "workspace:*",
     "amqplib": "^2.2.0",

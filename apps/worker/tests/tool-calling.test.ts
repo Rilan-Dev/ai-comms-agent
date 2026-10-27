@@ -1,7 +1,7 @@
 import test, { afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { createProvider } from "@ai-comms-agent/clara-core";
-import type { ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/clara-core";
+import { createProvider } from "@ai-comms-agent/agent-core";
+import type { ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/agent-core";
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });

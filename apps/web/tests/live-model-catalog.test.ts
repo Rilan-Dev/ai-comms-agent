@@ -15,7 +15,7 @@ function mockApi(handler: (url: string) => unknown) {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("Clara-style live vendor model discovery", () => {
+describe("Live vendor model discovery", () => {
   it("filters OpenAI advertised IDs by actual capability, not a hard-coded list", async () => {
     const fetchMock = mockApi(() => ({
       data: [
@@ -160,7 +160,7 @@ describe("realtime voice selection and relay integration", () => {
 
   it("uses the configured model through the authenticated session and relay", () => {
     const session = readFileSync(resolve(__dirname, "../src/app/api/voice/session/route.ts"), "utf8");
-    const resolver = readFileSync(resolve(__dirname, "../../../packages/clara-core/src/runtime.ts"), "utf8");
+    const resolver = readFileSync(resolve(__dirname, "../../../packages/agent-core/src/runtime.ts"), "utf8");
     const relay = readFileSync(resolve(__dirname, "../src/lib/voice/provider-relay-init.ts"), "utf8");
     expect(session).toContain("purpose='realtime' AND enabled=true");
     expect(session).toContain("providerModelResult.rows[0]?.model");

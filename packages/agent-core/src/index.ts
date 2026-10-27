@@ -1,15 +1,15 @@
 /**
- * @ai-comms-agent/clara-core
+ * @ai-comms-agent/agent-core
  *
- * Local Clara integration boundary. The ai-reusable-libraries repository is
+ * Local agent runtime boundary. The ai-reusable-libraries repository is
  * reference-only; it is not imported, copied, or compiled by this application.
  */
 export {
-  claraRuntime,
+  agentRuntime,
   createProvider,
-  type ClaraRuntimeContext,
-  type ClaraAgentTurnRequest,
-  type ClaraAgentTurn,
+  type AgentRuntimeContext,
+  type AgentTurnRequest,
+  type AgentTurn,
 } from "./runtime";
 
 export type {

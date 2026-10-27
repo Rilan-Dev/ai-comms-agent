@@ -62,6 +62,11 @@ export interface Organization {
   id: OrganizationId;
   name: string;
   slug: string;
+  /**
+   * Optional workspace display name used by the web shell (navigation bar and
+   * browser tab). When null or empty the organization name is displayed.
+   */
+  productName: string | null;
   status: OrganizationStatus;
   createdAt: string;
   updatedAt: string;

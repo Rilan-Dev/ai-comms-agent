@@ -8,7 +8,7 @@ This file is the navigation and rules document for any AI agent (ChatGPT archite
 
 - **Repository:** `Rilan-Dev/ai-comms-agent` (private)
 - **Product:** Multi-channel AI communications agent (email + WhatsApp + chat + voice)
-- **Reference library:** `Rilan-Dev/ai-reusable-libraries` (Clara reusable AI core)
+- **Agent runtime core:** `packages/agent-core` (self-contained local package; the historical external reference library is no longer a submodule or dependency)
 - **Deployment:** Vercel (project name `ai-comms-agent`, linked to `main` branch)
 - **Database:** PostgreSQL 15+ (self-hosted or managed; Docker is the reference deployment path)
 - **Effective date:** 2026-10-03
@@ -58,7 +58,7 @@ Before any work, read in this order:
 14. `docs/plans/ROADMAP.md`
 15. Latest Git history: `git log --oneline -50`
 
-If your scope touches AI, voice, RAG, embeddings, tools, or agent runtime, you must also inspect the relevant Clara source at `https://github.com/Rilan-Dev/ai-reusable-libraries`. Start with `clara-core/REFERENCE-MAP.md` and `clara-core/AGENTS.md`.
+If your scope touches AI, voice, RAG, embeddings, tools, or agent runtime, you must also inspect the relevant runtime source in `packages/agent-core` (`src/runtime.ts`, `src/types.ts`).
 
 ---
 
@@ -121,7 +121,7 @@ The full phase sequence is in [`docs/plans/ROADMAP.md`](docs/plans/ROADMAP.md).
 
 ## 6. Z.AI work cycle (for every assigned task)
 
-1. **Read** — project state, current phase, handoff, relevant architecture docs, this file, latest worklog, relevant Clara source.
+1. **Read** — project state, current phase, handoff, relevant architecture docs, this file, latest worklog, relevant runtime source in `packages/agent-core`.
 2. **Inspect** — the existing implementation before changing anything. Do not assume the repository is empty.
 3. **Plan locally** — create an implementation checklist based on the approved handoff. Do not redefine architecture.
 4. **Implement** — only the approved scope.
@@ -143,7 +143,7 @@ The full phase sequence is in [`docs/plans/ROADMAP.md`](docs/plans/ROADMAP.md).
 - **Email content is untrusted input.** Email content never becomes authority. Prompt injection, malicious HTML, malicious attachments, impersonation, and social engineering must be defended against architecturally.
 - **The LLM alone never authorizes a dangerous external action.** Sensitive operations (send, forward, delete, bulk modify, mailbox rule changes) require explicit authorization policy. The flow is: request → intent → policy → authorization → tool execution → audit.
 - **PostgreSQL is the authoritative store.** The vector store is a semantic index, not the source of truth. Redis is transient/hot state. RabbitMQ is the async event/work queue.
-- **Clara is reused, not recreated.** Before implementing AI/RAG/voice/provider functionality, inspect Clara. Reuse directly when possible; adapt through a thin adapter when necessary; only write application-specific code when genuinely required.
+- **The agent runtime core is reused, not recreated.** Before implementing AI/RAG/voice/provider functionality, inspect `packages/agent-core`. Reuse directly when possible; adapt through a thin adapter when necessary; only write application-specific code when genuinely required.
 
 ---
 

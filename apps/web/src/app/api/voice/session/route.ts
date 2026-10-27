@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { PostgresAgentRepository, activateVoiceSessionForOrganization, configureStartingVoiceSessionForOrganization, createVoiceSession, getChatConversation, getOrCreateChatConversation, endVoiceSessionForOrganization, getVoiceSessionForOrganization, getAgentAiSettings, incrementVoiceSessionTurnForOrganization, query, recordVoiceTelemetry } from "@ai-comms-agent/db";
 import { resolveAgentRealtimeVoiceProvider } from "@/lib/voice/resolve-agent-realtime-provider";
 import { resolveProviderVoiceConfig } from "@/lib/voice/resolve-provider-voice-config";
-import { claraRuntime } from "@ai-comms-agent/clara-core";
+import { agentRuntime } from "@ai-comms-agent/agent-core";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     const orgSettings = runtimeSettings.rows[0];
 
     // KB ID is OPTIONAL for voice. RAG features are skipped when no KB is configured.
-    const kbId = orgSettings?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim() || "default";
+    const kbId = orgSettings?.knowledge_base_id?.trim() || process.env.AGENT_KB_ID?.trim() || "default";
 
     // The selected agent's saved AI override wins. A modern NULL override
     // means inherit the organization default; never use stale legacy agent
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
     // so failures cannot leave an untracked session that the UI believes started.
     const persisted = await createVoiceSession({ organizationId, agentId, userId: subject.user.id, conversationId: safeConversationId });
     try {
-      const transport = await claraRuntime.startRealtimeSession({
+      const transport = await agentRuntime.startRealtimeSession({
         orgId: organizationId,
         agentId,
         kbId,

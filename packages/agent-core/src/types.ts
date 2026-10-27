@@ -1,9 +1,8 @@
 /**
- * Local Clara contracts.
+ * Local runtime contracts.
  *
- * These contracts are intentionally self-contained. The ai-reusable-libraries
- * repository under vendor/clara is a reference source only and is never a
- * runtime/build dependency of this application.
+ * These contracts are intentionally self-contained and carry no reference-repository
+ * dependency: the runtime boundary is fully owned by this application.
  */
 
 export type AIProvider = "openai" | "gemini" | "sarvam";
@@ -80,7 +79,7 @@ export interface GroundedContext {
   error?: string;
 }
 
-export interface ClaraRuntimeContext {
+export interface AgentRuntimeContext {
   /** Restrictive host scope for turns that do not request ambient retrieval. */
   skipGrounding?:boolean;
   orgId: string | null;
@@ -94,7 +93,7 @@ export interface ClaraRuntimeContext {
 
 /** Optional host-resolved settings for a single turn. Null retains current
  * organization inheritance; this carries no policy or permission grants. */
-export type ClaraAgentAiOverrides={
+export type AgentAiOverrides={
  chatProvider?:string|null;chatModel?:string|null;
  voiceChatProvider?:string|null;voiceChatTtsModel?:string|null;voiceChatSttModel?:string|null;voiceChatVoiceId?:string|null;
  realtimeVoiceProviderOverride?:string|null;realtimeSttModel?:string|null;realtimeTtsModel?:string|null;realtimeVoiceIdOverride?:string|null;
@@ -102,7 +101,7 @@ export type ClaraAgentAiOverrides={
  systemPromptOverride?:string|null;temperatureOverride?:number|null;maxTokensOverride?:number|null;
 };
 
-export interface ClaraAgentTurnRequest extends ClaraRuntimeContext {
+export interface AgentTurnRequest extends AgentRuntimeContext {
   messages: ChatMessage[];
   surface?: "chat" | "realtime" | "embed";
   ragMode?: GroundingRagMode;
@@ -116,7 +115,7 @@ export interface ResolvedAIConfig {
   assistantConfig: { systemPrompt?: string | null };
 }
 
-export interface ClaraAgentTurn {
+export interface AgentTurn {
   config: ResolvedAIConfig;
   providerName: string;
   model: string;

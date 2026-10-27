@@ -5,7 +5,7 @@ vi.mock('@/lib/identity/repository',()=>({ensureDevSeed:async()=>{},getIdentityA
 vi.mock('@/lib/identity/authorization',()=>({authorize:async()=>({user:{id:'user'},membership:{role:'owner'},permissions:new Set(['organization.read','email.read','whatsapp.send'])}),authorizationErrorToResponse:()=>Response.json({error:'failed'},{status:500})}));
 vi.mock('@ai-comms-agent/db',()=>({loadActiveAgentConfiguration:m.configuration,PostgresAgentRepository:class{async get(){return {id:'agent'};}},appendConversationMessage:m.append,getChatConversation:async()=>({id:'conversation'}),getOrCreateChatConversation:async()=>({id:'conversation'}),listChatMessages:async()=>[],query:async()=>({rows:[]})}));
 vi.mock('@/lib/chat/mail-whatsapp-review',()=>({startMailWhatsAppReview:m.start,continueMailWhatsAppReview:m.continue}));
-vi.mock('@ai-comms-agent/clara-core',()=>({claraRuntime:{completeWithTools:m.model}}));
+vi.mock('@ai-comms-agent/agent-core',()=>({agentRuntime:{completeWithTools:m.model}}));
 const operation={channel:'whatsapp',operation:'send',state:'pending_approval',resourceId:'10000000-0000-4000-8000-000000000001',turnId:'original',callId:'checkpoint',correlationId:'correlation'};
 const prompt='Create a WhatsApp approval request to +919629534701 from Meta Test Phone. Summarize my last 3 unread emails';
 beforeEach(()=>{vi.stubEnv('DATABASE_URL','test-only');vi.clearAllMocks();m.start.mockResolvedValue({summary:'Exact three-email summary',checkpointRef:'checkpoint',operation,message:'Summary prepared'});m.continue.mockResolvedValue(operation);});

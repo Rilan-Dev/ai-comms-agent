@@ -48,6 +48,7 @@ export class PostgresAuthRepository {
     passwordHash: string;
     organizationName: string;
     organizationSlug: string;
+    productName?: string | null;
   }): Promise<{ userId: string; organizationId: string | null }> {
     return withTransaction(async (client) => {
       await client.query("LOCK TABLE aca.auth_credentials IN SHARE ROW EXCLUSIVE MODE");
@@ -93,8 +94,8 @@ export class PostgresAuthRepository {
       }
 
       const org = await client.query<Record<string, unknown>>(
-        "INSERT INTO aca.organizations (name, slug, status) VALUES ($1, $2, 'active') RETURNING id",
-        [input.organizationName, input.organizationSlug],
+        "INSERT INTO aca.organizations (name, slug, product_name, status) VALUES ($1, $2, $3, 'active') RETURNING id",
+        [input.organizationName, input.organizationSlug, input.productName?.trim() || null],
       );
       const organizationId = String(org.rows[0]?.id);
       await client.query(

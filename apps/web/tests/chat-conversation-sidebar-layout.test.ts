@@ -15,7 +15,7 @@ const segment = (start: string, end: string) => {
 describe("conversation sidebar and persistent controls", () => {
   it("constrains the Chat workspace to the viewport below the existing 64px application bar", () => {
     expect(topBar).toContain("h-[64px]");
-    expect(shell).toContain("<TopBar />");
+    expect(shell).toContain("<TopBar workspaceName={workspaceName} organizationName={organization?.name ?? null} />");
     expect(chat).toContain('h-[calc(100dvh-64px)] min-h-0 min-w-0 flex-col overflow-hidden');
     expect(chat).toContain('relative z-10 shrink-0 border-b');
     expect(chat).toContain('relative flex min-h-0 flex-1 overflow-hidden');

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Settings2 } from "lucide-react";
 import { GmailOAuthSettings } from "./gmail-oauth-settings";
 import { ZohoOAuthSettings } from "./zoho-oauth-settings";
@@ -8,16 +9,19 @@ import { MicrosoftOAuthSettings } from "./microsoft-oauth-settings";
 import { AIRuntimeSettings } from "./ai-runtime-settings";
 import { AIProviderSettings } from "./ai-provider-settings";
 
-type Organization = { id: string; name: string; slug: string; status: string };
+type Organization = { id: string; name: string; slug: string; productName: string | null; status: string };
 type Member = { id: string; role: string; status: string; user: { id: string; email: string; name: string | null; status: string } | null };
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [savingMember, setSavingMember] = useState("");
   const [notice, setNotice] = useState("");
+  const [profileForm, setProfileForm] = useState({ name: "", productName: "" });
+  const [savingProfile, setSavingProfile] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -38,6 +42,7 @@ export default function SettingsPage() {
     ]).then(([org, memberList]) => {
       setOrganization(org);
       setMembers(memberList);
+      setProfileForm({ name: org.name, productName: org.productName ?? "" });
     }).catch((e) => {
       setError(e instanceof Error ? e.message : "Settings could not be loaded.");
     }).finally(() => setLoading(false));
@@ -63,6 +68,28 @@ export default function SettingsPage() {
     }
   }
 
+
+  async function saveProfile() {
+    const nextName = profileForm.name.trim();
+    if (!nextName) { setNotice("Organization name cannot be empty."); return; }
+    setSavingProfile(true); setNotice("");
+    try {
+      const response = await fetch("/api/settings/organization", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: nextName, productName: profileForm.productName.trim() }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.message ?? "Workspace profile update failed.");
+      setOrganization((current) => current ? { ...current, ...body.organization } : current);
+      setNotice("Workspace profile updated. The navigation bar now shows the new name.");
+      router.refresh();
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Workspace profile update failed.");
+    } finally {
+      setSavingProfile(false);
+    }
+  }
 
   async function changePassword() {
     if (newPassword !== confirmPassword) { setNotice("New passwords do not match."); return; }
@@ -91,7 +118,7 @@ export default function SettingsPage() {
         <a href="#organization-settings" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">Organization</a>
         <a href="#mail-provider-settings" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">Mail OAuth</a>
         <a href="#ai-provider-settings" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">AI providers</a>
-        <a href="#ai-runtime-settings" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">Clara runtime</a>
+        <a href="#ai-runtime-settings" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">AI runtime</a>
         <a href="#member-settings" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">Members & roles</a>
         <a href="#workspace-links" className="shrink-0 rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary">Workspace links</a>
       </nav>
@@ -108,11 +135,13 @@ export default function SettingsPage() {
           {loading ? (
             <div className="mt-5 h-24 animate-pulse rounded-md bg-muted" />
           ) : organization ? (
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <Value label="Name" value={organization.name} />
-              <Value label="Slug" value={organization.slug} />
-              <Value label="Status" value={organization.status} />
-              <Value label="Organization ID" value={organization.id} mono />
+            <div className="mt-5 space-y-4">
+              <label className="block"><span className="mb-2 block text-sm font-medium">Organization name</span><input value={profileForm.name} onChange={(e) => setProfileForm((f) => ({ ...f, name: e.target.value }))} maxLength={120} required className="h-11 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-foreground/20" /></label>
+              <label className="block"><span className="mb-2 block text-sm font-medium">Product / project name <span className="font-normal text-muted-foreground">(optional)</span></span><input value={profileForm.productName} onChange={(e) => setProfileForm((f) => ({ ...f, productName: e.target.value }))} maxLength={80} placeholder={organization.name} className="h-11 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-foreground/20" /><span className="mt-1 block text-xs text-muted-foreground">Displayed in the navigation bar and browser tab. Leave empty to use the organization name.</span></label>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => void saveProfile()} disabled={savingProfile} className="inline-flex h-10 items-center justify-center rounded-md bg-foreground px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-50">{savingProfile ? "Saving…" : "Save workspace names"}</button>
+                <span className="text-xs text-muted-foreground">Slug <span className="font-mono">{organization.slug}</span> (fixed)</span>
+              </div>
             </div>
           ) : (
             <p className="mt-5 text-sm text-muted-foreground">No organization context is available.</p>
@@ -145,7 +174,7 @@ export default function SettingsPage() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Model configuration</p>
           <h2 className="mt-1 font-display text-xl font-medium">AI providers</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Configure encrypted provider credentials and choose the models available to Clara.</p>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Configure encrypted provider credentials and choose the models available to your agents.</p>
         </div>
         <AIProviderSettings organizationId={organization?.id ?? ""} />
       </section>
@@ -153,7 +182,7 @@ export default function SettingsPage() {
       <section id="ai-runtime-settings" className="scroll-mt-20 space-y-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Runtime behavior</p>
-          <h2 className="mt-1 font-display text-xl font-medium">Clara runtime</h2>
+          <h2 className="mt-1 font-display text-xl font-medium">AI runtime</h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Set the actual knowledge-base ID, chat defaults, and realtime voice settings used by the runtime.</p>
         </div>
         <AIRuntimeSettings organizationId={organization?.id ?? ""} />
@@ -212,7 +241,7 @@ export default function SettingsPage() {
       <section id="workspace-links" className="scroll-mt-20 rounded-md border border-border bg-secondary/50 p-5">
         <p className="text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Configuration</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <LinkCard href="/ai-voice" title="AI & Voice" text="Provider readiness and Clara voice configuration." />
+          <LinkCard href="/ai-voice" title="AI & Voice" text="Provider readiness and voice configuration." />
           <LinkCard href="/agents" title="Agents" text="Manage agent configuration, versions and policies." />
           <LinkCard href="/mail/accounts" title="Email accounts" text="Manage provider connections and mailbox structure." />
           <LinkCard href="/knowledge" title="Knowledge base" text="Manage knowledge documents and retrieval readiness." />
@@ -221,10 +250,6 @@ export default function SettingsPage() {
       </section>
     </main>
   );
-}
-
-function Value({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
-  return <div className="rounded-md border border-border p-4"><p className="text-xs text-muted-foreground">{label}</p><p className={`mt-1 truncate text-sm font-semibold ${mono ? "font-mono text-xs" : ""}`}>{value}</p></div>;
 }
 
 function Status({ label, value }: { label: string; value: string }) {

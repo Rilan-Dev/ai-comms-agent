@@ -6,7 +6,7 @@ import {boundedChatHistory} from "@/lib/chat/bounded-history";
 import {safeChatFailure} from '@/lib/chat/safe-failure';
 import { NextResponse } from "next/server";
 import { appendConversationMessage, getChatConversation, getOrCreateChatConversation, listChatMessages, PostgresAgentRepository, query,loadActiveAgentConfiguration,assertCurrentAgentToolAuthorization,type ActiveAgentConfiguration } from "@ai-comms-agent/db";
-import { claraRuntime } from "@ai-comms-agent/clara-core";
+import { agentRuntime } from "@ai-comms-agent/agent-core";
 import {prepareAgentConfigurationTurn} from '@ai-comms-agent/email-agent-runtime';
 import {turnAllowsTool} from '@ai-comms-agent/shared';
 import { formatRollingMailSummary, MAX_REPORT_MESSAGES, parseRollingMailSummaryRequest, looksLikeRollingMailReport } from "@/lib/mail/rolling-summary";
@@ -29,7 +29,7 @@ import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { assertSameOrigin } from "@/lib/identity/local-auth";
-import type { ChatToolCompletion, ChatToolDefinition, ToolChatMessage,ClaraRuntimeContext } from "@ai-comms-agent/clara-core";
+import type { ChatToolCompletion, ChatToolDefinition, ToolChatMessage,AgentRuntimeContext } from "@ai-comms-agent/agent-core";
 import type { ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { createEmailToolRuntime, invokeEmailReadTool } from "../../../../../../../apps/worker/src/agent/email-tool-runtime";
 import { createWhatsAppToolRuntime, invokeWhatsAppTool } from "../../../../../../../apps/worker/src/agent/whatsapp-tool-runtime";
@@ -308,7 +308,7 @@ async function runInteractiveHostToolLoop(args: {
   kbId: string;
   messages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
   toolContext: ToolContext;
-  claraContext?:ClaraRuntimeContext;
+  agentContext?:AgentRuntimeContext;
   draftOnly?:boolean;
   whatsAppOnly?:boolean;
   onSafeReadOnlyFinal?: (completedHistory: ToolChatMessage[]) => Promise<string>;
@@ -355,8 +355,8 @@ async function runInteractiveHostToolLoop(args: {
     args.onProgress?.("planning_tools");
     let completion: ChatToolCompletion;
     try {
-      completion = await claraRuntime.completeWithTools(
-        args.claraContext??{ orgId: args.organizationId, agentId: args.agentId, kbId: args.kbId,skipGrounding:args.whatsAppOnly===true }, history, definitions,
+      completion = await agentRuntime.completeWithTools(
+        args.agentContext??{ orgId: args.organizationId, agentId: args.agentId, kbId: args.kbId,skipGrounding:args.whatsAppOnly===true }, history, definitions,
       );
     } catch (error) {
       const recovered=recoverRead();if(recovered)return recovered;
@@ -494,7 +494,7 @@ export async function POST(request: Request) {
     // KB ID is OPTIONAL for basic chat. RAG features are skipped when no KB
     // is configured. The previous 503 hard-block prevented chat from working
     // at all without a knowledge base, which the product does not require.
-    const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim() || "default";
+    const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.AGENT_KB_ID?.trim() || "default";
 
     const requestedConversationId = typeof body?.conversationId === "string" ? body.conversationId.trim() : "";
     const conversation = requestedConversationId
@@ -646,10 +646,10 @@ export async function POST(request: Request) {
     const whatsappPlan=whatsAppPlanningContext(safeHistory,content);
     const {history:plannerHistory,independentCompose}=draftPlanningContext(whatsappPlan.history,content);
     const blockedWriteExplanation = deniedEmailWriteExplanation(content, subject.permissions);
-    let preparedClaraContext:ClaraRuntimeContext|undefined;
+    let preparedAgentContext:AgentRuntimeContext|undefined;
     if(frozenConfiguration&&!blockedWriteExplanation){
       const turn=await prepareAgentConfigurationTurn({orgId:organizationId,agentId,kbId,userId:subject.user.id,sessionId:conversation.id,skipGrounding:whatsappPlan.whatsAppOnly});
-      frozenConfiguration=turn.configuration;trustedToolContext.agent_configuration=frozenConfiguration;preparedClaraContext=turn.claraContext;
+      frozenConfiguration=turn.configuration;trustedToolContext.agent_configuration=frozenConfiguration;preparedAgentContext=turn.agentContext;
     }
     const recentMessages = plannerHistory.filter(
       m => m.role === "user" || m.role === "assistant",
@@ -739,15 +739,15 @@ export async function POST(request: Request) {
                   name: subject.user.name, email: subject.user.email,
                 }) }, ...messages],
                 toolContext: trustedToolContext,
-                claraContext:preparedClaraContext,
+                agentContext:preparedAgentContext,
                 draftOnly:isDraftOnlyRequest(content),
                 whatsAppOnly:whatsappPlan.whatsAppOnly,
                 onProgress: (phase) => emit("progress", { phase }),
                 onSafeReadOnlyFinal: explicitMessagingAction ? undefined : async (completedHistory) => {
                   emit("status", { phase: "generating" });
                   emit("progress", { phase: "generating" });
-                  const finalStream = await claraRuntime.streamAuthorizedReadOnlyToolAnswer(
-                    preparedClaraContext??{ orgId: organizationId, agentId, kbId },
+                  const finalStream = await agentRuntime.streamAuthorizedReadOnlyToolAnswer(
+                    preparedAgentContext??{ orgId: organizationId, agentId, kbId },
                     completedHistory,
                     request.signal,
                   );
@@ -793,7 +793,7 @@ export async function POST(request: Request) {
             emit("delta", { text: assistantOutput });
           } else {
             emit("status", { phase: "generating" });
-            const turn = await claraRuntime.createChatTurn({
+            const turn = await agentRuntime.createChatTurn({
               orgId: organizationId, agentId, kbId, userId: subject.user.id, sessionId: conversation.id,
               surface: "chat", ragMode: "hybrid",
               messages: [
@@ -801,7 +801,7 @@ export async function POST(request: Request) {
                 { role: "system", content: businessAnswerGuidance },
                 ...messages,
               ],
-            },preparedClaraContext);
+            },preparedAgentContext);
             provider = turn.providerName;
             model = turn.model;
             for await (const chunk of turn.stream) {

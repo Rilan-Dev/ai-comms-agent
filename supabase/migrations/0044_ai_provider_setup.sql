@@ -11,7 +11,7 @@
 --    chat model, voice-chat TTS/STT/voice_id, realtime TTS/STT/voice_id,
 --    embedding model, system prompt override, temperature override,
 --    max_tokens override. NULL on every column means "inherit org defaults".
---    This mirrors vendor/clara/clara-core/.../agent-ai-types.ts shape
+--    This mirrors the agent-core agent-ai-types.ts shape
 --    minus the language/voice catalog (already covered by
 --    agent_language_assignments + agent_voice_assignments).
 -- 4. Extend the existing agent_ai_settings table (created by 0002/0007)
@@ -36,8 +36,8 @@ ALTER TABLE organization_ai_runtime_settings
   -- realtime path than for the pipeline voice-chat path.
   ADD COLUMN IF NOT EXISTS realtime_stt_model text,
   ADD COLUMN IF NOT EXISTS realtime_tts_model text,
-  -- Embeddings (RAG backbone). The local Clara runtime stubbed these to
-  -- throw; once enabled they are picked up by claraRuntime.embedText.
+  -- Embeddings (RAG backbone). The local agent runtime stubbed these to
+  -- throw; once enabled they are picked up by agentRuntime.embedText.
   ADD COLUMN IF NOT EXISTS embedding_provider text
     CHECK (embedding_provider IS NULL OR embedding_provider IN ('openai','gemini','tei')),
   ADD COLUMN IF NOT EXISTS embedding_model text,

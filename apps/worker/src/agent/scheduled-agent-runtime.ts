@@ -1,7 +1,7 @@
 import {requiresHumanApproval,turnAllowsTool,asOrganizationId,asUserId} from "@ai-comms-agent/shared";
 import { PostgresAgentRepository,PostgresIdentityRepository, query } from "@ai-comms-agent/db";
-import { claraRuntime } from "@ai-comms-agent/clara-core";
-import type { ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/clara-core";
+import { agentRuntime } from "@ai-comms-agent/agent-core";
+import type { ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/agent-core";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { createEmailToolRuntime, invokeEmailReadTool } from "./email-tool-runtime";
 import type { EmailToolRuntime } from "@ai-comms-agent/email-agent-runtime";
@@ -83,7 +83,7 @@ export async function runScheduledAgentTask(args: {
     "SELECT knowledge_base_id FROM organization_ai_runtime_settings WHERE organization_id=$1",
     [args.organizationId],
   );
-  const kbId = configured.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim() || "default";
+  const kbId = configured.rows[0]?.knowledge_base_id?.trim() || process.env.AGENT_KB_ID?.trim() || "default";
   const actingUserId = typeof args.userId === "string" && args.userId.trim() ? args.userId.trim() : null;
   let actualPermissions:ReadonlySet<string>|null=null;
   let actingRole:ToolContext['auth_subject']['role']='admin';
@@ -161,8 +161,8 @@ export async function runScheduledAgentTask(args: {
   const model = "tool-loop";
 
   for (let round = 0; round < MAX_ROUNDS; round += 1) {
-    const completion = await claraRuntime.completeWithTools(
-      configurationTurn?.claraContext??{ orgId: args.organizationId, agentId: args.agentId, kbId },
+    const completion = await agentRuntime.completeWithTools(
+      configurationTurn?.agentContext??{ orgId: args.organizationId, agentId: args.agentId, kbId },
       history,
       definitions,
     );

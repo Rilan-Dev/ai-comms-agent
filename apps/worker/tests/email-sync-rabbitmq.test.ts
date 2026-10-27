@@ -7,7 +7,7 @@ const source = readFileSync(new URL("../src/queues/email-sync-rabbitmq.ts", impo
 const worker = readFileSync(new URL("../src/email/mailbox-sync-worker.ts", import.meta.url), "utf8");
 const entry = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
 const knowledgeIndexer = readFileSync(new URL("../src/knowledge/email-knowledge-indexer.ts", import.meta.url), "utf8");
-const claraRuntime = readFileSync(new URL("../../../packages/clara-core/src/runtime.ts", import.meta.url), "utf8");
+const agentRuntime = readFileSync(new URL("../../../packages/agent-core/src/runtime.ts", import.meta.url), "utf8");
 
 test("RabbitMQ declares durable main, retry, and dead-letter queues", () => {
   assert.match(source, /assertQueue\(MAIN_QUEUE, queueOptions\(\)\)/);
@@ -68,7 +68,7 @@ test("invalid deliveries are dead-lettered and original messages are retained if
   assert.match(source, /Do not lose a message if retry\/DLQ publication is not confirmed/);
 });
 
-test("synced email is indexed idempotently through the Clara PostgreSQL knowledge contract", () => {
+test("synced email is indexed idempotently through the PostgreSQL knowledge contract", () => {
   // The mailbox-sync-worker imports deleteEmailKnowledge for the removeDeletedMessages
   // path. The indexEmailKnowledge call was intentionally decoupled from the sync loop
   // (commit dcc1c3a5) — it now lives in a separate worker tick at
@@ -83,8 +83,8 @@ test("synced email is indexed idempotently through the Clara PostgreSQL knowledg
   assert.doesNotMatch(knowledgeIndexer, /(?:from\s+["'][^"']*(?:qdrant|vector-store)|\bqdrant\.(?:upsert|search|delete)\b)/i);
 });
 
-test("Clara retrieval isolates shared knowledge from other agents", () => {
-  assert.match(claraRuntime, /\(\$2::text IS NULL AND kd\.agent_id IS NULL\)/);
-  assert.match(claraRuntime, /kd\.agent_id IS NULL OR kd\.agent_id::text = \$2/);
-  assert.match(claraRuntime, /\[ctx\.orgId, ctx\.agentId, textQuery/);
+test("Retrieval isolates shared knowledge from other agents", () => {
+  assert.match(agentRuntime, /\(\$2::text IS NULL AND kd\.agent_id IS NULL\)/);
+  assert.match(agentRuntime, /kd\.agent_id IS NULL OR kd\.agent_id::text = \$2/);
+  assert.match(agentRuntime, /\[ctx\.orgId, ctx\.agentId, textQuery/);
 });

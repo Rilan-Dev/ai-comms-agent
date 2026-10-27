@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ChatPage({ searchParams }: { searchParams: Promise<{agentId?:string;conversationId?:string;prompt?:string;run?:string}> }) {
   if (!process.env.DATABASE_URL) {
-    return <Unavailable title="Chat needs PostgreSQL" body="Configure DATABASE_URL to persist conversations and connect Clara." />;
+    return <Unavailable title="Chat needs PostgreSQL" body="Configure DATABASE_URL to persist conversations and connect the assistant." />;
   }
 
   try {
@@ -71,7 +71,7 @@ function Unavailable({ title, body, actionHref, actionLabel, error }: { title: s
   return (
     <main className="mx-auto max-w-3xl p-5 sm:p-7 lg:p-10">
       <div className={"rounded-3xl border p-8 shadow-sm " + (error ? "border-destructive/20 bg-destructive/5" : "bg-background")}>
-        <p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Clara chat</p>
+        <p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Chat</p>
         <h1 className="mt-2 text-2xl font-semibold">{title}</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{body}</p>
         {actionHref && actionLabel ? <a href={actionHref} className="mt-6 inline-flex rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background">{actionLabel}</a> : null}

@@ -1,6 +1,6 @@
 # Realtime voice email-retrieval test
 
-This harness is copied from Clara-AI-Platform's `scripts/voice-benchmark/conversation.mjs` so the five-turn benchmark can be run from this repository against a Clara voice agent. It records browser request timings and Clara voice latency events; it does **not** itself prove email retrieval is connected or authorized.
+This harness was originally adapted from a reference platform's `scripts/voice-benchmark/conversation.mjs` so the five-turn benchmark can be run from this repository against a voice agent. It records browser request timings and voice latency events; it does **not** itself prove email retrieval is connected or authorized.
 
 ## Generate spoken inputs
 
@@ -23,11 +23,11 @@ On Linux, install the OS libraries required by Playwright Chromium if it reports
 
 ## Run the five-turn test
 
-Use a URL for an agent that you are authorized to test. The agent page must expose the expected Connect/Start control and Clara's `clara:voice:latency` telemetry event.
+Use a URL for an agent that you are authorized to test. The agent page must expose the expected Connect/Start control and the platform's voice latency telemetry event.
 
 ```bash
 node scripts/voice-benchmark/conversation.mjs \
-  --url="https://clara.ai.amazetechclans.com/agents/a7107bde-ff33-4952-9ebf-ad0d1dac3861" \
+  --url="https://YOUR-DEPLOYMENT-URL/agents/YOUR-TEST-AGENT-ID" \
   --provider=sarvam \
   --input-1=scripts/voice-benchmark/questions/turn-01.mp3 \
   --input-2=scripts/voice-benchmark/questions/turn-02.mp3 \
@@ -49,4 +49,4 @@ The `--provider` value is a label, not a provider switch; the agent must already
 
 ## Security / acceptance boundary
 
-As of the current project-control record, `ISS-026` remains open: the web Chat email-context loader is not yet scoped to the active agent's mailbox grants. The email hybrid retriever is also deliberately not wired into Chat/realtime voice, and the Clara vector adapter/outbox remain unbound. Therefore this harness may test the Clara voice transport and timing, but do **not** treat an answer about emails as proof that ai-comms-agent's email RAG is live, and do not wire email retrieval into user-facing voice until FIX-01 closes ISS-026. A live email-RAG acceptance run still requires an authorized test agent/mailbox, completed ingestion, and OPS-01 runtime isolation/correctness checks.
+As of the current project-control record, `ISS-026` remains open: the web Chat email-context loader is not yet scoped to the active agent's mailbox grants. The email hybrid retriever is also deliberately not wired into Chat/realtime voice, and the vector adapter/outbox remain unbound. Therefore this harness may test the voice transport and timing, but do **not** treat an answer about emails as proof that ai-comms-agent's email RAG is live, and do not wire email retrieval into user-facing voice until FIX-01 closes ISS-026. A live email-RAG acceptance run still requires an authorized test agent/mailbox, completed ingestion, and OPS-01 runtime isolation/correctness checks.

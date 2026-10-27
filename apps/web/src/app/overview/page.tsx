@@ -53,7 +53,7 @@ export default function HomePage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/agents/new" className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-85"><span aria-hidden="true">＋</span> Create agent</Link>
-          <a href="/chat" className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium transition hover:bg-secondary"><span aria-hidden="true">✳</span> Ask Clara</a>
+          <a href="/chat" className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium transition hover:bg-secondary"><span aria-hidden="true">✳</span> Ask the assistant</a>
           <Link href="/chat?prompt=How%20many%20unread%20emails%20do%20I%20have%3F&run=1" className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium transition hover:bg-secondary">Unread count</Link>
           <Link href="/chat?prompt=Summarize%20my%20unread%20emails&run=1" className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium transition hover:bg-secondary">Summarize unread mail</Link>
         </div>
@@ -79,7 +79,7 @@ export default function HomePage() {
           </article>
           <article className="rounded-lg border border-border p-4">
             <p className="text-xs font-semibold text-muted-foreground">02 · Ask</p>
-            <h3 className="mt-2 text-base font-semibold">Ask Clara</h3>
+            <h3 className="mt-2 text-base font-semibold">Ask the assistant</h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">Ask for a summary or help preparing a draft using the accounts and permissions available to you.</p>
             <a href="/chat" className="mt-4 inline-flex min-h-10 items-center text-sm font-semibold underline decoration-border underline-offset-4 hover:decoration-foreground">Open AI chat ↗</a>
           </article>
@@ -130,11 +130,11 @@ export default function HomePage() {
               { label: "Pending approvals", key: "pending_approvals", href: "/mail/drafts" },
             ].map((item) => <a key={item.key} href={item.href} className="rounded-md bg-secondary/70 p-4 transition hover:bg-secondary"><p className="text-xs text-muted-foreground">{item.label}</p><p className="mt-3 font-display text-2xl font-medium">{data ? metric(item.key) : "—"}</p><p className="mt-2 text-[10px] text-muted-foreground">{data?.metrics[item.key] == null && data ? "Requires access" : "View details ↗"}</p></a>)}
           </div>
-          <div className="mt-5 flex items-start gap-3 rounded-md border border-border p-4"><span className="grid size-9 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground"><span aria-hidden="true">✳</span></span><div><p className="text-sm font-semibold">Clara intelligence</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Ask about your connected mail and work across channels. Provider or knowledge configuration gaps are surfaced rather than simulated.</p><a href="/chat" className="mt-3 inline-flex text-xs font-semibold underline decoration-border underline-offset-4">Start a conversation ↗</a></div></div>
+          <div className="mt-5 flex items-start gap-3 rounded-md border border-border p-4"><span className="grid size-9 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground"><span aria-hidden="true">✳</span></span><div><p className="text-sm font-semibold">AI intelligence</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Ask about your connected mail and work across channels. Provider or knowledge configuration gaps are surfaced rather than simulated.</p><a href="/chat" className="mt-3 inline-flex text-xs font-semibold underline decoration-border underline-offset-4">Start a conversation ↗</a></div></div>
         </article>
 
         <article className="flex flex-col rounded-md bg-foreground p-6 text-background sm:p-7">
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.18em] text-background/60"><span className="size-1.5 rounded-full bg-emerald-400"/> Clara workspace</div>
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.18em] text-background/60"><span className="size-1.5 rounded-full bg-emerald-400"/> Workspace</div>
           <h2 className="mt-7 font-display text-3xl font-medium leading-tight">A calmer way to manage every conversation.</h2>
           <p className="mt-4 text-sm leading-6 text-background/65">Review important mail, prepare drafts, and coordinate agent actions with approvals and audit trails.</p>
           <div className="mt-auto grid gap-2 pt-8">

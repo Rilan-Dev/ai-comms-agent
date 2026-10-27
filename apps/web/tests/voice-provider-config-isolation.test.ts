@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolveProviderVoiceConfig } from "../src/lib/voice/resolve-provider-voice-config";
 
 const session = readFileSync(new URL("../src/app/api/voice/session/route.ts", import.meta.url), "utf8");
-const runtime = readFileSync(new URL("../../../packages/clara-core/src/runtime.ts", import.meta.url), "utf8");
+const runtime = readFileSync(new URL("../../../packages/agent-core/src/runtime.ts", import.meta.url), "utf8");
 const openaiOrganization = { organizationProvider: "openai", organizationModel: "gpt-realtime-2.1", organizationVoiceId: "nova" };
 
 describe("voice provider config remains scoped to the selected provider", () => {
@@ -59,7 +59,7 @@ describe("voice provider config remains scoped to the selected provider", () => 
     })).toEqual({ model: "gpt-realtime-2.1-mini", voiceId: "echo" });
   });
 
-  it("host and Clara runtime cannot reintroduce cross-provider organization fallbacks", () => {
+  it("host and agent runtime cannot reintroduce cross-provider organization fallbacks", () => {
     expect(session).toContain("resolveProviderVoiceConfig({");
     expect(session).toContain('voiceProvider === "elevenlabs" && !voiceId');
     expect(runtime).toContain("organizationConfig?.voice?.provider === provider");

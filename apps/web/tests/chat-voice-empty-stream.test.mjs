@@ -23,7 +23,7 @@ test("voice SSE never completes a normal model turn if the provider yields zero 
   const stream = route.slice(from, until);
   assert.match(stream, /if \(!generated\.trim\(\)\) throw new Error\("AI provider returned an empty voice response\."\)/);
   assert.ok(stream.indexOf("if (!generated.trim())") < stream.indexOf("await saveAnswer(deliveredText)"));
-  assert.match(route, /Clara could not complete the voice answer\. No external action was confirmed\./);
+  assert.match(route, /The assistant could not complete the voice answer\. No external action was confirmed\./);
 });
 
 test("existing host-verified email feedback and non-empty read-only stream protections stay intact", () => {

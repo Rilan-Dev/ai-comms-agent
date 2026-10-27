@@ -5,7 +5,7 @@ import { resolveAgentRealtimeVoiceProvider } from "../src/lib/voice/resolve-agen
 const source = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 const session = source("../src/app/api/voice/session/route.ts");
 const settingsApi = source("../src/app/api/agents/[id]/ai-settings/route.ts");
-const clara = source("../../../packages/clara-core/src/runtime.ts");
+const runtimeSource = source("../../../packages/agent-core/src/runtime.ts");
 const browser = source("../src/app/ai-voice/voice-workspace.tsx");
 
 describe("per-agent realtime voice provider selection", () => {
@@ -69,8 +69,8 @@ describe("per-agent realtime voice provider selection", () => {
   });
 
   it("requires the real Sarvam WebSocket relay and never relabels REST STT/TTS as a live conversation", () => {
-    expect(clara).toContain('provider === "sarvam" ? "/api/voice/sarvam/session"');
-    expect(clara).toContain('if (available && provider === "elevenlabs")');
+    expect(runtimeSource).toContain('provider === "sarvam" ? "/api/voice/sarvam/session"');
+    expect(runtimeSource).toContain('if (available && provider === "elevenlabs")');
     expect(session).toContain('error: "sarvam_realtime_relay_required"');
     expect(session).toContain('error: "sarvam_realtime_unavailable"');
     expect(session).toContain('transport.transportMode !== "realtime"');

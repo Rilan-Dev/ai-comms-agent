@@ -17,8 +17,8 @@ vi.mock("@ai-comms-agent/db", () => ({
   PostgresIdentityRepository:class{getUserById=mocks.user;getMembership=mocks.membership;getPermissionsForRole=mocks.permissions;},
 }));
 
-vi.mock("@ai-comms-agent/clara-core", () => ({
-  claraRuntime: { completeWithTools: mocks.completeWithTools },
+vi.mock("@ai-comms-agent/agent-core", () => ({
+  agentRuntime: { completeWithTools: mocks.completeWithTools },
 }));
 vi.mock('@ai-comms-agent/email-agent-runtime',()=>({prepareAgentConfigurationTurn:mocks.prepare}));
 
@@ -62,11 +62,11 @@ describe("runScheduledAgentTask result reporting", () => {
   afterEach(()=>vi.unstubAllEnvs());
 
   it('uses the saved revision and actual creator permissions without inventing send access',async()=>{
-    vi.stubEnv('AGENT_CONFIGURATION_REVISIONS_ENABLED','true');const claraContext={orgId:'org-1',agentId:'agent-1',kbId:'default'};
-    mocks.prepare.mockResolvedValue({claraContext,configuration:{organizationId:'org-1',agentId:'agent-1',revisionId:'frozen',revocationGeneration:0,snapshot:{lifecycle:{status:'active'},policy:{allowedTools:['email.messages.list','whatsapp.send']}}}});
+    vi.stubEnv('AGENT_CONFIGURATION_REVISIONS_ENABLED','true');const agentContext={orgId:'org-1',agentId:'agent-1',kbId:'default'};
+    mocks.prepare.mockResolvedValue({agentContext,configuration:{organizationId:'org-1',agentId:'agent-1',revisionId:'frozen',revocationGeneration:0,snapshot:{lifecycle:{status:'active'},policy:{allowedTools:['email.messages.list','whatsapp.send']}}}});
     mocks.completeWithTools.mockResolvedValueOnce(completion('',[{id:'read',name:'email.messages.list',arguments:{}}])).mockResolvedValueOnce(completion('Source-backed digest',[]));
     const result=await runScheduledAgentTask({organizationId:'org-1',agentId:'agent-1',executionId:'execution',userId:'user',task:'Summarize unread mail'});
-    expect(result.output).toBe('Source-backed digest');expect(mocks.completeWithTools.mock.calls[0]?.[0]).toBe(claraContext);expect(mocks.completeWithTools.mock.calls[1]?.[0]).toBe(claraContext);
+    expect(result.output).toBe('Source-backed digest');expect(mocks.completeWithTools.mock.calls[0]?.[0]).toBe(agentContext);expect(mocks.completeWithTools.mock.calls[1]?.[0]).toBe(agentContext);
     expect(mocks.completeWithTools.mock.calls[0]?.[2].map((tool:{name:string})=>tool.name)).toEqual(['email.messages.list']);
     expect(mocks.invokeEmailReadTool.mock.calls[0]?.[3]).toMatchObject({agent_configuration:{revisionId:'frozen'},auth_subject:{role:'member',permissions:['email.read']}});expect(mocks.invokeWhatsAppTool).not.toHaveBeenCalled();
   });

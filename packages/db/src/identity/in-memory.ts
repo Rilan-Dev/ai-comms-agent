@@ -121,6 +121,29 @@ export class InMemoryIdentityRepository implements IdentityRepository {
     return this.organizations.get(id) ?? null;
   }
 
+  async updateOrganizationProfile(
+    id: OrganizationId,
+    input: { name?: string; productName?: string | null },
+  ): Promise<Organization | null> {
+    const existing = this.organizations.get(id);
+    if (!existing) return null;
+    const nextName = input.name?.trim() || existing.name;
+    const nextProductName =
+      input.productName === undefined
+        ? existing.productName
+        : input.productName?.trim()
+          ? input.productName.trim()
+          : null;
+    const updated: InMemoryOrganization = {
+      ...existing,
+      name: nextName,
+      productName: nextProductName,
+      updatedAt: new Date().toISOString(),
+    };
+    this.organizations.set(id, updated);
+    return updated;
+  }
+
   async createOrganization(input: { name: string; slug: string }): Promise<Organization> {
     const slug = input.slug.toLowerCase();
     if (this.slugIndex.has(slug)) {
@@ -132,6 +155,7 @@ export class InMemoryIdentityRepository implements IdentityRepository {
       id,
       name: input.name,
       slug: input.slug,
+      productName: null,
       status: "active",
       createdAt: now,
       updatedAt: now,

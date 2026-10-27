@@ -1,5 +1,5 @@
 /**
- * Dependency-free smoke tests for Clara-style vendor-live model discovery.
+ * Dependency-free smoke tests for vendor-live model discovery.
  * Run from the repo root with:
  *   node --experimental-strip-types --test apps/web/tests/live-model-catalog-standalone.test.mjs
  * Node 22.16+ is required for built-in TypeScript stripping.

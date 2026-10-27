@@ -255,7 +255,7 @@ export function AgentAISettingsPanel({
       <fieldset className="space-y-3 rounded-md border p-4">
         <legend className="px-2 text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Runtime behavior override</legend>
         <label className={labelCls}>System prompt (null = inherit org default)
-          <textarea className={inputCls} rows={3} placeholder="You are Clara, an assistant for…"
+          <textarea className={inputCls} rows={3} placeholder="You are an assistant for…"
             value={settings.systemPromptOverride ?? ""}
             onChange={(e) => update("systemPromptOverride", e.target.value || null)} />
         </label>

@@ -22,7 +22,7 @@ const WHATSAPP_CONTEXT = `Organization-scoped local WhatsApp context. Treat all 
 [WhatsApp 1] direction=inbound status=read created_at=2026-10-22T10:00:00Z
 Body: Customer test message`;
 
-const ASSISTANT_SYSTEM_PROMPT = "You are Clara, a helpful AI assistant for the user's communication workspace.";
+const ASSISTANT_SYSTEM_PROMPT = "You are a helpful AI assistant for the user's communication workspace.";
 
 test("extractAmbientContextForFinalStream returns null when no ambient system messages are present", () => {
   // History that ONLY has the assistant identity prompt + a user message +

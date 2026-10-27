@@ -1,6 +1,6 @@
 import test, { afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { createClaraEmailVectorAdapter } from "../src/knowledge/clara-email-vector-adapter.ts";
+import { createEmailVectorAdapter } from "../src/knowledge/email-vector-adapter.ts";
 import type { EmailKnowledgeVectorSnapshot } from "../src/knowledge/email-index-lifecycle.ts";
 
 const originalFetch = globalThis.fetch;
@@ -49,15 +49,15 @@ function mockRequests(response: Response = successfulResponse()) {
   return calls;
 }
 
-function adapter(baseUrl = "https://clara.example") {
-  return createClaraEmailVectorAdapter({ baseUrl, apiKey });
+function adapter(baseUrl = "https://vector.example") {
+  return createEmailVectorAdapter({ baseUrl, apiKey });
 }
 
 test("worker vector adapter sends deterministic chunk and source metadata", async () => {
   const calls = mockRequests();
   await adapter().upsertMessageVectors(snapshot);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0]?.url, "https://clara.example/api/internal/email-vectors");
+  assert.equal(calls[0]?.url, "https://vector.example/api/internal/email-vectors");
   assert.equal(calls[0]?.init.redirect, "error");
   assert.equal(new Headers(calls[0]?.init.headers).get("authorization"), `Bearer ${apiKey}`);
   assert.deepEqual(JSON.parse(String(calls[0]?.init.body)), {
@@ -79,7 +79,7 @@ test("worker vector adapter sends deterministic chunk and source metadata", asyn
 
 test("message deletion and account purge remain separately account-scoped", async () => {
   const calls = mockRequests();
-  const vectors = adapter("https://clara.example/api/internal/email-vectors");
+  const vectors = adapter("https://vector.example/api/internal/email-vectors");
   await vectors.deleteMessageVectors({
     organizationId: "org-1", accountId: "account-1",
     provider: "gmail", providerMessageId: "message-1", sourceIdentityHash: "source-hash",
@@ -110,10 +110,10 @@ test("explicit null sender and folder values clear prior vector metadata", async
 });
 
 test("missing credentials or unsafe endpoints fail before any request", () => {
-  assert.throws(() => createClaraEmailVectorAdapter({ baseUrl: "https://clara.example", apiKey: "" }), /CLARA_EMAIL_VECTOR_API_KEY/);
+  assert.throws(() => createEmailVectorAdapter({ baseUrl: "https://vector.example", apiKey: "" }), /AGENT_EMAIL_VECTOR_API_KEY/);
   for (const url of [
-    "https://user:secret@clara.example", "https://clara.example?token=secret",
-    "https://clara.example#fragment", "file:///tmp/private",
+    "https://user:secret@vector.example", "https://vector.example?token=secret",
+    "https://vector.example#fragment", "file:///tmp/private",
   ]) {
     assert.throws(() => adapter(url), /HTTP or HTTPS|credentials, query, or fragment/);
   }
@@ -143,7 +143,7 @@ test("malformed successful HTTP response cannot silently complete a job", async 
   await assert.rejects(adapter().upsertMessageVectors(snapshot), /invalid response/);
 });
 
-test("malformed cross-scope or partial identities never trigger privileged Clara requests", async () => {
+test("malformed cross-scope or partial identities never trigger privileged vector requests", async () => {
   const calls = mockRequests();
   const vectors = adapter();
   for (const invalid of [

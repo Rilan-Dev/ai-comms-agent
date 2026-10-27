@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createClaraEmailVectorSearch } from "@ai-comms-agent/db";
+import { createEmailVectorSearch } from "@ai-comms-agent/db";
 
-test("Clara vector search sends the resolved account allowlist and rejects out-of-scope hits", async () => {
+test("Vector search sends the resolved account allowlist and rejects out-of-scope hits", async () => {
   const originalFetch = globalThis.fetch;
   let requestBody: Record<string, unknown> | null = null;
   let authorization = "";
@@ -22,8 +22,8 @@ test("Clara vector search sends the resolved account allowlist and rejects out-o
   }) as typeof fetch;
 
   try {
-    const search = createClaraEmailVectorSearch({
-      baseUrl: "https://clara.example",
+    const search = createEmailVectorSearch({
+      baseUrl: "https://vector.example",
       apiKey: "service-secret-that-is-long-enough-for-test-123",
     });
     const results = await search({
@@ -54,9 +54,9 @@ test("Clara vector search sends the resolved account allowlist and rejects out-o
   }
 });
 
-test("Clara vector search fails closed on an invalid service credential", () => {
-  assert.throws(() => createClaraEmailVectorSearch({
-    baseUrl: "https://clara.example",
+test("Vector search fails closed on an invalid service credential", () => {
+  assert.throws(() => createEmailVectorSearch({
+    baseUrl: "https://vector.example",
     apiKey: "short",
   }), /at least 32 characters/);
 });

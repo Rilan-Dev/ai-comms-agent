@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { ToolRegistry } from "@ai-comms-agent/shared";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
-import type { ChatToolCompletion, ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/clara-core";
+import type { ChatToolCompletion, ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/agent-core";
 import { runEmailAgentTurn } from "../src/agent/email-agent-loop";
 import type { EmailToolRuntime } from "../src/agent/email-tool-runtime";
 

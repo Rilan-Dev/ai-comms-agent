@@ -11,13 +11,13 @@ test("Voice SSE and JSON share one trusted tool-intent decision", () => {
   assert.equal(route.slice(sse, route.indexOf("const encoder = new TextEncoder()", sse)).includes("const needsAuthorizedTools ="), false);
 });
 
-test("non-tool JSON voice goes to Clara's conversational read-only model, not email tool runtime", () => {
+test("non-tool JSON voice goes to the conversational read-only model, not email tool runtime", () => {
   const jsonStart = route.indexOf("if (blockedWriteExplanation) {", route.indexOf('return new Response(stream,'));
   const jsonTools = route.indexOf("const turn = await runEmailAgentTurn({", jsonStart);
   assert.ok(jsonStart > 0 && jsonTools > jsonStart);
   const json = route.slice(jsonStart, jsonTools);
   assert.match(json, /if \(!needsAuthorizedTools\)/);
-  assert.match(json, /claraRuntime\.createChatTurn\(/);
+  assert.match(json, /agentRuntime\.createChatTurn\(/);
   assert.match(json, /for await \(const token of generation\.stream\)/);
   assert.match(json, /userFacingChatAnswer\(modelAnswer\)/);
   assert.match(json, /await saveAnswer\(validated\)/);
