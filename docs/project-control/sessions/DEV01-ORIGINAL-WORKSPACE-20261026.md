@@ -1,5 +1,11 @@
 # Original workspace implementation —26 October2026
 
+## 28 October continuation — identity disclosure checkpoint
+
+The original Overview identity editor now starts collapsed and retains the existing name, slug, purpose and save paths. Closing it keeps unsaved edits; Cancel restores the last saved draft identity when revisions are enabled, or the persisted identity otherwise, and clears only the identity dirty marker. This is a bounded Task 6 improvement, not completion of the dashboard, Task 5, version history or the wider plan. No theme, AI panel, business permission, feature flag or live configuration changed. Browser/mobile/keyboard verification and release remain outstanding. The previous deployment attempt encountered conflicting container operations and was restored to the previous healthy release; investigate that conflict before another deployment.
+
+Local verification: web TypeScript PASS; targeted agent detail and configuration client tests 9/9 PASS; full web Vitest suite 172 files / 1,184 tests PASS; changed-file ESLint reports no errors (existing missing-pages-configuration warning); git diff whitespace check PASS. The full suite began before a final copy-only clarification in the editor; that clarification does not change behavior. No claim of browser acceptance or production deployment.
+
 Owner approved the original-screen design and instructed proceeding. Plan: [original workspace implementation](../../superpowers/plans/2026-10-26-original-workspace-implementation.md). Base source `2da726dba3a1e4b908cc9fb6a6722136a47e1a7e`; plan recorded as `acfa9ebf`. Native task execution continues in the established isolated Development clone. Main untouched. No product deployment or live configuration change in this checkpoint.
 
 ## Initial control/API preservation inventory

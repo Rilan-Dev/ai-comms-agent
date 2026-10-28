@@ -84,6 +84,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
   const [editName, setEditName] = useState(initialAgent.name);
   const [editSlug, setEditSlug] = useState(initialAgent.slug);
   const [editDescription, setEditDescription] = useState(initialAgent.description ?? "");
+  const identityDetailsRef = useRef<HTMLDetailsElement>(null);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [formResetEpoch,setFormResetEpoch]=useState(0);
@@ -200,6 +201,13 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
     } catch(e) {
       notify({kind:"error",title:"Agent details could not be saved",message:e instanceof Error?e.message:"Unknown error"});
     } finally { setBusy(false); }
+  }
+  function cancelIdentityEdits() {
+    const saved = configurationRevisionsEnabled ? (editor.view?.draft ?? editor.view?.active)?.snapshot.identity : agent;
+    if (!saved) return;
+    setEditName(saved.name); setEditSlug(saved.slug); setEditDescription(saved.description ?? "");
+    if (configurationRevisionsEnabled) editor.markDirty('identity', false);
+    if (identityDetailsRef.current) identityDetailsRef.current.open = false;
   }
   async function createVersion() {
     let parsed: unknown;
@@ -371,10 +379,12 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
         </div>
         <p className="mt-3 text-xs text-muted-foreground">The checklist reflects saved configuration, not a live connection or successful mail import.</p>
       </div>
-      <form key={formResetEpoch} onChange={()=>configurationRevisionsEnabled&&editor.markDirty('identity')} onSubmit={saveAgent} className="rounded-md border bg-background p-6 shadow-sm">
+      <details ref={identityDetailsRef} className="rounded-md border bg-background p-6 shadow-sm">
+        <summary className="cursor-pointer font-semibold">Edit agent details</summary>
+      <form key={formResetEpoch} onChange={()=>configurationRevisionsEnabled&&editor.markDirty('identity')} onSubmit={saveAgent} className="mt-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div><h2 className="font-semibold">Agent details</h2><p className="mt-1 text-sm text-muted-foreground">Edit the persisted identity without changing deployed version history.</p></div>
-          <button type="submit" disabled={busy} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Save size={14} />{busy?"Saving…":configurationRevisionsEnabled?"Save draft":"Save details"}</button>
+          <div><h2 className="font-semibold">Agent details</h2><p className="mt-1 text-sm text-muted-foreground">{configurationRevisionsEnabled ? "Save changes as a draft to review before applying." : "Update this agent’s name, identifier and purpose."}</p></div>
+          <div className="flex gap-2"><button type="button" disabled={busy} onClick={cancelIdentityEdits} className="h-10 rounded-md border px-4 text-sm font-medium disabled:opacity-50">Cancel</button><button type="submit" disabled={busy} className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Save size={14} />{busy?"Saving…":configurationRevisionsEnabled?"Save draft":"Save details"}</button></div>
         </div>
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <label className="text-sm font-medium">Name<input value={editName} onChange={(e)=>setEditName(e.target.value)} maxLength={120} required className="mt-1 h-11 w-full rounded-md border px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-primary/20" /></label>
@@ -382,6 +392,7 @@ export function AgentDetailClient({ organizationId, initialAgent, initialVersion
           <label className="text-sm font-medium lg:col-span-2">Purpose<textarea value={editDescription} onChange={(e)=>setEditDescription(e.target.value)} maxLength={500} rows={3} className="mt-1 w-full rounded-md border px-3 py-3 text-sm font-normal outline-none focus:ring-2 focus:ring-primary/20" /></label>
         </div>
       </form>
+      </details>
       <div className="grid gap-4 lg:grid-cols-3"><div className="rounded-md border bg-background p-6 shadow-sm lg:col-span-2"><h2 className="font-semibold">Configuration</h2><p className="mt-1 text-sm text-muted-foreground">Versioned runtime configuration is stored with the agent.</p><div className="mt-6 grid gap-3 sm:grid-cols-3"><div className="rounded-md bg-muted/50 p-4"><p className="text-xs text-muted-foreground">Versions</p><p className="mt-1 text-xl font-semibold">{versions.length}</p></div><div className="rounded-md bg-muted/50 p-4"><p className="text-xs text-muted-foreground">Policy</p><p className="mt-1 text-xl font-semibold">{policy ? "Ready" : "Missing"}</p></div><div className="rounded-md bg-muted/50 p-4"><p className="text-xs text-muted-foreground">Deployment</p><p className="mt-1 text-xl font-semibold">{agent.status==="active" ? "Live" : "Draft"}</p></div></div></div></div><div className="rounded-md border bg-background p-6 shadow-sm"><h2 className="font-semibold">Channels</h2><p className="mt-1 text-sm text-muted-foreground">Connect email and WhatsApp accounts from the channel configuration.</p><div className="mt-5 space-y-2"><button type="button" onClick={()=>setTab("channels")} className="flex w-full items-center justify-between rounded-md border p-3 text-left text-sm hover:bg-muted/30">Email <span className="text-xs font-semibold text-primary">{emailBindings.length ? `${emailBindings.length} connected` : "Configure →"}</span></button><button type="button" onClick={()=>setTab("channels")} className="flex w-full items-center justify-between rounded-md border p-3 text-left text-sm hover:bg-muted/30">WhatsApp <span className="text-xs font-semibold text-primary">{whatsappBinding ? "Connected" : "Configure →"}</span></button></div></div></section>}
     {tab==="versions" && <section className="space-y-4"><div className="rounded-md border bg-background p-6 shadow-sm"><div><h2 className="font-semibold">Version configuration</h2><p className="mt-1 text-xs text-muted-foreground">Select a version from History to reuse its configuration, then create a new immutable version. Technical editing is optional.</p><p className="mt-2 text-xs text-muted-foreground">Selected version: {versions.find((v)=>v.id===selectedVersionId)?.versionNumber ?? "none"} · Deploy uses the selected version.</p></div><details className="mt-5 rounded-md border p-4"><summary className="cursor-pointer text-sm font-semibold">Advanced: edit technical version JSON (optional)</summary><textarea value={versionConfig} onChange={(e)=>{setVersionConfig(e.target.value);if(configurationRevisionsEnabled)editor.markDirty('version');}} spellCheck={false} className="mt-3 min-h-56 w-full rounded-md border bg-muted/20 p-4 font-mono text-xs outline-none focus:ring-2 focus:ring-primary/20" aria-label="Version configuration JSON" /></details><div className="mt-3 flex justify-end"><button type="button" disabled={busy} onClick={createVersion} className="h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">{busy?"Creating…":configurationRevisionsEnabled?"Save draft":"Create version"}</button></div></div><div className="rounded-md border bg-background shadow-sm"><div className="border-b p-5"><h3 className="font-semibold">History</h3></div><div className="divide-y">{versions.length===0?<p className="p-6 text-sm text-muted-foreground">No versions yet.</p>:versions.map((v)=><button type="button" key={v.id} onClick={()=>{setSelectedVersionId(v.id); setVersionConfig(JSON.stringify(v.config ?? {},null,2));}} className="flex w-full items-center justify-between p-5 text-left hover:bg-muted/30"><div><p className="text-sm font-semibold">Version {v.versionNumber}</p><p className="text-xs text-muted-foreground">{new Date(v.createdAt).toLocaleString()}</p></div><span className="flex items-center gap-2"><span className="rounded-full bg-muted px-2.5 py-1 text-[11px]">{v.id===agent.currentVersionId?"Current":"Draft"}</span>{selectedVersionId===v.id && <span className="text-[11px] font-semibold text-primary">Selected</span>}</span></button>)}</div></div></section>}
     {tab==="policy" && <section className="rounded-md border bg-background p-6 shadow-sm">
