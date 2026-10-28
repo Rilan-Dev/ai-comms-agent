@@ -204,3 +204,6 @@ Verified c32978781585d1092a423bf5041a32b837b00374 live on web+worker after resto
 # Inbox mailbox choices source checkpoint — 29 October 2026
 
 The Inbox now uses authorized organization mailbox records for its selector, retains discovered mailboxes across filters, and keeps messages available with a visible warning if account lookup fails. Four focused regressions passed. Exact-source isolated Linux verification passed database and web typechecks, 177 web test files / 1,205 tests, and the production web build (existing lint warnings remain). Browser acceptance and live deployment remain open.
+# Inbox pagination refresh checkpoint — 29 October 2026
+
+Background refresh no longer replaces explicitly loaded additional pages, and an outdated load-more response cannot append after a newer refresh. Focused mailbox and refresh-guard suites passed 8/8 and web typecheck passed. Browser acceptance remains open. The isolated server test upload failed twice during SSH handshake; no deployment was attempted.

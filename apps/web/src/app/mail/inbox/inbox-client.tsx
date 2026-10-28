@@ -1,8 +1,9 @@
 "use client";
 import {formatWorkspaceTimestamp} from "@/lib/workspace-timestamp";
 import {mergeInboxMailboxes} from "@/lib/mail/inbox-mailbox-options";
+import {createInboxRefreshGuard} from "@/lib/mail/inbox-refresh-guard";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 type MailRow = {
@@ -24,36 +25,45 @@ export function InboxClient({ organizationId, initialMessages,initialAccounts,ac
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const PAGE_SIZE = 100;
+  const refreshGuard = useRef(createInboxRefreshGuard());
   const [knownAccounts,setKnownAccounts]=useState(initialAccounts);
   useEffect(()=>{setKnownAccounts(current=>mergeInboxMailboxes(current,messages));},[messages]);
   const accounts = useMemo(()=>mergeInboxMailboxes(knownAccounts,messages),[knownAccounts,messages]);
   async function refresh() {
+    const refreshToken = refreshGuard.current.beginRefresh();
     setBusy(true); setNotice(null);
+    let refreshed = false;
     try {
       const params = new URLSearchParams({ organizationId, limit: String(PAGE_SIZE), offset: "0" });
       if (q.trim()) params.set("q", q.trim()); if (accountId !== "all") params.set("accountId", accountId);
       if (unread) params.set("unread", "true"); if (action) params.set("action", "true");
       const response = await fetch("/api/mail/inbox?" + params.toString(), { cache: "no-store" });
       const data = await response.json(); if (!response.ok) throw new Error(data.message ?? "Could not load inbox.");
+      if (!refreshGuard.current.isCurrent(refreshToken)) return;
       setMessages(data.messages ?? []);
+      refreshed = true;
       // If the API returned exactly PAGE_SIZE messages, there are likely more.
       setHasMore((data.messages ?? []).length === PAGE_SIZE);
     } catch (error) { setNotice(error instanceof Error ? error.message : "Could not load inbox."); }
-    finally { setBusy(false); }
+    finally { refreshGuard.current.finishRefresh(refreshToken, refreshed); setBusy(false); }
   }
   async function loadMore() {
     if (loadingMore || !hasMore) return;
+    const loadToken = refreshGuard.current.beginLoadMore();
     setLoadingMore(true); setNotice(null);
+    let loaded = false;
     try {
       const params = new URLSearchParams({ organizationId, limit: String(PAGE_SIZE), offset: String(messages.length) });
       if (q.trim()) params.set("q", q.trim()); if (accountId !== "all") params.set("accountId", accountId);
       if (unread) params.set("unread", "true"); if (action) params.set("action", "true");
       const response = await fetch("/api/mail/inbox?" + params.toString(), { cache: "no-store" });
       const data = await response.json(); if (!response.ok) throw new Error(data.message ?? "Could not load more messages.");
+      if (!refreshGuard.current.isCurrent(loadToken)) return;
       setMessages(prev => [...prev, ...(data.messages ?? [])]);
+      loaded = true;
       setHasMore((data.messages ?? []).length === PAGE_SIZE);
     } catch (error) { setNotice(error instanceof Error ? error.message : "Could not load more messages."); }
-    finally { setLoadingMore(false); }
+    finally { refreshGuard.current.finishLoadMore(loadToken, loaded); setLoadingMore(false); }
   }
   useEffect(() => { const timer = setTimeout(() => { void refresh(); }, 250); return () => clearTimeout(timer); }, [q, accountId, unread, action]);
   useEffect(() => {
@@ -62,6 +72,8 @@ export function InboxClient({ organizationId, initialMessages,initialAccounts,ac
     let inFlight = false;
     const refreshVisibleInbox = async () => {
       if (inFlight || document.visibilityState !== "visible") return;
+      const poll = refreshGuard.current.beginPoll();
+      if (poll === null) return;
       inFlight = true;
       try {
         const params = new URLSearchParams({ organizationId, limit: String(PAGE_SIZE), offset: "0" });
@@ -72,6 +84,7 @@ export function InboxClient({ organizationId, initialMessages,initialAccounts,ac
         const response = await fetch("/api/mail/inbox?" + params.toString(), { cache: "no-store" });
         if (!response.ok) return;
         const data = await response.json();
+        if (!refreshGuard.current.canApplyPoll(poll)) return;
         setMessages(data.messages ?? []);
         setHasMore((data.messages ?? []).length === PAGE_SIZE);
       } catch {
