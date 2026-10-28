@@ -23,6 +23,10 @@ export function slugifyAgentName(name: string): string {
     .slice(0, 80);
 }
 
+export function nextAgentSlug(name:string,currentSlug:string,customized:boolean):string {
+  return customized ? currentSlug : slugifyAgentName(name);
+}
+
 export function validateAgentInput(input: Partial<AgentInput>): AgentValidationResult {
   const name = typeof input.name === "string" ? input.name.trim() : "";
   const slug = typeof input.slug === "string" ? input.slug.trim().toLowerCase() : "";

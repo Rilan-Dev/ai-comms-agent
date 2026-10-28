@@ -236,46 +236,6 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
 
     {notice && <div role="status" className="rounded-md border bg-background px-4 py-3 text-sm">{notice}</div>}
 
-    <section className="rounded-md border border-border bg-card p-5">
-      <h2 className="text-sm font-semibold uppercase tracking-[.12em] text-muted-foreground">New scheduled AI task</h2>
-      <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-        <input aria-label="Schedule name" className="h-10 rounded-md border bg-background px-3 text-sm lg:col-span-2" placeholder="Schedule name (e.g. Morning email digest)" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-        <select aria-label="Agent" className="h-10 rounded-md border bg-background px-3 text-sm" value={form.agentId} onChange={e => setForm({ ...form, agentId: e.target.value })}>
-          {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
-        <select aria-label="Repeat mode" className="h-10 rounded-md border bg-background px-3 text-sm" value={form.mode} onChange={e => setForm({ ...form, mode: e.target.value as RecurrenceMode })}>
-          <option value="one_time">One-time</option>
-          <option value="minutes">Every N minutes</option>
-          <option value="hours">Every N hours</option>
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly</option>
-          <option value="monthly">Monthly</option>
-          <option value="cron">Advanced (cron)</option>
-        </select>
-        {form.mode === "one_time" && <input className="h-10 rounded-md border bg-background px-3 text-sm" type="datetime-local" aria-label="One-time fire time" value={form.oneFireAt} onChange={e => setForm({ ...form, oneFireAt: e.target.value })} />}
-        {form.mode === "minutes" && <input className="h-10 rounded-md border bg-background px-3 text-sm" type="number" min={1} max={59} aria-label="Minutes interval" value={form.interval} onChange={e => setForm({ ...form, interval: e.target.value })} />}
-        {form.mode === "hours" && <input className="h-10 rounded-md border bg-background px-3 text-sm" type="number" min={1} max={23} aria-label="Hours interval" value={form.interval} onChange={e => setForm({ ...form, interval: e.target.value })} />}
-        {form.mode === "daily" && <input className="h-10 rounded-md border bg-background px-3 text-sm" type="time" aria-label="Fire time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />}
-        {form.mode === "weekly" && <>
-          <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Weekday" value={form.weekday} onChange={e => setForm({ ...form, weekday: e.target.value })}>
-            {WEEKDAYS.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <input className="h-10 rounded-md border bg-background px-3 text-sm" type="time" aria-label="Fire time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />
-        </>}
-        {form.mode === "monthly" && <>
-          <input className="h-10 rounded-md border bg-background px-3 text-sm" type="number" min={1} max={28} aria-label="Day of month" value={form.dayOfMonth} onChange={e => setForm({ ...form, dayOfMonth: e.target.value })} />
-          <input className="h-10 rounded-md border bg-background px-3 text-sm" type="time" aria-label="Fire time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />
-        </>}
-        {form.mode === "cron" && <input className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Cron expression" value={form.cron} onChange={e => setForm({ ...form, cron: e.target.value })} />}
-        <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Timezone" value={form.timezone} onChange={e => setForm({ ...form, timezone: e.target.value })}>
-          {[browserTimezone, "UTC", "Asia/Calcutta", "Asia/Dubai", "Europe/London", "Europe/Berlin", "America/New_York", "America/Chicago", "America/Los_Angeles", "Australia/Sydney"].filter((v, i, a) => v && a.indexOf(v) === i).map(tz => <option key={tz} value={tz}>{tz}</option>)}
-        </select>
-      </div>
-      <textarea aria-label="Task instruction" className="mt-4 min-h-[84px] w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder="Task instruction the AI executes at every fire time — e.g. Summarize my emails from the last 24 hours and send me a short note on WhatsApp at +919629534701." value={form.task} onChange={e => setForm({ ...form, task: e.target.value })} />
-      <button disabled={busy} onClick={() => void createSchedule()} className="mt-4 h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">Create scheduled task</button>
-      <p className="mt-3 text-xs text-muted-foreground">At every fire time the agent runs this instruction with its enabled tools: reading mail, summarizing, sending WhatsApp notes and more. Sends follow the agent&apos;s approval policy (autonomous sending when enabled).</p>
-    </section>
-
     <section className="grid gap-3">
       <h2 className="text-sm font-semibold uppercase tracking-[.12em] text-muted-foreground">Scheduled AI tasks ({activeSchedules.length})</h2>
       {activeSchedules.map(row => <article key={row.id} className="rounded-md border border-border bg-card p-5">
@@ -319,11 +279,66 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
         </div>}
         {row.lastError && <p className="mt-3 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">{row.lastError}</p>}
       </article>)}
-      {activeSchedules.length === 0 && <div className="rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">No scheduled AI tasks yet. Create one above, or ask the agent in chat: &quot;every day at 8, summarize my last 24 hours of email and send me a WhatsApp note&quot;.</div>}
+      {activeSchedules.length === 0 && <div className="rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">No scheduled AI tasks yet. Create one below, or ask the agent in chat: &quot;every day at 8, summarize my last 24 hours of email and send me a WhatsApp note&quot;.</div>}
     </section>
 
-    <section className="rounded-md border border-border bg-card p-5">
+    <details open={activeSchedules.length===0} className="rounded-md border border-border bg-card p-5">
+      <summary className="cursor-pointer text-sm font-semibold">New scheduled AI task</summary>
+      <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+        <input aria-label="Schedule name" className="h-10 rounded-md border bg-background px-3 text-sm lg:col-span-2" placeholder="Schedule name (e.g. Morning email digest)" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+        <select aria-label="Agent" className="h-10 rounded-md border bg-background px-3 text-sm" value={form.agentId} onChange={e => setForm({ ...form, agentId: e.target.value })}>
+          {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+        <select aria-label="Repeat mode" className="h-10 rounded-md border bg-background px-3 text-sm" value={form.mode} onChange={e => setForm({ ...form, mode: e.target.value as RecurrenceMode })}>
+          <option value="one_time">One-time</option>
+          <option value="minutes">Every N minutes</option>
+          <option value="hours">Every N hours</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="cron">Advanced (cron)</option>
+        </select>
+        {form.mode === "one_time" && <input className="h-10 rounded-md border bg-background px-3 text-sm" type="datetime-local" aria-label="One-time fire time" value={form.oneFireAt} onChange={e => setForm({ ...form, oneFireAt: e.target.value })} />}
+        {form.mode === "minutes" && <input className="h-10 rounded-md border bg-background px-3 text-sm" type="number" min={1} max={59} aria-label="Minutes interval" value={form.interval} onChange={e => setForm({ ...form, interval: e.target.value })} />}
+        {form.mode === "hours" && <input className="h-10 rounded-md border bg-background px-3 text-sm" type="number" min={1} max={23} aria-label="Hours interval" value={form.interval} onChange={e => setForm({ ...form, interval: e.target.value })} />}
+        {form.mode === "daily" && <input className="h-10 rounded-md border bg-background px-3 text-sm" type="time" aria-label="Fire time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />}
+        {form.mode === "weekly" && <>
+          <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Weekday" value={form.weekday} onChange={e => setForm({ ...form, weekday: e.target.value })}>
+            {WEEKDAYS.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+          <input className="h-10 rounded-md border bg-background px-3 text-sm" type="time" aria-label="Fire time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />
+        </>}
+        {form.mode === "monthly" && <>
+          <input className="h-10 rounded-md border bg-background px-3 text-sm" type="number" min={1} max={28} aria-label="Day of month" value={form.dayOfMonth} onChange={e => setForm({ ...form, dayOfMonth: e.target.value })} />
+          <input className="h-10 rounded-md border bg-background px-3 text-sm" type="time" aria-label="Fire time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />
+        </>}
+        {form.mode === "cron" && <input className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Cron expression" value={form.cron} onChange={e => setForm({ ...form, cron: e.target.value })} />}
+        <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Timezone" value={form.timezone} onChange={e => setForm({ ...form, timezone: e.target.value })}>
+          {[browserTimezone, "UTC", "Asia/Calcutta", "Asia/Dubai", "Europe/London", "Europe/Berlin", "America/New_York", "America/Chicago", "America/Los_Angeles", "Australia/Sydney"].filter((v, i, a) => v && a.indexOf(v) === i).map(tz => <option key={tz} value={tz}>{tz}</option>)}
+        </select>
+      </div>
+      <textarea aria-label="Task instruction" className="mt-4 min-h-[84px] w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder="Task instruction the AI executes at every fire time — e.g. Summarize my emails from the last 24 hours and send me a short note on WhatsApp at +919629534701." value={form.task} onChange={e => setForm({ ...form, task: e.target.value })} />
+      <button disabled={busy} onClick={() => void createSchedule()} className="mt-4 h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">Create scheduled task</button>
+      <p className="mt-3 text-xs text-muted-foreground">At every fire time the agent runs this instruction with its enabled tools: reading mail, summarizing, sending WhatsApp notes and more. Sends follow the agent&apos;s approval policy (autonomous sending when enabled).</p>
+    </details>
+
+    <section className="grid gap-3">
       <h2 className="text-sm font-semibold uppercase tracking-[.12em] text-muted-foreground">Event automations</h2>
+      {activeRules.map(r => <article key={r.id} className="rounded-md border border-border bg-card p-5">
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">{r.name}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{String(r.trigger.event ?? "event")} → {String((r.actions[0] as { type?: string } | undefined)?.type ?? "action")}</p>
+          </div>
+          <span className="rounded-full border px-2.5 py-1 text-[11px] font-semibold">{r.status}</span>
+          <button disabled={busy} onClick={() => void archiveRule(r.id)} className="rounded-md border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50">Archive</button>
+        </div>
+      </article>)}
+      {activeRules.length === 0 && <div className="rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">No automation rules yet.</div>}
+    </section>
+
+    <details open={activeRules.length===0} className="rounded-md border border-border bg-card p-5">
+      <summary className="cursor-pointer text-sm font-semibold">New event automation</summary>
       <p className="mt-1 text-xs text-muted-foreground">Event-driven rules: when a trigger event arrives, the bound agent executes its configured action.</p>
       <div className="mt-4 grid gap-4 md:grid-cols-4">
         <input aria-label="Automation rule name" className="h-10 rounded-md border bg-background px-3 text-sm" placeholder="Rule name" value={ruleForm.name} onChange={e => setRuleForm({ ...ruleForm, name: e.target.value })} />
@@ -342,20 +357,6 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
         </select>
       </div>
       <button disabled={busy || !ruleForm.agentId || !ruleForm.name} onClick={() => void createRule()} className="mt-4 h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-85 disabled:opacity-50">Create rule</button>
-    </section>
-
-    <section className="grid gap-3">
-      {activeRules.map(r => <article key={r.id} className="rounded-md border border-border bg-card p-5">
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold">{r.name}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{String(r.trigger.event ?? "event")} → {String((r.actions[0] as { type?: string } | undefined)?.type ?? "action")}</p>
-          </div>
-          <span className="rounded-full border px-2.5 py-1 text-[11px] font-semibold">{r.status}</span>
-          <button disabled={busy} onClick={() => void archiveRule(r.id)} className="rounded-md border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50">Archive</button>
-        </div>
-      </article>)}
-      {activeRules.length === 0 && <div className="rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">No automation rules yet.</div>}
-    </section>
+    </details>
   </main>;
 }

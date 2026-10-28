@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { validateAgentInput, slugifyAgentName, validateAgentVersionConfig, validateAgentPolicyInput } from "@/lib/agents/validation";
+import { validateAgentInput, slugifyAgentName, nextAgentSlug, validateAgentVersionConfig, validateAgentPolicyInput } from "@/lib/agents/validation";
+
+it('keeps an automatically generated identifier in sync while preserving an intentional custom one',()=>{
+  expect(nextAgentSlug('Business Assistant','b',false)).toBe('business-assistant');
+  expect(nextAgentSlug('Business Assistant','custom-name',true)).toBe('custom-name');
+});
 
 describe("agent validation", () => {
   it("accepts a valid agent payload", () => {
