@@ -25,6 +25,7 @@ The detailed session ledger records the evidence for each checkpoint. A source c
 - [ ] Task 10: inventory and improve remaining original screens with per-area verification. Agents list and Scheduled AI Agent have source checkpoints; browser and remaining areas are open.
 - [x] Task 10 source checkpoint: show agent creation on demand and keep generated identifiers synchronized unless customized.
 - [x] Task 10 source checkpoint: show existing scheduled tasks and event rules before their on-demand creation forms.
+- [x] Task 10 source checkpoint: retain authorized Inbox mailbox choices when filters return no messages; preserve Inbox access with a visible warning if the account list is unavailable. Browser acceptance remains open.
 - [ ] Task 11: whole-branch review, complete tests, guarded deployment and live acceptance. Resolve the container operation conflict before another release.
 
 Task 8 source checkpoint: restoring now atomically selects the new candidate as the editor's recoverable draft, and rejects a restore when an existing working draft would be replaced. Isolated database regressions cover refresh, active-state preservation, legacy partial coverage and concurrent restore/save. The restore interface, complete review and production acceptance remain outstanding; the configuration feature stays gated.

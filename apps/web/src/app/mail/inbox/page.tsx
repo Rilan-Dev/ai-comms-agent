@@ -15,8 +15,8 @@ export default async function MailInboxPage() {
     if (!(await canReadOrganizationMail(organizationId, context.membership.role))) {
       return <EmptyState title="Inbox access denied" body="Your organization role does not have email.read permission." />;
     }
-    const messages = await listInboxMessages(organizationId, { limit: 100 });
-    return <InboxClient organizationId={organizationId} initialMessages={messages as never[]} />;
+    const [messages,accounts] = await Promise.all([listInboxMessages(organizationId, { limit: 100 }),new PostgresEmailAccountRepository().listForOrganization(organizationId).catch(()=>null)]);
+    return <InboxClient organizationId={organizationId} initialMessages={messages as never[]} initialAccounts={accounts?.map(account=>({id:account.id,label:account.email_address})) ?? []} accountsUnavailable={accounts === null} />;
   } catch (error) {
     console.error("[mail/inbox] load failed", error);
     return <EmptyState title="Inbox unavailable" body="The persisted mail store could not be loaded. Check PostgreSQL and retry." error />;

@@ -6,6 +6,10 @@ The existing Agents list now keeps creation collapsed for workspaces with agents
 
 A synthetic browser environment was built from the current candidate with a schema-only isolated database, synthetic account and no provider network. The app health check passed and the synthetic account has an active test session, but the browser-control transport disconnected during sign-in; neither visual nor interaction acceptance is claimed. The live database and provider connections were not used for these synthetic tests. Exact-source isolated Linux verification for the agent-list and scheduling checkpoint: 176 web files / 1,201 tests PASS, web/DB types PASS, production web build PASS with existing hook warnings.
 
+Further source inventory: Mail Accounts already starts with the provider picker and IMAP/SMTP form closed, keeping persisted mailbox status and the Add email account action available. No change was made to its credential, provider, validation or connection behavior. This is source inspection only, not completion of the Mail Accounts browser journey.
+
+The isolated synthetic web/database containers and their private network were removed after browser control failed. Only the test image and source artifacts remain for a future rebuild; no production service was removed or restarted.
+
 ## 28 October continuation — mixed-task Chat checkpoint UI
 
 The existing mail-to-WhatsApp host checkpoint already stores the prepared summary as its own conversation message. A proposed duplicate-summary persistence change was removed after tracing this path; no duplicate write is included. Chat now offers an explicit Continue WhatsApp review control for a host-reported incomplete checkpoint, and after refresh only for the original creator, matching agent, unexpired checkpoint and no recorded outcome. It sends the opaque checkpoint reference to the existing server continuation, which rechecks actor/source access and reconciles the original operation. It does not reselect emails, alter the reviewed recipient/body, auto-approve or retry an outcome already recorded. The existing single-turn in-flight guard prevents double clicks; an unsent composer draft is retained.
@@ -197,3 +201,6 @@ Latest-sender bounded lookup candidate: eight resolver/real-executor boundary te
 
 
 Verified c32978781585d1092a423bf5041a32b837b00374 live on web+worker after restored-backup check,79 migrations verified, flags off. Direct Chrome manual approval retry now succeeds. DB confirms one synced reply draft, original header/thread intact, exactly one pending_approval action. Approval queue visibly shows expected QA body/sender/recipient; no Approve or send action taken. Screenshot latest-sender-pending-approval.jpg outsideGit. Accepted: AI reply drafting and manual review creation. Still pending: AI saved-draft approval planning, A2 per-source freshness, provider read writes/low-priority rule, Overview activation, routines and WhatsApp acceptance. Final web166files1171testsPASS; code deployedexactc329; this update records evidence only.
+# Inbox mailbox choices source checkpoint — 29 October 2026
+
+The Inbox now uses authorized organization mailbox records for its selector, retains discovered mailboxes across filters, and keeps messages available with a visible warning if account lookup fails. Four focused regressions passed. Exact-source isolated Linux verification passed database and web typechecks, 177 web test files / 1,205 tests, and the production web build (existing lint warnings remain). Browser acceptance and live deployment remain open.
