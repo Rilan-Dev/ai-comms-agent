@@ -51,6 +51,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
       <ChatClient
         key={`${organizationId}:${agent.id}:${conversation.id}`}
         organizationId={organizationId}
+        currentUserId={context.user.id}
         agents={agents.map((item) => ({ id: item.id, name: item.name, status: item.status }))}
         initialAgentId={agent.id}
         initialConversationId={conversation.id}

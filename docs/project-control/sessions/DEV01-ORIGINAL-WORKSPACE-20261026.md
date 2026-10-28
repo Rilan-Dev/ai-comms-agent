@@ -1,5 +1,11 @@
 # Original workspace implementation —26 October2026
 
+## 28 October continuation — mixed-task Chat checkpoint UI
+
+The existing mail-to-WhatsApp host checkpoint already stores the prepared summary as its own conversation message. A proposed duplicate-summary persistence change was removed after tracing this path; no duplicate write is included. Chat now offers an explicit Continue WhatsApp review control for a host-reported incomplete checkpoint, and after refresh only for the original creator, matching agent, unexpired checkpoint and no recorded outcome. It sends the opaque checkpoint reference to the existing server continuation, which rechecks actor/source access and reconciles the original operation. It does not reselect emails, alter the reviewed recipient/body, auto-approve or retry an outcome already recorded. The existing single-turn in-flight guard prevents double clicks; an unsent composer draft is retained.
+
+Focused helper and Chat route tests 8/8 PASS. A first route regression hypothesis was invalid because it mocked away the checkpoint's own saved message; its temporary production and test changes were removed, and it is not reported as a fix. Final isolated Linux verification: 176 web files / 1,200 tests PASS; dedicated PostgreSQL checkpoint suite 14/14 PASS; web/DB types and production web build PASS. The build reports existing lint warnings. UI/browser acceptance and the remaining Task 9 conditions must still pass before release.
+
 ## 28 October continuation — Overview and restore candidate
 
 Development source now shows a selected-agent Chat shortcut before setup and hides the mail checklist when a readable mailbox role and mail-read capability are already configured. Assignment summaries no longer claim account connection or policy readiness. A read-only agent-scoped attention card shows unexpired pending email/WhatsApp approvals only when the viewer has the same permissions required by their existing approval surfaces. Missing/unauthorized data is unknown, not zero. A dedicated PostgreSQL test covers other organizations/agents, expired requests and non-pending outcomes; route tests cover authorization, missing agents and no-store. Task 6 remains open for broader work/outcomes, partial-sync coverage and browser acceptance.

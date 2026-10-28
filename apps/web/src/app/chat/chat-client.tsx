@@ -19,6 +19,7 @@ import { InlineMailApprovalReview } from "./chat-inline-mail-approval";
 import {ChatMailResult} from './chat-mail-result';
 import {ChatMailInbox} from './chat-mail-inbox';
 import {chatMailReferences,type ChatMailReference} from '@/lib/chat/mail-result-references';
+import {continuationForSavedMessage,continuationForTurn} from '@/lib/chat/mail-whatsapp-continuation';
 import { parseBusinessMailReport, safeChatLink } from "@/lib/chat/business-report-display";
 import { BusinessMailReport } from "./business-mail-report";
 import { AnswerActions } from "./answer-actions";
@@ -40,11 +41,12 @@ type ComposePermissionHints = {
   userCanWrite: boolean; agentCanDraft: boolean; agentCanRequestApproval: boolean; directSend: false;
 };
 type Agent = { id: string; name: string; status: string };
-type Message = { id: string; conversationId: string; role: string; content: string; createdAt: string; mailReferences?:ChatMailReference[] };
+type Message = { id: string; conversationId: string; role: string; content: string; createdAt: string; contentJson?:unknown; continuationRef?:string; mailReferences?:ChatMailReference[] };
 type ChatSession = { id: string; agentId: string; organizationId: string; subject: string | null; lastMessageAt: string | null; updatedAt: string };
 
 export function ChatClient({
   organizationId,
+  currentUserId,
   agents,
   initialAgentId,
   initialConversationId,
@@ -55,6 +57,7 @@ export function ChatClient({
   configurationRevisionsEnabled=false,
 }: {
   organizationId: string;
+  currentUserId: string;
   agents: Agent[];
   initialAgentId: string;
   initialConversationId: string;
@@ -68,6 +71,7 @@ export function ChatClient({
   const [agentId, setAgentId] = useState(initialAgentId);
   const [conversationId, setConversationId] = useState(initialConversationId);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [consumedContinuations,setConsumedContinuations]=useState<string[]>([]);
   const [conversations, setConversations] = useState<ChatSession[]>(initialConversations);
   const [newChatBusy, setNewChatBusy] = useState(false);
   const [chatHistoryNotice, setChatHistoryNotice] = useState("");
@@ -648,7 +652,7 @@ export function ChatClient({
    * (no typing required). Shares the exact turn pipeline of sendMessage so
    * in-flight guards, optimistic messages, and approval semantics match.
    */
-  async function sendChatMessage(content: string) {
+  async function sendChatMessage(content: string,continuationRef?:string) {
     if (agentSwitchInFlightRef.current) return;
     if (chatTurnInFlightRef.current || newChatInFlightRef.current || voiceOpen || composeInFlightRef.current || mailPermissionBusy) return;
     if (!content || busy || newChatBusy || !activeAgent) return;
@@ -662,7 +666,7 @@ export function ChatClient({
     const turnEpoch=agentContextEpochRef.current;
     const turnController=new AbortController();chatAbortRef.current=turnController;
     const turnTimeout=setTimeout(()=>turnController.abort(),180000);
-    setDraft("");
+    if(!continuationRef)setDraft("");
     setBusy(true);
     setResponseStarted(false);
     setActivity("Preparing response…");
@@ -680,7 +684,7 @@ export function ChatClient({
         method: "POST",
         headers: { "content-type": "application/json", accept: "text/event-stream" },
         signal:turnController.signal,
-        body: JSON.stringify({ organizationId, agentId: activeAgent.id, conversationId, message: content }),
+        body: JSON.stringify({ organizationId, agentId: activeAgent.id, conversationId, message: content,...(continuationRef?{continuationRef}:{}) }),
       });
       if (!response.ok || !response.body) throw new Error((await response.text()) || "Chat request failed");
 
@@ -690,7 +694,7 @@ export function ChatClient({
       for await (const event of readSseEvents(response.body)) {
         if(turnEpoch!==agentContextEpochRef.current || turnController.signal.aborted)return;
         const payload = JSON.parse(event.data) as {
-          text?: string; conversationId?: string; message?: string; phase?: string; toolCalls?:unknown;
+          text?: string; conversationId?: string; message?: string; phase?: string; toolCalls?:unknown; mailWhatsAppTask?:unknown;
         };
         if (event.event === "error") throw new Error(payload.message || "AI generation failed.");
         if (payload.conversationId && payload.conversationId!==conversationId) throw new Error("Conversation changed. Reload its saved status before continuing.");
@@ -712,6 +716,9 @@ export function ChatClient({
           completed = true;
           const mailReferences=chatMailReferences(payload.toolCalls);
           if(mailReferences.length) setMessages(current=>current.map(message=>message.id===assistantId?{...message,mailReferences}:message));
+          const nextContinuation=continuationForTurn(payload.mailWhatsAppTask);
+          if(nextContinuation)setMessages(current=>current.map(message=>message.id===assistantId?{...message,continuationRef:nextContinuation}:message));
+          if(continuationRef)setConsumedContinuations(current=>[...new Set([...current,continuationRef])]);
           setActivitySteps((steps) => [...steps, "completed" as AgentActivityPhase].slice(-10));
           break;
         }
@@ -861,6 +868,7 @@ export function ChatClient({
               onComposeEmail={openInlineEmailComposer}
               onRequestEmailApproval={requestInlineEmailApproval} />
             {message.mailReferences?.map(reference=><ChatMailResult key={`${reference.kind}:${reference.id}`} reference={reference} organizationId={organizationId} agentId={agentId}/>)}
+            {(()=>{const ref=message.continuationRef??continuationForSavedMessage(message,currentUserId,agentId,Date.now());return ref&&!consumedContinuations.includes(ref)?<div className="mt-2"><button type="button" disabled={interactiveControlsDisabled} onClick={()=>void sendChatMessage('Continue saved WhatsApp review',ref)} className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-50">Continue WhatsApp review</button><p className="mt-1 text-xs text-muted-foreground">Uses the saved summary and asks for human review before sending.</p></div>:null;})()}
             </div>
           ))}
           {mailInboxOpen&&!voiceOpen&&!agentSwitchBusy&&<ChatMailInbox key={`${organizationId}:${agentId}`} organizationId={organizationId} agentId={agentId} onClose={()=>setMailInboxOpen(false)}/>}
