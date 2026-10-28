@@ -16,6 +16,9 @@ import { selectComposeSender, signatureFromProfile, withProfileSignature, type C
 import { parseAssistantChecklistLine } from "@/lib/chat/interactive-replies";
 import { AssistantChecklist, SuggestedNextActions, type EmailWorkflowState } from "./interactive-message-controls";
 import { InlineMailApprovalReview } from "./chat-inline-mail-approval";
+import {ChatMailResult} from './chat-mail-result';
+import {ChatMailInbox} from './chat-mail-inbox';
+import {chatMailReferences,type ChatMailReference} from '@/lib/chat/mail-result-references';
 import { parseBusinessMailReport, safeChatLink } from "@/lib/chat/business-report-display";
 import { BusinessMailReport } from "./business-mail-report";
 import { AnswerActions } from "./answer-actions";
@@ -37,7 +40,7 @@ type ComposePermissionHints = {
   userCanWrite: boolean; agentCanDraft: boolean; agentCanRequestApproval: boolean; directSend: false;
 };
 type Agent = { id: string; name: string; status: string };
-type Message = { id: string; conversationId: string; role: string; content: string; createdAt: string };
+type Message = { id: string; conversationId: string; role: string; content: string; createdAt: string; mailReferences?:ChatMailReference[] };
 type ChatSession = { id: string; agentId: string; organizationId: string; subject: string | null; lastMessageAt: string | null; updatedAt: string };
 
 export function ChatClient({
@@ -71,6 +74,7 @@ export function ChatClient({
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [mailComposerOpen, setMailComposerOpen] = useState(false);
+  const [mailInboxOpen,setMailInboxOpen]=useState(false);
   const [composeMailboxes, setComposeMailboxes] = useState<Array<{
     id: string; address: string; canDraft: boolean; canRequestApproval: boolean;
     blockers: Array<{code:string;message:string}>;
@@ -172,7 +176,7 @@ export function ChatClient({
   useEffect(() => {
     const pane = messageScrollRef.current;
     if (pane) pane.scrollTo({ top: pane.scrollHeight, behavior: "smooth" });
-  }, [messages.length, busy, mailComposerOpen, composeDraftId, composeActionId]);
+  }, [messages.length, busy, mailComposerOpen, mailInboxOpen, composeDraftId, composeActionId]);
 
   // A temporary conversation dialog opens only on request at all widths.
   useEffect(() => {
@@ -686,7 +690,7 @@ export function ChatClient({
       for await (const event of readSseEvents(response.body)) {
         if(turnEpoch!==agentContextEpochRef.current || turnController.signal.aborted)return;
         const payload = JSON.parse(event.data) as {
-          text?: string; conversationId?: string; message?: string; phase?: string;
+          text?: string; conversationId?: string; message?: string; phase?: string; toolCalls?:unknown;
         };
         if (event.event === "error") throw new Error(payload.message || "AI generation failed.");
         if (payload.conversationId && payload.conversationId!==conversationId) throw new Error("Conversation changed. Reload its saved status before continuing.");
@@ -706,6 +710,8 @@ export function ChatClient({
         }
         if (event.event === "done") {
           completed = true;
+          const mailReferences=chatMailReferences(payload.toolCalls);
+          if(mailReferences.length) setMessages(current=>current.map(message=>message.id===assistantId?{...message,mailReferences}:message));
           setActivitySteps((steps) => [...steps, "completed" as AgentActivityPhase].slice(-10));
           break;
         }
@@ -846,7 +852,7 @@ export function ChatClient({
                 </div>
               </div>
             </div>
-          ) : messages.map((message) => (
+          ) : messages.map((message) => (<div key={message.id}>
             <MessageBubble key={message.id} role={message.role} content={message.content} messageId={message.id}
               showNextActions={message.role === "assistant" && message.id === latestAssistantId}
               userRequest={latestUserRequest}
@@ -854,7 +860,10 @@ export function ChatClient({
               emailWorkflowState={emailWorkflowState}
               onComposeEmail={openInlineEmailComposer}
               onRequestEmailApproval={requestInlineEmailApproval} />
+            {message.mailReferences?.map(reference=><ChatMailResult key={`${reference.kind}:${reference.id}`} reference={reference} organizationId={organizationId} agentId={agentId}/>)}
+            </div>
           ))}
+          {mailInboxOpen&&!voiceOpen&&!agentSwitchBusy&&<ChatMailInbox key={`${organizationId}:${agentId}`} organizationId={organizationId} agentId={agentId} onClose={()=>setMailInboxOpen(false)}/>}
           {agentSwitchNotice && <p role="alert" className="rounded-lg border border-destructive/30 p-3 text-xs text-destructive">{agentSwitchNotice}</p>}
       {mailComposerOpen && !voiceOpen && !agentSwitchBusy && (
         <section ref={mailComposerReviewRef} tabIndex={-1} aria-label="Email review in this Chat conversation" className="w-full min-w-0 rounded-2xl border bg-card px-4 py-4 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-primary">
@@ -984,7 +993,7 @@ export function ChatClient({
           {/* One-click actions for busy users: instant local-database answers
               (unread count/summary fast paths) plus the reviewed composer.
               Hidden while a turn is in flight so they cannot double-submit. */}
-          {messages.length > 0 && !busy && !agentSwitchBusy && !newChatBusy && !voiceOpen ? (
+          {!busy && !agentSwitchBusy && !newChatBusy && !voiceOpen ? (
             <div className="mb-2 flex flex-wrap gap-1.5" aria-label="Quick actions">
               {QUICK_ACTION_PROMPTS.map((prompt) =>
                 <button key={prompt} type="button" onClick={() => void sendChatMessage(prompt)}
@@ -995,6 +1004,7 @@ export function ChatClient({
                 className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:border-primary/40 hover:bg-accent/5 hover:text-primary">
                 <MailPlus size={12} aria-hidden /> Compose email
               </button>
+              <button type="button" onClick={()=>setMailInboxOpen(true)} className="rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground hover:text-primary">Review drafts &amp; approvals</button>
             </div>
           ) : null}
           <div className="rounded-2xl border border-border bg-card shadow-sm focus-within:border-primary/30 focus-within:ring-2 focus-within:ring-primary/10">

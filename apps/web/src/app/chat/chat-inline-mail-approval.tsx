@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {MailReview} from "@/components/mail-review";
 import { validateChatEmailApproval, type ChatEmailApproval } from "@/lib/chat/inline-mail-approval";
 
@@ -11,12 +11,14 @@ import { validateChatEmailApproval, type ChatEmailApproval } from "@/lib/chat/in
  * authorize the signed-in reviewer; approving queues the worker, not a
  * browser-side provider send.
  */
-export function InlineMailApprovalReview({ organizationId, actionId, draftId, accountId, onApprovalConfirmed }: {
+export function InlineMailApprovalReview({ organizationId, actionId, draftId, accountId, onApprovalConfirmed, autoLoad = false, actionType='send_email' }: {
   organizationId: string;
   actionId: string;
-  draftId: string;
+  draftId: string | null;
   accountId: string;
   onApprovalConfirmed: () => void;
+  autoLoad?: boolean;
+  actionType?: ChatEmailApproval['actionType'];
 }) {
   const [approval, setApproval] = useState<ChatEmailApproval | null>(null);
   const [loading, setLoading] = useState(false);
@@ -24,6 +26,12 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
   const [decisionDone, setDecisionDone] = useState(false);
   const [notice, setNotice] = useState("");
   const inFlight = useRef(false);
+
+  useEffect(() => {
+    if (autoLoad) void loadReview();
+    // Reload only for a different authoritative request, not on state changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLoad, organizationId, actionId, draftId, accountId, actionType]);
 
   async function loadReview() {
     if (inFlight.current || decisionDone) return;
@@ -34,10 +42,10 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
     setNotice("");
     try {
       const query = new URLSearchParams({ organizationId, actionId });
-      const response = await fetch("/api/mail/actions?" + query.toString(), { cache: "no-store" });
+      const response = await fetch("/api/mail/actions?" + query.toString(), { cache: "no-store", signal: AbortSignal.timeout(15000) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message ?? "Only authorized organization reviewers can inspect this email request.");
-      const verified = validateChatEmailApproval(data.action, { actionId, draftId, accountId });
+      const verified = validateChatEmailApproval(data.action, { actionId, draftId, accountId, actionType });
       if (!verified) throw new Error("This saved email request is missing, mismatched, expired or no longer awaiting approval. Nothing was sent.");
       setApproval(verified);
     } catch (error) {
@@ -59,6 +67,7 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
     try {
       const response = await fetch("/api/mail/actions", {
         method: "PATCH",
+        signal: AbortSignal.timeout(30000),
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ organizationId, actionId, decision: "approved" }),
       });
@@ -82,6 +91,26 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
       inFlight.current = false;
       setLoading(false);
     }
+  }
+
+  async function reject() {
+    if (inFlight.current || loading || decisionDone || !approval) return;
+    if (!window.confirm("Reject this email request? It will not be sent by this request.")) return;
+    inFlight.current = true; setLoading(true); setNotice("");
+    try {
+      const response = await fetch("/api/mail/actions", {
+        method: "PATCH", signal: AbortSignal.timeout(30000), headers: { "content-type": "application/json" },
+        body: JSON.stringify({ organizationId, actionId, decision: "rejected" }),
+      });
+      const data = await response.json();
+      if (!response.ok || data.action?.id !== actionId || data.action?.status !== "rejected")
+        throw new Error(data.message ?? "The decision was not confirmed; reload its status before trying again.");
+      setDecisionDone(true); setApproval(null); setReviewConfirmed(false);
+      setNotice("Request rejected. This request will not send the email.");
+    } catch (error) {
+      setApproval(null); setReviewConfirmed(false);
+      setNotice((error instanceof Error ? error.message : "Unable to confirm the decision.") + " Reload its status before retrying.");
+    } finally { inFlight.current = false; setLoading(false); }
   }
 
   const snapshot = approval?.recipientSnapshot;
@@ -108,6 +137,7 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
             className="rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">
             Approve &amp; queue email sending
           </button>
+          <button type="button" disabled={loading} onClick={() => void reject()} className="ml-2 rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-50">Reject request</button>
         </div>
       ) : null}
       {notice ? <p role="status" className="mt-3 text-xs text-muted-foreground">{notice}</p> : null}
