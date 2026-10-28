@@ -14,7 +14,7 @@ const SUPERSEDED_SCHEDULE_FAILURE_CODES=new Set([
 ]);
 
 export function isExplicitWhatsAppMutationRequest(text:string):boolean {
-  return /\bwhatsapp\b/i.test(text) && ( /^(?:(?:please|kindly)\s+)?(?:(?:can|could|would|will)\s+you\s+)?(?:send|message|reply|create|prepare|request)\b/i.test(text.trim())
+  return /\bwhatsapp\b/i.test(text) && ( /^(?:(?:please|kindly)\s+)?(?:(?:can|could|would|will)\s+you\s+)?(?:(?:try|please\s+try)\s+to\s+)?(?:send|message|reply|create|prepare|request)\b/i.test(text.trim())
     || /\b(?:and\s+then|then|also|and|want\s+to|need\s+you\s+to)\s+(?:send|message|reply|create|prepare|request)\b/i.test(text));
 }
 

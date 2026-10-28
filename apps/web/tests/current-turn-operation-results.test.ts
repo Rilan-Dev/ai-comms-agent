@@ -1,6 +1,6 @@
 import { describe,it,expect } from 'vitest';
 import { operationResultFromToolCall } from '@ai-comms-agent/shared';
-import { currentTurnOperationAnswer,formatOperationFeedback } from '../src/lib/chat/operation-feedback';
+import { currentTurnOperationAnswer,formatOperationFeedback,isExplicitWhatsAppMutationRequest } from '../src/lib/chat/operation-feedback';
 import { isExplicitEmailMutationRequest } from '../src/lib/mail/action-feedback';
 
 const context={turn_id:'current-turn',correlation_id:'current-correlation'};
@@ -54,6 +54,12 @@ describe('current turn host outcomes',()=>{
  });
  it('does not mistake a WhatsApp-only request for an email permission request',()=>{
   expect(isExplicitEmailMutationRequest('Send a message on WhatsApp to +12025550123')).toBe(false);
+ });
+ it.each([
+  'Try to send Hi Message from whatsapp to +919629534701',
+  'Please try to send Hello from WhatsApp to +919629534701',
+ ])('recognizes natural WhatsApp send wording: %s',(prompt)=>{
+  expect(isExplicitWhatsAppMutationRequest(prompt)).toBe(true);
  });
  it('does not confuse a delivery notification subject with an action performed by the assistant',()=>{
   const text='Email subject: Package delivered. Sender: Courier.';
