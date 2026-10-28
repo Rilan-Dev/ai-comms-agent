@@ -2,10 +2,10 @@
 
 import {useCallback,useEffect,useRef,useState} from 'react';
 import type {AgentConfigurationSnapshotV1,ConfigurationDiff} from '@ai-comms-agent/shared';
-import {configurationEditorUrl,saveConfigurationForm,sendConfigurationCommand,type ConfigurationFormPatch} from '@/lib/agents/configuration-editor-client';
+import {configurationEditorUrl,saveConfigurationForm,restoreConfigurationForm,discardConfigurationForm,sendConfigurationCommand,type ConfigurationFormPatch} from '@/lib/agents/configuration-editor-client';
 
 type Revision={id:string;revisionNumber:number;snapshot:AgentConfigurationSnapshotV1;coverage:string};
-export type ConfigurationEditorView={active:Revision;draft:Revision|null;requiredRevocations:string[];canApply:boolean;canEditAi:boolean};
+export type ConfigurationEditorView={active:Revision;draft:Revision|null;history:Array<{id:string;revisionNumber:number;kind:string;coverage:string;state:string;createdAt:string}>;requiredRevocations:string[];canApply:boolean;canEditAi:boolean};
 export type ConfigurationEditorReview={id:string;revisionId:string;baseRevisionId:string;diff:ConfigurationDiff;expiresAt:string};
 
 export function useConfigurationEditor(organizationId:string,agentId:string,enabled:boolean){
@@ -47,6 +47,14 @@ export function useConfigurationEditor(organizationId:string,agentId:string,enab
   if(!view)throw Error('Wait for the saved configuration to load.');
   return exclusive(async()=>{const result=await sendConfigurationCommand(target,{command:'revoke',activeRevisionId:view.active.id,changes});setReview(null);await reload().catch(()=>setError('Access removal was confirmed. Reload saved status before making another change.'));return result;});
  }
- return {enabled,view,busy,error,review,dirty,markDirty,save,reload,requestReview,apply,revoke};
+ async function restore(revisionId:string){
+  if(dirty.length)throw Error('Save or cancel your current form edits first.');
+  return exclusive(async()=>{await restoreConfigurationForm(target,view?{activeRevisionId:view.active.id,draftRevisionId:view.draft?.id??null}:null,revisionId);window.location.reload();});
+ }
+ async function discard(){
+  if(dirty.length)throw Error('Save or cancel your current form edits first.');
+  return exclusive(async()=>{await discardConfigurationForm(target,view?{activeRevisionId:view.active.id,draftRevisionId:view.draft?.id??null}:null);window.location.reload();});
+ }
+ return {enabled,view,busy,error,review,dirty,markDirty,save,reload,requestReview,apply,revoke,restore,discard};
 }
 export type ConfigurationEditor=ReturnType<typeof useConfigurationEditor>;

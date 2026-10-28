@@ -10,6 +10,23 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-26-original-screen-priority-and-versioning-addendum.md`, with its referenced25 October design and `docs/reviews/2026-10-26-original-screen-feedback-and-control-audit.md`.
 
+## Implementation status — 28 October 2026
+
+The detailed session ledger records the evidence for each checkpoint. A source checkpoint is not a claim of production acceptance.
+
+- [x] Tasks 0–2: source inventory, mixed-request classification and scoped continuation implemented and source/database tested.
+- [x] Task 3: source implementation of shared permission selection, sending-mode explanations and sender entry editing; enforcement of stored sender/rate rules remains unproven and must not be claimed.
+- [x] Task 4: immutable configuration candidate foundation implemented and tested in a dedicated database; activation remains gated.
+- [ ] Task 5: complete and accept governed configuration workflow, mutation boundaries, runtime consistency and revocation.
+- [ ] Task 6: operational dashboard, on-demand identity and browser/mobile/keyboard acceptance. Identity disclosure has a source checkpoint; dashboard remains incomplete.
+- [ ] Task 7: accept Policy, Channels and preserved AI settings draft workflows end to end.
+- [ ] Task 8: complete and verify history, review, apply and restore interface.
+- [ ] Task 9: complete interactive Chat workflows and verification.
+- [ ] Task 10: inventory and improve remaining original screens with per-area verification.
+- [ ] Task 11: whole-branch review, complete tests, guarded deployment and live acceptance. Resolve the container operation conflict before another release.
+
+Task 8 source checkpoint: restoring now atomically selects the new candidate as the editor's recoverable draft, and rejects a restore when an existing working draft would be replaced. Isolated database regressions cover refresh, active-state preservation, legacy partial coverage and concurrent restore/save. The restore interface, complete review and production acceptance remain outstanding; the configuration feature stays gated.
+
 ## Global Constraints
 
 - Preserve the current theme tokens, fonts, components, sidebar and all seven tabs.

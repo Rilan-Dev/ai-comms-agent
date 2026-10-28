@@ -29,6 +29,38 @@ beforeAll(async()=>{await db.connect();const columns=Object.values(AGENT_AI_CONF
 beforeEach(async()=>{await db.query('TRUNCATE aca.organization_memberships,aca.agent_configuration_draft_heads,aca.organizations,aca.users,aca.agents,aca.agent_versions,aca.agent_policies,aca.email_accounts,aca.agent_email_accounts,aca.whatsapp_accounts,aca.agent_whatsapp_accounts,aca.agent_ai_settings,aca.organization_ai_runtime_settings,aca.ai_provider_configs,aca.agent_configuration_revisions,aca.agent_configuration_heads,aca.agent_configuration_reviews,aca.agent_configuration_applications CASCADE');await db.query('INSERT INTO aca.organizations VALUES($1),($2)',[org,other]);await db.query('INSERT INTO aca.users(id) VALUES($1)',[user]);await db.query(`INSERT INTO aca.organization_memberships VALUES($1,$2,'owner','active')`,[org,user]);await db.query(`INSERT INTO aca.agents(id,organization_id,name,slug,status,current_version_id,voice_id) VALUES($1,$2,'Assistant','assistant','active',$3,'legacy-voice')`,[agent,org,legacy]);await db.query(`INSERT INTO aca.agent_versions(id,agent_id,version_number,config,voice_model) VALUES($1,$2,1,'{"business":"preserved"}','legacy-model')`,[legacy,agent]);await db.query(`INSERT INTO aca.agent_policies VALUES($1,'{"autonomous_send":true,"custom":{"retained":42},"api_key":"must-never-appear-in-history"}',ARRAY['email.search','custom.tool'],ARRAY['literal, entry'],ARRAY[]::text[],'{"customLimit":7}',now())`,[agent]);await db.query(`INSERT INTO aca.email_accounts VALUES($1,$2,'connected','{"read":true}',NULL)`,[mail,org]);await db.query(`INSERT INTO aca.agent_email_accounts VALUES($1,$2,'primary')`,[agent,mail]);await db.query(`INSERT INTO aca.agent_ai_settings(agent_id,organization_id,chat_model,model_overrides,feature_flags) VALUES($1,$2,'saved-custom-model','{"legacy":"retained"}','{"legacyFlag":true}')`,[agent,org]);await db.query(`INSERT INTO aca.organization_ai_runtime_settings(organization_id,default_provider,temperature) VALUES($1,'openai',0.7)`,[org]);});
 afterAll(async()=>{await closePostgresPool();await db.query('DROP SCHEMA IF EXISTS aca CASCADE');await db.end();});
 describe('immutable complete configuration candidates on the real database',()=>{
+ it('makes a restored revision the editor draft without changing the active configuration',async()=>{
+  const initial=await getAgentConfigurationEditor(scope);
+  const previous=structuredClone(initial.active.snapshot);previous.identity.name='Earlier name';
+  const historical=await createAgentConfigurationDraft(scope,previous,initial.active.id);
+  const restored=await restoreAgentConfigurationRevision(scope,historical.id,initial.active.id);
+  const reloaded=await getAgentConfigurationEditor(scope);
+  expect(reloaded.draft?.id).toBe(restored.id);expect(reloaded.draft?.snapshot.identity.name).toBe('Earlier name');expect(reloaded.active.id).toBe(initial.active.id);
+ });
+ it('refuses to replace an editor’s existing draft with a restore',async()=>{
+  const initial=await getAgentConfigurationEditor(scope);
+  const previous=structuredClone(initial.active.snapshot);previous.identity.name='Earlier name';
+  const historical=await createAgentConfigurationDraft(scope,previous,initial.active.id);
+  const current=await saveAgentConfigurationPatch(scope,{identity:{name:'Current draft'}},{activeRevisionId:initial.active.id,draftRevisionId:null});
+  await expect(restoreAgentConfigurationRevision(scope,historical.id,initial.active.id)).rejects.toThrow();
+  expect((await getAgentConfigurationEditor(scope)).draft?.id).toBe(current.id);
+ });
+ it('keeps a legacy restore available as a partial-coverage draft',async()=>{
+  const initial=await getAgentConfigurationEditor(scope);
+  await db.query(`UPDATE aca.agent_versions SET config='{"business":"previous"}' WHERE id=$1`,[legacy]);
+  const restored=await restoreAgentConfigurationRevision(scope,legacy,initial.active.id);
+  const reloaded=await getAgentConfigurationEditor(scope);
+  expect(reloaded.draft?.id).toBe(restored.id);expect(reloaded.draft?.coverage).toBe('legacy_partial');expect(reloaded.active.id).toBe(initial.active.id);
+ });
+ it('allows only one concurrent restore or new draft to become the working draft',async()=>{
+  const initial=await getAgentConfigurationEditor(scope);
+  const previous=structuredClone(initial.active.snapshot);previous.identity.name='Earlier name';
+  const historical=await createAgentConfigurationDraft(scope,previous,initial.active.id);
+  const results=await Promise.allSettled([restoreAgentConfigurationRevision(scope,historical.id,initial.active.id),saveAgentConfigurationPatch(scope,{identity:{name:'New edit'}},{activeRevisionId:initial.active.id,draftRevisionId:null})]);
+  expect(results.filter(result=>result.status==='fulfilled')).toHaveLength(1);
+  expect(results.filter(result=>result.status==='rejected')).toHaveLength(1);
+  expect((await getAgentConfigurationEditor(scope)).draft).not.toBeNull();
+ });
  it('does not create another history entry when an existing draft is saved unchanged',async()=>{
   const initial=await getAgentConfigurationEditor(scope);
   const first=await saveAgentConfigurationPatch(scope,{identity:{name:'Business helper'}},{activeRevisionId:initial.active.id,draftRevisionId:null});

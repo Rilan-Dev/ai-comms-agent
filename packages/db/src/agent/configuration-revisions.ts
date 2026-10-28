@@ -139,11 +139,18 @@ export async function restoreAgentConfigurationRevision(scope:AgentConfiguration
  return withTransaction(async client=>{
   const agent=await lockAgentConfiguration(client,scope);if(!agent)throw Error('Agent not found');const active=await activeAgentConfigurationInTransaction(client,scope,agent);
   if(active.id!==expectedActiveRevision)throw new AgentConfigurationConflictError();
+  const current=await client.query<{draft_revision_id:string}>('SELECT draft_revision_id FROM agent_configuration_draft_heads WHERE organization_id=$1 AND agent_id=$2 AND created_by=$3',[scope.organizationId,scope.agentId,scope.userId]);
+  if(current.rows[0] && current.rows[0].draft_revision_id!==active.id)throw new AgentConfigurationConflictError();
+  async function selectRestoredDraft(restored:AgentConfigurationRevision){
+   if(restored.id!==active.id)await client.query(`INSERT INTO agent_configuration_draft_heads(organization_id,agent_id,created_by,draft_revision_id)
+    VALUES($1,$2,$3,$4) ON CONFLICT (organization_id,agent_id,created_by) DO UPDATE SET draft_revision_id=EXCLUDED.draft_revision_id`,[scope.organizationId,scope.agentId,scope.userId,restored.id]);
+   return restored;
+  }
   const found=await client.query<Row>('SELECT * FROM agent_configuration_revisions WHERE organization_id=$1 AND agent_id=$2 AND id=$3',[scope.organizationId,scope.agentId,id]);
-  if(found.rows[0])return draftInTransaction(client,scope,active,revision(found.rows[0]).snapshot,expectedActiveRevision,{kind:'restore',restoredFromId:id});
+  if(found.rows[0])return selectRestoredDraft(await draftInTransaction(client,scope,active,revision(found.rows[0]).snapshot,expectedActiveRevision,{kind:'restore',restoredFromId:id}));
   const legacy=await client.query<Row>('SELECT v.* FROM agent_versions v JOIN agents a ON a.id=v.agent_id WHERE a.organization_id=$1 AND a.id=$2 AND v.id=$3',[scope.organizationId,scope.agentId,id]);
   const source=legacy.rows[0];if(!source)throw Error('Revision not found');
   const snapshot=captureAgentConfigurationSnapshot({...active.snapshot,legacy:{...active.snapshot.legacy,version:{sourceId:id,config:obj(source.config),voiceProvider:textOrNull(source.voice_provider),voiceModel:textOrNull(source.voice_model),voiceId:textOrNull(source.voice_id)}}});
-  return draftInTransaction(client,scope,active,snapshot,expectedActiveRevision,{kind:'legacy_restore',legacySourceVersionId:id,coverage:'legacy_partial'});
+  return selectRestoredDraft(await draftInTransaction(client,scope,active,snapshot,expectedActiveRevision,{kind:'legacy_restore',legacySourceVersionId:id,coverage:'legacy_partial'}));
  });
 }

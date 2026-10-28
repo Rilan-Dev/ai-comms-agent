@@ -17,3 +17,12 @@ export function saveConfigurationForm(target:ConfigurationTarget,context:Configu
  if(!context)return Promise.reject(new ConfigurationEditorError('Wait for the saved configuration to load before saving this draft.',409,'configuration_not_loaded'));
  return sendConfigurationCommand(target,{command:'save',context,patch},fetcher);
 }
+export function restoreConfigurationForm(target:ConfigurationTarget,context:ConfigurationFormContext|null,revisionId:string,fetcher:typeof fetch=fetch){
+ if(!context)return Promise.reject(new ConfigurationEditorError('Load the saved configuration before restoring.',409,'configuration_not_loaded'));
+ if(context.draftRevisionId)return Promise.reject(new ConfigurationEditorError('Finish or discard your current draft before restoring.',409,'draft_exists'));
+ return sendConfigurationCommand(target,{command:'restore',revisionId,activeRevisionId:context.activeRevisionId},fetcher);
+}
+export function discardConfigurationForm(target:ConfigurationTarget,context:ConfigurationFormContext|null,fetcher:typeof fetch=fetch){
+ if(!context?.draftRevisionId)return Promise.reject(new ConfigurationEditorError('There is no saved draft to discard.',409,'draft_not_found'));
+ return sendConfigurationCommand(target,{command:'discard',context},fetcher);
+}
