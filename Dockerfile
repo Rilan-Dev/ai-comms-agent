@@ -15,7 +15,7 @@ LABEL org.opencontainers.image.revision=${ACA_RELEASE_REVISION}
 FROM base AS web
 RUN pnpm --filter @ai-comms-agent/web build
 EXPOSE 3000
-CMD ["pnpm","--filter","@ai-comms-agent/web","start"]
+CMD ["node","apps/web/node_modules/next/dist/bin/next","start","apps/web","-p","3000"]
 
 FROM base AS worker
 RUN pnpm --filter @ai-comms-agent/worker build

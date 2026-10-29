@@ -17,6 +17,7 @@
 
 services:
   web:
+    init: true
     build:
       context: .
       dockerfile: Dockerfile
