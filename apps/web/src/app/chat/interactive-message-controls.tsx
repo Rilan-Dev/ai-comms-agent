@@ -85,7 +85,6 @@ export function SuggestedNextActions({ answer, userRequest, messageId, disabled,
 }) {
   const actions = suggestedChatNextActions(answer, userRequest);
   const emailActions = hasInteractiveEmailActions(answer, userRequest);
-  const selected = actions[0];
   // A conversational response, refusal or unrelated WhatsApp turn does not
   // need a generic next-step fieldset (or accidental email buttons).
   if (!actions.length && !emailActions) return null;
@@ -93,12 +92,12 @@ export function SuggestedNextActions({ answer, userRequest, messageId, disabled,
   return (
     <>
       {actions.length > 0 ? (
-        <div className="mt-4">
-          <button type="button" disabled={!selected || disabled}
-            onClick={() => { if (selected) onPrepare(selected.prompt); }}
+        <div className="mt-4 flex flex-wrap gap-2" aria-label="Chat recovery actions">
+          {actions.map(action => <button key={action.id} type="button" disabled={disabled}
+            onClick={() => onPrepare(action.prompt)}
             className="rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-50">
-            {selected?.label}
-          </button>
+            {action.label}
+          </button>)}
         </div>      ) : null}
       {emailActions ? <InteractiveMailActions state={emailWorkflowState} disabled={disabled}
         onComposeEmail={onComposeEmail} onRequestEmailApproval={onRequestEmailApproval} /> : null}

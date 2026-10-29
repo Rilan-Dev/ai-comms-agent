@@ -880,11 +880,15 @@ export async function POST(request: Request) {
           // The browser must never receive the raw exception through an SSE frame.
           const reference=trustedToolContext.correlation_id;
           console.error('[chat/stream] execution failed',{reference,...safeChatFailure(error),stage:shouldResolveTools?'tools':'model'});
-          if (!request.signal.aborted) emit("error", { message: safeChatFailure(error).category==='output_limit'
+          if (!request.signal.aborted) {
+            const failureMessage = safeChatFailure(error).category==='output_limit'
             ? `The AI reached its response limit. Check Drafts or Approvals before retrying; this response does not confirm a saved reply or delivery. Reference: ${reference}`
             : explicitMessagingAction
             ? `I couldn’t prepare the WhatsApp request. I have not sent anything. I can help fix the missing phone, permission, recipient, or message details here in Chat—tell me “check my WhatsApp setup” and I’ll show the available choices. Reference: ${reference}`
-            : `The read-only response could not be completed. Try again or open Inbox to view saved messages. Reference: ${reference}` });
+            : `The read-only response could not be completed. Try again or open Inbox to view saved messages. Reference: ${reference}`;
+            emit("delta", { text: failureMessage });
+            emit("done", { conversationId: conversation.id, provider: "host-authorized-tools", model: "recovery" });
+          }
           controller.close();
         }
       },
