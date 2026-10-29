@@ -207,3 +207,6 @@ The Inbox now uses authorized organization mailbox records for its selector, ret
 # Inbox pagination refresh checkpoint — 29 October 2026
 
 Background refresh no longer replaces explicitly loaded additional pages, and an outdated load-more response cannot append after a newer refresh. Focused mailbox and refresh-guard suites passed 8/8 and web typecheck passed. Browser acceptance remains open. The isolated server test upload failed twice during SSH handshake; no deployment was attempted.
+# Isolated configuration browser checkpoint — 29 October 2026
+
+Exact Development source at ab35ebc1 passed isolated web/database typechecks, 178 web files / 1,211 tests and the production web build. A separate internal-network demo using the older cached b0964602 image allowed a synthetic owner to save an identity draft, review and apply it, and restore the previous revision as a new unapplied draft. It does not establish acceptance for the latest source, other forms, mobile or production. The demo revealed an active agent without a deployment incorrectly shown as Live; the source correction now distinguishes the saved deployment pointer from lifecycle status. A fresh demo image build was blocked by Docker registry DNS failure. Configuration revisions remain gated.

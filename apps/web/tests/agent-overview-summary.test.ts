@@ -1,7 +1,12 @@
 import {describe, expect, it} from 'vitest';
-import {summarizeAgentOverview} from '../src/lib/agents/overview-summary';
+import {summarizeAgentOverview, summarizeDeployment} from '../src/lib/agents/overview-summary';
 
 describe('agent overview saved configuration', () => {
+  it('does not call an active agent live without a recorded deployment', () => {
+    expect(summarizeDeployment('active', null)).toBe('Not deployed');
+    expect(summarizeDeployment('active', 'deployment-id')).toBe('Deployed');
+    expect(summarizeDeployment('paused', 'deployment-id')).toBe('Paused');
+  });
   it('describes assignments without claiming that providers are connected', () => {
     const result = summarizeAgentOverview({mailboxCount: 2, readableMailboxCount: 2, whatsappAssigned: true, policyExists: true, mailReadEnabled: true});
     expect(result.mailboxes).toBe('2 assigned');
