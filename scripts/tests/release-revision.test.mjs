@@ -32,5 +32,7 @@ import('node:fs').then(fs=>fs.appendFileSync(process.env.ACA_TEST_COMPOSE_LOG,JS
  const calls=readFileSync(log,'utf8').trim().split('\n').map(line=>JSON.parse(line));
  const build=calls.find(call=>call.args.includes('build'));
  assert.ok(build,'the isolated Docker stub observed a build');assert.equal(build.revision,revision);
+ const builds=calls.filter(call=>call.args.includes('build'));
+ assert.deepEqual(builds.map(call=>call.args.at(-1)),['web','worker'],'release builds must run services separately');
  for(const call of calls.filter(call=>!call.args.includes('version')))assert.equal(call.revision,revision);
 });

@@ -6,6 +6,9 @@ const nextConfig = {
   // Workspace packages need to be transpiled by Next.js
   experimental: {
     externalDir: true,
+    // This application shares a small production host with other services.
+    // Limit parallel build workers so release builds leave capacity for them.
+    cpus: 1,
   },
 
   // Environment variables exposed to the browser (NEXT_PUBLIC_*)

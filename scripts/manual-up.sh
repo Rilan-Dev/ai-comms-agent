@@ -44,7 +44,8 @@ ACA_RELEASE_REVISION="$(git rev-parse --verify HEAD)"
 export ACA_RELEASE_REVISION
 
 echo "Building application images..."
-"${COMPOSE[@]}" build --pull
+"${COMPOSE[@]}" build --pull web
+"${COMPOSE[@]}" build --pull worker
 
 # The selected .env is applied by Compose to all containers. Test the same
 # target from inside the application network before running ANY migration.
