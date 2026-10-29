@@ -13,6 +13,13 @@ type MetaTemplate = {
 };
 type MetaResponse = { error?: { message?: unknown }; id?: unknown; status?: unknown; category?: unknown; data?: MetaTemplate[]; paging?: unknown };
 
+class MetaTemplateLookupError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+    this.name = "MetaTemplateLookupError";
+  }
+}
+
 function templateStatus(value: unknown): "pending" | "approved" | "rejected" {
   if (value === "APPROVED") return "approved";
   if (value === "REJECTED") return "rejected";
@@ -37,9 +44,9 @@ async function syncMetaTemplates(organizationId: string, accountId: string, toke
   const url = new URL(endpoint.toString());
   url.searchParams.set("fields", "id,name,language,category,status,components");
   url.searchParams.set("limit", "100");
-  const response = await fetch(url, { headers: { authorization: "Bearer " + token } });
+  const response = await fetch(url, { headers: { authorization: "Bearer " + token }, cache: "no-store" });
   const payload = await response.json().catch(() => ({})) as MetaResponse;
-  if (!response.ok) throw new Error(typeof payload.error?.message === "string" ? payload.error.message : "Meta template status lookup failed");
+  if (!response.ok) throw new MetaTemplateLookupError(response.status, typeof payload.error?.message === "string" ? payload.error.message : "Meta template status lookup failed");
   for (const item of Array.isArray(payload.data) ? payload.data : []) {
     if (typeof item.id !== "string" || typeof item.name !== "string" || typeof item.language !== "string") continue;
     const category = item.category === "MARKETING" || item.category === "AUTHENTICATION" ? item.category : "UTILITY";
@@ -72,7 +79,12 @@ export async function GET(request: Request) {
       [organizationId, accountId],
     );
     return NextResponse.json({ templates: result.rows });
-  } catch (error) { return authorizationErrorToResponse(error); }
+  } catch (error) {
+    if (error instanceof MetaTemplateLookupError) {
+      return NextResponse.json({ error: "meta_template_lookup_failed", message: error.message }, { status: 502 });
+    }
+    return authorizationErrorToResponse(error);
+  }
 }
 
 export async function POST(request: Request) {
