@@ -883,7 +883,7 @@ export async function POST(request: Request) {
           if (!request.signal.aborted) emit("error", { message: safeChatFailure(error).category==='output_limit'
             ? `The AI reached its response limit. Check Drafts or Approvals before retrying; this response does not confirm a saved reply or delivery. Reference: ${reference}`
             : explicitMessagingAction
-            ? `Chat execution failed. Review drafts and approvals before retrying an email action. Reference: ${reference}`
+            ? `I couldn’t prepare the WhatsApp request. I have not sent anything. I can help fix the missing phone, permission, recipient, or message details here in Chat—tell me “check my WhatsApp setup” and I’ll show the available choices. Reference: ${reference}`
             : `The read-only response could not be completed. Try again or open Inbox to view saved messages. Reference: ${reference}` });
           controller.close();
         }

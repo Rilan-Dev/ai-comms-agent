@@ -62,6 +62,13 @@ describe("WhatsApp send approval safety boundary", () => {
     expect(permissionsMigration).toContain("'whatsapp.send'");
   });
 
+  it("gives WhatsApp failures a WhatsApp-specific in-chat recovery message", () => {
+    const streamRoute = readFileSync(resolve(__dirname, "../src/app/api/chat/stream/route.ts"), "utf8");
+    expect(streamRoute).toContain("I couldn’t prepare the WhatsApp request.");
+    expect(streamRoute).toContain("check my WhatsApp setup");
+    expect(streamRoute).not.toContain("retrying an email action. Reference: ${reference}");
+  });
+
   it("supports only approved text-body template payloads and rejects unsupported components", () => {
     expect(decisionRoute).toContain("Meta does not currently report this template as approved");
     expect(decisionRoute).toContain("unsupported_template_components");
