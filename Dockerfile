@@ -19,4 +19,5 @@ CMD ["pnpm","--filter","@ai-comms-agent/web","start"]
 
 FROM base AS worker
 RUN pnpm --filter @ai-comms-agent/worker build
-CMD ["pnpm","--filter","@ai-comms-agent/worker","start"]
+WORKDIR /workspace/apps/worker
+CMD ["node","--import","tsx","src/index.ts"]
