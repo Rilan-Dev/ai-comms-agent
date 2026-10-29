@@ -9,7 +9,7 @@ const CAPABILITIES: CapabilitySet = {
   sync_webhook: true, sync_idle: false, search_server_side: true,
   search_client_side: true, drafts: true, reply: true, forward: false,
   mark_read: true, archive: true, move: true, threads: true,
-  attachments_download: false, attachments_upload: false, send: false,
+  attachments_download: false, attachments_upload: false, send: true,
 };
 
 
@@ -62,6 +62,8 @@ export class ZohoAdapter implements EmailProvider {
   private oauthClientId?: string;
   private oauthClientSecret?: string;
   private readonly draftMessageIds = new Set<string>();
+  private readonly htmlDraftMessageIds = new Set<string>();
+  private readonly sentDraftMessageIds = new Set<string>();
   private readonly messageFolderById = new Map<string, string>();
 
   async connect(credentials: EmailCredentials): Promise<void> {
@@ -92,6 +94,8 @@ export class ZohoAdapter implements EmailProvider {
     this.oauthClientId = undefined;
     this.oauthClientSecret = undefined;
     this.draftMessageIds.clear();
+    this.htmlDraftMessageIds.clear();
+    this.sentDraftMessageIds.clear();
     this.messageFolderById.clear();
   }
 
@@ -412,6 +416,8 @@ export class ZohoAdapter implements EmailProvider {
     });
     const id = data?.data?.messageId ?? data?.messageId;
     if (!id) throw new Error("Zoho did not return a draft message id");
+    this.draftMessageIds.add(String(id));
+    if (params.body_html !== undefined) this.htmlDraftMessageIds.add(String(id));
     return { draft_id: String(id), account_id: String(this.accountId) };
   }
 
@@ -431,6 +437,9 @@ export class ZohoAdapter implements EmailProvider {
       body: JSON.stringify(payload),
     });
     const id = data?.data?.messageId ?? data?.messageId ?? draftId;
+    this.draftMessageIds.add(String(id));
+    if (params.body_html !== undefined) this.htmlDraftMessageIds.add(String(id));
+    else if (params.body_text !== undefined) this.htmlDraftMessageIds.delete(String(id));
     return { draft_id: String(id), account_id: String(this.accountId) };
   }
 
@@ -438,10 +447,35 @@ export class ZohoAdapter implements EmailProvider {
     const folders = await this.listFolders();
     const folderId = folders.find((folder) => folder.role === "drafts")?.provider_folder_id ?? "DRAFTS";
     await this.request(`/api/accounts/${this.accountId}/folders/${encodeURIComponent(folderId)}/messages/${encodeURIComponent(draftId)}`, { method: "DELETE" });
+    this.draftMessageIds.delete(draftId);
+    this.htmlDraftMessageIds.delete(draftId);
   }
 
-  async sendDraft(_draftId: string): Promise<SentMessageRef> {
-    throw new Error("Zoho draft send requires the email worker draft repository");
+  async sendDraft(draftId: string): Promise<SentMessageRef> {
+    if (this.sentDraftMessageIds.has(draftId)) throw new Error("Zoho draft has already been submitted");
+    const draft = await this.getMessage(draftId);
+    if (!draft || !draft.is_draft) throw new Error("Zoho draft not found in the Drafts folder");
+    const isHtml = this.htmlDraftMessageIds.has(draftId) || Boolean(draft.html_body && !this.draftMessageIds.has(draftId));
+    const response = await this.request(`/api/accounts/${this.accountId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({
+        fromAddress: await this.senderAddress(),
+        toAddress: draft.to_addresses.join(","),
+        ...(draft.cc_addresses.length ? { ccAddress: draft.cc_addresses.join(",") } : {}),
+        ...(draft.bcc_addresses.length ? { bccAddress: draft.bcc_addresses.join(",") } : {}),
+        subject: draft.subject,
+        content: isHtml ? draft.html_body ?? draft.text_body : draft.text_body,
+        mailFormat: isHtml ? "html" : "plaintext",
+      }),
+    });
+    const id = response?.data?.messageId ?? response?.messageId;
+    if (!id) throw new Error("Zoho did not confirm that the message was sent");
+    this.sentDraftMessageIds.add(draftId);
+    // Zoho may move or remove the submitted draft itself. Cleanup is secondary
+    // after an accepted send; it must never turn a confirmed delivery into an
+    // apparent send failure that encourages the user to send it again.
+    await this.deleteDraft(draftId).catch(() => undefined);
+    return { message_id: String(id), provider_message_id: String(id) };
   }
 
   async send(draftId: string): Promise<SentMessageRef> { return this.sendDraft(draftId); }

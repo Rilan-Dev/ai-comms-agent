@@ -7,11 +7,13 @@ import type {
 const BASE = "https://gmail.googleapis.com/gmail/v1/users/me";
 const CAPABILITIES: CapabilitySet = {
   folders: true, labels: true, sync_incremental: true, sync_full: true,
-  // Gmail push/watch is not wired to a Pub/Sub receiver in this app yet.
+  // Push stays unavailable until the configured Pub/Sub delivery is verified.
   sync_webhook: false, sync_idle: false, search_server_side: true,
-  search_client_side: true, drafts: true, reply: false, forward: false,
+  search_client_side: true, drafts: true, reply: true, forward: false,
   mark_read: true, archive: true, move: true, threads: true,
-  attachments_download: true, attachments_upload: false, send: true,
+  // Gmail can return attachment bytes, but the workspace has no complete
+  // attachment ingestion and reader path yet, so do not advertise it.
+  attachments_download: false, attachments_upload: false, send: true,
 };
 
 function b64url(input: string): string {
@@ -624,7 +626,20 @@ export class GmailAdapter implements EmailProvider {
   }
 
   async reply(messageId: string, params: DraftParams): Promise<SentMessageRef> {
-    const draft = await this.createDraft(params);
+    const source = await this.getMessage(messageId);
+    if (!source) throw new Error("Gmail source message not found");
+    if (!source.message_id_header) throw new Error("Gmail source message has no valid Message-ID for a threaded reply");
+    const references = [...(source.references ?? []), source.message_id_header].filter(Boolean).join(" ");
+    const to = params.to.length ? params.to : [source.from_address];
+    const subject = params.subject || (/^re:/i.test(source.subject) ? source.subject : `Re: ${source.subject}`);
+    const draft = await this.createDraft({
+      ...params,
+      to,
+      subject,
+      reply_to_message_id: source.message_id_header,
+      references_header: references,
+      provider_thread_id: source.thread_id,
+    });
     return this.send(draft.draft_id);
   }
 

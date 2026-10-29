@@ -459,6 +459,7 @@ export function EmailAccountsClient({
           <div className="divide-y">
             {filteredAccounts.map((account) => {
               const structure = structureByAccount[account.id];
+              const mailboxFeatures = summarizeMailboxFeatures(account.capabilities, account.provider);
               return (
               <div key={account.id} className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <div className="min-w-0">
@@ -469,11 +470,11 @@ export function EmailAccountsClient({
                   <p className="mt-1 text-sm text-muted-foreground">
                     {account.provider === "microsoft_graph" ? "Outlook / Microsoft 365" : account.provider.replace("_", " / ")} · {account.display_name ?? "Mailbox"}
                   </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">{Object.entries(account.capabilities).filter(([,enabled])=>enabled).slice(0,5).map(([key])=><span key={key} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">{key.replaceAll("_"," ")}</span>)}</div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">{mailboxFeatures.filter((feature)=>feature.status==='available').slice(0,4).map((feature)=><span key={feature.key} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">{feature.label}</span>)}</div>
                   <details className="mt-2 text-xs">
                     <summary className="cursor-pointer font-semibold">Mailbox features</summary>
-                    <p className="mt-2 text-muted-foreground">Based on the last saved capability check. Availability does not mean a feature is configured or permitted for your account.</p>
-                    <ul className="mt-2 grid gap-1 sm:grid-cols-2">{summarizeMailboxFeatures(account.capabilities).map(feature=><li key={feature.key}>{feature.label}: <span className="text-muted-foreground">{feature.status==='available'?'Available':feature.status==='unavailable'?'Not available':'Not checked'}</span></li>)}</ul>
+                    <p className="mt-2 text-muted-foreground">Actions supported by this mailbox connection. Your agent’s permissions may further limit them.</p>
+                    <ul className="mt-2 grid gap-2 sm:grid-cols-2">{mailboxFeatures.map(feature=><li key={feature.key}><span>{feature.label}: </span><span className="text-muted-foreground">{feature.status==='available'?'Available':feature.status==='unavailable'?'Not available':'Not checked'}</span>{feature.help?<span className="block text-muted-foreground">{feature.help}</span>:null}</li>)}</ul>
                   </details>
                   <p className="mt-2 text-xs text-muted-foreground">
                     Last sync: {account.last_sync_at ? new Date(account.last_sync_at).toLocaleString() : "Not synchronized"}

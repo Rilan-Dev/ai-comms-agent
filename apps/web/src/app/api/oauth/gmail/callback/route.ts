@@ -111,8 +111,8 @@ export async function GET(request: Request) {
     }
     const capabilities = {
       folders: true, labels: true, sync_incremental: true, sync_full: true, sync_webhook: false, sync_idle: false,
-      search_server_side: true, search_client_side: true, drafts: true, reply: true, forward: true,
-      mark_read: true, archive: true, move: true, threads: true, attachments_download: true,
+      search_server_side: true, search_client_side: true, drafts: true, reply: true, forward: false,
+      mark_read: true, archive: true, move: true, threads: true, attachments_download: false,
       attachments_upload: false, send: true,
     };
     const existing = payload.accountId

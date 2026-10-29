@@ -187,6 +187,46 @@ test("Zoho adapter creates drafts using the documented Mail API", async () => {
   }
 });
 
+test("Zoho adapter sends the reviewed draft through the documented Mail API", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: Array<{ url: string; method: string; body?: string }> = [];
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    calls.push({ url, method: init?.method ?? "GET", body: typeof init?.body === "string" ? init.body : undefined });
+    if (url.endsWith("/api/accounts")) return new Response(JSON.stringify({ data: [{ accountId: "123", emailAddress: "user@example.com" }] }), { status: 200 });
+    if (url.endsWith("/api/accounts/123")) return new Response(JSON.stringify({ data: { emailAddress: "user@example.com" } }), { status: 200 });
+    if (url.endsWith("/api/accounts/123/messages") && init?.method === "POST") {
+      const body = JSON.parse(String(init.body));
+      if (body.mode === "draft") return new Response(JSON.stringify({ data: { messageId: "draft-1" } }), { status: 200 });
+      return new Response(JSON.stringify({ data: { messageId: "sent-1" } }), { status: 200 });
+    }
+    if (url.endsWith("/api/accounts/123/messages/draft-1/originalmessage")) {
+      return new Response(JSON.stringify({ data: { messageId: "draft-1", folderName: "Drafts", fromAddress: "user@example.com", toAddress: "recipient@example.com", subject: "Approved", content: "Reviewed body" } }), { status: 200 });
+    }
+    if (url.endsWith("/api/accounts/123/folders/9/messages/draft-1") && init?.method === "DELETE") return new Response(null, { status: 204 });
+    if (url.endsWith("/api/accounts/123/folders")) return new Response(JSON.stringify({ data: [{ folderId: "9", folderName: "Drafts" }] }), { status: 200 });
+    throw new Error("Unexpected network call: " + url);
+  };
+  try {
+    const adapter = new ZohoAdapter();
+    await adapter.connect({ credential_type: "oauth_token", access_token: "test-token", api_domain: "https://mail.zoho.in", account_id: "123" });
+    assert.equal((await adapter.discoverCapabilities()).send, true);
+    const draft = await adapter.createDraft({ to: ["recipient@example.com"], subject: "Approved", body_text: "Reviewed body" });
+    const sent = await adapter.sendDraft(draft.draft_id);
+    assert.deepEqual(sent, { message_id: "sent-1", provider_message_id: "sent-1" });
+    await assert.rejects(adapter.sendDraft(draft.draft_id), /already been submitted/);
+    const sendCall = calls.find((call) => call.url.endsWith("/messages") && call.method === "POST" && JSON.parse(call.body ?? "{}").mode !== "draft");
+    assert.deepEqual(JSON.parse(sendCall?.body ?? "{}"), {
+      fromAddress: "user@example.com", toAddress: "recipient@example.com",
+      subject: "Approved", content: "Reviewed body", mailFormat: "plaintext",
+    });
+    assert.ok(calls.some((call) => call.url.endsWith("/folders/9/messages/draft-1") && call.method === "DELETE"));
+    assert.equal(calls.filter((call) => call.url.endsWith("/messages") && call.method === "POST" && JSON.parse(call.body ?? "{}").mode !== "draft").length, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 
 test("Zoho sync paginates initial folder import and refreshes newest folder pages idempotently", async () => {
   const originalFetch = globalThis.fetch;

@@ -31,10 +31,16 @@ describe("EmailProviderRegistry", () => {
     }
   });
 
-  it("does not advertise unsupported IMAP/SMTP or Zoho operations", () => {
+  it("reports supported and unavailable end-to-end email actions accurately", () => {
     const registry = createEmailProviderRegistry();
+    const gmail = registry.create("gmail").capabilities();
     const imap = registry.create("imap_smtp").capabilities();
     const zoho = registry.create("zoho").capabilities();
+
+    expect(gmail.reply).toBe(true);
+    expect(gmail.forward).toBe(false);
+    expect(gmail.attachments_download).toBe(false);
+    expect(gmail.attachments_upload).toBe(false);
 
     // IMAP/SMTP now supports send, drafts, reply, forward (via SMTP)
     expect(imap.send).toBe(true);
@@ -43,8 +49,11 @@ describe("EmailProviderRegistry", () => {
     expect(imap.forward).toBe(true);
     expect(imap.attachments_download).toBe(false);
 
-    // Zoho does not support send, forward, or attachment download
-    expect(zoho.send).toBe(false);
+    // Zoho send and drafts use the reviewed provider-draft flow; unsupported
+    // forwarding and attachment retrieval remain disabled.
+    expect(zoho.send).toBe(true);
+    expect(zoho.drafts).toBe(true);
+    expect(zoho.reply).toBe(true);
     expect(zoho.forward).toBe(false);
     expect(zoho.attachments_download).toBe(false);
   });
