@@ -31,6 +31,8 @@ The detailed session ledger records the evidence for each checkpoint. A source c
 
 Task 8 source checkpoint: restoring now atomically selects the new candidate as the editor's recoverable draft, and rejects a restore when an existing working draft would be replaced. Isolated database regressions cover refresh, active-state preservation, legacy partial coverage and concurrent restore/save. The restore interface, complete review and production acceptance remain outstanding; the configuration feature stays gated.
 
+Task 7/8 checkpoint: a current-source isolated desktop demo saved, reviewed and applied a permission draft, then saved and reviewed an AI draft with unavailable provider catalogs. AI review headings now name affected fields while preserving exact details; the revised headings, other scenarios and mobile acceptance remain to be verified in a fresh browser build.
+
 ## Global Constraints
 
 - Preserve the current theme tokens, fonts, components, sidebar and all seven tabs.
