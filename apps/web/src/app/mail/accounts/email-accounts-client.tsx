@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { EmailAccount } from "@ai-comms-agent/shared";
+import {summarizeMailboxFeatures} from "@/lib/mail/mailbox-features";
 
 type AccountWithSync = EmailAccount & {
   syncProgress?: {
@@ -469,6 +470,11 @@ export function EmailAccountsClient({
                     {account.provider === "microsoft_graph" ? "Outlook / Microsoft 365" : account.provider.replace("_", " / ")} · {account.display_name ?? "Mailbox"}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">{Object.entries(account.capabilities).filter(([,enabled])=>enabled).slice(0,5).map(([key])=><span key={key} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">{key.replaceAll("_"," ")}</span>)}</div>
+                  <details className="mt-2 text-xs">
+                    <summary className="cursor-pointer font-semibold">Mailbox features</summary>
+                    <p className="mt-2 text-muted-foreground">Based on the last saved capability check. Availability does not mean a feature is configured or permitted for your account.</p>
+                    <ul className="mt-2 grid gap-1 sm:grid-cols-2">{summarizeMailboxFeatures(account.capabilities).map(feature=><li key={feature.key}>{feature.label}: <span className="text-muted-foreground">{feature.status==='available'?'Available':feature.status==='unavailable'?'Not available':'Not checked'}</span></li>)}</ul>
+                  </details>
                   <p className="mt-2 text-xs text-muted-foreground">
                     Last sync: {account.last_sync_at ? new Date(account.last_sync_at).toLocaleString() : "Not synchronized"}
                   </p>
