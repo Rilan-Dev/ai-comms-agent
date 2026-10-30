@@ -64,3 +64,59 @@ test("Gemini UTF-8 split across byte boundaries stays intact", async () => {
   const result = await readGeminiToolCompletion(stream);
   assert.equal(result.toolCalls[0].arguments.subject, "தமிழ் 🌍");
 });
+
+
+test("signed multi-tool Gemini replies preserve exact provider signatures and order", async () => {
+  const sig = "opaque-real-provider-signature-ABC123";
+  const source = frame({ candidates: [{ content: { parts: [
+    { text: "internal thought", thought: true, thoughtSignature: "opaque-thought" },
+    { functionCall: { name: "email.accounts.list", args: {} }, thoughtSignature: sig },
+    { functionCall: { name: "email.messages.list", args: { unread: true } } },
+  ] } }] });
+  const result = await readGeminiToolCompletion(response(source, done));
+  assert.equal(result.finishReason, "STOP");
+  assert.equal(result.text, "");
+  assert.equal(result.toolCalls[0].thoughtSignature, sig);
+  assert.equal(result.toolCalls[1].thoughtSignature, undefined);
+  assert.deepEqual(result.geminiParts, [
+    { text: "internal thought", thought: true, thoughtSignature: "opaque-thought" },
+    { functionCall: { name: "email.accounts.list", args: {} }, thoughtSignature: sig },
+    { functionCall: { name: "email.messages.list", args: { unread: true } } },
+  ]);
+});
+
+test("repeated Gemini function snapshots retain a later delivered signature", async () => {
+  const result = await readGeminiToolCompletion(response(
+    call("email.accounts.list", {}),
+    frame({ candidates: [{ content: { parts: [{
+      functionCall: { name: "email.accounts.list", args: {} }, thoughtSignature: "late-opaque",
+    }] } }] }),
+    done,
+  ));
+  assert.equal(result.toolCalls.length, 1);
+  assert.equal(result.toolCalls[0].thoughtSignature, "late-opaque");
+  assert.equal(result.geminiParts[0].thoughtSignature, "late-opaque");
+});
+
+test("conflicting or malformed Gemini signatures fail closed", async () => {
+  for (const thoughtSignature of [42, "", "x".repeat(16_001)]) {
+    const result = await readGeminiToolCompletion(response(
+      frame({ candidates: [{ content: { parts: [{
+        functionCall: { name: "email.accounts.list", args: {} }, thoughtSignature,
+      }] } }] }), done,
+    ));
+    assert.deepEqual(result.toolCalls, []);
+    assert.equal(result.finishReason, "invalid_tool_call");
+  }
+  const result = await readGeminiToolCompletion(response(
+    frame({ candidates: [{ content: { parts: [{
+      functionCall: { name: "email.accounts.list", args: {} }, thoughtSignature: "first",
+    }] } }] }),
+    frame({ candidates: [{ content: { parts: [{
+      functionCall: { name: "email.accounts.list", args: {} }, thoughtSignature: "second",
+    }] } }] }),
+    done,
+  ));
+  assert.deepEqual(result.toolCalls, []);
+  assert.equal(result.finishReason, "invalid_tool_arguments");
+});

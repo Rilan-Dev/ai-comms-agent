@@ -134,13 +134,23 @@ export interface ChatToolCall {
   id: string;
   name: string;
   arguments: Record<string, unknown>;
+  /** Opaque Gemini provider token. Preserve verbatim between tool rounds; never generate or log it. */
+  thoughtSignature?: string;
+}
+export interface GeminiModelPart {
+  text?: string;
+  thought?: boolean;
+  functionCall?: { name: string; args: Record<string, unknown> };
+  thoughtSignature?: string;
 }
 export type ToolChatMessage =
   | ChatMessage
-  | { role: "assistant"; content: string | null; tool_calls?: ChatToolCall[] }
+  | { role: "assistant"; content: string | null; tool_calls?: ChatToolCall[]; geminiParts?: GeminiModelPart[] }
   | { role: "tool"; content: string; tool_call_id: string; name: string };
 export interface ChatToolCompletion {
   text: string;
   toolCalls: ChatToolCall[];
   finishReason: string | null;
+  /** Original ordered Gemini model response parts, including opaque thought signatures. */
+  geminiParts?: GeminiModelPart[];
 }

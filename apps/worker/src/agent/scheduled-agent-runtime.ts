@@ -186,7 +186,7 @@ export async function runScheduledAgentTask(args: {
         model,
       };
     }
-    history.push({ role: "assistant", content: completion.text || null, tool_calls: completion.toolCalls });
+    history.push({ role: "assistant", content: completion.text || null, tool_calls: completion.toolCalls, ...(completion.geminiParts ? { geminiParts: completion.geminiParts } : {}) });
     for (const call of completion.toolCalls) {
       if (totalCalls >= MAX_TOOL_CALLS) {
         return {

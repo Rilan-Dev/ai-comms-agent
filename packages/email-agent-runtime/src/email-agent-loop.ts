@@ -143,7 +143,7 @@ export async function runEmailAgentTurn(
     }
 
     // Preserve the provider's assistant tool-call turn before appending results.
-    history.push({ role: "assistant", content: completion.text || null, tool_calls: completion.toolCalls });
+    history.push({ role: "assistant", content: completion.text || null, tool_calls: completion.toolCalls, ...(completion.geminiParts ? { geminiParts: completion.geminiParts } : {}) });
     for (const call of completion.toolCalls) {
       if (totalCalls >= maxToolCalls) {
         return {

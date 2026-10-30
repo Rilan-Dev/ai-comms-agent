@@ -448,7 +448,7 @@ async function runInteractiveHostToolLoop(args: {
       if(completion.text.trim()&&!userFacingChatAnswer(completion.text)){const recovered=recoverRead();if(recovered)return recovered;}
       return { text: completion.text.trim() || "I couldn't complete that request safely. Please try again.", toolCalls: summaries };
     }
-    history.push({ role: "assistant", content: completion.text || null, tool_calls: completion.toolCalls });
+    history.push({ role: "assistant", content: completion.text || null, tool_calls: completion.toolCalls, ...(completion.geminiParts ? { geminiParts: completion.geminiParts } : {}) });
     for (const call of completion.toolCalls) {
       if (totalCalls >= MAX_HOST_TOOL_CALLS) {
         return { text: "I stopped before running more operations because this turn reached its tool-call safety limit.", toolCalls: summaries };

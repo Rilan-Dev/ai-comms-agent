@@ -4,6 +4,7 @@ import {withToolCompletionDeadline} from './tool-completion-deadline';
 import { readOpenAIToolCompletion } from "./tool-call-stream";
 import { createSarvamToolBridge } from "./sarvam-tool-bridge";
 import { readGeminiToolCompletion } from "./gemini-tool-stream";
+import { toGeminiToolContents } from "./gemini-tool-history";
 import { buildReadOnlyToolFinalMessages } from "./tool-result-final";
 import { extractAmbientContextForFinalStream } from "./ambient-context";
 import type {
@@ -424,15 +425,7 @@ async function chatWithToolsRequest(
 
   if (config.provider === "gemini") {
     const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
-    const contents = messages.filter((m) => m.role !== "system").map((message) => {
-      if (message.role === "tool") {
-        return { role: "user", parts: [{ functionResponse: { name: message.name, response: { result: message.content } } }] };
-      }
-      if (message.role === "assistant" && "tool_calls" in message && message.tool_calls?.length) {
-        return { role: "model", parts: message.tool_calls.map((call) => ({ functionCall: { name: call.name, args: call.arguments } })) };
-      }
-      return { role: message.role === "assistant" ? "model" : "user", parts: [{ text: message.content ?? "" }] };
-    });
+    const contents = toGeminiToolContents(messages);
     const url = `${config.baseUrl}/v1beta/models/${encodeURIComponent(config.chatModel ?? "gemini-2.0-flash")}:streamGenerateContent?alt=sse&key=${encodeURIComponent(config.apiKey)}`;
     const response = await fetch(url, {
       method: "POST",
@@ -455,7 +448,10 @@ async function chatWithToolsRequest(
     }
     // Some gateways still return validated JSON even for streamGenerateContent.
     const payload = await response.json() as {
-      candidates?: Array<{ finishReason?: string; content?: { parts?: Array<{ text?: string; functionCall?: { name?: string; args?: Record<string, unknown> } }> } }>;
+      candidates?: Array<{ finishReason?: string; content?: { parts?: Array<{
+        text?: string; thought?: boolean; thoughtSignature?: string;
+        functionCall?: { name?: string; args?: Record<string, unknown> };
+      }> } }>;
     };
     const candidate = payload.candidates?.[0];
     const parts = candidate?.content?.parts ?? [];
@@ -463,8 +459,20 @@ async function chatWithToolsRequest(
       id: `gemini-call-${Date.now()}-${index}`,
       name: part.functionCall.name,
       arguments: part.functionCall.args ?? {},
+      ...(part.thoughtSignature ? { thoughtSignature: part.thoughtSignature } : {}),
     }] : []);
-    return { text: parts.map((part) => part.text ?? "").join(""), toolCalls, finishReason: candidate?.finishReason ?? null };
+    return {
+      text: parts.map((part) => part.thought ? "" : part.text ?? "").join(""),
+      toolCalls, finishReason: candidate?.finishReason ?? null,
+      ...(toolCalls.length ? { geminiParts: parts.map((part) => ({
+        ...(typeof part.text === "string" ? { text: part.text } : {}),
+        ...(part.thought === true ? { thought: true } : {}),
+        ...(part.functionCall?.name ? { functionCall: {
+          name: part.functionCall.name, args: part.functionCall.args ?? {},
+        } } : {}),
+        ...(part.thoughtSignature ? { thoughtSignature: part.thoughtSignature } : {}),
+      })) } : {}),
+    };
   }
 
   const sarvam = config.provider === "sarvam";

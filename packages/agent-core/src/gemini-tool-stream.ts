@@ -1,4 +1,4 @@
-import type { ChatToolCompletion } from "./types";
+import type { ChatToolCompletion, GeminiModelPart } from "./types";
 
 /**
  * Assemble Gemini streamGenerateContent SSE tool decisions without executing
@@ -10,13 +10,14 @@ const MAX_EVENT = 256_000;
 const MAX_TEXT = 64_000;
 const MAX_CALLS = 32;
 const MAX_ARGUMENTS = 16_000;
+const MAX_THOUGHT_SIGNATURE = 16_000;
 const invalid = (reason: "invalid_tool_call" | "invalid_tool_arguments"): ChatToolCompletion => ({
   text: "I couldn't safely interpret the requested operation, so I did not execute it. Please rephrase the request.",
   toolCalls: [],
   finishReason: reason,
 });
 
-type GeminiPart = { text?: string; functionCall?: { name?: string; args?: unknown } };
+type GeminiPart = { text?: string; thought?: boolean; thoughtSignature?: unknown; functionCall?: { name?: string; args?: unknown } };
 type GeminiFrame = { candidates?: Array<{ finishReason?: string; content?: { parts?: GeminiPart[] } }>; error?: unknown };
 
 export async function readGeminiToolCompletion(body: ReadableStream<Uint8Array>): Promise<ChatToolCompletion> {
@@ -26,7 +27,8 @@ export async function readGeminiToolCompletion(body: ReadableStream<Uint8Array>)
   let text = "";
   let finishReason: string | null = null;
   let bad: "invalid_tool_call" | "invalid_tool_arguments" | null = null;
-  const calls: Array<{ name: string; args: Record<string, unknown>; signature: string }> = [];
+  const calls: Array<{ name: string; args: Record<string, unknown>; signature: string; thoughtSignature?: string }> = [];
+  const modelParts: GeminiModelPart[] = [];
 
   const frame = (raw: string): void => {
     if (bad) return;
@@ -49,9 +51,23 @@ export async function readGeminiToolCompletion(body: ReadableStream<Uint8Array>)
     }
     for (const part of candidate.content?.parts ?? []) {
       if (!part || typeof part !== "object") { bad = "invalid_tool_call"; return; }
+      // Gemini thinking signatures are opaque provider bytes encoded as strings.
+      // Never synthesize a signature, expose it as assistant prose, or drop it
+      // when reconstructing the model turn after executing registered tools.
+      if (part.thoughtSignature !== undefined &&
+          (typeof part.thoughtSignature !== "string" ||
+           !part.thoughtSignature || part.thoughtSignature.length > MAX_THOUGHT_SIGNATURE)) {
+        bad = "invalid_tool_call"; return;
+      }
+      const thoughtSignature = part.thoughtSignature as string | undefined;
       if (typeof part.text === "string") {
-        text += part.text;
+        if (!part.thought) text += part.text;
         if (text.length > MAX_TEXT) { bad = "invalid_tool_call"; return; }
+        modelParts.push({
+          text: part.text,
+          ...(part.thought === true ? { thought: true } : {}),
+          ...(thoughtSignature ? { thoughtSignature } : {}),
+        });
       }
       if (!part.functionCall) continue;
       const { name, args } = part.functionCall;
@@ -67,11 +83,22 @@ export async function readGeminiToolCompletion(body: ReadableStream<Uint8Array>)
       if (prior) {
         // A streamed snapshot can repeat the same function call. Divergent
         // args for the same tool name are ambiguous: execute neither.
-        if (prior.signature !== signature) { bad = "invalid_tool_arguments"; return; }
+        if (prior.signature !== signature ||
+            (prior.thoughtSignature && thoughtSignature && prior.thoughtSignature !== thoughtSignature)) {
+          bad = "invalid_tool_arguments"; return;
+        }
+        if (thoughtSignature && !prior.thoughtSignature) {
+          prior.thoughtSignature = thoughtSignature;
+          const saved = modelParts.find((p) => p.functionCall?.name === name);
+          if (saved) saved.thoughtSignature = thoughtSignature;
+        }
         continue;
       }
       if (calls.length >= MAX_CALLS) { bad = "invalid_tool_call"; return; }
-      calls.push({ name, args: args as Record<string, unknown>, signature });
+      calls.push({ name, args: args as Record<string, unknown>, signature,
+        ...(thoughtSignature ? { thoughtSignature } : {}) });
+      modelParts.push({ functionCall: { name, args: args as Record<string, unknown> },
+        ...(thoughtSignature ? { thoughtSignature } : {}) });
     }
   };
   try {
@@ -100,8 +127,10 @@ export async function readGeminiToolCompletion(body: ReadableStream<Uint8Array>)
       text,
       toolCalls: calls.map((call, index) => ({
         id: `gemini-call-${crypto.randomUUID()}-${index}`, name: call.name, arguments: call.args,
+        ...(call.thoughtSignature ? { thoughtSignature: call.thoughtSignature } : {}),
       })),
       finishReason,
+      ...(calls.length ? { geminiParts: modelParts } : {}),
     };
   } finally {
     await reader.cancel().catch(() => undefined);

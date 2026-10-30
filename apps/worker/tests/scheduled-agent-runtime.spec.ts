@@ -91,6 +91,32 @@ describe("runScheduledAgentTask result reporting", () => {
     expect(result.toolCalls).toHaveLength(1);
   });
 
+  it("replays original Gemini-signed model parts in a scheduled follow-up", async () => {
+    const parts = [{ functionCall: { name: "email.messages.list", args: {} },
+      thoughtSignature: "opaque-provider-signature" }];
+    mocks.completeWithTools
+      .mockResolvedValueOnce({
+        text: "", toolCalls: [{ id: "gemini-call", name: "email.messages.list", arguments: {},
+          thoughtSignature: "opaque-provider-signature" }], geminiParts: parts,
+      })
+      .mockResolvedValueOnce(completion("A safe source-backed report.", []));
+
+    const result = await runScheduledAgentTask({
+      organizationId: "org-1", agentId: "agent-1", executionId: "signed-gemini",
+      task: "Read-only summary, do not send WhatsApp.",
+    });
+    expect(result.status).toBe("completed");
+    expect(result.output).toBe("A safe source-backed report.");
+    expect(mocks.completeWithTools).toHaveBeenCalledTimes(2);
+    const secondHistory = mocks.completeWithTools.mock.calls[1]?.[1];
+    expect(secondHistory[2]).toMatchObject({
+      role: "assistant", geminiParts: parts,
+      tool_calls: [{ name: "email.messages.list", thoughtSignature: "opaque-provider-signature" }],
+    });
+    expect(secondHistory[3]).toMatchObject({ role: "tool", name: "email.messages.list" });
+    expect(mocks.invokeWhatsAppTool).not.toHaveBeenCalled();
+  });
+
   it("records a factual work recap when the round limit is hit after a blocked send", async () => {
     // The real-world failure shape: reads succeed, the WhatsApp send is blocked
     // by Meta's 24-hour window, the model retries and burns every round.
