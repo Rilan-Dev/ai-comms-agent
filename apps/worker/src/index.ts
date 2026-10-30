@@ -9,6 +9,7 @@ import { processApprovedEmailActions } from "./email/action-worker";
 import { processQueuedWhatsAppMessages, verifyPendingWhatsAppAccounts } from "./messaging/whatsapp-worker";
 import { processRoutedWhatsAppInbound } from "./messaging/whatsapp-inbound-worker";
 import { processScheduledJobs } from "./scheduling/scheduler-worker";
+import {processAutomationEventOutbox} from "./automation/event-outbox-worker";
 import { startEmailKnowledgeIndexerLoop } from "./knowledge/email-knowledge-indexer-worker";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -111,6 +112,7 @@ function main() {
         10_000,
       )
     : undefined;
+  const automationEventTimer = setInterval(() => safeTick("worker.automations","Durable email automation events",processAutomationEventOutbox),10_000);
   const schedulerTimer = setInterval(
     () => safeTick("worker.scheduler", "Scheduled job processing", processScheduledJobs),
     15_000,
@@ -132,7 +134,7 @@ function main() {
     stopEmailSyncQueue();
     stopEmailKnowledgeIndexer();
     clearInterval(actionTimer); if (whatsappTimer) clearInterval(whatsappTimer); clearInterval(whatsappInboundTimer);
-    if (whatsappVerifyTimer) clearInterval(whatsappVerifyTimer); clearInterval(schedulerTimer);
+    if (whatsappVerifyTimer) clearInterval(whatsappVerifyTimer); clearInterval(schedulerTimer); clearInterval(automationEventTimer);
     process.exit(0);
   };
 

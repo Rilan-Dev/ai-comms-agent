@@ -58,8 +58,7 @@ export async function evaluateAutomationEvent(event:Event){
     if(!runId) continue;
     try{
       const result=await dispatchAgentExecution({executionId:runId,organizationId:rule.organizationId,agentId:rule.agentId,source:"automation",intent:"automation.execute",params:{actions:rule.actions,event:event.payload},requestedAt:new Date().toISOString()});
-      if(result.status==="configuration_required") await failAutomationRun(runId,result.reason); else await completeAutomationRun(runId,{status:result.status,executionId:result.executionId,output:result.output??null,provider:result.provider??null,model:result.model??null});
-      started++;
+      if(result.status==="configuration_required"){await failAutomationRun(runId,result.reason);failed++;} else {await completeAutomationRun(runId,{status:result.status,executionId:result.executionId,output:result.output??null,provider:result.provider??null,model:result.model??null,actions:result.actions??[]});started++;}
     }catch(error){ await failAutomationRun(runId,error instanceof Error?error.message:"Automation execution failed"); failed++; }
   }
   return {matched,started,failed};
