@@ -22,9 +22,9 @@ afterAll(async()=>{if(client){await closePostgresPool();await client.end();}});
 it.skipIf(!safe)("marks stale legacy rows uncertain, never replays, and fences late completion",async()=>{
  const rule=randomUUID(),org=randomUUID();
  await client.query("INSERT INTO aca.automation_rules(id,organization_id,status) VALUES($1,$2,'active')",[rule,org]);
- const prior=await client.query<{id:string}>("INSERT INTO aca.automation_runs(automation_rule_id,organization_id,trigger_event_key,status,result,created_at) VALUES ($1,$2,'email.received:stable','running','{}',now()-interval '35 minutes') RETURNING id",[rule,org]);
+ const prior=await client.query("INSERT INTO aca.automation_runs(automation_rule_id,organization_id,trigger_event_key,status,result,created_at) VALUES ($1,$2,'email.received:stable','running','{}',now()-interval '35 minutes') RETURNING id",[rule,org]);
  const runId=prior.rows[0]!.id;
- const live=await client.query<{id:string}>("INSERT INTO aca.automation_runs(automation_rule_id,organization_id,trigger_event_key,status,result,created_at) VALUES ($1,$2,'email.received:current','running','{}',now()) RETURNING id",[rule,org]);
+ const live=await client.query("INSERT INTO aca.automation_runs(automation_rule_id,organization_id,trigger_event_key,status,result,created_at) VALUES ($1,$2,'email.received:current','running','{}',now()) RETURNING id",[rule,org]);
  expect(await getAutomationRunStatus(rule,"email.received:stable")).toBe("running");
  const recovered=await recoverStaleAutomationRuns();
  expect(recovered.map(x=>x.id)).toContain(runId);

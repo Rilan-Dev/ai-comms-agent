@@ -33,6 +33,6 @@ it('preserves the existing knowledge-backed task path for other authorized execu
 it('does not claim a completed automation when a product action is denied',async()=>{
  m.actions.mockResolvedValueOnce([{type:'send_whatsapp',status:'configuration_required',reason:'Recipient grant revoked'}]);
  const result=await dispatchAgentExecution(request);
- expect(result.status).toBe('configuration_required');expect(result.reason).toBe('Recipient grant revoked');
+ expect(result.status).toBe('configuration_required');if(result.status==='configuration_required')expect(result.reason).toBe('Recipient grant revoked');
  expect(result.actions?.[0]?.status).toBe('configuration_required');
 });
