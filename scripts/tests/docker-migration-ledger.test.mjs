@@ -17,3 +17,13 @@ test("web and worker images include the immutable migration chain for operator v
   const verifier = readFileSync(new URL("../../packages/db/operator-migration-check.mjs", import.meta.url), "utf8");
   assert.match(verifier, /supabase\/migrations/, "operator verifier needs the SQL migration chain");
 });
+
+test("manual deployment checks the ledger and SQL hashes before any migration write", () => {
+  const script = readFileSync(new URL("../manual-up.sh", import.meta.url), "utf8");
+  const plan = script.indexOf("web node packages/db/operator-migration-check.mjs plan");
+  const apply = script.indexOf("web node packages/db/migrate.js");
+  const start = script.indexOf('"${COMPOSE[@]}" up -d');
+  assert.ok(plan >= 0 && apply > plan && start > apply,
+    "read-only migration check must precede migration writes and application startup");
+  assert.match(script, /ERROR: Migration ledger check failed; no migrations or service restart were attempted/);
+});

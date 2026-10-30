@@ -60,10 +60,21 @@ if ! "${COMPOSE[@]}" run --rm --no-deps web node packages/db/manual-db-preflight
   exit 1
 fi
 
+# Reject missing/unknown/applied-but-modified migration files before any
+# database write. Use the same application container and checked-out SQL chain
+# as the migration runner; do not rely on the host's network or DATABASE_URL.
+echo "Checking the database migration ledger (read-only)..."
+if ! "${COMPOSE[@]}" run --rm --no-deps \
+  --volume "$PROJECT_ROOT/supabase:/workspace/supabase:ro" \
+  web node packages/db/operator-migration-check.mjs plan; then
+  echo "ERROR: Migration ledger check failed; no migrations or service restart were attempted." >&2
+  exit 1
+fi
+
 # Run migrations in a one-off application container so Compose service DNS
 # (for example, postgres:5432) resolves over the internal Docker network.
-# The Dockerfile intentionally does not copy supabase/, so mount migrations
-# read-only at the path auto-detected by packages/db/migrate.js.
+# Mount the exact checked-out SQL files, even though the image also includes
+# the migration chain for standalone read-only operator verification.
 echo "Applying database migrations inside Docker..."
 if "${COMPOSE[@]}" run --rm --no-deps \
   --volume "$PROJECT_ROOT/supabase:/workspace/supabase:ro" \

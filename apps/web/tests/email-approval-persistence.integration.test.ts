@@ -27,6 +27,8 @@ vi.mock('../../worker/src/email/registry',()=>({createEmailProviderRegistry:()=>
 vi.mock('@ai-comms-agent/db',async()=>({
  ...await vi.importActual('../../../packages/db/src/actions/current-authorization'),
  ...await vi.importActual('../../../packages/db/src/email/actions'),
+ ...await vi.importActual('../../../packages/db/src/client'),
+ ...await vi.importActual('../../../packages/db/src/email/repository'),
  ...await vi.importActual('../../../packages/db/src/identity/supabase'),
  recordAuditEvent:audit,
  parseCredentialsMasterKey:()=>new Uint8Array(32),
@@ -60,7 +62,7 @@ CREATE TABLE organizations(id uuid PRIMARY KEY); CREATE TABLE users(id uuid PRIM
 CREATE TABLE agents(id uuid PRIMARY KEY,organization_id uuid,status text NOT NULL DEFAULT 'active');
 CREATE TABLE agent_email_accounts(agent_id uuid,email_account_id uuid,role text);
 CREATE TABLE agent_policies(agent_id uuid,allowed_tools text[]);
-CREATE TABLE email_accounts(id uuid PRIMARY KEY,organization_id uuid,email_address text DEFAULT 'qa-sender@example.com',status text DEFAULT 'connected',deleted_at timestamptz,capabilities jsonb DEFAULT '{"drafts":true}');
+CREATE TABLE email_accounts(id uuid PRIMARY KEY,organization_id uuid,email_address text DEFAULT 'qa-sender@example.com',display_name text,status text DEFAULT 'connected',deleted_at timestamptz,connection_config jsonb NOT NULL DEFAULT '{}'::jsonb,capabilities jsonb DEFAULT '{"drafts":true}');
 CREATE TABLE organization_memberships(id uuid DEFAULT gen_random_uuid(),organization_id uuid,user_id uuid,role text,status text,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());
 CREATE TABLE email_threads(id uuid PRIMARY KEY,organization_id uuid,email_account_id uuid,provider_thread_id text);
 CREATE TABLE email_messages(id uuid PRIMARY KEY,organization_id uuid,email_account_id uuid,thread_id uuid,in_reply_to text,references_header text,is_draft boolean,
