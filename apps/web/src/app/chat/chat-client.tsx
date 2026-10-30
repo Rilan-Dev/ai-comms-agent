@@ -771,8 +771,8 @@ export function ChatClient({
     composeActionId ? "pending_approval" : composeDraftId ? "draft_saved" : "not_saved";
 
   return (
-    <main className="flex h-[calc(100dvh-64px)] min-h-0 min-w-0 flex-col overflow-hidden bg-background">
-      <header className="relative z-10 shrink-0 border-b bg-background/95 px-3 py-3 backdrop-blur sm:px-5">
+    <main className="theme-chat flex h-[calc(100dvh-64px)] min-h-0 min-w-0 flex-col overflow-hidden bg-background">
+      <header className="relative z-10 shrink-0 border-b bg-card/95 px-3 py-3 backdrop-blur sm:px-5">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground"><Bot size={18} /></span>
@@ -782,7 +782,7 @@ export function ChatClient({
             </div>
           </div>
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <button ref={historyTriggerRef} type="button" className="rounded-md border px-3 py-2 text-xs font-semibold hover:bg-secondary"
+            <button ref={historyTriggerRef} type="button" className="rounded-xl border bg-card px-3 py-2 text-xs font-semibold hover:bg-secondary"
               aria-label="Show conversations" aria-controls="chat-conversation-sidebar" aria-expanded={chatHistoryOpen}
               onClick={() => setChatHistoryOpen(true)}>Chats</button>
             <button type="button" onClick={() => setVoiceOpen(true)} disabled={busy || agentSwitchBusy || composeBusy || mailPermissionBusy || voiceOpen}
@@ -819,7 +819,7 @@ export function ChatClient({
             <div className="shrink-0 px-3 pt-3">
               <button type="button" onClick={() => void startNewChat()}
                 disabled={busy || newChatBusy || agentSwitchBusy || composeBusy || mailPermissionBusy || voiceOpen}
-                className="w-full rounded-lg border border-primary/25 bg-primary/5 px-3 py-2.5 text-left text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-50">
+                className="w-full rounded-xl border border-primary/25 bg-primary/10 px-3 py-2.5 text-left text-xs font-semibold text-primary hover:bg-primary/15 disabled:opacity-50">
                 {newChatBusy ? "Creating…" : "+ New chat"}
               </button>
             </div>
@@ -1016,7 +1016,7 @@ export function ChatClient({
             <div className="mb-2 flex flex-wrap gap-1.5" aria-label="Quick actions">
               {QUICK_ACTION_PROMPTS.map((prompt) =>
                 <button key={prompt} type="button" onClick={() => void sendChatMessage(prompt)}
-                  className="rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:border-primary/40 hover:bg-accent/5 hover:text-primary">
+                  className="chat-quick-action rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:border-primary/40 hover:bg-accent/5 hover:text-primary">
                   {prompt}
                 </button>)}
               <button type="button" onClick={openInlineEmailComposer}
@@ -1027,7 +1027,7 @@ export function ChatClient({
             </div>
           ) : null}
           {signInNeeded&&<p role="status" className="mb-2 text-sm"><a href="/login?next=%2Fchat" target="_blank" rel="noopener noreferrer" className="underline">Sign in to continue</a> in another tab, then return here with your message.</p>}
-          <div className="rounded-2xl border border-border bg-card shadow-sm focus-within:border-primary/30 focus-within:ring-2 focus-within:ring-primary/10">
+          <div className="chat-composer rounded-2xl border border-border bg-card shadow-sm focus-within:border-primary/30 focus-within:ring-2 focus-within:ring-primary/10">
             <textarea
               ref={composerRef}
               aria-label="Message"
@@ -1081,7 +1081,7 @@ function MessageBubble({ role, content, messageId, showNextActions, userRequest,
     return (
       <div className="flex justify-end">
         <div className="flex min-w-0 max-w-[80%] items-start gap-2.5">
-          <div className="min-w-0 break-words rounded-2xl rounded-br-sm bg-foreground px-4 py-2.5 text-sm text-background">
+          <div className="chat-user-message min-w-0 break-words rounded-2xl rounded-br-sm bg-foreground px-4 py-2.5 text-sm text-background">
             <p className="whitespace-pre-wrap">{content}</p>
           </div>
           <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground"><User size={15} /></span>
@@ -1095,8 +1095,8 @@ function MessageBubble({ role, content, messageId, showNextActions, userRequest,
   return (
     <div className="flex justify-start">
       <div className="flex min-w-0 max-w-[90%] items-start gap-2.5">
-        <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
-        <div className="min-w-0 flex-1 break-words text-sm leading-7">
+        <span className="chat-assistant-avatar mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
+        <div className="chat-assistant-reply min-w-0 flex-1 break-words text-sm leading-7">
           {businessReport ? <BusinessMailReport report={businessReport} onPrepare={onPrepare} disabled={disabled} /> :
             <MarkdownRenderer content={content} disabled={disabled} onPrepare={onPrepare} />}
           <AnswerActions content={content} messageId={messageId} />
@@ -1113,7 +1113,7 @@ function TypingIndicator() {
   return (
     <div className="flex justify-start">
       <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
+        <span className="chat-assistant-avatar mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
         <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-card border px-4 py-3">
           <span className="size-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "0ms" }} />
           <span className="size-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "150ms" }} />

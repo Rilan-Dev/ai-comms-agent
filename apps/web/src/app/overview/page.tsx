@@ -12,10 +12,10 @@ type Overview = {
 };
 
 const metricMeta = [
-  { key: "unread_mail", label: "Unread messages", icon: "mail", tone: "bg-sky-50 text-sky-700" },
-  { key: "action_required", label: "Needs attention", icon: "inbox", tone: "bg-amber-50 text-amber-700" },
-  { key: "pending_approvals", label: "Pending approvals", icon: "shield", tone: "bg-rose-50 text-rose-700" },
-  { key: "active_agents", label: "Active agents", icon: "bot", tone: "bg-emerald-50 text-emerald-700" },
+  { key: "unread_mail", label: "Unread messages", icon: "mail", tone: "workspace-stat-icon" },
+  { key: "action_required", label: "Needs attention", icon: "inbox", tone: "workspace-stat-icon" },
+  { key: "pending_approvals", label: "Pending approvals", icon: "shield", tone: "workspace-stat-icon" },
+  { key: "active_agents", label: "Active agents", icon: "bot", tone: "workspace-stat-icon" },
 ] as const;
 
 function MetricIcon({ name }: { name: string }) {
@@ -42,28 +42,77 @@ export default function HomePage() {
 
   const metric = (key: string) => data?.metrics[key] == null ? "Access restricted" : data.metrics[key];
 
-  return <main className="min-h-full bg-[radial-gradient(circle_at_90%_0%,oklch(0.88_0.105_152/.16),transparent_28%)]">
-    <div className="mx-auto max-w-[1500px] space-y-9 px-5 py-7 sm:px-7 sm:py-9 lg:px-10">
+  return <main className="min-h-full bg-background">
+    <div className="mx-auto max-w-[1500px] space-y-5 px-4 py-5 sm:px-7 sm:py-7 lg:px-9">
       {data?.catchUpAvailable&&data.organizationId&&<AutomaticCatchUp key={data.organizationId} organizationId={data.organizationId}/>}
-      <section className="flex flex-col justify-between gap-6 border-b border-border pb-8 lg:flex-row lg:items-end">
-        <div>
-          <div className="mb-4 inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[.14em] text-muted-foreground">
-            <span className={`size-1.5 rounded-full ${error ? "bg-amber-500" : "bg-emerald-600"}`} />
-            {error ? "Configuration required" : data ? "Live workspace" : "Loading workspace"}
-          </div>
-          <h1 className="font-display text-4xl font-medium leading-[1.08] tracking-tight sm:text-5xl lg:text-[56px]">Your communications,<br/><span className="text-muted-foreground">in good hands.</span></h1>
-          <p className="mt-5 max-w-[580px] text-sm leading-6 text-muted-foreground">One considered workspace for your agents, inbox, messaging, knowledge and realtime AI. Your organization data stays the source of truth.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/agents/new" className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-85"><span aria-hidden="true">＋</span> Create agent</Link>
-          <a href="/chat" className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium transition hover:bg-secondary"><span aria-hidden="true">✳</span> Ask the assistant</a>
-          <Link href="/chat?prompt=How%20many%20unread%20emails%20do%20I%20have%3F&run=1" className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium transition hover:bg-secondary">Unread count</Link>
-          <Link href="/chat?prompt=Summarize%20my%20unread%20emails&run=1" className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium transition hover:bg-secondary">Summarize unread mail</Link>
+      <section className="workspace-hero min-h-[245px] p-6 sm:p-8" aria-labelledby="overview-heading">
+        <svg className="botanical-leaves pointer-events-none absolute -bottom-7 -right-6 hidden h-[260px] w-[320px] sm:block" viewBox="0 0 320 280" aria-hidden="true" fill="none">
+          <path d="M162 289C165 203 215 121 281 8M181 228C123 170 98 119 86 37M193 212C250 178 273 131 301 101M209 154C200 111 196 68 209 31" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity=".52"/>
+          <path d="M283 14C212 27 194 77 220 115C258 100 285 71 283 14Z" fill="currentColor" opacity=".8"/>
+          <path d="M86 37C63 100 105 153 143 165C157 112 126 69 86 37Z" fill="currentColor" opacity=".58"/>
+          <path d="M304 99C239 104 216 147 228 181C269 174 300 140 304 99Z" fill="currentColor" opacity=".7"/>
+          <path d="M211 34C173 64 175 110 202 135C228 105 225 64 211 34Z" fill="currentColor" opacity=".65"/>
+          <path d="M278 154C226 149 202 188 210 225C252 222 271 191 278 154Z" fill="currentColor" opacity=".55"/>
+          <path d="M118 151C78 183 95 219 131 238C160 213 152 174 118 151Z" fill="currentColor" opacity=".46"/>
+        </svg>
+        <div className="relative z-10 max-w-[640px]">
+          <p className="hero-subtitle flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.16em]">
+            <span className="size-2 rounded-full bg-success" aria-hidden="true" />
+            {error ? "Configuration required" : data ? "Your communications workspace" : "Loading workspace"}
+          </p>
+          <h1 id="overview-heading" className="hero-title mt-5 max-w-[620px] text-3xl sm:text-[42px] lg:text-[47px]">Your AI communications<br/>team is on duty.</h1>
+          <p className="hero-subtitle mt-5 max-w-[525px] text-sm leading-6">Manage email, WhatsApp and scheduled workflows in one secure workspace — so you can focus on what matters.</p>
         </div>
       </section>
+      <nav className="flex flex-wrap gap-2" aria-label="Quick workspace actions">
+        <a href="/chat" className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-85">✳ Open AI chat ↗</a>
+        <a href="/mail/inbox" className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-card px-4 text-sm font-medium transition hover:bg-secondary">✉ Review inbox</a>
+        <a href="/scheduled" className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-card px-4 text-sm font-medium transition hover:bg-secondary">▦ Schedule tasks</a>
+        <a href="/agents/new" className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-card px-4 text-sm font-medium transition hover:bg-secondary">＋ Create agent</a>
+      </nav>
 
-      {error && <div role="alert" className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-800"><p className="font-semibold">Workspace data unavailable</p><p className="mt-1 leading-6">{error} Connect PostgreSQL and an authenticated organization context to load live workspace state.</p></div>}
+      {error && <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-800"><p className="font-semibold">Workspace data unavailable</p><p className="mt-1 leading-6">{error} Connect PostgreSQL and an authenticated organization context to load live workspace state.</p></div>}
 
+      <p className="text-xs leading-5 text-muted-foreground">Workspace metrics are organization-wide, permission-scoped counts. Opening this page does not mark messages as read.</p>
+
+      <section aria-label="Workspace metrics" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {metricMeta.map((item) => <article key={item.key} className="workspace-panel min-w-0 p-5 transition-colors hover:bg-secondary/20">
+          <div className="flex items-start justify-between gap-3"><p className="text-[13px] font-medium text-muted-foreground">{item.label}</p><span className="workspace-stat-icon grid size-9 shrink-0 place-items-center rounded-xl" data-tone={item.key === "action_required" ? "attention" : item.key === "pending_approvals" ? "approval" : "normal"}><MetricIcon name={item.icon}/></span></div>
+          <p className="mt-4 font-display text-4xl font-semibold tracking-tight tabular-nums">{data ? metric(item.key) : "—"}</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">{!data ? "Waiting for persisted data" : data.metrics[item.key] == null ? "Requires access" : "From your organization"}</p>
+        </article>)}
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(300px,.8fr)]">
+        <article className="workspace-panel p-5 sm:p-7">
+          <div className="flex items-start justify-between gap-4"><div><p className="font-display text-xl font-semibold">Workspace snapshot</p><p className="mt-1 text-xs text-muted-foreground">A live view of work in progress.</p></div><a href="/operations" className="shrink-0 text-xs font-semibold underline decoration-border underline-offset-4 hover:decoration-foreground">Operations ↗</a></div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            {[
+              { label: "Active scheduled tasks", key: "active_automations", href: "/scheduled" },
+              { label: "Active voice sessions", key: "active_voice_sessions", href: "/ai-voice" },
+              { label: "Pending approvals", key: "pending_approvals", href: "/mail/drafts" },
+            ].map((item) => <a key={item.key} href={item.href} className="rounded-xl bg-secondary/70 p-4 transition hover:bg-secondary"><p className="text-xs text-muted-foreground">{item.label}</p><p className="mt-3 font-display text-2xl font-medium">{data ? metric(item.key) : "—"}</p><p className="mt-2 text-[10px] text-muted-foreground">{data?.metrics[item.key] == null && data ? "Requires access" : "View details ↗"}</p></a>)}
+          </div>
+          <div className="mt-5 flex items-start gap-3 rounded-xl border border-border p-4"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground"><span aria-hidden="true">✳</span></span><div><p className="text-sm font-semibold">AI intelligence</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Ask about your connected mail and work across channels. Provider or knowledge configuration gaps are surfaced rather than simulated.</p><a href="/chat" className="mt-3 inline-flex text-xs font-semibold underline decoration-border underline-offset-4">Start a conversation ↗</a></div></div>
+        </article>
+
+        <article className="flex flex-col rounded-xl bg-foreground p-6 text-background sm:p-7">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.18em] text-background/60"><span className="size-1.5 rounded-full bg-emerald-400"/> Communications</div>
+          <h2 className="mt-7 font-display text-3xl font-medium leading-tight">Stay connected across every channel.</h2>
+          <p className="mt-4 text-sm leading-6 text-background/65">Review important mail, prepare drafts, and coordinate agent actions with approvals and audit trails.</p>
+          <div className="mt-auto grid gap-2 pt-8">
+            <a href="/mail/inbox" className="flex items-center justify-between rounded-xl bg-background px-4 py-3 text-sm font-semibold text-foreground transition hover:opacity-90">Open priority inbox <span aria-hidden="true">↗</span></a>
+            <a href="/ai-voice" className="flex items-center justify-between rounded-xl border border-background/20 px-4 py-3 text-sm font-medium text-background transition hover:bg-background/10">Explore AI & voice <span aria-hidden="true">↗</span></a>
+          </div>
+        </article>
+      </section>
+
+      <section className="workspace-panel p-5 sm:p-7">
+        <div className="flex items-start justify-between gap-4"><div><h2 className="font-display text-xl font-semibold">Recent activity</h2><p className="mt-1 text-xs text-muted-foreground">Organization-scoped audit activity.</p></div>{data?.activity !== null && <a href="/activity" className="text-xs font-semibold underline decoration-border underline-offset-4">View all ↗</a>}</div>
+        <div className="mt-5 divide-y divide-border">
+          {!data ? <div className="py-8 text-sm text-muted-foreground">Loading persisted activity…</div> : data.activity === null ? <div className="py-8 text-sm text-muted-foreground">Access restricted — audit.read permission is required for activity.</div> : data.activity.length === 0 ? <div className="py-8 text-sm text-muted-foreground">No activity has been recorded yet.</div> : data.activity.map((item) => <div key={item.id} className="flex flex-col gap-2 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><span className="mt-1.5 size-1.5 rounded-full bg-success"/><div><p className="text-sm font-medium">{item.title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p></div></div><time className="pl-4 text-[11px] text-muted-foreground sm:shrink-0">{new Date(item.createdAt).toLocaleString()}</time></div>)}
+        </div>
+      </section>
       <section aria-labelledby="start-here-title" className="rounded-xl border border-border bg-card p-5 sm:p-7">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -71,7 +120,7 @@ export default function HomePage() {
             <h2 id="start-here-title" className="mt-2 font-display text-2xl font-medium">Start with what matters</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Check new conversations, ask your AI assistant for help, or set up a repeatable task. You stay in control of sending and approvals.</p>
           </div>
-          <span className="w-fit rounded-md bg-secondary px-3 py-2 text-xs font-medium text-muted-foreground">Opening Overview does not mark messages as read or reviewed.</span>
+          <span className="w-fit rounded-xl bg-secondary px-3 py-2 text-xs font-medium text-muted-foreground">Opening Overview does not mark messages as read or reviewed.</span>
         </div>
         <div className="mt-6 grid gap-3 md:grid-cols-3">
           <article className="rounded-lg border border-border p-4">
@@ -113,46 +162,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <p className="text-xs leading-5 text-muted-foreground">Workspace metrics below are organization-wide counts, not your personal catch-up coverage. Opening messages still requires the relevant permissions.</p>
-
-      <section aria-label="Workspace metrics" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {metricMeta.map((item) => <article key={item.key} className="rounded-md border border-border bg-card p-5 transition-colors hover:bg-card/80">
-          <div className="flex items-start justify-between gap-3"><p className="text-[13px] font-medium text-muted-foreground">{item.label}</p><span className={`grid size-9 place-items-center rounded-md ${item.tone}`}><MetricIcon name={item.icon}/></span></div>
-          <p className="mt-6 font-display text-4xl font-medium tracking-tight tabular-nums">{data ? metric(item.key) : "—"}</p>
-          <p className="mt-2 text-[11px] text-muted-foreground">{!data ? "Waiting for persisted data" : data.metrics[item.key] == null ? "Requires access" : "From your organization"}</p>
-        </article>)}
-      </section>
-
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(300px,.8fr)]">
-        <article className="rounded-md border border-border bg-card p-5 sm:p-7">
-          <div className="flex items-start justify-between gap-4"><div><p className="font-display text-xl font-medium">Workspace snapshot</p><p className="mt-1 text-xs text-muted-foreground">A live view of work in progress.</p></div><a href="/operations" className="shrink-0 text-xs font-semibold underline decoration-border underline-offset-4 hover:decoration-foreground">Operations ↗</a></div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            {[
-              { label: "Active scheduled tasks", key: "active_automations", href: "/scheduled" },
-              { label: "Active voice sessions", key: "active_voice_sessions", href: "/ai-voice" },
-              { label: "Pending approvals", key: "pending_approvals", href: "/mail/drafts" },
-            ].map((item) => <a key={item.key} href={item.href} className="rounded-md bg-secondary/70 p-4 transition hover:bg-secondary"><p className="text-xs text-muted-foreground">{item.label}</p><p className="mt-3 font-display text-2xl font-medium">{data ? metric(item.key) : "—"}</p><p className="mt-2 text-[10px] text-muted-foreground">{data?.metrics[item.key] == null && data ? "Requires access" : "View details ↗"}</p></a>)}
-          </div>
-          <div className="mt-5 flex items-start gap-3 rounded-md border border-border p-4"><span className="grid size-9 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground"><span aria-hidden="true">✳</span></span><div><p className="text-sm font-semibold">AI intelligence</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Ask about your connected mail and work across channels. Provider or knowledge configuration gaps are surfaced rather than simulated.</p><a href="/chat" className="mt-3 inline-flex text-xs font-semibold underline decoration-border underline-offset-4">Start a conversation ↗</a></div></div>
-        </article>
-
-        <article className="flex flex-col rounded-md bg-foreground p-6 text-background sm:p-7">
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.18em] text-background/60"><span className="size-1.5 rounded-full bg-emerald-400"/> Workspace</div>
-          <h2 className="mt-7 font-display text-3xl font-medium leading-tight">A calmer way to manage every conversation.</h2>
-          <p className="mt-4 text-sm leading-6 text-background/65">Review important mail, prepare drafts, and coordinate agent actions with approvals and audit trails.</p>
-          <div className="mt-auto grid gap-2 pt-8">
-            <a href="/mail/inbox" className="flex items-center justify-between rounded-md bg-background px-4 py-3 text-sm font-semibold text-foreground transition hover:opacity-90">Open priority inbox <span aria-hidden="true">↗</span></a>
-            <a href="/ai-voice" className="flex items-center justify-between rounded-md border border-background/20 px-4 py-3 text-sm font-medium text-background transition hover:bg-background/10">Explore AI & voice <span aria-hidden="true">↗</span></a>
-          </div>
-        </article>
-      </section>
-
-      <section className="rounded-md border border-border bg-card p-5 sm:p-7">
-        <div className="flex items-start justify-between gap-4"><div><h2 className="font-display text-xl font-medium">Recent activity</h2><p className="mt-1 text-xs text-muted-foreground">Organization-scoped audit activity.</p></div>{data?.activity !== null && <a href="/activity" className="text-xs font-semibold underline decoration-border underline-offset-4">View all ↗</a>}</div>
-        <div className="mt-5 divide-y divide-border">
-          {!data ? <div className="py-8 text-sm text-muted-foreground">Loading persisted activity…</div> : data.activity === null ? <div className="py-8 text-sm text-muted-foreground">Access restricted — audit.read permission is required for activity.</div> : data.activity.length === 0 ? <div className="py-8 text-sm text-muted-foreground">No activity has been recorded yet.</div> : data.activity.map((item) => <div key={item.id} className="flex flex-col gap-2 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><span className="mt-1.5 size-1.5 rounded-full bg-success"/><div><p className="text-sm font-medium">{item.title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p></div></div><time className="pl-4 text-[11px] text-muted-foreground sm:shrink-0">{new Date(item.createdAt).toLocaleString()}</time></div>)}
-        </div>
-      </section>
       <footer className="flex flex-col justify-between gap-2 border-t border-border pt-4 text-[10px] text-muted-foreground sm:flex-row"><span>Comms Agent · AI-native communications workspace</span><span>Actions remain permissioned and auditable.</span></footer>
     </div>
   </main>;
