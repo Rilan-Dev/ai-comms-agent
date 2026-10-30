@@ -12,6 +12,7 @@ type Schedule = {
   nextFireAt: string | null; lastFireAt: string | null; lastError: string | null; catchUpMinutes?: number;
 };
 type Rule = { id: string; agentId: string; name: string; trigger: Record<string, unknown>; actions: unknown[]; status: string };
+type RuleRun = {id:string;triggered_at:string;status:string;error:string|null;result:Record<string,unknown>|null};
 type RunRow = { id: string; fire_at: string; started_at: string; finished_at: string | null; status: string; error: string | null; result: Record<string, unknown> | null };
 type RecurrenceMode = "one_time" | "minutes" | "hours" | "daily" | "weekly" | "monthly" | "cron";
 
@@ -122,7 +123,9 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
     oneFireAt: "",
     timezone: browserTimezone,
   });
-  const [ruleForm, setRuleForm] = useState({ agentId: agents[0]?.id ?? "", name: "", event: "email.received", action: "create_draft" });
+  const [ruleForm, setRuleForm] = useState({ agentId: agents[0]?.id ?? "", name: "", event: "email.received", action: "create_draft", whatsappTo: "" });
+  const [ruleRunsFor,setRuleRunsFor]=useState<string|null>(null);
+  const [ruleRuns,setRuleRuns]=useState<RuleRun[]>([]);
 
   async function reload() {
     const [s, a] = await Promise.all([
@@ -213,7 +216,7 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
     try {
       const r = await fetch(`/api/organizations/${organizationId}/automations`, {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ agentId: ruleForm.agentId, name: ruleForm.name, trigger: { event: ruleForm.event }, actions: [{ type: ruleForm.action }] }),
+        body: JSON.stringify({ agentId: ruleForm.agentId, name: ruleForm.name, trigger: { event: ruleForm.event }, actions: [{ type: ruleForm.action, ...(ruleForm.action==="send_whatsapp"?{to:ruleForm.whatsappTo.trim()}:{}) }] }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.message ?? "Could not create automation.");
@@ -225,6 +228,24 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
     } finally { setBusy(false); }
   }
 
+  async function loadRuleRuns(id:string) {
+    if(ruleRunsFor===id){setRuleRunsFor(null);setRuleRuns([]);return;}
+    setBusy(true);setNotice("");
+    try{const r=await fetch(`/api/organizations/${organizationId}/automations?ruleId=${encodeURIComponent(id)}`,{cache:"no-store"});
+      const d=await r.json();if(!r.ok)throw new Error(d.message??"Could not load event runs.");
+      setRuleRuns(d.runs??[]);setRuleRunsFor(id);
+    }catch(e){setNotice(e instanceof Error?e.message:"Could not load event runs.");}finally{setBusy(false);}
+  }
+  async function setRuleStatus(row:Rule,nextStatus:"active"|"paused"){
+    setBusy(true);setNotice("");
+    try{const r=await fetch(`/api/organizations/${organizationId}/automations`,{
+      method:"PATCH",headers:{"content-type":"application/json"},
+      body:JSON.stringify({id:row.id,name:row.name,agentId:row.agentId,trigger:row.trigger,actions:row.actions,status:nextStatus}),
+    });
+    const d=await r.json();if(!r.ok)throw new Error(d.message??"Could not update rule.");
+    await reload();setNotice("Automation "+nextStatus+".");
+    }catch(e){setNotice(e instanceof Error?e.message:"Could not update rule.");}finally{setBusy(false);}
+  }
   async function archiveRule(id: string) {
     setBusy(true);
     try {
@@ -341,18 +362,31 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
     </details>
 
     <section className="grid gap-3">
-      <h2 className="text-sm font-semibold uppercase tracking-[.12em] text-muted-foreground">Event automations</h2>
-      {activeRules.map(r => <article key={r.id} className="rounded-md border border-border bg-card p-5">
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold">{r.name}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{String(r.trigger.event ?? "event")} → {String((r.actions[0] as { type?: string } | undefined)?.type ?? "action")}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold uppercase tracking-[.12em] text-muted-foreground">Event automations ({activeRules.length})</h2>
+        <span className="text-xs text-muted-foreground">Events are matched per organization; every run has its own history and status.</span>
+      </div>
+      {activeRules.map(r=><article key={r.id} className="rounded-xl border border-border bg-card p-5">
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="min-w-0 flex-1"><p className="font-semibold">{r.name}</p>
+           <p className="mt-1 text-xs text-muted-foreground">{String(r.trigger.event??r.trigger.type??"event")} → {String((r.actions[0] as {type?:string}|undefined)?.type??"action")}</p>
           </div>
-          <span className="rounded-full border px-2.5 py-1 text-[11px] font-semibold">{r.status}</span>
-          <button disabled={busy} onClick={() => void archiveRule(r.id)} className="rounded-md border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50">Archive</button>
+          <span className="rounded-full border px-2.5 py-1 text-xs font-semibold">{r.status}</span>
+          <button disabled={busy} onClick={()=>void setRuleStatus(r,r.status==="paused"?"active":"paused")} className="rounded-lg border px-3 py-2 text-xs font-medium disabled:opacity-50">{r.status==="paused"?"Resume":"Pause"}</button>
+          <button disabled={busy} onClick={()=>void loadRuleRuns(r.id)} className="rounded-lg border px-3 py-2 text-xs font-medium disabled:opacity-50">{ruleRunsFor===r.id?"Hide runs":"Run history"}</button>
+          <button disabled={busy} onClick={()=>void archiveRule(r.id)} className="rounded-lg border px-3 py-2 text-xs font-medium disabled:opacity-50">Archive</button>
         </div>
+        {ruleRunsFor===r.id&&<div className="mt-4 space-y-2 border-t pt-3" aria-live="polite">
+          <p className="text-xs font-semibold text-muted-foreground">Latest 100 event executions</p>
+          {ruleRuns.length===0?<p className="text-xs text-muted-foreground">No events have triggered this rule yet.</p>:ruleRuns.map(run=><div key={run.id} className="rounded-xl border border-border bg-background p-3 text-xs">
+            <div className="flex flex-wrap gap-2"><span className="font-semibold">{run.status}</span><span className="text-muted-foreground">{new Date(run.triggered_at).toLocaleString()}</span></div>
+            {run.error&&<p className="mt-2 whitespace-pre-wrap text-destructive">{run.error}</p>}
+            {typeof run.result?.output==="string"&&<p className="mt-2 whitespace-pre-wrap">{run.result.output}</p>}
+            {Array.isArray(run.result?.actions)&&<p className="mt-2 text-muted-foreground">Actions: {(run.result.actions as Array<{type:string;status:string;actionId?:string}>).map(a=>a.type+" — "+a.status+(a.actionId?" (saved)":"")).join(" · ")}</p>}
+          </div>)}
+        </div>}
       </article>)}
-      {activeRules.length === 0 && <div className="rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">No automation rules yet.</div>}
+      {activeRules.length===0&&<p className="rounded-xl border border-dashed p-8 text-sm text-muted-foreground">No event automation rules yet. Create one below to start matching new events.</p>}
     </section>
 
     <details open={activeRules.length===0} className="rounded-md border border-border bg-card p-5">
@@ -363,18 +397,20 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
         <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Automation agent" value={ruleForm.agentId} onChange={e => setRuleForm({ ...ruleForm, agentId: e.target.value })}>
           {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
-        <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Trigger event" value={ruleForm.event} onChange={e => setRuleForm({ ...ruleForm, event: e.target.value })}>
+        <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Trigger event" value={ruleForm.event} onChange={e => setRuleForm({ ...ruleForm, event: e.target.value, action: e.target.value==="whatsapp.received"&&ruleForm.action==="create_draft"?"generate_summary":ruleForm.action })}>
           <option value="email.received">Email received</option>
           <option value="email.action_required">Email action required</option>
           <option value="whatsapp.received">WhatsApp received</option>
         </select>
         <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Automation action" value={ruleForm.action} onChange={e => setRuleForm({ ...ruleForm, action: e.target.value })}>
-          <option value="create_draft">Create draft</option>
+          {ruleForm.event!=="whatsapp.received"&&<option value="create_draft">Create draft (reply to sender, no send)</option>}
           <option value="send_whatsapp">Send WhatsApp</option>
           <option value="generate_summary">Generate summary</option>
         </select>
       </div>
-      <button disabled={busy || !ruleForm.agentId || !ruleForm.name} onClick={() => void createRule()} className="mt-4 h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-85 disabled:opacity-50">Create rule</button>
+      {ruleForm.action==="send_whatsapp"&&<label className="mt-3 block text-xs font-semibold text-muted-foreground">WhatsApp recipient (E.164; sends need review)<input aria-label="WhatsApp automation recipient" type="tel" placeholder="+919876543210" className="mt-1 h-10 w-full max-w-xs rounded-lg border bg-background px-3 text-sm" value={ruleForm.whatsappTo} onChange={e=>setRuleForm({...ruleForm,whatsappTo:e.target.value})}/></label>}
+      <p className="mt-3 text-xs text-muted-foreground">Create draft saves AI-generated text to the email account that received the event, addressed to the sender. Generate summary records the AI result in run history. WhatsApp actions create approval requests, not automatic outbound sends.</p>
+      <button disabled={busy || !ruleForm.agentId || !ruleForm.name || (ruleForm.action==="send_whatsapp"&&!/^\+[1-9]\d{7,14}$/.test(ruleForm.whatsappTo.trim()))} onClick={() => void createRule()} className="mt-4 h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-85 disabled:opacity-50">Create rule</button>
     </details>
   </main>;
 }
