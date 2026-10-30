@@ -96,22 +96,40 @@ export default function HomePage() {
           <div className="mt-5 flex items-start gap-3 rounded-xl border border-border p-4"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground"><span aria-hidden="true">✳</span></span><div><p className="text-sm font-semibold">AI intelligence</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Ask about your connected mail and work across channels. Provider or knowledge configuration gaps are surfaced rather than simulated.</p><a href="/chat" className="mt-3 inline-flex text-xs font-semibold underline decoration-border underline-offset-4">Start a conversation ↗</a></div></div>
         </article>
 
-        <article className="flex flex-col rounded-xl bg-foreground p-6 text-background sm:p-7">
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.18em] text-background/60"><span className="size-1.5 rounded-full bg-emerald-400"/> Communications</div>
-          <h2 className="mt-7 font-display text-3xl font-medium leading-tight">Stay connected across every channel.</h2>
-          <p className="mt-4 text-sm leading-6 text-background/65">Review important mail, prepare drafts, and coordinate agent actions with approvals and audit trails.</p>
-          <div className="mt-auto grid gap-2 pt-8">
-            <a href="/mail/inbox" className="flex items-center justify-between rounded-xl bg-background px-4 py-3 text-sm font-semibold text-foreground transition hover:opacity-90">Open priority inbox <span aria-hidden="true">↗</span></a>
-            <a href="/ai-voice" className="flex items-center justify-between rounded-xl border border-background/20 px-4 py-3 text-sm font-medium text-background transition hover:bg-background/10">Explore AI & voice <span aria-hidden="true">↗</span></a>
+        <article className="workspace-panel p-5 sm:p-7">
+          <div className="flex items-center justify-between gap-3"><h2 className="font-display text-xl font-semibold">System status</h2><a href="/operations" className="text-xs font-semibold text-primary hover:underline">View live status ↗</a></div>
+          <p className="mt-2 text-xs text-muted-foreground">Use Operations to verify real provider and runtime health.</p>
+          <div className="mt-5 divide-y divide-border">
+            {[
+              { name: "Email and inbox", href: "/mail/inbox", icon: "✉" },
+              { name: "WhatsApp messaging", href: "/whatsapp", icon: "◉" },
+              { name: "AI agents", href: "/agents", icon: "✳" },
+              { name: "Scheduled tasks", href: "/scheduled", icon: "▦" },
+              { name: "Knowledge base", href: "/knowledge", icon: "▤" },
+            ].map((item) => <a key={item.href} href={item.href} className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm transition hover:text-primary"><span className="flex items-center gap-3"><span aria-hidden="true" className="grid size-7 place-items-center rounded-lg bg-secondary text-primary">{item.icon}</span>{item.name}</span><span className="text-xs text-muted-foreground">View ↗</span></a>)}
           </div>
         </article>
       </section>
 
-      <section className="workspace-panel p-5 sm:p-7">
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(300px,.8fr)]" aria-label="Activity and quick actions">
+      <article className="workspace-panel p-5 sm:p-7">
         <div className="flex items-start justify-between gap-4"><div><h2 className="font-display text-xl font-semibold">Recent activity</h2><p className="mt-1 text-xs text-muted-foreground">Organization-scoped audit activity.</p></div>{data?.activity !== null && <a href="/activity" className="text-xs font-semibold underline decoration-border underline-offset-4">View all ↗</a>}</div>
         <div className="mt-5 divide-y divide-border">
           {!data ? <div className="py-8 text-sm text-muted-foreground">Loading persisted activity…</div> : data.activity === null ? <div className="py-8 text-sm text-muted-foreground">Access restricted — audit.read permission is required for activity.</div> : data.activity.length === 0 ? <div className="py-8 text-sm text-muted-foreground">No activity has been recorded yet.</div> : data.activity.map((item) => <div key={item.id} className="flex flex-col gap-2 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><span className="mt-1.5 size-1.5 rounded-full bg-success"/><div><p className="text-sm font-medium">{item.title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p></div></div><time className="pl-4 text-[11px] text-muted-foreground sm:shrink-0">{new Date(item.createdAt).toLocaleString()}</time></div>)}
         </div>
+      </article>
+        <aside className="workspace-panel p-5 sm:p-7">
+          <h2 className="font-display text-xl font-semibold">Quick actions</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Go straight to your next task.</p>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            {[
+              { href: "/chat", icon: "✳", title: "Ask the assistant" },
+              { href: "/whatsapp", icon: "◉", title: "WhatsApp" },
+              { href: "/mail/drafts", icon: "✉", title: "Review drafts" },
+              { href: "/scheduled", icon: "▦", title: "Scheduled tasks" },
+            ].map(item => <a key={item.href} href={item.href} className="flex min-h-28 flex-col justify-between rounded-xl border bg-secondary/40 p-4 text-xs font-semibold transition hover:border-primary/50 hover:bg-accent/40"><span className="text-xl text-primary" aria-hidden="true">{item.icon}</span>{item.title}</a>)}
+          </div>
+        </aside>
       </section>
       <section aria-labelledby="start-here-title" className="rounded-xl border border-border bg-card p-5 sm:p-7">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
