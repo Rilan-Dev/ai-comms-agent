@@ -3,6 +3,7 @@ import { ToolRegistry, nextCronFire,turnAllowsTool } from "@ai-comms-agent/share
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
 import { executeRegisteredTool } from "./tool-executor";
 import type { ToolAuthorizationDecision, ToolAuditWriter } from "./tool-executor";
+import {parseDigestFallback} from "./deterministic-scheduled-digest";
 
 /**
  * Scheduled AI agent tools.
@@ -165,6 +166,7 @@ export function buildRecurrencePlan(input: {
 type ScheduleRow = {
   id: string; agentId: string; name: string; cron: string | null; oneFireAt: string | null;
   task: string | null; status: string; timezone: string; nextFireAt: string | null;
+  fallback: unknown | null;
   lastFireAt: string | null; lastError: string | null;
 };
 
@@ -177,6 +179,7 @@ function describeSchedule(job: {
   return {
     id: job.id, agentId: job.agentId, name: job.name, cron: job.cron, oneFireAt: job.oneFireAt,
     task, status: job.status, timezone: job.timezone, nextFireAt: job.nextFireAt,
+    fallback: job.params?.fallback ?? null,
     lastFireAt: job.lastFireAt, lastError: job.lastError,
   };
 }
@@ -226,19 +229,37 @@ function createSchedulesListTool(): Tool<Record<string, never>, { schedules: Sch
   };
 }
 
+// A schedule owner must explicitly select the fallback and WhatsApp recipient.
+// "none" removes the opt-in, and no existing send/account permissions are granted.
+const fallbackSchema = {
+  type:"object",properties:{
+    mode:{type:"string",enum:["none","deterministic_whatsapp_digest"]},
+    lookbackHours:{type:"integer",minimum:1,maximum:720},
+    recipientPhone:{type:"string",minLength:9,maxLength:16},
+  },required:["mode"],additionalProperties:false,
+} as const;
+export function validateScheduleFallback(value:unknown):ReturnType<typeof parseDigestFallback>{
+  if(value&&typeof value==="object"&&!Array.isArray(value)&&
+    (value as Record<string,unknown>).mode==="none"&&
+    Object.keys(value).length===1)return {valid:true,value:null};
+  return parseDigestFallback(value);
+}
+const DIGEST_ALLOWED_TOOLS=["email.accounts.list","email.search","whatsapp.send"];
+
 type CreateInput = {
   name: string;
   task: string;
   recurrence?: Recurrence;
   one_fire_at?: string | null;
   timezone?: string;
+  fallback?:unknown;
 };
 
 function createSchedulesCreateTool(now: () => Date = () => new Date()): Tool<CreateInput, { schedule: ScheduleRow; summary: string }> {
   return {
     name: "schedules.create",
     domain: "schedule",
-    description: "Create a scheduled AI agent task. At every fire time the agent executes the task instruction with its real tools (for example: summarize the last 24 hours of email and send a short WhatsApp note). Provide a natural-language task plus exactly one of: a recurrence preset (minutes, hours, daily, weekly, monthly or raw cron) or a one-time ISO date-time. Always pass the user's timezone when they name one (IANA name like Asia/Calcutta); it defaults to UTC. Recurrence times are local to that timezone.",
+    description: "Create a scheduled AI agent task. Optional explicit fallback: {mode:deterministic_whatsapp_digest,lookbackHours:24,recipientPhone:+E164} produces an authorized, factual email-to-WhatsApp digest when the configured AI provider is unavailable; mode:none disables it. When enabled the task may use only email.accounts.list, email.search and whatsapp.send. At every fire time the agent executes the task instruction with its real tools (for example: summarize the last 24 hours of email and send a short WhatsApp note). Provide a natural-language task plus exactly one of: a recurrence preset (minutes, hours, daily, weekly, monthly or raw cron) or a one-time ISO date-time. Always pass the user's timezone when they name one (IANA name like Asia/Calcutta); it defaults to UTC. Recurrence times are local to that timezone.",
     input_schema: {
       type: "object",
       properties: {
@@ -259,6 +280,7 @@ function createSchedulesCreateTool(now: () => Date = () => new Date()): Tool<Cre
         },
         one_fire_at: { type: "string", minLength: 16, maxLength: 40 },
         timezone: { type: "string", minLength: 1, maxLength: 64 },
+        fallback: fallbackSchema,
       },
       required: ["name", "task"],
       additionalProperties: false,
@@ -273,6 +295,8 @@ function createSchedulesCreateTool(now: () => Date = () => new Date()): Tool<Cre
       const timezone = validTimezone(input.timezone) ? input.timezone : "UTC";
       const plan = buildRecurrencePlan({ recurrence: input.recurrence, oneFireAt: input.one_fire_at, timezone, now: now() });
       if (plan.kind === "invalid") return fail("schedules.create", startedAt, "invalid_schedule", plan.reason);
+      const selectedFallback=validateScheduleFallback(input.fallback);
+      if(!selectedFallback.valid)return fail("schedules.create",startedAt,"invalid_fallback",selectedFallback.reason);
       const job = await createScheduledJob({
         organizationId: context.organization_id,
         agentId: context.agent_id,
@@ -281,7 +305,9 @@ function createSchedulesCreateTool(now: () => Date = () => new Date()): Tool<Cre
         cron: plan.kind === "cron" ? plan.cron : null,
         oneFireAt: plan.kind === "one_time" ? plan.oneFireAt : null,
         intent: SCHEDULED_AGENT_TASK_INTENT,
-        params: { task: input.task.trim().slice(0, 4000) },
+        params: { task: input.task.trim().slice(0, 4000),
+          ...(selectedFallback.value?{fallback:selectedFallback.value,allowedTools:DIGEST_ALLOWED_TOOLS}:{}),
+        },
         timezone,
         catchUpMinutes: 60,
       });
@@ -313,13 +339,14 @@ type UpdateInput = {
   one_fire_at?: string;
   timezone?: string;
   status?: "active" | "paused";
+  fallback?:unknown;
 };
 
 function createSchedulesUpdateTool(now: () => Date = () => new Date()): Tool<UpdateInput, { schedule: ScheduleRow; summary: string }> {
   return {
     name: "schedules.update",
     domain: "schedule",
-    description: "Edit an existing scheduled AI agent task: rename it, rewrite its task instruction, change its repeat rule or one-time fire time, change timezone, or pause/resume it (status active|paused). Omitted fields keep their current values. Pass the schedule's id — the exact UUID from schedules.list — or the task's exact unique name (for example 'Daily evening digest').",
+    description: "Edit an existing scheduled AI agent task. Optional fallback can enable an authorized deterministic email-to-WhatsApp recovery on provider failure; pass fallback:{mode:none} to disable and otherwise leave it unchanged. Rename it, rewrite its task instruction, change its repeat rule or one-time fire time, change timezone, or pause/resume it (status active|paused). Omitted fields keep their current values. Pass the schedule's id — the exact UUID from schedules.list — or the task's exact unique name (for example 'Daily evening digest').",
     input_schema: {
       type: "object",
       properties: {
@@ -341,6 +368,7 @@ function createSchedulesUpdateTool(now: () => Date = () => new Date()): Tool<Upd
         },
         one_fire_at: { type: "string", minLength: 16, maxLength: 40 },
         timezone: { type: "string", minLength: 1, maxLength: 64 },
+        fallback: fallbackSchema,
         status: { type: "string", enum: ["active", "paused"] },
       },
       required: ["id"],
@@ -371,6 +399,17 @@ function createSchedulesUpdateTool(now: () => Date = () => new Date()): Tool<Upd
       const currentTask = typeof existing.params?.task === "string" ? existing.params.task : existing.intent;
       const nextTask = input.task !== undefined ? input.task.trim().slice(0, 4000) : currentTask;
       const nextName = input.name !== undefined ? input.name.trim().slice(0, 120) : existing.name;
+      const selectedFallback=validateScheduleFallback(input.fallback===undefined?existing.params?.fallback:input.fallback);
+      if(!selectedFallback.valid)return fail("schedules.update",startedAt,"invalid_fallback",selectedFallback.reason);
+      // Ordinary edits must preserve explicit per-run tools and provider-failure
+      // opt-in. Only an explicit mode:"none" clears the fallback.
+      const updatedParams:Record<string,unknown>={...existing.params,task:nextTask};
+      if(input.fallback!==undefined){
+        if(selectedFallback.value){
+          updatedParams.fallback=selectedFallback.value;
+          updatedParams.allowedTools=DIGEST_ALLOWED_TOOLS;
+        }else delete updatedParams.fallback;
+      }
       // A schedule may be paused/resumed without touching its fire plan.
       const planTouched = input.recurrence !== undefined || input.one_fire_at !== undefined;
       const plan = planTouched
@@ -390,7 +429,7 @@ function createSchedulesUpdateTool(now: () => Date = () => new Date()): Tool<Upd
         cron,
         oneFireAt,
         intent: SCHEDULED_AGENT_TASK_INTENT,
-        params: { task: nextTask },
+        params: updatedParams,
         status: planTouched && status === "active" ? "active" : status,
         timezone,
         catchUpMinutes: existing.catchUpMinutes,
