@@ -356,7 +356,7 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
       <div className="mt-4"><ScheduleFields idPrefix="New schedule" form={form} onChange={setForm} agents={agents} browserTimezone={browserTimezone}/></div>
       <textarea ref={taskTextareaRef} aria-label="Task instruction" className="mt-4 min-h-[84px] w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder="Task instruction the AI executes at every fire time — e.g. Summarize my emails from the last 24 hours and send me a short note on WhatsApp at +919629534701." value={form.task} onChange={e => setForm({ ...form, task: e.target.value })} />
       <div className="mt-2"><MentionPicker organizationId={organizationId} value={form.task} onChange={task=>setForm({...form,task})} textareaRef={taskTextareaRef}/></div>
-      <a href="/recipients" className="mt-2 inline-block text-xs font-semibold text-primary underline">Manage primary / secondary WhatsApp recipients</a>
+      <a href="/whatsapp/contacts" className="mt-2 inline-block text-xs font-semibold text-primary underline">Manage primary / secondary WhatsApp recipients</a>
       <button disabled={busy} onClick={() => void createSchedule()} className="mt-4 h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">Create scheduled task</button>
       <p className="mt-3 text-xs text-muted-foreground">At every fire time the agent runs this instruction with its enabled tools: reading mail, summarizing, sending WhatsApp notes and more. Sends follow the agent&apos;s approval policy (autonomous sending when enabled).</p>
     </details>

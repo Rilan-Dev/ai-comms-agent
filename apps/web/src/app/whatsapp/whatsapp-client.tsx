@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, Send, ShieldCheck, Smartphone, Unplug, X, Pencil, FlaskConical } from "lucide-react";
+import { MessageCircle, Send, ShieldCheck, Smartphone, Unplug, X, Pencil, FlaskConical, Users } from "lucide-react";
 import { WhatsAppWebhookSetupGuide } from "./whatsapp-webhook-setup-guide";
 import {createScopedRequestLoader,readJsonWithTimeout} from "@/lib/streaming/scoped-request";
 import {operationStateLabel} from "@/lib/operation-state-label";
@@ -25,6 +25,7 @@ function WhatsAppWorkspace({ organizationId }: { organizationId: string }) {
   const [phoneOpen,setPhoneOpen]=useState(false);
   const [messages, setMessages] = useState<Array<{ id: string; direction: string; body?: string | null; status: string; provider_error?:string|null; phone_number?: string | null; display_name?: string | null; created_at: string }>>([]);
   const [recipient, setRecipient] = useState("");
+  const [savedRecipients,setSavedRecipients] = useState<Array<{id:string;display_name:string;phone_e164:string;recipient_role:string}>>([]);
   const readiness=useWhatsAppReadiness({organizationId,accountId:selectedAccountId,recipient,revision:JSON.stringify(accounts.map(account=>[account.id,account.status]))});
   const [messageBody, setMessageBody] = useState("");
   const [sendIdempotencyKey, setSendIdempotencyKey] = useState<string | null>(null);
@@ -77,6 +78,14 @@ function WhatsAppWorkspace({ organizationId }: { organizationId: string }) {
     });
   }
   useEffect(()=>{void load();return()=>accountLoader.current.invalidate();},[organizationId]);
+  useEffect(()=>{
+    let mounted=true;
+    void fetch("/api/organizations/"+encodeURIComponent(organizationId)+"/recipient-directory",{cache:"no-store"})
+      .then(async response=>{if(!response.ok)return null;return response.json();})
+      .then(data=>{if(mounted&&data?.recipients)setSavedRecipients(data.recipients);})
+      .catch(()=>{ /* The send form still accepts validated manual recipients. */ });
+    return()=>{mounted=false;};
+  },[organizationId]);
   useEffect(()=>{if(accounts.length===1&&!selectedAccountId)setSelectedAccountId(accounts[0]!.id);},[accounts,selectedAccountId]);
   useEffect(()=>{
     setMessages([]);setMessagesError('');
@@ -262,12 +271,23 @@ function WhatsAppWorkspace({ organizationId }: { organizationId: string }) {
       </section>
     </div>}
     <header className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Messaging</p><h1 className="mt-2 font-display text-3xl font-medium tracking-tight">WhatsApp Business</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Add Meta Cloud API business phones or test numbers. Saving a phone immediately checks its ID and access token with Meta; webhook subscriptions and test-recipient permissions are separate.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => { setEditingAccountId(null); setForm({ phoneNumberId: "", businessAccountId: "", phoneNumber: "", displayName: "Meta Test Phone", accessToken: "", verifyToken: "", appSecret: "" }); setShowWebhookSetupModal(true); }} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-md border px-4 text-sm font-semibold hover:bg-muted"><FlaskConical size={16} />Add Meta test phone</button><button type="button" onClick={() => { setEditingAccountId(null); setForm({ phoneNumberId: "", businessAccountId: "", phoneNumber: "", displayName: "", accessToken: "", verifyToken: "", appSecret: "" }); setShowWebhookSetupModal(true); }} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90"><Smartphone size={16} />{accounts.length ? "Connect another phone" : "Connect WhatsApp Business"}</button></div></header>
+    <nav className="mt-5 flex flex-wrap gap-2" aria-label="WhatsApp workspace navigation">
+      <a href="/whatsapp" aria-current="page" className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"><MessageCircle size={16}/> Phones &amp; messages</a>
+      <a href="/whatsapp/contacts" className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold hover:bg-secondary"><Users size={16}/> WhatsApp contacts</a>
+    </nav>
     {notice && <div role="status" className="mt-5 rounded-md border bg-background px-4 py-3 text-sm">{notice}</div>}
     <div className="mt-7 grid gap-6 lg:grid-cols-[1.05fr_.95fr]">
       {phoneOpen&&selectedAccountId?<>
       <button type="button" disabled={busy} onClick={()=>setPhoneOpen(false)} className="text-left text-sm underline lg:col-span-2">← All WhatsApp phones</button>
       <section className="rounded-md border bg-background p-5  sm:p-7 lg:col-span-2"><div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="flex items-center gap-2 font-display text-lg font-medium"><MessageCircle size={17} /> Conversation channel</h2><p className="mt-1 text-xs text-muted-foreground">Inbound webhook messages and worker-queued outbound text. No fake messages are inserted.</p></div><select aria-label="WhatsApp conversation phone" disabled={busy} value={selectedAccountId} onChange={e=>openPhone(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm">{accounts.map(a=><option key={a.id} value={a.id}>{a.display_name || a.phone_number || a.phone_number_id}</option>)}</select></div><div className="mt-5 max-h-[360px] space-y-2 overflow-y-auto rounded-md bg-muted/30 p-4">{accountsLoading ? <p role="status">Loading WhatsApp accounts…</p> : accountsError ? <p role="alert">{accountsError}</p> : !selectedAccountId ? <p>Select a connected phone to view messages.</p> : messagesScope!==selectionScope ? <p role="status">Loading messages…</p> : messagesError ? <p role="alert">{messagesError}</p> : visibleMessages.length ? visibleMessages.slice().reverse().map(m=><div key={m.id} className={"flex " + (m.direction === "outbound" ? "justify-end" : "justify-start")}><div className={"min-w-0 max-w-[80%] break-words rounded-md border px-4 py-3 text-sm " + (m.direction === "outbound" ? "bg-foreground text-background" : "bg-background")}><p className="whitespace-pre-wrap">{m.body || "[" + operationStateLabel(m.status,m.provider_error) + "]"}</p><p className="mt-1 text-[10px] opacity-60">{m.phone_number || "WhatsApp"} · {operationStateLabel(m.status,m.provider_error)}</p></div>{m.direction === 'inbound' && m.phone_number ? <button type="button" onClick={() => prefillReply(m.phone_number)} className="ml-1 shrink-0 self-center rounded-full border px-2.5 py-1 text-[10px] font-semibold" aria-label={'Reply to ' + m.phone_number}>Reply</button> : null}{m.direction==='outbound'&&m.status==='failed'&&m.phone_number&&m.body&&!m.body.startsWith('Template:')?<button type="button" disabled={busy} onClick={()=>{setRecipient(m.phone_number!);setMessageBody(m.body!);setPayloadType('text');setSendIdempotencyKey(null);setNotice('Check whether the previous message arrived before requesting a new send; a retry may duplicate it.');}} className="ml-1 shrink-0 self-center rounded-full border px-2.5 py-1 text-[10px] font-semibold">Prepare retry</button>:null}</div>) : <p className="py-12 text-center text-sm text-muted-foreground">No persisted messages yet.</p>}</div><div className="mt-4 grid gap-3 sm:grid-cols-[180px_1fr_auto]">
-        <input value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder="+919876543210" aria-label="Recipient phone in E.164 format" className="h-11 rounded-md border bg-background px-3 text-sm"/>
+        <div className="space-y-2">
+          <input value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder="+919876543210" aria-label="Recipient phone in E.164 format" className="h-11 w-full rounded-xl border bg-background px-3 text-sm"/>
+          <select value={savedRecipients.some(r=>r.phone_e164===recipient)?recipient:""} onChange={e=>{setRecipient(e.target.value);setSendIdempotencyKey(null);}} aria-label="Choose a saved WhatsApp recipient" className="h-10 w-full rounded-xl border bg-card px-2 text-xs">
+            <option value="">Choose saved contact</option>
+            {savedRecipients.map(r=><option key={r.id} value={r.phone_e164}>{r.recipient_role==="primary"?"Primary: ":r.recipient_role==="secondary"?"Secondary: ":""}{r.display_name} ({r.phone_e164})</option>)}
+          </select>
+          <a className="inline-block text-xs font-semibold text-primary underline" href="/whatsapp/contacts">Manage WhatsApp contacts</a>
+        </div>
         <div className="grid gap-2">
           <select value={payloadType} onChange={e=>setPayloadType(e.target.value as "text" | "template")} aria-label="WhatsApp message type" className="h-11 rounded-md border bg-background px-3 text-sm"><option value="text">Free-form text (24-hour window)</option><option value="template">Approved Meta template</option></select>
           {payloadType === "text" ? <input ref={messageInputRef} value={messageBody} onChange={e=>setMessageBody(e.target.value)} placeholder="Write a WhatsApp message…" aria-label="WhatsApp message" className="h-11 rounded-md border bg-background px-3 text-sm"/> : <><select value={templateName + "|" + templateLanguage} onChange={e=>{const [name = "",language = "en_US"]=e.target.value.split("|");setTemplateName(name);setTemplateLanguage(language);}} aria-label="Approved WhatsApp template" className="h-11 rounded-md border bg-background px-3 text-sm"><option value="|">Choose approved template…</option>{visibleTemplates.filter(t=>t.status==="approved").map(t=><option key={t.id} value={t.name + "|" + t.language}>{t.name} ({t.language})</option>)}</select><textarea value={templateParametersText} onChange={e=>setTemplateParametersText(e.target.value)} placeholder="One body parameter per line, in template order" aria-label="Template body parameters" className="min-h-20 rounded-md border bg-background px-3 py-2 text-sm"/></>}
