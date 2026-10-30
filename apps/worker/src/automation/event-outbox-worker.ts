@@ -53,9 +53,17 @@ export async function processAutomationEventOutbox(limit=10):Promise<{claimed:nu
   for(const event of events){
    try{
     const result=await evaluateAutomationEvent({organizationId:event.organization_id,type:event.event_type,payload:event.payload});
-    await query("UPDATE automation_event_outbox SET status='completed',completed_at=now(),last_error=NULL WHERE id=$1",[event.id]);
-    completed++;
-    if(result.failed)console.error("[automation] matched rule execution failed",{outboxId:event.id,failedRules:result.failed});
+    if(result.failed>0){
+     // A failed downstream rule is not a successfully completed automation.
+     // The run is already idempotently recorded, so retain terminal failure
+     // rather than retrying potentially irreversible provider actions.
+     await query("UPDATE automation_event_outbox SET status='failed',completed_at=now(),last_error=$2 WHERE id=$1",[event.id,"Matching automation execution failed for "+result.failed+" rule(s). Review run history before retrying."]);
+     console.error("[automation] event failed",{outboxId:event.id,failedRules:result.failed});
+     failed++;
+    }else{
+     await query("UPDATE automation_event_outbox SET status='completed',completed_at=now(),last_error=NULL WHERE id=$1",[event.id]);
+     completed++;
+    }
    }catch(e){
     const message=e instanceof Error?e.message:"Automation event evaluation failed";
     await query("UPDATE automation_event_outbox SET status=CASE WHEN attempts>=3 THEN 'failed' ELSE 'queued' END,next_attempt_at=now()+interval '2 minutes',last_error=$2 WHERE id=$1",[event.id,message.slice(0,500)]);
