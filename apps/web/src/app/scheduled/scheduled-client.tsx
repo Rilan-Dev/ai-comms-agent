@@ -318,7 +318,7 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
         {runsFor===row.id&&<div className="mt-3 space-y-2 border-t pt-3 text-xs">{runs.length===0?"No recorded executions.":runs.map(run=><div key={run.id} className="rounded-lg border p-2"><span className="font-semibold">{run.status} — {new Date(run.fire_at).toLocaleString()}</span>{run.error&&<p className="mt-1 text-destructive">{run.error}</p>}{typeof run.result?.output==="string"&&<p className="mt-1 whitespace-pre-wrap">{run.result.output}</p>}</div>)}</div>}
       </article>)}</div>}
     </section>
-    <details ref={createFormRef} defaultOpen={activeSchedules.length===0} className="rounded-md border border-border bg-card p-5">
+    <details ref={createFormRef} className="rounded-md border border-border bg-card p-5">
       <summary className="cursor-pointer text-sm font-semibold">New scheduled AI task</summary>
       <div className="mt-4"><ScheduleFields idPrefix="New schedule" form={form} onChange={setForm} agents={agents} browserTimezone={browserTimezone}/></div>
       <input ref={createNameRef} className="sr-only" aria-hidden="true" tabIndex={-1} />
