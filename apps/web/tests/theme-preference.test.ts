@@ -20,17 +20,18 @@ function cssTokens(selector: string): Record<string, string> {
   const start = style.indexOf(selector);
   if (start < 0) throw new Error("Missing theme selector: " + selector);
   const block = style.slice(start + selector.length, style.indexOf("}", start));
-  return Object.fromEntries([...block.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map(([, key, value]) => [key, value.trim()]));
+  return Object.fromEntries([...block.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map(([, key, value]) => [key, (value ?? "").trim()]));
 }
-function contrast(a: string, b: string): number {
+function contrast(a: string | undefined, b: string | undefined): number {
+  if (!a || !b) throw new Error("Missing palette color");
   const luminance = (value: string) => {
     const rgb = value.match(/[\da-f]{2}/gi)?.map(x => parseInt(x, 16) / 255) ?? [];
     if (rgb.length !== 3) throw new Error("Expected six-digit hex color: " + value);
-    const [r,g,b] = rgb.map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4);
+    const [r,g,b] = rgb.map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4) as [number, number, number];
     return .2126*r + .7152*g + .0722*b;
   };
-  const [hi,lo] = [luminance(a),luminance(b)].sort((x,y) => y-x);
-  return (hi+.05)/(lo+.05);
+  const first = luminance(a), second = luminance(b);
+  return (Math.max(first, second) + .05) / (Math.min(first, second) + .05);
 }
 describe("midnight dark theme palette", () => {
   const dark = cssTokens(':root, :root[data-theme="dark"] {');
