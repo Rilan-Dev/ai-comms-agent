@@ -10,7 +10,7 @@ test("provider sync outbox is durable, deduplicated and gated by rule creation",
   "s.last_success_at IS NOT NULL","s.sync_mode='incremental'",
   "a.created_at<=m.created_at",
   "ON CONFLICT(organization_id,event_type,source_key) DO NOTHING",
-  "FOR UPDATE SKIP LOCKED","attempts>=3",
+  "FOR UPDATE SKIP LOCKED","attempts>=3","Matching automation execution failed",
  ])assert.ok(s.includes(required),"Missing outbox guard: "+required);
 });
 test("WhatsApp outbox only processes inbound signed webhook rows, not outbound messages",()=>{
