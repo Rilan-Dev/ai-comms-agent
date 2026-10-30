@@ -6,11 +6,11 @@ WORKDIR /workspace
 COPY pnpm-lock.yaml package.json pnpm-workspace.yaml tsconfig.base.json eslint.config.mjs ./
 COPY apps ./apps
 COPY packages ./packages
+# Do not re-resolve dependencies during a release build; reject any lock drift.
+RUN pnpm install --frozen-lockfile
 # Operator migration plan/verify runs from the application image; package the
 # immutable SQL chain so its checksums can be checked without host bind mounts.
 COPY supabase/migrations ./supabase/migrations
-# Do not re-resolve dependencies during a release build; reject any lock drift.
-RUN pnpm install --frozen-lockfile
 ARG ACA_RELEASE_REVISION=unrecorded
 ENV ACA_RELEASE_REVISION=${ACA_RELEASE_REVISION}
 LABEL org.opencontainers.image.revision=${ACA_RELEASE_REVISION}

@@ -4,7 +4,7 @@ const m=vi.hoisted(()=>({append:vi.fn(),create:vi.fn(),replace:vi.fn(),model:vi.
 vi.mock('@/lib/identity/local-auth',()=>({assertSameOrigin:()=>{}}));
 vi.mock('@/lib/identity/repository',()=>({ensureDevSeed:async()=>{},getIdentityAdapter:()=>({}),getIdentityRepository:()=>({})}));
 vi.mock('@/lib/identity/authorization',()=>({authorize:async()=>({user:{id:'user',name:'QA',email:'qa@example.test'},membership:{role:'owner'},permissions:new Set(['organization.read','whatsapp.send'])}),authorizationErrorToResponse:()=>Response.json({error:'failed'},{status:500})}));
-vi.mock('@ai-comms-agent/db',()=>({PostgresAgentRepository:class{async get(){return {id:'agent',status:'active'};}},appendConversationMessage:m.append,getChatConversation:async()=>({id:'conversation'}),getOrCreateChatConversation:async()=>({id:'conversation'}),listChatMessages:async()=>[],query:async()=>({rows:[]})}));
+vi.mock('@ai-comms-agent/db',()=>({expandAuthorizedMentions:async ({text}:{text:string})=>text,PostgresAgentRepository:class{async get(){return {id:'agent',status:'active'};}},appendConversationMessage:m.append,getChatConversation:async()=>({id:'conversation'}),getOrCreateChatConversation:async()=>({id:'conversation'}),listChatMessages:async()=>[],query:async()=>({rows:[]})}));
 vi.mock('@ai-comms-agent/agent-core',()=>({agentRuntime:{completeWithTools:m.model}}));
 vi.mock('../../worker/src/agent/email-tool-runtime',()=>({createEmailToolRuntime:async()=>({registry:{listForAgent:()=>[]}})}));
 vi.mock('../../worker/src/agent/schedules-tool-runtime',()=>({createSchedulesToolRuntime:async()=>({registry:{listForAgent:()=>[]}})}));

@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@ai-comms-agent/db", () => ({
+  expandAuthorizedMentions:async ({text}:{text:string})=>text,
   query: mocks.query,
   PostgresAgentRepository: class {},
   PostgresIdentityRepository:class{getUserById=mocks.user;getMembership=mocks.membership;getPermissionsForRole=mocks.permissions;},

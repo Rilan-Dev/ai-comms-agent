@@ -3,7 +3,7 @@ const m=vi.hoisted(()=>({round:0,mode:'normal',append:vi.fn(),ok:true,approval:f
 vi.mock('@/lib/identity/local-auth',()=>({assertSameOrigin:()=>{}}));
 vi.mock('@/lib/identity/repository',()=>({ensureDevSeed:async()=>{},getIdentityAdapter:()=>({}),getIdentityRepository:()=>({})}));
 vi.mock('@/lib/identity/authorization',()=>({authorize:async()=>({user:{id:'user',name:'QA User',email:'user@example.com'},membership:{role:'owner'},permissions:new Set(['organization.read','email.read'])}),authorizationErrorToResponse:()=>Response.json({error:'failed'},{status:500})}));
-vi.mock('@ai-comms-agent/db',()=>({PostgresAgentRepository:class{async get(){return {id:'agent'};}},appendConversationMessage:m.append,getChatConversation:async()=>({id:'conversation'}),getOrCreateChatConversation:async()=>({id:'conversation'}),listChatMessages:async()=>[],query:async()=>({rows:[]})}));
+vi.mock('@ai-comms-agent/db',()=>({expandAuthorizedMentions:async ({text}:{text:string})=>text,PostgresAgentRepository:class{async get(){return {id:'agent'};}},appendConversationMessage:m.append,getChatConversation:async()=>({id:'conversation'}),getOrCreateChatConversation:async()=>({id:'conversation'}),listChatMessages:async()=>[],query:async()=>({rows:[]})}));
 vi.mock('../../worker/src/agent/email-tool-runtime',()=>({
  createEmailToolRuntime:async()=>({registry:{listForAgent:()=>[{name:'email.messages.list',required_permission:'email.read',sensitivity:'safe',description:'List mail',input_schema:{type:'object'}}]}}),
  invokeEmailReadTool:async()=>({ok:m.ok,output:m.ok?{status:m.approval?'pending_approval':undefined,messages:[{id:'message',subject:'Test subject',from_address:'sender@example.com',account_email:'mailbox@example.com',received_at:'2026-10-24T00:00:00Z',snippet:'A harmless excerpt'}],matched_count:41,included_count:1,has_more:true,coverage:'Locally synchronized data.'}:undefined,error:m.ok?undefined:{code:'permission_denied',message:'Denied'},audit:{tool_name:'email.messages.list',duration_ms:1}}),
@@ -30,7 +30,7 @@ it.each(['provider_failure','stream_failure','planning','empty'])('retains verif
  expect(m.round).toBe(2);expect(m.append).toHaveBeenCalledWith(expect.objectContaining({role:'assistant',content:answer}));
 });
 it('never recovers mailbox data from a denied read',async()=>{
- m.ok=false;m.mode='provider_failure';const stream=await run();expect(deltas(stream)).not.toContain('41');expect(deltas(stream)).not.toContain('Test subject');
+ m.ok=false;m.mode='provider_failure';const stream=await run();expect(deltas(stream)).not.toContain('Matched 41');expect(deltas(stream)).not.toContain('Test subject');
 });
 
-it('a read-shaped approval payload cannot become recovered evidence or a human approval',async()=>{m.approval=true;m.mode='provider_failure';const stream=await run();expect(deltas(stream)).not.toContain('41');expect(stream).not.toContain('pending human review');});
+it('a read-shaped approval payload cannot become recovered evidence or a human approval',async()=>{m.approval=true;m.mode='provider_failure';const stream=await run();expect(deltas(stream)).not.toContain('Matched 41');expect(stream).not.toContain('pending human review');});

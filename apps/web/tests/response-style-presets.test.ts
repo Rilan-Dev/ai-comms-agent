@@ -1,4 +1,4 @@
-import test from "node:test";
+import {test} from "vitest";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {responseStylePresets,applyResponseStylePreset} from "../src/lib/agents/response-style-presets";

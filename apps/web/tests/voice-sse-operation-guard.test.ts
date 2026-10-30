@@ -4,6 +4,7 @@ vi.mock('@/lib/identity/local-auth',()=>({assertSameOrigin:()=>{}}));
 vi.mock('@/lib/identity/repository',()=>({ensureDevSeed:async()=>{},getIdentityAdapter:()=>({}),getIdentityRepository:()=>({})}));
 vi.mock('@/lib/identity/authorization',()=>({authorize:async()=>({user:{id:'user'},membership:{role:'owner'},permissions:new Set(['organization.read'])}),authorizationErrorToResponse:()=>Response.json({error:'failed'},{status:500})}));
 vi.mock('@ai-comms-agent/db',()=>({
+ expandAuthorizedMentions:async ({text}:{text:string})=>text,
  PostgresAgentRepository:class{async get(){return {id:'agent'};}},
  appendConversationMessage:m.append,getChatConversation:async()=>({id:'conversation'}),
  getOrCreateChatConversation:async()=>({id:'conversation'}),listChatMessages:async()=>[],

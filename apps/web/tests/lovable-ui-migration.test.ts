@@ -25,6 +25,7 @@ const whatsapp = readFileSync(resolve(__dirname, "../src/app/whatsapp/whatsapp-c
 const whatsappAccountsApi = readFileSync(resolve(__dirname, "../src/app/api/whatsapp/accounts/route.ts"), "utf8");
 const automations = readFileSync(resolve(__dirname, "../src/app/scheduled/scheduled-client.tsx"), "utf8");
 const schedules = readFileSync(resolve(__dirname, "../src/app/scheduled/scheduled-client.tsx"), "utf8");
+const scheduleFields = readFileSync(resolve(__dirname, "../src/components/schedules/schedule-fields.tsx"), "utf8");
 const chat = readFileSync(resolve(__dirname, "../src/app/chat/chat-client.tsx"), "utf8");
 const voice = readFileSync(resolve(__dirname, "../src/app/ai-voice/voice-workspace.tsx"), "utf8");
 const knowledge = readFileSync(resolve(__dirname, "../src/app/knowledge/page.tsx"), "utf8");
@@ -226,8 +227,8 @@ describe("Lovable Agentic AI Studio UI adaptation", () => {
     expect(automations).toContain("Archive");
     expect(automations).toContain("rounded-md");
     expect(schedules).toContain('/api/organizations/${organizationId}/schedules');
-    expect(schedules).toContain('aria-label="Cron expression"');
-    expect(schedules).toContain('aria-label="One-time fire time"');
+    expect(scheduleFields).toContain('aria-label={idPrefix+" cron"}');
+    expect(scheduleFields).toContain('aria-label={idPrefix+" date"}');
     expect(schedules).toContain("timezone");
     expect(schedules).toContain("lastError");
     expect(schedules).toContain("No scheduled AI tasks yet.");

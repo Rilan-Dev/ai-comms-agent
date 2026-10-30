@@ -35,7 +35,7 @@ describe("FIX-01 rolling 24-hour email report", () => {
     // Execute the production expressions: the old Array.includes contract
     // passed textual tests but threw for every real authenticated subject.
     const gates = [...route.matchAll(/subject\.permissions\.[a-z]+\("email\.read"\)/g)];
-    expect(gates).toHaveLength(2);
+    expect(gates.length).toBeGreaterThanOrEqual(2); // The @email mention gate adds an independent check.
     for (const [expression] of gates) {
       const allowed = new Function("subject", `return ${expression};`) as
         (subject: { permissions: ReadonlySet<string> }) => boolean;
