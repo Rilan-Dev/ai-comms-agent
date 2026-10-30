@@ -22,6 +22,20 @@ export async function enqueueRecentEmailAutomationEvents(limit=50):Promise<numbe
   ].join(" ");
   const r=await query<{id:string}>(sql,[type,limit]);total+=r.rows.length;
  }
+
+ const inboundSql=[
+  "INSERT INTO automation_event_outbox(organization_id,event_type,source_key,payload)",
+  "SELECT DISTINCT ON (m.organization_id,m.whatsapp_account_id,split_part(m.provider_message_id,':',1))",
+  "m.organization_id,'whatsapp.received',m.whatsapp_account_id::text || ':' || split_part(m.provider_message_id,':',1),",
+  "jsonb_build_object('eventId',m.whatsapp_account_id::text || ':' || split_part(m.provider_message_id,':',1),'messageId',m.whatsapp_account_id::text || ':' || split_part(m.provider_message_id,':',1),'accountId',m.whatsapp_account_id::text,'contactId',m.contact_id::text,'body',left(coalesce(m.body,''),2000),'messageType',m.message_type)",
+  "FROM whatsapp_messages m",
+  "WHERE m.direction='inbound' AND m.created_at>=now()-interval '48 hours' AND m.provider_message_id IS NOT NULL",
+  "AND EXISTS (SELECT 1 FROM automation_rules a WHERE a.organization_id=m.organization_id AND a.status='active' AND a.created_at<=m.created_at AND COALESCE(a.trigger->>'event',a.trigger->>'type')='whatsapp.received')",
+  "ORDER BY m.organization_id,m.whatsapp_account_id,split_part(m.provider_message_id,':',1),m.created_at LIMIT $1",
+  "ON CONFLICT(organization_id,event_type,source_key) DO NOTHING RETURNING id",
+ ].join(" ");
+ const inbound=await query<{id:string}>(inboundSql,[limit]);
+ total+=inbound.rows.length;
  return total;
 }
 export async function processAutomationEventOutbox(limit=10):Promise<{claimed:number;completed:number;failed:number}>{
