@@ -1,4 +1,4 @@
-import {emailReplyMetadata} from "@ai-comms-agent/shared";
+import {emailReplyMetadata,applyMailboxSignature} from "@ai-comms-agent/shared";
 import { NextResponse } from "next/server";
 import {
   createEmailAction,
@@ -118,15 +118,21 @@ export async function POST(request: Request) {
           message: "The reply or forward has missing or invalid recipients. Correct the address before requesting human approval.",
         }, { status: 422 });
       }
+      const mailbox=await query<{signature_text:string|null}>(
+        "SELECT connection_config->>'mailSignatureText' AS signature_text FROM email_accounts WHERE organization_id=$1 AND id=$2 AND deleted_at IS NULL",
+        [organizationId,emailAccountId]);
+      if(!mailbox.rows[0])return NextResponse.json({error:"not_found",message:"Sending mailbox is unavailable."},{status:404});
       snapshot = {
         messageId,
         to,
         cc,
         bcc,
         subject: typeof body?.subject === "string" ? body.subject : actionType === "reply_email" ? `Re: ${String(message.subject ?? "").replace(/^(re:\s*)+/i, "")}` : `Fwd: ${String(message.subject ?? "")}`,
-        bodyText: actionType === "forward_email"
-          ? `${typeof body?.bodyText === "string" && body.bodyText ? body.bodyText + "\n\n" : ""}---------- Forwarded message ----------\n${typeof message.text_body === "string" ? message.text_body : ""}`
-          : typeof body?.bodyText === "string" ? body.bodyText : "",
+        bodyText: applyMailboxSignature(
+          actionType === "forward_email"
+            ? `${typeof body?.bodyText === "string" && body.bodyText ? body.bodyText + "\n\n" : ""}---------- Forwarded message ----------\n${typeof message.text_body === "string" ? message.text_body : ""}`
+            : typeof body?.bodyText === "string" ? body.bodyText : "",
+          mailbox.rows[0].signature_text),
       };
     }
 

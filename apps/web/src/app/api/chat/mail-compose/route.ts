@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository, query,loadActiveAgentConfiguration,assertCurrentAgentToolAuthorization,type ActiveAgentConfiguration } from "@ai-comms-agent/db";
+import { PostgresAgentRepository,getLocalDraftForOrganization, query,loadActiveAgentConfiguration,assertCurrentAgentToolAuthorization,type ActiveAgentConfiguration } from "@ai-comms-agent/db";
 import { asOrganizationId,ForbiddenError } from "@ai-comms-agent/shared";
 import type { ToolContext } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -30,8 +30,8 @@ async function trustedContext(request: Request, organizationId: string, agentId:
 }
 
 async function primaryMailboxes(organizationId: string, agentId: string,configuration?:ActiveAgentConfiguration) {
-  const result = await query<{ id: string; email_address: string; capabilities: unknown }>(
-    `SELECT a.id,a.email_address::text AS email_address,a.capabilities
+  const result = await query<{ id: string; email_address: string; capabilities: unknown; signature_text:string|null }>(
+    `SELECT a.id,a.email_address::text AS email_address,a.capabilities,a.connection_config->>'mailSignatureText' AS signature_text
      FROM agent_email_accounts b
      JOIN agents g ON g.id=b.agent_id AND g.organization_id=$1
      JOIN email_accounts a ON a.id=b.email_account_id AND a.organization_id=$1
@@ -41,7 +41,7 @@ async function primaryMailboxes(organizationId: string, agentId: string,configur
      ORDER BY a.email_address LIMIT 30`, configuration?[organizationId,agentId,configuration.snapshot.channels.email.filter(binding=>binding.role==='primary').map(binding=>binding.accountId)]:[organizationId,agentId],
   );
   return result.rows.map(row => ({
-    id: String(row.id), address: String(row.email_address),
+    id: String(row.id), address: String(row.email_address), signatureText:row.signature_text??null,
     capabilities: row.capabilities && typeof row.capabilities === "object" && !Array.isArray(row.capabilities)
       ? row.capabilities as Record<string, unknown> : {} as Record<string, unknown>,
   }));
@@ -80,7 +80,7 @@ export async function GET(request: Request) {
         providerCanSend: mailbox.capabilities.send === true,
       });
       return {
-        id: mailbox.id, address: mailbox.address,
+        id: mailbox.id, address: mailbox.address, signatureText:mailbox.signatureText,
         canDraft: readiness.canDraft,
         canRequestApproval: readiness.canRequestApproval,
         blockers: readiness.blockers,
@@ -188,9 +188,16 @@ export async function POST(request: Request) {
       ? result.output as Record<string, unknown> : {};
     const expected = action === "draft" ? "draft_created" : "pending_approval";
     if (output.status !== expected) return NextResponse.json({ error: "unexpected_tool_result" }, { status: 502 });
+    // Return the exact durable, server-signed draft for in-chat review. A
+    // proposed/model body may differ from the persisted mailbox signature.
+    const saved=action==="draft" && typeof output.draft_id==="string"
+      ?await getLocalDraftForOrganization(organizationId,output.draft_id):null;
+    if(action==="draft" && (!saved || String(saved.email_account_id)!==accountId)){
+      return NextResponse.json({error:"draft_review_unavailable",message:"Draft saved, but its exact reviewed content could not be reloaded. Open Mail Drafts to inspect before approval."},{status:409});
+    }
     return NextResponse.json({
       status: output.status,
-      ...(action === "draft" ? { draftId: output.draft_id } : { actionId: output.action_id }),
+      ...(action === "draft" ? { draftId: output.draft_id, bodyText:String(saved?.text_body??"") } : { actionId: output.action_id }),
       message: action === "draft"
         ? "Draft saved to the selected mailbox. It has not been sent."
         : "Send approval requested. The email has not been sent.",

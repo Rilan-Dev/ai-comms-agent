@@ -12,7 +12,7 @@ import {
   updateLocalDraftForOrganization,
 } from "@ai-comms-agent/db";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
-import {emailReplyMetadata, isAutonomousSendEnabled,turnAllowsEmailAccount,turnRequiresHumanApproval} from "@ai-comms-agent/shared";
+import {emailReplyMetadata, isAutonomousSendEnabled,turnAllowsEmailAccount,turnRequiresHumanApproval,applyMailboxSignature} from "@ai-comms-agent/shared";
 import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
 import { canUseEmailAccountBinding, hasEmailToolCapabilities } from "./email-tool-policy";
 import { preserveEmailBody } from "./email-body";
@@ -319,7 +319,8 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       agentId: context.agent_id,
       emailAccountId: account.id,
       actionType: "reply_email",
-      recipientSnapshot: { messageId, to: [recipient], cc: [], bcc: [], subject, bodyText: reviewedBody(input.body_text, context) },
+      recipientSnapshot: { messageId, to: [recipient], cc: [], bcc: [], subject,
+        bodyText: applyMailboxSignature(reviewedBody(input.body_text, context),account.signature_text) },
       requestedBy: context.user_id,
       idempotencyKey: `${context.turn_id}:reply:${messageId}`,
       correlationId: context.correlation_id,
@@ -341,7 +342,8 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       agentId: context.agent_id,
       emailAccountId: account.id,
       actionType: "forward_email",
-      recipientSnapshot: { messageId, to: recipients, subject: reviewedForwardSubject(source.subject), bodyText: preserveEmailBody(source.text_body) },
+      recipientSnapshot: { messageId, to: recipients, subject: reviewedForwardSubject(source.subject),
+        bodyText: applyMailboxSignature(preserveEmailBody(source.text_body),account.signature_text) },
       requestedBy: context.user_id,
       idempotencyKey: `${context.turn_id}:forward:${messageId}`,
       correlationId: context.correlation_id,

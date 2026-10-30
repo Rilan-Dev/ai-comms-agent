@@ -19,7 +19,7 @@ const body = (first: string, second: string) => {
 test("new drafts atomically queue provider saving only for connected, capable accounts", () => {
   const create = body("createLocalDraft", "updateLocalDraftForOrganization");
   assert.match(create, /return withTransaction\(async \(client\) =>/);
-  assert.match(create, /SELECT id, email_address, status, capabilities FROM email_accounts/);
+  assert.match(create, /SELECT id, email_address, status, capabilities, connection_config->>\x27mailSignatureText\x27 AS mail_signature FROM email_accounts/);
   assert.match(create, /deleted_at IS NULL LIMIT 1 FOR SHARE/);
   assert.match(create, /capabilities\?\.drafts === true \? "queued" : "local_only"/);
   assert.match(create, /received_at, provider_draft_sync_status/);

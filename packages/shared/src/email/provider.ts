@@ -37,6 +37,8 @@ export interface EmailAccount {
   provider: EmailProviderType;
   email_address: string;
   display_name?: string;
+  /** Mailbox-specific plaintext sign-off; never a tool instruction. */
+  signature_text?: string | null;
   capabilities: CapabilitySet;
   status: "connected" | "pending" | "revoked" | "error" | "disconnected";
   last_sync_at?: string;

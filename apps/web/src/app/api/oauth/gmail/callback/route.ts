@@ -217,7 +217,10 @@ export async function GET(request: Request) {
       decision: "allowed",
     });
 
-    const response = NextResponse.redirect(new URL("/mail/accounts?connected=gmail", getOAuthPublicOrigin(request)));
+    const done=new URL("/mail/accounts",getOAuthPublicOrigin(request));
+    done.searchParams.set("connected","gmail");
+    done.searchParams.set("accountId",account.id);
+    const response = NextResponse.redirect(done);
     response.cookies.delete("gmail_oauth_verifier");
     response.cookies.delete("gmail_oauth_state");
     return response;

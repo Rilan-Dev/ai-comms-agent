@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseCredentialsMasterKey } from "@ai-comms-agent/db";
 import { PostgresEmailAccountRepository, recordAuditEvent, query } from "@ai-comms-agent/db";
-import { asOrganizationId } from "@ai-comms-agent/shared";
+import { asOrganizationId,normalizeMailboxSignature } from "@ai-comms-agent/shared";
 import { testImapSmtpConnection } from "@ai-comms-agent/db";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { assertSameOrigin } from "@/lib/identity/local-auth";
@@ -278,4 +278,27 @@ export async function POST(request: Request) {
     const code = (error as { code?: string })?.code;
     return NextResponse.json({ error: "internal_server_error", message, code }, { status: 500 });
   }
+}
+
+/** Admin-only mailbox signature. Does not alter credentials, OAuth state or provider capabilities. */
+export async function PATCH(request:Request){
+  try{assertSameOrigin(request);}
+  catch{return NextResponse.json({error:"invalid_origin"},{status:403});}
+  try{
+    const missing=dbRequired();if(missing)return missing;
+    await ensureDevSeed();
+    const input=await request.json().catch(()=>null);
+    const organizationId=typeof input?.organizationId==="string"?input.organizationId:"";
+    const accountId=typeof input?.accountId==="string"?input.accountId:"";
+    if(!organizationId||!accountId)return NextResponse.json({error:"validation_error",message:"Organization and mailbox are required."},{status:422});
+    if(typeof input?.signatureText!=="string")return NextResponse.json({error:"validation_error",message:"Signature must be text."},{status:422});
+    let signature:string;
+    try{signature=normalizeMailboxSignature(input.signatureText);}
+    catch(error){return NextResponse.json({error:"validation_error",message:error instanceof Error?error.message:"Invalid signature."},{status:422});}
+    const subject=await authorize(request,{organizationId:asOrganizationId(organizationId),role:"admin"},getIdentityAdapter(),getIdentityRepository());
+    const account=await new PostgresEmailAccountRepository().updateSignature(organizationId,accountId,signature);
+    if(!account)return NextResponse.json({error:"not_found",message:"Mailbox is not available in this organization."},{status:404});
+    await recordAuditEvent({organizationId,actorUserId:subject.user.id,eventType:"email.account.signature_updated",targetType:"email_account",targetId:accountId,action:"update_signature",decision:"allowed",metadata:{provider:account.provider,hasSignature:signature.length>0}});
+    return NextResponse.json({account},{headers:{"Cache-Control":"private, no-store"}});
+  }catch(error){return authorizationErrorToResponse(error);}
 }

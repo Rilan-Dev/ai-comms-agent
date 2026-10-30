@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {MailReview} from "@/components/mail-review";
+import {applyMailboxSignature} from "@ai-comms-agent/shared";
 import { matchesManualComposeReview, normalizeManualComposeSnapshot, type ManualComposeSnapshot } from "@/lib/mail/manual-compose-review";
 
-type Account = { id: string; provider: string; email_address: string; display_name?: string | null; status: string; capabilities: Record<string, boolean> };
+type Account = { id: string; provider: string; email_address: string; display_name?: string | null; status: string; capabilities: Record<string, boolean>; signature_text?:string|null };
 
 export function ComposeClient({ organizationId }: { organizationId: string }) {
   const searchParams = useSearchParams();
@@ -145,7 +146,8 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
     setBusy(true);
     setNotice(null);
     try {
-      const payload = { organizationId, emailAccountId: accountId, to: recipients, cc: ccRecipients, bcc: bccRecipients, subject, bodyText };
+      const signedBody=applyMailboxSignature(bodyText,accounts.find(a=>a.id===accountId)?.signature_text);
+      const payload = { organizationId, emailAccountId: accountId, to: recipients, cc: ccRecipients, bcc: bccRecipients, subject, bodyText:signedBody };
       const response = await fetch("/api/mail/drafts", {
         method: draftId ? "PATCH" : "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify(draftId ? { ...payload, messageId: draftId } : payload),
@@ -161,6 +163,8 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
         subject: data.draft.subject ?? "", bodyText: data.draft.text_body ?? "",
       };
       setDraftId(String(data.draft.id));
+      // The signed draft must be visible in the editable form before any send approval.
+      setBodyText(String(data.draft.text_body??signedBody));
       const confirmed = matchesManualComposeReview(persisted, payload);
       setReviewedSnapshot(confirmed ? normalizeManualComposeSnapshot(payload) : null);
       setSavedAt(confirmed ? new Date().toLocaleTimeString() : null);
@@ -222,6 +226,7 @@ export function ComposeClient({ organizationId }: { organizationId: string }) {
       {notice && <div role="alert" className="border-b bg-destructive/5 px-6 py-3 text-sm text-destructive">{notice}</div>}
       <div className="space-y-4 p-6">
         <label className="block text-sm font-medium">From<select value={accountId} onChange={e=>{ setAccountId(e.target.value); markEdited(); }} disabled={busy || loadingDraft || !scopeValid || Boolean(draftId) || Boolean(approvalId)} className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-ring/20">{accounts.length===0?<option value="">{accountsLoading?"Loading mailboxes…":"No available mailbox"}</option>:accounts.map(a=><option key={a.id} value={a.id}>{a.display_name || a.email_address} · {a.provider} · {a.status}</option>)}</select></label>
+        {accounts.find(a=>a.id===accountId)?.signature_text&&<p className="text-xs text-muted-foreground">Saved signature from this mailbox will be inserted into the draft on Save. Review the resulting body before requesting approval.</p>}
         <label className="block text-sm font-medium">To<input value={to} onChange={e=>{ setTo(e.target.value); markEdited(); }} disabled={busy || loadingDraft || !scopeValid || Boolean(approvalId)} placeholder="recipient@example.com, another@example.com" className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-ring/20"/></label>
         <label className="block text-sm font-medium">Cc<input value={cc} onChange={e=>{ setCc(e.target.value); markEdited(); }} disabled={busy || loadingDraft || !scopeValid || Boolean(approvalId)} className="mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm"/></label>
         <label className="block text-sm font-medium">Bcc<input value={bcc} onChange={e=>{ setBcc(e.target.value); markEdited(); }} disabled={busy || loadingDraft || !scopeValid || Boolean(approvalId)} className="mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm"/></label>

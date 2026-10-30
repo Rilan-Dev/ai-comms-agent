@@ -14,6 +14,7 @@ import {configurationEditorUrl,saveConfigurationForm,type ConfigurationFormConte
 import { explicitComposeRecipient, parseTestEmailComposeRequest } from "@/lib/mail/test-email-compose-intent";
 import { assistantEmailPreview } from "@/lib/mail/assistant-email-preview";
 import { selectComposeSender, signatureFromProfile, withProfileSignature, type ComposeProfile } from "@/lib/mail/compose-identity";
+import {applyMailboxSignature} from "@ai-comms-agent/shared";
 import { parseAssistantChecklistLine } from "@/lib/chat/interactive-replies";
 import { AssistantChecklist, SuggestedNextActions, type EmailWorkflowState } from "./interactive-message-controls";
 import {WhatsAppWorkflowCard} from './whatsapp-workflow-card';
@@ -85,7 +86,7 @@ export function ChatClient({
   const [mailComposerOpen, setMailComposerOpen] = useState(false);
   const [mailInboxOpen,setMailInboxOpen]=useState(false);
   const [composeMailboxes, setComposeMailboxes] = useState<Array<{
-    id: string; address: string; canDraft: boolean; canRequestApproval: boolean;
+    id: string; address: string; canDraft: boolean; canRequestApproval: boolean; signatureText:string|null;
     blockers: Array<{code:string;message:string}>;
   }>>([]);
   const [composeAccount, setComposeAccount] = useState("");
@@ -370,7 +371,7 @@ export function ChatClient({
         throw new Error(data.message ?? "The bound mailbox could not be loaded.");
       }
       const mailboxes = data.mailboxes as Array<{
-        id:string; address:string; canDraft:boolean; canRequestApproval:boolean;
+        id:string; address:string; canDraft:boolean; canRequestApproval:boolean;signatureText:string|null;
         blockers:Array<{code:string;message:string}>;
       }>;
       setComposeMailboxes(mailboxes);
@@ -395,8 +396,14 @@ export function ChatClient({
         ? { name: typeof data.profile.name === "string" ? data.profile.name : null,
             email: data.profile.email } as ComposeProfile : null;
       setComposeProfile(profile);
-      if (profile) setComposeBody(current => current === DEFAULT_COMPOSE_BODY
-        ? withProfileSignature(current, profile) : current);
+      if (selectedMailbox?.signatureText) {
+        setComposeBody(current=>current===DEFAULT_COMPOSE_BODY
+          ? applyMailboxSignature(current,selectedMailbox.signatureText):current);
+      } else if(profile) {
+        // Fallback only when this selected account has no mailbox signature.
+        setComposeBody(current=>current===DEFAULT_COMPOSE_BODY
+          ? withProfileSignature(current,profile):current);
+      }
       if (recipient) {
         setComposeTo(recipient);
         // Do not discard the original request if the readiness GET fails.
@@ -430,6 +437,12 @@ export function ChatClient({
   }
 
   function useProfileSignature() {
+    const mailbox=composeMailboxes.find(item=>item.id===composeAccount);
+    if(mailbox?.signatureText){
+      setComposeBody(current=>applyMailboxSignature(current,mailbox.signatureText));
+      invalidateComposeReview();
+      return;
+    }
     const signature = signatureFromProfile(composeProfile);
     if (!signature) {
       setComposeNotice("Your signed-in profile has no saved name. Enter your name in the editable email sign-off; the agent will not guess it.");
@@ -472,6 +485,9 @@ export function ChatClient({
           throw new Error("Draft save was not confirmed. Retry after checking the mailbox.");
         }
         setComposeDraftId(data.draftId);
+        // Show exactly what was persisted with the currently selected
+        // mailbox's signature, never the pre-save model/profile preview.
+        if(typeof data.bodyText==="string")setComposeBody(data.bodyText);
       } else {
         if (data.status !== "pending_approval" || typeof data.actionId !== "string" || !data.actionId) {
           throw new Error("The approval request was not confirmed. Retry without sending.");
@@ -914,8 +930,10 @@ export function ChatClient({
               <p className="mt-1 text-muted-foreground">Profile details come from your signed-in account. The agent won&apos;t invent a name, title, company, phone number or signature.</p>
             </div>
             <button type="button" disabled={composeBusy || Boolean(composeDraftId)} onClick={useProfileSignature}
-              className="rounded-md border px-3 py-2 font-medium disabled:opacity-50">Use my profile signature</button>
+              className="rounded-md border px-3 py-2 font-medium disabled:opacity-50">{composeMailboxes.find(mail=>mail.id===composeAccount)?.signatureText?"Use mailbox signature":"Use my profile signature"}</button>
           </div>}
+          {composeMailboxes.find(mail=>mail.id===composeAccount)?.signatureText&&
+            <p className="mt-2 text-xs text-muted-foreground">This sender has its own saved signature. It takes precedence over the profile sign-off. Review the complete body before saving a draft.</p>}
           <button type="button" onClick={() => void openMailPermissions()} disabled={composeBusy || mailPermissionBusy}
             className="mt-2 text-xs underline disabled:opacity-50">Mail permissions (admin settings)</button>
           {composeBlockers.length > 0 && <div role="alert" className="mt-3 rounded-md border border-destructive/30 p-3 text-xs text-destructive">
@@ -930,7 +948,14 @@ export function ChatClient({
               {composeMailboxes.length > 1 && !composeAccount && <span role="status" className="mt-1 block text-primary">Which email should this agent send from? Choose the From address explicitly.</span>}
               <select aria-label="Sending mailbox" value={composeAccount} disabled={composeBusy || Boolean(composeDraftId)} onChange={e => {
               const selectedMailbox = composeMailboxes.find(account => account.id === e.target.value);
+              const previousMailbox=composeMailboxes.find(mail=>mail.id===composeAccount);
               setComposeAccount(e.target.value);
+              setComposeBody(current=>{
+                const old=previousMailbox?.signatureText?.trim();
+                const clean=old&&current.trimEnd().endsWith(old)
+                  ?current.trimEnd().slice(0,-old.length).trimEnd():current;
+                return selectedMailbox?.signatureText?applyMailboxSignature(clean,selectedMailbox.signatureText):clean;
+              });
               setComposeCanDraft(selectedMailbox?.canDraft === true);
               setComposeCanApprove(selectedMailbox?.canRequestApproval === true);
               setComposeBlockers(selectedMailbox?.blockers ?? []);

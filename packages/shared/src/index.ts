@@ -186,3 +186,5 @@ export {AGENT_AI_CONFIGURATION_COLUMNS,AGENT_AI_CONFIGURATION_FIELDS,LEGACY_AGEN
 export type {AgentAiConfiguration,AgentConfigurationSnapshotV1,ConfigurationDiff} from './agent/configuration-revision';
 
 export {turnAllowsTool,turnRequiresHumanApproval,turnAllowsEmailAccount,turnAllowsWhatsAppAccount} from './agent/configuration-turn';
+
+export {MAIL_SIGNATURE_MAX_LENGTH,normalizeMailboxSignature,applyMailboxSignature} from './email/mailbox-signature';
