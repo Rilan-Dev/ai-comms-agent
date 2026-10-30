@@ -102,7 +102,7 @@ export {
   getWhatsAppAccountForAgent,
 } from "./messaging/whatsapp-repository";
 
-export { listScheduledJobs, getScheduledJob, createScheduledJob, updateScheduledJob, deleteScheduledJob, listScheduledJobRuns, claimDueScheduledJobs, recoverStaleScheduledJobRuns, advanceScheduledJob, completeScheduledJobRun, failScheduledJobRun, listAutomationRules, listActiveAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, listAutomationRuns, createAutomationRun, completeAutomationRun, failAutomationRun, type ScheduledJobClaim } from "./automation/repository";
+export { listScheduledJobs, getScheduledJob, createScheduledJob, updateScheduledJob, deleteScheduledJob, listScheduledJobRuns, claimDueScheduledJobs, recoverStaleScheduledJobRuns, advanceScheduledJob, completeScheduledJobRun, failScheduledJobRun, listAutomationRules, listActiveAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, listAutomationRuns, createAutomationRun, getAutomationRunStatus, recoverStaleAutomationRuns, completeAutomationRun, failAutomationRun, type ScheduledJobClaim } from "./automation/repository";
 export {expandAuthorizedMentions,type MentionScope} from "./automation/mention-resolver";
 
 export { getOrCreateChatConversation, createChatConversation, listChatConversations, getChatConversation, listChatMessages, appendConversationMessage } from "./conversation/repository";

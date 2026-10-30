@@ -1,4 +1,4 @@
-import { completeAutomationRun, createAutomationRun, failAutomationRun, listActiveAutomationRules } from "@ai-comms-agent/db";
+import { completeAutomationRun, createAutomationRun, getAutomationRunStatus, failAutomationRun, listActiveAutomationRules } from "@ai-comms-agent/db";
 import { dispatchAgentExecution } from "../agent/execution-dispatcher";
 
 type Event={organizationId:string;type:string;payload:Record<string,unknown>};
@@ -54,11 +54,23 @@ export async function evaluateAutomationEvent(event:Event){
     if(!automationMatches(rule,event)) continue;
     matched++;
     const eventKey=stableEventKey(event);
-    const runId=await createAutomationRun(rule.id,{eventType:event.type,eventKey},eventKey);
-    if(!runId) continue;
+    const runId=await createAutomationRun(rule.id,rule.organizationId,{eventType:event.type,eventKey},eventKey);
+    if(!runId){
+      // An existing attempt may have sent an email or WhatsApp before a crash.
+      // Completed duplicates are idempotent; pending/failed/unknown outcomes
+      // must remain failed and visible, not falsely turn the outbox green.
+      const previous=eventKey?await getAutomationRunStatus(rule.id,eventKey):null;
+      if(previous!=="completed")failed++;
+      continue;
+    }
     try{
       const result=await dispatchAgentExecution({executionId:runId,organizationId:rule.organizationId,agentId:rule.agentId,source:"automation",intent:"automation.execute",params:{actions:rule.actions,event:event.payload},requestedAt:new Date().toISOString()});
-      if(result.status==="configuration_required"){await failAutomationRun(runId,result.reason);failed++;} else {await completeAutomationRun(runId,{status:result.status,executionId:result.executionId,output:result.output??null,provider:result.provider??null,model:result.model??null,actions:result.actions??[]});started++;}
+      if(result.status==="configuration_required"){
+        await failAutomationRun(runId,result.reason??"Execution denied");failed++;
+      }else{
+        const settled=await completeAutomationRun(runId,{status:result.status,executionId:result.executionId,output:result.output??null,provider:result.provider??null,model:result.model??null,actions:result.actions??[]});
+        if(settled)started++;else failed++; // Recovered or externally settled while executing.
+      }
     }catch(error){ await failAutomationRun(runId,error instanceof Error?error.message:"Automation execution failed"); failed++; }
   }
   return {matched,started,failed};

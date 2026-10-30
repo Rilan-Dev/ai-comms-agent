@@ -278,16 +278,52 @@ export async function listActiveAutomationRules(organizationId:string){
   );
   return r.rows.map(automation);
 }
-export async function createAutomationRun(ruleId:string, result:Record<string,unknown>={}, triggerEventKey?:string|null){
+export async function createAutomationRun(ruleId:string,organizationId:string,result:Record<string,unknown>={},triggerEventKey?:string|null){
   const r=await query<Row>(
-    "INSERT INTO automation_runs (automation_rule_id,status,result,trigger_event_key) VALUES ($1,'running',$2::jsonb,$3) ON CONFLICT (automation_rule_id,trigger_event_key) WHERE trigger_event_key IS NOT NULL DO NOTHING RETURNING id",
-    [ruleId,JSON.stringify(result),triggerEventKey ?? null],
+    `INSERT INTO automation_runs (automation_rule_id,organization_id,status,started_at,result,trigger_event_key)
+     SELECT id,organization_id,'running',now(),$3::jsonb,$4 FROM automation_rules
+     WHERE id=$1 AND organization_id=$2 AND status='active'
+     ON CONFLICT (automation_rule_id,trigger_event_key) WHERE trigger_event_key IS NOT NULL DO NOTHING RETURNING id`,
+    [ruleId,organizationId,JSON.stringify(result),triggerEventKey ?? null],
   );
   return r.rows[0]?String(r.rows[0].id):null;
 }
+/** A duplicate event is not successful when the original run is running or
+ * failed. Never replay a potentially irreversible provider operation. */
+export async function getAutomationRunStatus(ruleId:string,eventKey:string):Promise<string|null>{
+  const r=await query<{status:string}>("SELECT status FROM automation_runs WHERE automation_rule_id=$1 AND trigger_event_key=$2 LIMIT 1",[ruleId,eventKey]);
+  return r.rows[0]?.status??null;
+}
+
+/** Quarantine abandoned runs without dispatching their tools again.
+ * Legacy rows may have a NULL started_at: use their creation timestamp. */
+export async function recoverStaleAutomationRuns(limit=25,ageMinutes=30){
+  const safeLimit=Math.max(1,Math.min(100,Math.floor(limit)||25));
+  const safeAge=Math.max(30,Math.min(24*60,Math.floor(ageMinutes)||30));
+  return withTransaction(async client=>{
+    const r=await client.query<{id:string;organization_id:string;automation_rule_id:string}>(
+      `WITH stale AS (
+         SELECT id FROM automation_runs
+         WHERE status='running' AND COALESCE(started_at,created_at) < now()-make_interval(mins => $2::int)
+         ORDER BY COALESCE(started_at,created_at) ASC LIMIT $1 FOR UPDATE SKIP LOCKED
+       )
+       UPDATE automation_runs r SET status='failed',finished_at=now(),
+         error='Execution interrupted; downstream outcome unknown. Verify provider activity before retrying.',
+         result=COALESCE(r.result,'{}'::jsonb) || '{"manualVerificationRequired":true,"downstreamOutcomeUnknown":true,"recoveredStaleExecution":true}'::jsonb
+       FROM stale, automation_rules a
+       WHERE r.id=stale.id AND a.id=r.automation_rule_id AND r.status='running'
+       RETURNING r.id::text,a.organization_id::text,r.automation_rule_id::text`,
+      [safeLimit,safeAge],
+    );
+    return r.rows;
+  });
+}
+
 export async function completeAutomationRun(runId:string,result:Record<string,unknown>={}){
-  await query("UPDATE automation_runs SET status='completed',finished_at=now(),result=$2::jsonb,error=NULL WHERE id=$1 AND status='running'",[runId,JSON.stringify(result)]);
+  const r=await query<{id:string}>("UPDATE automation_runs SET status='completed',finished_at=now(),result=$2::jsonb,error=NULL WHERE id=$1 AND status='running' RETURNING id",[runId,JSON.stringify(result)]);
+  return r.rows.length===1;
 }
 export async function failAutomationRun(runId:string,error:string){
-  await query("UPDATE automation_runs SET status='failed',finished_at=now(),error=$2 WHERE id=$1 AND status='running'",[runId,error]);
+  const r=await query<{id:string}>("UPDATE automation_runs SET status='failed',finished_at=now(),error=$2 WHERE id=$1 AND status='running' RETURNING id",[runId,error]);
+  return r.rows.length===1;
 }

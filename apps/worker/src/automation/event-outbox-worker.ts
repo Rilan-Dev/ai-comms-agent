@@ -1,4 +1,4 @@
-import {query,withTransaction} from "@ai-comms-agent/db";
+import {query,withTransaction,recoverStaleAutomationRuns,recordAuditEvent} from "@ai-comms-agent/db";
 import {evaluateAutomationEvent,stableEventKey} from "./automation-engine";
 type Outbox={id:string;organization_id:string;event_type:string;payload:Record<string,unknown>;attempts:number};
 // Scan provider records independently of slow LLM executions.
@@ -76,6 +76,24 @@ export async function processAutomationEventOutbox(limit=1):Promise<{claimed:num
  if(activeExecutions>=MAX_CONCURRENT_EXECUTIONS)return {claimed:0,completed:0,failed:0};
  activeExecutions++;
  try{
+  // A crash can leave an automation run "running" indefinitely, while a
+  // duplicate unique event cannot be reinserted. Mark its outcome unknown,
+  // preserve its original idempotency key, and require manual reconciliation.
+  const abandoned=await recoverStaleAutomationRuns();
+  for(const run of abandoned){
+    try{
+      await recordAuditEvent({
+        organizationId:run.organization_id,actorUserId:null,
+        eventType:"automation.execution.interrupted",targetType:"automation_run",
+        targetId:run.id,action:"recover",decision:"denied",correlationId:run.id,
+        metadata:{ruleId:run.automation_rule_id,downstreamOutcomeUnknown:true,manualVerificationRequired:true},
+      });
+    }catch(error){
+      console.error("[automation] recovered run audit needs reconciliation",{
+        runId:run.id,errorType:error instanceof Error?error.name:"unknown",
+      });
+    }
+  }
   const events=await withTransaction(async client=>{
    const r=await client.query<Outbox>(
     "SELECT id,organization_id,event_type,payload,attempts FROM automation_event_outbox WHERE status='queued' AND next_attempt_at<=now() ORDER BY created_at ASC LIMIT $1 FOR UPDATE SKIP LOCKED",[Math.min(limit,1)]);
