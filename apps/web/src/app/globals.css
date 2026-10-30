@@ -31,6 +31,9 @@
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-attention: var(--attention);
+  --color-attention-subtle: var(--attention-subtle);
   --color-tertiary: var(--tertiary);
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", "DM Sans", ui-sans-serif, sans-serif;
@@ -103,20 +106,56 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
-/* Owner-approved dual palettes. Dark is default even when OS prefers light. */
+/* Owner-approved midnight palette. Dark remains the first-visit default.
+   Green is reserved for success and messaging status, never base surfaces. */
 :root, :root[data-theme="dark"] {
- color-scheme: dark; --radius: .875rem;
- --background:#171717; --foreground:#eff4ef; --card:#1c211f; --card-foreground:#eff4ef;
- --popover:#202722; --popover-foreground:#eff4ef; --primary:#a31c1b; --primary-foreground:#fff;
- --secondary:#223028; --secondary-foreground:#eff5ee; --muted:#28322b; --muted-foreground:#b0bfb3;
- --accent:#23402e; --accent-foreground:#d6ebd9; --destructive:#e16761; --destructive-foreground:#fff;
- --border:#35433a; --input:#435048; --ring:#da5e55; --tertiary:#9daa9e; --success:#83dba3;
- --success-subtle:#1c3b2a; --attention:#f0b67a; --attention-subtle:#3c2920;
- --chart-1:#a31c1b; --chart-2:#9caf88; --chart-3:#4f966c; --chart-4:#dd8e65; --chart-5:#a7a7a7;
- --sidebar:#101714; --sidebar-foreground:#eff4ef; --sidebar-primary:#a31c1b; --sidebar-primary-foreground:#fff;
- --sidebar-accent:#1c3023; --sidebar-accent-foreground:#eff4ef; --sidebar-border:#34443a; --sidebar-ring:#da5e55;
- --hero-start:#06110c; --hero-end:#183326; --hero-title:#f9faf7; --hero-subtitle:#b8cbbc;
- --botanical:#679272; --message-user:#254132; --panel-shadow:0 10px 25px rgb(0 0 0 / .13);
+  color-scheme: dark;
+  --radius: .875rem;
+  --background: #0a0f18;
+  --foreground: #f0f4fa;
+  --card: #121a27;
+  --card-foreground: #f0f4fa;
+  --popover: #172130;
+  --popover-foreground: #f0f4fa;
+  --primary: #be2637;
+  --primary-foreground: #ffffff;
+  --secondary: #1b2738;
+  --secondary-foreground: #e6edf6;
+  --muted: #1d2939;
+  --muted-foreground: #abb8c9;
+  --accent: #25364b;
+  --accent-foreground: #dce8f7;
+  --destructive: #ee6b75;
+  --destructive-foreground: #111923;
+  --border: #2c3a4c;
+  --input: #3b4c63;
+  --ring: #f06b77;
+  --tertiary: #98a8bb;
+  --success: #75d6a1;
+  --success-subtle: #173327;
+  --attention: #f4be86;
+  --attention-subtle: #36291f;
+  --chart-1: #d64b5b;
+  --chart-2: #698bb7;
+  --chart-3: #af9cd1;
+  --chart-4: #e6b17a;
+  --chart-5: #74b9ac;
+  --sidebar: #080d15;
+  --sidebar-foreground: #e9f0f9;
+  --sidebar-primary: #be2637;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #192536;
+  --sidebar-accent-foreground: #e9f0f9;
+  --sidebar-border: #263449;
+  --sidebar-ring: #f06b77;
+  --hero-start: #0d1420;
+  --hero-end: #162438;
+  --hero-title: #f5f7fc;
+  --hero-subtitle: #b6c5d7;
+  --botanical: #506c80;
+  --message-user: #1d2d42;
+  --hero-ring: rgb(119 151 187 / .085);
+  --panel-shadow: 0 12px 32px rgb(0 0 0 / .25);
 }
 :root[data-theme="light"] {
  color-scheme:light; --background:#f6f8f3; --foreground:#272d26; --card:#fff; --card-foreground:#272d26;
@@ -135,7 +174,7 @@ body { transition: color .16s ease, background-color .16s ease; }
 input,textarea,select { color:var(--foreground); }
 .workspace-panel { background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--panel-shadow); }
 .workspace-hero { position:relative; isolation:isolate; overflow:hidden; border:1px solid var(--border); border-radius:17px; color:var(--hero-title); background:linear-gradient(110deg,var(--hero-start) 0%,var(--hero-start) 48%,var(--hero-end) 100%); box-shadow:var(--panel-shadow); }
-.workspace-hero::before { content:""; position:absolute; top:-230px; right:-145px; width:475px; height:475px; border:60px solid rgb(156 175 136 / .09); border-radius:50%; pointer-events:none; }
+.workspace-hero::before { content:""; position:absolute; top:-230px; right:-145px; width:475px; height:475px; border:60px solid var(--hero-ring, rgb(156 175 136 / .09)); border-radius:50%; pointer-events:none; }
 .workspace-hero .hero-title { font-family:Georgia,"Times New Roman",serif; line-height:1.07; letter-spacing:-.037em; font-weight:500; }
 .workspace-hero .hero-subtitle { color:var(--hero-subtitle); }
 .botanical-leaves { color:var(--botanical); pointer-events:none; opacity:.76; }
@@ -151,3 +190,18 @@ input,textarea,select { color:var(--foreground); }
 .theme-chat .chat-quick-action { background:var(--secondary); color:var(--secondary-foreground); }
 .theme-chat .chat-quick-action:hover { background:var(--accent); color:var(--accent-foreground); }
 @media (prefers-reduced-motion: reduce) { body { transition:none; } }
+
+/* Midnight finish: neutral blue-black workspace surfaces, without green cast. */
+:root[data-theme="dark"] .workspace-sidebar {
+  background: linear-gradient(180deg, #090e16 0%, var(--sidebar) 100%);
+}
+:root[data-theme="dark"] .workspace-panel {
+  box-shadow: var(--panel-shadow);
+}
+:root[data-theme="dark"] input[type="checkbox"],
+:root[data-theme="dark"] input[type="radio"] {
+  accent-color: var(--primary);
+}
+:root[data-theme="dark"] .theme-chat .chat-assistant-reply {
+  box-shadow: 0 8px 24px rgb(0 0 0 / .18);
+}
