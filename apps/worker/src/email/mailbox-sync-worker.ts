@@ -14,6 +14,7 @@ import { ZohoAdapter } from "./zoho-adapter";
 import { ImapSmtpAdapter } from "./imap-smtp-adapter";
 import { MicrosoftGraphAdapter } from "./microsoft-graph-adapter";
 import { randomUUID } from "node:crypto";
+import {isLikelyActionRequiredEmail} from "./action-required-classifier";
 import { acquireRedisLease, releaseRedisLease } from "./redis-lease";
 import type { EmailProvider } from "@ai-comms-agent/shared";
 import { publishEmailSync } from "../queues/email-sync-rabbitmq";
@@ -39,6 +40,7 @@ const INTERVAL_MS = 10_000;
 const BATCH_SIZE = 3;
 
 async function persistMessage(account: Candidate, message: EmailMessage, providerDraftId?: string | null): Promise<void> {
+  const flaggedForAction=Boolean(message.action_required)||isLikelyActionRequiredEmail({subject:message.subject||"",snippet:message.snippet||"",body:message.text_body||"",from:message.from_address||"",to:message.to_addresses||[],accountEmail:account.email_address,isDraft:message.is_draft,isOutbound:message.is_outbound});
   const participants = [...new Set([
     message.from_address,
     ...message.to_addresses,
@@ -152,7 +154,7 @@ async function persistMessage(account: Candidate, message: EmailMessage, provide
       message.is_draft,
       message.is_outbound,
       message.importance_score,
-      message.action_required,
+      flaggedForAction,
       message.received_at,
       message.is_outbound ? message.received_at : null,
       Boolean(message.has_attachments),
