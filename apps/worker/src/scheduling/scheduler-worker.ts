@@ -43,6 +43,7 @@ export async function processScheduledJobs(limit=25,now=new Date()):Promise<{cla
       const isAgentTask=job.intent===SCHEDULED_AGENT_TASK_INTENT && typeof task==="string";
       const agentTaskResult=isAgentTask ? await runScheduledAgentTask({executionId:job.runId,organizationId:job.organizationId,agentId:job.agentId,task,fireAt:job.nextFireAt,userId:job.createdBy,
         ...(Object.prototype.hasOwnProperty.call(job.params,'allowedTools')?{allowedToolNames:job.params.allowedTools as string[]}:{}),
+        ...(Object.prototype.hasOwnProperty.call(job.params,'fallback')?{fallback:job.params.fallback}:{}),
       }) : null;
       const legacyResult=isAgentTask ? null : await dispatchAgentExecution({executionId:job.runId,organizationId:job.organizationId,agentId:job.agentId,source:"schedule",intent:job.intent,params:job.params,requestedAt:now.toISOString()});
       const failureReason:(string|null)=agentTaskResult?.status==="configuration_required"?(agentTaskResult.reason??null):legacyResult?.status==="configuration_required"?(legacyResult.reason??null):null;

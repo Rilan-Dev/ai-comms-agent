@@ -9,6 +9,8 @@ import { createWhatsAppToolRuntime, invokeWhatsAppTool } from "./whatsapp-tool-r
 import type { WhatsAppToolRuntime } from "./whatsapp-tool-runtime";
 import {prepareAgentConfigurationTurn} from '@ai-comms-agent/email-agent-runtime';
 import {narrowScheduledTools} from './scheduled-tool-scope';
+import {parseDigestFallback,isEligibleDigestProviderFailure} from './deterministic-scheduled-digest';
+import {runScheduledDigestFallback} from './scheduled-digest-fallback-runtime';
 
 // Models that hit a blocked send (e.g. Meta's 24-hour window) routinely spend
 // one round retrying it; the extra headroom lets them still produce the final
@@ -77,11 +79,16 @@ export async function runScheduledAgentTask(args: {
   userId?: string | null;
   /** Optional per-occurrence tool ceiling. Only narrows the saved agent policy. */
   allowedToolNames?: readonly string[];
+  /** Explicitly opted-in provider-failure digest. */
+  fallback?:unknown;
 }): Promise<ScheduledAgentTaskResult> {
   const task = args.task.trim();
   if (!task) {
     return { status: "configuration_required", output: "", reason: "The scheduled task has no instruction to execute.", toolCalls: [], pendingApprovals: [] };
   }
+  const parsedFallback=parseDigestFallback(args.fallback);
+  if(!parsedFallback.valid)return {status:"configuration_required",output:"",reason:parsedFallback.reason,toolCalls:[],pendingApprovals:[]};
+  const fallback=parsedFallback.value;
   const configured = await query<{ knowledge_base_id: string }>(
     "SELECT knowledge_base_id FROM organization_ai_runtime_settings WHERE organization_id=$1",
     [args.organizationId],
@@ -168,11 +175,22 @@ export async function runScheduledAgentTask(args: {
   const model = "tool-loop";
 
   for (let round = 0; round < MAX_ROUNDS; round += 1) {
-    const completion = await agentRuntime.completeWithTools(
-      configurationTurn?.agentContext??{ orgId: args.organizationId, agentId: args.agentId, kbId },
-      history,
-      definitions,
-    );
+    let completion;
+    try{
+      completion = await agentRuntime.completeWithTools(
+        configurationTurn?.agentContext??{ orgId: args.organizationId, agentId: args.agentId, kbId },
+        history,
+        definitions,
+      );
+    }catch(error){
+      if(fallback && isEligibleDigestProviderFailure(error) && !summaries.some(call=>call.name==="whatsapp.send")){
+        return runScheduledDigestFallback({
+          config:fallback,context:toolContext,availableTools,emailRuntime,whatsappRuntime,
+          previousCalls:summaries,
+        });
+      }
+      throw error;
+    }
     if (completion.toolCalls.length === 0) {
       const finalText = completion.text.trim();
       if (finalText) {
