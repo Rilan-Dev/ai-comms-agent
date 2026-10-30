@@ -28,6 +28,15 @@ test("slow AI execution cannot stop provider ingestion or unbounded parallel dis
  assert.ok(s.includes("[Math.min(limit,1)]"),"Each worker claims at most one outbox row");
  assert.ok(s.includes("FOR UPDATE SKIP LOCKED"),"Concurrent rows claimed safely");
 });
+test("stale event leases fail closed rather than re-playing uncertain provider actions",()=>{
+ const s=read("../src/automation/event-outbox-worker.ts");
+ assert.ok(s.includes("recoverInterruptedAutomationEvents()"));
+ assert.ok(s.includes("Execution lease expired; downstream outcome uncertain"));
+ assert.ok(s.includes("activeEventIds"));
+ assert.ok(s.includes("setInterval"),"Running tasks keep a heartbeat.");
+ assert.ok(s.includes("run.status='running'"),"Only unfinished runs become failed.");
+ assert.ok(!s.includes("OR (status='processing' AND claimed_at<"),"Expired processing entries may not be reclaimed for duplicate execution.");
+});
 test("inbound agent reply completion does not create duplicate event automation",()=>{
  const s=read("../src/messaging/whatsapp-inbound-worker.ts");
  assert.ok(!s.includes("evaluateAutomationEvent("));

@@ -1,11 +1,12 @@
 import {query,withTransaction} from "@ai-comms-agent/db";
-import {evaluateAutomationEvent} from "./automation-engine";
+import {evaluateAutomationEvent,stableEventKey} from "./automation-engine";
 type Outbox={id:string;organization_id:string;event_type:string;payload:Record<string,unknown>;attempts:number};
 // Scan provider records independently of slow LLM executions.
 // At most two event executions overlap, each with a separate leased outbox row.
 let activeExecutions=0;
 const MAX_CONCURRENT_EXECUTIONS=2;
 let scanning=false;
+const activeEventIds=new Set<string>();
 async function scanProviderEvents(){
  if(scanning)return;
  scanning=true;
@@ -47,37 +48,66 @@ export async function enqueueRecentEmailAutomationEvents(limit=50):Promise<numbe
  total+=inbound.rows.length;
  return total;
 }
+/** A worker may crash after claiming a provider event. Never silently
+ * re-execute an uncertain downstream side effect or mark it completed.
+ * Reconcile both the outbox and any running rule records in one transaction.
+ */
+export async function recoverInterruptedAutomationEvents():Promise<number>{
+ const stale=await withTransaction(async client=>{
+  const r=await client.query<Outbox>(
+   "UPDATE automation_event_outbox SET status='failed',completed_at=now(),last_error='Execution lease expired; downstream outcome uncertain. Inspect approval and run history before any retry.' WHERE status='processing' AND claimed_at<now()-interval '20 minutes' AND NOT (id=ANY($1::uuid[])) RETURNING id,organization_id,event_type,payload,attempts",
+   [[...activeEventIds]]
+  );
+  for(const event of r.rows){
+   const eventKey=stableEventKey({organizationId:event.organization_id,type:event.event_type,payload:event.payload});
+   if(eventKey)await client.query(
+    "UPDATE automation_runs run SET status='failed',finished_at=now(),error='Event worker lease expired; outcome unknown, verify before retrying.' FROM automation_rules rule WHERE rule.id=run.automation_rule_id AND rule.organization_id=$1 AND run.trigger_event_key=$2 AND run.status='running'",
+    [event.organization_id,eventKey]
+   );
+  }
+  return r.rows.length;
+ });
+ return stale;
+}
 export async function processAutomationEventOutbox(limit=1):Promise<{claimed:number;completed:number;failed:number}>{
  // Ingestion runs on every tick, even if all execution slots are busy.
  await scanProviderEvents();
+ await recoverInterruptedAutomationEvents();
  if(activeExecutions>=MAX_CONCURRENT_EXECUTIONS)return {claimed:0,completed:0,failed:0};
  activeExecutions++;
  try{
   const events=await withTransaction(async client=>{
    const r=await client.query<Outbox>(
-    "SELECT id,organization_id,event_type,payload,attempts FROM automation_event_outbox WHERE (status='queued' AND next_attempt_at<=now()) OR (status='processing' AND claimed_at<now()-interval '20 minutes') ORDER BY created_at ASC LIMIT $1 FOR UPDATE SKIP LOCKED",[Math.min(limit,1)]);
+    "SELECT id,organization_id,event_type,payload,attempts FROM automation_event_outbox WHERE status='queued' AND next_attempt_at<=now() ORDER BY created_at ASC LIMIT $1 FOR UPDATE SKIP LOCKED",[Math.min(limit,1)]);
    for(const row of r.rows)await client.query("UPDATE automation_event_outbox SET status='processing',claimed_at=now(),attempts=attempts+1 WHERE id=$1",[row.id]);
    return r.rows;
   });
   let completed=0,failed=0;
   for(const event of events){
+   activeEventIds.add(event.id);
+   const heartbeat=setInterval(()=>{
+    void query("UPDATE automation_event_outbox SET claimed_at=now() WHERE id=$1 AND status='processing'",[event.id]).catch(()=>{});
+   },60_000);
    try{
     const result=await evaluateAutomationEvent({organizationId:event.organization_id,type:event.event_type,payload:event.payload});
     if(result.failed>0){
      // A failed downstream rule is not a successfully completed automation.
      // The run is already idempotently recorded, so retain terminal failure
      // rather than retrying potentially irreversible provider actions.
-     await query("UPDATE automation_event_outbox SET status='failed',completed_at=now(),last_error=$2 WHERE id=$1",[event.id,"Matching automation execution failed for "+result.failed+" rule(s). Review run history before retrying."]);
+     await query("UPDATE automation_event_outbox SET status='failed',completed_at=now(),last_error=$2 WHERE id=$1 AND status='processing'",[event.id,"Matching automation execution failed for "+result.failed+" rule(s). Review run history before retrying."]);
      console.error("[automation] event failed",{outboxId:event.id,failedRules:result.failed});
      failed++;
     }else{
-     await query("UPDATE automation_event_outbox SET status='completed',completed_at=now(),last_error=NULL WHERE id=$1",[event.id]);
+     await query("UPDATE automation_event_outbox SET status='completed',completed_at=now(),last_error=NULL WHERE id=$1 AND status='processing'",[event.id]);
      completed++;
     }
    }catch(e){
     const message=e instanceof Error?e.message:"Automation event evaluation failed";
-    await query("UPDATE automation_event_outbox SET status=CASE WHEN attempts>=3 THEN 'failed' ELSE 'queued' END,next_attempt_at=now()+interval '2 minutes',last_error=$2 WHERE id=$1",[event.id,message.slice(0,500)]);
+    await query("UPDATE automation_event_outbox SET status=CASE WHEN attempts>=3 THEN 'failed' ELSE 'queued' END,next_attempt_at=now()+interval '2 minutes',last_error=$2 WHERE id=$1 AND status='processing'",[event.id,message.slice(0,500)]);
     failed++;
+   }finally{
+    clearInterval(heartbeat);
+    activeEventIds.delete(event.id);
    }
   }
   return {claimed:events.length,completed,failed};

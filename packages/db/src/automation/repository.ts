@@ -286,8 +286,8 @@ export async function createAutomationRun(ruleId:string, result:Record<string,un
   return r.rows[0]?String(r.rows[0].id):null;
 }
 export async function completeAutomationRun(runId:string,result:Record<string,unknown>={}){
-  await query("UPDATE automation_runs SET status='completed',finished_at=now(),result=$2::jsonb,error=NULL WHERE id=$1",[runId,JSON.stringify(result)]);
+  await query("UPDATE automation_runs SET status='completed',finished_at=now(),result=$2::jsonb,error=NULL WHERE id=$1 AND status='running'",[runId,JSON.stringify(result)]);
 }
 export async function failAutomationRun(runId:string,error:string){
-  await query("UPDATE automation_runs SET status='failed',finished_at=now(),error=$2 WHERE id=$1",[runId,error]);
+  await query("UPDATE automation_runs SET status='failed',finished_at=now(),error=$2 WHERE id=$1 AND status='running'",[runId,error]);
 }
