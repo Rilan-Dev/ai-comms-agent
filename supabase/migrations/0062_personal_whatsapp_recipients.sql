@@ -19,3 +19,11 @@ WHERE deleted_at IS NULL AND recipient_role IN ('primary','secondary');
 CREATE INDEX IF NOT EXISTS personal_whatsapp_recipients_owner_list_idx
 ON personal_whatsapp_recipients(organization_id,owner_user_id,recipient_role,display_name)
 WHERE deleted_at IS NULL;
+
+-- Defense in depth for role-scoped connections. Application routes also enforce
+-- user+organization scoping independently, including when a service DB role bypasses RLS.
+ALTER TABLE personal_whatsapp_recipients ENABLE ROW LEVEL SECURITY;
+CREATE POLICY personal_whatsapp_recipients_owner_only ON personal_whatsapp_recipients
+  FOR ALL
+  USING (owner_user_id=aca.current_app_user_id() AND aca.app_is_org_member(organization_id))
+  WITH CHECK (owner_user_id=aca.current_app_user_id() AND aca.app_is_org_member(organization_id));
