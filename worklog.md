@@ -3739,3 +3739,6 @@ Latest-sender bounded lookup candidate: eight resolver/real-executor boundary te
 
 
 Verified c32978781585d1092a423bf5041a32b837b00374 live on web+worker after restored-backup check,79 migrations verified, flags off. Direct Chrome manual approval retry now succeeds. DB confirms one synced reply draft, original header/thread intact, exactly one pending_approval action. Approval queue visibly shows expected QA body/sender/recipient; no Approve or send action taken. Screenshot latest-sender-pending-approval.jpg outsideGit. Accepted: AI reply drafting and manual review creation. Still pending: AI saved-draft approval planning, A2 per-source freshness, provider read writes/low-priority rule, Overview activation, routines and WhatsApp acceptance. Final web166files1171testsPASS; code deployedexactc329; this update records evidence only.
+
+## 2026-10-30 — DEV-01 stateful WhatsApp chat workflow
+Owner-approved typed, durable in-chat recovery implemented on Development. Scope, review findings, regression evidence and remaining release checks: [session](docs/project-control/sessions/DEV01-STATEFUL-CHAT-20261030.md). No provider or permission changes; no phase closure.

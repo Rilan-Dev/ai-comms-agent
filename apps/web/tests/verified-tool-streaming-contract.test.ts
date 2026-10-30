@@ -64,7 +64,7 @@ describe("native final read-only answer streaming after host tool execution", ()
     expect(chat).toContain("if (round === 0 && totalCalls === 0 && error instanceof Error");
     expect(chat).not.toContain('!/unsupported/i.test(error.message)');
     expect(chat).toContain('emit("delta", { text: failureMessage });');
-    expect(chat).toContain('emit("done", { conversationId: conversation.id, provider: "host-authorized-tools", model: "recovery" });');
+    expect(chat).toContain('emit("done", { conversationId: conversation.id, provider: "host-authorized-tools", model: "recovery",');
   });
   it("does not enable speculative streaming for requests without completed audited tool results", () => {
     expect(chat).toContain('toolOutput?.status === "pending_approval" || toolOutput?.approval_required === true');

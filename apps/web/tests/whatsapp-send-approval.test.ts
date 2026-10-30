@@ -64,8 +64,9 @@ describe("WhatsApp send approval safety boundary", () => {
 
   it("gives WhatsApp failures a WhatsApp-specific in-chat recovery message", () => {
     const streamRoute = readFileSync(resolve(__dirname, "../src/app/api/chat/stream/route.ts"), "utf8");
-    expect(streamRoute).toContain("I couldn’t prepare the WhatsApp request.");
-    expect(streamRoute).toContain("check my WhatsApp setup");
+    expect(streamRoute).toContain("I couldn’t confirm the request’s outcome.");
+    expect(streamRoute).toContain("saveWhatsAppCard(failureMessage)");
+    expect(streamRoute).toContain("widget:recovery.widget");
     expect(streamRoute).not.toContain("retrying an email action. Reference: ${reference}");
   });
 

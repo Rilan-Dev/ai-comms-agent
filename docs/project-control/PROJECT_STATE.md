@@ -1,3 +1,9 @@
+## DEV-01 — Stateful WhatsApp chat workflow — 2026-10-30
+
+In-chat setup, recipient/message editing, review and approval recovery implemented; source verification and release evidence are tracked in [session](sessions/DEV01-STATEFUL-CHAT-20261030.md). Development only. No general AI configuration-writing activation or project phase closure.
+
+---
+
 ## DEV-01 — Original workspace implementation — 2026-10-26
 
 Owner approved the current-theme/original-controls design and implementation plan. Tasks0–4 are complete in source; Task5 governed commands, atomic apply, draft recovery and runtime adoption are verified but remain default-off pending original mutation/form integration. Latest exact-source checks:153 web test files/1103tests,115 dedicated PostgreSQL cases,372 worker tests, all six package types, changed-source lint and migration checks PASS. [Current session and exact remaining work](sessions/DEV01-ORIGINAL-WORKSPACE-20261026.md). Original UI/browser/build/release acceptance and returning-owner catch-up phases remain outstanding. Concurrent upstream scheduled digest changes are preserved; their reported separate deployment is not independent verification by this run. Development only, main untouched; no project phase transition or RAG configuration-write feature activation.

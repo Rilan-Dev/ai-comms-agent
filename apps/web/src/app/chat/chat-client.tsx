@@ -2,6 +2,7 @@
 import type React from "react";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {chatRequestFailure} from '@/lib/chat/request-failure';
 import {READ_ONLY_CHAT_SHORTCUTS as QUICK_ACTION_PROMPTS,resolveChatAutoRunPrompt} from '@/lib/chat/quick-actions';
 import { AudioLines, Bot, MailPlus, Send, Sparkles, User } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -15,6 +16,8 @@ import { assistantEmailPreview } from "@/lib/mail/assistant-email-preview";
 import { selectComposeSender, signatureFromProfile, withProfileSignature, type ComposeProfile } from "@/lib/mail/compose-identity";
 import { parseAssistantChecklistLine } from "@/lib/chat/interactive-replies";
 import { AssistantChecklist, SuggestedNextActions, type EmailWorkflowState } from "./interactive-message-controls";
+import {WhatsAppWorkflowCard} from './whatsapp-workflow-card';
+import {readWhatsAppWidget} from '@/lib/chat/whatsapp-workflow-contract';
 import { InlineMailApprovalReview } from "./chat-inline-mail-approval";
 import {ChatMailResult} from './chat-mail-result';
 import {ChatMailInbox} from './chat-mail-inbox';
@@ -77,6 +80,7 @@ export function ChatClient({
   const [chatHistoryNotice, setChatHistoryNotice] = useState("");
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  const [signInNeeded,setSignInNeeded]=useState(false);
   const [mailComposerOpen, setMailComposerOpen] = useState(false);
   const [mailInboxOpen,setMailInboxOpen]=useState(false);
   const [composeMailboxes, setComposeMailboxes] = useState<Array<{
@@ -686,7 +690,12 @@ export function ChatClient({
         signal:turnController.signal,
         body: JSON.stringify({ organizationId, agentId: activeAgent.id, conversationId, message: content,...(continuationRef?{continuationRef}:{}) }),
       });
-      if (!response.ok || !response.body) throw new Error((await response.text()) || "Chat request failed");
+      if (!response.ok || !response.body) {
+        const failure=chatRequestFailure(response.status,await response.json().catch(()=>null));
+        if(failure.signInNeeded){setSignInNeeded(true);setDraft(content);setMessages(current=>current.filter(message=>message.id!==optimisticId));}
+        setMessages(current=>[...current,{id:'error-'+Date.now(),conversationId,role:'system',content:failure.message,createdAt:new Date().toISOString()}]);
+        return;
+      }
 
       const assistantId = "local-assistant-" + Date.now();
       let assistant = "";
@@ -694,7 +703,7 @@ export function ChatClient({
       for await (const event of readSseEvents(response.body)) {
         if(turnEpoch!==agentContextEpochRef.current || turnController.signal.aborted)return;
         const payload = JSON.parse(event.data) as {
-          text?: string; conversationId?: string; message?: string; phase?: string; toolCalls?:unknown; mailWhatsAppTask?:unknown;
+          text?: string; conversationId?: string; message?: string; phase?: string; toolCalls?:unknown; mailWhatsAppTask?:unknown; messageId?:string;widget?:unknown;
         };
         if (event.event === "error") throw new Error(payload.message || "AI generation failed.");
         if (payload.conversationId && payload.conversationId!==conversationId) throw new Error("Conversation changed. Reload its saved status before continuing.");
@@ -718,6 +727,7 @@ export function ChatClient({
           if(mailReferences.length) setMessages(current=>current.map(message=>message.id===assistantId?{...message,mailReferences}:message));
           const nextContinuation=continuationForTurn(payload.mailWhatsAppTask);
           if(nextContinuation)setMessages(current=>current.map(message=>message.id===assistantId?{...message,continuationRef:nextContinuation}:message));
+          if(payload.messageId&&readWhatsAppWidget({ui:payload.widget}))setMessages(current=>current.map(message=>message.id===assistantId?{...message,id:payload.messageId!,contentJson:{ui:payload.widget}}:message));
           if(continuationRef)setConsumedContinuations(current=>[...new Set([...current,continuationRef])]);
           setActivitySteps((steps) => [...steps, "completed" as AgentActivityPhase].slice(-10));
           break;
@@ -861,12 +871,13 @@ export function ChatClient({
             </div>
           ) : messages.map((message) => (<div key={message.id}>
             <MessageBubble key={message.id} role={message.role} content={message.content} messageId={message.id}
-              showNextActions={message.role === "assistant" && message.id === latestAssistantId}
+              showNextActions={message.role === "assistant" && message.id === latestAssistantId&&!readWhatsAppWidget(message.contentJson)}
               userRequest={latestUserRequest}
               disabled={interactiveControlsDisabled} onPrepare={prepareInteractivePrompt}
               emailWorkflowState={emailWorkflowState}
               onComposeEmail={openInlineEmailComposer}
               onRequestEmailApproval={requestInlineEmailApproval} />
+            {(()=>{const widget=readWhatsAppWidget(message.contentJson);return message.role==='assistant'&&widget&&widget.ownerId===currentUserId?<WhatsAppWorkflowCard key={message.id} messageId={message.id} organizationId={organizationId} agentId={agentId} conversationId={conversationId} initial={widget} disabled={interactiveControlsDisabled}/>:null;})()}
             {message.mailReferences?.map(reference=><ChatMailResult key={`${reference.kind}:${reference.id}`} reference={reference} organizationId={organizationId} agentId={agentId}/>)}
             {(()=>{const ref=message.continuationRef??continuationForSavedMessage(message,currentUserId,agentId,Date.now());return ref&&!consumedContinuations.includes(ref)?<div className="mt-2"><button type="button" disabled={interactiveControlsDisabled} onClick={()=>void sendChatMessage('Continue saved WhatsApp review',ref)} className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-50">Continue WhatsApp review</button><p className="mt-1 text-xs text-muted-foreground">Uses the saved summary and asks for human review before sending.</p></div>:null;})()}
             </div>
@@ -1015,6 +1026,7 @@ export function ChatClient({
               <button type="button" onClick={()=>setMailInboxOpen(true)} className="rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground hover:text-primary">Review drafts &amp; approvals</button>
             </div>
           ) : null}
+          {signInNeeded&&<p role="status" className="mb-2 text-sm"><a href="/login?next=%2Fchat" target="_blank" rel="noopener noreferrer" className="underline">Sign in to continue</a> in another tab, then return here with your message.</p>}
           <div className="rounded-2xl border border-border bg-card shadow-sm focus-within:border-primary/30 focus-within:ring-2 focus-within:ring-primary/10">
             <textarea
               ref={composerRef}

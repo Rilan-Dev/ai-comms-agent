@@ -23,6 +23,11 @@ import { userFacingChatAnswer } from "@/lib/chat/user-facing-answer";
 import { businessAnswerGuidance } from "@/lib/chat/business-answer-guidance";
 import { currentTurnOperationAnswer, formatOperationFeedback, isExplicitWhatsAppMutationRequest } from "@/lib/chat/operation-feedback";
 import {parseMailWhatsAppTask} from '@/lib/chat/mail-whatsapp-task';
+import {isWhatsAppSetupRequest} from '@/lib/chat/whatsapp-workflow-contract';
+import {createWhatsAppWorkflow,loadWorkflow,reconcileWorkflow,replaceWorkflow} from '@/lib/chat/whatsapp-workflow-store';
+import {explainWhatsAppSetup} from '@/lib/chat/whatsapp-setup-explanation';
+import {GET as whatsappReadinessGET} from '../../whatsapp/readiness/route';
+import type {WhatsAppReadiness} from '@ai-comms-agent/shared';
 import {startMailWhatsAppReview,continueMailWhatsAppReview} from '@/lib/chat/mail-whatsapp-review';
 import {readEvidenceAnswer} from '@/lib/mail/read-evidence-answer';
 import { operationResultFromToolCall, reviewExplicitEmailBody, type OperationResult } from "@ai-comms-agent/shared";
@@ -316,6 +321,7 @@ async function runInteractiveHostToolLoop(args: {
   savedDraftApproval?:SavedDraftApproval|null;
   whatsAppOnly?:boolean;
   signal?:AbortSignal;
+  beforeWhatsAppMutation?:()=>Promise<void>;
   onSafeReadOnlyFinal?: (completedHistory: ToolChatMessage[]) => Promise<string>;
   onProgress?: (phase: "planning_tools" | "reading_email" | "reading_whatsapp" | "checking_permissions" | "denied") => void;
 }): Promise<HostToolTurnResult | null> {
@@ -453,6 +459,7 @@ async function runInteractiveHostToolLoop(args: {
       args.onProgress?.(known?.required_permission === "email.read"
         ? "reading_email" : known?.required_permission === "whatsapp.read"
           ? "reading_whatsapp" : "checking_permissions");
+      if(call.name==='whatsapp.send')await args.beforeWhatsAppMutation?.();
       const result: ToolResult = call.name.startsWith("whatsapp.")
         ? await invokeWhatsAppTool(whatsappRuntime, call.name, call.arguments, args.toolContext)
         : call.name.startsWith("schedules.")
@@ -562,6 +569,35 @@ export async function POST(request: Request) {
       ...(frozenConfiguration?{agent_configuration:frozenConfiguration}:{}),
     };
     const mailWhatsAppTask=parseMailWhatsAppTask(content);
+    const workflowScope={organizationId,agentId,conversationId:conversation.id,userId:subject.user.id};
+    let activeWhatsAppCard:Awaited<ReturnType<typeof createWhatsAppWorkflow>>|undefined;
+    async function saveWhatsAppCard(text:string){
+      const saved=activeWhatsAppCard??await createWhatsAppWorkflow(workflowScope,content,trustedToolContext.correlation_id,trustedToolContext.turn_id,text);
+      if(activeWhatsAppCard)saved.widget=await loadWorkflow(workflowScope,saved.messageId)??saved.widget;
+      const reconciled=await reconcileWorkflow(workflowScope,saved.widget);
+      saved.widget=await replaceWorkflow(workflowScope,saved.messageId,saved.widget,reconciled,text)??saved.widget;
+      activeWhatsAppCard=saved;
+      return saved;
+    }
+    if(isWhatsAppSetupRequest(content)){
+      await appendConversationMessage({organizationId,conversationId:conversation.id,role:'user',content});
+      const url=new URL('/api/whatsapp/readiness',request.url);
+      url.searchParams.set('organizationId',organizationId);url.searchParams.set('agentId',agentId);
+      const recipient=content.match(/\+[1-9]\d{7,14}\b/g);
+      if(recipient?.length===1)url.searchParams.set('recipient',recipient[0]!);
+      let readiness:WhatsAppReadiness|null=null;
+      try{const check=await whatsappReadinessGET(new Request(url,{headers:request.headers}));if(check.ok)readiness=await check.json() as WhatsAppReadiness;}catch{/* The saved editor remains usable when a check is unavailable. */}
+      const text=await explainWhatsAppSetup(readiness,async facts=>{
+        const ctx:AgentRuntimeContext=frozenConfiguration
+          ?(await prepareAgentConfigurationTurn({orgId:organizationId,agentId,kbId,userId:subject.user.id,sessionId:conversation.id,skipGrounding:true})).agentContext
+          :{orgId:organizationId,agentId,kbId,userId:subject.user.id,sessionId:conversation.id,skipGrounding:true};
+        const answer=await agentRuntime.completeWithTools(ctx,[{role:'user',content:'Explain these verified WhatsApp setup checks in two short sentences. Use only these facts. No message was requested by this setup check. Do not claim sending, saving an approval, changing settings or successful checks absent from the facts. The interactive controls below already provide setup, recipient and message editors; do not ask me to type another command. Facts: '+facts}],[],AbortSignal.any([request.signal,AbortSignal.timeout(12000)]));
+        return answer.toolCalls.length?'':answer.text;
+      });
+      const saved=await saveWhatsAppCard(text);
+      if(readiness)saved.widget=await replaceWorkflow(workflowScope,saved.messageId,saved.widget,{...saved.widget,readiness,accountId:readiness.accountId??null,accountLabel:readiness.accountLabel??null})??saved.widget;
+      return new Response(`event: conversation\ndata: ${JSON.stringify({conversationId:conversation.id})}\n\nevent: delta\ndata: ${JSON.stringify({text})}\n\nevent: done\ndata: ${JSON.stringify({conversationId:conversation.id,messageId:saved.messageId,widget:saved.widget})}\n\n`,{headers:{'content-type':'text/event-stream; charset=utf-8','cache-control':'no-cache, no-transform'}});
+    }
     if(mailWhatsAppTask||continuationRef){
       if(!(['email.read','whatsapp.send'] as const).every(permission=>subject.permissions.has(permission))){
         return NextResponse.json({error:'forbidden',message:'Email read and WhatsApp send access are required for this review.'},{status:403});
@@ -760,9 +796,12 @@ export async function POST(request: Request) {
 
     const encoder = new TextEncoder();
     let assistantOutput = "";
+    let streamCancelled=false;
     const stream = new ReadableStream<Uint8Array>({
+      cancel(){streamCancelled=true;},
       async start(controller) {
         const emit = (event: string, data: Record<string, unknown>) => {
+          if(streamCancelled||request.signal.aborted)return;
           controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
         };
         let provider = "host-authorized-tools";
@@ -789,6 +828,11 @@ export async function POST(request: Request) {
                 savedDraftApproval:parseSavedDraftApproval(content),
                 whatsAppOnly:whatsappPlan.whatsAppOnly,
                 signal:request.signal,
+                beforeWhatsAppMutation:async()=>{
+                  // Persist the operation identity before any side effect, so a
+                  // lost stream can be reconciled by the saved card on reload.
+                  if(!activeWhatsAppCard)activeWhatsAppCard=await createWhatsAppWorkflow(workflowScope,content,trustedToolContext.correlation_id,trustedToolContext.turn_id,'Checking the saved WhatsApp request. Use the card to recover its status.','requesting');
+                },
                 onProgress: (phase) => emit("progress", { phase }),
                 onSafeReadOnlyFinal: explicitMessagingAction ? undefined : async (completedHistory) => {
                   emit("status", { phase: "generating" });
@@ -863,33 +907,39 @@ export async function POST(request: Request) {
             }
           }
           if (request.signal.aborted) {
-            controller.close();
+            if(activeWhatsAppCard)await saveWhatsAppCard('This response was interrupted. Check the saved request status below before trying again.');
+            if(!streamCancelled)controller.close();
             return;
           }
           // A provider may finish without emitting any content. Never save a
           // blank assistant reply or tell Chat that such a turn completed.
           if (!assistantOutput.trim()) throw new Error("AI provider returned an empty chat response.");
-          await appendConversationMessage({
+          const whatsAppCard=activeWhatsAppCard||(/\bwhats\s?app\b/i.test(content)&&(explicitMessagingAction||toolTurn?.toolCalls.some(call=>call.operation?.channel==='whatsapp')))
+            ?await saveWhatsAppCard(assistantOutput):null;
+          if(!whatsAppCard)await appendConversationMessage({
             organizationId, conversationId: conversation.id, role: "assistant", content: assistantOutput,
           });
           emit("progress", { phase: "completed" });
-          emit("done", { conversationId: conversation.id, provider, model, toolCalls: toolTurn?.toolCalls ?? [] });
-          controller.close();
+          emit("done", { conversationId: conversation.id, provider, model, toolCalls: toolTurn?.toolCalls ?? [],...(whatsAppCard?{messageId:whatsAppCard.messageId,widget:whatsAppCard.widget}:{}) });
+          if(!streamCancelled)controller.close();
         } catch (error) {
           // Provider, SQL and tool exceptions can contain tokens, user mail or SQL parameters.
           // The browser must never receive the raw exception through an SSE frame.
           const reference=trustedToolContext.correlation_id;
           console.error('[chat/stream] execution failed',{reference,...safeChatFailure(error),stage:shouldResolveTools?'tools':'model'});
-          if (!request.signal.aborted) {
             const failureMessage = safeChatFailure(error).category==='output_limit'
             ? `The AI reached its response limit. Check Drafts or Approvals before retrying; this response does not confirm a saved reply or delivery. Reference: ${reference}`
             : explicitMessagingAction
-            ? `I couldn’t prepare the WhatsApp request. I have not sent anything. I can help fix the missing phone, permission, recipient, or message details here in Chat—tell me “check my WhatsApp setup” and I’ll show the available choices. Reference: ${reference}`
+            ? `I couldn’t confirm the request’s outcome. Check its saved status before trying again. You can review the details using the controls below. Reference: ${reference}`
             : `The read-only response could not be completed. Try again or open Inbox to view saved messages. Reference: ${reference}`;
             emit("delta", { text: failureMessage });
-            emit("done", { conversationId: conversation.id, provider: "host-authorized-tools", model: "recovery" });
-          }
-          controller.close();
+            let recovery;
+            try{
+              if(activeWhatsAppCard||/\bwhats\s?app\b/i.test(content))recovery=await saveWhatsAppCard(failureMessage);
+              else await appendConversationMessage({organizationId,conversationId:conversation.id,role:'assistant',content:failureMessage});
+            }catch{ /* A database outage cannot manufacture a durable recovery card. */ }
+            emit("done", { conversationId: conversation.id, provider: "host-authorized-tools", model: "recovery",...(recovery?{messageId:recovery.messageId,widget:recovery.widget}:{}) });
+          if(!streamCancelled)controller.close();
         }
       },
     });

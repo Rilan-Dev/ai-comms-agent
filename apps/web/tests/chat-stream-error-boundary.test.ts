@@ -29,7 +29,9 @@ describe("chat streaming errors never disclose server/provider exception details
     expect(auth).toContain("sqlstate");
   });
   it("keeps provider and SQL exception contents out of event-stream error frames", () => {
-    expect(streamCatch).toContain('emit("error", { message: safeChatFailure(error).category===\'output_limit\'');
+    expect(streamCatch).toContain('const failureMessage = safeChatFailure(error).category===\'output_limit\'');
+    expect(streamCatch).toContain('emit("delta", { text: failureMessage });');
+    expect(streamCatch).toContain('saveWhatsAppCard(failureMessage)');
     expect(streamCatch).toContain('The AI reached its response limit.');
     expect(streamCatch).toContain(': explicitMessagingAction');
     expect(streamCatch).not.toContain("error instanceof Error ? error.message");
