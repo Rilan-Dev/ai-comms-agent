@@ -63,6 +63,7 @@ export async function POST(request:Request,{params}:{params:Promise<{orgId:strin
   const {name,phone,role}=parsed.value;
   const r=await query<Recipient>("INSERT INTO personal_whatsapp_recipients(organization_id,owner_user_id,display_name,phone_e164,recipient_role) VALUES($1,$2,$3,$4,$5) RETURNING id::text,display_name,phone_e164,recipient_role",[orgId,subject.user.id,name,phone,role]);
   const recipient=r.rows[0];
+  if(!recipient)throw new Error("Recipient insert returned no row.");
   await recordAuditEvent({organizationId:orgId,actorUserId:subject.user.id,eventType:"recipient.created",targetType:"personal_whatsapp_recipient",targetId:recipient.id,action:"create",decision:"allowed",metadata:{role}});
   return NextResponse.json({recipient},{status:201});
  }catch(e){return conflict(e);}

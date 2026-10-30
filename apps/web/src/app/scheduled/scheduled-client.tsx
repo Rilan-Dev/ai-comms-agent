@@ -98,6 +98,7 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<ScheduleValues | null>(null);
+  const [duplicateOf,setDuplicateOf]=useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const createFormRef = useRef<HTMLDetailsElement>(null);
   const taskTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -139,12 +140,15 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
     try {
       const { body, error } = buildScheduleBody(form);
       if (error) throw new Error(error);
+      const source = schedules.find(item=>item.id===duplicateOf);
+      if(source){ body.params={...source.params,...(body.params as object)}; body.catchUpMinutes=source.catchUpMinutes??60; }
       const r = await fetch(`/api/organizations/${organizationId}/schedules`, {
         method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.message ?? d.error ?? "Could not create the scheduled task.");
       setForm({ ...form, name: "", task: "", oneFireAt: "" });
+      setDuplicateOf(null);
       setNotice("Scheduled AI agent task created. The agent executes it with its real tools at every fire time.");
       await reload();
     } catch (e) {
@@ -236,7 +240,7 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
   const historicalSchedules = schedules.filter(s => historicalSchedule(s));
   function startEdit(row:Schedule) { setEditing(row.id); setEditForm(scheduleToForm(row)); setNotice(""); }
   function duplicate(row:Schedule) {
-    setForm(scheduleToForm(row,true));
+    setForm(scheduleToForm(row,true));setDuplicateOf(row.id);
     setEditing(null); setEditForm(null); setNotice("Duplicate prepared. Choose the new fire time and review the recipient, account and sending policy before creating. The original task is unchanged.");
     if(createFormRef.current) createFormRef.current.open=true;
     requestAnimationFrame(()=>{createFormRef.current?.scrollIntoView({block:"start",behavior:"smooth"}); createFormRef.current?.querySelector<HTMLInputElement>('input[aria-label="New schedule name"]')?.focus();});
@@ -327,6 +331,7 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
     </section>
     <details ref={createFormRef} className="rounded-md border border-border bg-card p-5">
       <summary className="cursor-pointer text-sm font-semibold">New scheduled AI task</summary>
+      {duplicateOf&&<p className="mt-3 rounded-xl border border-attention/30 bg-attention-subtle p-3 text-xs text-attention">Review cloned settings and recipient before creating. Creating a duplicate adds a new independently firing task.</p>}
       <div className="mt-4"><ScheduleFields idPrefix="New schedule" form={form} onChange={setForm} agents={agents} browserTimezone={browserTimezone}/></div>
       <textarea ref={taskTextareaRef} aria-label="Task instruction" className="mt-4 min-h-[84px] w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder="Task instruction the AI executes at every fire time — e.g. Summarize my emails from the last 24 hours and send me a short note on WhatsApp at +919629534701." value={form.task} onChange={e => setForm({ ...form, task: e.target.value })} />
       <div className="mt-2"><MentionPicker organizationId={organizationId} value={form.task} onChange={task=>setForm({...form,task})} textareaRef={taskTextareaRef}/></div>
