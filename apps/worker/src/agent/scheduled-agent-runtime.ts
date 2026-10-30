@@ -1,5 +1,5 @@
 import {requiresHumanApproval,turnAllowsTool,asOrganizationId,asUserId} from "@ai-comms-agent/shared";
-import { PostgresAgentRepository,PostgresIdentityRepository, query } from "@ai-comms-agent/db";
+import { PostgresAgentRepository,PostgresIdentityRepository, query,expandAuthorizedMentions } from "@ai-comms-agent/db";
 import { agentRuntime } from "@ai-comms-agent/agent-core";
 import type { ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/agent-core";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
@@ -82,7 +82,7 @@ export async function runScheduledAgentTask(args: {
   /** Explicitly opted-in provider-failure digest. */
   fallback?:unknown;
 }): Promise<ScheduledAgentTaskResult> {
-  const task = args.task.trim();
+  const task = await expandAuthorizedMentions({organizationId:args.organizationId,userId:args.userId??null,text:args.task.trim()});
   if (!task) {
     return { status: "configuration_required", output: "", reason: "The scheduled task has no instruction to execute.", toolCalls: [], pendingApprovals: [] };
   }

@@ -7,6 +7,7 @@ import {parseSavedDraftApproval,requestSavedDraftApproval,SavedDraftApprovalLook
 import {boundedChatHistory} from "@/lib/chat/bounded-history";
 import {safeChatFailure} from '@/lib/chat/safe-failure';
 import { NextResponse } from "next/server";
+import { expandAuthorizedMentions } from "@ai-comms-agent/db";
 import { appendConversationMessage, getChatConversation, getOrCreateChatConversation, listChatMessages, PostgresAgentRepository, query,loadActiveAgentConfiguration,assertCurrentAgentToolAuthorization,type ActiveAgentConfiguration } from "@ai-comms-agent/db";
 import { agentRuntime } from "@ai-comms-agent/agent-core";
 import {prepareAgentConfigurationTurn} from '@ai-comms-agent/email-agent-runtime';
@@ -511,7 +512,7 @@ export async function POST(request: Request) {
     const organizationId = typeof body?.organizationId === "string" ? body.organizationId : "";
     const agentId = typeof body?.agentId === "string" ? body.agentId : "";
     const continuationRef=typeof body?.continuationRef==='string'?body.continuationRef.trim():'';
-    const content = typeof body?.message === "string" && body.message.trim() ? body.message.trim() : continuationRef?'Continue saved WhatsApp review':'';
+    let content = typeof body?.message === "string" && body.message.trim() ? body.message.trim() : continuationRef?'Continue saved WhatsApp review':'';
     if (!organizationId || !agentId || !content) {
       return NextResponse.json({ error: "validation_error", message: "organizationId, agentId and message are required." }, { status: 422 });
     }
@@ -530,6 +531,9 @@ export async function POST(request: Request) {
         { status: 403 },
       );
     }
+
+    try { content = await expandAuthorizedMentions({organizationId,userId:subject.user.id,text:content}); }
+    catch(e){ return NextResponse.json({error:"invalid_mention",message:e instanceof Error?e.message:"The account or contact mention cannot be resolved."},{status:422}); }
 
     const agent = await new PostgresAgentRepository().get(organizationId, agentId);
     if (!agent) {
