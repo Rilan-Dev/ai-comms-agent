@@ -9,7 +9,7 @@ describe("account mentions in AI execution",()=>{
   const resolver=source("../../packages/db/src/automation/mention-resolver.ts");
   expect(resolver).toContain("owner_user_id=$2");
   expect(resolver).toContain("deleted_at IS NULL");
-  expect(resolver).toContain('status=\\'active\\'');
+  expect(resolver).toContain("status='active'");
   expect(resolver).toContain("The mentioned WhatsApp sending account is unavailable or disconnected.");
  });
  it("expands mentions inside interactive chat and scheduled worker, without changing send grants",()=>{
