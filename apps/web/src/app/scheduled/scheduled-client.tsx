@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { historicalSchedule, scheduleToForm, type ScheduleValues } from "@/lib/schedules/schedule-form";
+import { ScheduleFields } from "@/components/schedules/schedule-fields";
 
 type Agent = { id: string; name: string; status: string };
 type Schedule = {
@@ -94,7 +96,10 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
-  const [editTask, setEditTask] = useState("");
+  const [editForm, setEditForm] = useState<ScheduleValues | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const createFormRef = useRef<HTMLDetailsElement>(null);
+  const createNameRef = useRef<HTMLInputElement>(null);
   const [runsFor, setRunsFor] = useState<string | null>(null);
   const [runs, setRuns] = useState<RunRow[]>([]);
   const [runsBusy, setRunsBusy] = useState(false);
@@ -155,13 +160,13 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           id,
-          agentId: current.agentId,
+          agentId: typeof changes.agentId==="string" ? changes.agentId : current.agentId,
           name: typeof changes.name === "string" ? changes.name : current.name,
           intent: current.intent || "scheduled_agent_task",
           cron: "cron" in changes ? changes.cron : current.cron,
           oneFireAt: "oneFireAt" in changes ? changes.oneFireAt : current.oneFireAt,
-          timezone: current.timezone,
-          params: { task: typeof changes.task === "string" ? changes.task : describeTask(current) },
+          timezone: typeof changes.timezone==="string" ? changes.timezone : current.timezone,
+          params: { ...current.params, task: typeof changes.task === "string" ? changes.task : describeTask(current) },
           status: typeof changes.status === "string" ? changes.status : current.status,
         }),
       });
@@ -222,7 +227,22 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
     } finally { setBusy(false); }
   }
 
-  const activeSchedules = schedules.filter(s => s.status !== "archived");
+  const activeSchedules = schedules.filter(s => !historicalSchedule(s));
+  const historicalSchedules = schedules.filter(s => historicalSchedule(s));
+  function startEdit(row:Schedule) { setEditing(row.id); setEditForm(scheduleToForm(row)); setNotice(""); }
+  function duplicate(row:Schedule) {
+    setForm(scheduleToForm(row,true));
+    setEditing(null); setEditForm(null); setNotice("Duplicate prepared. Choose the new fire time and review the recipient, account and sending policy before creating. The original task is unchanged.");
+    if(createFormRef.current) createFormRef.current.open=true;
+    requestAnimationFrame(()=>{createFormRef.current?.scrollIntoView({block:"start",behavior:"smooth"}); createNameRef.current?.focus();});
+  }
+  async function saveEdit(row:Schedule) {
+    if(!editForm)return;
+    const {body,error}=buildScheduleBody(editForm);
+    if(error){setNotice(error);return;}
+    await patchSchedule(row.id,{...body,task:editForm.task, status:row.status});
+    setEditing(null);setEditForm(null);
+  }
   const activeRules = rules.filter(r => r.status !== "archived");
 
   return <main className="mx-auto max-w-[1200px] space-y-8 bg-background p-5 sm:p-7 lg:p-10">
@@ -251,15 +271,23 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
             <button disabled={busy} onClick={() => void patchSchedule(row.id, { status: row.status === "paused" ? "active" : "paused" })} className="rounded-md border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50">
               {row.status === "paused" ? "Resume" : "Pause"}
             </button>
-            <button disabled={busy} onClick={() => { setEditing(editing === row.id ? null : row.id); setEditTask(describeTask(row)); }} className="rounded-md border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50">Edit</button>
+            <button disabled={busy} onClick={() => editing === row.id ? (setEditing(null),setEditForm(null)) : startEdit(row) className="rounded-md border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50">Edit</button>
+            <button disabled={busy} onClick={() => duplicate(row)} className="rounded-xl border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50">Duplicate</button>
             <button disabled={busy || runsBusy} onClick={() => { void loadRuns(row.id); }} className="rounded-md border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50">{runsFor === row.id ? "Hide runs" : "Runs"}</button>
             <button disabled={busy} onClick={() => void archiveSchedule(row.id)} className="rounded-md border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50">Delete</button>
           </div>
         </div>
-        {editing === row.id && <div className="mt-3 rounded-md border border-border bg-background p-3">
-          <label htmlFor={`edit-task-${row.id}`} className="text-xs font-semibold text-muted-foreground">Task instruction</label>
-          <textarea id={`edit-task-${row.id}`} className="mt-2 min-h-[72px] w-full rounded-md border bg-background px-3 py-2 text-sm" value={editTask} onChange={e => setEditTask(e.target.value)} />
-          <button disabled={busy} onClick={() => { void patchSchedule(row.id, { task: editTask }); setEditing(null); }} className="mt-3 h-9 rounded-md bg-foreground px-4 text-xs font-semibold text-background disabled:opacity-50">Save task</button>
+        {editing === row.id && editForm && <div className="mt-4 space-y-3 rounded-xl border border-border bg-background p-4">
+          <h3 className="text-sm font-semibold">Edit schedule — {row.name}</h3>
+          <ScheduleFields idPrefix="Edit schedule" form={editForm} onChange={setEditForm} agents={agents} browserTimezone={browserTimezone}/>
+          <label className="block text-xs font-semibold text-muted-foreground">AI task instruction
+            <textarea aria-label="Edit task instruction" className="mt-2 min-h-[90px] w-full rounded-xl border bg-background px-3 py-2 text-sm" value={editForm.task} onChange={e => setEditForm({...editForm,task:e.target.value})}/>
+          </label>
+          <p className="text-xs text-muted-foreground">Updating an existing job changes future fires; prior execution history remains attached. Saved fallback and policy parameters are preserved.</p>
+          <div className="flex flex-wrap gap-2">
+            <button disabled={busy} onClick={() => void saveEdit(row)} className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">Save schedule changes</button>
+            <button disabled={busy} onClick={() => {setEditing(null);setEditForm(null);}} className="rounded-xl border px-4 py-2 text-xs font-semibold">Cancel</button>
+          </div>
         </div>}
         {runsFor === row.id && <div className="mt-3 rounded-md border border-border bg-background p-3" aria-live="polite">
           <p className="text-xs font-semibold text-muted-foreground">Execution history (latest 100)</p>
@@ -282,41 +310,18 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
       {activeSchedules.length === 0 && <div className="rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">No scheduled AI tasks yet. Create one below, or ask the agent in chat: &quot;every day at 8, summarize my last 24 hours of email and send me a WhatsApp note&quot;.</div>}
     </section>
 
-    <details open={activeSchedules.length===0} className="rounded-md border border-border bg-card p-5">
+    <section className="rounded-xl border border-border bg-card p-5" aria-label="Historical scheduled tasks">
+      <button type="button" className="flex w-full items-center justify-between text-left text-sm font-semibold" onClick={()=>setHistoryOpen(!historyOpen)} aria-expanded={historyOpen}>Closed, completed &amp; expired schedules ({historicalSchedules.length}) <span>{historyOpen?"Hide history":"Show history"} ↗</span></button>
+      {historyOpen && <div className="mt-4 space-y-3">{historicalSchedules.length===0?<p className="text-sm text-muted-foreground">No archived or completed one-time schedules yet.</p>:historicalSchedules.map(row=><article key={row.id} className="rounded-xl border border-border bg-background p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><p className="font-semibold">{row.name}</p><p className="mt-1 text-xs text-muted-foreground">{row.status} · {describeRepeat(row)} · {row.timezone}</p><p className="mt-2 whitespace-pre-wrap text-sm">{describeTask(row)}</p>{row.lastFireAt&&<p className="mt-1 text-xs text-muted-foreground">Last fired {new Date(row.lastFireAt).toLocaleString()}</p>}</div>
+        <div className="flex gap-2"><button disabled={busy} onClick={()=>duplicate(row)} className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">Duplicate &amp; reschedule</button><button disabled={runsBusy} onClick={()=>void loadRuns(row.id)} className="rounded-xl border px-3 py-2 text-xs font-semibold">{runsFor===row.id?"Hide runs":"Runs"}</button></div></div>
+        {runsFor===row.id&&<div className="mt-3 space-y-2 border-t pt-3 text-xs">{runs.length===0?"No recorded executions.":runs.map(run=><div key={run.id} className="rounded-lg border p-2"><span className="font-semibold">{run.status} — {new Date(run.fire_at).toLocaleString()}</span>{run.error&&<p className="mt-1 text-destructive">{run.error}</p>}{typeof run.result?.output==="string"&&<p className="mt-1 whitespace-pre-wrap">{run.result.output}</p>}</div>)}</div>}
+      </article>)}</div>}
+    </section>
+    <details ref={createFormRef} defaultOpen={activeSchedules.length===0} className="rounded-md border border-border bg-card p-5">
       <summary className="cursor-pointer text-sm font-semibold">New scheduled AI task</summary>
-      <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-        <input aria-label="Schedule name" className="h-10 rounded-md border bg-background px-3 text-sm lg:col-span-2" placeholder="Schedule name (e.g. Morning email digest)" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-        <select aria-label="Agent" className="h-10 rounded-md border bg-background px-3 text-sm" value={form.agentId} onChange={e => setForm({ ...form, agentId: e.target.value })}>
-          {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
-        <select aria-label="Repeat mode" className="h-10 rounded-md border bg-background px-3 text-sm" value={form.mode} onChange={e => setForm({ ...form, mode: e.target.value as RecurrenceMode })}>
-          <option value="one_time">One-time</option>
-          <option value="minutes">Every N minutes</option>
-          <option value="hours">Every N hours</option>
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly</option>
-          <option value="monthly">Monthly</option>
-          <option value="cron">Advanced (cron)</option>
-        </select>
-        {form.mode === "one_time" && <input className="h-10 rounded-md border bg-background px-3 text-sm" type="datetime-local" aria-label="One-time fire time" value={form.oneFireAt} onChange={e => setForm({ ...form, oneFireAt: e.target.value })} />}
-        {form.mode === "minutes" && <input className="h-10 rounded-md border bg-background px-3 text-sm" type="number" min={1} max={59} aria-label="Minutes interval" value={form.interval} onChange={e => setForm({ ...form, interval: e.target.value })} />}
-        {form.mode === "hours" && <input className="h-10 rounded-md border bg-background px-3 text-sm" type="number" min={1} max={23} aria-label="Hours interval" value={form.interval} onChange={e => setForm({ ...form, interval: e.target.value })} />}
-        {form.mode === "daily" && <input className="h-10 rounded-md border bg-background px-3 text-sm" type="time" aria-label="Fire time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />}
-        {form.mode === "weekly" && <>
-          <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Weekday" value={form.weekday} onChange={e => setForm({ ...form, weekday: e.target.value })}>
-            {WEEKDAYS.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <input className="h-10 rounded-md border bg-background px-3 text-sm" type="time" aria-label="Fire time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />
-        </>}
-        {form.mode === "monthly" && <>
-          <input className="h-10 rounded-md border bg-background px-3 text-sm" type="number" min={1} max={28} aria-label="Day of month" value={form.dayOfMonth} onChange={e => setForm({ ...form, dayOfMonth: e.target.value })} />
-          <input className="h-10 rounded-md border bg-background px-3 text-sm" type="time" aria-label="Fire time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />
-        </>}
-        {form.mode === "cron" && <input className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Cron expression" value={form.cron} onChange={e => setForm({ ...form, cron: e.target.value })} />}
-        <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Timezone" value={form.timezone} onChange={e => setForm({ ...form, timezone: e.target.value })}>
-          {[browserTimezone, "UTC", "Asia/Calcutta", "Asia/Dubai", "Europe/London", "Europe/Berlin", "America/New_York", "America/Chicago", "America/Los_Angeles", "Australia/Sydney"].filter((v, i, a) => v && a.indexOf(v) === i).map(tz => <option key={tz} value={tz}>{tz}</option>)}
-        </select>
-      </div>
+      <div className="mt-4"><ScheduleFields idPrefix="New schedule" form={form} onChange={setForm} agents={agents} browserTimezone={browserTimezone}/></div>
+      <input ref={createNameRef} className="sr-only" aria-hidden="true" tabIndex={-1} />
       <textarea aria-label="Task instruction" className="mt-4 min-h-[84px] w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder="Task instruction the AI executes at every fire time — e.g. Summarize my emails from the last 24 hours and send me a short note on WhatsApp at +919629534701." value={form.task} onChange={e => setForm({ ...form, task: e.target.value })} />
       <button disabled={busy} onClick={() => void createSchedule()} className="mt-4 h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">Create scheduled task</button>
       <p className="mt-3 text-xs text-muted-foreground">At every fire time the agent runs this instruction with its enabled tools: reading mail, summarizing, sending WhatsApp notes and more. Sends follow the agent&apos;s approval policy (autonomous sending when enabled).</p>

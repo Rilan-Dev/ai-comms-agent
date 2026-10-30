@@ -78,6 +78,7 @@ export async function createScheduledJob(input: {
 export async function updateScheduledJob(input: {
   organizationId: string;
   id: string;
+  agentId?: string;
   name: string;
   cron?: string | null;
   oneFireAt?: string | null;
@@ -94,8 +95,8 @@ export async function updateScheduledJob(input: {
     ? nextCronFire(input.cron, new Date(), input.timezone).toISOString()
     : input.oneFireAt ?? null);
   const r = await query<Row>(
-    "UPDATE scheduled_jobs SET name=$3,cron=$4,one_fire_at=$5,intent=$6,params=$7::jsonb,next_fire_at=$8,status=$9,timezone=$10,catch_up_minutes=$11,last_error=NULL,updated_at=now() WHERE organization_id=$1 AND id=$2 RETURNING *",
-    [input.organizationId, input.id, input.name, input.cron ?? null, input.oneFireAt ?? null, input.intent, JSON.stringify(input.params ?? {}), nextFireAt, input.status, input.timezone, input.catchUpMinutes],
+    "UPDATE scheduled_jobs j SET name=$3,cron=$4,one_fire_at=$5,intent=$6,params=$7::jsonb,next_fire_at=$8,status=$9,timezone=$10,catch_up_minutes=$11,last_error=NULL,agent_id=a.id,updated_at=now() FROM agents a WHERE j.organization_id=$1 AND j.id=$2 AND a.organization_id=j.organization_id AND a.id=COALESCE($12::uuid,j.agent_id) AND j.status <> 'archived' RETURNING j.*",
+    [input.organizationId, input.id, input.name, input.cron ?? null, input.oneFireAt ?? null, input.intent, JSON.stringify(input.params ?? {}), nextFireAt, input.status, input.timezone, input.catchUpMinutes, input.agentId ?? null],
   );
   return r.rows[0] ? schedule(r.rows[0]) : null;
 }
