@@ -1,4 +1,4 @@
-import { createEmailAction, getWhatsAppAccountForAgent, PostgresEmailAccountRepository, query, recordAuditEvent,loadActiveAgentConfiguration,type ActiveAgentConfiguration } from "@ai-comms-agent/db";
+import { createEmailAction, createLocalDraft, getWhatsAppAccountForAgent, PostgresEmailAccountRepository, query, recordAuditEvent,loadActiveAgentConfiguration,type ActiveAgentConfiguration } from "@ai-comms-agent/db";
 import type { ProductActionResult } from "@ai-comms-agent/shared";
 
 type Action = Record<string, unknown>;
@@ -27,6 +27,36 @@ export async function executeProductActions(context: Context, params: Record<str
   const results: ProductActionResult[] = [];
   for (const action of actions) {
     const type = stringValue(action.type);
+
+    if(type==="generate_summary"){
+      if(!context.output.trim()){results.push({type,status:"configuration_required",reason:"Agent generated no summary."});continue;}
+      results.push({type,status:"completed"});continue;
+    }
+    if(type==="create_draft"){
+      if(!await configurationPermits(context,"email.draft.create")){
+       results.push({type,status:"configuration_required",reason:"Agent is not permitted to create drafts."});continue;
+      }
+      const event=params.event && typeof params.event==="object" && !Array.isArray(params.event)?params.event as Record<string,unknown>:{};
+      const emailAccountId=stringValue(action.emailAccountId)??stringValue(event.emailAccountId);
+      const recipient=stringValue(action.to)??stringValue(event.from);
+      if(!emailAccountId||!recipient||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)){
+       results.push({type,status:"configuration_required",reason:"Draft requires a connected email account and a valid recipient."});continue;
+      }
+      const bound=await emailAccounts.getForAgent(context.organizationId,context.agentId,emailAccountId);
+      if(!bound){results.push({type,status:"configuration_required",reason:"Email account is not bound to the selected agent."});continue;}
+      if(context.configuration&&!context.configuration.snapshot.channels.email.some(c=>c.accountId===emailAccountId)){
+       results.push({type,status:"configuration_required",reason:"Email account is not in this agent's active channels."});continue;
+      }
+      if(bound.capabilities?.drafts!==true){
+       results.push({type,status:"configuration_required",reason:"Selected mailbox does not support saving drafts."});continue;
+      }
+      if(!context.output.trim()){
+       results.push({type,status:"configuration_required",reason:"No generated content to save as a draft."});continue;
+      }
+      const subject=stringValue(action.subject)??("Re: "+(stringValue(event.subject)??"Message requiring attention"));
+      const draft=await createLocalDraft({organizationId:context.organizationId,emailAccountId,to:[recipient],subject:subject.slice(0,240),bodyText:context.output.slice(0,100000)});
+      results.push({type,status:"completed",actionId:String(draft.id)});continue;
+    }
 
     if (type === "send_whatsapp") {
       if(!await configurationPermits(context,'whatsapp.send')){results.push({type,status:'configuration_required',reason:'Agent access changed. Review the current setup before preparing another message.'});continue;}
@@ -118,7 +148,7 @@ export async function executeProductActions(context: Context, params: Record<str
       continue;
     }
 
-    results.push({ type: type ?? "unknown", status: "unsupported", reason: "Action type is not enabled by the host runtime" });
+    results.push({ type: type ?? "unknown", status: "configuration_required", reason: "Action type is not enabled by the host runtime" });
   }
   return results;
 }
