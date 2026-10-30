@@ -20,6 +20,14 @@ test("WhatsApp outbox only processes inbound signed webhook rows, not outbound m
  assert.ok(s.includes("whatsapp.received"));
  assert.ok(s.includes("split_part(m.provider_message_id,':',1)"));
 });
+test("slow AI execution cannot stop provider ingestion or unbounded parallel dispatch",()=>{
+ const s=read("../src/automation/event-outbox-worker.ts");
+ assert.ok(s.includes("await scanProviderEvents();"),"Provider scan must run before AI execution capacity check");
+ assert.ok(s.includes("MAX_CONCURRENT_EXECUTIONS=2"),"Bound concurrent dispatch");
+ assert.ok(s.includes("activeExecutions>=MAX_CONCURRENT_EXECUTIONS"),"Respect max active capacity");
+ assert.ok(s.includes("[Math.min(limit,1)]"),"Each worker claims at most one outbox row");
+ assert.ok(s.includes("FOR UPDATE SKIP LOCKED"),"Concurrent rows claimed safely");
+});
 test("inbound agent reply completion does not create duplicate event automation",()=>{
  const s=read("../src/messaging/whatsapp-inbound-worker.ts");
  assert.ok(!s.includes("evaluateAutomationEvent("));
