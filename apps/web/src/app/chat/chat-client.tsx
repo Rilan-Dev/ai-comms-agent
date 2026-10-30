@@ -1259,7 +1259,7 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
       const content = renderInline(headerMatch![2] ?? "");
       const sizes = ["text-lg font-bold tracking-tight text-foreground", "text-base font-bold text-foreground", "text-sm font-semibold text-primary", "text-sm font-semibold text-foreground"];
       elements.push(level <= 2
-        ? <h3 key={key++} className={sizes[level - 1]}>{content}</h3>
+        ? <h3 key={key++} className={sizes[level - 1] + " rounded-r-md border-l-2 border-primary/55 bg-muted/25 px-3 py-2"}>{content}</h3>
         : <h4 key={key++} className={sizes[level - 1]}>{content}</h4>);
       i++;
       continue;

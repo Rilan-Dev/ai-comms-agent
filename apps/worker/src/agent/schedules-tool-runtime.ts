@@ -236,6 +236,7 @@ const fallbackSchema = {
     mode:{type:"string",enum:["none","deterministic_whatsapp_digest"]},
     lookbackHours:{type:"integer",minimum:1,maximum:720},
     recipientPhone:{type:"string",minLength:9,maxLength:16},
+    presentation:{type:"string",enum:["executive","compact","plain"]},
   },required:["mode"],additionalProperties:false,
 } as const;
 export function validateScheduleFallback(value:unknown):ReturnType<typeof parseDigestFallback>{

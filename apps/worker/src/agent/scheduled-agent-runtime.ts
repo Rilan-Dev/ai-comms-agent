@@ -163,6 +163,7 @@ export async function runScheduledAgentTask(args: {
         "Execute the task end to end with the available tools: retrieve the records you need, then perform the requested actions. Do not claim an action occurred unless its tool result confirms it.",
         "When a send tool reports that human approval is required, keep the proposal and state clearly in your output that the send is awaiting human approval.",
         "Finish with a short factual report of what was retrieved, what was sent or queued, and any failures. That report is stored as the scheduled run result.",
+        "For business WhatsApp digests, make the output easy to scan: one *bold* headline, a verified count, 3-5 real highlights, and a short coverage note. Use single-asterisk WhatsApp bold, not Markdown double-star headings, pipe tables, HTML or color markup. Use a small number of purposeful status emojis only when evidence supports them. These are formatting suggestions, never authorization or permission to exaggerate urgency. The editable agent system prompt may select a plainer style.",
       ].join("\n"),
     },
     { role: "user", content: task },

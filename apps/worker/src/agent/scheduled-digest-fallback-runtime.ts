@@ -58,7 +58,7 @@ export async function runScheduledDigestFallback(args:{
     results.push({mailbox:account.email_address,output:search.output as DigestResult});
   }
   let digest:ReturnType<typeof buildVerifiedDigest>;
-  try{digest=buildVerifiedDigest(results,config.lookbackHours,new Date());}
+  try{digest=buildVerifiedDigest(results,config.lookbackHours,new Date(),config.presentation??"executive");}
   catch{return decline("The email search returned unverifiable data; WhatsApp was not attempted.");}
 
   const send=await invoke("whatsapp.send",{to:config.recipientPhone,payload_type:"text",body:digest.body});

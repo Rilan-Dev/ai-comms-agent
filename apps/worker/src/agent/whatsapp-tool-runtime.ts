@@ -128,7 +128,7 @@ export function createWhatsAppSendApprovalTool(): Tool<WhatsAppSendApprovalInput
   return {
     name: "whatsapp.send",
     domain: "messaging",
-    description: "Request a WhatsApp send. The sole connected agent-bound phone is selected automatically; do not ask the user for internal IDs. If necessary pass the phone's visible label or number as account_id. Depending on this agent's saved policy the request either queues automatically (autonomous sending) or waits for human approval; the tool result reports which happened. Free-form text requires Meta's active 24-hour customer-service window; otherwise select an approved template.",
+    description: "Request a WhatsApp send. The sole connected agent-bound phone is selected automatically; do not ask the user for internal IDs. If necessary pass the phone's visible label or number as account_id. Depending on this agent's saved policy the request either queues automatically (autonomous sending) or waits for human approval; the tool result reports which happened. When composing an AI-generated business summary, use WhatsApp-native *bold* (one asterisk per side), _italics_, short readable lines, at most five factual items and a few useful emojis; never send Markdown **double-star headings**, tables, HTML or color markup. Avoid false urgency or unverified sent/delivered claims. Free-form text requires Meta's active 24-hour customer-service window; otherwise select an approved template.",
     input_schema: {
       type: "object",
       properties: {

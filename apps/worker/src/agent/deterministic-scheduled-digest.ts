@@ -3,15 +3,17 @@ export interface DigestFallback {
   mode: "deterministic_whatsapp_digest";
   lookbackHours: number;
   recipientPhone: string;
+  presentation?: "executive"|"compact"|"plain";
 }
 export function parseDigestFallback(input:unknown): {valid:true; value:DigestFallback|null}|{valid:false;reason:string}{
   if(input===undefined)return {valid:true,value:null};
   if(!input || typeof input!=="object" || Array.isArray(input))return {valid:false,reason:"Invalid scheduled digest fallback."};
   const obj=input as Record<string,unknown>;
-  if(Object.keys(obj).some(k=>!["mode","lookbackHours","recipientPhone"].includes(k))||
+  if(Object.keys(obj).some(k=>!["mode","lookbackHours","recipientPhone","presentation"].includes(k))||
     obj.mode!=="deterministic_whatsapp_digest"||
     !Number.isInteger(obj.lookbackHours)||(obj.lookbackHours as number)<1||(obj.lookbackHours as number)>720||
-    typeof obj.recipientPhone!=="string"||! /^\+[1-9]\d{7,14}$/.test(obj.recipientPhone)){
+    typeof obj.recipientPhone!=="string"||! /^\+[1-9]\d{7,14}$/.test(obj.recipientPhone)||
+    (obj.presentation!==undefined&&!["executive","compact","plain"].includes(String(obj.presentation)))){
     return {valid:false,reason:"Digest fallback requires an approved mode, lookbackHours (1-720), and E.164 recipient."};
   }
   return {valid:true,value:obj as unknown as DigestFallback};
@@ -26,9 +28,14 @@ type DigestMessage={subject?:unknown;from_address?:unknown;received_at?:unknown}
 const privateSubject=/(?:password|otp|one.?time|verification code|2fa|recovery code|reset code|access token|security code)/i;
 function safeHeader(value:unknown,max:number):string{
   if(typeof value!=="string")return "";
-  return value.replace(/[\u0000-\u001F\u007F-\u009F]/g," ").replace(/\s+/g," ").trim().slice(0,max);
+  // Provider-delivered email headers are untrusted content. Strip markup,
+  // control characters and line breaks before embedding them into a WhatsApp
+  // digest; only our trusted template introduces emphasis markers.
+  return value.replace(/[\u0000-\u001F\u007F-\u009F]/g," ").replace(/[*_~`<>]/g," ")
+    .replace(/\s+/g," ").trim().slice(0,max);
 }
-export function buildVerifiedDigest(inputs:Array<{mailbox:string;output:DigestResult}>,hours:number,now:Date):{
+export function buildVerifiedDigest(inputs:Array<{mailbox:string;output:DigestResult}>,hours:number,now:Date,
+  presentation:NonNullable<DigestFallback["presentation"]>="executive"):{
   body:string;total:number;coverageLimited:boolean;highlights:string[];
 }{
   if(!inputs.length)throw new Error("No connected authorized mailbox was retrieved.");
@@ -53,14 +60,30 @@ export function buildVerifiedDigest(inputs:Array<{mailbox:string;output:DigestRe
   }
   const highlights=[...subjects.values()].sort((a,b)=>b.score-a.score||b.recency-a.recency).slice(0,5).map(x=>x.summary);
   const stamp=new Intl.DateTimeFormat("en-IN",{timeZone:"Asia/Kolkata",dateStyle:"medium",timeStyle:"short"}).format(now);
-  const body=[
-    "📬 Scheduled unread email digest — "+stamp+" IST",
-    "Window: last "+hours+" hours; locally synced unread messages: "+total+".",
-    ...inputs.map(x=>safeHeader(x.mailbox,80)+": "+x.output.matched_count+" unread."),
-    ...(highlights.length?["Key subjects:",...highlights.map(x=>"• "+x)]:["No unread subject highlights in this window."]),
-    ...(coverageLimited?["Note: only a page of some mailbox results was inspected."]:[]),
-    "Generated from authorized mailbox records without AI-provider content generation."
-  ].join("\n");
+  const title="Unread mailbox briefing";
+  const window=hours===24?"24 hours":hours%24===0?hours/24+" days":hours+" hours";
+  const count=total+" unread";
+  const rows=highlights.map((subject,index)=>{
+    const problem=/(failed|declined|overdue|urgent|action required|security alert|payment declined)/i.test(subject);
+    const indicator=problem?"⚠️":"📌";
+    return (presentation==="plain"?"- ":indicator+" ")+(index+1)+". "+subject;
+  });
+  const body=presentation==="plain"
+    ? [title+" — "+stamp+" IST","Unread (last "+window+"): "+count,
+       ...inputs.map(x=>safeHeader(x.mailbox,80)+": "+x.output.matched_count+" unread"),
+       ...(rows.length?["Subjects for review:",...rows]:["No unread subject highlights in this window."]),
+       ...(coverageLimited?["Coverage: only a page of some mailbox results was inspected."]:["Coverage: locally synchronized mail"]),
+       "AI provider unavailable; factual mailbox summary."].join("\n")
+    : presentation==="compact"
+      ? ["📬 *"+title+"*","*"+count+"* • last "+window,
+         ...rows.slice(0,3),...(rows.length?[]:["✅ No unread subject highlights."]),
+         ...(coverageLimited?["⚠️ Partial results"]:["🔎 Locally synced"])].join("\n")
+      : ["📬 *"+title+"*","_As of "+stamp+" IST_","",
+         "📊 *Unread (last "+window+"): "+count+"*",
+         ...inputs.map(x=>"📥 "+safeHeader(x.mailbox,80)+": *"+x.output.matched_count+"*"),"",
+         ...(rows.length?["📌 *Items to review*",...rows]:["✅ *No unread subject highlights in this window.*"]),
+         "","🔎 _"+(coverageLimited?"Partial coverage: only a page of some mailbox results was inspected.":"Coverage: locally synchronized mailbox records.")+"_",
+         "_Prepared from verified email records without AI generation._"].join("\n");
   if(body.length>4096)throw new Error("Digest exceeds WhatsApp message length limit.");
   return {body,total,coverageLimited,highlights};
 }

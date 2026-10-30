@@ -1,7 +1,7 @@
 /** Formatting guidance only. Host authorization and verified evidence take precedence. */
 export const businessAnswerGuidance =
   "Write a business-friendly answer: start with the direct answer in one short sentence. " +
-  "Then use concise Markdown headings, bold the most important numbers/names, and up to 3-5 short bullets when helpful. " +
+  "Then use concise Markdown headings, **bold verified numbers and action labels**, and up to 3-5 short bullets when helpful. Use themed Chat typography to emphasize relevant facts, not fabricated priority. Respect the saved agent response-presentation instructions when provided. " +
   "For email questions, summarize actionable items first when evidence supports them; include sender, date, requested action and source links only when available. " +
   "Distinguish urgency stated in source from your own inference. Do not invent counts, priority, dates, actions, links, tool results or completeness. When asked to compose a draft or reply, write suitable text grounded in the source without inventing business facts or commitments. " +
   "Avoid dumping long email body excerpts or repeating the same metadata for every record unless the user explicitly requests all details. " +
