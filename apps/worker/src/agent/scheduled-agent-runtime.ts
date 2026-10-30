@@ -8,6 +8,7 @@ import type { EmailToolRuntime } from "@ai-comms-agent/email-agent-runtime";
 import { createWhatsAppToolRuntime, invokeWhatsAppTool } from "./whatsapp-tool-runtime";
 import type { WhatsAppToolRuntime } from "./whatsapp-tool-runtime";
 import {prepareAgentConfigurationTurn} from '@ai-comms-agent/email-agent-runtime';
+import {narrowScheduledTools} from './scheduled-tool-scope';
 
 // Models that hit a blocked send (e.g. Meta's 24-hour window) routinely spend
 // one round retrying it; the extra headroom lets them still produce the final
@@ -74,6 +75,8 @@ export async function runScheduledAgentTask(args: {
   /** The user who created the schedule. Send approvals and audits are
    * attributed to them; null keeps every send behind human approval. */
   userId?: string | null;
+  /** Optional per-occurrence tool ceiling. Only narrows the saved agent policy. */
+  allowedToolNames?: readonly string[];
 }): Promise<ScheduledAgentTaskResult> {
   const task = args.task.trim();
   if (!task) {
@@ -107,9 +110,13 @@ export async function runScheduledAgentTask(args: {
     ...emailRuntime.registry.listForAgent(args.agentId),
     ...whatsappRuntime.registry.listForAgent(args.agentId),
   ];
-  // Least-privilege system subject: only the permissions the agent's saved
-  // policy actually needs for its enabled tools.
-  const permissions = [...new Set(agentTools.map((tool) => tool.required_permission))].filter(permission=>!actualPermissions||actualPermissions.has(permission));
+  const limit=narrowScheduledTools(agentTools,args.allowedToolNames);
+  if(!limit.ok){
+    return {status:"configuration_required",output:"",reason:limit.reason,toolCalls:[],pendingApprovals:[]};
+  }
+  const scopedTools=limit.tools;
+  // Least-privilege system subject: only permissions required by scoped tools.
+  const permissions = [...new Set(scopedTools.map((tool) => tool.required_permission))].filter(permission=>!actualPermissions||actualPermissions.has(permission));
   const toolContext: ToolContext = {
     organization_id: args.organizationId,
     agent_id: args.agentId,
@@ -122,7 +129,7 @@ export async function runScheduledAgentTask(args: {
     auth_subject: { user_id: actingUserId, role: actingRole, permissions },
     ...(configurationTurn?{agent_configuration:configurationTurn.configuration}:{}),
   };
-  const availableTools=agentTools.filter(tool=>permissions.includes(tool.required_permission)&&turnAllowsTool(toolContext,tool.name));
+  const availableTools=scopedTools.filter(tool=>permissions.includes(tool.required_permission)&&turnAllowsTool(toolContext,tool.name));
   if (availableTools.length === 0) {
     return {
       status: "configuration_required",
@@ -201,9 +208,15 @@ export async function runScheduledAgentTask(args: {
         };
       }
       totalCalls += 1;
-      const result: ToolResult = call.name.startsWith("whatsapp.")
-        ? await invokeWhatsAppTool(whatsappRuntime as WhatsAppToolRuntime, call.name, call.arguments, toolContext)
-        : await invokeEmailReadTool(emailRuntime as EmailToolRuntime, call.name, call.arguments, toolContext);
+      // Defense in depth: even if a provider invents a function identifier,
+      // never dispatch anything outside this occurrence's offered tool scope.
+      const permittedCall=availableTools.some(tool=>tool.name===call.name);
+      const result: ToolResult = !permittedCall
+        ? {ok:false,error:{code:"tool_not_in_schedule_scope",message:"This tool is not enabled for this scheduled execution.",retryable:false},
+            audit:{tool_name:call.name,input_summary:call.name,output_summary:"tool_not_in_schedule_scope",duration_ms:0}}
+        : call.name.startsWith("whatsapp.")
+          ? await invokeWhatsAppTool(whatsappRuntime as WhatsAppToolRuntime, call.name, call.arguments, toolContext)
+          : await invokeEmailReadTool(emailRuntime as EmailToolRuntime, call.name, call.arguments, toolContext);
       const toolOutput = result.output && typeof result.output === "object" && !Array.isArray(result.output)
         ? result.output as Record<string, unknown>
         : null;

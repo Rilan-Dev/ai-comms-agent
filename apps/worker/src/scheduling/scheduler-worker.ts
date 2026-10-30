@@ -41,7 +41,9 @@ export async function processScheduledJobs(limit=25,now=new Date()):Promise<{cla
       // user turn. Legacy intents keep the classic prompt-only dispatch.
       const task=job.params?.task;
       const isAgentTask=job.intent===SCHEDULED_AGENT_TASK_INTENT && typeof task==="string";
-      const agentTaskResult=isAgentTask ? await runScheduledAgentTask({executionId:job.runId,organizationId:job.organizationId,agentId:job.agentId,task,fireAt:job.nextFireAt,userId:job.createdBy}) : null;
+      const agentTaskResult=isAgentTask ? await runScheduledAgentTask({executionId:job.runId,organizationId:job.organizationId,agentId:job.agentId,task,fireAt:job.nextFireAt,userId:job.createdBy,
+        ...(Object.prototype.hasOwnProperty.call(job.params,'allowedTools')?{allowedToolNames:job.params.allowedTools as string[]}:{}),
+      }) : null;
       const legacyResult=isAgentTask ? null : await dispatchAgentExecution({executionId:job.runId,organizationId:job.organizationId,agentId:job.agentId,source:"schedule",intent:job.intent,params:job.params,requestedAt:now.toISOString()});
       const failureReason:(string|null)=agentTaskResult?.status==="configuration_required"?(agentTaskResult.reason??null):legacyResult?.status==="configuration_required"?(legacyResult.reason??null):null;
       if(failureReason!==null){ if(!(await failScheduledJobRun(job.runId,failureReason))){ console.error("[scheduler] run was already settled", {runId:job.runId}); continue; } failed+=1; await recordScheduleAudit({organizationId:job.organizationId,actorUserId:null,eventType:"schedule.execution.failed",targetType:"scheduled_run",targetId:job.runId,action:"execute",decision:"denied",correlationId:job.runId,metadata:{jobId:job.id,agentId:job.agentId,reason:failureReason,configurationRequired:true}}); }
