@@ -5,6 +5,7 @@ import { readOpenAIToolCompletion } from "./tool-call-stream";
 import { createSarvamToolBridge } from "./sarvam-tool-bridge";
 import { readGeminiToolCompletion } from "./gemini-tool-stream";
 import { toGeminiToolContents } from "./gemini-tool-history";
+import { fetchGeminiToolWithRetry } from "./gemini-tool-retry";
 import { buildReadOnlyToolFinalMessages } from "./tool-result-final";
 import { extractAmbientContextForFinalStream } from "./ambient-context";
 import type {
@@ -427,21 +428,20 @@ async function chatWithToolsRequest(
     const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
     const contents = toGeminiToolContents(messages);
     const url = `${config.baseUrl}/v1beta/models/${encodeURIComponent(config.chatModel ?? "gemini-2.0-flash")}:streamGenerateContent?alt=sse&key=${encodeURIComponent(config.apiKey)}`;
-    const response = await fetch(url, {
+    const requestBody = JSON.stringify({
+      systemInstruction: system ? { parts: [{ text: system }] } : undefined,
+      contents,
+      tools: [{ functionDeclarations: tools.map((tool) => ({ name: tool.name, description: tool.description, parametersJsonSchema: tool.parameters })) }],
+      generationConfig: { temperature: options.temperature, maxOutputTokens: options.maxTokens },
+    });
+    // Only retry a failed Gemini HTTP response. Never replay a successful
+    // streamed response or an authorized email/WhatsApp host tool invocation.
+    const response = await fetchGeminiToolWithRetry(() => fetch(url, {
       method: "POST",
       signal,
       headers: { "content-type": "application/json", accept: "text/event-stream" },
-      body: JSON.stringify({
-        systemInstruction: system ? { parts: [{ text: system }] } : undefined,
-        contents,
-        tools: [{ functionDeclarations: tools.map((tool) => ({ name: tool.name, description: tool.description, parametersJsonSchema: tool.parameters })) }],
-        generationConfig: { temperature: options.temperature, maxOutputTokens: options.maxTokens },
-      }),
-    });
-    if (!response.ok) {
-      const body = await response.text().catch(() => "");
-      throw new Error(`Gemini tool request failed (${response.status}): ${body.slice(0, 300)}`);
-    }
+      body: requestBody,
+    }), signal);
     if (response.headers.get("content-type")?.includes("text/event-stream")) {
       if (!response.body) throw new Error("Gemini returned an empty tool-call stream.");
       return readGeminiToolCompletion(response.body);
