@@ -42,6 +42,13 @@ export async function executeProductActions(context: Context, params: Record<str
       if(!emailAccountId||!recipient||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)){
        results.push({type,status:"configuration_required",reason:"Draft requires a connected email account and a valid recipient."});continue;
       }
+      const policy=await query<{status:string;allowed_tools:string[]}>(
+        "SELECT a.status,p.allowed_tools FROM agents a JOIN agent_policies p ON p.agent_id=a.id WHERE a.organization_id=$1 AND a.id=$2",
+        [context.organizationId,context.agentId],
+      );
+      if(policy.rows[0]?.status!=="active"||!policy.rows[0].allowed_tools.includes("email.draft.create")){
+       results.push({type,status:"configuration_required",reason:"Agent draft tool is disabled or the agent is not active."});continue;
+      }
       const bound=await emailAccounts.getForAgent(context.organizationId,context.agentId,emailAccountId);
       if(!bound){results.push({type,status:"configuration_required",reason:"Email account is not bound to the selected agent."});continue;}
       if(context.configuration&&!context.configuration.snapshot.channels.email.some(c=>c.accountId===emailAccountId)){
