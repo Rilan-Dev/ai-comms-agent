@@ -271,7 +271,7 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
             <button disabled={busy} onClick={() => void patchSchedule(row.id, { status: row.status === "paused" ? "active" : "paused" })} className="rounded-md border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50">
               {row.status === "paused" ? "Resume" : "Pause"}
             </button>
-            <button disabled={busy} onClick={() => editing === row.id ? (setEditing(null),setEditForm(null)) : startEdit(row) className="rounded-md border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50">Edit</button>
+            <button disabled={busy} onClick={() => { if(editing === row.id){setEditing(null);setEditForm(null);} else startEdit(row); }} className="rounded-md border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50">Edit</button>
             <button disabled={busy} onClick={() => duplicate(row)} className="rounded-xl border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50">Duplicate</button>
             <button disabled={busy || runsBusy} onClick={() => { void loadRuns(row.id); }} className="rounded-md border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50">{runsFor === row.id ? "Hide runs" : "Runs"}</button>
             <button disabled={busy} onClick={() => void archiveSchedule(row.id)} className="rounded-md border border-border px-3 py-2 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50">Delete</button>
