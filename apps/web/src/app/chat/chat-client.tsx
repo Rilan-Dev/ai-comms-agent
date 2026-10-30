@@ -399,11 +399,10 @@ export function ChatClient({
       if (selectedMailbox?.signatureText) {
         setComposeBody(current=>current===DEFAULT_COMPOSE_BODY
           ? applyMailboxSignature(current,selectedMailbox.signatureText):current);
-      } else if(profile) {
-        // Fallback only when this selected account has no mailbox signature.
-        setComposeBody(current=>current===DEFAULT_COMPOSE_BODY
-          ? withProfileSignature(current,profile):current);
       }
+      // No saved mailbox signature: leave the body as authored; Clara may
+      // construct a closing instead of automatically importing a profile name.
+      // The explicit "Use my profile signature" button remains optional.
       if (recipient) {
         setComposeTo(recipient);
         // Do not discard the original request if the readiness GET fails.
