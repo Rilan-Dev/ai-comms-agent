@@ -1,6 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
 
 @import "tailwindcss";
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -78,9 +79,7 @@
 }
 
 * { border-color: var(--border); }
-/* Keep legacy screens visually consistent with the Lovable workspace's compact geometry. */
-.rounded-xl, .rounded-2xl, .rounded-3xl { border-radius: var(--radius) !important; }
-.shadow-2xl { --tw-shadow: 0 10px 32px rgb(30 28 24 / 0.08); --tw-shadow-colored: 0 10px 32px var(--tw-shadow-color); box-shadow: var(--tw-shadow) !important; }
+
 html { background: var(--background); }
 body {
   margin: 0;
@@ -103,3 +102,52 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* Owner-approved dual palettes. Dark is default even when OS prefers light. */
+:root, :root[data-theme="dark"] {
+ color-scheme: dark; --radius: .875rem;
+ --background:#171717; --foreground:#eff4ef; --card:#1c211f; --card-foreground:#eff4ef;
+ --popover:#202722; --popover-foreground:#eff4ef; --primary:#a31c1b; --primary-foreground:#fff;
+ --secondary:#223028; --secondary-foreground:#eff5ee; --muted:#28322b; --muted-foreground:#b0bfb3;
+ --accent:#23402e; --accent-foreground:#d6ebd9; --destructive:#e16761; --destructive-foreground:#fff;
+ --border:#35433a; --input:#435048; --ring:#da5e55; --tertiary:#9daa9e; --success:#83dba3;
+ --success-subtle:#1c3b2a; --attention:#f0b67a; --attention-subtle:#3c2920;
+ --chart-1:#a31c1b; --chart-2:#9caf88; --chart-3:#4f966c; --chart-4:#dd8e65; --chart-5:#a7a7a7;
+ --sidebar:#101714; --sidebar-foreground:#eff4ef; --sidebar-primary:#a31c1b; --sidebar-primary-foreground:#fff;
+ --sidebar-accent:#1c3023; --sidebar-accent-foreground:#eff4ef; --sidebar-border:#34443a; --sidebar-ring:#da5e55;
+ --hero-start:#06110c; --hero-end:#183326; --hero-title:#f9faf7; --hero-subtitle:#b8cbbc;
+ --botanical:#679272; --message-user:#254132; --panel-shadow:0 10px 25px rgb(0 0 0 / .13);
+}
+:root[data-theme="light"] {
+ color-scheme:light; --background:#f6f8f3; --foreground:#272d26; --card:#fff; --card-foreground:#272d26;
+ --popover:#fff; --popover-foreground:#272d26; --primary:#cc5500; --primary-foreground:#fff;
+ --secondary:#e9eee5; --secondary-foreground:#30372f; --muted:#eff1ec; --muted-foreground:#626d62;
+ --accent:#dfead6; --accent-foreground:#304c35; --destructive:#b44028; --destructive-foreground:#fff;
+ --border:#dce2d9; --input:#cdd3c9; --ring:#cc5500; --tertiary:#a7a7a7; --success:#327746;
+ --success-subtle:#e0eee0; --attention:#ad4b06; --attention-subtle:#fde6d6;
+ --chart-1:#cc5500; --chart-2:#9caf88; --chart-3:#a7a7a7; --chart-4:#c0d0b7; --chart-5:#e2ba96;
+ --sidebar:#fcfdfa; --sidebar-foreground:#283026; --sidebar-primary:#cc5500; --sidebar-primary-foreground:#fff;
+ --sidebar-accent:#e3ebdb; --sidebar-accent-foreground:#283026; --sidebar-border:#dce2d9; --sidebar-ring:#cc5500;
+ --hero-start:#f0f4eb; --hero-end:#ccddc1; --hero-title:#273428; --hero-subtitle:#526453;
+ --botanical:#71996c; --message-user:#dce7d4; --panel-shadow:0 10px 28px rgb(49 71 41 / .07);
+}
+body { transition: color .16s ease, background-color .16s ease; }
+input,textarea,select { color:var(--foreground); }
+.workspace-panel { background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--panel-shadow); }
+.workspace-hero { position:relative; isolation:isolate; overflow:hidden; border:1px solid var(--border); border-radius:17px; color:var(--hero-title); background:linear-gradient(110deg,var(--hero-start) 0%,var(--hero-start) 48%,var(--hero-end) 100%); box-shadow:var(--panel-shadow); }
+.workspace-hero::before { content:""; position:absolute; top:-230px; right:-145px; width:475px; height:475px; border:60px solid rgb(156 175 136 / .09); border-radius:50%; pointer-events:none; }
+.workspace-hero .hero-title { font-family:Georgia,"Times New Roman",serif; line-height:1.07; letter-spacing:-.037em; font-weight:500; }
+.workspace-hero .hero-subtitle { color:var(--hero-subtitle); }
+.botanical-leaves { color:var(--botanical); pointer-events:none; opacity:.76; }
+.workspace-stat-icon { background:var(--accent); color:var(--accent-foreground); }
+.workspace-stat-icon[data-tone="attention"] { color:var(--attention); background:var(--attention-subtle); }
+.workspace-stat-icon[data-tone="approval"] { color:var(--primary); background:color-mix(in srgb, var(--primary) 12%, var(--card)); }
+.workspace-sidebar { box-shadow:5px 0 30px rgb(0 0 0 / .04); }
+.theme-chat { background:var(--background); }
+.theme-chat .chat-user-message { background:var(--message-user); color:var(--foreground); border:1px solid var(--border); }
+.theme-chat .chat-assistant-avatar { background:color-mix(in srgb,var(--primary) 13%,var(--card)); color:var(--primary); border:1px solid var(--border); }
+.theme-chat .chat-assistant-reply { padding:14px 17px; border:1px solid var(--border); border-radius:15px; background:var(--card); box-shadow:var(--panel-shadow); }
+.theme-chat .chat-composer { border-radius:17px; box-shadow:var(--panel-shadow); }
+.theme-chat .chat-quick-action { background:var(--secondary); color:var(--secondary-foreground); }
+.theme-chat .chat-quick-action:hover { background:var(--accent); color:var(--accent-foreground); }
+@media (prefers-reduced-motion: reduce) { body { transition:none; } }

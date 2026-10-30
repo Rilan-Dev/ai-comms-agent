@@ -100,11 +100,11 @@ export function Sidebar({ workspaceName, organizationName }: { workspaceName?: s
 
   return <>
     {mobileOpen && <button aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-foreground/30 md:hidden" />}
-    <aside ref={sidebarRef} id="workspace-sidebar" role={mobileOpen ? "dialog" : undefined} aria-modal={mobileOpen ? true : undefined} aria-label={mobileOpen ? "Workspace navigation" : undefined} tabIndex={mobileOpen ? -1 : undefined} className={`fixed inset-y-0 left-0 z-50 flex w-[248px] shrink-0 flex-col border-r border-border bg-sidebar transition-transform duration-200 md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
+    <aside ref={sidebarRef} id="workspace-sidebar" role={mobileOpen ? "dialog" : undefined} aria-modal={mobileOpen ? true : undefined} aria-label={mobileOpen ? "Workspace navigation" : undefined} tabIndex={mobileOpen ? -1 : undefined} className={`workspace-sidebar fixed inset-y-0 left-0 z-50 flex w-[248px] shrink-0 flex-col border-r border-border bg-sidebar transition-transform duration-200 md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
       <div className="flex h-[76px] items-center justify-between px-6">
         <a href="/overview" className="flex min-w-0 items-center gap-2.5" aria-label={`${displayName} home`} onClick={() => setMobileOpen(false)}>
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground"><NavIcon name="audio" /></span>
-          <span className="max-w-[150px] truncate text-[18px] font-semibold tracking-tight" title={displayName}>{displayName}</span>
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground"><NavIcon name="sparkles" /></span>
+          <span className="max-w-[150px] truncate text-[17px] font-semibold tracking-tight" title="AI Comms Agent">AI Comms Agent</span>
         </a>
         <button ref={closeMobileButtonRef} type="button" className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-secondary md:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation">×</button>
       </div>
@@ -113,14 +113,14 @@ export function Sidebar({ workspaceName, organizationName }: { workspaceName?: s
         <span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold" title={orgName}>{orgName}</span><span className="block text-[11px] text-muted-foreground">Communications</span></span>
         <span className="text-xs text-muted-foreground" aria-hidden="true">⌄</span>
       </div>
-      <nav className="mt-8 flex-1 overflow-y-auto px-3 pb-4" aria-label="Main navigation">
+      <nav className="mt-6 flex-1 overflow-y-auto px-3 pb-4" aria-label="Main navigation">
         <p className="px-3 pb-3 text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">Workspace</p>
         <ul className="space-y-0.5">
           {NAV_ITEMS.map((item) => {
             const active = isNavigationPathActive(pathname, item.href) || ("children" in item && item.children?.some((child) => isNavigationPathActive(pathname, child.href)));
             return <li key={item.href}>
               <div className="flex min-w-0 items-center gap-1">
-                <a href={item.href} aria-current={active ? "page" : undefined} onClick={() => setMobileOpen(false)} className={`flex h-10 min-w-0 flex-1 items-center gap-3 rounded-md px-3 text-[13px] font-medium transition-colors ${active ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
+                <a href={item.href} aria-current={active ? "page" : undefined} onClick={() => setMobileOpen(false)} className={`flex h-10 min-w-0 flex-1 items-center gap-3 rounded-md px-3 text-[13px] font-medium transition-colors ${active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
                   <NavIcon name={item.icon} /><span>{item.label}</span>
                 </a>
                 {"children" in item && item.children ? (
@@ -131,7 +131,7 @@ export function Sidebar({ workspaceName, organizationName }: { workspaceName?: s
               </div>
               {"children" in item && item.children && mailExpanded && <ul id="mail-navigation" className="ml-[21px] mt-1 space-y-0.5 border-l border-border pl-3">{item.children.map((child) => {
                 const childActive = isNavigationPathActive(pathname, child.href);
-                return <li key={child.href}><a href={child.href} aria-current={childActive ? "page" : undefined} onClick={() => setMobileOpen(false)} className={`block rounded-md px-3 py-2 text-xs transition-colors ${childActive ? "bg-accent/60 font-semibold text-accent-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>{child.label}</a></li>;
+                return <li key={child.href}><a href={child.href} aria-current={childActive ? "page" : undefined} onClick={() => setMobileOpen(false)} className={`block rounded-md px-3 py-2 text-xs transition-colors ${childActive ? "bg-primary/15 font-semibold text-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>{child.label}</a></li>;
               })}</ul>}
             </li>;
           })}
