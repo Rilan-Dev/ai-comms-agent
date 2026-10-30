@@ -1,7 +1,16 @@
 import {query,withTransaction} from "@ai-comms-agent/db";
 import {evaluateAutomationEvent} from "./automation-engine";
 type Outbox={id:string;organization_id:string;event_type:string;payload:Record<string,unknown>;attempts:number};
-let active=false;
+// Scan provider records independently of slow LLM executions.
+// At most two event executions overlap, each with a separate leased outbox row.
+let activeExecutions=0;
+const MAX_CONCURRENT_EXECUTIONS=2;
+let scanning=false;
+async function scanProviderEvents(){
+ if(scanning)return;
+ scanning=true;
+ try{await enqueueRecentEmailAutomationEvents();}finally{scanning=false;}
+}
 // Only recently received messages from an established incremental sync, after
 // the rule existed. Durable source-row deduplication survives worker restarts.
 export async function enqueueRecentEmailAutomationEvents(limit=50):Promise<number>{
@@ -38,14 +47,15 @@ export async function enqueueRecentEmailAutomationEvents(limit=50):Promise<numbe
  total+=inbound.rows.length;
  return total;
 }
-export async function processAutomationEventOutbox(limit=10):Promise<{claimed:number;completed:number;failed:number}>{
- if(active)return {claimed:0,completed:0,failed:0};
- active=true;
+export async function processAutomationEventOutbox(limit=1):Promise<{claimed:number;completed:number;failed:number}>{
+ // Ingestion runs on every tick, even if all execution slots are busy.
+ await scanProviderEvents();
+ if(activeExecutions>=MAX_CONCURRENT_EXECUTIONS)return {claimed:0,completed:0,failed:0};
+ activeExecutions++;
  try{
-  await enqueueRecentEmailAutomationEvents();
   const events=await withTransaction(async client=>{
    const r=await client.query<Outbox>(
-    "SELECT id,organization_id,event_type,payload,attempts FROM automation_event_outbox WHERE (status='queued' AND next_attempt_at<=now()) OR (status='processing' AND claimed_at<now()-interval '20 minutes') ORDER BY created_at ASC LIMIT $1 FOR UPDATE SKIP LOCKED",[limit]);
+    "SELECT id,organization_id,event_type,payload,attempts FROM automation_event_outbox WHERE (status='queued' AND next_attempt_at<=now()) OR (status='processing' AND claimed_at<now()-interval '20 minutes') ORDER BY created_at ASC LIMIT $1 FOR UPDATE SKIP LOCKED",[Math.min(limit,1)]);
    for(const row of r.rows)await client.query("UPDATE automation_event_outbox SET status='processing',claimed_at=now(),attempts=attempts+1 WHERE id=$1",[row.id]);
    return r.rows;
   });
@@ -71,5 +81,5 @@ export async function processAutomationEventOutbox(limit=10):Promise<{claimed:nu
    }
   }
   return {claimed:events.length,completed,failed};
- }finally{active=false;}
+ }finally{activeExecutions--;}
 }
