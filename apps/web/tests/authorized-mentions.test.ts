@@ -1,8 +1,8 @@
-import {describe,it,expect,vi} from "vitest";
+import {describe,it,expect} from "vitest";
 // Source-level guard: this test checks the two runtime execution paths expand
 // references before handing instructions to any privileged agent tooling.
 import {readFileSync} from "node:fs";
-const root=new URL("../../",import.meta.url);
+const root=new URL("../",import.meta.url);
 const source=(path:string)=>readFileSync(new URL(path,root),"utf8");
 describe("account mentions in AI execution",()=>{
  it("rejects stale saved WhatsApp recipients rather than silently falling back",()=>{

@@ -532,6 +532,8 @@ export async function POST(request: Request) {
       );
     }
 
+    if (content.includes("@email:") && !subject.permissions.has("email.read")) return NextResponse.json({error:"forbidden",message:"Email read access is required to mention connected mailboxes."},{status:403});
+    if (content.includes("@whatsapp-from:") && !subject.permissions.has("whatsapp.read")) return NextResponse.json({error:"forbidden",message:"WhatsApp read access is required to mention connected sending accounts."},{status:403});
     try { content = await expandAuthorizedMentions({organizationId,userId:subject.user.id,text:content}); }
     catch(e){ return NextResponse.json({error:"invalid_mention",message:e instanceof Error?e.message:"The account or contact mention cannot be resolved."},{status:422}); }
 
