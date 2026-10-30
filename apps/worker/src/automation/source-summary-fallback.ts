@@ -3,7 +3,6 @@
  * model fails or returns no output. This never triggers provider sends or
  * creates drafts and it is labelled as a non-AI recap in run history.
  */
-const eligibleEvents=new Set(["email.received","email.action_required","whatsapp.received"]);
 type AgentInput={source:string;intent:string;params:Record<string,unknown>};
 function value(v:unknown,limit=320):string {
  return typeof v==="string" ? v.replace(/[\x00-\x1f\x7f]/g," ").replace(/\s+/g," ").trim().slice(0,limit):"";
@@ -18,7 +17,6 @@ export function summaryOnlyAutomation(input:AgentInput):boolean {
 export function sourceSummaryFallback(input:AgentInput,reason:"empty"|"provider_error"):string|null {
  if(!summaryOnlyAutomation(input))return null;
  const e=input.params.event as Record<string,unknown>;
- const eventType=value(e.type??e.eventType,60);
  // Trusted event type is supplied separately; require a known provider field
  // rather than turning arbitrary empty payloads into successful messages.
  if(!["email","whatsapp"].some(t=>Object.keys(e).some(k=>k.toLowerCase().includes(t)))
