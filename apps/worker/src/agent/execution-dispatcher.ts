@@ -35,7 +35,7 @@ export async function dispatchAgentExecution(request:AgentExecutionRequest):Prom
   },configurationTurn?.agentContext);
   let output=""; for await(const chunk of turn.stream) output+=chunk;
   const actions=await executeProductActions({ organizationId:request.organizationId, agentId:request.agentId, executionId:request.executionId, output,...(configurationTurn?{configuration:configurationTurn.configuration}:{}) }, request.params);
-  const blocked=actions.find((action)=>action.status==="configuration_required");
-  if(blocked) return {status:"configuration_required",executionId:request.executionId,reason:String(blocked.reason ?? "Product action requires configuration"),actions};
+  // Provider action failures must never be stored as successful event runs.\n  const blocked=actions.find((action)=>action.status==="configuration_required"||action.status==="failed"||action.status==="unsupported");
+  if(blocked) return {status:"configuration_required",executionId:request.executionId,reason:String(blocked.reason ?? "Product action failed or requires configuration"),actions};
   return {status:"completed",executionId:request.executionId,output,provider:turn.providerName,model:turn.model,actions};
 }
