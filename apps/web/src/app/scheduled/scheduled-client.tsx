@@ -3,12 +3,13 @@
 import { useMemo, useRef, useState } from "react";
 import { historicalSchedule, scheduleToForm, type ScheduleValues } from "@/lib/schedules/schedule-form";
 import { ScheduleFields } from "@/components/schedules/schedule-fields";
+import { MentionPicker } from "@/components/mentions/mention-picker";
 
 type Agent = { id: string; name: string; status: string };
 type Schedule = {
   id: string; agentId: string; name: string; cron: string | null; oneFireAt: string | null;
   intent: string; params: Record<string, unknown>; status: string; timezone: string;
-  nextFireAt: string | null; lastFireAt: string | null; lastError: string | null;
+  nextFireAt: string | null; lastFireAt: string | null; lastError: string | null; catchUpMinutes?: number;
 };
 type Rule = { id: string; agentId: string; name: string; trigger: Record<string, unknown>; actions: unknown[]; status: string };
 type RunRow = { id: string; fire_at: string; started_at: string; finished_at: string | null; status: string; error: string | null; result: Record<string, unknown> | null };
@@ -99,7 +100,8 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
   const [editForm, setEditForm] = useState<ScheduleValues | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const createFormRef = useRef<HTMLDetailsElement>(null);
-  const createNameRef = useRef<HTMLInputElement>(null);
+  const taskTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [runsFor, setRunsFor] = useState<string | null>(null);
   const [runs, setRuns] = useState<RunRow[]>([]);
   const [runsBusy, setRunsBusy] = useState(false);
@@ -167,14 +169,17 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
           oneFireAt: "oneFireAt" in changes ? changes.oneFireAt : current.oneFireAt,
           timezone: typeof changes.timezone==="string" ? changes.timezone : current.timezone,
           params: { ...current.params, task: typeof changes.task === "string" ? changes.task : describeTask(current) },
+          catchUpMinutes: current.catchUpMinutes,
           status: typeof changes.status === "string" ? changes.status : current.status,
         }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.message ?? d.error ?? "Could not update the schedule.");
       await reload();
+      return true;
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "Could not update the schedule.");
+      return false;
     } finally { setBusy(false); }
   }
 
@@ -234,14 +239,15 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
     setForm(scheduleToForm(row,true));
     setEditing(null); setEditForm(null); setNotice("Duplicate prepared. Choose the new fire time and review the recipient, account and sending policy before creating. The original task is unchanged.");
     if(createFormRef.current) createFormRef.current.open=true;
-    requestAnimationFrame(()=>{createFormRef.current?.scrollIntoView({block:"start",behavior:"smooth"}); createNameRef.current?.focus();});
+    requestAnimationFrame(()=>{createFormRef.current?.scrollIntoView({block:"start",behavior:"smooth"}); createFormRef.current?.querySelector<HTMLInputElement>('input[aria-label="New schedule name"]')?.focus();});
   }
   async function saveEdit(row:Schedule) {
     if(!editForm)return;
     const {body,error}=buildScheduleBody(editForm);
     if(error){setNotice(error);return;}
-    await patchSchedule(row.id,{...body,task:editForm.task, status:row.status});
-    setEditing(null);setEditForm(null);
+    if(await patchSchedule(row.id,{...body,task:editForm.task,status:row.status})) {
+      setEditing(null);setEditForm(null);setNotice("Schedule updated; prior execution history and fallback options are preserved.");
+    }
   }
   const activeRules = rules.filter(r => r.status !== "archived");
 
@@ -281,8 +287,9 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
           <h3 className="text-sm font-semibold">Edit schedule — {row.name}</h3>
           <ScheduleFields idPrefix="Edit schedule" form={editForm} onChange={setEditForm} agents={agents} browserTimezone={browserTimezone}/>
           <label className="block text-xs font-semibold text-muted-foreground">AI task instruction
-            <textarea aria-label="Edit task instruction" className="mt-2 min-h-[90px] w-full rounded-xl border bg-background px-3 py-2 text-sm" value={editForm.task} onChange={e => setEditForm({...editForm,task:e.target.value})}/>
+            <textarea ref={editTextareaRef} aria-label="Edit task instruction" className="mt-2 min-h-[90px] w-full rounded-xl border bg-background px-3 py-2 text-sm" value={editForm.task} onChange={e => setEditForm({...editForm,task:e.target.value})}/>
           </label>
+          <MentionPicker organizationId={organizationId} value={editForm.task} onChange={task=>setEditForm({...editForm,task})} textareaRef={editTextareaRef}/>
           <p className="text-xs text-muted-foreground">Updating an existing job changes future fires; prior execution history remains attached. Saved fallback and policy parameters are preserved.</p>
           <div className="flex flex-wrap gap-2">
             <button disabled={busy} onClick={() => void saveEdit(row)} className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">Save schedule changes</button>
@@ -321,8 +328,9 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
     <details ref={createFormRef} className="rounded-md border border-border bg-card p-5">
       <summary className="cursor-pointer text-sm font-semibold">New scheduled AI task</summary>
       <div className="mt-4"><ScheduleFields idPrefix="New schedule" form={form} onChange={setForm} agents={agents} browserTimezone={browserTimezone}/></div>
-      <input ref={createNameRef} className="sr-only" aria-hidden="true" tabIndex={-1} />
-      <textarea aria-label="Task instruction" className="mt-4 min-h-[84px] w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder="Task instruction the AI executes at every fire time — e.g. Summarize my emails from the last 24 hours and send me a short note on WhatsApp at +919629534701." value={form.task} onChange={e => setForm({ ...form, task: e.target.value })} />
+      <textarea ref={taskTextareaRef} aria-label="Task instruction" className="mt-4 min-h-[84px] w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder="Task instruction the AI executes at every fire time — e.g. Summarize my emails from the last 24 hours and send me a short note on WhatsApp at +919629534701." value={form.task} onChange={e => setForm({ ...form, task: e.target.value })} />
+      <div className="mt-2"><MentionPicker organizationId={organizationId} value={form.task} onChange={task=>setForm({...form,task})} textareaRef={taskTextareaRef}/></div>
+      <a href="/recipients" className="mt-2 inline-block text-xs font-semibold text-primary underline">Manage primary / secondary WhatsApp recipients</a>
       <button disabled={busy} onClick={() => void createSchedule()} className="mt-4 h-10 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">Create scheduled task</button>
       <p className="mt-3 text-xs text-muted-foreground">At every fire time the agent runs this instruction with its enabled tools: reading mail, summarizing, sending WhatsApp notes and more. Sends follow the agent&apos;s approval policy (autonomous sending when enabled).</p>
     </details>

@@ -26,6 +26,7 @@ import {continuationForSavedMessage,continuationForTurn} from '@/lib/chat/mail-w
 import { parseBusinessMailReport, safeChatLink } from "@/lib/chat/business-report-display";
 import { BusinessMailReport } from "./business-mail-report";
 import { AnswerActions } from "./answer-actions";
+import { MentionPicker } from "@/components/mentions/mention-picker";
 import type { AgentPolicy } from "@ai-comms-agent/shared";
 
 // Defer microphone and vendor transport code until the user requests voice.
@@ -1034,7 +1035,7 @@ export function ChatClient({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }}
-              placeholder="Send a message…"
+              placeholder="Send a message… type @ to mention connected accounts and personal contacts"
               rows={1}
               className="max-h-40 min-h-[44px] w-full resize-none bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
               style={{ height: "auto" }}
@@ -1044,6 +1045,7 @@ export function ChatClient({
                 t.style.height = Math.min(t.scrollHeight, 160) + "px";
               }}
             />
+            <div className="px-3 pb-2"><MentionPicker organizationId={organizationId} value={draft} onChange={setDraft} textareaRef={composerRef}/></div>
             <div className="flex items-center justify-between px-3 pb-2">
               <button type="button" onClick={() => setVoiceOpen(true)}
                 className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-primary"
