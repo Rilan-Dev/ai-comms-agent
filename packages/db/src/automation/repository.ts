@@ -305,6 +305,13 @@ export async function recoverStaleAutomationRuns(limit=25,ageMinutes=30){
       `WITH stale AS (
          SELECT id FROM automation_runs
          WHERE status='running' AND COALESCE(started_at,created_at) < now()-make_interval(mins => $2::int)
+         AND NOT EXISTS (
+           SELECT 1 FROM automation_rules rule JOIN automation_event_outbox o
+             ON o.organization_id=rule.organization_id
+           WHERE rule.id=automation_runs.automation_rule_id
+             AND automation_runs.trigger_event_key=o.event_type||':'||o.source_key
+             AND o.status='processing' AND o.claimed_at>=now()-interval '20 minutes'
+         )
          ORDER BY COALESCE(started_at,created_at) ASC LIMIT $1 FOR UPDATE SKIP LOCKED
        )
        UPDATE automation_runs r SET status='failed',finished_at=now(),

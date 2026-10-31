@@ -61,7 +61,7 @@ export async function recoverInterruptedAutomationEvents():Promise<number>{
   for(const event of r.rows){
    const eventKey=stableEventKey({organizationId:event.organization_id,type:event.event_type,payload:event.payload});
    if(eventKey)await client.query(
-    "UPDATE automation_runs run SET status='failed',finished_at=now(),error='Event worker lease expired; outcome unknown, verify before retrying.' FROM automation_rules rule WHERE rule.id=run.automation_rule_id AND rule.organization_id=$1 AND run.trigger_event_key=$2 AND run.status='running'",
+    "UPDATE automation_runs run SET status='failed',finished_at=now(),error='Event worker lease expired; outcome unknown, verify before retrying.',result=COALESCE(run.result,'{}'::jsonb) || '{\"manualVerificationRequired\":true,\"downstreamOutcomeUnknown\":true,\"recoveredStaleExecution\":true}'::jsonb FROM automation_rules rule WHERE rule.id=run.automation_rule_id AND rule.organization_id=$1 AND run.trigger_event_key=$2 AND run.status='running'",
     [event.organization_id,eventKey]
    );
   }
