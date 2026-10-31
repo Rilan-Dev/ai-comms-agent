@@ -124,7 +124,7 @@ export async function POST(request: Request) {
     // Only the sync worker commits email_sync_states.history_id after it has
     // fetched and persisted every change. Registration is not reconciliation.
     return NextResponse.json({
-      ok: true, expiresAt, pushEndpoint: `${process.env.APP_ORIGIN ?? "https://aca.starcitytechnical.com"}/api/webhooks/gmail`,
+      ok: true, expiresAt, pushEndpoint: `${process.env.APP_ORIGIN ?? new URL(request.url).origin}/api/webhooks/gmail`,
     }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     console.error("[gmail/watch] Failed to register authenticated watch", {
