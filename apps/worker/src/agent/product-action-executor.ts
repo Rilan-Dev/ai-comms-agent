@@ -4,7 +4,7 @@ import {draftReplySourceFromEvent} from "../automation/draft-reply-source";
 import {deriveBusinessEvent} from "../automation/business-source";
 
 type Action = Record<string, unknown>;
-type Context = { organizationId: string; agentId: string; executionId: string; output: string;source?:"automation"|"schedule"|"whatsapp"|"chat";configuration?:ActiveAgentConfiguration };
+type Context = { organizationId: string; agentId: string; executionId: string; output: string;source?:string;configuration?:ActiveAgentConfiguration };
 
 async function configurationPermits(context:Context,tool:string):Promise<boolean>{
   const frozen=context.configuration;if(!frozen)return true;
