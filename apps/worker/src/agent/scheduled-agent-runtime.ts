@@ -56,6 +56,15 @@ function describeToolCalls(summaries: ScheduledAgentToolCall[]): string {
   return summaries.map((call) => `${call.name} (${call.ok ? "ok" : `failed: ${call.errorCode ?? "error"}`})`).join("; ");
 }
 
+/** A provider-written final sentence cannot settle a failed host operation.
+ * Preserve the factual output, but mark the occurrence as requiring review. */
+function unsettledToolFailure(summaries: ScheduledAgentToolCall[]): string | null {
+  const blocked = summaries.find((call) => !call.ok);
+  return blocked
+    ? `Scheduled tool ${blocked.name} failed (${blocked.errorCode ?? "unknown"}); review the action and provider outcome before retrying.`
+    : null;
+}
+
 /**
  * Execute a scheduled AI agent task with the agent's REAL host-authorized
  * tools (email read/write, WhatsApp send). This is the scheduled twin of the
@@ -194,6 +203,17 @@ export async function runScheduledAgentTask(args: {
     }
     if (completion.toolCalls.length === 0) {
       const finalText = completion.text.trim();
+      // An invalid or truncated provider decision is not an executed schedule.
+      // The provider's refusal prose must never turn the run green.
+      const invalidDecision = ["invalid_tool_call", "invalid_tool_arguments", "length", "MAX_TOKENS", "provider_output_limit"].includes(String(completion.finishReason ?? ""));
+      const failedTool = unsettledToolFailure(summaries);
+      if (invalidDecision || (finalText && failedTool)) {
+        return {
+          status: "configuration_required", output: finalText || "The AI provider could not produce a valid complete tool decision.",
+          reason: failedTool ?? "The AI provider returned an incomplete or invalid tool decision; no automatic replay is safe.",
+          toolCalls: summaries, pendingApprovals, provider, model,
+        };
+      }
       if (finalText) {
         return { status: "completed", output: finalText, toolCalls: summaries, pendingApprovals, provider, model };
       }
@@ -204,7 +224,8 @@ export async function runScheduledAgentTask(args: {
         continue;
       }
       return {
-        status: "completed",
+        status: "configuration_required",
+        reason: "The AI provider finished without a verifiable final report; review the execution before retrying.",
         output: summaries.length ? "The scheduled task ran tools but produced no final report." : "The scheduled task produced no output.",
         toolCalls: summaries,
         pendingApprovals,
@@ -216,7 +237,8 @@ export async function runScheduledAgentTask(args: {
     for (const call of completion.toolCalls) {
       if (totalCalls >= MAX_TOOL_CALLS) {
         return {
-          status: "completed",
+          status: "configuration_required",
+          reason: "The tool-call safety limit was reached before completion; check prior actions before retrying.",
           output: summaries.length
             ? `The scheduled task stopped at its tool-call safety limit before finishing. Work performed this run: ${describeToolCalls(summaries)}.`
             : "The scheduled task stopped at its tool-call safety limit before finishing.",
@@ -258,7 +280,8 @@ export async function runScheduledAgentTask(args: {
     }
   }
   return {
-    status: "completed",
+    status: "configuration_required",
+    reason: "The reasoning round limit was reached before completion; check previous actions before retrying.",
     output: summaries.length
       ? `The scheduled task reached its reasoning round limit before finishing. Work performed this run: ${describeToolCalls(summaries)}.`
       : "The scheduled task reached its reasoning round limit before finishing. Narrow the task instruction or enable the required tools.",

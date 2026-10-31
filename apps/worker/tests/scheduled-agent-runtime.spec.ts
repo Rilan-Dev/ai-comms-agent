@@ -118,6 +118,35 @@ describe("runScheduledAgentTask result reporting", () => {
     expect(mocks.invokeWhatsAppTool).not.toHaveBeenCalled();
   });
 
+  it("allows a provider-approved human review to remain pending without classifying a failed send", async () => {
+    mocks.invokeWhatsAppTool.mockResolvedValueOnce({ok:true,output:{status:"pending_approval",approval_required:true,action_id:"approval-qa"},audit:{duration_ms:2}});
+    mocks.completeWithTools
+      .mockResolvedValueOnce(completion("",[{id:"send",name:"whatsapp.send",arguments:{}}]))
+      .mockResolvedValueOnce(completion("WhatsApp request is pending human approval; nothing was sent.",[]));
+    const result=await runScheduledAgentTask({organizationId:"org-1",agentId:"agent-1",executionId:"approval-pending",task:"Prepare an email summary for WhatsApp approval"});
+    expect(result.status).toBe("completed");
+    expect(result.pendingApprovals).toEqual([{actionId:"approval-qa",actionType:"whatsapp.send"}]);
+    expect(result.toolCalls).toEqual([{name:"whatsapp.send",ok:true,durationMs:2}]);
+  });
+
+  it("never records an empty or malformed provider decision as a successful scheduled run", async () => {
+    mocks.completeWithTools.mockResolvedValue({ text: "", toolCalls: [], finishReason: "invalid_tool_call" });
+    const result = await runScheduledAgentTask({ organizationId:"org-1",agentId:"agent-1",executionId:"empty-output", task:"Produce a verified summary" });
+    expect(result.status).toBe("configuration_required");
+    expect(result.reason).toMatch(/provider|incomplete|invalid/i);
+    expect(result.toolCalls).toEqual([]);
+  });
+
+  it("reports a blocked provider send as failed even if the model offers a final explanation", async () => {
+    mocks.completeWithTools
+      .mockResolvedValueOnce(completion("",[{id:"send",name:"whatsapp.send",arguments:{}}]))
+      .mockResolvedValueOnce(completion("WhatsApp was blocked by the provider.",[]));
+    const result = await runScheduledAgentTask({ organizationId:"org-1",agentId:"agent-1",executionId:"blocked-send",task:"Send my unread email summary on WhatsApp" });
+    expect(result.output).toMatch(/blocked by the provider/i);
+    expect(result.status).toBe("configuration_required");
+    expect(result.reason).toMatch(/whatsapp.send|tool/i);
+  });
+
   it("records a factual work recap when the round limit is hit after a blocked send", async () => {
     // The real-world failure shape: reads succeed, the WhatsApp send is blocked
     // by Meta's 24-hour window, the model retries and burns every round.
@@ -136,7 +165,8 @@ describe("runScheduledAgentTask result reporting", () => {
       task: "Summarize unread emails and send a note to WhatsApp.",
     });
 
-    expect(result.status).toBe("completed");
+    expect(result.status).toBe("configuration_required");
+    expect(result.reason).toMatch(/round limit|incomplete|tool/i);
     expect(result.output).toContain("reached its reasoning round limit");
     expect(result.output).toContain("Work performed this run:");
     expect(result.output).toContain("email.messages.list (ok)");
@@ -162,7 +192,8 @@ describe("runScheduledAgentTask result reporting", () => {
       task: "Summarize unread emails.",
     });
 
-    expect(result.status).toBe("completed");
+    expect(result.status).toBe("configuration_required");
+    expect(result.reason).toMatch(/tool.call safety limit/i);
     expect(result.output).toContain("tool-call safety limit");
     expect(result.output).toContain("Work performed this run:");
     expect(result.toolCalls).toHaveLength(12);
