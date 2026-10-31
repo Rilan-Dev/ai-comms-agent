@@ -45,6 +45,9 @@ export type AiTodaySnapshot = {
   agents?: Array<{id:string;name:string;mailboxCount:number}>;
   /** Previous foreground visit; no email messages are marked read by this value. */
   lastVisitAt?: string | null;
+  /** Conservative coverage indicators, not a claim of completed provider sync. */
+  oldestSyncAt?: string | null;
+  unsyncedMailboxes?: number;
   totalMatches: number; items: AiTodaySource[];
   pendingEmailApprovals: number | null; pendingWhatsAppApprovals: number | null;
   schedules: AiTodaySchedule[];
