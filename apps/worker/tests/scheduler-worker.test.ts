@@ -42,7 +42,7 @@ test("post-execution audit failures do not reclassify completed scheduled runs",
 test("schedule advancement errors after a durable run do not record a second failed execution", () => {
   const worker = source.slice(source.indexOf("export async function processScheduledJobs"));
   const settled = worker.indexOf("await completeScheduledJobRun(job.runId");
-  const advanceTry = worker.indexOf("try {\n        const next=job.cron", settled);
+  const advanceTry = worker.indexOf("const next=job.cron && !failureReason", settled);
   const guardedAdvance = worker.indexOf("await advanceScheduledJob(job.id,job.organizationId,job.nextFireAt,", advanceTry);
   const advanceCatch = worker.indexOf("} catch (advanceError) {", guardedAdvance);
   const failureCatch = worker.indexOf("}catch(error){", advanceCatch);
