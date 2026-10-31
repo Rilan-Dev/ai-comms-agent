@@ -27,7 +27,17 @@ export function automationMatches(rule:Pick<Rule,"organizationId"|"trigger"|"con
   // be objects, not strings, lists or numbers that silently match all.
   if(match!=null && (!isRecord(match) || !objectEqualsSubset(event.payload,match))) return false;
   const conditions=rule.conditions;
-  return conditions==null || (isRecord(conditions) && objectEqualsSubset(event.payload,conditions));
+  if(conditions==null)return true;
+  if(!isRecord(conditions))return false;
+  const {textContainsAny,...remaining}=conditions;
+  if(textContainsAny!==undefined){
+    if(!Array.isArray(textContainsAny)||textContainsAny.length===0||textContainsAny.length>8
+      ||textContainsAny.some(v=>typeof v!=="string"||v.trim().length<2||v.trim().length>60))return false;
+    const corpus=[event.payload.subject,event.payload.snippet,event.payload.body]
+      .filter((value):value is string=>typeof value==="string").join(" ").slice(0,6000).toLowerCase();
+    if(!textContainsAny.some(term=>corpus.includes(term.trim().toLowerCase())))return false;
+  }
+  return objectEqualsSubset(event.payload,remaining);
 }
 
 export function stableEventKey(event:Event){

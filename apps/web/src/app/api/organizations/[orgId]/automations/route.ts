@@ -31,6 +31,12 @@ function validate(input: any) {
       if(action.assigneeId!=null&&(typeof action.assigneeId!=="string"||!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(action.assigneeId)))return {error:"Invalid assignee ID."};
     }
   }
+  if(types.has("create_work_item")){
+    const filters=input?.conditions?.textContainsAny;
+    if(!Array.isArray(filters)||filters.length===0||filters.length>8||
+       filters.some((value:unknown)=>typeof value!=="string"||value.trim().length<2||value.trim().length>60))
+      return {error:"Business automations require 1–8 specific message keywords or phrases (2–60 characters each)."};
+  }
   if(types.has("send_whatsapp")&&actions.length!==1)return {error:"WhatsApp approval must remain a standalone action."};
   if(actions[0]?.type==="create_draft"&&actions.length>1)return {error:"Draft creation must follow summary and work item creation."};
   return { value: { name, agentId, trigger, actions, conditions: input?.conditions && typeof input.conditions === "object" ? input.conditions : {} } };

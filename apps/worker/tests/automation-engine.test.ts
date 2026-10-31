@@ -110,3 +110,13 @@ test("valid optional empty filters preserve matches and nonempty filters remain 
   assert.equal(automationMatches(rule({ type: "email.received", match: { from: "a@example.test" } }, { flagged: true }),
     event("email.received", { from: "a@example.test", flagged: false })), false);
 });
+
+test("business keyword filters match grounded source text and reject unrelated messages",()=>{
+ const org="11111111-1111-4111-8111-111111111111";
+ const rule={organizationId:org,trigger:{event:"email.received"},conditions:{textContainsAny:["quotation","pricing"]}};
+ assert.equal(automationMatches(rule,{organizationId:org,type:"email.received",payload:{subject:"Please send your QUOTATION for 24 cameras"}}),true);
+ assert.equal(automationMatches(rule,{organizationId:org,type:"email.received",payload:{subject:"Weekly newsletter and reminders"}}),false);
+ assert.equal(automationMatches(rule,{organizationId:org,type:"email.received",payload:{body:"Please provide pricing"}}),true);
+ assert.equal(automationMatches({...rule,conditions:{textContainsAny:[]}}, {organizationId:org,type:"email.received",payload:{subject:"quotation"}}),false);
+ assert.equal(automationMatches({...rule,conditions:{textContainsAny:"quotation"}}, {organizationId:org,type:"email.received",payload:{subject:"quotation"}}),false);
+});

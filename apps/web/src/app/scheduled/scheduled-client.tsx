@@ -124,7 +124,7 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
     oneFireAt: "",
     timezone: browserTimezone,
   });
-  const [ruleForm, setRuleForm] = useState({ agentId: agents[0]?.id ?? "", name: "", event: "email.received", action: "generate_summary" as RulePreset, whatsappTo: "", priority: "normal" as "normal"|"high"|"urgent", assigneeId: "" });
+  const [ruleForm, setRuleForm] = useState({ agentId: agents[0]?.id ?? "", name: "", event: "email.received", action: "generate_summary" as RulePreset, whatsappTo: "", priority: "normal" as "normal"|"high"|"urgent", assigneeId: "", keywords: "" });
   const [ruleRunsFor,setRuleRunsFor]=useState<string|null>(null);
   const [ruleRuns,setRuleRuns]=useState<RuleRun[]>([]);
 
@@ -217,7 +217,7 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
     try {
       const r = await fetch(`/api/organizations/${organizationId}/automations`, {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ agentId: ruleForm.agentId, name: ruleForm.name, trigger: { event: ruleForm.event }, actions: buildBusinessRuleActions(ruleForm) }),
+        body: JSON.stringify({ agentId: ruleForm.agentId, name: ruleForm.name, trigger: { event: ruleForm.event }, actions: buildBusinessRuleActions(ruleForm), conditions: ["opportunity","service_ticket","opportunity_draft","service_ticket_draft"].includes(ruleForm.action)?{textContainsAny:ruleForm.keywords.split(",").map(k=>k.trim()).filter(Boolean)}:{} }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.message ?? "Could not create automation.");
@@ -403,7 +403,7 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
           <option value="email.action_required">Email action required</option>
           <option value="whatsapp.received">WhatsApp received</option>
         </select>
-        <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Automation action" value={ruleForm.action} onChange={e => setRuleForm({ ...ruleForm, action: e.target.value as RulePreset })}>
+        <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Automation action" value={ruleForm.action} onChange={e => {const action=e.target.value as RulePreset;setRuleForm({...ruleForm,action,keywords:ruleForm.keywords.trim()?ruleForm.keywords:(action.startsWith("opportunity")?"quotation, quote, proposal, pricing":action.startsWith("service_ticket")?"not working, broken, issue, down, repair":"")});}}>
           {ruleForm.event!=="whatsapp.received"&&<option value="create_draft">Create draft (reply to sender, no send)</option>}
           <option value="send_whatsapp">Send WhatsApp</option>
           <option value="generate_summary">Generate summary</option>
@@ -413,6 +413,11 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
           {ruleForm.event!=="whatsapp.received"&&<option value="service_ticket_draft">Service ticket + summary + reply draft</option>}
         </select>
       </div>
+      {["opportunity","service_ticket","opportunity_draft","service_ticket_draft"].includes(ruleForm.action)&&<label className="mt-3 grid gap-1 text-xs font-semibold text-muted-foreground">
+        Only react to messages containing any of these keywords (comma-separated, required)
+        <input aria-label="Business event keywords" className="h-10 rounded-lg border bg-background px-3 text-sm" value={ruleForm.keywords} placeholder="quotation, quote, proposal" onChange={e=>setRuleForm({...ruleForm,keywords:e.target.value})}/>
+        <span className="text-xs font-normal">Only the message subject, preview or body is checked. A keyword match is not a verified customer qualification.</span>
+      </label>}
       {["opportunity","service_ticket","opportunity_draft","service_ticket_draft"].includes(ruleForm.action)&&<div className="mt-3 flex flex-wrap items-center gap-4">
         <label className="grid gap-1 text-xs font-semibold text-muted-foreground">Business priority
           <select aria-label="Business priority" value={ruleForm.priority} onChange={e=>setRuleForm({...ruleForm,priority:e.target.value as typeof ruleForm.priority})} className="h-10 rounded-lg border bg-background px-3 text-sm">
@@ -427,7 +432,7 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
       </div>}
       {ruleForm.action==="send_whatsapp"&&<label className="mt-3 block text-xs font-semibold text-muted-foreground">WhatsApp recipient (E.164; sends need review)<input aria-label="WhatsApp automation recipient" type="tel" placeholder="+919876543210" className="mt-1 h-10 w-full max-w-xs rounded-lg border bg-background px-3 text-sm" value={ruleForm.whatsappTo} onChange={e=>setRuleForm({...ruleForm,whatsappTo:e.target.value})}/></label>}
       <p className="mt-3 text-xs text-muted-foreground">Business rules can save a lead/ticket, an AI summary and an optional reply draft. New work items enter the manager review queue; completing them requires an owner/admin review. WhatsApp actions create approval requests, not automatic outbound sends. Work item creation does not dispatch technicians or send customer messages.</p>
-      <button disabled={busy || !ruleForm.agentId || !ruleForm.name || (ruleForm.action==="send_whatsapp"&&!/^\+[1-9]\d{7,14}$/.test(ruleForm.whatsappTo.trim()))} onClick={() => void createRule()} className="mt-4 h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-85 disabled:opacity-50">Create rule</button>
+      <button disabled={busy || !ruleForm.agentId || !ruleForm.name || (ruleForm.action==="send_whatsapp"&&!/^\+[1-9]\d{7,14}$/.test(ruleForm.whatsappTo.trim())) || (["opportunity","service_ticket","opportunity_draft","service_ticket_draft"].includes(ruleForm.action)&&ruleForm.keywords.split(",").filter(k=>k.trim().length>=2).length===0)} onClick={() => void createRule()} className="mt-4 h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-85 disabled:opacity-50">Create rule</button>
     </details>
   </main>;
 }
