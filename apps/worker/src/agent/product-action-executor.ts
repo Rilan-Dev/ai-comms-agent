@@ -28,6 +28,9 @@ export async function executeProductActions(context: Context, params: Record<str
   const emailAccounts = new PostgresEmailAccountRepository();
   const results: ProductActionResult[] = [];
   for (const action of actions) {
+    // Ordered workflows are fail-stop: a denied summary, invalid assignee,
+    // or failed draft must not silently continue to later side effects.
+    if(results.some(r=>r.status==="configuration_required"||r.status==="failed"||r.status==="unsupported"))break;
     const type = stringValue(action.type);
 
     if(type==="generate_summary"){
