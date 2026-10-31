@@ -62,7 +62,7 @@ it("restricts sources, coverage and last-visit history to both user grant and ac
       return {rows:[{agent_id:agent,agent_name:"Finance",mailbox_id:mailbox}]};
     if(sql.includes("WITH scoped AS"))
       return {rows:[{id:"50000000-0000-4000-8000-000000000005",thread_id:"60000000-0000-4000-8000-000000000006",email_account_id:mailbox,account_email:"finance@example.test",from_address:"Sender",subject:"Invoice",snippet:"Follow up",received_at:"2026-10-30T00:00:00Z",is_read:false,action_required:true,is_starred:false,importance_score:null,action_deadline:null,matched_count:"1"}]};
-    if(sql.includes("SELECT count(*) AS connected_mailboxes"))return {rows:[{connected_mailboxes:"1",last_sync_at:null}]};
+    if(sql.includes("SELECT count(*) AS connected_mailboxes"))return {rows:[{connected_mailboxes:"2",last_sync_at:"2026-10-31T00:00:00Z",oldest_sync_at:"2026-10-29T00:00:00Z",unsynced_mailboxes:"1"}]};
     if(sql.includes("SELECT last_foreground_at"))return {rows:[{last_foreground_at:"2026-10-27T00:00:00Z"}]};
     return {rows:[]};
   });
@@ -70,7 +70,7 @@ it("restricts sources, coverage and last-visit history to both user grant and ac
   const response=await GET(request("&days=7&agentId="+agent));
   expect(response.status).toBe(200);
   const body=await response.json();
-  expect(body.snapshot).toMatchObject({agentId:agent,connectedMailboxes:1,totalMatches:1,lastVisitAt:"2026-10-27T00:00:00.000Z"});
+  expect(body.snapshot).toMatchObject({agentId:agent,connectedMailboxes:2,unsyncedMailboxes:1,oldestSyncAt:"2026-10-29T00:00:00.000Z",totalMatches:1,lastVisitAt:"2026-10-27T00:00:00.000Z"});
   expect(body.snapshot.agents).toEqual([{id:agent,name:"Finance",mailboxCount:1}]);
   expect(body.snapshot.items[0].mailboxId).toBe(mailbox);
   expect(mocks.query).toHaveBeenCalledTimes(5);
