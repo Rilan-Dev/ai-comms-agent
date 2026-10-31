@@ -1,4 +1,4 @@
-import test from "node:test";
+import {test} from "vitest";
 import assert from "node:assert/strict";
 import {buildBusinessRuleActions} from "../src/lib/automations/business-actions";
 test("business presets produce bounded ordered safe action chains",()=>{

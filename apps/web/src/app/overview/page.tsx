@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {AutomaticCatchUp} from './automatic-catch-up';
 
+import {AiToday} from "./ai-today";
+
 type Overview = {
   organizationId: string;
   catchUpAvailable: boolean;
@@ -44,6 +46,7 @@ export default function HomePage() {
 
   return <main className="min-h-full bg-background">
     <div className="mx-auto max-w-[1500px] space-y-5 px-4 py-5 sm:px-7 sm:py-7 lg:px-9">
+      {data?.organizationId&&<AiToday key={data.organizationId} organizationId={data.organizationId}/>}
       {data?.catchUpAvailable&&data.organizationId&&<AutomaticCatchUp key={data.organizationId} organizationId={data.organizationId}/>}
       <section className="workspace-hero min-h-[245px] p-6 sm:p-8" aria-labelledby="overview-heading">
         <svg className="botanical-leaves pointer-events-none absolute -bottom-7 -right-6 hidden h-[260px] w-[320px] sm:block" viewBox="0 0 320 280" aria-hidden="true" fill="none">
