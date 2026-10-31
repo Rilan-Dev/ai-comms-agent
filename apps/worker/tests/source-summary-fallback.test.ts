@@ -25,6 +25,8 @@ test("requires source data rather than inventing provider outcomes",()=>{
 });
 test("recovers only known transient model errors, not permission or 400 errors",()=>{
  assert.equal(recoverableSummaryProviderError(new Error("Gemini 429 quota exceeded")),true);
+ assert.equal(recoverableSummaryProviderError(new Error("Gemini streaming request failed (503): { error: { code: 503, message: This model is currently experiencing high demand. status: UNAVAILABLE } }")),true);
+ assert.equal(recoverableSummaryProviderError(new Error("OpenAI request failed (503): service unavailable")),true);
  assert.equal(recoverableSummaryProviderError(new Error("AI provider streamed a completion with no content")),true);
  assert.equal(recoverableSummaryProviderError(new Error("permission revoked")),false);
  assert.equal(recoverableSummaryProviderError(new Error("Tool request failed 400 missing signature")),false);

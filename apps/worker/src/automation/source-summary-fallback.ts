@@ -42,5 +42,5 @@ export function sourceSummaryFallback(input:AgentInput,reason:"empty"|"provider_
 }
 export function recoverableSummaryProviderError(error:unknown):boolean {
  const message=error instanceof Error?error.message:String(error);
- return /\b429\b|quota|rate.limit|temporarily unavailable|timed? ?out|streamed a completion with no content|no visible content|provider.*empty|provider.*unavailable/i.test(message);
+ return /\b429\b|quota|rate.limit|temporarily unavailable|timed? ?out|streamed a completion with no content|no visible content|provider.*empty|provider.*unavailable|(?:Gemini|OpenAI|Sarvam|AI provider)[^\n]{0,120}\b503\b/i.test(message);
 }
