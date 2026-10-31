@@ -15,6 +15,7 @@ beforeAll(async()=>{
  await client.connect();
  await client.query("DROP SCHEMA IF EXISTS aca CASCADE; CREATE SCHEMA aca");
  await client.query("CREATE TABLE aca.automation_rules (id uuid PRIMARY KEY,organization_id uuid NOT NULL,status text NOT NULL)");
+ await client.query("CREATE TABLE aca.automation_event_outbox (organization_id uuid NOT NULL,event_type text NOT NULL,source_key text NOT NULL,status text NOT NULL,claimed_at timestamptz)");
  await client.query("CREATE TABLE aca.automation_runs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),automation_rule_id uuid NOT NULL,organization_id uuid,trigger_event_key text,status text NOT NULL,triggered_at timestamptz NOT NULL DEFAULT now(),started_at timestamptz,created_at timestamptz NOT NULL DEFAULT now(),finished_at timestamptz,result jsonb,error text)");
  await client.query("CREATE UNIQUE INDEX qa_auto_key ON aca.automation_runs(automation_rule_id,trigger_event_key) WHERE trigger_event_key IS NOT NULL");
 });
@@ -25,8 +26,11 @@ it.skipIf(!safe)("marks stale legacy rows uncertain, never replays, and fences l
  const prior=await client.query("INSERT INTO aca.automation_runs(automation_rule_id,organization_id,trigger_event_key,status,result,created_at) VALUES ($1,$2,'email.received:stable','running','{}',now()-interval '35 minutes') RETURNING id",[rule,org]);
  const runId=prior.rows[0]!.id;
  const live=await client.query("INSERT INTO aca.automation_runs(automation_rule_id,organization_id,trigger_event_key,status,result,created_at) VALUES ($1,$2,'email.received:current','running','{}',now()) RETURNING id",[rule,org]);
+ const protectedRun=await client.query("INSERT INTO aca.automation_runs(automation_rule_id,organization_id,trigger_event_key,status,result,created_at) VALUES ($1,$2,'email.received:leased','running','{}',now()-interval '45 minutes') RETURNING id",[rule,org]);
+ await client.query("INSERT INTO aca.automation_event_outbox(organization_id,event_type,source_key,status,claimed_at) VALUES($1,'email.received','leased','processing',now())",[org]);
  expect(await getAutomationRunStatus(rule,"email.received:stable")).toBe("running");
  const recovered=await recoverStaleAutomationRuns();
+ expect(recovered.map(x=>x.id)).not.toContain(protectedRun.rows[0]!.id);
  expect(recovered.map(x=>x.id)).toContain(runId);
  const row=await client.query("SELECT status,result,error FROM aca.automation_runs WHERE id=$1",[runId]);
  expect(row.rows[0].status).toBe("failed");
@@ -36,6 +40,7 @@ it.skipIf(!safe)("marks stale legacy rows uncertain, never replays, and fences l
  expect(await failAutomationRun(runId,"late failure")).toBe(false);
  expect(await getAutomationRunStatus(rule,"email.received:stable")).toBe("failed");
  expect((await client.query("SELECT status FROM aca.automation_runs WHERE id=$1",[live.rows[0]!.id])).rows[0].status).toBe("running");
+ expect((await client.query("SELECT status FROM aca.automation_runs WHERE id=$1",[protectedRun.rows[0]!.id])).rows[0].status).toBe("running");
  expect(await createAutomationRun(rule,org,{}, "email.received:stable")).toBeNull();
  expect(await recoverStaleAutomationRuns()).toEqual([]);
 });
