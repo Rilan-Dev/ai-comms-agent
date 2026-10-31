@@ -66,7 +66,7 @@ describe("returning owner catch-up window",()=>{
 
 describe("personal Chat handoff is bounded, review-only and source-limited",()=>{
   const row={id:messageId,thread_id:"50000000-0000-4000-8000-000000000005",email_account_id:"60000000-0000-4000-8000-000000000006",account_email:"finance@example.test",from_address:"Private Sender",subject:"Secret payroll",snippet:"Sensitive contract",received_at:"2026-10-30T00:00:00Z",is_read:false,action_required:true,is_starred:false,importance_score:null,action_deadline:null};
-  const snapshot:AiTodaySnapshot={windowDays:5,asOf:"2026-10-31T00:00:00Z",agentId,agents:[{id:agentId,name:"Finance",mailboxCount:1}],lastVisitAt:"2026-10-20T00:00:00Z",connectedMailboxes:1,lastSyncAt:null,totalMatches:20,items:[projectAiTodaySource(row)],pendingEmailApprovals:0,pendingWhatsAppApprovals:0,schedules:[]};
+  const snapshot:AiTodaySnapshot={windowDays:5,asOf:"2026-10-31T00:00:00Z",agentId,agents:[{id:agentId,name:"Finance",mailboxCount:1}],lastVisitAt:"2026-10-20T00:00:00Z",connectedMailboxes:1,lastSyncAt:null,oldestSyncAt:null,unsyncedMailboxes:1,totalMatches:20,items:[projectAiTodaySource(row)],pendingEmailApprovals:0,pendingWhatsAppApprovals:0,schedules:[]};
   it("sends only opaque IDs to Chat, demands new evidence, and prohibits sending",()=>{
     const target=new URL(aiTodayBriefingChatHref(snapshot),"https://localhost");
     expect(target.pathname).toBe("/chat");
@@ -86,6 +86,7 @@ describe("personal Chat handoff is bounded, review-only and source-limited",()=>
   it("shows grant-scoped assistant and visit metadata without rendering confidential markup",()=>{
     const html=renderToStaticMarkup(createElement(AiTodaySnapshotView,{snapshot}));
     expect(html).toContain("Previous visit");
+    expect(html).toContain("Coverage may be incomplete");
     expect(html).toContain("Prepare an AI briefing in Chat");
     expect(html).toContain("finance@example.test");
     expect(html).toContain("only from mailboxes both granted");
