@@ -30,6 +30,11 @@ export type AiTodaySchedule = {
 };
 export type AiTodaySnapshot = {
   windowDays: AiTodayDays; asOf: string; connectedMailboxes: number; lastSyncAt: string | null;
+  /** A user grant AND readable agent binding are both required. */
+  agentId?: string | null;
+  agents?: Array<{id:string;name:string;mailboxCount:number}>;
+  /** Previous foreground visit; no email messages are marked read by this value. */
+  lastVisitAt?: string | null;
   totalMatches: number; items: AiTodaySource[];
   pendingEmailApprovals: number | null; pendingWhatsAppApprovals: number | null;
   schedules: AiTodaySchedule[];
@@ -63,10 +68,27 @@ export function projectAiTodaySource(row: AiTodaySourceRow): AiTodaySource {
 
 /** Only the opaque source ID crosses into Chat; never leak subject, sender or
  * snippet into browser history, URL logs or an unbound agent context. */
-export function aiTodayChatHref(messageId: string): string {
+export function aiTodayChatHref(messageId: string, agentId?: string | null): string {
   if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(messageId)) return "/chat";
   const prompt = "Review email message ID " + messageId +
     " using only the mail sources I have permission to access. Help prepare a reply draft for my review. " +
     "Do not send any message. If the source is unavailable, say so rather than inventing its contents.";
-  return "/chat?" + new URLSearchParams({prompt,run:"1"});
+  return "/chat?" + new URLSearchParams({prompt,run:"1",...(agentId && uuid.test(agentId) ? {agentId} : {})});
+}
+
+/** Explicit opt-in Chat generation: only opaque, scope-vetted source IDs cross
+ * the URL; no message content or new model endpoint is introduced here.
+ * Chat must still independently enforce live tool permissions. */
+const uuid = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
+export function aiTodayBriefingChatHref(snapshot:AiTodaySnapshot):string {
+  if(!snapshot.agentId || !uuid.test(snapshot.agentId)) return "/chat";
+  const ids = snapshot.items.map(item=>item.messageId).filter(id=>uuid.test(id)).slice(0,18);
+  if(!ids.length) return "/chat";
+  const period = buildAiTodayWindow(snapshot.windowDays,new Date(snapshot.asOf));
+  const prompt = "Prepare a concise personal executive briefing from these email source IDs only: " + ids.join(", ") +
+    ". Verify every source using my currently authorized email tools before drawing conclusions. " +
+    "Cite the verified source IDs beside each finding, identify documented action items, and explicitly state when any source is missing, unverified or access is revoked. " +
+    "This is a selection of "+ids.length+" out of "+snapshot.totalMatches+" matched items within "+period.from+" to "+period.to+
+    "; never call it a complete inbox summary if others were omitted or synchronization is incomplete. Do not send, forward or change messages; prepare suggestions for human review only.";
+  return "/chat?" + new URLSearchParams({agentId:snapshot.agentId,prompt,run:"1"});
 }
