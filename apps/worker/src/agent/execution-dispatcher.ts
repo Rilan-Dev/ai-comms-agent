@@ -3,7 +3,7 @@ import { agentRuntime } from "@ai-comms-agent/agent-core";
 import type { AgentExecutionDispatchResult, AgentExecutionRequest } from "@ai-comms-agent/shared";
 import { executeProductActions } from "./product-action-executor";
 import {prepareAgentConfigurationTurn} from '@ai-comms-agent/email-agent-runtime';
-import {sourceSummaryFallback,summaryOnlyAutomation,recoverableSummaryProviderError} from "../automation/source-summary-fallback";
+import {sourceSummaryFallback,safeRecapAutomation,recoverableSummaryProviderError} from "../automation/source-summary-fallback";
 
 function buildPrompt(request:AgentExecutionRequest){
   const params=JSON.stringify(request.params);
@@ -25,9 +25,12 @@ export async function dispatchAgentExecution(request:AgentExecutionRequest):Prom
   let output="";
   let modelProvider="";
   let modelName="";
-  const sourceFallback=(reason:"empty"|"provider_error")=>{
-    const recap=sourceSummaryFallback({source:request.source,intent:request.intent,params:request.params},reason);
-    return recap?{status:"completed" as const,executionId:request.executionId,output:recap,provider:"source-only-fallback",model:"none",actions:[{type:"generate_summary",status:"completed" as const}]}:null;
+  const recapInput={source:request.source,intent:request.intent,params:request.params};
+  const sourceFallback=(reason:"empty"|"provider_error"):boolean=>{
+    const recap=sourceSummaryFallback(recapInput,reason);
+    if(!recap)return false;
+    output=recap;modelProvider="source-only-fallback";modelName="none";
+    return true;
   };
   try {
     const turn=customerReply
@@ -41,16 +44,9 @@ export async function dispatchAgentExecution(request:AgentExecutionRequest):Prom
     modelName=turn.model;
     for await(const chunk of turn.stream)output+=chunk;
   }catch(error){
-    if(summaryOnlyAutomation({source:request.source,intent:request.intent,params:request.params})&&recoverableSummaryProviderError(error)){
-      const fallback=sourceFallback("provider_error");
-      if(fallback)return fallback;
-    }
-    throw error;
+    if(!safeRecapAutomation(recapInput)||!recoverableSummaryProviderError(error)||!sourceFallback("provider_error"))throw error;
   }
-  if(!output.trim()){
-    const fallback=sourceFallback("empty");
-    if(fallback)return fallback;
-  }
+  if(!output.trim())sourceFallback("empty");
   const actions=await executeProductActions({ organizationId:request.organizationId, agentId:request.agentId, executionId:request.executionId, output,source:request.source,...(configurationTurn?{configuration:configurationTurn.configuration}:{}) }, request.params);
   // Provider action failures must never be stored as successful event runs.
   const blocked=actions.find((action)=>action.status==="configuration_required"||action.status==="failed"||action.status==="unsupported");

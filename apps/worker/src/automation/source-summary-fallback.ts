@@ -14,8 +14,15 @@ export function summaryOnlyAutomation(input:AgentInput):boolean {
    &&Array.isArray(a)&&a.length===1&&a[0]&&typeof a[0]==="object"&&a[0].type==="generate_summary"
    &&ev!==null&&typeof ev==="object"&&!Array.isArray(ev);
 }
+export function safeRecapAutomation(input:AgentInput):boolean {
+ if(summaryOnlyAutomation(input))return true;
+ const actions=input.params.actions;
+ return input.source==="automation"&&input.intent==="automation.execute" &&
+ Array.isArray(actions)&&actions.length===2&&actions[0]?.type==="generate_summary"&&actions[1]?.type==="create_work_item"&&
+ input.params.event!==null&&typeof input.params.event==="object"&&!Array.isArray(input.params.event);
+}
 export function sourceSummaryFallback(input:AgentInput,reason:"empty"|"provider_error"):string|null {
- if(!summaryOnlyAutomation(input))return null;
+ if(!safeRecapAutomation(input))return null;
  const e=input.params.event as Record<string,unknown>;
  // Trusted event type is supplied separately; require a known provider field
  // rather than turning arbitrary empty payloads into successful messages.
