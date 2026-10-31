@@ -33,29 +33,68 @@ it("rejects lookback abuse and invalid organization without querying private sou
   expect(mocks.query).not.toHaveBeenCalled();
 });
 
-it("only returns the current user scoped schedule; approvals are independent permission-gated",async()=>{
+it("returns no mail data without a personal grant; approvals and schedules stay separately scoped",async()=>{
   const {GET}=await import("../src/app/api/ai-today/route");
   const response=await GET(request("&days=5&userId=another&source=all"));
   expect(response.status).toBe(200);
   expect(response.headers.get("Cache-Control")).toBe("private, no-store");
   const body=await response.json();
-  expect(body.snapshot.windowDays).toBe(5);
+  expect(body.snapshot).toMatchObject({windowDays:5,agentId:null,agents:[],connectedMailboxes:0,totalMatches:0,items:[]});
   expect(body.snapshot.pendingEmailApprovals).toBeNull();
-  expect(body.snapshot.pendingWhatsAppApprovals).toBeNull();
-  expect(mocks.query).toHaveBeenCalledTimes(3);
-  const [sources,sourceArgs]=mocks.query.mock.calls[0]!;
-  expect(sourceArgs[0]).toBe(org);
-  expect(sourceArgs).toHaveLength(3);
-  expect(sources).toMatch(/m\.organization_id = \$1 AND a\.organization_id = \$1/);
-  expect(sources).toMatch(/LIMIT 18/);
-  const [schedules,scheduleArgs]=mocks.query.mock.calls[2]!;
-  expect(schedules).toContain("created_by=$2");
-  expect(scheduleArgs).toEqual([org,owner]);
+  expect(mocks.query).toHaveBeenCalledTimes(2);
+  expect(mocks.query.mock.calls[0]?.[0]).toContain("briefing_mailbox_grants");
+  expect(mocks.query.mock.calls[0]?.[1]).toEqual([org,owner]);
+  expect(mocks.query.mock.calls[1]?.[0]).toContain("created_by=$2");
+  expect(mocks.query.mock.calls[1]?.[1]).toEqual([org,owner]);
 
   mocks.authorize.mockResolvedValue({user:{id:owner},permissions:new Set(["email.read","organization.update"])});
   mocks.query.mockClear();
-  const granted=await GET(request());
-  expect(granted.status).toBe(200);
-  expect(mocks.query).toHaveBeenCalledTimes(4);
-  expect(mocks.query.mock.calls[3]?.[1]).toEqual([org,owner]);
+  expect((await GET(request())).status).toBe(200);
+  expect(mocks.query).toHaveBeenCalledTimes(3);
+  expect(mocks.query.mock.calls[2]?.[1]).toEqual([org,owner]);
+});
+
+it("restricts sources, coverage and last-visit history to both user grant and active agent binding",async()=>{
+  const agent="30000000-0000-4000-8000-000000000003";
+  const mailbox="40000000-0000-4000-8000-000000000004";
+  mocks.query.mockImplementation(async(sql:string,args:unknown[])=>{
+    if(sql.includes("SELECT DISTINCT a.id AS agent_id"))
+      return {rows:[{agent_id:agent,agent_name:"Finance",mailbox_id:mailbox}]};
+    if(sql.includes("WITH scoped AS"))
+      return {rows:[{id:"50000000-0000-4000-8000-000000000005",thread_id:"60000000-0000-4000-8000-000000000006",email_account_id:mailbox,account_email:"finance@example.test",from_address:"Sender",subject:"Invoice",snippet:"Follow up",received_at:"2026-10-30T00:00:00Z",is_read:false,action_required:true,is_starred:false,importance_score:null,action_deadline:null,matched_count:"1"}]};
+    if(sql.includes("SELECT count(*) AS connected_mailboxes"))return {rows:[{connected_mailboxes:"1",last_sync_at:null}]};
+    if(sql.includes("SELECT last_foreground_at"))return {rows:[{last_foreground_at:"2026-10-27T00:00:00Z"}]};
+    return {rows:[]};
+  });
+  const {GET}=await import("../src/app/api/ai-today/route");
+  const response=await GET(request("&days=7&agentId="+agent));
+  expect(response.status).toBe(200);
+  const body=await response.json();
+  expect(body.snapshot).toMatchObject({agentId:agent,connectedMailboxes:1,totalMatches:1,lastVisitAt:"2026-10-27T00:00:00.000Z"});
+  expect(body.snapshot.agents).toEqual([{id:agent,name:"Finance",mailboxCount:1}]);
+  expect(body.snapshot.items[0].mailboxId).toBe(mailbox);
+  expect(mocks.query).toHaveBeenCalledTimes(5);
+  const [sourceSql,sourceArgs]=mocks.query.mock.calls[1]!;
+  expect(sourceSql).toContain("m.organization_id = $1 AND a.organization_id = $1");
+  expect(sourceSql).toContain("g.user_id=$2");
+  expect(sourceSql).toContain("g.revoked_at IS NULL");
+  expect(sourceSql).toContain("b.agent_id=$3");
+  expect(sourceSql).toContain("scoped_agent.status='active'");
+  expect(sourceSql).toContain("LIMIT 18");
+  expect(sourceArgs.slice(0,3)).toEqual([org,owner,agent]);
+  const [coverageSql,coverageArgs]=mocks.query.mock.calls[2]!;
+  expect(coverageSql).toContain("briefing_mailbox_grants");
+  expect(coverageArgs).toEqual([org,owner,agent]);
+  expect(mocks.query.mock.calls[3]?.[1]).toEqual([org,owner,agent]);
+  expect(mocks.query.mock.calls[4]?.[1]).toEqual([org,owner]);
+  expect(mocks.query.mock.calls.map(call=>String(call[0])).join(" ")).not.toMatch(/UPDATE email_messages|INSERT INTO email_actions|whatsapp\.send/);
+});
+
+it("rejects a requested ungranted agent before touching mailbox messages or activity",async()=>{
+  const {GET}=await import("../src/app/api/ai-today/route");
+  mocks.query.mockResolvedValueOnce({rows:[{agent_id:"30000000-0000-4000-8000-000000000003",agent_name:"Allowed",mailbox_id:"40000000-0000-4000-8000-000000000004"}]});
+  const response=await GET(request("&agentId=50000000-0000-4000-8000-000000000005"));
+  expect(response.status).toBe(403);
+  expect(mocks.query).toHaveBeenCalledTimes(1);
+  expect((await GET(request("&agentId=not-a-uuid"))).status).toBe(422);
 });
