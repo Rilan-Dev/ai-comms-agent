@@ -85,6 +85,8 @@ export function AiTodaySnapshotView({snapshot}:{snapshot:AiTodaySnapshot}){
     <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
       <span>Source-backed · {snapshot.connectedMailboxes} connected mailbox{snapshot.connectedMailboxes===1?"":"es"} · Snapshot {time(snapshot.asOf)}</span>
       <span>{snapshot.lastSyncAt?`Latest recorded sync: ${time(snapshot.lastSyncAt)}`:"Sync freshness not available"}</span>
+      {snapshot.oldestSyncAt&&<span>Oldest mailbox sync: {time(snapshot.oldestSyncAt)}</span>}
+      {(snapshot.unsyncedMailboxes??0)>0&&<span role="status">{snapshot.unsyncedMailboxes} granted mailbox{snapshot.unsyncedMailboxes===1?"":"es"} without recorded sync. Coverage may be incomplete.</span>}
       <span>{snapshot.lastVisitAt?`Previous visit: ${time(snapshot.lastVisitAt)}`:"No previous visit recorded"}</span>
       {snapshot.lastVisitAt && Date.parse(snapshot.asOf)-Date.parse(snapshot.lastVisitAt)>30*86_400_000&&
         <span role="status">Your previous visit was over 30 days ago; older messages require an Inbox search.</span>}
@@ -100,6 +102,7 @@ export function AiTodaySnapshotView({snapshot}:{snapshot:AiTodaySnapshot}){
       {snapshot.agents?.length===0&&<p className="mt-3 rounded-lg border p-4 text-sm">No granted assistant mailboxes are available. Ask an organization administrator to assign explicit personal briefing access and bind a connected mailbox to your agent.</p>}
       {!!snapshot.agentId && snapshot.items.length>0&&<Link href={aiTodayBriefingChatHref(snapshot)} className="mt-3 inline-block rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-secondary">Prepare an AI briefing in Chat from these sources ↗</Link>}
       {snapshot.totalMatches>snapshot.items.length&&<p className="mt-3 text-xs text-muted-foreground">Showing {snapshot.items.length} of {snapshot.totalMatches} matching sources. Open inbox to see the rest.</p>}
+      {snapshot.lastVisitAt&&<p className="mt-2 text-xs text-muted-foreground">Since your previous visit: {snapshot.items.filter(item=>item.receivedAt&&Date.parse(item.receivedAt)>Date.parse(snapshot.lastVisitAt!)).length} of {snapshot.items.length} displayed sources arrived later. This count covers only the displayed selection, not your entire mailbox.</p>}
       {!snapshot.items.length?<p className="mt-4 rounded-lg border border-dashed p-5 text-sm text-muted-foreground">No matching unread, starred or action-flagged messages in this window. This does not prove that every account has finished syncing.</p>:
       <div className="mt-4 divide-y divide-border">{snapshot.items.map(item=><article key={item.messageId} className="py-4 first:pt-0">
         <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground"><span className="rounded-md border px-2 py-1 font-semibold">{priorityLabel[item.priority]}</span><span>{item.accountEmail}</span><span>{time(item.receivedAt)}</span></div>
