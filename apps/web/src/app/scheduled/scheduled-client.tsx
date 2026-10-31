@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { historicalSchedule, scheduleToForm, type ScheduleValues } from "@/lib/schedules/schedule-form";
 import { ScheduleFields } from "@/components/schedules/schedule-fields";
 import { MentionPicker } from "@/components/mentions/mention-picker";
+import {buildBusinessRuleActions,type RulePreset} from "@/lib/automations/business-actions";
 
 type Agent = { id: string; name: string; status: string };
 type Schedule = {
@@ -90,8 +91,8 @@ function describeTask(row: Schedule): string {
   return typeof task === "string" ? task : row.intent;
 }
 
-export default function ScheduledClient({ organizationId, initialSchedules, initialRules, agents }: {
-  organizationId: string; initialSchedules: Schedule[]; initialRules: Rule[]; agents: Agent[];
+export default function ScheduledClient({ organizationId, initialSchedules, initialRules, agents, assignees }: {
+  organizationId: string; initialSchedules: Schedule[]; initialRules: Rule[]; agents: Agent[]; assignees: Array<{id:string;name:string|null;email:string;role:string}>;
 }) {
   const [schedules, setSchedules] = useState(initialSchedules);
   const [rules, setRules] = useState(initialRules);
@@ -123,7 +124,7 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
     oneFireAt: "",
     timezone: browserTimezone,
   });
-  const [ruleForm, setRuleForm] = useState({ agentId: agents[0]?.id ?? "", name: "", event: "email.received", action: "create_draft", whatsappTo: "" });
+  const [ruleForm, setRuleForm] = useState({ agentId: agents[0]?.id ?? "", name: "", event: "email.received", action: "generate_summary" as RulePreset, whatsappTo: "", priority: "normal" as "normal"|"high"|"urgent", assigneeId: "" });
   const [ruleRunsFor,setRuleRunsFor]=useState<string|null>(null);
   const [ruleRuns,setRuleRuns]=useState<RuleRun[]>([]);
 
@@ -216,7 +217,7 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
     try {
       const r = await fetch(`/api/organizations/${organizationId}/automations`, {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ agentId: ruleForm.agentId, name: ruleForm.name, trigger: { event: ruleForm.event }, actions: [{ type: ruleForm.action, ...(ruleForm.action==="send_whatsapp"?{to:ruleForm.whatsappTo.trim()}:{}) }] }),
+        body: JSON.stringify({ agentId: ruleForm.agentId, name: ruleForm.name, trigger: { event: ruleForm.event }, actions: buildBusinessRuleActions(ruleForm) }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.message ?? "Could not create automation.");
@@ -363,13 +364,13 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
 
     <section className="grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold uppercase tracking-[.12em] text-muted-foreground">Event automations ({activeRules.length})</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-[.12em] text-muted-foreground">Event automations ({activeRules.length})</h2><a href="/work-items" className="rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-secondary">Open business work queue</a>
         <span className="text-xs text-muted-foreground">Events are matched per organization; every run has its own history and status.</span>
       </div>
       {activeRules.map(r=><article key={r.id} className="rounded-xl border border-border bg-card p-5">
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1"><p className="font-semibold">{r.name}</p>
-           <p className="mt-1 text-xs text-muted-foreground">{String(r.trigger.event??r.trigger.type??"event")} → {String((r.actions[0] as {type?:string}|undefined)?.type??"action")}</p>
+           <p className="mt-1 text-xs text-muted-foreground">{String(r.trigger.event??r.trigger.type??"event")} → {(r.actions as Array<{type?:string;kind?:string}>).map(a=>a.type==="create_work_item"?(a.kind==="opportunity"?"Sales opportunity":"Service ticket"):String(a.type??"action")).join(" → ")}</p>
           </div>
           <span className="rounded-full border px-2.5 py-1 text-xs font-semibold">{r.status}</span>
           <button disabled={busy} onClick={()=>void setRuleStatus(r,r.status==="paused"?"active":"paused")} className="rounded-lg border px-3 py-2 text-xs font-medium disabled:opacity-50">{r.status==="paused"?"Resume":"Pause"}</button>
@@ -397,19 +398,35 @@ export default function ScheduledClient({ organizationId, initialSchedules, init
         <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Automation agent" value={ruleForm.agentId} onChange={e => setRuleForm({ ...ruleForm, agentId: e.target.value })}>
           {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
-        <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Trigger event" value={ruleForm.event} onChange={e => setRuleForm({ ...ruleForm, event: e.target.value, action: e.target.value==="whatsapp.received"&&ruleForm.action==="create_draft"?"generate_summary":ruleForm.action })}>
+        <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Trigger event" value={ruleForm.event} onChange={e => setRuleForm({ ...ruleForm, event: e.target.value, action: e.target.value==="whatsapp.received"&&["create_draft","opportunity_draft","service_ticket_draft"].includes(ruleForm.action)?"generate_summary":ruleForm.action })}>
           <option value="email.received">Email received</option>
           <option value="email.action_required">Email action required</option>
           <option value="whatsapp.received">WhatsApp received</option>
         </select>
-        <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Automation action" value={ruleForm.action} onChange={e => setRuleForm({ ...ruleForm, action: e.target.value })}>
+        <select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Automation action" value={ruleForm.action} onChange={e => setRuleForm({ ...ruleForm, action: e.target.value as RulePreset })}>
           {ruleForm.event!=="whatsapp.received"&&<option value="create_draft">Create draft (reply to sender, no send)</option>}
           <option value="send_whatsapp">Send WhatsApp</option>
           <option value="generate_summary">Generate summary</option>
+          <option value="opportunity">Generate summary + create sales opportunity</option>
+          <option value="service_ticket">Generate summary + create service ticket</option>
+          {ruleForm.event!=="whatsapp.received"&&<option value="opportunity_draft">Sales opportunity + summary + reply draft</option>}
+          {ruleForm.event!=="whatsapp.received"&&<option value="service_ticket_draft">Service ticket + summary + reply draft</option>}
         </select>
       </div>
+      {["opportunity","service_ticket","opportunity_draft","service_ticket_draft"].includes(ruleForm.action)&&<div className="mt-3 flex flex-wrap items-center gap-4">
+        <label className="grid gap-1 text-xs font-semibold text-muted-foreground">Business priority
+          <select aria-label="Business priority" value={ruleForm.priority} onChange={e=>setRuleForm({...ruleForm,priority:e.target.value as typeof ruleForm.priority})} className="h-10 rounded-lg border bg-background px-3 text-sm">
+            <option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-xs font-semibold text-muted-foreground">Assign to (optional)
+          <select aria-label="Business assignee" value={ruleForm.assigneeId} onChange={e=>setRuleForm({...ruleForm,assigneeId:e.target.value})} className="h-10 rounded-lg border bg-background px-3 text-sm">
+            <option value="">Unassigned — review in work queue</option>{assignees.map(a=><option key={a.id} value={a.id}>{a.name||a.email} ({a.role})</option>)}
+          </select>
+        </label>
+      </div>}
       {ruleForm.action==="send_whatsapp"&&<label className="mt-3 block text-xs font-semibold text-muted-foreground">WhatsApp recipient (E.164; sends need review)<input aria-label="WhatsApp automation recipient" type="tel" placeholder="+919876543210" className="mt-1 h-10 w-full max-w-xs rounded-lg border bg-background px-3 text-sm" value={ruleForm.whatsappTo} onChange={e=>setRuleForm({...ruleForm,whatsappTo:e.target.value})}/></label>}
-      <p className="mt-3 text-xs text-muted-foreground">Create draft saves AI-generated text to the email account that received the event, addressed to the sender. Generate summary records the AI result in run history. WhatsApp actions create approval requests, not automatic outbound sends.</p>
+      <p className="mt-3 text-xs text-muted-foreground">Business rules can save a lead/ticket, an AI summary and an optional reply draft. New work items enter the manager review queue; completing them requires an owner/admin review. WhatsApp actions create approval requests, not automatic outbound sends. Work item creation does not dispatch technicians or send customer messages.</p>
       <button disabled={busy || !ruleForm.agentId || !ruleForm.name || (ruleForm.action==="send_whatsapp"&&!/^\+[1-9]\d{7,14}$/.test(ruleForm.whatsappTo.trim()))} onClick={() => void createRule()} className="mt-4 h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-85 disabled:opacity-50">Create rule</button>
     </details>
   </main>;

@@ -1,4 +1,4 @@
-import { listAutomationRules, listScheduledJobs, PostgresAgentRepository } from "@ai-comms-agent/db";
+import { listAutomationRules, listScheduledJobs, listBusinessAssignees, PostgresAgentRepository } from "@ai-comms-agent/db";
 import { getAuthenticatedAppContext } from "@/lib/identity/repository";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -11,15 +11,17 @@ export default async function ScheduledPage() {
   const context = await getAuthenticatedAppContext(new Request("http://localhost", { headers: await headers() }));
   if (!context) redirect("/login?reason=not_provisioned");
   const organizationId = context.organizationId;
-  const [schedules, rules, agents] = await Promise.all([
+  const [schedules, rules, agents, assignees] = await Promise.all([
     listScheduledJobs(organizationId),
     listAutomationRules(organizationId),
     new PostgresAgentRepository().list(organizationId),
+    listBusinessAssignees(organizationId),
   ]);
   return <ScheduledClient
     organizationId={organizationId}
     initialSchedules={schedules as never[]}
     initialRules={rules as never[]}
     agents={agents.map(a => ({ id: a.id, name: a.name, status: a.status }))}
+    assignees={assignees}
   />;
 }
