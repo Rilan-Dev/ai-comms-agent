@@ -24,7 +24,7 @@ function validate(input: any) {
     if(types.has(type))return {error:"Each action can only appear once in a workflow."};
     types.add(type);
     if(type==="create_draft"&&!String(event).startsWith("email."))return {error:"Reply drafts require an email trigger."};
-    if(type==="send_whatsapp"&&(typeof action.to!=="string"||!^\+[1-9]\d{7,14}$/.test(action.to)))return {error:"WhatsApp actions require an E.164 recipient and human approval."};
+    if(type==="send_whatsapp"&&(typeof action.to!=="string"||!/^\+[1-9]\d{7,14}$/.test(action.to)))return {error:"WhatsApp actions require an E.164 recipient and human approval."};
     if(type==="create_work_item"){
       if(!["opportunity","service_ticket"].includes(String(action.kind)))return {error:"Select a sales opportunity or service ticket."};
       if(action.priority!=null&&!["normal","high","urgent"].includes(String(action.priority)))return {error:"Invalid business priority."};
