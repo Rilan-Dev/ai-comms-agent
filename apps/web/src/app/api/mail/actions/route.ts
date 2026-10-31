@@ -1,11 +1,16 @@
+import {emailReplyMetadata,applyMailboxSignature} from "@ai-comms-agent/shared";
 import { NextResponse } from "next/server";
 import {
   createEmailAction,
+  assertCurrentEmailActionAuthorization,
+  ActionAuthorizationRevokedError,
   EmailActionIdempotencyConflictError,
   decideEmailAction,
   getEmailActionForOrganization,
   getMailMessageForOrganization,
+  getLocalDraftForOrganization,
   recordAuditEvent,
+  query,
 } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
@@ -48,7 +53,7 @@ export async function POST(request: Request) {
 
     if (actionType === "send_email") {
       if (!draftId) return NextResponse.json({ error: "validation_error", message: "draftId is required for send_email." }, { status: 422 });
-      const draft = await getMailMessageForOrganization(organizationId, draftId);
+      const draft = await getLocalDraftForOrganization(organizationId, draftId);
       if (!draft || !Boolean(draft.is_draft) || String(draft.email_account_id) !== emailAccountId) {
         return NextResponse.json({ error: "not_found", message: "Draft was not found in this organization/mailbox." }, { status: 404 });
       }
@@ -70,6 +75,7 @@ export async function POST(request: Request) {
         bcc,
         subject: draft.subject ?? "",
         bodyText: draft.text_body ?? "",
+        ...emailReplyMetadata(draft),
       };
       // Manual review must refer to the exact stored draft, not the previous
       // autosaved version; other audited tool callers retain their contract.
@@ -112,13 +118,21 @@ export async function POST(request: Request) {
           message: "The reply or forward has missing or invalid recipients. Correct the address before requesting human approval.",
         }, { status: 422 });
       }
+      const mailbox=await query<{signature_text:string|null}>(
+        "SELECT connection_config->>'mailSignatureText' AS signature_text FROM email_accounts WHERE organization_id=$1 AND id=$2 AND deleted_at IS NULL",
+        [organizationId,emailAccountId]);
+      if(!mailbox.rows[0])return NextResponse.json({error:"not_found",message:"Sending mailbox is unavailable."},{status:404});
       snapshot = {
         messageId,
         to,
         cc,
         bcc,
         subject: typeof body?.subject === "string" ? body.subject : actionType === "reply_email" ? `Re: ${String(message.subject ?? "").replace(/^(re:\s*)+/i, "")}` : `Fwd: ${String(message.subject ?? "")}`,
-        bodyText: typeof body?.bodyText === "string" ? body.bodyText : "",
+        bodyText: applyMailboxSignature(
+          actionType === "forward_email"
+            ? `${typeof body?.bodyText === "string" && body.bodyText ? body.bodyText + "\n\n" : ""}---------- Forwarded message ----------\n${typeof message.text_body === "string" ? message.text_body : ""}`
+            : typeof body?.bodyText === "string" ? body.bodyText : "",
+          mailbox.rows[0].signature_text),
       };
     }
 
@@ -137,7 +151,13 @@ export async function POST(request: Request) {
       correlationId: crypto.randomUUID(),
     });
 
-    await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: "email.action.requested", targetType: "email_action", targetId: String(action.id), action: String(actionType), decision: "pending_approval", correlationId: action.correlationId, metadata: { emailAccountId, draftId, idempotencyKey } });
+    try {
+      await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: "email.action.requested", targetType: "email_action", targetId: String(action.id), action: String(actionType), decision: "pending_approval", correlationId: action.correlationId, metadata: { emailAccountId, draftId, idempotencyKey } });
+    } catch (error) {
+      // The committed request is the reconciliation source. A secondary
+      // audit outage must not invite the user to create another request.
+      console.error("[email-action] request audit needs reconciliation", { actionId: action.id, correlationId: action.correlationId, errorType: error instanceof Error ? error.name : typeof error });
+    }
     return NextResponse.json({
       action,
       status: action.status,
@@ -170,9 +190,19 @@ export async function PATCH(request: Request) {
       getIdentityAdapter(),
       getIdentityRepository(),
     );
+    if(decision==='approved'){
+      const pending=await getEmailActionForOrganization(organizationId,actionId);
+      if(!pending)return NextResponse.json({error:'not_found'},{status:404});
+      try {await assertCurrentEmailActionAuthorization({...pending,approvedBy:subject.user.id});}
+      catch(error) {if(!(error instanceof ActionAuthorizationRevokedError))throw error;return NextResponse.json({error:'action_authorization_revoked',message:'The requester, agent or mailbox permission changed. No send was approved.'},{status:409});}
+    }
     const action = await decideEmailAction(organizationId, actionId, subject.user.id, decision, typeof body?.comment === "string" ? body.comment.slice(0, 1000) : null);
     if (!action) return NextResponse.json({ error: "conflict", message: "The action is no longer pending, has expired, or does not belong to this organization." }, { status: 409 });
-    await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: `email.action.${decision}`, targetType: "email_action", targetId: actionId, action: decision, decision: "allowed", correlationId: action.correlationId, metadata: { comment: typeof body?.comment === "string" ? body.comment.slice(0, 1000) : null } });
+    try {
+      await recordAuditEvent({ organizationId, actorUserId: subject.user.id, eventType: `email.action.${decision}`, targetType: "email_action", targetId: actionId, action: decision, decision: "allowed", correlationId: action.correlationId, metadata: { comment: typeof body?.comment === "string" ? body.comment.slice(0, 1000) : null } });
+    } catch (error) {
+      console.error("[email-action] decision audit needs reconciliation", { actionId, correlationId: action.correlationId, errorType: error instanceof Error ? error.name : typeof error });
+    }
     return NextResponse.json({ action });
   } catch (error) {
     return authorizationErrorToResponse(error);
@@ -189,7 +219,9 @@ export async function GET(request: Request) {
     if (!organizationId || !actionId) return NextResponse.json({ error: "validation_error" }, { status: 422 });
     await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "organization.update" }, getIdentityAdapter(), getIdentityRepository());
     const action = await getEmailActionForOrganization(organizationId, actionId);
-    return action ? NextResponse.json({ action }) : NextResponse.json({ error: "not_found" }, { status: 404 });
+    if(!action)return NextResponse.json({error:"not_found"},{status:404});
+    const sender=await query<{email_address:string}>('SELECT email_address FROM email_accounts WHERE id=$1 AND organization_id=$2 AND deleted_at IS NULL',[action.emailAccountId,organizationId]);
+    return NextResponse.json({action:{...action,senderAddress:sender.rows[0]?.email_address??null}},{headers:{'Cache-Control':'private, no-store'}});
   } catch (error) {
     return authorizationErrorToResponse(error);
   }

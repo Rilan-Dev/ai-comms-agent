@@ -32,7 +32,7 @@ describe("email.write identity permission contract", () => {
   it("role permission alone does not bypass agent policy, mailbox binding, or send approval", () => {
     expect(route).toContain('trusted.subject.permissions.has("email.write")');
     expect(route).toContain('runtime.registry.listForAgent(agentId)');
-    expect(route).toContain("const bound = await primaryMailboxes(organizationId, agentId)");
+    expect(route).toContain("const bound = await primaryMailboxes(organizationId, agentId,trusted.configuration)");
     expect(route).toContain("invokeEmailReadTool(runtime, toolName, input, context)");
     expect(route).toContain('action === "draft" ? "draft_created" : "pending_approval"');
     expect(route).not.toContain("sendDraft(");

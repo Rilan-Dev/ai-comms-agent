@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {MailReview} from "@/components/mail-review";
 import { validateChatEmailApproval, type ChatEmailApproval } from "@/lib/chat/inline-mail-approval";
 
 /**
@@ -10,12 +11,14 @@ import { validateChatEmailApproval, type ChatEmailApproval } from "@/lib/chat/in
  * authorize the signed-in reviewer; approving queues the worker, not a
  * browser-side provider send.
  */
-export function InlineMailApprovalReview({ organizationId, actionId, draftId, accountId, onApprovalConfirmed }: {
+export function InlineMailApprovalReview({ organizationId, actionId, draftId, accountId, onApprovalConfirmed, autoLoad = false, actionType='send_email' }: {
   organizationId: string;
   actionId: string;
-  draftId: string;
+  draftId: string | null;
   accountId: string;
   onApprovalConfirmed: () => void;
+  autoLoad?: boolean;
+  actionType?: ChatEmailApproval['actionType'];
 }) {
   const [approval, setApproval] = useState<ChatEmailApproval | null>(null);
   const [loading, setLoading] = useState(false);
@@ -23,6 +26,12 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
   const [decisionDone, setDecisionDone] = useState(false);
   const [notice, setNotice] = useState("");
   const inFlight = useRef(false);
+
+  useEffect(() => {
+    if (autoLoad) void loadReview();
+    // Reload only for a different authoritative request, not on state changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLoad, organizationId, actionId, draftId, accountId, actionType]);
 
   async function loadReview() {
     if (inFlight.current || decisionDone) return;
@@ -33,10 +42,10 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
     setNotice("");
     try {
       const query = new URLSearchParams({ organizationId, actionId });
-      const response = await fetch("/api/mail/actions?" + query.toString(), { cache: "no-store" });
+      const response = await fetch("/api/mail/actions?" + query.toString(), { cache: "no-store", signal: AbortSignal.timeout(15000) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message ?? "Only authorized organization reviewers can inspect this email request.");
-      const verified = validateChatEmailApproval(data.action, { actionId, draftId, accountId });
+      const verified = validateChatEmailApproval(data.action, { actionId, draftId, accountId, actionType });
       if (!verified) throw new Error("This saved email request is missing, mismatched, expired or no longer awaiting approval. Nothing was sent.");
       setApproval(verified);
     } catch (error) {
@@ -48,7 +57,7 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
   }
 
   async function approve() {
-    if (inFlight.current || loading || decisionDone || !approval || !reviewConfirmed) return;
+    if (inFlight.current || loading || decisionDone || !approval || !approval.senderAddress || !reviewConfirmed) return;
     const recipients = approval.recipientSnapshot.to.join(", ");
     if (!window.confirm("Approve the exact email shown to " + recipients +
       "? This authorizes the worker to send it. Delivery is not guaranteed and dispatch cannot be undone.")) return;
@@ -58,6 +67,7 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
     try {
       const response = await fetch("/api/mail/actions", {
         method: "PATCH",
+        signal: AbortSignal.timeout(30000),
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ organizationId, actionId, decision: "approved" }),
       });
@@ -83,6 +93,26 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
     }
   }
 
+  async function reject() {
+    if (inFlight.current || loading || decisionDone || !approval) return;
+    if (!window.confirm("Reject this email request? It will not be sent by this request.")) return;
+    inFlight.current = true; setLoading(true); setNotice("");
+    try {
+      const response = await fetch("/api/mail/actions", {
+        method: "PATCH", signal: AbortSignal.timeout(30000), headers: { "content-type": "application/json" },
+        body: JSON.stringify({ organizationId, actionId, decision: "rejected" }),
+      });
+      const data = await response.json();
+      if (!response.ok || data.action?.id !== actionId || data.action?.status !== "rejected")
+        throw new Error(data.message ?? "The decision was not confirmed; reload its status before trying again.");
+      setDecisionDone(true); setApproval(null); setReviewConfirmed(false);
+      setNotice("Request rejected. This request will not send the email.");
+    } catch (error) {
+      setApproval(null); setReviewConfirmed(false);
+      setNotice((error instanceof Error ? error.message : "Unable to confirm the decision.") + " Reload its status before retrying.");
+    } finally { inFlight.current = false; setLoading(false); }
+  }
+
   const snapshot = approval?.recipientSnapshot;
   return (
     <section aria-label="Review and approve sending from Chat" className="mt-4 rounded-xl border border-primary/20 bg-card p-4">
@@ -96,18 +126,9 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
       ) : null}
       {snapshot && !decisionDone ? (
         <div className="mt-3 space-y-3 text-sm">
-          <div className="rounded-lg border p-3">
-            <p><strong>To:</strong> {snapshot.to.join(", ")}</p>
-            {snapshot.cc.length > 0 ? <p><strong>Cc:</strong> {snapshot.cc.join(", ")}</p> : null}
-            {snapshot.bcc.length > 0 ? <p><strong>Bcc:</strong> {snapshot.bcc.join(", ")}</p> : null}
-            <p><strong>Subject:</strong> {snapshot.subject}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold">Exact persisted email body</p>
-            <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-lg border bg-muted/30 p-3 font-sans text-xs">{snapshot.bodyText}</pre>
-          </div>
+          <MailReview sender={approval.senderAddress ?? "Sender unavailable — reload the saved request"} snapshot={snapshot} />
           <label className="flex items-start gap-2 text-xs">
-            <input type="checkbox" checked={reviewConfirmed} disabled={loading}
+            <input type="checkbox" checked={reviewConfirmed} disabled={loading || Boolean(approval && !approval.senderAddress)}
               onChange={event => setReviewConfirmed(event.target.checked)}
               className="mt-0.5 size-4 shrink-0 accent-primary" />
             <span>Reviewed recipient, subject and body. I authorize this saved request to be sent if I click Approve.</span>
@@ -116,6 +137,7 @@ export function InlineMailApprovalReview({ organizationId, actionId, draftId, ac
             className="rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">
             Approve &amp; queue email sending
           </button>
+          <button type="button" disabled={loading} onClick={() => void reject()} className="ml-2 rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-50">Reject request</button>
         </div>
       ) : null}
       {notice ? <p role="status" className="mt-3 text-xs text-muted-foreground">{notice}</p> : null}

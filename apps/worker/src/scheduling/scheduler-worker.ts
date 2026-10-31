@@ -1,5 +1,7 @@
 import { claimDueScheduledJobs, recoverStaleScheduledJobRuns, advanceScheduledJob, completeScheduledJobRun, failScheduledJobRun, recordAuditEvent } from "@ai-comms-agent/db";
 import { dispatchAgentExecution } from "../agent/execution-dispatcher";
+import { runScheduledAgentTask } from "../agent/scheduled-agent-runtime";
+import { SCHEDULED_AGENT_TASK_INTENT } from "../agent/schedules-tool-runtime";
 import { nextCronFire } from "./cron";
 
 async function recordScheduleAudit(event: Parameters<typeof recordAuditEvent>[0]): Promise<void> {
@@ -34,12 +36,37 @@ export async function processScheduledJobs(limit=25,now=new Date()):Promise<{cla
   const jobs=await claimDueScheduledJobs(limit,nowIso); let completed=0,failed=0;
   for(const job of jobs){
     try{
-      const result=await dispatchAgentExecution({executionId:job.runId,organizationId:job.organizationId,agentId:job.agentId,source:"schedule",intent:job.intent,params:job.params,requestedAt:now.toISOString()});
-      if(result.status==="configuration_required"){ if(!(await failScheduledJobRun(job.runId,result.reason))){ console.error("[scheduler] run was already settled", {runId:job.runId}); continue; } failed+=1; await recordScheduleAudit({organizationId:job.organizationId,actorUserId:null,eventType:"schedule.execution.failed",targetType:"scheduled_run",targetId:job.runId,action:"execute",decision:"denied",correlationId:job.runId,metadata:{jobId:job.id,agentId:job.agentId,reason:result.reason,configurationRequired:true}}); }
-      else { if(!(await completeScheduledJobRun(job.runId,{status:result.status,executionId:result.executionId,output:result.output??null,provider:result.provider??null,model:result.model??null}))){ console.error("[scheduler] run was already settled", {runId:job.runId}); continue; } completed+=1; await recordScheduleAudit({organizationId:job.organizationId,actorUserId:null,eventType:"schedule.execution.completed",targetType:"scheduled_run",targetId:job.runId,action:"execute",decision:"allowed",correlationId:job.runId,metadata:{jobId:job.id,agentId:job.agentId,executionId:result.executionId,provider:result.provider??null,model:result.model??null}}); }
+      // Scheduled AI agent tasks run the full host-authorized tool loop
+      // (email read/write, WhatsApp send) with the task instruction as the
+      // user turn. Legacy intents keep the classic prompt-only dispatch.
+      const task=job.params?.task;
+      const isAgentTask=job.intent===SCHEDULED_AGENT_TASK_INTENT && typeof task==="string";
+      const agentTaskResult=isAgentTask ? await runScheduledAgentTask({executionId:job.runId,organizationId:job.organizationId,agentId:job.agentId,task,fireAt:job.nextFireAt,userId:job.createdBy,
+        ...(Object.prototype.hasOwnProperty.call(job.params,'allowedTools')?{allowedToolNames:job.params.allowedTools as string[]}:{}),
+        ...(Object.prototype.hasOwnProperty.call(job.params,'fallback')?{fallback:job.params.fallback}:{}),
+      }) : null;
+      const legacyResult=isAgentTask ? null : await dispatchAgentExecution({executionId:job.runId,organizationId:job.organizationId,agentId:job.agentId,source:"schedule",intent:job.intent,params:job.params,requestedAt:now.toISOString()});
+      const failureReason:string|null=agentTaskResult?.status==="configuration_required"
+        ? (agentTaskResult.reason ?? "Scheduled execution did not complete; inspect the run and provider outcome before retrying.")
+        : legacyResult?.status==="configuration_required"
+          ? (legacyResult.reason ?? "Scheduled execution did not complete; inspect the run and provider outcome before retrying.")
+          : null;
+      if(failureReason!==null){ if(!(await failScheduledJobRun(job.runId,failureReason))){ console.error("[scheduler] run was already settled", {runId:job.runId}); continue; } failed+=1; await recordScheduleAudit({organizationId:job.organizationId,actorUserId:null,eventType:"schedule.execution.failed",targetType:"scheduled_run",targetId:job.runId,action:"execute",decision:"denied",correlationId:job.runId,metadata:{jobId:job.id,agentId:job.agentId,reason:failureReason,configurationRequired:true}}); }
+      else { 
+        const runPayload=agentTaskResult
+          ? {status:agentTaskResult.status,executionId:job.runId,output:agentTaskResult.output,provider:agentTaskResult.provider,model:agentTaskResult.model,toolCalls:agentTaskResult.toolCalls,toolCallCount:agentTaskResult.toolCalls.length,pendingApprovals:agentTaskResult.pendingApprovals}
+          : {status:legacyResult!.status,executionId:legacyResult!.executionId,output:(legacyResult as {output?:string|null}).output??null,provider:(legacyResult as {provider?:string|null}).provider??null,model:(legacyResult as {model?:string|null}).model??null};
+        const toolCallCount=agentTaskResult?agentTaskResult.toolCalls.length:undefined;
+        if(!(await completeScheduledJobRun(job.runId,runPayload))){ console.error("[scheduler] run was already settled", {runId:job.runId}); continue; } completed+=1; await recordScheduleAudit({organizationId:job.organizationId,actorUserId:null,eventType:"schedule.execution.completed",targetType:"scheduled_run",targetId:job.runId,action:"execute",decision:"allowed",correlationId:job.runId,metadata:{jobId:job.id,agentId:job.agentId,executionId:runPayload.executionId,provider:runPayload.provider,model:runPayload.model,toolCallCount}}); }
       try {
-        const next=job.cron ? nextCronFire(job.cron,now,job.timezone) : null;
-        await advanceScheduledJob(job.id,job.organizationId,job.nextFireAt,job.revisionAt,next?.toISOString()??null,job.cron ? "active" : "archived",null);
+        // A failed occurrence has an unknown downstream send outcome. Preserve
+        // its original fire position and quarantine recurring tasks for owner
+        // review rather than silently clearing the error and scheduling another
+        // potentially duplicate WhatsApp send tomorrow.
+        const next=job.cron && !failureReason ? nextCronFire(job.cron,now,job.timezone) : null;
+        await advanceScheduledJob(job.id,job.organizationId,job.nextFireAt,job.revisionAt,
+          failureReason && job.cron ? job.nextFireAt : next?.toISOString()??null,
+          failureReason && job.cron ? "error" : job.cron ? "active" : "archived",failureReason);
       } catch (advanceError) {
         // Run completion was committed. A subsequent scheduler DB/cron error
         // must not overwrite that result with a fabricated execution failure.

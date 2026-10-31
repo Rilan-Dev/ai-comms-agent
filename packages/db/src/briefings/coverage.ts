@@ -6,6 +6,7 @@ import { briefingPeriod, planBriefingBatches, routineSourceEligible,
 import { withTransaction } from '../client';
 import { stableBriefingItemId } from './identity';
 import { requireBriefingActor, requireBriefingIds, resolveBriefingScopeInTransaction } from './access';
+import { requireFreshMailboxFlags } from './read-state';
 
 type ScheduledRequest = Extract<BriefingRequest, { mode: 'scheduled' }>;
 /** Host-only R3 integration. Implementations must authorize routine identity/revision
@@ -37,10 +38,12 @@ async function currentManifest(client: PoolClient, p: TrustedBriefingPrincipal, 
   const row = found.rows[0]; if (!row) throw conflict('unavailable manifest');
   const scope = await resolveBriefingScopeInTransaction(client, p, row.mailbox_ids);
   if (scope.scopeVersion !== row.scope_version) throw conflict();
+  if (row.briefing_mode === 'catch_up') await requireFreshMailboxFlags(client,p.organizationId,scope.mailboxIds);
   const sourceCount = (await client.query('SELECT count(*)::int n FROM summary_sources WHERE summary_id=$1', [id])).rows[0].n;
   if (!Array.isArray(row.selected_source_manifest) || row.selected_source_manifest.length !== sourceCount) throw conflict('missing provenance');
   const invalid = await client.query(`SELECT 1 FROM summary_sources s LEFT JOIN email_messages m ON m.id=s.email_message_id AND m.organization_id=s.organization_id AND m.email_account_id=s.mailbox_id
-    WHERE s.summary_id=$1 AND (m.id IS NULL OR s.content_revision IS DISTINCT FROM briefing_content_revision(m.id)) LIMIT 1`, [id]);
+    WHERE s.summary_id=$1 AND (m.id IS NULL OR s.content_revision IS DISTINCT FROM briefing_content_revision(m.id)
+      OR m.is_draft OR m.is_sent OR ($2 AND m.is_read)) LIMIT 1`, [id, row.briefing_mode === 'catch_up']);
   if (invalid.rowCount) throw conflict();
   return { row, scope };
 }
@@ -52,6 +55,7 @@ export async function prepareBriefing(p: TrustedBriefingPrincipal, request: Brie
   return retrySnapshot(() => withTransaction(async client => {
     await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
     const scope = await resolveBriefingScopeInTransaction(client, p, request.mailboxIds);
+    if (request.mode === 'catch_up') await requireFreshMailboxFlags(client,p.organizationId,scope.mailboxIds);
     const fingerprint = createHash('sha256').update(JSON.stringify([request.mode, scope.mailboxIds, request.period, request.language, request.mode === 'scheduled' ? request.routine : null])).digest('hex');
     const existing = await client.query(`SELECT j.request_fingerprint,s.* FROM briefing_generation_jobs j JOIN summaries s ON s.id=j.summary_id
       WHERE j.organization_id=$1 AND j.owner_user_id=$2 AND j.agent_id=$3 AND j.scope_version=$4 AND j.request_key=$5`, [...params(p), scope.scopeVersion, request.requestKey]);
@@ -66,7 +70,16 @@ export async function prepareBriefing(p: TrustedBriefingPrincipal, request: Brie
     // can omit a reply committed earlier in this same millisecond.
     const now: string = (await client.query(`SELECT to_char(now() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') value`)).rows[0].value;
     const history = await client.query(`SELECT history_start FROM briefing_selection_scopes WHERE organization_id=$1 AND owner_user_id=$2 AND agent_id=$3 AND scope_version=$4`, [...params(p), scope.scopeVersion]);
-    const period = briefingPeriod(request.period, now, history.rows[0] ? iso(history.rows[0].history_start) : null);
+    let historyStart = history.rows[0] ? iso(history.rows[0].history_start) : null;
+    if(request.mode==='catch_up'&&!request.period&&!historyStart){
+      // The first automatic visit must not discard a ten-day (or longer)
+      // absence just because the historical preview default was seven days.
+      const earliest=(await client.query(`SELECT min(least(coalesce(received_at,created_at),created_at)) started_at
+        FROM email_messages WHERE organization_id=$1 AND email_account_id=ANY($2::uuid[])
+          AND NOT is_read AND NOT is_draft AND NOT is_sent`,[p.organizationId,scope.mailboxIds])).rows[0].started_at;
+      if(earliest)historyStart=iso(earliest);
+    }
+    const period = briefingPeriod(request.period, now, historyStart);
     let coverage: RoutineCoverageSnapshot | undefined;
     if (request.mode === 'scheduled') {
       coverage = await routine!.load(client, p, request, scope);
@@ -90,6 +103,7 @@ export async function prepareBriefing(p: TrustedBriefingPrincipal, request: Brie
         greatest(1,ceil((octet_length(coalesce(m.text_body,m.html_body_sanitized,m.snippet,''))+octet_length(coalesce(m.subject,'')))/4.0))::int tokens
         FROM email_messages m WHERE m.organization_id=$1 AND m.email_account_id=ANY($4::uuid[])
         AND NOT m.is_draft AND NOT m.is_sent
+        AND ($8 OR m.is_read=false)
         AND ((coalesce(m.received_at,m.created_at)>=$5 AND coalesce(m.received_at,m.created_at)<$6)
           OR (NOT $8 AND m.created_at >= $5 AND m.created_at < $6)) AND ($7::uuid IS NULL OR m.id>$7)
         AND ($8 OR NOT EXISTS(SELECT 1 FROM briefing_review_sources r WHERE r.organization_id=$1 AND r.owner_user_id=$2 AND r.agent_id=$3 AND r.scope_version=$9 AND r.message_id=m.id AND r.content_revision=briefing_content_revision(m.id) AND r.reviewed_at IS NOT NULL))

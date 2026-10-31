@@ -41,7 +41,7 @@ test("chat holds model text until user-facing validation, and does not persist p
   assert.match(route, /if \(!toolTurn\.streamed\)/);
   const native = route.slice(route.indexOf("onSafeReadOnlyFinal:"), route.indexOf("});\n          }\n          if (blockedWriteExplanation)"));
   assert.doesNotMatch(native, /emit\("delta", \{ text: token \}\)/);
-  const generic = route.slice(route.indexOf("const turn = await claraRuntime.createChatTurn("), route.indexOf("if (request.signal.aborted)", route.indexOf("const turn = await claraRuntime.createChatTurn(")));
+  const generic = route.slice(route.indexOf("const turn = await agentRuntime.createChatTurn("), route.indexOf("if (request.signal.aborted)", route.indexOf("const turn = await agentRuntime.createChatTurn(")));
   assert.doesNotMatch(generic, /emit\("delta", \{ text: chunk \}\)/);
   assert.match(route, /await appendConversationMessage\(\{[\s\S]*?role: "assistant", content: assistantOutput/);
 });
@@ -64,7 +64,8 @@ test("deterministic authorization feedback is labeled and provides the in-chat r
 test("persisted internal-planning assistant turns are excluded from future model and ambient mail context", () => {
   const route = read("../src/app/api/chat/stream/route.ts");
   assert.match(route, /history\.filter\(message => message\.role !== "assistant" \|\| userFacingChatAnswer\(message\.content\) !== null\)/);
-  assert.match(route, /safeHistory\.filter\(/);
-  assert.match(route, /const filteredHistory = safeHistory/);
+  assert.match(route, /whatsAppPlanningContext\(safeHistory,content\)/);
+  assert.match(route, /draftPlanningContext\(whatsappPlan\.history,content\)/);
+  assert.match(route, /const filteredHistory = plannerHistory/);
   assert.doesNotMatch(route, /const recentMessages = history\s*\n/);
 });

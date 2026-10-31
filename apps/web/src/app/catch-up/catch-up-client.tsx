@@ -28,9 +28,9 @@ type SummaryItem = {
 
 
 const statusText: Record<Manifest["status"], string> = {
-  pending: "Mail selection saved — AI summaries are not yet generated",
-  partial: "Selection limit reached — narrow the date range to continue",
-  ready: "Selection complete",
+  pending: "Your assistant is preparing the selected emails",
+  partial: "Some selected emails need the original checked",
+  ready: "Catch-up ready",
   failed: "Selection failed",
   invalidated: "Some selected sources changed or access was revoked",
 };

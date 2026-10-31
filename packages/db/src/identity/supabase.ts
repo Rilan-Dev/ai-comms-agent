@@ -34,6 +34,7 @@ function organization(row: Row): Organization {
     id: asOrganizationId(String(row.id)),
     name: String(row.name),
     slug: String(row.slug),
+    productName: (row.product_name as string | null) ?? null,
     status: row.status as Organization["status"],
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
@@ -89,6 +90,29 @@ export class PostgresIdentityRepository implements IdentityRepository {
     const r = await query<Row>(
       "SELECT * FROM organizations WHERE slug = $1 AND deleted_at IS NULL",
       [slug],
+    );
+    return r.rows[0] ? organization(r.rows[0]) : null;
+  }
+
+  async updateOrganizationProfile(
+    id: OrganizationId,
+    input: { name?: string; productName?: string | null },
+  ): Promise<Organization | null> {
+    const existing = await this.getOrganizationById(id);
+    if (!existing) return null;
+    const nextName = input.name?.trim() || existing.name;
+    const nextProductName =
+      input.productName === undefined
+        ? existing.productName
+        : input.productName?.trim()
+          ? input.productName.trim()
+          : null;
+    const r = await query<Row>(
+      `UPDATE organizations
+       SET name = $2, product_name = $3, updated_at = now()
+       WHERE id = $1 AND deleted_at IS NULL
+       RETURNING *`,
+      [id, nextName, nextProductName],
     );
     return r.rows[0] ? organization(r.rows[0]) : null;
   }

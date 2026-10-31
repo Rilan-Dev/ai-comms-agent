@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
-import { asOrganizationId } from "@ai-comms-agent/shared";
+import { asOrganizationId, nextCronFire } from "@ai-comms-agent/shared";
+import { assertSameOrigin } from "@/lib/identity/local-auth";
 import { createScheduledJob, deleteScheduledJob, listScheduledJobRuns, listScheduledJobs, updateScheduledJob, recordAuditEvent } from "@ai-comms-agent/db";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,9 @@ function validate(input: any) {
   if (!name || !agentId || !intent) return { error: "name, agentId and intent are required" };
   if ((cron && oneFireAt) || (!cron && !oneFireAt)) return { error: "provide exactly one of cron or oneFireAt" };
   if (cron && cron.split(/\s+/).length !== 5) return { error: "cron must contain exactly five fields" };
+  try { if (cron) nextCronFire(cron,new Date(),timezone); } catch { return {error:"Invalid cron expression or timezone."}; }
   if (oneFireAt && Number.isNaN(Date.parse(oneFireAt))) return { error: "oneFireAt must be an ISO date" };
+  if (oneFireAt && Date.parse(oneFireAt) <= Date.now()+30_000) return { error: "One-time fire must be at least 30 seconds in the future." };
   if (catchUpMinutes < 0 || catchUpMinutes > 10080) return { error: "catchUpMinutes must be between 0 and 10080" };
   return { value: { name, agentId, intent, cron, oneFireAt, timezone, catchUpMinutes, params: input?.params && typeof input.params === "object" ? input.params : {} } };
 }
@@ -27,11 +30,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
     await ensureDevSeed();
     const { orgId } = await params;
     await authorize(request, { organizationId: asOrganizationId(orgId), permission: "organization.read" }, getIdentityAdapter(), getIdentityRepository());
+    const jobId = new URL(request.url).searchParams.get("jobId");
+    if (jobId) {
+      // Run history for one scheduled AI task (execution evidence).
+      const runs = await listScheduledJobRuns(orgId, jobId);
+      return NextResponse.json({ runs });
+    }
     return NextResponse.json({ schedules: await listScheduledJobs(orgId) });
   } catch (error) { return authorizationErrorToResponse(error); }
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
+  try { assertSameOrigin(request); } catch { return NextResponse.json({error:"invalid_origin"},{status:403}); }
   try {
     await ensureDevSeed();
     const { orgId } = await params;
@@ -46,6 +56,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
+  try { assertSameOrigin(request); } catch { return NextResponse.json({error:"invalid_origin"},{status:403}); }
   try {
     await ensureDevSeed();
     const { orgId } = await params;
@@ -64,6 +75,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
+  try { assertSameOrigin(request); } catch { return NextResponse.json({error:"invalid_origin"},{status:403}); }
   try {
     await ensureDevSeed();
     const { orgId } = await params;

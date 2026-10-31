@@ -36,7 +36,7 @@ describe("Gmail automatic mailbox synchronization", () => {
     expect(adapter).toContain("page.nextPageToken");
     expect(adapter).toContain("baselineHistoryId");
     expect(adapter).toContain("listDraftIdsByMessage");
-    expect(adapter).toContain("/history?startHistoryId=");
+    expect(adapter).toContain("startHistoryId: state.history_token!");
     expect(adapter).not.toContain('"/messages?maxResults=100&labelIds=INBOX"');
   });
 
@@ -45,7 +45,7 @@ describe("Gmail automatic mailbox synchronization", () => {
     const zoho = read("../../../apps/worker/src/email/zoho-adapter.ts");
     expect(worker).toContain('candidate.provider === "zoho" ? new ZohoAdapter()');
     expect(worker).toContain("new ImapSmtpAdapter()");
-    expect(worker).toContain("a.provider IN ('gmail','zoho','imap_smtp')");
+    expect(worker).toContain("a.provider IN ('gmail','zoho','imap_smtp','microsoft_graph')");
     expect(worker).not.toContain("a.provider IN ('gmail','zoho','imap_smtp')");
     expect(zoho).toContain("const pageSize = 100");
     expect(zoho).toContain("this.listMessages(folder.provider_folder_id");
@@ -61,14 +61,14 @@ describe("Gmail automatic mailbox synchronization", () => {
     expect(adapter).toContain("UID FETCH");
     expect(adapter).toContain("UIDVALIDITY");
     expect(adapter).toContain("parseRawMessage");
-    expect(adapter).toContain('headers.get("message-id")');
-    expect(adapter).toContain('headers.get("subject")');
-    expect(adapter).toContain("is_draft: /drafts/i.test(folderId)");
-    expect(worker).toContain('candidate.provider === "gmail" ? new GmailAdapter() : candidate.provider === "zoho" ? new ZohoAdapter() : new ImapSmtpAdapter()');
-    expect(worker).toContain("a.provider IN ('gmail','zoho','imap_smtp')");
+    expect(adapter).toContain("parseRawMessage");
+    expect(adapter).toContain('subject: parsed.subject');
+    expect(adapter).toContain("is_draft: /\\\\Draft\\b/i.test(flags) || /drafts/i.test(folderId)");
+    expect(worker).toContain('candidate.provider === "gmail" ? new GmailAdapter() : candidate.provider === "zoho" ? new ZohoAdapter() : candidate.provider === "microsoft_graph" ? new MicrosoftGraphAdapter() : new ImapSmtpAdapter()');
+    expect(worker).toContain("a.provider IN ('gmail','zoho','imap_smtp','microsoft_graph')");
   });
 
-  it("keeps synchronized email context tenant-scoped and passes it to Clara chat", () => {
+  it("keeps synchronized email context tenant-scoped and passes it to agent chat", () => {
     const route = read("../src/app/api/chat/stream/route.ts");
     expect(route).toContain("m.organization_id = $1");
     expect(route).toContain("a.organization_id = $1");

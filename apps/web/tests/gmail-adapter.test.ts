@@ -5,9 +5,27 @@ import { listEmailToolDescriptors } from "../../../packages/shared/src/agent/mai
 describe("GmailAdapter", () => {
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 
+  it('reconciles read flags through metadata without fetching full mail bodies',async()=>{
+    const fetch=vi.spyOn(globalThis,'fetch').mockResolvedValueOnce(Response.json({historyId:'100'}))
+      .mockResolvedValueOnce(Response.json({id:'message-1',labelIds:['UNREAD','STARRED'],payload:{headers:[{name:'Message-ID',value:'<one@test>'}]}}));
+    const adapter=new GmailAdapter();await adapter.connect({credential_type:'oauth_token',access_token:'fixture-token'});
+    const flags=await (adapter as unknown as {getMessageFlags:(ids:string[])=>Promise<unknown[]>}).getMessageFlags(['message-1']);
+    expect(flags).toEqual([{provider_message_id:'message-1',message_id_header:'<one@test>',is_read:false,is_starred:true,is_draft:false,is_outbound:false}]);
+    const url=new URL(String(fetch.mock.calls[1]![0]));expect(url.searchParams.get('format')).toBe('metadata');expect(url.searchParams.get('fields')).not.toContain('body');
+  });
+  it('distinguishes confirmed Gmail deletion from a transport error during flag reconciliation',async()=>{
+    vi.spyOn(globalThis,'fetch').mockResolvedValueOnce(Response.json({historyId:'100'}))
+      .mockResolvedValueOnce(new Response('Not found',{status:404})).mockRejectedValueOnce(new Error('Network unavailable'));
+    const adapter=new GmailAdapter();await adapter.connect({credential_type:'oauth_token',access_token:'fixture-token'});
+    const metadata=adapter as unknown as {getMessageFlags:(ids:string[])=>Promise<unknown[]>};
+    expect(await metadata.getMessageFlags(['gone'])).toEqual([]);
+    await expect(metadata.getMessageFlags(['retry'])).rejects.toThrow('Network unavailable');
+  });
+
   it("returns refreshed credentials using the shared EmailCredentials contract", async () => {
     const adapter = new GmailAdapter();
-    await adapter.connect({ credential_type: "oauth_token", access_token: "test-token", refresh_token: "refresh-token" });
+    vi.spyOn(globalThis,"fetch").mockResolvedValue(Response.json({historyId:"fixture-history"}));
+    await adapter.connect({ credential_type: "oauth_token", access_token: "test-token", refresh_token: "refresh-token",oauth_client_id:"fixture-client",oauth_client_secret:"fixture-secret" });
     expect(adapter.getCredentialSnapshot()).toMatchObject({
       credential_type: "oauth_token",
       access_token: "test-token",
@@ -65,7 +83,7 @@ describe("GmailAdapter", () => {
     const adapter = new GmailAdapter();
     const capabilities = adapter.capabilities();
     expect(capabilities.folders).toBe(true);
-    expect(capabilities.sync_webhook).toBe(true);
+    expect(capabilities.sync_webhook).toBe(false);
     expect(capabilities.sync_idle).toBe(false);
     expect(capabilities.send).toBe(true);
     expect(capabilities.attachments_upload).toBe(false);

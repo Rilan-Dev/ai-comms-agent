@@ -60,7 +60,7 @@ test("automated tests never inherit production Compose credentials or network ac
   assert.match(script, /docker build --target web --tag "\$WEB_IMAGE" "\$ROOT"/);
   assert.match(script, /docker run --rm --network none/);
   assert.match(script, /pnpm -r typecheck/);
-  assert.match(script, /pnpm --filter @ai-comms-agent\/clara-core test/);
+  assert.match(script, /pnpm --filter @ai-comms-agent\/agent-core test/);
   assert.match(script, /pnpm --filter @ai-comms-agent\/web exec vitest run --maxWorkers=1 --minWorkers=1 --reporter=verbose/);
   assert.match(script, /pnpm --filter @ai-comms-agent\/worker test/);
   assert.match(script, /web_status=\$?/);

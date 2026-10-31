@@ -17,7 +17,7 @@ describe("approval-safe email action contract", () => {
 
   it("binds actions to the organization and selected mailbox", () => {
     expect(actionRoute).toContain("String(draft.email_account_id) !== emailAccountId");
-    expect(actionRoute).toContain("String(message.email_account_id) !== emailAccountId");
+    expect(actionRoute).toContain("eligibleReplyForwardSourceId(message, emailAccountId)");
     expect(actionRepository).toContain("organization_id = $2");
   });
 
@@ -58,7 +58,9 @@ describe("approval-safe email action contract", () => {
     expect(executor).toContain("claimApprovedEmailAction(actionId, organizationId)");
     expect(executor).toContain("connected.sendDraft");
     expect(executor).toContain("connected.reply");
-    expect(executor).toContain("connected.forward");
+    expect(executor).toContain("connected.createDraft(reviewedParams)");
+    expect(executor).toContain("connected.sendDraft(forwardDraftId)");
+    expect(executor).not.toContain("connected.forward");
   });
 
   it("fails closed on abandoned worker execution instead of auto-replaying", () => {

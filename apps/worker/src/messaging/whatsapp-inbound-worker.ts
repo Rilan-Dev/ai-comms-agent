@@ -1,6 +1,5 @@
 import { claimRoutedWhatsAppInbound, completeWhatsAppInbound, recoverStaleWhatsAppInbound, recordAuditEvent } from "@ai-comms-agent/db";
 import { dispatchAgentExecution } from "../agent/execution-dispatcher";
-import { evaluateAutomationEvent } from "../automation/automation-engine";
 
 function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -61,35 +60,9 @@ export async function processRoutedWhatsAppInbound(limit = 10) {
       await completeWhatsAppInbound(messageId, "completed");
       completed += 1;
 
-      // The inbound agent's execution is already durable. A downstream
-      // automation evaluation must not be treated as another execution failure
-      // or undo a completed inbound message when the automation layer errors.
-      try {
-        await evaluateAutomationEvent({
-          type: "whatsapp.received",
-          organizationId,
-          payload: { messageId, organizationId, agentId, accountId, contactId, sender: from, body },
-        });
-      } catch (automationError) {
-        const reason = automationError instanceof Error
-          ? automationError.message : "Automation event delivery failed";
-        try {
-          await recordAuditEvent({
-            organizationId,
-            actorUserId: null,
-            eventType: "automation.provider_event_delivery_failed",
-            targetType: "whatsapp_message",
-            targetId: messageId,
-            action: "whatsapp.received",
-            decision: "denied",
-            correlationId: executionId,
-            metadata: { agentId, reason, inboundExecutionCompleted: true },
-          });
-        } catch {
-          // Do not turn successful inbound execution into a false failure.
-        }
-      }
-
+      // The durable outbox emits whatsapp.received from persisted, signed Meta
+      // webhooks independently of inbound assistant success. Do not re-emit it
+      // here, or one inbound message can trigger the automation twice.
       try {
         await recordAuditEvent({
           organizationId,

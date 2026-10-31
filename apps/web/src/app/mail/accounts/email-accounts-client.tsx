@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { EmailAccount } from "@ai-comms-agent/shared";
+import {summarizeMailboxFeatures} from "@/lib/mail/mailbox-features";
+import {MailboxSignatureEditor} from "./mailbox-signature-editor";
 
 type AccountWithSync = EmailAccount & {
   syncProgress?: {
@@ -38,6 +40,10 @@ export function EmailAccountsClient({
   const [accounts, setAccounts] = useState<AccountWithSync[]>(initialAccounts);
   const [gmailConfigs, setGmailConfigs] = useState<Array<{ id: string; label: string; enabled: boolean }>>([]);
   const [selectedGmailConfig, setSelectedGmailConfig] = useState("");
+  const [gmailSignatureDraft,setGmailSignatureDraft]=useState("");
+  const [editingSignature,setEditingSignature]=useState<string|null>(null);
+  const [signatureEditingText,setSignatureEditingText]=useState("");
+  const [signatureSaving,setSignatureSaving]=useState(false);
   const [zohoConfigs, setZohoConfigs] = useState<Array<{ id: string; label: string; enabled: boolean }>>([]);
   const [selectedZohoConfig, setSelectedZohoConfig] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -113,14 +119,49 @@ export function EmailAccountsClient({
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("connected") === "gmail") setNotice("Gmail authorization completed. The account is pending worker verification and initial synchronization.");
+    if (params.get("connected") === "gmail") {
+      const accountId=params.get("accountId");
+      const pending=window.sessionStorage.getItem("aca:gmail-signature-pending");
+      if(accountId&&pending){
+        try{
+          const item=JSON.parse(pending) as {organizationId:string;text:string};
+          if(item.organizationId===organizationId&&typeof item.text==="string"&&item.text.trim()){
+            setNotice("Gmail connected. Saving your mailbox-specific signature…");
+            void fetch("/api/email-accounts",{method:"PATCH",headers:{"content-type":"application/json"},
+              body:JSON.stringify({organizationId,accountId,signatureText:item.text})})
+              .then(async response=>{const data=await response.json();if(!response.ok)throw Error(data.message??"Signature save failed.");
+                setAccounts(current=>current.map(account=>account.id===accountId?{...account,signature_text:data.account.signature_text}:account));
+                window.sessionStorage.removeItem("aca:gmail-signature-pending");
+                setNotice("Gmail connected and your signature was saved. Mailbox verification and synchronization are pending.");
+              }).catch(()=>setNotice("Gmail connected, but your signature was not saved. Open this mailbox's Signature editor to retry."));
+          }else{
+            window.sessionStorage.removeItem("aca:gmail-signature-pending");
+            setNotice("Gmail authorization completed. Mailbox verification and synchronization are pending.");
+          }
+        }catch{setNotice("Gmail connected. Check this mailbox's signature in account settings.");}
+      }else setNotice("Gmail authorization completed. The account is pending worker verification and initial synchronization.");
+    }
     if (params.get("connected") === "zoho") setNotice("Zoho authorization completed. The account is pending worker verification and initial synchronization.");
     if (params.get("connected") === "microsoft_graph") setNotice("Outlook authorization completed. The account is pending worker verification and initial synchronization.");
     if (params.get("providerError")) setNotice(params.get("providerError"));
     if (params.has("connected") || params.has("providerError")) {
       window.history.replaceState({}, "", "/mail/accounts");
     }
-  }, []);
+  }, [organizationId]);
+
+  async function saveSignature(account:AccountWithSync){
+    setSignatureSaving(true);setNotice(null);
+    try{
+      const response=await fetch("/api/email-accounts",{method:"PATCH",headers:{"content-type":"application/json"},
+        body:JSON.stringify({organizationId,accountId:account.id,signatureText:signatureEditingText})});
+      const data=await response.json();
+      if(!response.ok)throw Error(data.message??"Signature could not be saved.");
+      setAccounts(current=>current.map(item=>item.id===account.id?{...item,signature_text:data.account.signature_text}:item));
+      setEditingSignature(null);
+      setNotice(data.account.signature_text?"Mailbox signature saved for future drafts and replies.":"Mailbox signature cleared. Clara may use an AI-generated closing.");
+    }catch(error){setNotice(error instanceof Error?error.message:"Signature save failed.");}
+    finally{setSignatureSaving(false);}
+  }
 
   useEffect(() => {
     const timer = window.setInterval(async () => {
@@ -381,6 +422,10 @@ export function EmailAccountsClient({
             <h2 className="mt-5 text-base font-semibold">{provider.name}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{provider.description}</p>
             <p className="mt-4 text-xs font-medium text-muted-foreground">{provider.method}</p>
+            {provider.id === "gmail"&&<div className="mt-4">
+              <MailboxSignatureEditor id="gmail-signature-new" label="Gmail account signature"
+                value={gmailSignatureDraft} onChange={setGmailSignatureDraft}/>
+            </div>}
             {provider.id === "gmail" ? (
               <label className="mt-4 grid gap-1.5 text-xs font-medium text-muted-foreground">OAuth client
                 <select value={selectedGmailConfig} onChange={(event) => setSelectedGmailConfig(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm text-foreground">
@@ -413,7 +458,9 @@ export function EmailAccountsClient({
             <button
               type="button"
               onClick={() => {
-                if (provider.id === "gmail") { if (!selectedGmailConfig) { setNotice("Add and enable a Gmail OAuth client in Settings before connecting Gmail."); return; } window.location.assign(`/api/oauth/gmail/start?configId=${encodeURIComponent(selectedGmailConfig)}&initialLimit=${initialSyncLimit}`); }
+                if (provider.id === "gmail") { if (!selectedGmailConfig) { setNotice("Add and enable a Gmail OAuth client in Settings before connecting Gmail."); return; }
+                  window.sessionStorage.setItem("aca:gmail-signature-pending",JSON.stringify({organizationId,text:gmailSignatureDraft}));
+                  window.location.assign(`/api/oauth/gmail/start?configId=${encodeURIComponent(selectedGmailConfig)}&initialLimit=${initialSyncLimit}`); }
                 if (provider.id === "zoho") { if (!selectedZohoConfig) { setNotice("Add and enable a Zoho OAuth client in Settings before connecting Zoho Mail."); return; } window.location.assign(`/api/oauth/zoho/start?configId=${encodeURIComponent(selectedZohoConfig)}&initialLimit=${initialSyncLimit}`); }
                 if (provider.id === "microsoft_graph") {
                   if (!selectedGraphConfig) { setNotice("Configure and enable a Microsoft OAuth client in Settings."); return; }
@@ -458,6 +505,7 @@ export function EmailAccountsClient({
           <div className="divide-y">
             {filteredAccounts.map((account) => {
               const structure = structureByAccount[account.id];
+              const mailboxFeatures = summarizeMailboxFeatures(account.capabilities, account.provider);
               return (
               <div key={account.id} className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <div className="min-w-0">
@@ -468,7 +516,12 @@ export function EmailAccountsClient({
                   <p className="mt-1 text-sm text-muted-foreground">
                     {account.provider === "microsoft_graph" ? "Outlook / Microsoft 365" : account.provider.replace("_", " / ")} · {account.display_name ?? "Mailbox"}
                   </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">{Object.entries(account.capabilities).filter(([,enabled])=>enabled).slice(0,5).map(([key])=><span key={key} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">{key.replaceAll("_"," ")}</span>)}</div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">{mailboxFeatures.filter((feature)=>feature.status==='available').slice(0,4).map((feature)=><span key={feature.key} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">{feature.label}</span>)}</div>
+                  <details className="mt-2 text-xs">
+                    <summary className="cursor-pointer font-semibold">Mailbox features</summary>
+                    <p className="mt-2 text-muted-foreground">Actions supported by this mailbox connection. Your agent’s permissions may further limit them.</p>
+                    <ul className="mt-2 grid gap-2 sm:grid-cols-2">{mailboxFeatures.map(feature=><li key={feature.key}><span>{feature.label}: </span><span className="text-muted-foreground">{feature.status==='available'?'Available':feature.status==='unavailable'?'Not available':'Not checked'}</span>{feature.help?<span className="block text-muted-foreground">{feature.help}</span>:null}</li>)}</ul>
+                  </details>
                   <p className="mt-2 text-xs text-muted-foreground">
                     Last sync: {account.last_sync_at ? new Date(account.last_sync_at).toLocaleString() : "Not synchronized"}
                   </p>
@@ -523,11 +576,27 @@ export function EmailAccountsClient({
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  {editingSignature===account.id&&<section aria-label={"Signature editor for "+account.email_address} className="w-full min-w-[260px] space-y-3">
+                    <MailboxSignatureEditor id={"signature-"+account.id} label={"Signature for "+account.email_address}
+                      value={signatureEditingText} onChange={setSignatureEditingText}/>
+                    <div className="flex gap-2">
+                      <button type="button" disabled={signatureSaving} onClick={()=>void saveSignature(account)}
+                        className="rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">
+                        {signatureSaving?"Saving…":"Save signature"}</button>
+                      <button type="button" onClick={()=>setEditingSignature(null)} className="rounded-md border px-3 py-2 text-xs">Cancel</button>
+                    </div>
+                  </section>}
                   {["gmail", "zoho", "imap_smtp", "microsoft_graph"].includes(account.provider) && account.status !== "revoked" && account.status !== "disconnected" && (
                     <button type="button" disabled={busy === account.id} onClick={() => syncNow(account)} className="h-10 rounded-md border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
                       {busy === account.id ? "Queueing…" : "Sync now"}
                     </button>
                   )}
+                  <button type="button" aria-expanded={editingSignature===account.id} onClick={()=>{
+                    setEditingSignature(current=>current===account.id?null:account.id);
+                    setSignatureEditingText(account.signature_text??"");
+                  }} className="h-10 rounded-md border px-4 text-sm font-semibold hover:bg-muted">
+                    {account.signature_text?"Edit signature":"Add signature"}
+                  </button>
                   {account.status !== "connected" && (
                     <button type="button" disabled={busy === account.id} onClick={() => reconnect(account)} className="h-10 rounded-md border px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-50">
                       {busy === account.id ? "Reconnecting…" : "Reconnect"}

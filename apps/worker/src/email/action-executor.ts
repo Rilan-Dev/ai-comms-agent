@@ -12,6 +12,7 @@ import { createEmailProviderRegistry } from "./registry";
 import { verifyEmailProviderConnection } from "./provider-verification";
 import { isApprovedEmailActionAccountUsable } from "./action-account-guard";
 import { paramsFromApprovedEmailSnapshot } from "./approved-email-draft";
+import { assertCurrentEmailActionAuthorization } from "./action-authorization";
 
 function credentialsFor(
   encrypted: Record<string, unknown>,
@@ -35,7 +36,9 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
   if (!claimed) throw new Error("Email action is not approved, expired, or already executing");
 
   let providerAccepted = false;
+    let providerDispatchStarted = false;
   try {
+    await assertCurrentEmailActionAuthorization(claimed);
     const masterKey = process.env.CREDENTIALS_MASTER_KEY
       ? parseCredentialsMasterKey(process.env.CREDENTIALS_MASTER_KEY)
       : null;
@@ -51,7 +54,7 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
     const provider = createEmailProviderRegistry().create(account.provider);
 
     const snapshot = claimed.recipientSnapshot;
-    const result = await verifyEmailProviderConnection(provider, credentials, async ({ provider: connected }) => {
+    const result = await verifyEmailProviderConnection(provider, credentials, async ({ provider: connected, capabilities }) => {
       if (claimed.actionType === "send_email") {
         const draftId = claimed.draftId;
         if (!draftId) throw new Error("Approved send action has no draft");
@@ -63,6 +66,7 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
         // Only dispatch the immutable human-approved snapshot. Remote drafts
         // can have changed since the original review.
         const providerDraftId = (await connected.createDraft(params)).draft_id;
+        providerDispatchStarted = true;
         const sent = await connected.sendDraft(providerDraftId);
         providerAccepted = true;
         return sent;
@@ -81,12 +85,20 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
 
       if (claimed.actionType === "reply_email") {
         const params: DraftParams = { ...reviewedParams, reply_to_message_id: providerMessageId };
+        providerDispatchStarted = true;
         const replied = await connected.reply(providerMessageId, params);
         providerAccepted = true;
         return replied;
       }
 
-      const forwarded = await connected.forward(providerMessageId, reviewedParams.to);
+      // Forward the saved review, not a mutable provider source whose content
+      // or attachments could have changed after approval.
+      if (!capabilities.forward || !capabilities.drafts || !capabilities.send) {
+        throw new Error("This mailbox does not support forwarding the reviewed draft.");
+      }
+      const forwardDraftId = (await connected.createDraft(reviewedParams)).draft_id;
+      providerDispatchStarted = true;
+      const forwarded = await connected.sendDraft(forwardDraftId);
       providerAccepted = true;
       return forwarded;
     });
@@ -110,7 +122,7 @@ export async function executeApprovedEmailAction(actionId: string, organizationI
     }
     return completed;
   } catch (error) {
-    if (providerAccepted) {
+    if (providerAccepted || providerDispatchStarted) {
       // A provider call may have succeeded before its disconnect or before
       // the completion DB write failed. Preserve 'executing' for fail-closed
       // stale recovery; do not mark a sent action as failed or requeue it.

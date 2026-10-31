@@ -71,11 +71,10 @@ test("chat sends natural-language commands to the AI stream, not a silent direct
 test("chat stream returns durable, verified tool results and denied explanation", () => {
   const source = read("../src/app/api/chat/stream/route.ts");
   assert.match(source, /deniedEmailWriteExplanation\(content, subject\.permissions\)/);
-  assert.match(source, /verifiedEmailToolSummary\(toolTurn\.toolCalls\)/);
-  assert.match(source, /assistantOutput = verifiedSummary \|\| \(explicitEmailAction \? unverifiedEmailActionExplanation\(\) : toolTurn\.text\)/);
+  assert.match(source, /currentTurnOperationAnswer\(toolTurn.text, operations, trustedToolContext.turn_id, explicitMessagingAction\)/);
   assert.match(source, /await appendConversationMessage\(/);
   assert.match(source, /emit\("done", \{ conversationId: conversation\.id, provider, model, toolCalls:/);
-  assert.match(source, /const verifiedStatus = toolOutput\?\.status/);
+  assert.match(source, /operationResultFromToolCall/);
   assert.match(source, /if \(blockedWriteExplanation\) \{[\s\S]*?\} else if \(toolTurn\)/);
   assert.match(source, /emit\("delta", \{ text: assistantOutput \}\)/);
   assert.match(source, /permissions\.includes\(tool\.required_permission\)/);
@@ -88,7 +87,7 @@ test("voice SSE and JSON use the same authoritative actor permission denial", ()
   assert.match(source, /emit\("delta", \{ text: blockedWriteExplanation \}\)/);
   assert.match(source, /toolCalls: \[\], pendingApprovals: \[\]/);
   assert.match(source, /runEmailAgentTurn\(/);
-  assert.match(source, /voiceAnswer = verifiedSummary \|\| \(explicitEmailAction \? unverifiedEmailActionExplanation\(\) : turn\.text\)/);
+  assert.match(source, /voiceAnswer = currentTurnOperationAnswer\(/);
 });
 
 test("explicit email mutation intents include natural requests but not requests for information", () => {
@@ -121,13 +120,13 @@ test("a send request without a host-confirmed mutation never displays a speculat
   const voice = read("../src/app/api/voice/turn/route.ts");
   const client = read("../src/app/chat/chat-client.tsx");
   assert.match(chat, /const explicitEmailAction = isExplicitEmailMutationRequest\(content\)/);
-  assert.match(chat, /onSafeReadOnlyFinal: explicitEmailAction \? undefined : async/);
-  assert.match(chat, /verifiedSummary \|\| \(explicitEmailAction \? unverifiedEmailActionExplanation\(\) : toolTurn\.text\)/);
-  assert.match(chat, /if \(explicitEmailAction\) \{[\s\S]*?unverifiedEmailActionExplanation\(\)/);
+  assert.match(chat, /onSafeReadOnlyFinal: explicit(?:Email|Messaging)Action \? undefined : async/);
+  assert.match(chat, /currentTurnOperationAnswer\(toolTurn.text, operations, trustedToolContext.turn_id, explicitMessagingAction\)/);
+  assert.match(chat, /if \(explicitMessagingAction\) \{[\s\S]*?currentTurnOperationAnswer/);
   assert.match(voice, /const explicitEmailAction = isExplicitEmailMutationRequest\(transcript\)/);
-  assert.match(voice, /onSafeReadOnlyFinal: explicitEmailAction \? undefined : async/);
-  assert.match(voice, /verifiedSummary \|\| \(explicitEmailAction \? unverifiedEmailActionExplanation\(\) : turn\.text\)/);
-  assert.match(voice, /verifiedSummary \|\| \(explicitEmailAction \? unverifiedEmailActionExplanation\(\) : result\.text\)/);
+  assert.match(voice, /onSafeReadOnlyFinal: explicit(?:Email|Messaging)Action \? undefined : async/);
+  assert.match(voice, /currentTurnOperationAnswer\(turn.text,/);
+  assert.match(voice, /currentTurnOperationAnswer\(result.text,/);
   assert.match(client, /fetch\("\/api\/chat\/stream"/);
 });
 

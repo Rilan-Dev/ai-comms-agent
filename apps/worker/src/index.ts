@@ -9,9 +9,11 @@ import { processApprovedEmailActions } from "./email/action-worker";
 import { processQueuedWhatsAppMessages, verifyPendingWhatsAppAccounts } from "./messaging/whatsapp-worker";
 import { processRoutedWhatsAppInbound } from "./messaging/whatsapp-inbound-worker";
 import { processScheduledJobs } from "./scheduling/scheduler-worker";
+import {processAutomationEventOutbox} from "./automation/event-outbox-worker";
 import { startEmailKnowledgeIndexerLoop } from "./knowledge/email-knowledge-indexer-worker";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { processPendingBriefings } from './briefings/dispatch';
 
 const WORKER_NAME = "ai-comms-agent-worker";
 const HEALTH_INTERVAL_MS = 60_000;
@@ -33,11 +35,11 @@ function logError(service: string, message: string, error: unknown) {
 }
 
 function healthCheck() {
-  const possibleClaraPaths = [
-    "node_modules/@ai-comms-agent/clara-core",
-    "../../node_modules/@ai-comms-agent/clara-core",
+  const possibleAgentCorePaths = [
+    "node_modules/@ai-comms-agent/agent-core",
+    "../../node_modules/@ai-comms-agent/agent-core",
   ];
-  const claraCorePkg = possibleClaraPaths.some((p) => existsSync(resolve(p)));
+  const agentCorePkg = possibleAgentCorePaths.some((p) => existsSync(resolve(p)));
 
   let credentialsMasterKeyConfigured = false;
   const rawCredentialsMasterKey = process.env.CREDENTIALS_MASTER_KEY?.trim();
@@ -54,7 +56,7 @@ function healthCheck() {
     worker: "ok" as const,
     shared_package: "ok" as const,
     db_package: "ok" as const,
-    clara_core_package: claraCorePkg ? ("ok" as const) : ("missing" as const),
+    agent_core_package: agentCorePkg ? ("ok" as const) : ("missing" as const),
     postgres_configured: isPostgresConfigured(),
     rabbitmq_configured: Boolean(process.env.RABBITMQ_URL),
     redis_configured: Boolean(process.env.REDIS_URL),
@@ -78,8 +80,8 @@ function main() {
   const checks = healthCheck();
   log("health check", checks);
 
-  if (checks.clara_core_package !== "ok") {
-    log("Clara core package not found — exiting", { level: "error" });
+  if (checks.agent_core_package !== "ok") {
+    log("Agent core package not found — exiting", { level: "error" });
     process.exit(1);
   }
 
@@ -110,15 +112,20 @@ function main() {
         10_000,
       )
     : undefined;
+  const automationEventTimer = setInterval(() => safeTick("worker.automations","Durable email automation events",processAutomationEventOutbox),10_000);
   const schedulerTimer = setInterval(
     () => safeTick("worker.scheduler", "Scheduled job processing", processScheduledJobs),
     15_000,
   );
   const interval = setInterval(() => { log("health check", healthCheck()); }, HEALTH_INTERVAL_MS);
+  const briefingTimer = process.env.BRIEFINGS_ENABLED === 'true'
+    ? setInterval(() => safeTick('worker.briefings','Personal catch-up generation',processPendingBriefings),5_000)
+    : undefined;
 
   const shutdown = (signal: string) => {
     log(`received ${signal} — shutting down`);
     clearInterval(interval);
+    if (briefingTimer) clearInterval(briefingTimer);
     stopProviderDraftSync();
     stopGmailWatchRenewal();
     stopImapIdleWorker();
@@ -127,7 +134,7 @@ function main() {
     stopEmailSyncQueue();
     stopEmailKnowledgeIndexer();
     clearInterval(actionTimer); if (whatsappTimer) clearInterval(whatsappTimer); clearInterval(whatsappInboundTimer);
-    if (whatsappVerifyTimer) clearInterval(whatsappVerifyTimer); clearInterval(schedulerTimer);
+    if (whatsappVerifyTimer) clearInterval(whatsappVerifyTimer); clearInterval(schedulerTimer); clearInterval(automationEventTimer);
     process.exit(0);
   };
 

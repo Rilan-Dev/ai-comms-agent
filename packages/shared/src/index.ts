@@ -20,6 +20,7 @@ export type {
 export { INTENT_TAXONOMY } from "./agent/intents";
 export { ToolRegistry, type AgentToolAllowlist, type ToolValidationResult } from "./agent/registry";
 export { EMAIL_TOOL_CATALOG, listEmailToolDescriptors } from "./agent/mail-operations";
+export { AUTONOMOUS_SEND_POLICY_KEY, AUTO_APPROVED_MARKER, isAutonomousSendEnabled } from "./agent/autonomous-send";
 
 // Email provider types
 export type {
@@ -31,6 +32,7 @@ export type {
   EmailFolder,
   EmailLabel,
   EmailMessage,
+  EmailMessageFlags,
   EmailThread,
   EmailAccount,
   SyncState,
@@ -170,3 +172,19 @@ export type { RoutineTrigger, RoutineScheduleTrigger, DigestWindow, RoutineOccur
 
 // Shared schedule-time calculation for API persistence and worker dispatch.
 export { matchesCron, nextCronFire } from "./scheduling/cron";
+export type { OperationResult } from "./operations/result";
+export { operationResultFromToolCall } from "./operations/result";
+export type { EmailBodyReview } from "./operations/email-content";
+export { reviewExplicitEmailBody } from "./operations/email-content";
+export type { WhatsAppReadiness } from "./operations/whatsapp-readiness";
+export { deriveWhatsAppReadiness } from "./operations/whatsapp-readiness";
+
+export {replyMessageId,replyReferences,emailReplyMetadata} from './email/reply-metadata';
+
+export {requiresHumanApproval,hasApprovalRequestDirective} from './operations/human-approval';
+export {AGENT_AI_CONFIGURATION_COLUMNS,AGENT_AI_CONFIGURATION_FIELDS,LEGACY_AGENT_CONFIGURATION_FIELDS,captureAgentConfigurationEdit,captureAgentConfigurationSnapshot,validateAgentConfigurationSnapshot,diffAgentConfiguration,restoreProtectedConfigurationValues} from './agent/configuration-revision';
+export type {AgentAiConfiguration,AgentConfigurationSnapshotV1,ConfigurationDiff} from './agent/configuration-revision';
+
+export {turnAllowsTool,turnRequiresHumanApproval,turnAllowsEmailAccount,turnAllowsWhatsAppAccount} from './agent/configuration-turn';
+
+export {MAIL_SIGNATURE_MAX_LENGTH,normalizeMailboxSignature,applyMailboxSignature} from './email/mailbox-signature';

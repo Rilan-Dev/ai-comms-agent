@@ -3,12 +3,13 @@ import { getAuthenticatedAppContext } from "@/lib/identity/repository";
 import { headers } from "next/headers";
 import { ChatClient } from "./chat-client";
 import { briefingsEnabled } from "@/lib/briefings/config";
+import {resolveChatAutoRunPrompt} from '@/lib/chat/quick-actions';
 
 export const dynamic = "force-dynamic";
 
 export default async function ChatPage({ searchParams }: { searchParams: Promise<{agentId?:string;conversationId?:string;prompt?:string;run?:string}> }) {
   if (!process.env.DATABASE_URL) {
-    return <Unavailable title="Chat needs PostgreSQL" body="Configure DATABASE_URL to persist conversations and connect Clara." />;
+    return <Unavailable title="Chat needs PostgreSQL" body="Configure DATABASE_URL to persist conversations and connect the assistant." />;
   }
 
   try {
@@ -44,13 +45,13 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
 
     // run=1 + prompt: one-click Overview actions auto-send this prompt a
     // single time. The prompt is capped so a link cannot inject an essay.
-    const autoRunPrompt = params.run === "1" && typeof params.prompt === "string"
-      ? params.prompt.slice(0, 200) : "";
+    const autoRunPrompt = params.run === "1" ? resolveChatAutoRunPrompt(params.prompt) : "";
 
     return (
       <ChatClient
         key={`${organizationId}:${agent.id}:${conversation.id}`}
         organizationId={organizationId}
+        currentUserId={context.user.id}
         agents={agents.map((item) => ({ id: item.id, name: item.name, status: item.status }))}
         initialAgentId={agent.id}
         initialConversationId={conversation.id}
@@ -58,6 +59,7 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
         initialConversations={conversations}
         catchUpEnabled={briefingsEnabled()}
         autoRunPrompt={autoRunPrompt}
+        configurationRevisionsEnabled={process.env.AGENT_CONFIGURATION_REVISIONS_ENABLED==='true'}
       />
     );
   } catch (error) {
@@ -70,7 +72,7 @@ function Unavailable({ title, body, actionHref, actionLabel, error }: { title: s
   return (
     <main className="mx-auto max-w-3xl p-5 sm:p-7 lg:p-10">
       <div className={"rounded-3xl border p-8 shadow-sm " + (error ? "border-destructive/20 bg-destructive/5" : "bg-background")}>
-        <p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Clara chat</p>
+        <p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Chat</p>
         <h1 className="mt-2 text-2xl font-semibold">{title}</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{body}</p>
         {actionHref && actionLabel ? <a href={actionHref} className="mt-6 inline-flex rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background">{actionLabel}</a> : null}

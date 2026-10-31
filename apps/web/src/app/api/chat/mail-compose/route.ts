@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository, query } from "@ai-comms-agent/db";
-import { asOrganizationId } from "@ai-comms-agent/shared";
+import { PostgresAgentRepository,getLocalDraftForOrganization, query,loadActiveAgentConfiguration,assertCurrentAgentToolAuthorization,type ActiveAgentConfiguration } from "@ai-comms-agent/db";
+import { asOrganizationId,ForbiddenError } from "@ai-comms-agent/shared";
 import type { ToolContext } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
@@ -24,21 +24,24 @@ async function trustedContext(request: Request, organizationId: string, agentId:
   if (!membership) throw new Error("An active organization membership is required.");
   const agent = await new PostgresAgentRepository().get(organizationId, agentId);
   if (!agent) return null;
-  return { subject, membership, agent };
+  const configuration=process.env.AGENT_CONFIGURATION_REVISIONS_ENABLED==='true'?await loadActiveAgentConfiguration({organizationId,agentId}):undefined;
+  if(configuration&&(configuration.organizationId!==organizationId||configuration.agentId!==agentId||configuration.snapshot.lifecycle.status!=='active'))throw new ForbiddenError('missing_permission','This agent is paused or not deployed. Review its current setup before composing.');
+  return { subject, membership, agent,configuration };
 }
 
-async function primaryMailboxes(organizationId: string, agentId: string) {
-  const result = await query<{ id: string; email_address: string; capabilities: unknown }>(
-    `SELECT a.id,a.email_address::text AS email_address,a.capabilities
+async function primaryMailboxes(organizationId: string, agentId: string,configuration?:ActiveAgentConfiguration) {
+  const result = await query<{ id: string; email_address: string; capabilities: unknown; signature_text:string|null }>(
+    `SELECT a.id,a.email_address::text AS email_address,a.capabilities,a.connection_config->>'mailSignatureText' AS signature_text
      FROM agent_email_accounts b
      JOIN agents g ON g.id=b.agent_id AND g.organization_id=$1
      JOIN email_accounts a ON a.id=b.email_account_id AND a.organization_id=$1
      WHERE b.agent_id=$2 AND b.role='primary'
        AND a.status='connected' AND a.deleted_at IS NULL
-     ORDER BY a.email_address LIMIT 30`, [organizationId,agentId],
+       ${configuration?'AND a.id=ANY($3::uuid[])':''}
+     ORDER BY a.email_address LIMIT 30`, configuration?[organizationId,agentId,configuration.snapshot.channels.email.filter(binding=>binding.role==='primary').map(binding=>binding.accountId)]:[organizationId,agentId],
   );
   return result.rows.map(row => ({
-    id: String(row.id), address: String(row.email_address),
+    id: String(row.id), address: String(row.email_address), signatureText:row.signature_text??null,
     capabilities: row.capabilities && typeof row.capabilities === "object" && !Array.isArray(row.capabilities)
       ? row.capabilities as Record<string, unknown> : {} as Record<string, unknown>,
   }));
@@ -59,9 +62,10 @@ export async function GET(request: Request) {
         error: "forbidden", message: "Email mailbox access requires the authenticated user's email.read or email.write permission.",
       }, { status: 403 });
     }
+    if(trusted.configuration)await assertCurrentAgentToolAuthorization({organizationId,agentId,userId:trusted.subject.user.id,revocationGeneration:trusted.configuration.revocationGeneration},trusted.subject.permissions.has('email.write')?'email.write':'email.read');
     const runtime = await createEmailToolRuntime(organizationId, agentId);
-    const allowed = runtime.registry.listForAgent(agentId);
-    const mailboxes = await primaryMailboxes(organizationId, agentId);
+    const allowed = runtime.registry.listForAgent(agentId).filter(tool=>!trusted.configuration||trusted.configuration.snapshot.policy?.allowedTools.includes(tool.name));
+    const mailboxes = await primaryMailboxes(organizationId, agentId,trusted.configuration);
     // Each selectable account must pass its OWN discovered capability checks.
     // A capable mailbox must never make a different one look authorized.
     const baseline = {
@@ -76,7 +80,7 @@ export async function GET(request: Request) {
         providerCanSend: mailbox.capabilities.send === true,
       });
       return {
-        id: mailbox.id, address: mailbox.address,
+        id: mailbox.id, address: mailbox.address, signatureText:mailbox.signatureText,
         canDraft: readiness.canDraft,
         canRequestApproval: readiness.canRequestApproval,
         blockers: readiness.blockers,
@@ -137,12 +141,15 @@ export async function POST(request: Request) {
     }
     // Fail closed: an agent-bound, connected, primary mailbox is mandatory.
     // The tool executor independently revalidates policy, schema and capability.
-    const bound = await primaryMailboxes(organizationId, agentId);
+    if(trusted.configuration)await assertCurrentAgentToolAuthorization({organizationId,agentId,userId:trusted.subject.user.id,revocationGeneration:trusted.configuration.revocationGeneration},'email.write');
+    const bound = await primaryMailboxes(organizationId, agentId,trusted.configuration);
     if (!bound.some(account => account.id === accountId)) return NextResponse.json({ error: "mailbox_not_available", message: "Choose a connected primary mailbox assigned to this agent." }, { status: 403 });
 
     const draftId = bounded(body?.draftId, 100);
     if (action === "request_approval" && !draftId) return NextResponse.json({ error: "validation_error", message: "Save a draft before requesting send approval." }, { status: 422 });
     const context: ToolContext = {
+      require_human_approval:action==='request_approval',
+      ...(trusted.configuration?{agent_configuration:trusted.configuration}:{}),
       organization_id: organizationId, agent_id: agentId, user_id: trusted.subject.user.id,
       // Never trust a client-provided conversation ID as an authorization fact.
       conversation_id: crypto.randomUUID(),
@@ -181,9 +188,16 @@ export async function POST(request: Request) {
       ? result.output as Record<string, unknown> : {};
     const expected = action === "draft" ? "draft_created" : "pending_approval";
     if (output.status !== expected) return NextResponse.json({ error: "unexpected_tool_result" }, { status: 502 });
+    // Return the exact durable, server-signed draft for in-chat review. A
+    // proposed/model body may differ from the persisted mailbox signature.
+    const saved=action==="draft" && typeof output.draft_id==="string"
+      ?await getLocalDraftForOrganization(organizationId,output.draft_id):null;
+    if(action==="draft" && (!saved || String(saved.email_account_id)!==accountId)){
+      return NextResponse.json({error:"draft_review_unavailable",message:"Draft saved, but its exact reviewed content could not be reloaded. Open Mail Drafts to inspect before approval."},{status:409});
+    }
     return NextResponse.json({
       status: output.status,
-      ...(action === "draft" ? { draftId: output.draft_id } : { actionId: output.action_id }),
+      ...(action === "draft" ? { draftId: output.draft_id, bodyText:String(saved?.text_body??"") } : { actionId: output.action_id }),
       message: action === "draft"
         ? "Draft saved to the selected mailbox. It has not been sent."
         : "Send approval requested. The email has not been sent.",

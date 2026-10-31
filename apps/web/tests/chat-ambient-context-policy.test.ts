@@ -39,8 +39,9 @@ describe("Chat ambient mailbox and WhatsApp context is not an authorization shor
     expect(context).toContain('canSupplyAmbientContext("whatsapp", subject.permissions');
     expect(context).toContain("createEmailToolRuntime(organizationId, agentId)");
     expect(context).toContain("createWhatsAppToolRuntime(organizationId, agentId)");
-    expect(context).toContain("loadEmailContext(organizationId, agentId, combinedSearchContext)");
-    expect(context).toContain("loadWhatsAppContext(organizationId, agentId, combinedSearchContext)");
+    expect(context).toContain("loadEmailContext(organizationId, agentId, combinedSearchContext,trustedToolContext)");
+    expect(context).toContain("loadWhatsAppContext(organizationId, agentId, combinedSearchContext,trustedToolContext)");
+    expect(context).toContain('turnAllowsTool(trustedToolContext,tool.name)');
     expect(context.indexOf('canSupplyAmbientContext("email"')).toBeLessThan(context.indexOf("loadEmailContext("));
     expect(context.indexOf('canSupplyAmbientContext("whatsapp"')).toBeLessThan(context.indexOf("loadWhatsAppContext("));
   });

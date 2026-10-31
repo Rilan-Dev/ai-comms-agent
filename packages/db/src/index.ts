@@ -58,6 +58,7 @@ export {
   getEmailActionForOrganization,
   listPendingEmailActionsForOrganization,
   decideEmailAction,
+  autoApproveEmailAction,
   claimApprovedEmailAction,
   listApprovedEmailActions,
   completeEmailAction,
@@ -101,9 +102,18 @@ export {
   getWhatsAppAccountForAgent,
 } from "./messaging/whatsapp-repository";
 
-export { listScheduledJobs, getScheduledJob, createScheduledJob, updateScheduledJob, deleteScheduledJob, listScheduledJobRuns, claimDueScheduledJobs, recoverStaleScheduledJobRuns, advanceScheduledJob, completeScheduledJobRun, failScheduledJobRun, listAutomationRules, listActiveAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, listAutomationRuns, createAutomationRun, completeAutomationRun, failAutomationRun, type ScheduledJobClaim } from "./automation/repository";
+export { listScheduledJobs, getScheduledJob, createScheduledJob, updateScheduledJob, deleteScheduledJob, listScheduledJobRuns, claimDueScheduledJobs, recoverStaleScheduledJobRuns, advanceScheduledJob, completeScheduledJobRun, failScheduledJobRun, listAutomationRules, listActiveAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, listAutomationRuns, createAutomationRun, getAutomationRunStatus, recoverStaleAutomationRuns, completeAutomationRun, failAutomationRun, type ScheduledJobClaim } from "./automation/repository";
+export {expandAuthorizedMentions,type MentionScope} from "./automation/mention-resolver";
 
 export { getOrCreateChatConversation, createChatConversation, listChatConversations, getChatConversation, listChatMessages, appendConversationMessage } from "./conversation/repository";
+export {saveMailTaskCheckpoint,loadMailTaskCheckpoint,reconcileMailTaskCheckpoint} from './conversation/task-checkpoint';
+export type {CheckpointScope,MailTaskCheckpoint,MailTaskCheckpointInput} from './conversation/task-checkpoint';
+export {getActiveAgentConfiguration,createAgentConfigurationDraft,getAgentConfigurationHistory,reviewAgentConfigurationRevision,restoreAgentConfigurationRevision,AgentConfigurationConflictError} from './agent/configuration-revisions';
+export type {AgentConfigurationScope,AgentConfigurationRevision,AgentConfigurationReview,ConfigurationHistoryAccess,ConfigurationHistoryView} from './agent/configuration-revisions';
+export {getAgentConfigurationEditor,saveAgentConfigurationPatch,discardAgentConfigurationDraft} from './agent/configuration-drafts';
+export type {AgentConfigurationEditor,AgentConfigurationPatch,AgentConfigurationDraftContext} from './agent/configuration-drafts';
+export {applyAgentConfigurationRevision,revokeAgentAccessNow,loadActiveAgentConfiguration} from './agent/configuration-apply';
+export type {AppliedAgentConfiguration,ActiveAgentConfiguration,AgentAccessRevocation} from './agent/configuration-apply';
 
 export {
   createVoiceSession,
@@ -140,10 +150,16 @@ export {
   type UpsertAgentAiSettingsInput,
 } from "./ai-provider/repository";
 export { createEmailHybridRetriever, type EmailVectorCandidate, type EmailVectorSearch, type EmailHybridSearchInput, type EmailHybridSearchResult, type EmailHybridSource } from "./email/hybrid-retrieval";
-export { createClaraEmailVectorSearch } from "./email/clara-vector-search";
+export { createEmailVectorSearch } from "./email/vector-search";
 export { resolveBriefingScope, recordForegroundActivity, assignBriefingMailboxGrant, revokeBriefingMailboxGrant, type BriefingActor } from './briefings/access';
 export { getBriefing, listBriefings } from './briefings/repository';
 export * from './briefings/coverage';
 
 export { listGrantedBriefingMailboxes, publishBriefingItems } from './briefings/selection';
+export {ActionAuthorizationRevokedError,assertCurrentAgentToolAuthorization,assertCurrentEmailActionAuthorization,assertCurrentWhatsAppActionAuthorization} from './actions/current-authorization';
 export { loadCanonicalBriefingSources, validateCanonicalBriefingRows, requireClaimedMailboxScope, validateClaimedBriefingSourceIds, type CanonicalBriefingMail, type CanonicalBriefingRow } from './briefings/canonical-sources';
+export {prepareMailboxFlagPage,completeMailboxFlagPage,withMailboxFlagLease} from './email/flag-reconciliation';
+export {MailboxReadStatePendingError} from './briefings/read-state';
+export {listPendingBriefingWork,deferBriefingWork} from './briefings/work';
+
+export {listBusinessWorkItems,listBusinessAssignees,createBusinessWorkItem,changeBusinessWorkItem,type BusinessWorkItem} from "./business/work-items";

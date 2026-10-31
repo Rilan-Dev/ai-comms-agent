@@ -172,9 +172,9 @@ importers:
 
   apps/web:
     dependencies:
-      '@ai-comms-agent/clara-core':
+      '@ai-comms-agent/agent-core':
         specifier: workspace:*
-        version: link:../../packages/clara-core
+        version: link:../../packages/agent-core
       '@ai-comms-agent/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -233,9 +233,9 @@ importers:
 
   apps/worker:
     dependencies:
-      '@ai-comms-agent/clara-core':
+      '@ai-comms-agent/agent-core':
         specifier: workspace:*
-        version: link:../../packages/clara-core
+        version: link:../../packages/agent-core
       '@ai-comms-agent/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -259,7 +259,7 @@ importers:
         specifier: ^5.6.0
         version: 5.9.3
 
-  packages/clara-core:
+  packages/agent-core:
     dependencies:
       '@ai-comms-agent/db':
         specifier: workspace:*
@@ -293,9 +293,9 @@ importers:
 
   packages/email-agent-runtime:
     dependencies:
-      '@ai-comms-agent/clara-core':
+      '@ai-comms-agent/agent-core':
         specifier: workspace:*
-        version: link:../clara-core
+        version: link:../agent-core
       '@ai-comms-agent/db':
         specifier: workspace:*
         version: link:../db

@@ -1,4 +1,5 @@
 "use client";
+import {formatWorkspaceTimestamp} from "@/lib/workspace-timestamp";
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Inbox, Mail, MessageSquareText, Search } from "lucide-react";
@@ -20,12 +21,7 @@ type Mailbox = { id: string; label: string };
 type Filters = { search: string; accountId: string; unreadOnly: boolean };
 const PAGE_SIZE = 25;
 
-function dateLabel(value: string | null): string {
-  if (!value) return "No date";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "No date";
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-}
+function dateLabel(value:string|null){return formatWorkspaceTimestamp(value,true);}
 
 export function ThreadsClient({
   organizationId, initialThreads, initialHasMore, accounts,

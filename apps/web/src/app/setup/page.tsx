@@ -6,7 +6,7 @@ import { ArrowRight, CheckCircle2, KeyRound } from "lucide-react";
 
 export default function SetupPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ token: "", name: "", email: "", password: "", organizationName: "", organizationSlug: "" });
+  const [form, setForm] = useState({ token: "", name: "", email: "", password: "", organizationName: "", organizationSlug: "", productName: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -51,7 +51,7 @@ export default function SetupPage() {
     <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-lg items-center">
       <div className="w-full rounded-md border bg-background/95 p-8 shadow-sm shadow-black/5 backdrop-blur">
         <div className="mb-7">
-          <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.18em] text-muted-foreground"><KeyRound className="h-3.5 w-3.5 text-primary" /> Clara Comms · first run</p>
+          <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.18em] text-muted-foreground"><KeyRound className="h-3.5 w-3.5 text-primary" /> First-time setup</p>
           <h1 className="mt-2 font-display text-3xl font-medium tracking-tight">Initialize your workspace</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">Create the first organization owner. This route is available only while no password credential exists and requires the server-side bootstrap secret.</p>
         </div>
@@ -63,9 +63,10 @@ export default function SetupPage() {
           </div>
           <label className="block"><span className="mb-2 block text-sm font-medium">Password</span><input value={form.password} onChange={update("password")} type="password" autoComplete="new-password" minLength={12} required className="h-11 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-foreground/20" /><span className="mt-1 block text-xs text-muted-foreground">At least 12 characters with uppercase, lowercase and a number.</span></label>
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block"><span className="mb-2 block text-sm font-medium">Organization</span><input value={form.organizationName} onChange={update("organizationName")} required className="h-11 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-foreground/20" /></label>
+            <label className="block"><span className="mb-2 block text-sm font-medium">Organization name</span><input value={form.organizationName} onChange={update("organizationName")} required className="h-11 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-foreground/20" /></label>
             <label className="block"><span className="mb-2 block text-sm font-medium">Organization slug</span><input value={form.organizationSlug} onChange={update("organizationSlug")} pattern="[a-z0-9][a-z0-9\-]{2,62}" required className="h-11 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-foreground/20" /></label>
           </div>
+          <label className="block"><span className="mb-2 block text-sm font-medium">Product / project name <span className="font-normal text-muted-foreground">(optional)</span></span><input value={form.productName} onChange={update("productName")} maxLength={80} className="h-11 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-foreground/20" placeholder="e.g. StarCity Connect" /><span className="mt-1 block text-xs text-muted-foreground">Shown in the navigation bar and browser tab everywhere. Leave empty to use the organization name. You can change it later in Settings.</span></label>
           {error ? <div role="alert" className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">{error}</div> : null}
           <button disabled={busy} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-50">{busy ? "Initializing…" : "Initialize workspace"} {!busy ? <ArrowRight className="h-4 w-4" /> : null}</button>
         </form>

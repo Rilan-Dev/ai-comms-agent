@@ -1,4 +1,4 @@
-import { completeAutomationRun, createAutomationRun, failAutomationRun, listActiveAutomationRules } from "@ai-comms-agent/db";
+import { completeAutomationRun, createAutomationRun, getAutomationRunStatus, failAutomationRun, listActiveAutomationRules } from "@ai-comms-agent/db";
 import { dispatchAgentExecution } from "../agent/execution-dispatcher";
 
 type Event={organizationId:string;type:string;payload:Record<string,unknown>};
@@ -27,7 +27,17 @@ export function automationMatches(rule:Pick<Rule,"organizationId"|"trigger"|"con
   // be objects, not strings, lists or numbers that silently match all.
   if(match!=null && (!isRecord(match) || !objectEqualsSubset(event.payload,match))) return false;
   const conditions=rule.conditions;
-  return conditions==null || (isRecord(conditions) && objectEqualsSubset(event.payload,conditions));
+  if(conditions==null)return true;
+  if(!isRecord(conditions))return false;
+  const {textContainsAny,...remaining}=conditions;
+  if(textContainsAny!==undefined){
+    if(!Array.isArray(textContainsAny)||textContainsAny.length===0||textContainsAny.length>8
+      ||textContainsAny.some(v=>typeof v!=="string"||v.trim().length<2||v.trim().length>60))return false;
+    const corpus=[event.payload.subject,event.payload.snippet,event.payload.body]
+      .filter((value):value is string=>typeof value==="string").join(" ").slice(0,6000).toLowerCase();
+    if(!textContainsAny.some(term=>corpus.includes(term.trim().toLowerCase())))return false;
+  }
+  return objectEqualsSubset(event.payload,remaining);
 }
 
 export function stableEventKey(event:Event){
@@ -54,12 +64,23 @@ export async function evaluateAutomationEvent(event:Event){
     if(!automationMatches(rule,event)) continue;
     matched++;
     const eventKey=stableEventKey(event);
-    const runId=await createAutomationRun(rule.id,{eventType:event.type,eventKey},eventKey);
-    if(!runId) continue;
+    const runId=await createAutomationRun(rule.id,rule.organizationId,{eventType:event.type,eventKey},eventKey);
+    if(!runId){
+      // An existing attempt may have sent an email or WhatsApp before a crash.
+      // Completed duplicates are idempotent; pending/failed/unknown outcomes
+      // must remain failed and visible, not falsely turn the outbox green.
+      const previous=eventKey?await getAutomationRunStatus(rule.id,eventKey):null;
+      if(previous!=="completed")failed++;
+      continue;
+    }
     try{
-      const result=await dispatchAgentExecution({executionId:runId,organizationId:rule.organizationId,agentId:rule.agentId,source:"automation",intent:"automation.execute",params:{actions:rule.actions,event:event.payload},requestedAt:new Date().toISOString()});
-      if(result.status==="configuration_required") await failAutomationRun(runId,result.reason); else await completeAutomationRun(runId,{status:result.status,executionId:result.executionId,output:result.output??null,provider:result.provider??null,model:result.model??null});
-      started++;
+      const result=await dispatchAgentExecution({executionId:runId,organizationId:rule.organizationId,agentId:rule.agentId,source:"automation",intent:"automation.execute",params:{actions:rule.actions,event:{...event.payload,eventType:event.type}},requestedAt:new Date().toISOString()});
+      if(result.status==="configuration_required"){
+        await failAutomationRun(runId,result.reason??"Execution denied");failed++;
+      }else{
+        const settled=await completeAutomationRun(runId,{status:result.status,executionId:result.executionId,output:result.output??null,provider:result.provider??null,model:result.model??null,actions:result.actions??[]});
+        if(settled)started++;else failed++; // Recovered or externally settled while executing.
+      }
     }catch(error){ await failAutomationRun(runId,error instanceof Error?error.message:"Automation execution failed"); failed++; }
   }
   return {matched,started,failed};

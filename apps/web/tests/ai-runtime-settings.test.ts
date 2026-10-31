@@ -35,7 +35,7 @@ describe("Organization AI runtime form state", () => {
 });
 
 describe("Organization AI configuration", () => {
-  it("persists tenant-scoped Clara runtime settings with validated values", () => {
+  it("persists tenant-scoped runtime settings with validated values", () => {
     const migration = read("../../../supabase/migrations/0028_organization_ai_runtime_settings.sql");
     const route = read("../src/app/api/settings/ai-runtime/route.ts");
     expect(migration).toContain("organization_ai_runtime_settings");
@@ -52,7 +52,7 @@ describe("Organization AI configuration", () => {
     const providers = read("../src/app/settings/ai-provider-settings.tsx");
     expect(page).toContain("AIRuntimeSettings");
     expect(page).toContain("AIProviderSettings");
-    expect(runtime).toContain("Clara knowledge-base ID");
+    expect(runtime).toContain("Knowledge-base ID");
     expect(runtime).toContain("Realtime voice provider");
     expect(providers).toContain('type="password"');
     expect(providers).toContain("LiveModelSelect");
@@ -68,8 +68,8 @@ describe("Organization AI configuration", () => {
     expect(route).toContain("CREDENTIALS_MASTER_KEY");
   });
 
-  it("resolves per-organization provider/model and voice preferences in the Clara runtime", () => {
-    const runtime = read("../../../packages/clara-core/src/runtime.ts");
+  it("resolves per-organization provider/model and voice preferences in the runtime", () => {
+    const runtime = read("../../../packages/agent-core/src/runtime.ts");
     expect(runtime).toContain("organizationAIConfig");
     expect(runtime).toContain("organization_ai_runtime_settings");
     expect(runtime).toContain("decryptCredential");

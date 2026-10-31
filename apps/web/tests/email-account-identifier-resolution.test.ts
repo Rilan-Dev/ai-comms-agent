@@ -66,4 +66,8 @@ describe("resolveAccountIdentifier", () => {
     expect(result).toBeNull();
     expect(queryMock).not.toHaveBeenCalled();
   });
+  it('requires a choice when the same address identifies multiple bound accounts',async()=>{
+    queryMock.mockResolvedValueOnce({rows:[{id:ACCOUNT},{id:'44444444-4444-4444-4444-444444444444'}]});
+    expect(await resolveAccountIdentifier(ORG,AGENT,'sender@example.com')).toBeNull();
+  });
 });

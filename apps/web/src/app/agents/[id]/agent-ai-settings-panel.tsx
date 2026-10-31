@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef,useState } from "react";
 import { Loader2, Save, AlertCircle, CheckCircle2 } from "lucide-react";
 import { LiveModelSelect } from "@/components/live-model-select";
+import {applyResponseStylePreset,responseStylePresets} from "@/lib/agents/response-style-presets";
+import type {ResponseStylePreset} from "@/lib/agents/response-style-presets";
+import type {ConfigurationEditor} from './use-configuration-editor';
 
 type AiSettings = {
   chatProvider: string | null;
@@ -34,32 +37,48 @@ const EMPTY: AiSettings = {
 export function AgentAISettingsPanel({
   organizationId,
   agentId,
+  configurationEditor,
 }: {
   organizationId: string;
   agentId: string;
+  configurationEditor?:ConfigurationEditor;
 }) {
   const [settings, setSettings] = useState<AiSettings>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const baseline=useRef<AiSettings>(EMPTY),hydrated=useRef(false);
+  const governed=configurationEditor!==undefined,configurationView=configurationEditor?.view;
   const [orgProviders, setOrgProviders] = useState({ chat: "openai", voice: "elevenlabs", realtime: "openai", embedding: "openai" });
+  const [inheritedPrompt,setInheritedPrompt]=useState("");
+  const [selectedPresentation,setSelectedPresentation]=useState<ResponseStylePreset>("executive");
 
   useEffect(() => {
     if (!organizationId) return;
     void fetch(`/api/settings/ai-runtime?organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" })
       .then(async (response) => { if (!response.ok) throw new Error("Organization defaults unavailable"); return response.json(); })
-      .then(({ settings }) => setOrgProviders({
-        chat: settings?.defaultProvider || "openai",
-        voice: settings?.voiceChatProvider || "elevenlabs",
-        realtime: settings?.realtimeVoiceProvider || "openai",
-        embedding: settings?.embeddingProvider || "openai",
-      }))
+      .then(({ settings }) => {
+        setOrgProviders({
+          chat: settings?.defaultProvider || "openai",
+          voice: settings?.voiceChatProvider || "elevenlabs",
+          realtime: settings?.realtimeVoiceProvider || "openai",
+          embedding: settings?.embeddingProvider || "openai",
+        });
+        setInheritedPrompt(typeof settings?.systemPrompt==="string"?settings.systemPrompt:
+          typeof settings?.system_prompt==="string"?settings.system_prompt:"");
+      })
       .catch(() => setError("Organization AI defaults could not load; verify inherited providers before changing models."));
   }, [organizationId]);
 
   useEffect(() => {
     if (!agentId) return;
+    if(governed){
+      if(hydrated.current)return;
+      if(!configurationView)return;
+      const candidate=(configurationView.draft??configurationView.active).snapshot.ai;
+      if(candidate){baseline.current=candidate;setSettings(candidate);hydrated.current=true;setLoading(false);return;}
+    }
     setLoading(true);
     void fetch(`/api/agents/${agentId}/ai-settings?organizationId=${encodeURIComponent(organizationId)}`, { cache: "no-store" })
       .then(async (r) => {
@@ -67,14 +86,19 @@ export function AgentAISettingsPanel({
         const body = await r.json();
         return body.aiSettings as AiSettings | null;
       })
-      .then((s) => setSettings(s ?? EMPTY))
+      .then((s) => {baseline.current=s??EMPTY;setSettings(s ?? EMPTY);hydrated.current=true;})
       .catch((e) => setError(e instanceof Error ? e.message : "AI settings could not load."))
       .finally(() => setLoading(false));
-  }, [agentId, organizationId]);
+  }, [agentId, organizationId,configurationView,governed]);
 
   async function save() {
     setSaving(true); setNotice(""); setError("");
     try {
+      if(configurationEditor){
+        const patch=Object.fromEntries(Object.entries(settings).filter(([key,value])=>baseline.current[key as keyof AiSettings]!==value));
+        if(!Object.keys(patch).length){configurationEditor.markDirty('ai',false);setNotice('No AI changes to save.');return;}
+        await configurationEditor.save('ai',{ai:patch});baseline.current={...settings};setNotice('AI settings draft saved. Review and apply when ready; blank fields still inherit workspace defaults.');return;
+      }
       const response = await fetch(`/api/agents/${agentId}/ai-settings?organizationId=${encodeURIComponent(organizationId)}`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
@@ -96,6 +120,20 @@ export function AgentAISettingsPanel({
 
   const inputCls = "mt-1 w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm";
   const labelCls = "block text-sm font-medium";
+  function applyPresentation(){
+    // A preset is visible editable text. Keep existing agent instructions,
+    // or copy the inherited organization prompt before creating an override.
+    const base=settings.systemPromptOverride??inheritedPrompt;
+    const updated=applyResponseStylePreset(base,selectedPresentation);
+    if(updated.length>4000){
+      setError("The combined prompt is over 4,000 characters. Shorten your existing instructions before applying this preset.");
+      return;
+    }
+    update("systemPromptOverride",updated);
+    configurationEditor?.markDirty('ai');
+    setError("");
+    setNotice("Presentation instructions inserted. Review the editable system prompt, then Save and Apply to activate.");
+  }
 
   if (loading) {
     return (
@@ -106,7 +144,7 @@ export function AgentAISettingsPanel({
   }
 
   return (
-    <section className="space-y-5 rounded-md border bg-background p-6 shadow-sm">
+    <section onChange={()=>configurationEditor?.markDirty('ai')} className="space-y-5 rounded-md border bg-background p-6 shadow-sm">
       <div>
         <h2 className="flex items-center gap-2 font-semibold">
           <Save size={16} className="text-primary" /> Per-agent AI overrides
@@ -238,11 +276,45 @@ export function AgentAISettingsPanel({
       {/* Runtime overrides */}
       <fieldset className="space-y-3 rounded-md border p-4">
         <legend className="px-2 text-xs font-semibold uppercase tracking-[.14em] text-muted-foreground">Runtime behavior override</legend>
-        <label className={labelCls}>System prompt (null = inherit org default)
-          <textarea className={inputCls} rows={3} placeholder="You are Clara, an assistant for…"
+        <div className="rounded-md border bg-muted/30 p-3 space-y-3">
+          <div>
+            <p className="text-sm font-semibold">Editable response presentation</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Choose a starter profile, then review and edit the text before saving. These instructions guide AI-generated Chat and WhatsApp text, not permissions or provider delivery.
+              Deterministic fallback messages use the separately editable schedule presentation (executive, compact, plain).
+              WhatsApp supports *bold*, _italic_ and emoji, but not custom text colors; Chat uses Markdown and your app theme.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="block min-w-44 flex-1 text-xs font-medium">Response profile
+              <select className={inputCls} value={selectedPresentation} onChange={event=>setSelectedPresentation(event.target.value as ResponseStylePreset)}>
+                {Object.entries(responseStylePresets).map(([value,preset])=><option key={value} value={value}>{preset.label}</option>)}
+              </select>
+            </label>
+            <button type="button" className="h-10 rounded-md border border-primary/40 px-3 text-sm font-semibold hover:bg-muted disabled:opacity-50"
+              onClick={applyPresentation} disabled={saving||configurationEditor?.busy||!!configurationEditor&&!configurationEditor.view?.canEditAi}>
+              Insert editable instructions
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">{responseStylePresets[selectedPresentation].description} · No changes take effect until saved and applied.</p>
+        </div>
+        <details className="rounded-md border border-border px-3 py-2 text-sm">
+          <summary className="cursor-pointer font-medium">View inherited organization instructions</summary>
+          <p className="mt-2 text-xs text-muted-foreground">
+            This is the current workspace default. It applies whenever the per-agent field is blank.
+            To change it for every agent, edit Organization AI runtime settings instead.
+          </p>
+          <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/30 p-3 text-xs">{inheritedPrompt || "No organization-level prompt returned by the settings API."}</pre>
+        </details>
+        <label className={labelCls}>System prompt (editable; blank = inherit organization default)
+          <textarea className={inputCls} rows={12} maxLength={4000} placeholder="You are an assistant for…"
             value={settings.systemPromptOverride ?? ""}
             onChange={(e) => update("systemPromptOverride", e.target.value || null)} />
         </label>
+        <div className="flex justify-between gap-3 text-xs text-muted-foreground">
+          <span>Stored per agent. Configuration history and review apply when enabled. Inherited workspace prompt is preserved when inserting a preset.</span>
+          <span>{(settings.systemPromptOverride??"").length}/4000</span>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className={labelCls}>Temperature (0–2; null = inherit)
             <input className={inputCls} type="number" min="0" max="2" step="0.1" placeholder="0.8"
@@ -257,10 +329,11 @@ export function AgentAISettingsPanel({
         </div>
       </fieldset>
 
-      <button type="button" onClick={() => void save()} disabled={saving}
+      <button type="button" onClick={() => void save()} disabled={saving||configurationEditor?.busy||!!configurationEditor&&!configurationEditor.view?.canEditAi}
         className="inline-flex h-10 items-center gap-2 rounded-md bg-foreground px-4 text-sm font-semibold text-background disabled:opacity-50">
-        <Save size={14} /> {saving ? "Saving…" : "Save AI overrides"}
+        <Save size={14} /> {saving ? "Saving…" : configurationEditor?"Save draft":"Save AI overrides"}
       </button>
+      {configurationEditor&&<button type="button" disabled={saving||configurationEditor.busy} onClick={()=>{setSettings({...baseline.current});configurationEditor.markDirty('ai',false);setError('');}} className="ml-3 h-10 rounded-md border px-4 text-sm">Cancel edits</button>}
     </section>
   );
 }

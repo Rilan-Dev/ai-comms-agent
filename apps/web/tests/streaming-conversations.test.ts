@@ -7,15 +7,16 @@ const chat = read("../src/app/chat/chat-client.tsx");
 const chatRoute = read("../src/app/api/chat/stream/route.ts");
 const voice = read("../src/app/ai-voice/voice-workspace.tsx");
 const voiceRoute = read("../src/app/api/voice/turn/route.ts");
-const clara = read("../../../packages/clara-core/src/runtime.ts");
+const runtimeSource = read("../../../packages/agent-core/src/runtime.ts");
 
 describe("Chat and realtime Voice progressive generation", () => {
-  it("starts ordinary chat SSE before generation, forwards provider deltas and sends a final completion", () => {
+  it("starts chat SSE before generation and publishes only a host-checked final answer", () => {
     const stream = chatRoute.slice(chatRoute.indexOf("const shouldResolveTools ="));
     expect(stream).toContain('emit("conversation"');
     expect(stream).toContain('emit("status", { phase: "generating" })');
     expect(stream).toContain('for await (const chunk of turn.stream)');
-    expect(stream).toContain('emit("delta", { text: chunk })');
+    expect(stream).toContain("userFacingChatAnswer(");
+    expect(stream).toContain('emit("delta", { text: assistantOutput })');
     expect(stream).toContain('emit("done", { conversationId');
     expect(stream).toContain('"x-accel-buffering": "no"');
   });
@@ -52,10 +53,13 @@ describe("Chat and realtime Voice progressive generation", () => {
     expect(voiceRoute).toContain("maxToolCalls: 8");
   });
 
-  it("streams actual model chunks for non-tool voice and preserves the old JSON contract", () => {
+  it("validates complete non-tool voice output before emission and preserves the JSON contract", () => {
     expect(voiceRoute).toContain('surface: "realtime"');
     expect(voiceRoute).toContain("for await (const token of generation.stream)");
-    expect(voiceRoute).toContain('emit("delta", { text: token })');
+    expect(voiceRoute).toContain('generated += token');
+    expect(voiceRoute).toContain('currentTurnOperationAnswer(validated, [], executionId, explicitEmailAction)');
+    expect(voiceRoute).toContain('emit("delta", { text: verifiedAnswer })');
+    expect(voiceRoute).not.toContain('emit("delta", { text: token })');
     expect(voiceRoute).toContain('mode: "model-stream"');
     expect(voiceRoute).toContain('mode: "host-authorized-tools"');
     expect(voiceRoute).toContain("return NextResponse.json({");
@@ -72,7 +76,7 @@ describe("Chat and realtime Voice progressive generation", () => {
   });
 
   it("uses native Gemini SSE instead of buffering generateContent JSON", () => {
-    const gemini = clara.slice(clara.indexOf("async function geminiStream("), clara.indexOf("async function chatStream("));
+    const gemini = runtimeSource.slice(runtimeSource.indexOf("async function geminiStream("), runtimeSource.indexOf("async function chatStream("));
     expect(gemini).toContain("streamGenerateContent?alt=sse");
     expect(gemini).toContain("response.body.getReader()");
     expect(gemini).toContain("if (text) yield text");

@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 const manifest = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
 const projects = [
   "apps/web", "apps/worker", "packages/shared", "packages/db",
-  "packages/clara-core", "packages/email-agent-runtime",
+  "packages/agent-core", "packages/email-agent-runtime",
 ];
 
 test("root workspace clean explicitly runs package scripts, not pnpm's built-in clean", () => {

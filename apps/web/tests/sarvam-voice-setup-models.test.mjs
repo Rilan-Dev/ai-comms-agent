@@ -12,7 +12,7 @@ test("vendor-documented Sarvam voice models are reachable only after org auth an
   const auth = route.indexOf("await authorize(request");
   const key = route.indexOf("const saved = await getDecryptedProviderConfig");
   const credentialGuard = route.indexOf("if (!saved?.enabled || !saved.apiKey)");
-  const documentedVoice = route.indexOf("hasDocumentedSarvamVoiceModels(provider, purpose)) {");
+  const documentedVoice = route.indexOf("if (hasDocumentedSarvamVoiceModels(provider, purpose)) {");
   assert.ok(auth >= 0 && key > auth && credentialGuard > key && documentedVoice > credentialGuard);
   assert.match(route, /documentedSarvamVoiceModels\(provider, purpose\)/);
   assert.match(route, /source: "documented"/);
@@ -25,7 +25,7 @@ test("TTS and STT options are not mistaken for live models or another provider c
   assert.match(catalog, /export function hasDocumentedSarvamVoiceModels\(/);
   assert.match(catalog, /export function documentedSarvamVoiceModels\(/);
   assert.match(picker, /provider === "sarvam" && \["tts", "stt"\]\.includes\(purpose\)/);
-  assert.match(picker, /body\.capability !== purpose/);
+  assert.match(picker, /body\.capability === purpose/);
   assert.match(picker, /catalogSource === "documented"/);
   assert.match(page, /vendor-documented.*TTS.*STT/);
 });

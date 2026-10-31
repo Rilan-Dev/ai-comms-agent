@@ -1,3 +1,14 @@
+## Original workspace — source verification checkpoint — 2026-10-26
+
+[Scoped evidence](sessions/DEV01-ORIGINAL-WORKSPACE-20261026.md): Task3 full Vitest141files/1004tests PASS at03f93fae; Task4 domain12/12 and isolated PG14/14 PASS, exact-source shared/db/web types/lint/migration source gates PASS. Earlier Windows memory failure is not a passing run. No final full-suite/build/browser/current live acceptance or production0056 migration for this work yet. Remaining Tasks5–11 must pass before release. Main untouched; no phase/feature activation.
+
+---
+
+## DEV-01 — frontend AI repair continuation — 2026-10-25
+
+Frontend AI repair acceptance is complete on Development; main untouched and its current commits are included. Exact runtime **4898fa33** passed **1,809 tests**, types/lint/build/migration gates and guarded deployment. Natural reply draft preserves provider body and thread headers with zero send requests; explicit human review overrides saved autonomous policy. After the owner refreshed the credential, fresh WhatsApp action4ef0668c stayed pending/noqueue, was approved once in the website, then confirmed **Delivered** by Meta and frontend. Both email providers have earlier independent connected CC receipt evidence. See [session](sessions/DEV01-FRONTEND-AI-REPAIR-20261025.md), [qualified acceptance matrix](sessions/DEV01-FRONTEND-AI-REPAIR-ACCEPTANCE-20261025.md) and [decisions](sessions/DEV01-FRONTEND-AI-REPAIR-DECISIONS-20261025.md). Earlier failed WhatsApp actions and historical502 process cause remain accurately recorded. Preserve existing policies, grants and concurrent scheduling features; other project work is not closed by this repair.
+
+---
 ## DEV-01 / FIX-01 — Sarvam live voice lifecycle fix verified — 2026-10-23
 
 Source on **Development** fixes lost readiness during mic consent, live Sarvam input/barge-in, late response replay, stale socket/activation/playback callbacks and abandoned microphone resources. [Session and exact next action](sessions/DEV01-FIX01-SARVAM-LIVE-LIFECYCLE-20261023.md); source `b58b4811`, upstream preserved in `4fefc41d`. **54/54 focused voice tests**, **7/7 core/integrity checks**, all package types and production web build pass. No live acoustic/vendor/production acceptance, deployment or messaging performed. OPS-01 verifies approved web+relay release, exact-origin WSS configuration, actual transcription/playback, real-device consent/mute/barge-in/end/reconnect and scoped mailbox reads. Phase 4 remains implementation_in_progress; standing routines/C3 activation unchanged. Earlier source/login checkpoints remain historical.
@@ -1991,3 +2002,13 @@ GitHub reports PR #21 merged into `main` at `99c2de656bfa6108e4b8df0369c6eef74f4
 - **Source checks:** 113/113 existing+new source regex contracts with corrected old assertion context, 9/9 invariants, 35/35 new agent draft source test regexes, and 12/12 post-fence UI behavior patterns. These are source tests/probes, not native Node/Vitest, real SQL engine, browser or provider acceptance.
 - **NOT RUN:** `node --import tsx --test apps/worker/tests/provider-draft-queue-safety.test.ts apps/worker/tests/local-draft-transaction.test.ts apps/worker/tests/agent-draft-autosave-contract.test.ts`; `pnpm --filter @ai-comms-agent/{shared,email-agent-runtime,db,worker,web} typecheck` as individual commands; PostgreSQL account and lease race integration; real Gmail/IMAP/Zoho Drafts; worker deployment/loop and UI browser.
 - **Boundary:** Explicit provider draft save is NOT an email send. Existing human send approval remains mandatory. On unknown provider outcome no automatic retry. OPS owns rollout and live QA; DEV-01 can independently continue product UX source, FIX-01 any reproduced provider/source defect. Details `sessions/DEV01-AUTOMATIC-DRAFT-SYNC-20261023.md`.
+
+### DEV01-DIGEST-PLAN-PREVIEW-20261025 — bounded source verification only
+- **Source:** Development test-first commits `93acbc54` (six native regression cases), `4b731d9d` (pure strict option parser), `29e4058a` (authenticated existing GET-only R1a page). Existing C4a 5-day lookback, Overview-first and unregistered C3 preserved; no new storage, worker, send or consent.
+- **PASS narrow:** Current GitHub fetched source 16/16 structural contracts covering strict options, priority/WhatsApp warnings, no side-effect route, old timing tests compatible, in-app vs elapsed choices. Isolated local Node 22 mirrored helper 5/5 behavior tests PASS and standalone TypeScript strict compile PASS.
+- **NOT RUN:** Actual committed six-case Node tests, web full typecheck, Next build, Vitest, authorized browser/mobile accessibility, PostgreSQL, provider, CI/Vercel, activated C3, recurring execution or WhatsApp delivery.
+- **Next:** `node --experimental-strip-types --test apps/web/tests/routine-digest-planning-preview.test.mjs apps/web/tests/routine-timing-preview.test.mjs`; `pnpm --filter @ai-comms-agent/web typecheck`; verify no mutating endpoint called and no authorization inferred from GET selections. Refer to `sessions/DEV01-DIGEST-PLAN-PREVIEW-20261025.md`. Phase 4 unchanged.
+
+### DEV01-DIGEST-PLAN-PREVIEW-20261025 — additional calendar-day caution
+- RED `41f5e432` and GREEN `c3341dc5` add a seventh committed test and explicit interval/local-calendar-day warning. Re-fetched source proves warning rendered conditionally; no action creation, no output delivered.
+- **NOT RUN** the exact committed seventh test, repository typecheck, authenticated browser or DB. Earlier 16/16 structural and 5/5 isolated helper baseline remains valid and narrower than runtime acceptance.

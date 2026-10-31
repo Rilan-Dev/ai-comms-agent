@@ -16,12 +16,12 @@ test("provider delivery is terminal before a local-draft reconciliation attempt"
 test("a local sync or completion-storage error after provider delivery never rewrites the action as failed", () => {
   assert.match(executor, /let providerAccepted = false;/);
   assert.match(executor, /providerAccepted = true;/);
-  assert.match(executor, /if \(providerAccepted\) \{/);
+  assert.match(executor, /if \(providerAccepted \|\| providerDispatchStarted\) \{/);
   assert.match(executor, /manualVerificationRequired: true/);
   assert.match(executor, /catch \(reconcileError\)/);
   assert.match(executor, /await completeEmailAction\(claimed.id, organizationId, "failed"/);
   assert.ok(
-    executor.indexOf("if (providerAccepted)") <
+    executor.indexOf("if (providerAccepted || providerDispatchStarted)") <
       executor.lastIndexOf('await completeEmailAction(claimed.id, organizationId, "failed"'),
     "success must bypass the failure settlement",
   );
@@ -44,13 +44,13 @@ test("batch worker does not mark a successfully accepted provider send failed if
     worker.indexOf('bestEffortEmailOutcome("failed_event"'));
   assert.match(worker, /let providerAccepted = false;/);
   assert.match(worker, /providerAccepted = true;/);
-  assert.match(catchBlock, /if \(providerAccepted\) \{/);
+  assert.match(catchBlock, /if \(providerAccepted \|\| providerDispatchStarted\) \{/);
   assert.match(catchBlock, /manualVerificationRequired: true/);
   assert.match(catchBlock, /continue;/);
   const failureSettlement = catchBlock.indexOf('completeEmailAction(action.id, action.organizationId, "failed"');
-  assert.ok(failureSettlement > catchBlock.indexOf("if (providerAccepted)"),
+  assert.ok(failureSettlement > catchBlock.indexOf("if (providerAccepted || providerDispatchStarted)"),
     "once the provider accepts an action it must bypass the failure settlement");
-  for (const invoke of ["connected.sendDraft(", "connected.reply(", "connected.forward("]) {
+  for (const invoke of ["connected.sendDraft(providerDraftId)", "connected.reply(", "connected.sendDraft(forwardDraftId)"]) {
     const pos = worker.indexOf(invoke);
     const nextReturn = worker.indexOf("return { kind:", pos);
     const ack = worker.indexOf("providerAccepted = true;", pos);

@@ -11,7 +11,8 @@ describe("production authentication boundary", () => {
     expect(login).toContain("/api/auth/login");
     expect(login).not.toContain("\\\\n      router.replace");
     expect(read("src/app/api/auth/login/route.ts")).toContain("loginWithPassword");
-    expect(read("src/app/api/auth/logout/route.ts")).toContain("aca-access-token");
+    expect(read("src/app/api/auth/logout/route.ts")).toContain('response.cookies.set(ACCESS_TOKEN_COOKIE, ""');
+    expect(read("src/lib/identity/local-auth.ts")).toContain('ACCESS_TOKEN_COOKIE = "aca-access-token"');
     const auth = read("src/lib/identity/local-auth.ts");
     expect(auth).toContain("getMembershipsForUser(user.id)");
     expect(auth).toContain("AccountNotProvisionedError");
@@ -35,7 +36,7 @@ describe("production authentication boundary", () => {
 
   it("applies hierarchical minimum-role guards to members, admins, and owners", () => {
     const authorization = read("src/lib/identity/authorization.ts");
-    expect(authorization).toContain('const rank: Record<MembershipRole, number> = { member: 1, admin: 2, owner: 3 }');
+    expect(authorization).toContain('const rank: Record<MembershipRole, number> = { viewer: 0, member: 1, admin: 2, owner: 3 }');
     expect(authorization).toContain('roles.some((requiredRole) => rank[role] >= rank[requiredRole])');
   });
 

@@ -5,11 +5,12 @@
  */
 export type ChatEmailApproval = {
   id: string;
-  actionType: "send_email";
+  actionType: "send_email" | "reply_email" | "forward_email";
   status: "pending_approval";
-  draftId: string;
+  draftId: string | null;
   emailAccountId: string;
   expiresAt: string | null;
+  senderAddress?: string;
   recipientSnapshot: {
     to: string[];
     cc: string[];
@@ -30,12 +31,13 @@ function recipientList(value: unknown): string[] | null {
 
 export function validateChatEmailApproval(
   source: unknown,
-  expected: { actionId: string; draftId: string; accountId: string },
+  expected: { actionId: string; draftId: string | null; accountId: string; actionType?: ChatEmailApproval['actionType'] },
 ): ChatEmailApproval | null {
   if (!source || typeof source !== "object" || Array.isArray(source)) return null;
   const action = source as Record<string, unknown>;
-  if (!expected.actionId || !expected.draftId || !expected.accountId ||
-      action.id !== expected.actionId || action.actionType !== "send_email" ||
+  const actionType=expected.actionType??'send_email';
+  if (!expected.actionId || (actionType==='send_email' && !expected.draftId) || !expected.accountId ||
+      action.id !== expected.actionId || action.actionType !== actionType ||
       action.status !== "pending_approval" || action.draftId !== expected.draftId ||
       action.emailAccountId !== expected.accountId) return null;
 
@@ -57,11 +59,12 @@ export function validateChatEmailApproval(
 
   return {
     id: expected.actionId,
-    actionType: "send_email",
+    actionType,
     status: "pending_approval",
     draftId: expected.draftId,
     emailAccountId: expected.accountId,
     expiresAt: typeof expiresAt === "string" ? expiresAt : null,
+    senderAddress:validAddress(action.senderAddress)?action.senderAddress:undefined,
     recipientSnapshot: { to, cc, bcc, subject: snapshot.subject, bodyText: snapshot.bodyText },
   };
 }

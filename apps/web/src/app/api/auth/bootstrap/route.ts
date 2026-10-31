@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json().catch(() => null) as {
-      token?: unknown; email?: unknown; password?: unknown; name?: unknown; organizationName?: unknown; organizationSlug?: unknown;
+      token?: unknown; email?: unknown; password?: unknown; name?: unknown; organizationName?: unknown; organizationSlug?: unknown; productName?: unknown;
     } | null;
 
     if (typeof body?.token !== "string" || !equalSecret(body.token, configuredToken)) {
@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     const name = typeof body.name === "string" ? body.name.trim() : "";
     const organizationName = typeof body.organizationName === "string" ? body.organizationName.trim() : "";
     const organizationSlug = typeof body.organizationSlug === "string" ? body.organizationSlug.trim().toLowerCase() : "";
+    const productName = typeof body.productName === "string" ? body.productName.trim().slice(0, 80) : "";
 
     if (!email || !name || !organizationName || !/^[a-z0-9][a-z0-9-]{2,62}$/.test(organizationSlug)) {
       throw new ValidationError("Email, name, organization name, and a valid organization slug are required.");
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
       passwordHash: await hashPasswordForStorage(body.password),
       organizationName,
       organizationSlug,
+      productName: productName || null,
     });
 
     return NextResponse.json({ ok: true, userId: result.userId, organizationId: result.organizationId });

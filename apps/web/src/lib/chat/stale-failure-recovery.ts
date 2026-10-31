@@ -43,7 +43,8 @@ const RECENT_ASSISTANT_WINDOW = 6;
 const MIN_FAILURE_ANSWERS = 2;
 
 export function isStaleFailureAnswer(content: string): boolean {
-  return STALE_FAILURE_ANSWER_MARKERS.test(content);
+  return STALE_FAILURE_ANSWER_MARKERS.test(content)
+    || /^(?:No saved draft or send request was confirmed for this turn\.|I couldn't complete that request safely\.)/.test(content.trim());
 }
 
 /**
@@ -69,7 +70,10 @@ export function buildStaleFailureRecoveryGuidance(
     "Stale-failure recovery notice:",
     "Earlier assistant messages in this conversation report authorization or access failures for a mailbox or WhatsApp account. Those results may be stale: account bindings and tool authorization may have been repaired since those turns.",
     "Do not repeat or rely on the earlier failure conclusion, and do not tell the user to reconnect an account that is already connected.",
-    "Re-run the read tools now: call email.accounts.list first, then call email.messages.list (and other read tools) using the account id that email.accounts.list returns. Accept the mailbox address as an account_id value as well.",
+    /\bwhats\s?app\b/i.test(message) && !/\b(?:e-?mails?|mailbox|inbox)\b/i.test(message)
+      ? "Use only the current WhatsApp account context and authorized WhatsApp tools for this request. Do not read unrelated email to diagnose a WhatsApp request."
+      : "Re-run the read tools now: call email.accounts.list first, then call email.messages.list (and other read tools) using the account id that email.accounts.list returns. Accept the mailbox address as an account_id value as well.",
+    "Never replay a previous mutation or assume a prior send failed. Reconcile existing drafts and approvals; execute only the user's new explicit request through the current permission and approval checks.",
     "Only report an authorization or access failure if a tool you call in THIS turn actually fails; report the fresh result otherwise.",
   ].join(" ");
 }

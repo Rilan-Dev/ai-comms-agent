@@ -7,6 +7,7 @@ import {
   recordAuditEvent,
 } from "@ai-comms-agent/db";
 import type { DraftParams, EmailCredentials } from "@ai-comms-agent/shared";
+import {emailReplyMetadata} from "@ai-comms-agent/shared";
 import { CapabilityNotSupported } from "@ai-comms-agent/shared";
 import { createEmailProviderRegistry } from "./registry";
 import { verifyEmailProviderConnection } from "./provider-verification";
@@ -48,7 +49,9 @@ export async function syncLocalDraftToProvider(organizationId: string, messageId
 
     const provider = createEmailProviderRegistry().create(account.provider);
     const result = await verifyEmailProviderConnection(provider, credentials, async ({ provider: connected }) => {
+      const reply=emailReplyMetadata(draft);
       const params: DraftParams = {
+        ...(reply.inReplyTo?{reply_to_message_id:reply.inReplyTo,references_header:reply.referencesHeader,provider_thread_id:reply.providerThreadId}:{}),
         to: Array.isArray(draft.to_recipients) ? draft.to_recipients.map(String) : [],
         cc: Array.isArray(draft.cc_recipients) ? draft.cc_recipients.map(String) : [],
         bcc: Array.isArray(draft.bcc_recipients) ? draft.bcc_recipients.map(String) : [],

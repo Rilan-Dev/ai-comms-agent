@@ -21,13 +21,12 @@ echo "==> Checking Git working tree..."
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "ERROR: You have uncommitted changes."
   echo ""
-  echo "The production VPS must run a clean checkout of origin/main."
+  echo "The production VPS must run a clean checkout of origin/Development."
   echo "Local edits here are why deploys fall behind and served bundles"
   echo "end up mixing old and new code."
   echo ""
   echo "Recovery options:"
   echo "  1. Keep your edits for review:  git stash push -m 'vps-local-edits' && bash scripts/update-and-up.sh"
-  echo "  2. Discard them (runs origin/main exactly):  git checkout -- . && bash scripts/update-and-up.sh"
   echo ""
   git status --short
   exit 1

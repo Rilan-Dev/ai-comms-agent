@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     if (!process.env.DATABASE_URL) {
       return NextResponse.json({
         error: "database_not_configured",
-        message: "PostgreSQL is required to load Clara knowledge status.",
+        message: "PostgreSQL is required to load knowledge status.",
       }, { status: 503 });
     }
 

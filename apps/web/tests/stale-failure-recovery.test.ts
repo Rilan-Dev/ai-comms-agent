@@ -24,6 +24,12 @@ describe("isStaleFailureAnswer", () => {
 });
 
 describe("buildStaleFailureRecoveryGuidance", () => {
+  it('recognizes the current host no-result responses without replaying mutations',()=>{
+    const history=[{role:'assistant',content:'No saved draft or send request was confirmed for this turn. No message was sent by this request.'},{role:'assistant',content:"I couldn't complete that request safely. Please try again."}];
+    expect(buildStaleFailureRecoveryGuidance(history,'Create an email draft')).toContain('Never replay a previous mutation');
+    const whatsapp=buildStaleFailureRecoveryGuidance(history,'Request a WhatsApp template approval');
+    expect(whatsapp).toContain('authorized WhatsApp tools');expect(whatsapp).not.toContain('call email.accounts.list');
+  });
   const poisonedHistory: StaleFailureHistoryMessage[] = [
     userTurn("summery my emails"),
     { role: "assistant", content: failureAnswer("a@gmail.com") },

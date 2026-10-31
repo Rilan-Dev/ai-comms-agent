@@ -34,15 +34,15 @@ test("audit.read and organization.update independently grant only their exact da
 test("Overview excludes forbidden SQL reads rather than only redacting their results", () => {
   const route = read("../src/app/api/overview/route.ts");
   assert.match(route, /planOverviewRead\(subject\.permissions\)/);
-  assert.match(route, /access\.mail \?/);
-  assert.match(route, /access\.approvals \?/);
+  assert.match(route, /access\.mail\s*\?/);
+  assert.match(route, /access\.approvals\s*\?/);
   assert.match(route, /access\.audit \? await query/);
   assert.match(route, /NULL::bigint AS unread_mail/);
   assert.match(route, /NULL::bigint AS action_required/);
   assert.match(route, /NULL::bigint AS pending_approvals/);
   assert.match(route, /value == null \? null : Number\(value\)/);
   assert.match(route, /activity: access\.audit \?/);
-  assert.ok(route.indexOf("planOverviewRead(subject.permissions)") < route.indexOf("const counts = await query("));
+  assert.ok(route.indexOf("planOverviewRead(subject.permissions)") < route.indexOf("const counts = await query<"));
 });
 
 test("Overview shows restricted status instead of zero or falsely empty audit trail", () => {

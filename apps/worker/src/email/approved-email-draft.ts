@@ -1,3 +1,4 @@
+import {emailReplyMetadata} from "@ai-comms-agent/shared";
 import type { DraftParams } from "@ai-comms-agent/shared";
 
 /**
@@ -26,7 +27,9 @@ export function paramsFromApprovedEmailSnapshot(snapshot: Record<string, unknown
   if (typeof subject !== "string" || !subject.trim() || typeof bodyText !== "string") {
     throw new Error("Approved email approval snapshot lacks the reviewed subject or body");
   }
+  const reply=emailReplyMetadata({in_reply_to:snapshot.inReplyTo,references_header:snapshot.referencesHeader,reply_provider_thread_id:snapshot.providerThreadId});
   return {
+    ...(reply.inReplyTo?{reply_to_message_id:reply.inReplyTo,references_header:reply.referencesHeader,provider_thread_id:reply.providerThreadId}:{}),
     to: recipients(snapshot.to, true),
     cc: recipients(snapshot.cc, false),
     bcc: recipients(snapshot.bcc, false),

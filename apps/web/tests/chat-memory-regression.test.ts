@@ -33,7 +33,7 @@ import { resolve } from "node:path";
 
 const routePath = resolve(__dirname, "../src/app/api/chat/stream/route.ts");
 const routeSource = readFileSync(routePath, "utf8");
-const runtimePath = resolve(__dirname, "../../../packages/clara-core/src/runtime.ts");
+const runtimePath = resolve(__dirname, "../../../packages/agent-core/src/runtime.ts");
 const runtimeSource = readFileSync(runtimePath, "utf8");
 
 describe("chat email context — memory / context pollution regression", () => {
@@ -115,13 +115,13 @@ describe("ISS-026 — agent-scoped email context (cross-agent mailbox isolation)
     // The signature must be (organizationId, agentId, content) — agentId
     // is required to JOIN agent_email_accounts. Without this parameter,
     // the function cannot scope to the active agent's mailbox bindings.
-    expect(routeSource).toContain("async function loadEmailContext(organizationId: string, agentId: string, content: string)");
+    expect(routeSource).toContain("async function loadEmailContext(organizationId: string, agentId: string, content: string,context?:ToolContext)");
   });
 
   it("loadEmailContext caller in the chat route passes agentId", () => {
     // The caller at the POST handler must pass agentId, not just
     // organizationId + content. This is the actual ISS-026 fix point.
-    expect(routeSource).toContain("loadEmailContext(organizationId, agentId, combinedSearchContext)");
+    expect(routeSource).toContain("loadEmailContext(organizationId, agentId, combinedSearchContext,trustedToolContext)");
   });
 
   it("loadEmailContext SQL JOINs agent_email_accounts with role filter", () => {
@@ -145,13 +145,13 @@ describe("ISS-026 — agent-scoped email context (cross-agent mailbox isolation)
     expect(routeSource).toContain("[organizationId, agentId]");
   });
 
-  it("groundContext email_messages query (clara-core runtime) is also agent-scoped", () => {
+  it("groundContext email_messages query (agent-core runtime) is also agent-scoped", () => {
     // ISS-026 closure must cover BOTH paths:
     //   1. apps/web/src/app/api/chat/stream/route.ts:loadEmailContext()
     //      (covered by tests above)
-    //   2. packages/clara-core/src/runtime.ts:groundContext() — the
+    //   2. packages/agent-core/src/runtime.ts:groundContext() — the
     //      email_messages direct query inside the hybrid retriever.
-    // The runtime path is called via claraRuntime.createChatTurn() with
+    // The runtime path is called via agentRuntime.createChatTurn() with
     // ragMode='hybrid', which is the chat + realtime voice path.
     // Without this JOIN, an agent could read another agent's mailbox
     // via the runtime retriever even if loadEmailContext is scoped.

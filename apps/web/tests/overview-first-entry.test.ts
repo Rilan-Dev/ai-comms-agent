@@ -40,8 +40,7 @@ describe("Owner-requested Overview-first entry", () => {
     const overview = source("app/overview/page.tsx");
     expect(overview).toContain('href="/mail/inbox"');
     expect(overview).toContain('href="/chat"');
-    expect(overview).toContain('href="/schedules"');
-    expect(overview).toContain('href="/automations"');
+    expect(overview).toContain('href="/scheduled"');
     expect(overview).toContain("organization-wide");
   });
 });

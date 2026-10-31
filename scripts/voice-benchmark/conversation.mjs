@@ -3,7 +3,7 @@
  *
  * Plays actual WAV or MP3 files into the browser's microphone MediaStream, waits for
  * each response telemetry barrier before the next question, and records browser
- * request counts/timings plus Clara's provider-neutral latency events.
+ * request counts/timings plus provider-neutral latency events.
  *
  * Requires the app's provider selection to be configured before the run.
  * The --provider value is only a label; it is checked against observed telemetry.
@@ -227,8 +227,8 @@ async function main() {
       return Object.keys(detail).length ? detail : null;
     };
     const observeDataChannel = (channel) => {
-      if (!channel || channel.__claraBenchObserved) return channel;
-      try { Object.defineProperty(channel, "__claraBenchObserved", { value: true }); } catch {}
+      if (!channel || channel.__benchObserved) return channel;
+      try { Object.defineProperty(channel, "__benchObserved", { value: true }); } catch {}
       state.dataChannel = channel;
       recordDataChannelEvent(channel, "channel", "created");
       channel.addEventListener("open", () => recordDataChannelEvent(channel, "channel", "open"));
@@ -274,7 +274,7 @@ async function main() {
         return observeDataChannel(originalCreateDataChannel.apply(this, args));
       };
     } catch {}
-    window.__claraVoiceBench = state;
+    window.__voiceBench = state;
     // Capture RAG request timing and server-side stage timings without storing
     // questions, context, snippets, credentials, or response bodies.
     const originalFetch = window.fetch.bind(window);
@@ -307,7 +307,7 @@ async function main() {
       } catch {}
       return response;
     };
-    window.addEventListener("clara:voice:latency", (event) => {
+    window.addEventListener("voice:latency", (event) => {
       const d = event.detail || {};
       state.events.push({
         receivedAt: Date.now(),
@@ -347,7 +347,7 @@ async function main() {
       }
       return new MediaStream(track ? [track] : []);
     };
-    window.__claraVoiceBenchPlay = async (base64) => {
+    window.__voiceBenchPlay = async (base64) => {
       if (!state.audioContext || !state.destination) throw new Error("Microphone audio track has not been initialized; connect first.");
       await state.audioContext.resume();
       const binary = atob(base64);
@@ -423,7 +423,7 @@ async function main() {
       state.playedInputs.push({ playbackStartedAt, playbackCompletedAt: Date.now(), ...result });
       return result;
     };
-    window.__claraVoiceBenchMarkConnect = () => {
+    window.__voiceBenchMarkConnect = () => {
       state.clickAt = { wallTime: Date.now(), monotonicMs: performance.now() };
     };
   });
@@ -434,7 +434,7 @@ async function main() {
     await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: 60000 });
     const connect = page.locator("button:has-text('Connect'), button:has-text('Start'), button[aria-label*='connect' i]").first();
     await connect.waitFor({ state: "visible", timeout: 20000 });
-    await page.evaluate(() => window.__claraVoiceBenchMarkConnect());
+    await page.evaluate(() => window.__voiceBenchMarkConnect());
     connectClick.wallTime = Date.now();
     connectClick.monotonicMs = await page.evaluate(() => performance.now());
     await connect.click();
@@ -465,7 +465,7 @@ async function main() {
           );
         }
 
-        const events = await page.evaluate(() => window.__claraVoiceBench?.events ?? []);
+        const events = await page.evaluate(() => window.__voiceBench?.events ?? []);
         const candidates = events.filter((e) => typeof e.marks?.["browser.first_audio"] === "number");
         return candidates[0] ?? null;
       }, args.welcomeTimeoutMs, "first audible welcome/assistant audio telemetry");
@@ -474,7 +474,7 @@ async function main() {
       console.warn("[conversation-bench] welcome audio telemetry unavailable; continuing to question-turn diagnostics");
     }
 
-    const clickWallTime = await page.evaluate(() => window.__claraVoiceBench?.clickAt?.wallTime ?? null);
+    const clickWallTime = await page.evaluate(() => window.__voiceBench?.clickAt?.wallTime ?? null);
     const welcomeFirstAudioMark = welcomeEvent?.marks?.["browser.first_audio"] ?? null;
     // Both values use epoch milliseconds because current shared stage marks use Date.now().
     const welcomeMsFromClick = typeof clickWallTime === "number" && typeof welcomeFirstAudioMark === "number"
@@ -493,12 +493,12 @@ async function main() {
     await page.waitForTimeout(Math.max(0, args.welcomeDrainMs));
 
     for (const n of EXPECTED_INPUTS) {
-      const before = await page.evaluate(() => (window.__claraVoiceBench?.events ?? []).length);
+      const before = await page.evaluate(() => (window.__voiceBench?.events ?? []).length);
       const turnStartedAt = Date.now();
       console.log(`[conversation-bench] playing input ${n}/5: ${args.inputs[n].path}`);
-      const audio = await page.evaluate((b64) => window.__claraVoiceBenchPlay(b64), args.inputs[n].base64);
+      const audio = await page.evaluate((b64) => window.__voiceBenchPlay(b64), args.inputs[n].base64);
       const event = await waitFor(async () => {
-        const events = await page.evaluate(() => window.__claraVoiceBench?.events ?? []);
+        const events = await page.evaluate(() => window.__voiceBench?.events ?? []);
         const candidates = events.slice(before).filter((e) =>
           typeof e.marks?.["stt.final"] === "number" &&
           typeof e.marks?.["turn.complete"] === "number"
@@ -584,7 +584,7 @@ async function main() {
       inputFiles: Object.fromEntries(EXPECTED_INPUTS.map((n) => [n, { path: args.inputs[n].path, bytes: args.inputs[n].bytes }])),
       session: { connectClick: connectClick.wallTime, welcomeEvent: welcomeEvent ? { provider: welcomeEvent.provider, model: welcomeEvent.model, marks: welcomeEvent.marks } : null, sessionClickToWelcomeAudioMs: welcomeMsFromClick, metricMeaning: "first browser.first_audio telemetry mark; null means unavailable, not zero; not independent confirmation of audible playback" },
       turns: turnResults,
-      ragRequests: await page.evaluate(() => window.__claraVoiceBench?.ragRequests ?? []),
+      ragRequests: await page.evaluate(() => window.__voiceBench?.ragRequests ?? []),
       requestCounts,
       requestTimings: responseRecords,
       resourceTimings,
@@ -613,8 +613,8 @@ async function main() {
     // Persist diagnostics even when a provider never emits welcome/turn telemetry.
     // This prevents the most useful failure evidence from being lost on timeout.
     try {
-      const events = await page.evaluate(() => window.__claraVoiceBench?.events ?? []);
-      const dataChannelEvents = await page.evaluate(() => window.__claraVoiceBench?.dataChannelEvents ?? []);
+      const events = await page.evaluate(() => window.__voiceBench?.events ?? []);
+      const dataChannelEvents = await page.evaluate(() => window.__voiceBench?.dataChannelEvents ?? []);
       const out = resolve(args.out);
       mkdirSync(dirname(out), { recursive: true });
       writeFileSync(out, JSON.stringify({
@@ -628,14 +628,14 @@ async function main() {
         browser: "Playwright Chromium",
         inputFiles: Object.fromEntries(EXPECTED_INPUTS.map((n) => [n, { path: args.inputs[n].path, bytes: args.inputs[n].bytes }])),
         session: { connectClick: connectClick.wallTime, welcomeEvent: welcomeEvent ? { provider: welcomeEvent.provider, model: welcomeEvent.model, marks: welcomeEvent.marks } : null },
-        playedInputs: await page.evaluate(() => window.__claraVoiceBench?.playedInputs ?? []),
-        ragRequests: await page.evaluate(() => window.__claraVoiceBench?.ragRequests ?? []),
+        playedInputs: await page.evaluate(() => window.__voiceBench?.playedInputs ?? []),
+        ragRequests: await page.evaluate(() => window.__voiceBench?.ragRequests ?? []),
         drainSettings: { welcomeDrainMs: args.welcomeDrainMs, interTurnDrainMs: args.drainMs },
         turns: turnResults,
         observedLatencyEvents: events.map((e) => ({ provider: e.provider, model: e.model, sessionId: e.sessionId, generationId: e.generationId, turnId: e.turnId, marks: e.marks, latencies: e.latencies })),
         dataChannelEvents,
         microphoneDiagnostics: await page.evaluate(async () => {
-          const state = window.__claraVoiceBench;
+          const state = window.__voiceBench;
           const pc = state?.peerConnection;
           const dc = pc?.getDataChannels?.()?.[0] ?? null;
           return {

@@ -1,3 +1,4 @@
+import {requireConfigurationWorkflow} from '@/lib/agents/configuration-write-boundary';
 import { NextResponse } from "next/server";
 import { PostgresAgentRepository, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
@@ -22,6 +23,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const input = validation.value;
     if (!orgId) return NextResponse.json({ error: "validation_error", fieldErrors: { organizationId: "Organization is required." } }, { status: 400 });
     const subject = await authorize(request, { organizationId: asOrganizationId(orgId), role: "admin" }, getIdentityAdapter(), getIdentityRepository());
+    const workflowRequired=requireConfigurationWorkflow();if(workflowRequired)return workflowRequired;
     // A first-party chat/settings preview includes its original policy.
     // The repository compares all persisted fields atomically; a concurrent
     // change must be reviewed, never overwritten after a stale confirmation.

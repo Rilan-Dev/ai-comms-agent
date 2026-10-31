@@ -39,7 +39,7 @@ function isUnrelatedMessagingRequest(request: string): boolean {
 }
 
 function isFailedOrDeniedAnswer(answer: string): boolean {
-  return /\b(?:can't|cannot|couldn't|unable to|don't have access|do not have access|not authorized|permission denied|no matching|no new unread|not found|didn't find)\b/i.test(answer);
+  return /\b(?:can't|cannot|couldn't|unable to|don't have access|do not have access|not authorized|permission denied|no matching|no new unread|not found|didn't find|failed|needs verification|no (?:messages|emails) found)\b/i.test(answer);
 }
 
 /** Only show the reviewed email workflow for an explicitly requested draft
@@ -57,7 +57,18 @@ export function hasInteractiveEmailActions(answer: string, userRequest: string):
  * missing data, denied actions, tool failures, or unrelated WhatsApp turns.
  * This never derives executable actions from untrusted assistant text. */
 export function suggestedChatNextActions(answer: string, userRequest: string): ChatNextAction[] {
-  if (isUnrelatedMessagingRequest(userRequest) || isFailedOrDeniedAnswer(answer)) return [];
+  if (isUnrelatedMessagingRequest(userRequest)) {
+    if (/\b(?:failed|couldn['’]?t|unable|not sent|setup|permission|account|phone|error)\b/i.test(answer)
+      || /\b(?:check|fix|setup|send|reply|message)\b/i.test(userRequest)) {
+      return [
+        { id: "whatsapp-setup", label: "Check WhatsApp setup", prompt: "Check my WhatsApp setup now. Show the connected phone, account, permissions, customer-service window, and the exact next fix. If something is missing, offer the choice or input here in Chat." },
+        { id: "whatsapp-phones", label: "Choose connected phone", prompt: "Show my connected WhatsApp phones and let me choose which one to use for this message." },
+        { id: "whatsapp-retry", label: "Prepare a new approval", prompt: "Prepare the WhatsApp message again as a human-approval request. Ask for any missing recipient or message details here before saving it." },
+      ];
+    }
+    return [];
+  }
+  if (isFailedOrDeniedAnswer(answer)) return [];
   const requestedSummary = /\b(?:summari[sz]e|summary|list|find|show|review|prioriti[sz]e|check|how many)\b/i.test(userRequest)
     && /\b(?:e-?mails?|mailbox|inbox|messages?|threads?)\b/i.test(userRequest);
   const hasMailEvidence = /\b(?:sender|subject|from|received)\s*:/i.test(answer)
@@ -68,7 +79,5 @@ export function suggestedChatNextActions(answer: string, userRequest: string): C
   if (!requestedSummary || !hasMailEvidence) return [];
   return [
     { id: "prioritize", label: "Find important mail", prompt: "Review the recent emails I can access and list those that need my attention, with sender, date and reason. Do not modify messages." },
-    { id: "checklist", label: "Make an action checklist", prompt: "Turn your previous answer into a short prioritized checklist for me. Do not modify any emails." },
-    { id: "draft", label: "Plan an email reply", prompt: "Help me prepare an editable reply draft for an email we discussed. Ask which email if unclear; do not send anything." },
   ];
 }

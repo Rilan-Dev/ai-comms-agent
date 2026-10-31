@@ -26,10 +26,11 @@ export type UnreadOnlyMailRequest = {
   /** Never set on this fast path; keeps the route's scope union readable. */
   sender?: undefined;
   topic?: undefined;
+  inboxOnly?: boolean;
 };
 
 /** Lower bound for the no-window unread report (all locally synced mail). */
-export const UNREAD_REPORT_FROM_UTC = "2000-01-01T00:00:00.000Z";
+export const UNREAD_REPORT_FROM_UTC = "0001-01-01T00:00:00.000Z";
 
 const MENTIONS_MAIL = /\b(?:e-?mails?|mails?|inbox|mailbox|messages?)\b/i;
 const MENTIONS_UNREAD = /\b(?:unread(?:ed)?|not\s+read|new\s+(?:e-?mails?|mails?|messages?|inbox))\b|\bwhat(?:'s| is)\s+new\b/i;
@@ -46,13 +47,18 @@ const UNSUPPORTED =
 
 /** Very long prompts usually carry hidden constraints; stay conservative. */
 const MAX_FAST_PATH_LENGTH = 120;
+const PURE_REPORT_WORDS=new Set('how many count number of unread unreaded not read new email emails mail mails inbox mailbox messages do i we have right now please summarize summarise summery summary recap report review list show check find see go through my our all the a an is are me for us what in total'.split(' '));
 
 export function parseUnreadOnlyMailRequest(input: string): UnreadOnlyMailRequest | null {
   const message = (input ?? "").trim().toLowerCase();
   if (!message || message.length > MAX_FAST_PATH_LENGTH) return null;
   if (!MENTIONS_MAIL.test(message) || !MENTIONS_UNREAD.test(message) || !REPORT_VERB.test(message)) return null;
   if (UNSUPPORTED.test(message)) return null;
-  return { kind: COUNT_QUESTION.test(message) ? "count" : "summary", unreadOnly: true };
+  // Unknown words may be an unrecognized folder, date or analysis constraint.
+  // Fall back to the authorized tool path instead of broadening the report.
+  const words=message.replace(/e-mails?/g,'email').replace(/what's/g,'what is').replace(/[?.,!]/g,'').split(/\s+/);
+  if(words.some(word=>!PURE_REPORT_WORDS.has(word)))return null;
+  return { kind: COUNT_QUESTION.test(message) ? "count" : "summary", unreadOnly: true,...(/\binbox\b/.test(message)?{inboxOnly:true}:{}) };
 }
 
 export type MailboxUnreadCount = {
@@ -63,7 +69,8 @@ export type MailboxUnreadCount = {
 function shortText(input: string | null | undefined, max = 360): string {
   if (!input) return "";
   const normalized = input.replace(/[\p{C}\s]+/gu, " ").trim();
-  return normalized.length > max ? normalized.slice(0, max - 1) + "…" : normalized;
+  const bounded=normalized.length > max ? normalized.slice(0, max - 1) + "…" : normalized;
+  return bounded.replace(/[\\`*_[\]<>]/g,'\\$&');
 }
 
 /**
@@ -111,12 +118,12 @@ export function formatUnreadMailCountReport(
  * Full unread listing (reuses the rolling report renderer so coverage and
  * untrusted-data language stay consistent across fast paths).
  */
-export function formatUnreadMailSummary(rows: RollingMailRow[]): string {
+export function formatUnreadMailSummary(rows: RollingMailRow[],scope:Pick<UnreadOnlyMailRequest,'unreadOnly'|'inboxOnly'>={unreadOnly:true},fromUtc=UNREAD_REPORT_FROM_UTC,toUtc=new Date().toISOString()): string {
   return formatRollingMailSummary(
     rows,
-    { unreadOnly: true, sender: undefined, topic: undefined },
-    UNREAD_REPORT_FROM_UTC,
-    new Date().toISOString(),
+    scope,
+    fromUtc,
+    toUtc,
     "full locally synchronized history (no time window)",
   );
 }

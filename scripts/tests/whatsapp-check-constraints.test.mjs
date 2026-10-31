@@ -4,7 +4,9 @@ import test from "node:test";
 
 const migrationPath = new URL("../../supabase/migrations/0053_whatsapp_check_constraints.sql", import.meta.url);
 const postgresProbePath = new URL("./whatsapp-check-constraints.postgres.sql", import.meta.url);
+const installedProbePath = new URL("./whatsapp-check-constraints-installed.postgres.sql", import.meta.url);
 const authorizationPath = new URL("../../apps/web/src/lib/identity/authorization.ts", import.meta.url);
+const dbClientPath = new URL("../../packages/db/src/client.ts", import.meta.url);
 
 test("forward migration replaces the exact two legacy CHECK constraints without weakening validation", () => {
   const sql = readFileSync(migrationPath, "utf8");
@@ -34,4 +36,32 @@ test("unexpected PostgreSQL errors do not print failing-row details or request v
   assert.ok(auth.includes('[authorization] unexpected error'));
   assert.doesNotMatch(auth, /console\.error\("\[authorization\] unexpected error:", error\)/);
   assert.ok(auth.includes('internal_server_error'));
+});
+
+
+test("shared PostgreSQL query/pool errors log SQLSTATE only, never failing rows or SQL text", () => {
+  const source = readFileSync(dbClientPath, "utf8");
+  assert.match(source, /export function safePostgresDiagnostic\(/);
+  assert.match(source, /\^\[A-Z0-9\]\{5\}\$/);
+  assert.ok(source.includes('console.error("[db] PostgreSQL pool error", safePostgresDiagnostic(error));'));
+  assert.ok(source.includes('console.error("[db] PostgreSQL query failed", safePostgresDiagnostic(error));'));
+  assert.doesNotMatch(source, /console\.error\("\[db\] PostgreSQL pool error", error\)/);
+  assert.doesNotMatch(source, /console\.error\(JSON\.stringify\(\{/);
+  assert.doesNotMatch(source, /sql:\s*text/);
+  assert.doesNotMatch(source, /postgresError\.message/);
+});
+
+test("OPS post-deploy constraint verification is read-only and checks both installed aca definitions", () => {
+  const probe = readFileSync(installedProbePath, "utf8");
+  assert.match(probe, /BEGIN READ ONLY;/);
+  assert.match(probe, /to_regclass\('aca\.whatsapp_send_actions'\)/);
+  assert.match(probe, /to_regclass\('aca\.whatsapp_templates'\)/);
+  assert.match(probe, /pg_get_constraintdef\(c\.oid\)/);
+  assert.match(probe, /c\.convalidated/);
+  assert.ok(probe.includes("phone_validated IS DISTINCT FROM TRUE"));
+  assert.ok(probe.includes("template_validated IS DISTINCT FROM TRUE"));
+  assert.ok(probe.includes("whatsapp_send_actions_recipient_phone_check"));
+  assert.ok(probe.includes("whatsapp_templates_name_check"));
+  assert.match(probe, /ROLLBACK;/);
+  assert.doesNotMatch(probe, /^\s*(?:INSERT|UPDATE|DELETE|ALTER TABLE|TRUNCATE)\b/im);
 });

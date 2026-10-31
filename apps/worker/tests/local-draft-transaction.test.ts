@@ -11,10 +11,10 @@ const draft = repo.slice(repo.indexOf("export async function createLocalDraft(")
 
 test("a draft thread and its message are written on the same PostgreSQL transaction", () => {
   assert.match(draft, /return withTransaction\(async \(client\) => \{/);
-  assert.equal((draft.match(/await client\.query<Row>\(/g) ?? []).length, 3,
-    "account lookup, thread insert, message insert must use one transactional client");
+  assert.equal((draft.match(/await client\.query<Row>\(/g) ?? []).length, 4,
+    "account lookup, optional scoped reply source, thread insert and message insert must use one transactional client");
   assert.doesNotMatch(draft, /await query<Row>\(/);
-  const account = draft.indexOf("SELECT id, email_address, status, capabilities FROM email_accounts");
+  const account = draft.indexOf("SELECT id, email_address, status, capabilities, connection_config->>'mailSignatureText' AS mail_signature FROM email_accounts");
   const thread = draft.indexOf("INSERT INTO email_threads");
   const message = draft.indexOf("INSERT INTO email_messages");
   const result = draft.indexOf('return requiredRow(messageResult.rows[0], "draft message")');
@@ -29,7 +29,7 @@ test("draft creation locks the same-tenant account against concurrent revocation
   assert.match(draft, /VALUES \(\$1, \$2, \$3/);
   assert.match(draft, /const syncStatus = connected && capabilities\?\.drafts === true \? "queued" : "local_only"/);
   assert.match(draft, /received_at, provider_draft_sync_status/);
-  assert.match(draft, /"\", syncStatus\]/);
+  assert.match(draft, /signedBody, syncStatus, inReplyTo, referencesHeader\]/);
 });
 
 test("worker email tools and manual draft endpoint share the atomic repository", () => {

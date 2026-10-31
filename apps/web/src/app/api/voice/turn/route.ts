@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
-import { PostgresAgentRepository, appendConversationMessage, getChatConversation, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, query } from "@ai-comms-agent/db";
+import { PostgresAgentRepository, appendConversationMessage, getChatConversation, getVoiceSessionForOrganization, incrementVoiceSessionTurnForOrganization, query,loadActiveAgentConfiguration,assertCurrentAgentToolAuthorization,type ActiveAgentConfiguration } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 import { assertSameOrigin } from "@/lib/identity/local-auth";
-import { runEmailAgentTurn, createEmailToolRuntime } from "@ai-comms-agent/email-agent-runtime";
-import { formatRollingMailSummary, parseRollingMailSummaryRequest, type RollingMailRow } from "@/lib/mail/rolling-summary";
+import { runEmailAgentTurn, createEmailToolRuntime,prepareAgentConfigurationTurn,type AgentConfigurationTurn } from "@ai-comms-agent/email-agent-runtime";
+import { formatRollingMailSummary, parseRollingMailSummaryRequest, looksLikeRollingMailReport } from "@/lib/mail/rolling-summary";
+import { getMailReportEvidence, MailReportScopeError } from "@/lib/mail/report-evidence";
 import { composeAssistantGuidance } from "@/lib/mail/compose-identity";
-import { claraRuntime } from "@ai-comms-agent/clara-core";
-import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest, unverifiedEmailActionExplanation, verifiedEmailToolSummary } from "@/lib/mail/action-feedback";
+import { agentRuntime } from "@ai-comms-agent/agent-core";
+import { deniedEmailWriteExplanation, isExplicitEmailMutationRequest } from "@/lib/mail/action-feedback";
 import { userFacingChatAnswer } from "@/lib/chat/user-facing-answer";
+import { currentTurnOperationAnswer } from "@/lib/chat/operation-feedback";
 
 
 export const dynamic = "force-dynamic";
@@ -65,9 +67,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "session_not_active", message: "Voice turns require a connected session or an explicitly initialized transcript bridge." }, { status: 409 });
     }
 
+    let frozenConfiguration:ActiveAgentConfiguration|undefined=process.env.AGENT_CONFIGURATION_REVISIONS_ENABLED==='true'?await loadActiveAgentConfiguration({organizationId,agentId}):undefined;
+    if(frozenConfiguration&&(frozenConfiguration.organizationId!==organizationId||frozenConfiguration.agentId!==agentId||frozenConfiguration.snapshot.lifecycle.status!=='active'))return NextResponse.json({error:'agent_unavailable',message:'Review this agent’s current deployment before starting a voice turn.'},{status:409});
     const runtimeSettings = await query<{ knowledge_base_id: string }>("SELECT knowledge_base_id FROM organization_ai_runtime_settings WHERE organization_id = $1", [organizationId]);
     // KB ID is OPTIONAL for voice turns. RAG features are skipped when no KB is configured.
-    const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.CLARA_KB_ID?.trim() || "default";
+    const kbId = runtimeSettings.rows[0]?.knowledge_base_id?.trim() || process.env.AGENT_KB_ID?.trim() || "default";
 
     const turnRecorded = await incrementVoiceSessionTurnForOrganization(organizationId, sessionId, transcriptBridgeOnly);
     if (!turnRecorded) {
@@ -101,11 +105,12 @@ export async function POST(request: Request) {
     // Limit the spoken preview to the newest five, while retaining the exact
     // matching count and an explicit partial-coverage warning.
     const rollingMail = parseRollingMailSummaryRequest(transcript);
+    if(!rollingMail && looksLikeRollingMailReport(transcript))return NextResponse.json({error:'unsupported_mail_report_scope',message:'Please clarify the mailbox, sender or subject filter. Unsupported filters are not ignored.'},{status:422});
     let rollingMailAnswer: string | null = null;
     let rollingMailDenied = false;
     if (rollingMail) {
       const registered = subject.permissions.has("email.read")
-        ? (await createEmailToolRuntime(organizationId, agentId)).registry.listForAgent(agentId)
+        ? (await createEmailToolRuntime(organizationId, agentId)).registry.listForAgent(agentId).filter(tool=>!frozenConfiguration||frozenConfiguration.snapshot.policy?.allowedTools.includes(tool.name))
         : [];
       const allowed = subject.permissions.has("email.read") && registered.some(tool =>
         tool.required_permission === "email.read"
@@ -116,60 +121,13 @@ export async function POST(request: Request) {
       } else {
         const toUtc = new Date().toISOString();
         const fromUtc = new Date(new Date(toUtc).getTime() - 24 * 60 * 60 * 1000).toISOString();
-        const rows = await query<RollingMailRow>(
-          `SELECT m.id, a.email_address AS account_email, m.from_email::text AS from_email,
-                  m.from_name, m.subject, m.received_at,
-                  LEFT(m.snippet, 260) AS snippet, LEFT(m.text_body, 420) AS text_body,
-                  COUNT(*) OVER ()::integer AS total_count
-             FROM email_messages m
-             JOIN email_accounts a ON a.id=m.email_account_id
-              AND a.organization_id=$1 AND a.deleted_at IS NULL
-             LEFT JOIN email_folders current_folder ON current_folder.id=m.folder_id
-              AND current_folder.email_account_id=m.email_account_id
-            WHERE m.organization_id=$1
-              AND m.received_at >= $3::timestamptz
-              AND m.received_at <= $4::timestamptz
-              AND m.is_draft IS FALSE AND m.is_sent IS FALSE
-              AND (NOT $7::boolean OR m.is_read IS FALSE)
-              AND ($5::text IS NULL OR strpos(lower(coalesce(m.from_email::text, '')), lower($5::text)) > 0
-                   OR strpos(lower(coalesce(m.from_name, '')), lower($5::text)) > 0)
-              AND ($6::text IS NULL OR strpos(lower(coalesce(m.subject, '')), lower($6::text)) > 0
-                   OR strpos(lower(coalesce(m.text_body, '')), lower($6::text)) > 0)
-              AND EXISTS (
-                SELECT 1 FROM agent_email_accounts b
-                JOIN agents bound_agent ON bound_agent.id=b.agent_id AND bound_agent.organization_id=$1
-                 WHERE b.email_account_id=a.id AND b.agent_id=$2
-                   AND b.role IN ('primary','read_only')
-              )
-              -- An IMAP Gmail email can have separate UIDs in INBOX and
-              -- All Mail. Count one logical Message-ID per account, favoring
-              -- INBOX, while retaining archived (All Mail-only) messages.
-              AND (a.provider <> 'imap_smtp'
-                OR NULLIF(BTRIM(m.internet_message_id), '') IS NULL
-                OR NOT EXISTS (
-                  SELECT 1 FROM email_messages peer
-                  LEFT JOIN email_folders peer_folder ON peer_folder.id=peer.folder_id
-                   AND peer_folder.email_account_id=peer.email_account_id
-                  WHERE peer.organization_id=m.organization_id
-                    AND peer.email_account_id=m.email_account_id
-                    AND peer.id<>m.id
-                    AND LOWER(BTRIM(peer.internet_message_id))=LOWER(BTRIM(m.internet_message_id))
-                    AND (
-                      CASE WHEN peer_folder.role='inbox' OR UPPER(peer_folder.provider_folder_id)='INBOX' THEN 0 ELSE 1 END,
-                      peer.id
-                    ) < (
-                      CASE WHEN current_folder.role='inbox' OR UPPER(current_folder.provider_folder_id)='INBOX' THEN 0 ELSE 1 END,
-                      m.id
-                    )
-                ))
-            ORDER BY m.received_at DESC, m.id DESC
-            LIMIT $8`,
-          [organizationId, agentId, fromUtc, toUtc,
-            rollingMail.sender ?? null, rollingMail.topic ?? null, rollingMail.unreadOnly, 5],
-        );
+        if(frozenConfiguration)await assertCurrentAgentToolAuthorization({organizationId,agentId,userId:subject.user.id,revocationGeneration:frozenConfiguration.revocationGeneration},'email.read');
+        const evidence = await getMailReportEvidence({organizationId,agentId,scope:rollingMail,fromUtc,toUtc,limit:5,readableAccountIds:frozenConfiguration?.snapshot.channels.email.filter(binding=>binding.role==='primary'||binding.role==='read_only').map(binding=>binding.accountId)});
+        if(frozenConfiguration)await assertCurrentAgentToolAuthorization({organizationId,agentId,userId:subject.user.id,revocationGeneration:frozenConfiguration.revocationGeneration},'email.read');
         rollingMailAnswer = formatRollingMailSummary(
-          rows.rows, rollingMail, fromUtc, toUtc, "rolling 24-hour UTC voice overview",
-        );
+          evidence.rows, rollingMail, fromUtc, toUtc, "rolling 24-hour UTC voice overview",
+        ) + `\nOldest mailbox sync: ${evidence.lastSyncAt ?? "unknown"}.`;
+
       }
     }
 
@@ -178,6 +136,11 @@ export async function POST(request: Request) {
     const permissions = [...subject.permissions];
     const explicitEmailAction = isExplicitEmailMutationRequest(transcript);
     const blockedWriteExplanation = deniedEmailWriteExplanation(transcript, subject.permissions);
+    let configurationTurn:AgentConfigurationTurn|undefined;
+    if(frozenConfiguration&&!rollingMailAnswer&&!blockedWriteExplanation){
+      configurationTurn=await prepareAgentConfigurationTurn({orgId:organizationId,agentId,kbId,userId:subject.user.id,sessionId});
+      frozenConfiguration=configurationTurn.configuration;
+    }
     // Keep JSON and SSE on the same host-trusted intent boundary. The JSON
     // fallback previously routed ordinary "hello" turns into email tools.
     const needsAuthorizedTools = explicitEmailAction || /\b(email|mail|inbox|draft|message|messages|sender|recipient|attachment|account|contact|whatsapp|send|reply|forward|archive|trash|delete|move|mark|read|unread|approve|schedule|appointment|thread|folder|those|them)\b/i.test(transcript);
@@ -187,7 +150,7 @@ export async function POST(request: Request) {
     const requiresEmailContentEvidence = !explicitEmailAction && /\b(emails?|mailbox|inbox|mail)\b/i.test(transcript);
     // Voice clients opt in to progressive text. The existing JSON contract
     // remains compatible for older clients. Conversations without a mailbox
-    // or action intent use the same Clara token stream as Chat; tool-sensitive
+    // or action intent use the same token stream as Chat; tool-sensitive
     // turns continue to use the bounded email tool executor and never skip
     // approval/mailbox controls just to display speculative text.
     if (request.headers.get("accept")?.includes("text/event-stream")) {
@@ -219,6 +182,7 @@ export async function POST(request: Request) {
               emit("done", { executionId, toolCalls: [], pendingApprovals: [], finishReason: "permission_denied", mode: "host-authorized-tools" });
             } else if (needsAuthorizedTools) {
               const result = await runEmailAgentTurn({
+                configurationTurn,
                 organizationId, agentId, messages: [{ role: "system", content: composeAssistantGuidance({
                   name: subject.user.name, email: subject.user.email,
                 }) }, { role: "user", content: transcript }], kbId,
@@ -235,10 +199,10 @@ export async function POST(request: Request) {
                 maxRounds: 4, maxToolCalls: 8,
                 requireEmailContentEvidence: requiresEmailContentEvidence,
                 onProgress: (phase) => emit("progress", { phase }),
-                onSafeReadOnlyFinal: explicitEmailAction ? undefined : async (completedHistory) => {
+                onSafeReadOnlyFinal: explicitEmailAction ? undefined : async (completedHistory,modelContext) => {
                   emit("status", { phase: "generating" });
-                  const finalStream = await claraRuntime.streamAuthorizedReadOnlyToolAnswer(
-                    { orgId: organizationId, agentId, kbId },
+                  const finalStream = await agentRuntime.streamAuthorizedReadOnlyToolAnswer(
+                    modelContext,
                     completedHistory,
                     request.signal,
                   );
@@ -261,10 +225,10 @@ export async function POST(request: Request) {
               if (!request.signal.aborted) {
                 // The callback already streamed the provider's final tokens.
                 // Writes/approvals/denials retain the canonical host answer.
-                const verifiedSummary = verifiedEmailToolSummary(result.toolCalls);
+                const verifiedSummary = currentTurnOperationAnswer(result.text, result.toolCalls.flatMap(call => call.operation ? [call.operation] : []), executionId, explicitEmailAction);
                 // A model answer is not evidence of delivery. Display the
                 // verified host result instead of unconfirmed send claims.
-                if (!result.streamed) emit("delta", { text: verifiedSummary || (explicitEmailAction ? unverifiedEmailActionExplanation() : result.text) });
+                if (!result.streamed) emit("delta", { text: verifiedSummary });
                 await saveAnswer(deliveredText);
                 emit("progress", { phase: "completed" });
                 emit("done", {
@@ -275,22 +239,27 @@ export async function POST(request: Request) {
               }
             } else {
               // Actual model-generated tokens arrive incrementally here.
-              const generation = await claraRuntime.createChatTurn({
+              const generation = await agentRuntime.createChatTurn({
                 orgId: organizationId, agentId, kbId, userId: subject.user.id,
                 sessionId, surface: "realtime", ragMode: "hybrid",
                 messages: [
                   { role: "system", content: "This streamed voice text is read-only. Never claim to have sent, approved, deleted, archived, moved or changed mail or other resources. Such actions require the host-authorized tool path." },
                   { role: "user", content: transcript },
                 ],
-              });
+              },configurationTurn?.agentContext);
+              let generated = "";
               for await (const token of generation.stream) {
                 if (request.signal.aborted) break;
-                emit("delta", { text: token });
+                generated += token;
               }
               if (!request.signal.aborted) {
                 // The host must not claim an answered voice turn when the
                 // model yielded no spoken-text tokens at all.
-                if (!deliveredText.trim()) throw new Error("AI provider returned an empty voice response.");
+                if (!generated.trim()) throw new Error("AI provider returned an empty voice response.");
+                const validated = userFacingChatAnswer(generated);
+                if (!validated) throw new Error("Voice model output was not a user-facing answer.");
+                const verifiedAnswer = currentTurnOperationAnswer(validated, [], executionId, explicitEmailAction);
+                emit("delta", { text: verifiedAnswer });
                 await saveAnswer(deliveredText);
                 emit("done", {
                   executionId, toolCalls: [], pendingApprovals: [],
@@ -306,8 +275,8 @@ export async function POST(request: Request) {
                 stage: needsAuthorizedTools ? "authorized_tools" : "model",
               });
               emit("error", { message: needsAuthorizedTools
-                ? "Clara could not complete the authorized mail-tool request. No email summary or action was confirmed. Check the connected mailbox, permissions and sync status before retrying."
-                : "Clara could not complete the voice answer. No external action was confirmed." });
+                ? "The assistant could not complete the authorized mail-tool request. No email summary or action was confirmed. Check the connected mailbox, permissions and sync status before retrying."
+                : "The assistant could not complete the voice answer. No external action was confirmed." });
             }
           } finally {
             controller.close();
@@ -342,16 +311,16 @@ export async function POST(request: Request) {
     }
 
     if (!needsAuthorizedTools) {
-      // Older JSON clients require the same normal Clara conversational path
+      // Older JSON clients require the same normal conversational path
       // as SSE clients. Tool-authorized actions remain in runEmailAgentTurn.
-      const generation = await claraRuntime.createChatTurn({
+      const generation = await agentRuntime.createChatTurn({
         orgId: organizationId, agentId, kbId, userId: subject.user.id,
         sessionId, surface: "realtime", ragMode: "hybrid",
         messages: [
           { role: "system", content: "This voice response is read-only. Never claim to have sent, approved, deleted, archived, moved or changed mail or other resources. Such actions require an explicit authorized host tool result. Never claim to have sent, approved or completed any side effect without such a result." },
           { role: "user", content: transcript },
         ],
-      });
+      },configurationTurn?.agentContext);
       let modelAnswer = "";
       for await (const token of generation.stream) {
         if (request.signal.aborted) break;
@@ -372,6 +341,7 @@ export async function POST(request: Request) {
     }
 
     const turn = await runEmailAgentTurn({
+      configurationTurn,
       organizationId,
       agentId,
       messages: [{ role: "system", content: composeAssistantGuidance({
@@ -397,8 +367,7 @@ export async function POST(request: Request) {
       maxToolCalls: 8,
     });
 
-    const verifiedSummary = verifiedEmailToolSummary(turn.toolCalls);
-    const voiceAnswer = verifiedSummary || (explicitEmailAction ? unverifiedEmailActionExplanation() : turn.text);
+    const voiceAnswer = currentTurnOperationAnswer(turn.text, turn.toolCalls.flatMap(call => call.operation ? [call.operation] : []), executionId, explicitEmailAction);
     await saveAnswer(voiceAnswer);
     return NextResponse.json({
       executionId,
@@ -409,6 +378,7 @@ export async function POST(request: Request) {
       actions: turn.toolCalls,
     });
   } catch (error) {
+    if(error instanceof MailReportScopeError)return NextResponse.json({error:'mailbox_not_available',message:error.message},{status:422});
     return authorizationErrorToResponse(error);
   }
 }

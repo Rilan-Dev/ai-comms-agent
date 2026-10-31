@@ -100,7 +100,7 @@ docker run --rm --network none \
   --volume "$ROOT/.env.example:/workspace/.env.example:ro" \
   "$WEB_IMAGE" sh -euc '
     pnpm -r typecheck
-    pnpm --filter @ai-comms-agent/clara-core test
+    pnpm --filter @ai-comms-agent/agent-core test
     # Run diagnostic suites independently: a failing web test must not kill
     # worker assertions or suppress its first reproducible failure.
     web_status=0

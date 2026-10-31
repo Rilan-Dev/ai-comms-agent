@@ -6,7 +6,7 @@ const read = (relative: string) => readFileSync(new URL(relative, import.meta.ur
 const voiceSession = read("../src/app/api/voice/session/route.ts");
 const voiceTurn = read("../src/app/api/voice/turn/route.ts");
 const workspace = read("../src/app/ai-voice/voice-workspace.tsx");
-const clara = read("../../../packages/clara-core/src/runtime.ts");
+const runtimeSource = read("../../../packages/agent-core/src/runtime.ts");
 const loop = read("../../../packages/email-agent-runtime/src/email-agent-loop.ts");
 const relay = read("../../../infra/voice-relay/src/server.mjs");
 const sarvamRelay = read("../../../infra/voice-relay/src/sarvam-relay.mjs");
@@ -23,7 +23,7 @@ describe("Sarvam live voice and grounded workspace mail", () => {
   });
 
   it("refuses Sarvam sessions without both the relay and an actual realtime descriptor", () => {
-    expect(clara).toContain('if (available && provider === "elevenlabs")');
+    expect(runtimeSource).toContain('if (available && provider === "elevenlabs")');
     expect(voiceSession).toContain('error: "sarvam_realtime_relay_required"');
     expect(voiceSession).toContain('error: "sarvam_realtime_unavailable"');
     expect(voiceSession).toContain('transport.transportMode !== "realtime"');
@@ -52,21 +52,10 @@ describe("Sarvam live voice and grounded workspace mail", () => {
     expect(voiceTurn).toContain('subject.permissions.has("email.read")');
     expect(voiceTurn).toContain("createEmailToolRuntime(organizationId, agentId)");
     expect(voiceTurn).toContain('tool.name === "email.search" || tool.name === "email.messages.list"');
-    expect(voiceTurn).toContain("m.organization_id=$1");
-    expect(voiceTurn).toContain("bound_agent.organization_id=$1");
-    expect(voiceTurn).toContain("b.role IN ('primary','read_only')");
-    expect(voiceTurn).toContain("m.received_at >= $3::timestamptz");
-    expect(voiceTurn).toContain("m.received_at <= $4::timestamptz");
-    expect(voiceTurn).toContain("COUNT(*) OVER ()::integer AS total_count");
-    expect(voiceTurn).toContain("peer.email_account_id=m.email_account_id");
-    expect(voiceTurn).toContain("peer.organization_id=m.organization_id");
-    expect(voiceTurn).toContain("LOWER(BTRIM(peer.internet_message_id))=LOWER(BTRIM(m.internet_message_id))");
-    expect(voiceTurn).toContain("peer_folder.role='inbox'");
-    expect(voiceTurn).toContain("current_folder.role='inbox'");
-    expect(voiceTurn).toContain("NULLIF(BTRIM(m.internet_message_id), '') IS NULL");
-    expect(voiceTurn).toContain("formatRollingMailSummary(");
-    expect(voiceTurn).toContain("LIMIT $8");
-    expect(voiceTurn).toContain("rollingMail.unreadOnly, 5");
+    expect(voiceTurn).toContain('getMailReportEvidence({organizationId,agentId,scope:rollingMail,fromUtc,toUtc,limit:5,readableAccountIds:');
+    expect(voiceTurn).toContain('evidence.rows, rollingMail, fromUtc, toUtc');
+    expect(voiceTurn).toContain('formatRollingMailSummary(');
+    // The shared query is exercised against PostgreSQL by mail-report-coverage.integration.test.ts.
     expect(voiceTurn).toContain('mode: "verified-local-mail"');
     expect(voiceTurn).toContain('source: rollingMailDenied ? "permission_gate" : "local_mail_database"');
   });

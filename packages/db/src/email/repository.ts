@@ -1,6 +1,7 @@
 import { query, withTransaction } from "../client";
 import { decryptCredential, encryptCredential } from "../security";
 import type { CapabilitySet, EmailAccount, EmailProviderType } from "@ai-comms-agent/shared";
+import {replyMessageId,replyReferences,applyMailboxSignature,normalizeMailboxSignature} from "@ai-comms-agent/shared";
 import { verifiedEmailHtml } from "@ai-comms-agent/shared";
 
 type Row = Record<string, unknown>;
@@ -42,6 +43,8 @@ function account(row: Row): EmailAccount {
     provider: row.provider as EmailProviderType,
     email_address: String(row.email_address),
     display_name: (row.display_name as string | null) ?? undefined,
+    signature_text: typeof (row.connection_config as Record<string, unknown>|null)?.mailSignatureText === "string"
+      ? String((row.connection_config as Record<string,unknown>).mailSignatureText) : null,
     capabilities: (row.capabilities ?? {}) as CapabilitySet,
     status: mappedStatus,
     last_sync_at: (row.last_synced_at as string | null) ?? undefined,
@@ -110,7 +113,7 @@ export class PostgresEmailAccountRepository {
     // types deduced for parameter". Splitting into two params avoids this.
     const r = await query<Row>(
       `UPDATE email_accounts
-       SET email_address = $1, display_name = $2, connection_config = $3::jsonb,
+       SET email_address = $1, display_name = $2, connection_config = $3::jsonb || jsonb_build_object('mailSignatureText',coalesce(connection_config->>'mailSignatureText','')),
            capabilities = $4::jsonb, status = $5,
            last_error = NULL, connected_at = CASE WHEN $6 = 'connected' THEN now() ELSE connected_at END,
            updated_at = now()
@@ -147,10 +150,21 @@ export class PostgresEmailAccountRepository {
 
   async listForOrganization(organizationId: string): Promise<EmailAccount[]> {
     const r = await query<Row>(
-      "SELECT * FROM email_accounts WHERE organization_id = $1 ORDER BY created_at DESC",
+      "SELECT * FROM email_accounts WHERE organization_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC",
       [organizationId],
     );
     return r.rows.map(account);
+  }
+
+  /** Dedicated, tenant-scoped user-authored signature; writes cannot overwrite OAuth config. */
+  async updateSignature(organizationId:string,accountId:string,signature:string):Promise<EmailAccount|null>{
+    const normalized=normalizeMailboxSignature(signature);
+    const r=await query<Row>(
+      `UPDATE email_accounts SET connection_config=jsonb_set(coalesce(connection_config,'{}'::jsonb),'{mailSignatureText}',to_jsonb($3::text),true),
+         updated_at=now()
+       WHERE organization_id=$1 AND id=$2 AND deleted_at IS NULL RETURNING *`,
+      [organizationId,accountId,normalized]);
+    return r.rows[0]?account(r.rows[0]):null;
   }
 
   async getConnectionConfig(id: string): Promise<Record<string, unknown>> {
@@ -528,6 +542,7 @@ export interface CreateLocalDraftInput {
   bcc?: string[];
   subject?: string;
   bodyText?: string;
+  replyToMessageId?: string;
 }
 
 export async function createLocalDraft(input: CreateLocalDraftInput): Promise<Record<string, unknown>> {
@@ -536,17 +551,34 @@ export async function createLocalDraft(input: CreateLocalDraftInput): Promise<Re
   // concurrent account deletion or reconnection cannot race these writes.
   return withTransaction(async (client) => {
   const accountResult = await client.query<Row>(
-    "SELECT id, email_address, status, capabilities FROM email_accounts WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL LIMIT 1 FOR SHARE",
+    "SELECT id, email_address, status, capabilities, connection_config->>'mailSignatureText' AS mail_signature FROM email_accounts WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL LIMIT 1 FOR SHARE",
     [input.emailAccountId, input.organizationId],
   );
   if (!accountResult.rows[0]) throw new Error("Email account was not found in this organization.");
+  const signedBody=applyMailboxSignature(input.bodyText??"",accountResult.rows[0].mail_signature);
+  if(signedBody.length>100000)throw new Error("Draft body including the saved signature exceeds 100000 characters.");
   const connected = accountResult.rows[0].status === "connected";
   const capabilities = accountResult.rows[0].capabilities as Record<string, unknown> | null;
   // Draft creation is an explicitly authorized write. Saving to the
   // connected provider's Drafts folder is part of that write, not sending.
   // The durable queue flag is committed with the draft in one transaction.
   const syncStatus = connected && capabilities?.drafts === true ? "queued" : "local_only";
-  const threadResult = await client.query<Row>(
+  let replyThreadId:string|null=null;
+  let inReplyTo:string|null=null;
+  let referencesHeader:string|null=null;
+  if(input.replyToMessageId){
+    const sourceResult=await client.query<Row>(
+      `SELECT m.thread_id,m.internet_message_id,m.references_header FROM email_messages m
+       JOIN email_threads t ON t.id=m.thread_id AND t.email_account_id=m.email_account_id AND t.organization_id=m.organization_id
+       WHERE m.id=$1 AND m.organization_id=$2 AND m.email_account_id=$3 AND m.is_draft=false
+         AND m.provider_message_id IS NOT NULL AND m.provider_message_id NOT LIKE 'local-draft:%' FOR SHARE OF m,t`,
+      [input.replyToMessageId,input.organizationId,input.emailAccountId]);
+    const source=sourceResult.rows[0];if(!source)throw Error('Reply source is unavailable in the selected mailbox');
+    inReplyTo=replyMessageId(source.internet_message_id);
+    referencesHeader=replyReferences(source.references_header,inReplyTo);
+    replyThreadId=String(source.thread_id);
+  }
+  const threadResult = replyThreadId?{rows:[{id:replyThreadId}]}:await client.query<Row>(
     `INSERT INTO email_threads (email_account_id, organization_id, subject, normalized_subject, participant_emails)
      VALUES ($1, $2, $3, lower(regexp_replace(coalesce($3,''), '^([[:space:]]*(re|fwd):[[:space:]]*)+', '', 'gi')), $4::citext[])
      RETURNING id`,
@@ -555,10 +587,10 @@ export async function createLocalDraft(input: CreateLocalDraftInput): Promise<Re
   const threadId = String(requiredRow(threadResult.rows[0], "draft thread").id);
   const messageResult = await client.query<Row>(
     `INSERT INTO email_messages
-      (email_account_id, organization_id, thread_id, provider_message_id, from_email, to_recipients, cc_recipients, bcc_recipients, subject, text_body, snippet, is_read, is_draft, is_sent, received_at, provider_draft_sync_status)
-     VALUES ($1, $2, $3, 'local-draft:' || gen_random_uuid()::text, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8, $9, left($9, 240), true, true, false, now(), $10)
-     RETURNING id, thread_id, email_account_id, from_email, to_recipients, cc_recipients, bcc_recipients, subject, text_body, is_draft, provider_draft_sync_status, updated_at`,
-    [input.emailAccountId, input.organizationId, threadId, accountResult.rows[0].email_address, JSON.stringify(input.to), JSON.stringify(input.cc ?? []), JSON.stringify(input.bcc ?? []), input.subject?.trim() || null, input.bodyText ?? "", syncStatus],
+      (email_account_id, organization_id, thread_id, provider_message_id, from_email, to_recipients, cc_recipients, bcc_recipients, subject, text_body, snippet, is_read, is_draft, is_sent, received_at, provider_draft_sync_status, in_reply_to, references_header)
+     VALUES ($1, $2, $3, 'local-draft:' || gen_random_uuid()::text, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8, $9, left($9, 240), true, true, false, now(), $10, $11, $12)
+     RETURNING id, thread_id, email_account_id, from_email, to_recipients, cc_recipients, bcc_recipients, subject, text_body, is_draft, provider_draft_sync_status, in_reply_to, references_header, updated_at`,
+    [input.emailAccountId, input.organizationId, threadId, accountResult.rows[0].email_address, JSON.stringify(input.to), JSON.stringify(input.cc ?? []), JSON.stringify(input.bcc ?? []), input.subject?.trim() || null, signedBody, syncStatus, inReplyTo, referencesHeader],
   );
   return requiredRow(messageResult.rows[0], "draft message");
   });
@@ -582,7 +614,23 @@ export async function updateLocalDraftForOrganization(
   values.push(messageId, organizationId);
   const draftIdParam = "$" + (values.length - 1);
   const organizationParam = "$" + values.length;
-  const r = await query<Row>(
+  return withTransaction(async client => {
+  // Take the same draft-first lock as proposal creation. A separate UPDATE
+  // statement then observes any review committed while this lock waited.
+  const locked = await client.query('SELECT id FROM email_messages WHERE id=$1 AND organization_id=$2 AND is_draft=true FOR UPDATE',[messageId,organizationId]);
+  if(!locked.rows.length)return null;
+  if(input.bodyText!==undefined){
+    const signatureRow=await client.query<Row>(`SELECT a.connection_config->>'mailSignatureText' AS mail_signature
+      FROM email_messages m JOIN email_accounts a ON a.id=m.email_account_id AND a.organization_id=m.organization_id
+      WHERE m.id=$1 AND m.organization_id=$2 AND a.deleted_at IS NULL`,[messageId,organizationId]);
+    if(!signatureRow.rows[0])return null;
+    const signed=applyMailboxSignature(input.bodyText,signatureRow.rows[0].mail_signature);
+    if(signed.length>100000)throw Error("Draft body including the saved signature exceeds 100000 characters.");
+    // bodyText was appended before the positional id + organization parameters.
+    const bodyIndex=sets.findIndex(set=>set.startsWith("text_body = "));
+    if(bodyIndex>=0)values[bodyIndex]=signed;
+  }
+  const r = await client.query<Row>(
     `UPDATE email_messages m SET ${sets.join(", ")}, provider_draft_sync_status = CASE
        WHEN m.provider_draft_sync_status IN ('syncing','error') THEN 'error'
        WHEN a.status = 'connected' AND a.capabilities->>'drafts' = 'true' THEN 'queued'
@@ -612,6 +660,7 @@ export async function updateLocalDraftForOrganization(
     values,
   );
   return r.rows[0] ?? null;
+  });
 }
 
 
@@ -712,6 +761,13 @@ export async function queueLocalDraftProviderSyncForOrganization(organizationId:
 
 /** At most one worker wins a queued draft, obtaining its immutable attempt token
  * and the current row contents atomically. */
+async function withReplyProviderThread(row:Row|null):Promise<Row|null>{
+  if(!row?.in_reply_to)return row;
+  const thread=await query<Row>('SELECT provider_thread_id FROM email_threads WHERE id=$1 AND organization_id=$2 AND email_account_id=$3',[row.thread_id,row.organization_id,row.email_account_id]);
+  if(!thread.rows[0])throw Error('Original reply thread is unavailable');
+  return {...row,reply_provider_thread_id:thread.rows[0].provider_thread_id};
+}
+
 export async function claimQueuedProviderDraftSyncForOrganization(organizationId: string, messageId: string) {
   const r = await query<Row>(
     `UPDATE email_messages m
@@ -733,7 +789,7 @@ export async function claimQueuedProviderDraftSyncForOrganization(organizationId
      RETURNING m.*`,
     [messageId, organizationId],
   );
-  return r.rows[0] ?? null;
+  return withReplyProviderThread(r.rows[0] ?? null);
 }
 
 export async function markDraftProviderSyncedForOrganization(
@@ -804,7 +860,7 @@ export async function getLocalDraftForOrganization(organizationId: string, messa
      LIMIT 1`,
     [messageId, organizationId],
   );
-  return r.rows[0] ?? null;
+  return withReplyProviderThread(r.rows[0] ?? null);
 }
 
 

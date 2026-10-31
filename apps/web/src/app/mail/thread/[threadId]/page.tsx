@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getMailThreadForOrganization } from "@ai-comms-agent/db";
+import { getMailThreadForOrganization, PostgresEmailAccountRepository } from "@ai-comms-agent/db";
 import { getAuthenticatedAppContext } from "@/lib/identity/repository";
 import { canReadOrganizationMail } from "@/lib/mail/mail-read-access";
 import { redirect } from "next/navigation";
@@ -28,7 +28,9 @@ export default async function MailThreadPage({ params }: { params: Promise<{ thr
     }
     const messages = await getMailThreadForOrganization(organizationId, threadId);
     if (!messages.length) return <State title="Thread not found" body="This thread is unavailable in the current organization." />;
-    return <ThreadClient organizationId={organizationId} threadId={threadId} initialMessages={messages as never[]} />;
+    const account = await new PostgresEmailAccountRepository().getById(String(messages[0]?.email_account_id ?? ""));
+    if (!account || account.organization_id !== organizationId) return <State title="Mailbox unavailable" body="This thread’s mailbox could not be loaded." />;
+    return <ThreadClient organizationId={organizationId} threadId={threadId} initialMessages={messages as never[]} capabilities={account.capabilities} />;
   } catch {
     return <State title="Thread unavailable" body="The persisted thread could not be loaded. Retry from the inbox." error />;
   }

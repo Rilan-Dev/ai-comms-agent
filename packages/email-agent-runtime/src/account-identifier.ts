@@ -44,9 +44,10 @@ export async function resolveAccountIdentifier(
        JOIN agents g ON g.id = b.agent_id
       WHERE g.id = $1 AND g.organization_id = $2 AND a.organization_id = $2
         AND a.deleted_at IS NULL
+        AND a.status = 'connected'
         AND lower(a.email_address) = lower($3)
-      LIMIT 1`,
+      LIMIT 2`,
     [agentId, organizationId, trimmed],
   );
-  return result.rows[0]?.id ? String(result.rows[0].id) : null;
+  return result.rows.length === 1 && result.rows[0]?.id ? String(result.rows[0].id) : null;
 }

@@ -17,6 +17,7 @@ test('C2 persisted selection, review and crash recovery',async t=>{
     const access=await import('../src/briefings/access.ts');
     const api=await import('../src/briefings/coverage.ts');
     const reads=await import('../src/briefings/repository.ts');
+    const canonical=await import('../src/briefings/canonical-sources.ts');
     const {publishBriefingItems}=await import('../src/briefings/selection.ts');
     app=await import('../src/client.ts');
     const p={organizationId:ids.orgA,userId:ids.userA,agentId:ids.agentA};
@@ -26,8 +27,48 @@ test('C2 persisted selection, review and crash recovery',async t=>{
     await q("UPDATE aca.email_messages SET received_at=now()-interval '5 days' WHERE id=$1",[ids.messageA]);
     const req=(key,extra={})=>({mode:'catch_up',mailboxIds:[ids.mailA],period:null,language:'en',requestKey:key,...extra});
     const prepare=key=>api.prepareBriefing(p,req(key));
+    await t.test('catch-up preparation waits for complete current provider read coverage',async()=>{
+      await q("UPDATE aca.email_sync_states SET provider_flags_started_at=now() WHERE email_account_id=$1",[ids.mailA]);
+      try {await assert.rejects(prepare('incomplete-read-coverage'),/read status/i);}
+      finally {await q("UPDATE aca.email_sync_states SET provider_flags_started_at=NULL WHERE email_account_id=$1",[ids.mailA]);}
+    });
     const sourceIds=async id=>(await api.listBriefingSources(p,id,null,200)).items.map(s=>s.messageId);
     const evidenceItem=(source,start=0,representation='complete')=>({id:'model-id',sourceIds:[source.messageId],title:'Obligation',summary:'Please act',reason:'Explicit request',priority:'high',deadline:null,confidence:'supported',suggestedAction:'reply',representation,snoozedUntil:null,evidence:[{sourceId:source.messageId,contentRevision:source.contentRevision,start,end:start+1,quote:'p',supports:'summary'}]});
+    await t.test('an old grant for a deleted mailbox does not block foreground tracking on the current inbox',async()=>{
+      await access.assignBriefingMailboxGrant(admin,ids.userA,ids.mailC,'previous mailbox');
+      await q('UPDATE aca.email_accounts SET deleted_at=now() WHERE id=$1',[ids.mailC]);
+      try {
+        await access.recordForegroundActivity(p);
+        assert.equal((await q('SELECT count(*)::int n FROM aca.user_mail_activity WHERE organization_id=$1 AND user_id=$2 AND agent_id=$3',[p.organizationId,p.userId,p.agentId])).rows[0].n,1);
+        assert.equal((await q('SELECT count(*)::int n FROM aca.mail_review_items')).rows[0].n,0);
+      } finally {
+        await q('UPDATE aca.email_accounts SET deleted_at=NULL WHERE id=$1',[ids.mailC]);
+        await access.revokeBriefingMailboxGrant(admin,ids.userA,ids.mailC,'test cleanup');
+      }
+    });
+    await t.test('first automatic catch-up includes unread mail from a ten-day absence',async()=>{
+      await q("UPDATE aca.email_messages SET received_at=now()-interval '10 days',created_at=now()-interval '10 days' WHERE id=$1",[ids.messageA]);
+      let m;
+      try {m=await prepare('ten-day-first-catchup');assert.equal(m.sourceCount,1);}
+      finally {
+        if(m)await q('DELETE FROM aca.summaries WHERE id=$1',[m.id]);
+        await q("UPDATE aca.email_messages SET received_at=now()-interval '5 days',created_at=now() WHERE id=$1",[ids.messageA]);
+      }
+    });
+    await t.test('worker discovery returns persisted principal and recovers only expired batch leases',async()=>{
+      const work=await import('../src/briefings/work.ts');
+      const m=await prepare('dispatch-discovery');
+      try {
+        assert.deepEqual((await work.listPendingBriefingWork()).find(item=>item.manifestId===m.id),{...p,manifestId:m.id,language:'en'});
+        const claim=await api.claimBriefingBatch(p,m.id,'active-worker');
+        assert.ok(!(await work.listPendingBriefingWork()).some(item=>item.manifestId===m.id));
+        await q("UPDATE aca.briefing_generation_batches SET lease_expires_at=now()-interval '1 second' WHERE id=$1",[claim.batchId]);
+        assert.ok((await work.listPendingBriefingWork()).some(item=>item.manifestId===m.id));
+        const before=(await q('SELECT updated_at FROM aca.briefing_generation_jobs WHERE summary_id=$1',[m.id])).rows[0].updated_at;
+        await work.deferBriefingWork({...p,organizationId:ids.orgB,manifestId:m.id,language:'en'});
+        assert.deepEqual((await q('SELECT updated_at FROM aca.briefing_generation_jobs WHERE summary_id=$1',[m.id])).rows[0].updated_at,before);
+      } finally {await q('DELETE FROM aca.summaries WHERE id=$1',[m.id]);}
+    });
     const finish=async(manifest,items,partial=false)=>{
       const claim=await api.claimBriefingBatch(p,manifest.id,'test-worker');
       assert.ok(claim);
@@ -73,6 +114,52 @@ test('C2 persisted selection, review and crash recovery',async t=>{
       assert.ok(selected.includes(created.find(m=>m.kind==='late').id));
       assert.ok(created.filter(m=>m.kind!=='late').every(m=>!selected.includes(m.id)));
       await q('DELETE FROM aca.email_messages WHERE id=ANY($1::uuid[])',[created.map(m=>m.id)]);
+    });
+    await t.test('catch-up excludes provider-read mail without acknowledging it for the user',async()=>{
+      await q('UPDATE aca.email_messages SET is_read=true WHERE id=$1',[ids.messageA]);
+      try {
+        const m=await prepare('provider-read-excluded');
+        assert.equal(m.sourceCount,0);
+        assert.equal((await q('SELECT count(*)::int n FROM aca.briefing_review_sources WHERE message_id=$1',[ids.messageA])).rows[0].n,0);
+      } finally { await q('UPDATE aca.email_messages SET is_read=false WHERE id=$1',[ids.messageA]); }
+    });
+    await t.test('provider read after selection prevents a catch-up generation claim',async()=>{
+      const m=await prepare('provider-read-before-claim');
+      await q('UPDATE aca.email_messages SET is_read=true WHERE id=$1',[ids.messageA]);
+      try { await assert.rejects(api.claimBriefingBatch(p,m.id,'stale-unread-worker'),/conflict/i); }
+      finally {
+        await q('UPDATE aca.email_messages SET is_read=false WHERE id=$1',[ids.messageA]);
+        await q('DELETE FROM aca.summaries WHERE id=$1',[m.id]);
+      }
+    });
+    await t.test('provider read after publication invalidates saved catch-up without erasing its history',async()=>{
+      const m=await prepare('provider-read-after-publication');
+      const source=(await api.listBriefingSources(p,m.id)).items[0];
+      await finish(m,[evidenceItem(source)]);
+      const saved=(await q('SELECT content_json FROM aca.summaries WHERE id=$1',[m.id])).rows[0].content_json;
+      await q('UPDATE aca.email_messages SET is_read=true WHERE id=$1',[ids.messageA]);
+      try {
+        assert.equal((await reads.getBriefing(p,m.id)).manifest.status,'invalidated');
+        assert.deepEqual((await reads.getBriefing(p,m.id)).items,[]);
+        assert.deepEqual((await q('SELECT content_json FROM aca.summaries WHERE id=$1',[m.id])).rows[0].content_json,saved);
+      } finally {
+        await q('UPDATE aca.email_messages SET is_read=false WHERE id=$1',[ids.messageA]);
+        await q('DELETE FROM aca.summaries WHERE id=$1',[m.id]);
+      }
+    });
+    await t.test('provider read during generation prevents publishing a stale catch-up',async()=>{
+      const m=await prepare('provider-read-before-publish');
+      const source=(await api.listBriefingSources(p,m.id)).items[0];
+      const claim=await api.claimBriefingBatch(p,m.id,'stale-publication-worker');
+      await q('UPDATE aca.email_messages SET is_read=true WHERE id=$1',[ids.messageA]);
+      try {
+        await assert.rejects(canonical.loadCanonicalBriefingSources(p,claim),/source.*changed/i);
+        await assert.rejects(api.completeBriefingBatch(p,claim,[evidenceItem(source)],false),/conflict/i);
+        assert.deepEqual((await q('SELECT content_json FROM aca.summaries WHERE id=$1',[m.id])).rows[0].content_json,[]);
+      } finally {
+        await q('UPDATE aca.email_messages SET is_read=false WHERE id=$1',[ids.messageA]);
+        await q('DELETE FROM aca.summaries WHERE id=$1',[m.id]);
+      }
     });
     await t.test('upstream publication compatibility registers grounded output through the lease boundary',async()=>{
       const m=await prepare('compat-publication');const source=(await api.listBriefingSources(p,m.id)).items[0];
@@ -124,7 +211,8 @@ test('C2 persisted selection, review and crash recovery',async t=>{
       await q('UPDATE aca.email_messages SET is_read=true WHERE id=$1',[ids.messageA]);
       assert.equal((await prepare('metadata-only')).sourceCount,0);
       await q("INSERT INTO aca.email_messages(organization_id,email_account_id,thread_id,text_body,received_at) VALUES($1,$2,$3,'reply',now())",[ids.orgA,ids.mailA,ids.threadA]);
-      const next=await prepare('new-reply');assert.equal(next.sourceCount,2);
+      const next=await prepare('new-reply');assert.equal(next.sourceCount,1);
+      assert.ok(!(await sourceIds(next.id)).includes(ids.messageA));
       await assert.rejects(api.acknowledgeBriefingItems(p,first.id,stableIds,first.scope.scopeVersion),/conflict/i);
     });
     await t.test('late committed old mail remains eligible; earlier manifest never changes',async()=>{

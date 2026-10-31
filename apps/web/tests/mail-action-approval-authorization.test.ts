@@ -26,7 +26,7 @@ describe("FIX-01 separate request permission from privileged human email approva
   });
   it("a request still needs same-tenant draft, valid recipients, a verified review, and no provider send", () => {
     expect(post).toContain("assertSameOrigin(request)");
-    expect(post).toContain("getMailMessageForOrganization(organizationId, draftId)");
+    expect(post).toContain("getLocalDraftForOrganization(organizationId, draftId)");
     expect(post).toContain("String(draft.email_account_id) !== emailAccountId");
     expect(post).toContain("const to = validRecipients(draft.to_recipients)");
     expect(post).toContain("if (to.length === 0 || to.length !== (Array.isArray(draft.to_recipients)");

@@ -84,7 +84,7 @@ describe("Mail Threads interaction and realtime Chat usability", () => {
     expect(chat).toContain("composerRef.current?.focus()");
     expect(chat).toContain("ref={composerRef}");
     expect(chat).toContain("setVoiceOpen(true)");
-    expect(chat).toContain('onReturnToChat={() => setVoiceOpen(false)}');
+    expect(chat).toContain('onReturnToChat={() => { void returnFromVoice(); }}');
     expect(chat).toContain("flex-wrap items-center justify-between");
   });
 });

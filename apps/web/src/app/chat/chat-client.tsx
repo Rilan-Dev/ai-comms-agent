@@ -2,17 +2,32 @@
 import type React from "react";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {chatRequestFailure} from '@/lib/chat/request-failure';
+import {READ_ONLY_CHAT_SHORTCUTS as QUICK_ACTION_PROMPTS,resolveChatAutoRunPrompt} from '@/lib/chat/quick-actions';
 import { AudioLines, Bot, MailPlus, Send, Sparkles, User } from "lucide-react";
 import dynamic from "next/dynamic";
 import { readSseEvents } from "@/lib/streaming/sse";
 import { agentActivityLabel, safeActivityPhase, type AgentActivityPhase } from "@/lib/ai/activity-progress";
 import { EMAIL_PERMISSION_PRESETS, EMAIL_PERMISSION_LABELS, REGISTERED_EMAIL_POLICY_NAMES, emailPermissionPresetSelection, summarizeEmailPermissionChanges } from "@/lib/agents/email-permission-presets";
+import {describeEffectiveAgentPolicy} from '@/lib/agents/effective-policy';
+import {configurationEditorUrl,saveConfigurationForm,type ConfigurationFormContext} from '@/lib/agents/configuration-editor-client';
 import { explicitComposeRecipient, parseTestEmailComposeRequest } from "@/lib/mail/test-email-compose-intent";
 import { assistantEmailPreview } from "@/lib/mail/assistant-email-preview";
 import { selectComposeSender, signatureFromProfile, withProfileSignature, type ComposeProfile } from "@/lib/mail/compose-identity";
+import {applyMailboxSignature} from "@ai-comms-agent/shared";
 import { parseAssistantChecklistLine } from "@/lib/chat/interactive-replies";
 import { AssistantChecklist, SuggestedNextActions, type EmailWorkflowState } from "./interactive-message-controls";
+import {WhatsAppWorkflowCard} from './whatsapp-workflow-card';
+import {readWhatsAppWidget} from '@/lib/chat/whatsapp-workflow-contract';
 import { InlineMailApprovalReview } from "./chat-inline-mail-approval";
+import {ChatMailResult} from './chat-mail-result';
+import {ChatMailInbox} from './chat-mail-inbox';
+import {chatMailReferences,type ChatMailReference} from '@/lib/chat/mail-result-references';
+import {continuationForSavedMessage,continuationForTurn} from '@/lib/chat/mail-whatsapp-continuation';
+import { parseBusinessMailReport, safeChatLink } from "@/lib/chat/business-report-display";
+import { BusinessMailReport } from "./business-mail-report";
+import { AnswerActions } from "./answer-actions";
+import { MentionPicker } from "@/components/mentions/mention-picker";
 import type { AgentPolicy } from "@ai-comms-agent/shared";
 
 // Defer microphone and vendor transport code until the user requests voice.
@@ -27,20 +42,16 @@ const DEFAULT_COMPOSE_BODY = "Hi,\n\nThis is a test email from my workspace.\n\n
  * instant local-database fast path (unread count / unread summary), the
  * third by the rolling 24-hour report fast path — no model round-trips.
  */
-const QUICK_ACTION_PROMPTS = [
-  "How many unread emails do I have?",
-  "Summarize my unread emails",
-  "Summarize my emails from the last 24 hours",
-] as const;
 type ComposePermissionHints = {
   userCanWrite: boolean; agentCanDraft: boolean; agentCanRequestApproval: boolean; directSend: false;
 };
 type Agent = { id: string; name: string; status: string };
-type Message = { id: string; conversationId: string; role: string; content: string; createdAt: string };
+type Message = { id: string; conversationId: string; role: string; content: string; createdAt: string; contentJson?:unknown; continuationRef?:string; mailReferences?:ChatMailReference[] };
 type ChatSession = { id: string; agentId: string; organizationId: string; subject: string | null; lastMessageAt: string | null; updatedAt: string };
 
 export function ChatClient({
   organizationId,
+  currentUserId,
   agents,
   initialAgentId,
   initialConversationId,
@@ -48,28 +59,34 @@ export function ChatClient({
   initialConversations,
   catchUpEnabled = false,
   autoRunPrompt = "",
+  configurationRevisionsEnabled=false,
 }: {
   organizationId: string;
+  currentUserId: string;
   agents: Agent[];
   initialAgentId: string;
   initialConversationId: string;
   initialMessages: Message[];
   initialConversations: ChatSession[];
   catchUpEnabled?: boolean;
+  configurationRevisionsEnabled?:boolean;
   /** Sent automatically once on mount (Overview deep links). */
   autoRunPrompt?: string;
 }) {
   const [agentId, setAgentId] = useState(initialAgentId);
   const [conversationId, setConversationId] = useState(initialConversationId);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [consumedContinuations,setConsumedContinuations]=useState<string[]>([]);
   const [conversations, setConversations] = useState<ChatSession[]>(initialConversations);
   const [newChatBusy, setNewChatBusy] = useState(false);
   const [chatHistoryNotice, setChatHistoryNotice] = useState("");
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  const [signInNeeded,setSignInNeeded]=useState(false);
   const [mailComposerOpen, setMailComposerOpen] = useState(false);
+  const [mailInboxOpen,setMailInboxOpen]=useState(false);
   const [composeMailboxes, setComposeMailboxes] = useState<Array<{
-    id: string; address: string; canDraft: boolean; canRequestApproval: boolean;
+    id: string; address: string; canDraft: boolean; canRequestApproval: boolean; signatureText:string|null;
     blockers: Array<{code:string;message:string}>;
   }>>([]);
   const [composeAccount, setComposeAccount] = useState("");
@@ -88,7 +105,9 @@ export function ChatClient({
   const [composeDiscoveryFailed, setComposeDiscoveryFailed] = useState(false);
   const [mailPermissionOpen, setMailPermissionOpen] = useState(false);
   const [mailPolicy, setMailPolicy] = useState<AgentPolicy | null>(null);
+  const [mailConfigurationContext,setMailConfigurationContext]=useState<(ConfigurationFormContext&{agentId:string})|null>(null);
   const [mailToolSelection, setMailToolSelection] = useState<string[]>([]);
+  const selectedMailPolicy=describeEffectiveAgentPolicy({allowedTools:mailToolSelection,autonomousSend:mailPolicy?.securityPolicy?.autonomous_send===true});
   const [mailPermissionBusy, setMailPermissionBusy] = useState(false);
   const [mailPermissionNotice, setMailPermissionNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -112,6 +131,8 @@ export function ChatClient({
   // Send and cross-conversation navigation in the same event turn.
   const chatTurnInFlightRef = useRef(false);
   const agentContextEpochRef = useRef(0);
+  const chatAbortRef=useRef<AbortController|null>(null);
+  useEffect(()=>()=>{agentContextEpochRef.current++;chatAbortRef.current?.abort();},[organizationId]);
   // A returned draft/action ID may only be attached to the same review revision.
   const composeRevisionRef = useRef(0);
   const composeInFlightRef = useRef(false);
@@ -147,9 +168,10 @@ export function ChatClient({
   // must not loop or duplicate the turn.
   const autoRunDoneRef = useRef(false);
   useEffect(() => {
-    if (autoRunDoneRef.current || !autoRunPrompt.trim() || !activeAgent) return;
+    const prompt=resolveChatAutoRunPrompt(autoRunPrompt);
+    if (autoRunDoneRef.current || !prompt || !activeAgent) return;
     autoRunDoneRef.current = true;
-    void sendChatMessage(autoRunPrompt.trim());
+    void sendChatMessage(prompt);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeAgent, autoRunPrompt]);
 
@@ -164,7 +186,7 @@ export function ChatClient({
   useEffect(() => {
     const pane = messageScrollRef.current;
     if (pane) pane.scrollTo({ top: pane.scrollHeight, behavior: "smooth" });
-  }, [messages.length, busy, mailComposerOpen, composeDraftId, composeActionId]);
+  }, [messages.length, busy, mailComposerOpen, mailInboxOpen, composeDraftId, composeActionId]);
 
   // A temporary conversation dialog opens only on request at all widths.
   useEffect(() => {
@@ -244,6 +266,7 @@ export function ChatClient({
       setComposeNotice("");
       setMailPermissionOpen(false);
       setMailPolicy(null);
+    setMailConfigurationContext(null);
       setMailToolSelection([]);
       setMailPermissionNotice("");
       setActivitySteps([]);
@@ -348,7 +371,7 @@ export function ChatClient({
         throw new Error(data.message ?? "The bound mailbox could not be loaded.");
       }
       const mailboxes = data.mailboxes as Array<{
-        id:string; address:string; canDraft:boolean; canRequestApproval:boolean;
+        id:string; address:string; canDraft:boolean; canRequestApproval:boolean;signatureText:string|null;
         blockers:Array<{code:string;message:string}>;
       }>;
       setComposeMailboxes(mailboxes);
@@ -373,8 +396,13 @@ export function ChatClient({
         ? { name: typeof data.profile.name === "string" ? data.profile.name : null,
             email: data.profile.email } as ComposeProfile : null;
       setComposeProfile(profile);
-      if (profile) setComposeBody(current => current === DEFAULT_COMPOSE_BODY
-        ? withProfileSignature(current, profile) : current);
+      if (selectedMailbox?.signatureText) {
+        setComposeBody(current=>current===DEFAULT_COMPOSE_BODY
+          ? applyMailboxSignature(current,selectedMailbox.signatureText):current);
+      }
+      // No saved mailbox signature: leave the body as authored; Clara may
+      // construct a closing instead of automatically importing a profile name.
+      // The explicit "Use my profile signature" button remains optional.
       if (recipient) {
         setComposeTo(recipient);
         // Do not discard the original request if the readiness GET fails.
@@ -408,6 +436,12 @@ export function ChatClient({
   }
 
   function useProfileSignature() {
+    const mailbox=composeMailboxes.find(item=>item.id===composeAccount);
+    if(mailbox?.signatureText){
+      setComposeBody(current=>applyMailboxSignature(current,mailbox.signatureText));
+      invalidateComposeReview();
+      return;
+    }
     const signature = signatureFromProfile(composeProfile);
     if (!signature) {
       setComposeNotice("Your signed-in profile has no saved name. Enter your name in the editable email sign-off; the agent will not guess it.");
@@ -450,6 +484,9 @@ export function ChatClient({
           throw new Error("Draft save was not confirmed. Retry after checking the mailbox.");
         }
         setComposeDraftId(data.draftId);
+        // Show exactly what was persisted with the currently selected
+        // mailbox's signature, never the pre-save model/profile preview.
+        if(typeof data.bodyText==="string")setComposeBody(data.bodyText);
       } else {
         if (data.status !== "pending_approval" || typeof data.actionId !== "string" || !data.actionId) {
           throw new Error("The approval request was not confirmed. Retry without sending.");
@@ -476,16 +513,26 @@ export function ChatClient({
     }
     setMailPermissionBusy(true);
     setMailPermissionNotice("");
+    const requestedAgentId=activeAgent.id,requestedEpoch=agentContextEpochRef.current;
     try {
+      if(configurationRevisionsEnabled){
+        const response=await fetch(configurationEditorUrl({organizationId,agentId:requestedAgentId}),{cache:'no-store'});const data=await response.json();
+        if(requestedEpoch!==agentContextEpochRef.current)return;
+        if(!response.ok)throw Error(data.message??'Saved permissions could not load.');
+        const candidate=data.draft??data.active;if(!candidate.snapshot.policy)throw Error('Create a policy in this agent’s settings first.');
+        setMailConfigurationContext({agentId:requestedAgentId,activeRevisionId:data.active.id,draftRevisionId:data.draft?.id??null});
+        setMailPolicy({...candidate.snapshot.policy,id:requestedAgentId,agentId:requestedAgentId,createdAt:'',updatedAt:''});setMailToolSelection(candidate.snapshot.policy.allowedTools);setMailPermissionOpen(true);return;
+      }
       const response = await fetch("/api/agents/" + encodeURIComponent(activeAgent.id)
         + "/policy?organizationId=" + encodeURIComponent(organizationId), { cache: "no-store" });
       const data = await response.json();
+      if(requestedEpoch!==agentContextEpochRef.current)return;
       if (!response.ok) throw new Error(data.message ?? "Administrator access is required to change agent permissions.");
       setMailPolicy(data.policy);
       setMailToolSelection(data.policy.allowedTools);
       setMailPermissionOpen(true);
     } catch (error) {
-      setMailPermissionNotice(error instanceof Error ? error.message : "Permissions are unavailable.");
+      if(requestedEpoch===agentContextEpochRef.current)setMailPermissionNotice(error instanceof Error ? error.message : "Permissions are unavailable.");
     } finally {
       setMailPermissionBusy(false);
     }
@@ -499,10 +546,18 @@ export function ChatClient({
     const { added, removed, confirmation } =
       summarizeEmailPermissionChanges(mailPolicy.allowedTools, mailToolSelection);
     if (!added.length && !removed.length) { setMailPermissionNotice("No changes to save."); return; }
-    if (!window.confirm(confirmation)) return;
+    if (!configurationRevisionsEnabled&&!window.confirm(confirmation)) return;
     setMailPermissionBusy(true);
     setMailPermissionNotice("");
+    const requestedAgentId=activeAgent.id,requestedEpoch=agentContextEpochRef.current;
     try {
+      if(configurationRevisionsEnabled){
+        if(mailConfigurationContext?.agentId!==requestedAgentId)throw Error('Load this agent’s saved permissions before saving.');
+        const result=await saveConfigurationForm({organizationId,agentId:requestedAgentId},mailConfigurationContext,{policy:{securityPolicy:mailPolicy.securityPolicy,rateLimits:mailPolicy.rateLimits,allowedTools:mailToolSelection,allowedSenders:mailPolicy.allowedSenders,blockedSenders:mailPolicy.blockedSenders}});
+        if(requestedEpoch!==agentContextEpochRef.current)return;
+        setMailConfigurationContext({...mailConfigurationContext,draftRevisionId:result.draft.id===mailConfigurationContext.activeRevisionId?null:result.draft.id});
+        setMailPolicy(current=>({...current!,...result.draft.snapshot.policy}));setMailToolSelection(result.draft.snapshot.policy.allowedTools);setMailPermissionNotice('Permissions draft saved. Open Full policy and mailbox setup to review and apply. Current Chat permissions have not changed.');return;
+      }
       const response = await fetch("/api/agents/" + encodeURIComponent(activeAgent.id) + "/policy", {
         method: "PATCH", headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -526,7 +581,7 @@ export function ChatClient({
       setMailToolSelection(data.policy.allowedTools);
       setMailPermissionNotice("Permissions saved for future chat and voice turns. No email was sent.");
     } catch (error) {
-      setMailPermissionNotice(error instanceof Error ? error.message : "Permissions could not be saved.");
+      if(requestedEpoch===agentContextEpochRef.current)setMailPermissionNotice(error instanceof Error ? error.message : "Permissions could not be saved.");
     } finally { setMailPermissionBusy(false); }
   }
 
@@ -617,7 +672,7 @@ export function ChatClient({
    * (no typing required). Shares the exact turn pipeline of sendMessage so
    * in-flight guards, optimistic messages, and approval semantics match.
    */
-  async function sendChatMessage(content: string) {
+  async function sendChatMessage(content: string,continuationRef?:string) {
     if (agentSwitchInFlightRef.current) return;
     if (chatTurnInFlightRef.current || newChatInFlightRef.current || voiceOpen || composeInFlightRef.current || mailPermissionBusy) return;
     if (!content || busy || newChatBusy || !activeAgent) return;
@@ -628,7 +683,10 @@ export function ChatClient({
     // Claim before React sees setBusy(true): Enter and button clicks can
     // otherwise submit twice, or race a newly requested conversation.
     chatTurnInFlightRef.current = true;
-    setDraft("");
+    const turnEpoch=agentContextEpochRef.current;
+    const turnController=new AbortController();chatAbortRef.current=turnController;
+    const turnTimeout=setTimeout(()=>turnController.abort(),180000);
+    if(!continuationRef)setDraft("");
     setBusy(true);
     setResponseStarted(false);
     setActivity("Preparing response…");
@@ -645,19 +703,26 @@ export function ChatClient({
       const response = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "content-type": "application/json", accept: "text/event-stream" },
-        body: JSON.stringify({ organizationId, agentId: activeAgent.id, conversationId, message: content }),
+        signal:turnController.signal,
+        body: JSON.stringify({ organizationId, agentId: activeAgent.id, conversationId, message: content,...(continuationRef?{continuationRef}:{}) }),
       });
-      if (!response.ok || !response.body) throw new Error((await response.text()) || "Chat request failed");
+      if (!response.ok || !response.body) {
+        const failure=chatRequestFailure(response.status,await response.json().catch(()=>null));
+        if(failure.signInNeeded){setSignInNeeded(true);setDraft(content);setMessages(current=>current.filter(message=>message.id!==optimisticId));}
+        setMessages(current=>[...current,{id:'error-'+Date.now(),conversationId,role:'system',content:failure.message,createdAt:new Date().toISOString()}]);
+        return;
+      }
 
       const assistantId = "local-assistant-" + Date.now();
       let assistant = "";
       let completed = false;
       for await (const event of readSseEvents(response.body)) {
+        if(turnEpoch!==agentContextEpochRef.current || turnController.signal.aborted)return;
         const payload = JSON.parse(event.data) as {
-          text?: string; conversationId?: string; message?: string; phase?: string;
+          text?: string; conversationId?: string; message?: string; phase?: string; toolCalls?:unknown; mailWhatsAppTask?:unknown; messageId?:string;widget?:unknown;
         };
         if (event.event === "error") throw new Error(payload.message || "AI generation failed.");
-        if (payload.conversationId) setConversationId(payload.conversationId);
+        if (payload.conversationId && payload.conversationId!==conversationId) throw new Error("Conversation changed. Reload its saved status before continuing.");
         if (event.event === "progress") {
           const phase = safeActivityPhase(payload.phase);
           if (phase) {
@@ -674,6 +739,12 @@ export function ChatClient({
         }
         if (event.event === "done") {
           completed = true;
+          const mailReferences=chatMailReferences(payload.toolCalls);
+          if(mailReferences.length) setMessages(current=>current.map(message=>message.id===assistantId?{...message,mailReferences}:message));
+          const nextContinuation=continuationForTurn(payload.mailWhatsAppTask);
+          if(nextContinuation)setMessages(current=>current.map(message=>message.id===assistantId?{...message,continuationRef:nextContinuation}:message));
+          if(payload.messageId&&readWhatsAppWidget({ui:payload.widget}))setMessages(current=>current.map(message=>message.id===assistantId?{...message,id:payload.messageId!,contentJson:{ui:payload.widget}}:message));
+          if(continuationRef)setConsumedContinuations(current=>[...new Set([...current,continuationRef])]);
           setActivitySteps((steps) => [...steps, "completed" as AgentActivityPhase].slice(-10));
           break;
         }
@@ -694,12 +765,17 @@ export function ChatClient({
       }
       if (!completed) throw new Error("The AI response stopped before completion. The partial answer above may be incomplete.");
     } catch (error) {
-      setMessages((current) => [...current, { id: "error-" + Date.now(), conversationId, role: "system", content: error instanceof Error ? error.message : "Chat failed", createdAt: new Date().toISOString() }]);
+      if(turnEpoch!==agentContextEpochRef.current)return;
+      setMessages((current) => [...current, { id: "error-" + Date.now(), conversationId, role: "system", content: error instanceof Error ? error.message + " Check the saved draft or approval status before repeating an action." : "The response could not be confirmed. Check saved action status before retrying.", createdAt: new Date().toISOString() }]);
     } finally {
+      clearTimeout(turnTimeout);
+      if(chatAbortRef.current===turnController)chatAbortRef.current=null;
+      if(turnEpoch===agentContextEpochRef.current){
       chatTurnInFlightRef.current = false;
       setBusy(false);
       setResponseStarted(false);
       setActivity("");
+      }
     }
   }
 
@@ -711,18 +787,18 @@ export function ChatClient({
     composeActionId ? "pending_approval" : composeDraftId ? "draft_saved" : "not_saved";
 
   return (
-    <main className="flex h-[calc(100dvh-64px)] min-h-0 min-w-0 flex-col overflow-hidden bg-background">
-      <header className="relative z-10 shrink-0 border-b bg-background/95 px-3 py-3 backdrop-blur sm:px-5">
+    <main className="theme-chat flex h-[calc(100dvh-64px)] min-h-0 min-w-0 flex-col overflow-hidden bg-background">
+      <header className="relative z-10 shrink-0 border-b bg-card/95 px-3 py-3 backdrop-blur sm:px-5">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground"><Bot size={18} /></span>
             <div>
-              <p className="text-sm font-semibold">{activeAgent?.name ?? "Clara"}</p>
+              <p className="text-sm font-semibold">{activeAgent?.name ?? "Assistant"}</p>
               <p className="text-[11px] text-muted-foreground">{busy ? (activity || "Thinking…") : "Ready"}</p>
             </div>
           </div>
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <button ref={historyTriggerRef} type="button" className="rounded-md border px-3 py-2 text-xs font-semibold hover:bg-secondary"
+            <button ref={historyTriggerRef} type="button" className="rounded-xl border bg-card px-3 py-2 text-xs font-semibold hover:bg-secondary"
               aria-label="Show conversations" aria-controls="chat-conversation-sidebar" aria-expanded={chatHistoryOpen}
               onClick={() => setChatHistoryOpen(true)}>Chats</button>
             <button type="button" onClick={() => setVoiceOpen(true)} disabled={busy || agentSwitchBusy || composeBusy || mailPermissionBusy || voiceOpen}
@@ -738,6 +814,7 @@ export function ChatClient({
           </div>
         </div>
       </header>
+      <p role="status" aria-live="polite" className="sr-only">{busy ? "The assistant is preparing a response." : messages.at(-1)?.role === "assistant" ? "The response is ready." : messages.at(-1)?.role === "system" ? "The assistant could not complete the response." : ""}</p>
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {chatHistoryOpen && (
@@ -758,7 +835,7 @@ export function ChatClient({
             <div className="shrink-0 px-3 pt-3">
               <button type="button" onClick={() => void startNewChat()}
                 disabled={busy || newChatBusy || agentSwitchBusy || composeBusy || mailPermissionBusy || voiceOpen}
-                className="w-full rounded-lg border border-primary/25 bg-primary/5 px-3 py-2.5 text-left text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-50">
+                className="w-full rounded-xl border border-primary/25 bg-primary/10 px-3 py-2.5 text-left text-xs font-semibold text-primary hover:bg-primary/15 disabled:opacity-50">
                 {newChatBusy ? "Creating…" : "+ New chat"}
               </button>
             </div>
@@ -793,12 +870,12 @@ export function ChatClient({
         </div>
       ) : (
       <section className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
-        <div ref={messageScrollRef} role="log" aria-live="polite" className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto overscroll-contain py-6">
+        <div ref={messageScrollRef} role="log" aria-label="Conversation messages" aria-live="polite" className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto overscroll-contain py-6">
           {messages.length === 0 ? (
             <div className="grid min-h-[50vh] place-items-center text-center">
               <div className="max-w-md">
                 <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary text-primary-foreground"><Sparkles size={24} /></div>
-                <h2 className="mt-4 text-lg font-semibold">Ask Clara anything</h2>
+                <h2 className="mt-4 text-lg font-semibold">Ask anything</h2>
                 <p className="mt-1.5 text-sm text-muted-foreground">Summarize your inbox, find important emails, or ask about recent messages.</p>
                 <div className="mt-5 grid gap-2">
                   {catchUpEnabled ? <a href="/catch-up" className="mb-3 inline-flex items-center rounded-lg border border-primary/25 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/10">Catch up on my mail →</a> : null}
@@ -808,15 +885,20 @@ export function ChatClient({
                 </div>
               </div>
             </div>
-          ) : messages.map((message) => (
+          ) : messages.map((message) => (<div key={message.id}>
             <MessageBubble key={message.id} role={message.role} content={message.content} messageId={message.id}
-              showNextActions={message.role === "assistant" && message.id === latestAssistantId}
+              showNextActions={message.role === "assistant" && message.id === latestAssistantId&&!readWhatsAppWidget(message.contentJson)}
               userRequest={latestUserRequest}
               disabled={interactiveControlsDisabled} onPrepare={prepareInteractivePrompt}
               emailWorkflowState={emailWorkflowState}
               onComposeEmail={openInlineEmailComposer}
               onRequestEmailApproval={requestInlineEmailApproval} />
+            {(()=>{const widget=readWhatsAppWidget(message.contentJson);return message.role==='assistant'&&widget&&widget.ownerId===currentUserId?<WhatsAppWorkflowCard key={message.id} messageId={message.id} organizationId={organizationId} agentId={agentId} conversationId={conversationId} initial={widget} disabled={interactiveControlsDisabled}/>:null;})()}
+            {message.mailReferences?.map(reference=><ChatMailResult key={`${reference.kind}:${reference.id}`} reference={reference} organizationId={organizationId} agentId={agentId}/>)}
+            {(()=>{const ref=message.continuationRef??continuationForSavedMessage(message,currentUserId,agentId,Date.now());return ref&&!consumedContinuations.includes(ref)?<div className="mt-2"><button type="button" disabled={interactiveControlsDisabled} onClick={()=>void sendChatMessage('Continue saved WhatsApp review',ref)} className="rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-50">Continue WhatsApp review</button><p className="mt-1 text-xs text-muted-foreground">Uses the saved summary and asks for human review before sending.</p></div>:null;})()}
+            </div>
           ))}
+          {mailInboxOpen&&!voiceOpen&&!agentSwitchBusy&&<ChatMailInbox key={`${organizationId}:${agentId}`} organizationId={organizationId} agentId={agentId} onClose={()=>setMailInboxOpen(false)}/>}
           {agentSwitchNotice && <p role="alert" className="rounded-lg border border-destructive/30 p-3 text-xs text-destructive">{agentSwitchNotice}</p>}
       {mailComposerOpen && !voiceOpen && !agentSwitchBusy && (
         <section ref={mailComposerReviewRef} tabIndex={-1} aria-label="Email review in this Chat conversation" className="w-full min-w-0 rounded-2xl border bg-card px-4 py-4 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-primary">
@@ -838,17 +920,19 @@ export function ChatClient({
               <span>Agent send-request permission: {composePermissions.agentCanRequestApproval ? "Enabled" : "Disabled"}</span>
               <span>Send: human approval required; never automatic</span>
             </div>
-            <p className="mt-1 text-muted-foreground">Actual draft and approval actions also require the selected mailbox's capabilities. Permission choices do not grant access automatically.</p>
+            <p className="mt-1 text-muted-foreground">Actual draft and approval actions also require the selected mailbox&apos;s capabilities. Permission choices do not grant access automatically.</p>
           </div>}
           {composeProfile && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-xs">
             <div>
               <p className="font-semibold">Your saved profile: {composeProfile.name || "No saved display name"}</p>
               <p className="text-muted-foreground">{composeProfile.email}</p>
-              <p className="mt-1 text-muted-foreground">Profile details come from your signed-in account. The agent won't invent a name, title, company, phone number or signature.</p>
+              <p className="mt-1 text-muted-foreground">Profile details come from your signed-in account. The agent won&apos;t invent a name, title, company, phone number or signature.</p>
             </div>
             <button type="button" disabled={composeBusy || Boolean(composeDraftId)} onClick={useProfileSignature}
-              className="rounded-md border px-3 py-2 font-medium disabled:opacity-50">Use my profile signature</button>
+              className="rounded-md border px-3 py-2 font-medium disabled:opacity-50">{composeMailboxes.find(mail=>mail.id===composeAccount)?.signatureText?"Use mailbox signature":"Use my profile signature"}</button>
           </div>}
+          {composeMailboxes.find(mail=>mail.id===composeAccount)?.signatureText&&
+            <p className="mt-2 text-xs text-muted-foreground">This sender has its own saved signature. It takes precedence over the profile sign-off. Review the complete body before saving a draft.</p>}
           <button type="button" onClick={() => void openMailPermissions()} disabled={composeBusy || mailPermissionBusy}
             className="mt-2 text-xs underline disabled:opacity-50">Mail permissions (admin settings)</button>
           {composeBlockers.length > 0 && <div role="alert" className="mt-3 rounded-md border border-destructive/30 p-3 text-xs text-destructive">
@@ -863,7 +947,14 @@ export function ChatClient({
               {composeMailboxes.length > 1 && !composeAccount && <span role="status" className="mt-1 block text-primary">Which email should this agent send from? Choose the From address explicitly.</span>}
               <select aria-label="Sending mailbox" value={composeAccount} disabled={composeBusy || Boolean(composeDraftId)} onChange={e => {
               const selectedMailbox = composeMailboxes.find(account => account.id === e.target.value);
+              const previousMailbox=composeMailboxes.find(mail=>mail.id===composeAccount);
               setComposeAccount(e.target.value);
+              setComposeBody(current=>{
+                const old=previousMailbox?.signatureText?.trim();
+                const clean=old&&current.trimEnd().endsWith(old)
+                  ?current.trimEnd().slice(0,-old.length).trimEnd():current;
+                return selectedMailbox?.signatureText?applyMailboxSignature(clean,selectedMailbox.signatureText):clean;
+              });
               setComposeCanDraft(selectedMailbox?.canDraft === true);
               setComposeCanApprove(selectedMailbox?.canRequestApproval === true);
               setComposeBlockers(selectedMailbox?.blockers ?? []);
@@ -873,7 +964,7 @@ export function ChatClient({
                 {composeMailboxes.map(account => <option key={account.id} value={account.id}>{account.address}</option>)}
               </select></label>
             <label className="text-xs font-medium">To
-              {!composeTo.trim() && <span role="status" className="mt-1 block text-primary">Who should receive this email? Enter or explicitly choose the recipient's exact address; the AI will not guess.</span>}
+              {!composeTo.trim() && <span role="status" className="mt-1 block text-primary">Who should receive this email? Enter or explicitly choose the recipient&apos;s exact address; the AI will not guess.</span>}
               <input type="email" aria-label="Email recipient" value={composeTo} disabled={composeBusy || Boolean(composeDraftId)} required placeholder="recipient@example.com" onChange={e => { setComposeTo(e.target.value); invalidateComposeReview(); }} className="mt-1 block w-full rounded-md border bg-background p-2" />
             </label>
             {composeProfile?.email && !composeTo.trim() && <button type="button" disabled={composeBusy || Boolean(composeDraftId)}
@@ -907,15 +998,16 @@ export function ChatClient({
             </span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">Administrator-only. Choose a preset, adjust individual tools if needed, then confirm to save. Mailboxes and user permissions are separate requirements.</p>
-          <div className="mt-3 flex flex-wrap gap-2">{EMAIL_PERMISSION_PRESETS.map(preset => <button type="button" key={preset.id} disabled={mailPermissionBusy} title={preset.description}
+          <p role="status" className="mt-2 text-xs">Sending mode: {mailPolicy.securityPolicy?.autonomous_send===true?'Automatic':'Human review'}. Explicit requests for human review always wait.</p>
+          <div className="mt-3 flex flex-wrap gap-2">{EMAIL_PERMISSION_PRESETS.map(preset => <button type="button" key={preset.id} disabled={mailPermissionBusy} title={preset.description} aria-pressed={selectedMailPolicy.emailPreset===preset.id}
             onClick={() => setMailToolSelection(current => emailPermissionPresetSelection(current, preset.id))}
-            className="rounded-md border bg-background px-3 py-2 text-xs hover:border-primary disabled:opacity-50">{preset.label}</button>)}</div>
+            className={`rounded-md border bg-background px-3 py-2 text-xs hover:border-primary disabled:opacity-50 ${selectedMailPolicy.emailPreset===preset.id?'border-foreground ring-1 ring-foreground':''}`}>{preset.label}</button>)}</div>
           <details className="mt-3 rounded-md border p-3">
             <summary className="cursor-pointer text-xs font-semibold">Fine-tune email tool permissions</summary>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">{REGISTERED_EMAIL_POLICY_NAMES.map(name => <label key={name} className="flex items-center gap-2 text-xs"><input type="checkbox" disabled={mailPermissionBusy || busy} checked={mailToolSelection.includes(name)} onChange={event => setMailToolSelection(current => event.target.checked ? [...new Set([...current, name])] : current.filter(n => n !== name))} />{EMAIL_PERMISSION_LABELS[name] ?? name}</label>)}</div>
           </details>
           <p className="mt-2 text-xs text-muted-foreground">{mailToolSelection.filter(name => REGISTERED_EMAIL_POLICY_NAMES.some(registered => registered === name)).length} email tools selected. Unrelated custom permissions are preserved. No permission changes take effect before saving.</p>
-          <button type="button" disabled={mailPermissionBusy || busy || agentSwitchBusy} onClick={() => void saveMailPermissions()} className="mt-3 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">Confirm and save permissions</button>
+          <button type="button" disabled={mailPermissionBusy || busy || agentSwitchBusy} onClick={() => void saveMailPermissions()} className="mt-3 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">{configurationRevisionsEnabled?"Save permissions draft":"Confirm and save permissions"}</button>
         </section>
       )}
           {activitySteps.length > 0 ? (
@@ -923,7 +1015,7 @@ export function ChatClient({
               <summary className="cursor-pointer list-none font-medium text-muted-foreground">
                 <span className="inline-flex items-center gap-2">
                   <span aria-hidden="true" className={`size-2 rounded-full ${busy ? "animate-pulse bg-primary" : "bg-muted-foreground/50"}`} />
-                  {busy ? "Clara is working" : "How this answer was prepared"}
+                  {busy ? "Assistant is working" : "How this answer was prepared"}
                 </span>
               </summary>
               <ol aria-label="Observed agent steps" className="mt-3 space-y-2 border-l border-border pl-4 text-xs text-muted-foreground">
@@ -949,23 +1041,25 @@ export function ChatClient({
             <div className="mb-2 flex flex-wrap gap-1.5" aria-label="Quick actions">
               {QUICK_ACTION_PROMPTS.map((prompt) =>
                 <button key={prompt} type="button" onClick={() => void sendChatMessage(prompt)}
-                  className="rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:border-primary/40 hover:bg-accent/5 hover:text-primary">
+                  className="chat-quick-action rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:border-primary/40 hover:bg-accent/5 hover:text-primary">
                   {prompt}
                 </button>)}
               <button type="button" onClick={openInlineEmailComposer}
                 className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:border-primary/40 hover:bg-accent/5 hover:text-primary">
                 <MailPlus size={12} aria-hidden /> Compose email
               </button>
+              <button type="button" onClick={()=>setMailInboxOpen(true)} className="rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground hover:text-primary">Review drafts &amp; approvals</button>
             </div>
           ) : null}
-          <div className="rounded-2xl border border-border bg-card shadow-sm focus-within:border-primary/30 focus-within:ring-2 focus-within:ring-primary/10">
+          {signInNeeded&&<p role="status" className="mb-2 text-sm"><a href="/login?next=%2Fchat" target="_blank" rel="noopener noreferrer" className="underline">Sign in to continue</a> in another tab, then return here with your message.</p>}
+          <div className="chat-composer rounded-2xl border border-border bg-card shadow-sm focus-within:border-primary/30 focus-within:ring-2 focus-within:ring-primary/10">
             <textarea
               ref={composerRef}
               aria-label="Message"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }}
-              placeholder="Send a message…"
+              placeholder="Send a message… type @ to mention connected accounts and personal contacts"
               rows={1}
               className="max-h-40 min-h-[44px] w-full resize-none bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
               style={{ height: "auto" }}
@@ -975,6 +1069,7 @@ export function ChatClient({
                 t.style.height = Math.min(t.scrollHeight, 160) + "px";
               }}
             />
+            <div className="px-3 pb-2"><MentionPicker organizationId={organizationId} value={draft} onChange={setDraft} textareaRef={composerRef}/></div>
             <div className="flex items-center justify-between px-3 pb-2">
               <button type="button" onClick={() => setVoiceOpen(true)}
                 className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-primary"
@@ -984,7 +1079,7 @@ export function ChatClient({
               </button>
             </div>
           </div>
-          <p className="mt-1.5 text-center text-[10px] text-muted-foreground">Clara can make mistakes. Verify important information.</p>
+          <p className="mt-1.5 text-center text-[10px] text-muted-foreground">AI can make mistakes. Verify important information.</p>
         </div>
       </section>
       )}
@@ -1011,8 +1106,8 @@ function MessageBubble({ role, content, messageId, showNextActions, userRequest,
   if (role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="flex max-w-[80%] items-start gap-2.5">
-          <div className="rounded-2xl rounded-br-sm bg-foreground px-4 py-2.5 text-sm text-background">
+        <div className="flex min-w-0 max-w-[80%] items-start gap-2.5">
+          <div className="chat-user-message min-w-0 break-words rounded-2xl rounded-br-sm bg-foreground px-4 py-2.5 text-sm text-background">
             <p className="whitespace-pre-wrap">{content}</p>
           </div>
           <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground"><User size={15} /></span>
@@ -1021,13 +1116,16 @@ function MessageBubble({ role, content, messageId, showNextActions, userRequest,
     );
   }
 
-  // Assistant (Clara) message
+  // Assistant message. All historical answers use the same renderer.
+  const businessReport = parseBusinessMailReport(content);
   return (
     <div className="flex justify-start">
-      <div className="flex max-w-[90%] items-start gap-2.5">
-        <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
-        <div className="flex-1 text-sm leading-7">
-          <MarkdownRenderer content={content} disabled={disabled} onPrepare={onPrepare} />
+      <div className="flex min-w-0 max-w-[90%] items-start gap-2.5">
+        <span className="chat-assistant-avatar mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
+        <div className="chat-assistant-reply min-w-0 flex-1 break-words text-sm leading-7">
+          {businessReport ? <BusinessMailReport report={businessReport} onPrepare={onPrepare} disabled={disabled} /> :
+            <MarkdownRenderer content={content} disabled={disabled} onPrepare={onPrepare} />}
+          <AnswerActions content={content} messageId={messageId} />
           {showNextActions ? <SuggestedNextActions answer={content} userRequest={userRequest} messageId={messageId}
             disabled={disabled} onPrepare={onPrepare} emailWorkflowState={emailWorkflowState}
             onComposeEmail={onComposeEmail} onRequestEmailApproval={onRequestEmailApproval} /> : null}
@@ -1041,7 +1139,7 @@ function TypingIndicator() {
   return (
     <div className="flex justify-start">
       <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
+        <span className="chat-assistant-avatar mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot size={15} /></span>
         <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-card border px-4 py-3">
           <span className="size-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "0ms" }} />
           <span className="size-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "150ms" }} />
@@ -1061,7 +1159,7 @@ function MarkdownRenderer({ content, disabled, onPrepare }: {
   content: string; disabled: boolean; onPrepare: (prompt: string) => void;
 }) {
   const elements = parseMarkdown(content, disabled, onPrepare);
-  return <div className="space-y-2">{elements}</div>;
+  return <div className="min-w-0 space-y-3 leading-relaxed">{elements}</div>;
 }
 
 function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: string) => void): React.ReactNode[] {
@@ -1159,7 +1257,7 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
         i++;
       }
       elements.push(
-        <blockquote key={key++} className="border-l-4 border-border pl-3 text-muted-foreground">
+        <blockquote key={key++} className="rounded-r-lg border-l-4 border-primary/40 bg-muted/40 px-4 py-2 text-muted-foreground">
           {renderInline(quoteLines.join("\n"))}
         </blockquote>
       );
@@ -1185,8 +1283,10 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
     if (headerMatch) {
       const level = (headerMatch![1] ?? "").length;
       const content = renderInline(headerMatch![2] ?? "");
-      const sizes = ["text-lg font-bold", "text-base font-bold", "text-sm font-bold", "text-sm font-semibold"];
-      elements.push(<p key={key++} className={sizes[level - 1]}>{content}</p>);
+      const sizes = ["text-lg font-bold tracking-tight text-foreground", "text-base font-bold text-foreground", "text-sm font-semibold text-primary", "text-sm font-semibold text-foreground"];
+      elements.push(level <= 2
+        ? <h3 key={key++} className={sizes[level - 1] + " rounded-r-md border-l-2 border-primary/55 bg-muted/25 px-3 py-2"}>{content}</h3>
+        : <h4 key={key++} className={sizes[level - 1]}>{content}</h4>);
       i++;
       continue;
     }
@@ -1199,7 +1299,7 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
         i++;
       }
       elements.push(
-        <ul key={key++} className="list-disc space-y-1 pl-5">
+        <ul key={key++} className="list-disc space-y-2 pl-5 marker:text-primary">
           {items.map((item, idx) => <li key={idx}>{renderInline(item)}</li>)}
         </ul>
       );
@@ -1214,7 +1314,7 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
         i++;
       }
       elements.push(
-        <ol key={key++} className="list-decimal space-y-1 pl-5">
+        <ol key={key++} className="list-decimal space-y-2 pl-5 marker:font-semibold marker:text-primary">
           {items.map((item, idx) => <li key={idx}>{renderInline(item)}</li>)}
         </ol>
       );
@@ -1244,7 +1344,7 @@ function parseMarkdown(text: string, disabled: boolean, onPrepare: (prompt: stri
       i++;
     }
     if (paraLines.length > 0) {
-      elements.push(<p key={key++} className="leading-7">{renderInline(paraLines!.join("\n"))}</p>);
+      elements.push(<p key={key++} className="whitespace-pre-line break-words leading-7">{renderInline(paraLines.join("\n"))}</p>);
     }
   }
 
@@ -1293,7 +1393,10 @@ function renderInline(text: string): React.ReactNode[] {
     } else if (earliest!.type === "code") {
       parts.push(<code key={key++} className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{match![1]}</code>);
     } else if (earliest!.type === "link") {
-      parts.push(<a key={key++} href={match![2]} target="_blank" rel="noreferrer" className="text-primary underline hover:opacity-80">{match![1]}</a>);
+      const safeHref = safeChatLink(match![2] ?? "");
+      parts.push(safeHref
+        ? <a key={key++} href={safeHref} target="_blank" rel="noopener noreferrer" className="break-all font-medium text-primary underline underline-offset-2 hover:opacity-80">{match![1]}</a>
+        : <span key={key++}>{match![1]}</span>);
     } else if (earliest!.type === "italic") {
       parts.push(<em key={key++} className="italic">{match![1]}</em>);
     }

@@ -586,9 +586,9 @@ describe("Manual deployment migration boundary", () => {
   );
 
   it("applies the PostgreSQL migration chain before starting the application", () => {
-    expect(manualUpSql).toContain("bash scripts/migrate.sh");
+    expect(manualUpSql).toContain("web node packages/db/migrate.js");
     expect(manualUpSql).toContain("DATABASE_URL");
-    expect(manualUpSql).toContain("docker compose --env-file .env.docker");
+    expect(manualUpSql).toContain('COMPOSE=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")');
   });
 });
 

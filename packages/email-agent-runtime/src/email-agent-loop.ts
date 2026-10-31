@@ -1,8 +1,10 @@
-import { claraRuntime } from "@ai-comms-agent/clara-core";
-import type { ChatMessage, ChatToolDefinition, ToolChatMessage } from "@ai-comms-agent/clara-core";
-import type { ToolContext, ToolResult } from "@ai-comms-agent/shared";
+import {requiresHumanApproval,turnAllowsTool} from "@ai-comms-agent/shared";
+import { agentRuntime } from "@ai-comms-agent/agent-core";
+import type { ChatMessage, ChatToolDefinition, ToolChatMessage,AgentRuntimeContext } from "@ai-comms-agent/agent-core";
+import { operationResultFromToolCall, reviewExplicitEmailBody, type OperationResult, type ToolContext, type ToolResult } from "@ai-comms-agent/shared";
 import { createEmailToolRuntime, invokeEmailReadTool } from "./email-tool-runtime";
 import type { EmailToolRuntime } from "./email-tool-runtime";
+import {prepareAgentConfigurationTurn,type AgentConfigurationTurn} from './configuration-turn';
 
 const MAX_ROUNDS = 4;
 const MAX_TOOL_CALLS = 8;
@@ -15,13 +17,14 @@ export interface EmailAgentTurnInput {
   kbId?: string;
   /** Constructed from authenticated server state, never from model arguments. */
   toolContext: ToolContext;
+  configurationTurn?:AgentConfigurationTurn;
   maxRounds?: number;
   maxToolCalls?: number;
   /** For requests for actual mailbox contents, require successful authorized
    * message/search retrieval before showing any model-generated email claims. */
   requireEmailContentEvidence?: boolean;
   /** Only invoked after a complete audited batch of successful read-only tools. */
-  onSafeReadOnlyFinal?: (history: ToolChatMessage[]) => Promise<string>;
+  onSafeReadOnlyFinal?: (history: ToolChatMessage[],context:AgentRuntimeContext) => Promise<string>;
   /** Public lifecycle only: no model reasoning or tool arguments. */
   onProgress?: (phase: "planning_tools" | "reading_email" | "checking_permissions" | "denied") => void;
 }
@@ -29,14 +32,14 @@ export interface EmailAgentTurnInput {
 export interface EmailAgentTurnResult {
   text: string;
   streamed?: boolean;
-  toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; durationMs: number; readOnly?: boolean; status?: string }>;
+  toolCalls: Array<{ name: string; ok: boolean; errorCode?: string; durationMs: number; readOnly?: boolean; status?: string; operation?: OperationResult }>;
   pendingApprovals: Array<{ actionId: string; actionType: string; message: string }>;
   finishReason: "completed" | "round_limit" | "tool_limit" | "invalid_tool_call" | "invalid_tool_arguments";
 }
 
 export interface EmailToolLoopDependencies {
   createRuntime: (organizationId: string, agentId: string) => Promise<EmailToolRuntime>;
-  completeWithTools: typeof claraRuntime.completeWithTools;
+  completeWithTools: typeof agentRuntime.completeWithTools;
   invoke: typeof invokeEmailReadTool;
 }
 
@@ -49,16 +52,25 @@ export async function runEmailAgentTurn(
   input: EmailAgentTurnInput,
   dependencies: EmailToolLoopDependencies = {
     createRuntime: createEmailToolRuntime,
-    completeWithTools: claraRuntime.completeWithTools,
+    completeWithTools: agentRuntime.completeWithTools,
     invoke: invokeEmailReadTool,
   },
 ): Promise<EmailAgentTurnResult> {
+  const currentUserMessage=[...input.messages].reverse().find(message=>message.role==='user')?.content ?? '';
+  input={...input,toolContext:{...input.toolContext,require_human_approval:input.toolContext.require_human_approval||requiresHumanApproval(currentUserMessage),email_body_review:reviewExplicitEmailBody(currentUserMessage)}};
   if (input.toolContext.organization_id !== input.organizationId || input.toolContext.agent_id !== input.agentId) {
     throw new Error("Trusted tool context does not match the requested organization and agent.");
   }
   if (!input.messages.some((message) => message.role === "user" && message.content.trim())) {
     throw new Error("A non-empty user message is required.");
   }
+  const configurationTurn=input.configurationTurn??(process.env.AGENT_CONFIGURATION_REVISIONS_ENABLED==='true'
+    ?await prepareAgentConfigurationTurn({orgId:input.organizationId,agentId:input.agentId,kbId:input.kbId??'',userId:input.toolContext.user_id}):undefined);
+  if(configurationTurn){
+    if(configurationTurn.configuration.organizationId!==input.organizationId||configurationTurn.configuration.agentId!==input.agentId||configurationTurn.agentContext.orgId!==input.organizationId||configurationTurn.agentContext.agentId!==input.agentId||configurationTurn.agentContext.kbId!==(input.kbId??''))throw Error('The prepared turn scope does not match the tool request.');
+    input={...input,toolContext:{...input.toolContext,agent_configuration:configurationTurn.configuration}};
+  }
+  const agentContext=configurationTurn?.agentContext??{orgId:input.organizationId,agentId:input.agentId,kbId:input.kbId??''};
 
   const maxRounds = boundedLimit(input.maxRounds, MAX_ROUNDS, MAX_ROUNDS);
   const maxToolCalls = boundedLimit(input.maxToolCalls, MAX_TOOL_CALLS, MAX_TOOL_CALLS);
@@ -66,7 +78,7 @@ export async function runEmailAgentTurn(
   const registered = runtime.registry.listForAgent(input.agentId);
   // Match chat: absent actor permission must never be presented as an
   // executable choice to a voice/realtime model. Invocation still rechecks.
-  const visible = registered.filter((tool) => input.toolContext.auth_subject.permissions.includes(tool.required_permission));
+  const visible = registered.filter((tool) => input.toolContext.auth_subject.permissions.includes(tool.required_permission)&&turnAllowsTool(input.toolContext,tool.name));
   const definitions: ChatToolDefinition[] = visible.map((tool) => ({
     name: tool.name,
     description: tool.description,
@@ -88,7 +100,7 @@ export async function runEmailAgentTurn(
   for (let round = 0; round < maxRounds; round += 1) {
     input.onProgress?.("planning_tools");
     const completion = await dependencies.completeWithTools(
-      { orgId: input.organizationId, agentId: input.agentId, kbId: input.kbId ?? "" },
+      agentContext,
       history,
       definitions,
     );
@@ -121,7 +133,7 @@ export async function runEmailAgentTurn(
       if (input.onSafeReadOnlyFinal && !completion.text.trim() && pendingApprovals.length === 0
         && summaries.length > 0 && summaries.length <= 4
         && summaries.every((call) => call.ok && call.readOnly === true)) {
-        const text = await input.onSafeReadOnlyFinal(history);
+        const text = await input.onSafeReadOnlyFinal(history,agentContext);
         return { text, streamed: true, toolCalls: summaries, pendingApprovals, finishReason: "completed" };
       }
       const finalText = completion.text.trim()
@@ -131,7 +143,7 @@ export async function runEmailAgentTurn(
     }
 
     // Preserve the provider's assistant tool-call turn before appending results.
-    history.push({ role: "assistant", content: completion.text || null, tool_calls: completion.toolCalls });
+    history.push({ role: "assistant", content: completion.text || null, tool_calls: completion.toolCalls, ...(completion.geminiParts ? { geminiParts: completion.geminiParts } : {}) });
     for (const call of completion.toolCalls) {
       if (totalCalls >= maxToolCalls) {
         return {
@@ -154,14 +166,15 @@ export async function runEmailAgentTurn(
       const toolOutput = result.output && typeof result.output === "object" && !Array.isArray(result.output)
         ? result.output as Record<string, unknown>
         : null;
-      if (result.ok && toolOutput?.status === "pending_approval" && typeof toolOutput.action_id === "string") {
+      const registeredTool = registered.find((entry) => entry.name === call.name);
+      const operation = operationResultFromToolCall({context:input.toolContext,callId:call.id,registeredName:registeredTool?.name,result});
+      if (operation?.state === "pending_approval") {
         pendingApprovals.push({
-          actionId: toolOutput.action_id,
-          actionType: typeof toolOutput.action_type === "string" ? toolOutput.action_type : call.name,
-          message: typeof toolOutput.message === "string" ? toolOutput.message : "This email action is awaiting explicit approval and has not been executed.",
+          actionId: operation.resourceId,
+          actionType: operation.operation,
+          message: "This email action is awaiting explicit approval and has not been executed.",
         });
       }
-      const registeredTool = registered.find((entry) => entry.name === call.name);
       const approvalRequested = toolOutput?.status === "pending_approval" || toolOutput?.approval_required === true;
       const readOnly = result.ok && !approvalRequested && registeredTool?.sensitivity === "safe"
         && registeredTool.required_permission === "email.read";
@@ -173,6 +186,7 @@ export async function runEmailAgentTurn(
         ok: result.ok,
         readOnly,
         status: verifiedStatus,
+        operation: operation ?? undefined,
         ...(result.error ? { errorCode: result.error.code } : {}),
         durationMs: result.audit.duration_ms,
       });

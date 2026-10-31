@@ -12,7 +12,7 @@ test("all send_email request sources are serialized against the saved draft befo
   assert.match(f, /input\.actionType === "send_email"/);
   assert.match(f, /input\.draftId/);
   assert.match(f, /withTransaction\(async client\s*=>/);
-  assert.match(f, /SELECT id, to_recipients, cc_recipients, bcc_recipients, subject, text_body FROM email_messages/);
+  assert.match(f, /SELECT id, to_recipients, cc_recipients, bcc_recipients, subject, text_body, thread_id, in_reply_to, references_header FROM email_messages/);
   assert.match(f, /organization_id=\$2 AND email_account_id=\$3 AND is_draft=true/);
   assert.match(f, /FOR UPDATE/);
   assert.match(f, /SELECT \*, \(expires_at IS NULL OR expires_at > now\(\)\) AS unexpired FROM email_actions/);
@@ -58,7 +58,7 @@ test("the locked draft must still match the exact reviewed recipients and body b
   const f = repo.slice(repo.indexOf("export async function createEmailAction("),
     repo.indexOf("export async function listPendingEmailActionsForOrganization("));
   assert.match(repo, /function matchesPersistedSendDraftSnapshot\(/);
-  assert.match(f, /SELECT id, to_recipients, cc_recipients, bcc_recipients, subject, text_body FROM email_messages/);
+  assert.match(f, /SELECT id, to_recipients, cc_recipients, bcc_recipients, subject, text_body, thread_id, in_reply_to, references_header FROM email_messages/);
   assert.match(f, /matchesPersistedSendDraftSnapshot\(lockedDraft, input\.recipientSnapshot\)/);
   assert.ok(f.indexOf("matchesPersistedSendDraftSnapshot(lockedDraft, input.recipientSnapshot)")
     < f.indexOf("client.query<Row>(insertSql,params)"));

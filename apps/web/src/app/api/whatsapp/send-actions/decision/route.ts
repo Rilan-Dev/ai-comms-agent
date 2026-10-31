@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
-import { getWhatsAppAccountForOrganization, loadWhatsAppCredential, parseCredentialsMasterKey, queueWhatsAppOutboundMessage, query, recordAuditEvent } from "@ai-comms-agent/db";
+import { ActionAuthorizationRevokedError, assertCurrentWhatsAppActionAuthorization, getWhatsAppAccountForOrganization, loadWhatsAppCredential, parseCredentialsMasterKey, queueWhatsAppOutboundMessage, query, recordAuditEvent } from "@ai-comms-agent/db";
 import { asOrganizationId } from "@ai-comms-agent/shared";
 import { authorize, authorizationErrorToResponse } from "@/lib/identity/authorization";
 import { assertSameOrigin } from "@/lib/identity/local-auth";
 import { ensureDevSeed, getIdentityAdapter, getIdentityRepository } from "@/lib/identity/repository";
 
 export const dynamic = "force-dynamic";
+
+async function recordDecisionAudit(input: Parameters<typeof recordAuditEvent>[0]) {
+  try { await recordAuditEvent(input); }
+  catch(error) {
+    console.error('[whatsapp-action] decision audit needs reconciliation', {
+      actionId:input.targetId,correlationId:input.correlationId,
+      errorType:error instanceof Error?error.name:typeof error,
+    });
+  }
+}
 
 type SendAction = {
   id: string;
@@ -20,6 +30,7 @@ type SendAction = {
   correlation_id: string;
   expires_at: string;
   approved_by: string | null;
+  requested_by: string | null;
   queued_message_id: string | null;
   payload_type: string;
   template_name: string | null;
@@ -42,7 +53,7 @@ export async function POST(request: Request) {
     }
     const actor = await authorize(request, { organizationId: asOrganizationId(organizationId), permission: "whatsapp.send" }, getIdentityAdapter(), getIdentityRepository());
     const found = await query<SendAction>(
-      "SELECT id, organization_id, whatsapp_account_id, agent_id, agent_binding_required, recipient_phone, message_body, status, idempotency_key, correlation_id, expires_at, approved_by, queued_message_id, payload_type, template_name, template_language, template_parameters FROM whatsapp_send_actions WHERE id=$1 AND organization_id=$2 LIMIT 1",
+      "SELECT id, organization_id, whatsapp_account_id, agent_id, agent_binding_required, recipient_phone, message_body, status, idempotency_key, correlation_id, expires_at, approved_by, requested_by, queued_message_id, payload_type, template_name, template_language, template_parameters FROM whatsapp_send_actions WHERE id=$1 AND organization_id=$2 LIMIT 1",
       [actionId, organizationId],
     );
     const action = found.rows[0];
@@ -54,7 +65,7 @@ export async function POST(request: Request) {
     }
     if (Date.parse(action.expires_at) <= Date.now()) {
       await query("UPDATE whatsapp_send_actions SET status='expired', updated_at=now() WHERE id=$1 AND organization_id=$2 AND status IN ('pending','approved')", [actionId, organizationId]);
-      await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.expired", targetType: "whatsapp_send_action", targetId: actionId, action: "decide", decision: "expired" });
+      await recordDecisionAudit({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.expired", targetType: "whatsapp_send_action", targetId: actionId, action: "decide", decision: "expired" });
       return NextResponse.json({ error: "approval_expired", status: "expired" }, { status: 409 });
     }
 
@@ -64,7 +75,7 @@ export async function POST(request: Request) {
         [actionId, organizationId, actor.user.id],
       );
       if (!rejected.rows.length) return NextResponse.json({ error: "decision_conflict", message: "The action was already decided." }, { status: 409 });
-      await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.rejected", targetType: "whatsapp_send_action", targetId: actionId, action: "reject", decision: "denied" });
+      await recordDecisionAudit({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.rejected", targetType: "whatsapp_send_action", targetId: actionId, action: "reject", decision: "denied" });
       return NextResponse.json({ approved: false, status: "rejected" });
     }
 
@@ -72,6 +83,8 @@ export async function POST(request: Request) {
     if (!account || account.status !== "connected") {
       return NextResponse.json({ error: "provider_not_connected", message: "The WhatsApp account must remain connected at approval time." }, { status: 409 });
     }
+    try {await assertCurrentWhatsAppActionAuthorization({organizationId,accountId:action.whatsapp_account_id,agentId:action.agent_id,bindingRequired:action.agent_binding_required,requestedBy:action.requested_by,approvedBy:actor.user.id});}
+    catch(error) {if(!(error instanceof ActionAuthorizationRevokedError))throw error;return NextResponse.json({error:'action_authorization_revoked',message:'The requester or agent permission changed. No send was approved.'},{status:409});}
     if (action.agent_binding_required) {
       if (!action.agent_id) {
         await query("UPDATE whatsapp_send_actions SET status='failed', updated_at=now() WHERE id=$1 AND organization_id=$2 AND status IN ('pending','approved')", [actionId, organizationId]);
@@ -83,7 +96,7 @@ export async function POST(request: Request) {
       );
       if (!binding.rows.length) {
         await query("UPDATE whatsapp_send_actions SET status='failed', updated_at=now() WHERE id=$1 AND organization_id=$2 AND status IN ('pending','approved')", [actionId, organizationId]);
-        await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.binding_revoked", targetType: "whatsapp_send_action", targetId: actionId, action: "approve", decision: "denied", metadata: { agentId: action.agent_id } });
+        await recordDecisionAudit({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.binding_revoked", targetType: "whatsapp_send_action", targetId: actionId, action: "approve", decision: "denied", metadata: { agentId: action.agent_id } });
         return NextResponse.json({ error: "agent_binding_missing", message: "The agent-to-WhatsApp account binding has changed; this request cannot be approved." }, { status: 409 });
       }
     }
@@ -154,7 +167,7 @@ export async function POST(request: Request) {
       );
       if (!inbound.rows.length) {
         await query("UPDATE whatsapp_send_actions SET status='requires_template', updated_at=now() WHERE id=$1 AND organization_id=$2 AND status IN ('pending','approved')", [actionId, organizationId]);
-        await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.template_required", targetType: "whatsapp_send_action", targetId: actionId, action: "approve", decision: "denied", metadata: { reason: "outside_customer_service_window" } });
+        await recordDecisionAudit({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.template_required", targetType: "whatsapp_send_action", targetId: actionId, action: "approve", decision: "denied", metadata: { reason: "outside_customer_service_window" } });
         return NextResponse.json({ error: "template_required", status: "requires_template", message: "No inbound customer message was received in the last 24 hours. Meta requires an approved message template outside that window; no free-form text was queued." }, { status: 409 });
       }
     } else {
@@ -190,7 +203,7 @@ export async function POST(request: Request) {
       [actionId, organizationId, resolvedMessageId ?? null],
     );
     const outcomeStatus = outcome.rows[0]?.status ?? "queued";
-    await recordAuditEvent({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.approved", targetType: "whatsapp_send_action", targetId: actionId, action: "approve", decision: "allowed", metadata: { messageId: resolvedMessageId ?? null, payloadType: action.payload_type, outcomeStatus } });
+    await recordDecisionAudit({ organizationId, actorUserId: actor.user.id, correlationId: action.correlation_id, eventType: "whatsapp.send_approval.approved", targetType: "whatsapp_send_action", targetId: actionId, action: "approve", decision: "allowed", metadata: { messageId: resolvedMessageId ?? null, payloadType: action.payload_type, outcomeStatus } });
     const message = outcomeStatus === "failed"
       ? "Approval was recorded, but the worker reports that sending failed. Check the message status before retrying."
       : outcomeStatus === "sent"

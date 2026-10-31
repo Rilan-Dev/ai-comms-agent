@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import {test} from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const login = readFileSync(resolve(process.cwd(), "src/app/login/page.tsx"), "utf8");
-const setup = readFileSync(resolve(process.cwd(), "src/app/setup/page.tsx"), "utf8");
+const login = readFileSync(resolve(__dirname, "../src/app/login/page.tsx"), "utf8");
+const setup = readFileSync(resolve(__dirname, "../src/app/setup/page.tsx"), "utf8");
 
 test("login preserves the server authentication flow and safe local redirect handling", () => {
   assert.match(login, /fetch\("\/api\/auth\/login"/);

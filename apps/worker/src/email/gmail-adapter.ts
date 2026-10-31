@@ -1,16 +1,19 @@
+import {emailReplyMetadata} from "@ai-comms-agent/shared";
 import type {
   CapabilitySet, DraftParams, EmailCredentials, EmailFolder, EmailLabel,
-  EmailMessage, EmailProvider, ListOptions, SearchQuery, SentMessageRef, SyncResult, SyncState
+  EmailMessage, EmailMessageFlags, EmailProvider, ListOptions, SearchQuery, SentMessageRef, SyncResult, SyncState
 } from "@ai-comms-agent/shared";
 
 const BASE = "https://gmail.googleapis.com/gmail/v1/users/me";
 const CAPABILITIES: CapabilitySet = {
   folders: true, labels: true, sync_incremental: true, sync_full: true,
-  // Gmail push/watch is not wired to a Pub/Sub receiver in this app yet.
+  // Push stays unavailable until the configured Pub/Sub delivery is verified.
   sync_webhook: false, sync_idle: false, search_server_side: true,
-  search_client_side: true, drafts: true, reply: false, forward: false,
+  search_client_side: true, drafts: true, reply: true, forward: false,
   mark_read: true, archive: true, move: true, threads: true,
-  attachments_download: true, attachments_upload: false, send: true,
+  // Gmail can return attachment bytes, but the workspace has no complete
+  // attachment ingestion and reader path yet, so do not advertise it.
+  attachments_download: false, attachments_upload: false, send: true,
 };
 
 function b64url(input: string): string {
@@ -88,11 +91,14 @@ function toMessage(raw: any): EmailMessage {
 }
 
 function mime(params: DraftParams): string {
+  const reply=emailReplyMetadata({in_reply_to:params.reply_to_message_id,references_header:params.references_header,reply_provider_thread_id:params.provider_thread_id});
+  if(reply.inReplyTo&&!reply.providerThreadId)throw Error("A Gmail reply draft requires the original provider thread");
   const lines = [
     `To: ${params.to.join(", ")}`,
     ...(params.cc?.length ? [`Cc: ${params.cc.join(", ")}`] : []),
     ...(params.bcc?.length ? [`Bcc: ${params.bcc.join(", ")}`] : []),
     `Subject: ${params.subject}`,
+    ...(reply.inReplyTo ? [`In-Reply-To: ${reply.inReplyTo}`,`References: ${reply.referencesHeader}`] : []),
     "MIME-Version: 1.0",
     "Content-Type: text/plain; charset=utf-8",
     "",
@@ -254,6 +260,24 @@ export class GmailAdapter implements EmailProvider {
     return (data.labels ?? []).filter((l: any) => l.type === "user").map((l: any) => ({
       id: l.id, email_account_id: "gmail", provider_label_id: l.id, name: l.name, label_type: "user",
     }));
+  }
+
+  async getMessageFlags(messageIds:string[]):Promise<EmailMessageFlags[]> {
+    if(messageIds.length>200||messageIds.some(id=>!id||id.length>512||/[\r\n\0]/.test(id)))throw new Error('Invalid or unbounded Gmail metadata identifiers');
+    const result:EmailMessageFlags[]=[];const ids=[...new Set(messageIds)];
+    for(let offset=0;offset<ids.length;offset+=4){
+      const page=await Promise.all(ids.slice(offset,offset+4).map(async id=>{
+        let message;
+        try{message=await this.request(`/messages/${encodeURIComponent(id)}?`+new URLSearchParams({format:'metadata',metadataHeaders:'Message-ID',fields:'id,labelIds,payload(headers)'}));}
+        catch(error){if(error instanceof Error&&/^Gmail API 404:/.test(error.message))return null;throw error;}
+        if(message.id!==id||(message.labelIds!==undefined&&!Array.isArray(message.labelIds)))throw new Error('Invalid Gmail flags response');
+        const labels=new Set<string>(message.labelIds??[]);
+        const identity=message.payload?.headers?.find((header:{name?:string})=>header.name?.toLowerCase()==='message-id')?.value;
+        return {provider_message_id:id,message_id_header:typeof identity==='string'?identity.trim():null,is_read:!labels.has('UNREAD'),is_starred:labels.has('STARRED'),is_draft:labels.has('DRAFT'),is_outbound:labels.has('SENT')};
+      }));
+      result.push(...page.filter((item):item is EmailMessageFlags=>item!==null));
+    }
+    return result;
   }
 
   async sync(state: SyncState): Promise<SyncResult> {
@@ -569,7 +593,7 @@ export class GmailAdapter implements EmailProvider {
   }
 
   async createDraft(params: DraftParams) {
-    const data = await this.request("/drafts", { method: "POST", body: JSON.stringify({ message: { raw: b64url(mime(params)) } }) });
+    const data = await this.request("/drafts", { method: "POST", body: JSON.stringify({ message: { raw: b64url(mime(params)), ...(params.provider_thread_id?{threadId:params.provider_thread_id}:{}) } }) });
     return { draft_id: data.id, account_id: "gmail" };
   }
 
@@ -580,8 +604,11 @@ export class GmailAdapter implements EmailProvider {
       to: params.to ?? currentMessage.to_addresses, cc: params.cc ?? currentMessage.cc_addresses,
       bcc: params.bcc ?? currentMessage.bcc_addresses, subject: params.subject ?? currentMessage.subject,
       body_text: params.body_text ?? currentMessage.text_body, body_html: params.body_html,
+      reply_to_message_id:params.reply_to_message_id??currentMessage.in_reply_to,
+      references_header:params.references_header??currentMessage.references?.join(" "),
+      provider_thread_id:params.provider_thread_id??currentMessage.thread_id,
     };
-    await this.request(`/drafts/${draftId}`, { method: "PUT", body: JSON.stringify({ id: draftId, message: { raw: b64url(mime(merged)) } }) });
+    await this.request(`/drafts/${draftId}`, { method: "PUT", body: JSON.stringify({ id: draftId, message: { raw: b64url(mime(merged)), ...(merged.provider_thread_id?{threadId:merged.provider_thread_id}:{}) } }) });
     return { draft_id: draftId, account_id: "gmail" };
   }
 
@@ -599,7 +626,20 @@ export class GmailAdapter implements EmailProvider {
   }
 
   async reply(messageId: string, params: DraftParams): Promise<SentMessageRef> {
-    const draft = await this.createDraft(params);
+    const source = await this.getMessage(messageId);
+    if (!source) throw new Error("Gmail source message not found");
+    if (!source.message_id_header) throw new Error("Gmail source message has no valid Message-ID for a threaded reply");
+    const references = [...(source.references ?? []), source.message_id_header].filter(Boolean).join(" ");
+    const to = params.to.length ? params.to : [source.from_address];
+    const subject = params.subject || (/^re:/i.test(source.subject) ? source.subject : `Re: ${source.subject}`);
+    const draft = await this.createDraft({
+      ...params,
+      to,
+      subject,
+      reply_to_message_id: source.message_id_header,
+      references_header: references,
+      provider_thread_id: source.thread_id,
+    });
     return this.send(draft.draft_id);
   }
 

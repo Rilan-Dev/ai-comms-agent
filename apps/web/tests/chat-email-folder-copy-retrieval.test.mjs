@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const chat = readFileSync(new URL("../src/app/api/chat/stream/route.ts", import.meta.url), "utf8");
-const clara = readFileSync(new URL("../../../packages/clara-core/src/runtime.ts", import.meta.url), "utf8");
+const runtimeSource = readFileSync(new URL("../../../packages/agent-core/src/runtime.ts", import.meta.url), "utf8");
 const bounded = (text, begin, end) => {
   const start = text.indexOf(begin);
   const stop = text.indexOf(end, start + begin.length);
@@ -11,9 +11,9 @@ const bounded = (text, begin, end) => {
   return text.slice(start, stop);
 };
 const ambient = bounded(chat, "const result = await query<EmailContextRow>(", "if (result.rows.length === 0)");
-const ground = bounded(clara, "const recentResult = await query<", "// Merge results");
+const ground = bounded(runtimeSource, "const recentResult = await query<", "// Merge results");
 
-for (const [name, sql] of [["ambient Chat context", ambient], ["Clara hybrid context", ground]]) {
+for (const [name, sql] of [["ambient Chat context", ambient], ["agent hybrid context", ground]]) {
   test(`${name} deduplicates IMAP folder copies before applying a 20-email limit`, () => {
     assert.match(sql, /ROW_NUMBER\(\) OVER/);
     assert.match(sql, /PARTITION BY (?:m|em)\.email_account_id/);
@@ -46,11 +46,11 @@ test("chat fallback date and explicit sender filters execute before folder ranki
   assert.match(chat, /b\.agent_id = \$agentId/);
 });
 
-test("Clara hybrid retrieval keeps typed full-text search, agent scope and existing metadata", () => {
+test("Agent hybrid retrieval keeps typed full-text search, agent scope and existing metadata", () => {
   assert.match(ground, /\$\{matchClause\}/);
   assert.ok(ground.indexOf("${matchClause}") < ground.indexOf("duplicate_rank = 1"));
-  assert.match(clara, /em\.search_vector @@ to_tsquery\('simple', \$3\)/); // query fragment is assembled before the SQL template
-  assert.match(clara, /\[ctx\.orgId, ctx\.agentId, textQuery, lookupTerms\]/);
+  assert.match(runtimeSource, /em\.search_vector @@ to_tsquery\('simple', \$3\)/); // query fragment is assembled before the SQL template
+  assert.match(runtimeSource, /\[ctx\.orgId, ctx\.agentId, textQuery, lookupTerms\]/);
   assert.match(ground, /'provider_message_id', em\.provider_message_id/);
   assert.match(ground, /em\.is_draft = false/);
 });

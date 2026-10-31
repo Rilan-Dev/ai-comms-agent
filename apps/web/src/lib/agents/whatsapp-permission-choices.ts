@@ -13,8 +13,8 @@ export const WHATSAPP_POLICY_CHOICES = [
   },
   {
     name: "whatsapp.send",
-    label: "Request WhatsApp send approval",
-    detail: "Prepare a WhatsApp message for explicit human approval. Never send automatically; requires whatsapp.send and a connected bound account.",
+    label: "Prepare WhatsApp sends",
+    detail: "Prepare send requests using the sending mode. Requires your sending permission and an assigned connected phone; Meta rules still apply.",
     group: "approval",
   },
 ] as const;

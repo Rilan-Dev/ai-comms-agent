@@ -33,7 +33,11 @@ test("manual route returns HTTP 409 on an already-decided, expired, different-ac
 });
 
 test("agent and scheduled product actions never audit a terminal duplicate as a new approval", () => {
-  assert.match(agent, /if \(!action\) return fail\("idempotency_conflict"/);
+  assert.match(agent, /if \(!action\) \{/);
+  assert.match(agent, /return fail\("idempotency_conflict"/);
+  // The conflict diagnostic may look up only the existing action's status —
+  // never the full row (no reuse of a decided approval).
+  assert.match(agent, /SELECT status FROM whatsapp_send_actions WHERE organization_id=\$1 AND idempotency_key=\$2 LIMIT 1/);
   assert.match(product, /if \(!approval\) \{/);
   assert.match(product, /WhatsApp approval idempotency conflict/);
   assert.match(agent, /decision: "pending"/);

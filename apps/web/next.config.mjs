@@ -1,11 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Transpile Clara source (it's TypeScript, not pre-built)
-  transpilePackages: ["@ai-comms-agent/clara-core", "@ai-comms-agent/shared", "@ai-comms-agent/db"],
+  // Transpile workspace packages (TypeScript source, not pre-built)
+  transpilePackages: ["@ai-comms-agent/agent-core", "@ai-comms-agent/shared", "@ai-comms-agent/db"],
 
   // Workspace packages need to be transpiled by Next.js
   experimental: {
     externalDir: true,
+    // This application shares a small production host with other services.
+    // Limit parallel build workers so release builds leave capacity for them.
+    cpus: 1,
   },
 
   // Environment variables exposed to the browser (NEXT_PUBLIC_*)

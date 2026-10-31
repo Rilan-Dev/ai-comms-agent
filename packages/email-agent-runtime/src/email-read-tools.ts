@@ -8,9 +8,10 @@ import {
   query,
 } from "@ai-comms-agent/db";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
-import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
+import { EMAIL_TOOL_CATALOG,turnAllowsEmailAccount } from "@ai-comms-agent/shared";
 import { canUseEmailAccountBinding } from "./email-tool-policy";
 import { resolveAccountIdentifier } from "./account-identifier";
+import { createHash } from "node:crypto";
 
 type Input = Record<string, unknown>;
 type Row = Record<string, unknown>;
@@ -100,6 +101,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
     // uuid syntax error surfaced as authorization_unavailable.
     const resolvedAccountId = await resolveAccountIdentifier(context.organization_id, context.agent_id, accountId);
     if (!resolvedAccountId) throw new EmailToolFailure("account_not_available", "No mailbox matching that identifier is bound to this agent. Available mailboxes are returned by email.accounts.list.");
+    if(!turnAllowsEmailAccount(context,resolvedAccountId,'read'))throw new EmailToolFailure('account_not_available','This mailbox was not available for reading when the turn started. Start a new turn after reviewing the updated configuration.');
     const binding = await query<{ role: string }>(
       `SELECT b.role FROM agent_email_accounts b
        JOIN agents g ON g.id = b.agent_id
@@ -155,7 +157,7 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
     const bindings = await agents.emailBindings(context.organization_id, context.agent_id);
     const visible = [];
     for (const binding of bindings) {
-      if (!canUseEmailAccountBinding(binding.role, "email.read")) continue;
+      if (!canUseEmailAccountBinding(binding.role, "email.read")||!turnAllowsEmailAccount(context,binding.emailAccountId,'read')) continue;
       const account = await accounts.getForAgent(context.organization_id, context.agent_id, binding.emailAccountId);
       if (!account) continue;
       visible.push({
@@ -202,35 +204,75 @@ export function createEmailReadTools(deps: EmailReadToolDependencies = {}): Tool
     if (input.unread_only === true) conditions.push("m.is_read = false");
     if (input.starred_only === true) conditions.push("m.is_starred = true");
     if (input.drafts_only === true) conditions.push("m.is_draft = true");
+    else {
+      conditions.push('m.is_draft = false');
+      if(!folderId)conditions.push('m.is_sent = false');
+    }
     const label = text(input.label);
     if (label) add((n) => `m.labels @> jsonb_build_array($${n}::text)`, label);
     const dateFrom = text(input.date_from);
+    for(const value of [dateFrom,text(input.date_to)]){
+      if(value && (!Number.isFinite(Date.parse(value)) || !/^\d{4}-\d{2}-\d{2}/.test(value)
+        || new Date(value.slice(0,10)+'T00:00:00Z').toISOString().slice(0,10)!==value.slice(0,10))) {
+        throw new EmailToolFailure('invalid_date','Use valid ISO dates or timestamps; the requested date filter was not applied.');
+      }
+    }
     if (dateFrom && Number.isFinite(Date.parse(dateFrom))) add((n) => `m.received_at >= $${n}::timestamptz`, dateFrom);
     const dateTo = text(input.date_to);
     if (dateTo && Number.isFinite(Date.parse(dateTo))) add((n) => `m.received_at <= $${n}::timestamptz`, dateTo);
     const limit = boundedInt(input.limit, 25, 100) || 25;
     const cursor = text(input.cursor);
-    if (cursor && !/^\d+$/.test(cursor)) throw new EmailToolFailure("invalid_cursor", "The mailbox page cursor is invalid.");
-    const offset = cursor ? boundedInt(Number(cursor), 0, 1000000) : 0;
-    values.push(limit, offset);
+    const scopeKey=createHash('sha256').update(JSON.stringify({conditions,values,drafts:input.drafts_only===true})).digest('hex');
+    let page: {snapshot:string;at:string;id:string;scope:string}|null=null;
+    if(cursor){
+      try{
+        page=JSON.parse(Buffer.from(cursor,'base64url').toString('utf8'));
+        if(!page || page.scope!==scopeKey || typeof page.snapshot!=='string' || !Number.isFinite(Date.parse(page.snapshot))
+          || typeof page.at!=='string' || (page.at!=='-infinity' && !Number.isFinite(Date.parse(page.at)))
+          || typeof page.id!=='string' || !/^[0-9a-f-]{36}$/i.test(page.id))throw new Error('invalid');
+      }catch{throw new EmailToolFailure('invalid_cursor','Refresh the message list; this page cursor is invalid or belongs to a different filter.');}
+    }
+    const snapshotParam=values.push(page?.snapshot??null);
+    const dateParam=values.push(page?.at??null);
+    const idParam=values.push(page?.id??null);
+    const limitParam=values.push(limit+1);
+    conditions.push('m.created_at <= snapshot.at');
+    const sortColumn=input.drafts_only===true?'m.updated_at':'m.received_at';
     const rows = await query<Row>(
-      `SELECT m.id, m.email_account_id, m.thread_id, m.folder_id,
+      `WITH snapshot AS MATERIALIZED (SELECT COALESCE($${snapshotParam}::timestamptz,clock_timestamp()) AS at),
+       candidates AS (SELECT m.id, m.email_account_id, m.thread_id, m.folder_id,
               COALESCE(m.from_email, m.from_name, '') AS from_address,
               m.to_recipients AS to_addresses, m.subject, m.snippet, m.received_at,
               m.is_read, m.is_starred, m.is_draft, m.is_sent AS is_outbound,
-              m.to_recipients AS to_addresses, m.provider_draft_sync_status, m.updated_at,
+              m.provider_draft_sync_status, m.updated_at,
               m.importance_score, m.action_required,
               EXISTS (SELECT 1 FROM email_attachments ea WHERE ea.message_id=m.id) AS has_attachments,
-              a.email_address AS account_email, a.display_name AS account_name
+              a.email_address AS account_email, a.display_name AS account_name,
+              COALESCE(${sortColumn},'-infinity'::timestamptz)::text AS _sort_key,
+              snapshot.at::text AS _snapshot_at,
+              ROW_NUMBER() OVER(PARTITION BY m.email_account_id,
+                CASE WHEN a.provider='imap_smtp' AND NULLIF(BTRIM(m.internet_message_id),'') IS NOT NULL
+                  THEN 'message:'||BTRIM(m.internet_message_id) ELSE 'row:'||m.id::text END
+                ORDER BY CASE WHEN current_folder.role='inbox' OR UPPER(current_folder.provider_folder_id)='INBOX' THEN 0 ELSE 1 END,${sortColumn} DESC NULLS LAST,m.id DESC) AS representation_rank
        FROM email_messages m JOIN email_accounts a ON a.id=m.email_account_id
+       CROSS JOIN snapshot
+       LEFT JOIN email_folders current_folder ON current_folder.id=m.folder_id AND current_folder.email_account_id=m.email_account_id
        WHERE ${conditions.join(" AND ")}
-       ORDER BY ${input.drafts_only === true ? "m.updated_at" : "m.received_at"} DESC NULLS LAST
-       LIMIT $${values.length - 1} OFFSET $${values.length}`,
+       ), counted AS (SELECT *,COUNT(*) OVER()::integer AS _matched_count FROM candidates WHERE representation_rank=1)
+       SELECT * FROM counted m WHERE ($${idParam}::uuid IS NULL OR (m._sort_key::timestamptz,m.id)<($${dateParam}::timestamptz,$${idParam}::uuid))
+       ORDER BY m._sort_key::timestamptz DESC,m.id DESC LIMIT $${limitParam}`,
       values,
     );
+    const included=rows.rows.slice(0,limit);
+    const hasMore=rows.rows.length>limit;
+    const last=included.at(-1);
     return {
-      messages: rows.rows,
-      next_cursor: rows.rows.length === limit ? String(offset + rows.rows.length) : null,
+      messages: included.map(({_sort_key,_snapshot_at,_matched_count,representation_rank,...message})=>message),
+      matched_count:rows.rows.length?Number(rows.rows[0]!._matched_count):(page?null:0),
+      included_count:included.length,
+      has_more:hasMore,
+      next_cursor:hasMore && last?Buffer.from(JSON.stringify({snapshot:last._snapshot_at,at:last._sort_key,id:last.id,scope:scopeKey})).toString('base64url'):null,
+      coverage:'Locally synchronized matches for the selected mailbox and filters. included_count is a page size, not the total unread count. New arrivals after the first page are excluded until the list is refreshed.',
       mode: searchMode ? "local_search" : "mailbox",
     };
   }

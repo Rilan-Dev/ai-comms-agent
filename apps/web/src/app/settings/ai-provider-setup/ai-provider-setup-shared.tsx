@@ -338,7 +338,7 @@ export function AIProviderSetupShared({
         </div>
         {loading ? (
           <p className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading this organization's provider settings…
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading this organization&apos;s provider settings…
           </p>
         ) : !organizationReady ? (
           <div role="status" className="mt-5 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -515,7 +515,7 @@ export function AIProviderSetupShared({
                     </button>
                   ) : null}
                 </div>
-                <p className="text-xs text-muted-foreground">Enabling a provider does not automatically change another agent's model override. A saved key does not guarantee a live session.</p>
+                <p className="text-xs text-muted-foreground">Enabling a provider does not automatically change another agent&apos;s model override. A saved key does not guarantee a live session.</p>
               </div>
             </div>
           </div>

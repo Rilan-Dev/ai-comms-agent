@@ -1,14 +1,18 @@
 import {
+  PostgresAgentRepository,
   PostgresEmailAccountRepository,
+  autoApproveEmailAction,
   createEmailAction,
   EmailActionIdempotencyConflictError,
   createLocalDraft,
   getLocalDraftForOrganization,
   getMailMessageForOrganization,
   query,
+  recordAuditEvent,
   updateLocalDraftForOrganization,
 } from "@ai-comms-agent/db";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
+import {emailReplyMetadata, isAutonomousSendEnabled,turnAllowsEmailAccount,turnRequiresHumanApproval,applyMailboxSignature} from "@ai-comms-agent/shared";
 import { EMAIL_TOOL_CATALOG } from "@ai-comms-agent/shared";
 import { canUseEmailAccountBinding, hasEmailToolCapabilities } from "./email-tool-policy";
 import { preserveEmailBody } from "./email-body";
@@ -28,6 +32,11 @@ function object(value: unknown): Input {
 }
 function text(value: unknown, max = 4000): string {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+function reviewedBody(value:unknown,context:ToolContext,maxLength=100000):string {
+  if(context.email_body_review?.kind==='review_required') throw new EmailWriteFailure('body_review_required',
+    'Please review the intended message and put only the email body in quotes or a fenced text block after Body:. Keep instructions about sending and approval outside it. No draft or approval was saved.');
+  return preserveEmailBody(context.email_body_review?.kind==='exact'?context.email_body_review.body:value,maxLength);
 }
 /** A draft's To must be explicit, not inferred from an email contact name.
  * Ask the user to choose the full recipient address before writing anything. */
@@ -71,6 +80,45 @@ export interface EmailWriteToolDependencies {
   accounts?: PostgresEmailAccountRepository;
 }
 
+/** Autonomous-send policy: when the agent's saved policy enables it, the
+ * freshly created pending approval is approved automatically (attributed to
+ * the saved administrator policy, not a human reviewer) so the worker's
+ * dispatch loop sends it without a manual approval step. The requesting
+ * actor's email.write permission and the agent binding are still re-verified
+ * by the worker at dispatch time. Returns null when the policy is disabled or
+ * the action was already decided, leaving the normal approval flow intact. */
+async function maybeAutoApproveEmailAction(
+  context: ToolContext,
+  action: { id: string; actionType: string; correlationId: string | null },
+): Promise<boolean> {
+  if(turnRequiresHumanApproval(context))return false;
+  if (!context.agent_id || !context.user_id) return false;
+  const policy = await new PostgresAgentRepository().policy(context.organization_id, context.agent_id);
+  if (!isAutonomousSendEnabled(policy?.securityPolicy)) return false;
+  const approved = await autoApproveEmailAction(context.organization_id, action.id, context.user_id);
+  if (!approved) return false;
+  try {
+    await recordAuditEvent({
+      organizationId: context.organization_id,
+      actorUserId: context.user_id,
+      agentId: context.agent_id,
+      correlationId: action.correlationId ?? undefined,
+      eventType: "email.action.auto_approved",
+      targetType: "email_action",
+      targetId: action.id,
+      action: action.actionType,
+      decision: "allowed",
+      metadata: { source: "agent_policy_autonomous_send" },
+    });
+  } catch (error) {
+    console.error("[email-write] auto-approval audit needs reconciliation", {
+      actionId: action.id,
+      errorType: error instanceof Error ? error.name : typeof error,
+    });
+  }
+  return true;
+}
+
 export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): Tool[] {
   const accounts = deps.accounts ?? new PostgresEmailAccountRepository();
   const descriptor = (name: string) => {
@@ -89,6 +137,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     const resolvedAccountId = await resolveAccountIdentifier(context.organization_id, context.agent_id, accountId);
     if (!resolvedAccountId) throw new EmailWriteFailure("account_not_available",
       "No mailbox matching that identifier is bound to this agent. Available mailboxes are returned by email.accounts.list.");
+    if(!turnAllowsEmailAccount(context,resolvedAccountId,allowSendOnly?'send':'draft'))throw new EmailWriteFailure('account_not_available','This mailbox did not allow this operation when the turn started. Start a new turn after reviewing the updated configuration.');
     const binding = await query<{ role: string }>(
       `SELECT b.role FROM agent_email_accounts b
        JOIN agents g ON g.id=b.agent_id
@@ -161,7 +210,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       cc: optionalRecipients(input.cc),
       bcc: optionalRecipients(input.bcc),
       subject: text(input.subject, 998),
-      bodyText: preserveEmailBody(input.body_text),
+      bodyText: reviewedBody(input.body_text, context),
     });
     return { status: "draft_created", draft_id: String(draft.id), account_id: account.id, subject: draft.subject ?? "" };
   });
@@ -176,7 +225,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       ...(input.cc !== undefined ? { cc: optionalRecipients(input.cc) } : {}),
       ...(input.bcc !== undefined ? { bcc: optionalRecipients(input.bcc) } : {}),
       ...(typeof input.subject === "string" ? { subject: text(input.subject, 998) } : {}),
-      ...(typeof input.body_text === "string" ? { bodyText: preserveEmailBody(input.body_text) } : {}),
+      ...(typeof input.body_text === "string" || context.email_body_review ? { bodyText: reviewedBody(input.body_text, context) } : {}),
     });
     if (!updated) throw new EmailWriteFailure("draft_update_failed", "The draft could not be updated.");
     return { status: "draft_updated", draft_id: draftId, account_id: account.id, subject: updated.subject ?? "" };
@@ -196,7 +245,8 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       emailAccountId: account.id,
       to: [recipient],
       subject,
-      bodyText: preserveEmailBody(input.body_text),
+      bodyText: reviewedBody(input.body_text, context),
+      replyToMessageId:String(source.id),
     });
     return { status: "reply_draft_created", draft_id: String(draft.id), account_id: account.id, subject };
   });
@@ -208,7 +258,7 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
     const recipients = requireRecipients(input.to);
     const subject = reviewedForwardSubject(source.subject);
     const originalBody = preserveEmailBody(source.text_body);
-    const note = preserveEmailBody(input.body_text, 10000);
+    const note = reviewedBody(input.body_text, context, 10000);
     const forwardedBody = `${note ? note + "\n\n" : ""}---------- Forwarded message ----------\n${originalBody}`;
     if (forwardedBody.length > 100000) {
       throw new EmailWriteFailure("draft_body_too_long", "The forwarded email exceeds the maximum draft size. Reduce the quoted content before saving.");
@@ -242,11 +292,15 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       recipientSnapshot: {
         to: recipients, cc, bcc,
         subject: text(draft.subject, 998), bodyText: preserveEmailBody(draft.text_body),
+        ...emailReplyMetadata(draft),
       },
       requestedBy: context.user_id,
       idempotencyKey: `${context.turn_id}:send:${draftId}`,
       correlationId: context.correlation_id,
     });
+    if (await maybeAutoApproveEmailAction(context, action)) {
+      return { status: "auto_approved", action_id: action.id, action_type: action.actionType, message: "Auto-approved by this agent's autonomous-send policy; the email is queued for delivery." };
+    }
     return { status: "pending_approval", action_id: action.id, action_type: action.actionType, message: "The send request is awaiting explicit user approval. The email has not been sent." };
   });
 
@@ -265,11 +319,15 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       agentId: context.agent_id,
       emailAccountId: account.id,
       actionType: "reply_email",
-      recipientSnapshot: { messageId, to: [recipient], cc: [], bcc: [], subject, bodyText: preserveEmailBody(input.body_text) },
+      recipientSnapshot: { messageId, to: [recipient], cc: [], bcc: [], subject,
+        bodyText: applyMailboxSignature(reviewedBody(input.body_text, context),account.signature_text) },
       requestedBy: context.user_id,
       idempotencyKey: `${context.turn_id}:reply:${messageId}`,
       correlationId: context.correlation_id,
     });
+    if (await maybeAutoApproveEmailAction(context, action)) {
+      return { status: "auto_approved", action_id: action.id, action_type: action.actionType, message: "Auto-approved by this agent's autonomous-send policy; the reply is queued for delivery." };
+    }
     return { status: "pending_approval", action_id: action.id, action_type: action.actionType, message: "The reply request is awaiting explicit user approval. The reply has not been sent." };
   });
 
@@ -284,11 +342,15 @@ export function createEmailWriteTools(deps: EmailWriteToolDependencies = {}): To
       agentId: context.agent_id,
       emailAccountId: account.id,
       actionType: "forward_email",
-      recipientSnapshot: { messageId, to: recipients, subject: reviewedForwardSubject(source.subject), bodyText: preserveEmailBody(source.text_body) },
+      recipientSnapshot: { messageId, to: recipients, subject: reviewedForwardSubject(source.subject),
+        bodyText: applyMailboxSignature(preserveEmailBody(source.text_body),account.signature_text) },
       requestedBy: context.user_id,
       idempotencyKey: `${context.turn_id}:forward:${messageId}`,
       correlationId: context.correlation_id,
     });
+    if (await maybeAutoApproveEmailAction(context, action)) {
+      return { status: "auto_approved", action_id: action.id, action_type: action.actionType, message: "Auto-approved by this agent's autonomous-send policy; the forward is queued for delivery." };
+    }
     return { status: "pending_approval", action_id: action.id, action_type: action.actionType, message: "The forward request is awaiting explicit user approval. The message has not been forwarded." };
   });
 

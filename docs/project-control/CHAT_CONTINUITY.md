@@ -1,3 +1,8 @@
+## DEV-01 — frontend AI repair continuation — 2026-10-25
+
+Frontend AI repair acceptance is complete on Development; main untouched and its current commits are included. Exact runtime **4898fa33** passed **1,809 tests**, types/lint/build/migration gates and guarded deployment. Natural reply draft preserves provider body and thread headers with zero send requests; explicit human review overrides saved autonomous policy. After the owner refreshed the credential, fresh WhatsApp action4ef0668c stayed pending/noqueue, was approved once in the website, then confirmed **Delivered** by Meta and frontend. Both email providers have earlier independent connected CC receipt evidence. See [session](sessions/DEV01-FRONTEND-AI-REPAIR-20261025.md), [qualified acceptance matrix](sessions/DEV01-FRONTEND-AI-REPAIR-ACCEPTANCE-20261025.md) and [decisions](sessions/DEV01-FRONTEND-AI-REPAIR-DECISIONS-20261025.md). Earlier failed WhatsApp actions and historical502 process cause remain accurately recorded. Preserve existing policies, grants and concurrent scheduling features; other project work is not closed by this repair.
+
+---
 # CHAT_CONTINUITY.md — Fresh-Conversation Recovery Protocol
 
 > **Latest DEV-01 continuation (2026-10-18):** Start at [DEV01-CATCHUP-ROUTINES-20261018](sessions/DEV01-CATCHUP-ROUTINES-20261018.md) and the latest NEXT_ACTION checkpoint for the new personal catch-up/routines proposals, owner-selected consent, current baseline evidence and FIX-01/OPS-01 handoffs. Recover older active sessions without closing them. Planning is complete; feature implementation/acceptance remains pending the recorded review and dependency gates.

@@ -23,9 +23,9 @@ describe("C2 immutable personal source coverage", () => {
     expect(selection).toContain("planBriefingBatches(selected)");
     expect(selection).toContain("m.created_at >= $5");
   });
-  it("never derives personal coverage from provider read state or login", () => {
+  it("requires unread catch-up eligibility while keeping personal review coverage separate", () => {
     const selectQuery = selection.slice(selection.indexOf("SELECT m.id,m.email_account_id"), selection.indexOf("ORDER BY m.id LIMIT 200"));
-    expect(selectQuery).not.toContain("m.is_read");
+    expect(selectQuery).toContain("AND ($8 OR m.is_read=false)");
     expect(selectQuery).not.toContain("last_foreground_at");
     expect(selectQuery).toContain("briefing_review_sources r");
     expect(selectQuery).toContain("r.reviewed_at IS NOT NULL");

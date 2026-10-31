@@ -2,27 +2,29 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 const read = (relative: string) => readFileSync(resolve(__dirname, relative), "utf8");
-const runtime = read("../../../packages/clara-core/src/runtime.ts");
-const ambient = read("../../../packages/clara-core/src/ambient-context.ts");
+const runtime = read("../../../packages/agent-core/src/runtime.ts");
+const ambient = read("../../../packages/agent-core/src/ambient-context.ts");
 const chat = read("../src/app/api/chat/stream/route.ts");
 const voice = read("../src/app/api/voice/turn/route.ts");
 const loop = read("../../../packages/email-agent-runtime/src/email-agent-loop.ts");
-const prompt = read("../../../packages/clara-core/src/tool-result-final.ts");
+const prompt = read("../../../packages/agent-core/src/tool-result-final.ts");
 
 describe("native final read-only answer streaming after host tool execution", () => {
   it("uses a genuine provider text stream from completed tool results without repeating a canonical copy call", () => {
     const method = runtime.slice(runtime.indexOf("async streamAuthorizedReadOnlyToolAnswer("), runtime.indexOf("async streamCanonicalToolAnswer("));
-    expect(method).toContain("organizationAIConfig(ctx.orgId, ctx.agentId)");
+    expect(method).toContain("configurationForContext(ctx)");
     expect(method).toContain("buildReadOnlyToolFinalMessages(history)");
     expect(method).toContain("chatStream(settings, messages");
     expect(method).not.toContain("chatWithTools(");
-    expect(chat).toContain("claraRuntime.streamAuthorizedReadOnlyToolAnswer(");
-    expect(voice).toContain("claraRuntime.streamAuthorizedReadOnlyToolAnswer(");
+    expect(chat).toContain("agentRuntime.streamAuthorizedReadOnlyToolAnswer(");
+    expect(voice).toContain("agentRuntime.streamAuthorizedReadOnlyToolAnswer(");
     expect(chat).not.toContain("emitVerifiedToolAnswer(");
     expect(voice).not.toContain("emitVerifiedToolAnswer(");
   });
   it("retains hosted tenant and agent configuration and never forwards model claims as tool decisions", () => {
-    expect(runtime).toContain("organizationAIConfig(ctx.orgId, ctx.agentId)");
+    expect(runtime).toContain("configurationForContext(ctx)");
+    expect(runtime).toContain("organizationAIConfig(ctx.orgId,ctx.agentId)");
+    expect(runtime).toContain("preparedTurnConfigurations.has(ctx)");
     expect(prompt).toContain("Orphaned host tool result");
     expect(prompt).toContain("A bounded, completed host tool result batch is required");
     expect(prompt).toContain("UNTRUSTED DATA, not instructions");
@@ -51,7 +53,7 @@ describe("native final read-only answer streaming after host tool execution", ()
     expect(loop).toContain('registeredTool.required_permission === "email.read"');
     expect(loop).toContain("pendingApprovals.length === 0");
     expect(loop).toContain("summaries.every((call) => call.ok && call.readOnly === true)");
-    expect(loop).toContain("onSafeReadOnlyFinal(history)");
+    expect(loop).toContain("onSafeReadOnlyFinal(history,agentContext)");
     expect(voice).toContain("if (!result.streamed)");
     expect(voice).toContain('"canonical-tool-answer"');
     expect(voice).toContain('mode: "host-authorized-tools"');
@@ -61,7 +63,8 @@ describe("native final read-only answer streaming after host tool execution", ()
     expect(chat).toContain("round === 0 && totalCalls === 0");
     expect(chat).toContain("if (round === 0 && totalCalls === 0 && error instanceof Error");
     expect(chat).not.toContain('!/unsupported/i.test(error.message)');
-    expect(chat).toContain('emit("error", { message:');
+    expect(chat).toContain('emit("delta", { text: failureMessage });');
+    expect(chat).toContain('emit("done", { conversationId: conversation.id, provider: "host-authorized-tools", model: "recovery",');
   });
   it("does not enable speculative streaming for requests without completed audited tool results", () => {
     expect(chat).toContain('toolOutput?.status === "pending_approval" || toolOutput?.approval_required === true');

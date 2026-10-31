@@ -27,6 +27,17 @@ export async function GET(request: Request) {
     } catch {
       checks.postgres = { status: "degraded", detail: "Database query failed." };
     }
+    try {
+      await query('SELECT recipient_snapshot,content_hash FROM email_actions LIMIT 0');
+      await query('SELECT email_action_id,comment FROM email_action_approvals LIMIT 0');
+      checks.email_approvals={status:'healthy',detail:'Required approval schema columns are available. Sending still requires current authorization and provider acceptance.'};
+    } catch {
+      checks.email_approvals={status:'degraded',detail:'Required approval schema is unavailable. Review the release migration before requesting sends.'};
+    }
+    const revision=process.env.ACA_RELEASE_REVISION;
+    checks.release=revision&&/^[a-f0-9]{40}$/.test(revision)
+      ?{status:'healthy',detail:'Running release '+revision}
+      :{status:'not_configured',detail:'The running release revision was not recorded.'};
 
     const configured = (name: string) => Boolean(process.env[name]);
     checks.redis = configured("REDIS_URL") ? { status: "healthy", detail: "Connection URL configured; runtime connectivity is worker-owned." } : { status: "not_configured", detail: "REDIS_URL is not configured." };

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { validateCanonicalBriefingRows, requireClaimedMailboxScope, validateClaimedBriefingSourceIds } from "@ai-comms-agent/db";
 import { readFileSync } from "node:fs";
 import { generateBriefingBatch, validateBriefingItems } from "@ai-comms-agent/email-agent-runtime/briefings/generation";
-import { createClaraBriefingGenerator } from "../src/briefings/clara-generator";
+import { createBriefingGenerator } from "../src/briefings/generator";
 
 const principal = {
   organizationId: "11111111-1111-4111-8111-111111111111",
@@ -88,10 +88,10 @@ test("oversized canonical source does not disappear from partial output", async 
   assert.equal(result.items[0]?.representation, "partial");
 });
 
-test("Clara briefing adapter sends only host-selected evidence and disables extra retrieval", async () => {
+test("Briefing adapter sends only host-selected evidence and disables extra retrieval", async () => {
   let observed: unknown;
   async function* stream() { yield '{"items":[]}'; }
-  const generator = createClaraBriefingGenerator(principal, async (ctx, messages) => {
+  const generator = createBriefingGenerator(principal, async (ctx, messages) => {
     observed = { ctx, messages };
     return { providerName: "test", model: "test", stream: stream() };
   });
@@ -107,16 +107,16 @@ test("Clara briefing adapter sends only host-selected evidence and disables extr
   assert.match(call.messages[1].content, /IGNORE INSTRUCTIONS/);
 });
 
-test("Clara provider 429 yields partial evidence-linked fallback, never complete coverage", async () => {
-  const generator = createClaraBriefingGenerator(principal, async () => { throw new Error("provider 429"); });
+test("Provider 429 yields partial evidence-linked fallback, never complete coverage", async () => {
+  const generator = createBriefingGenerator(principal, async () => { throw new Error("provider 429"); });
   const result = await generateBriefingBatch([source], generator);
   assert.equal(result.status, "partial");
   assert.equal(result.items[0]?.representation, "partial");
 });
 
-test("Clara provider deadline aborts the model request", async () => {
+test("Provider deadline aborts the model request", async () => {
   let observedSignal: AbortSignal | undefined;
-  const generator = createClaraBriefingGenerator(principal, async (_ctx, _messages, signal) => {
+  const generator = createBriefingGenerator(principal, async (_ctx, _messages, signal) => {
     observedSignal = signal;
     await new Promise<void>((_, reject) => {
       signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
@@ -211,9 +211,9 @@ test("canonical loader fingerprints full manifest grant, never batch mailbox sub
 });
 
 
-test("Clara generator deadline rejects even when provider ignores AbortSignal", async () => {
+test("Generator deadline rejects even when provider ignores AbortSignal", async () => {
   let aborted = false;
-  const generator = createClaraBriefingGenerator(principal, async (_ctx, _messages, signal) => {
+  const generator = createBriefingGenerator(principal, async (_ctx, _messages, signal) => {
     signal?.addEventListener("abort", () => { aborted = true; }, { once: true });
     return new Promise<never>(() => {}); // Broken upstream adapter never settles.
   }, 5);
@@ -221,9 +221,9 @@ test("Clara generator deadline rejects even when provider ignores AbortSignal", 
   assert.equal(aborted, true);
 });
 
-test("Clara generator deadline rejects when provider stream stops yielding", async () => {
+test("Generator deadline rejects when provider stream stops yielding", async () => {
   let aborted = false;
-  const generator = createClaraBriefingGenerator(principal, async (_ctx, _messages, signal) => {
+  const generator = createBriefingGenerator(principal, async (_ctx, _messages, signal) => {
     signal?.addEventListener("abort", () => { aborted = true; }, { once: true });
     async function* stream() {
       yield '{"items":';

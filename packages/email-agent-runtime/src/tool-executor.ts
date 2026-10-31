@@ -1,4 +1,4 @@
-import { ToolRegistry } from "@ai-comms-agent/shared";
+import { ToolRegistry, operationResultFromToolCall,turnAllowsTool,turnRequiresHumanApproval } from "@ai-comms-agent/shared";
 import type { Tool, ToolContext, ToolResult } from "@ai-comms-agent/shared";
 
 export interface ToolAuthorizationDecision {
@@ -31,13 +31,14 @@ export async function executeRegisteredTool(
   authorize: ToolAuthorizer,
   writeAudit: ToolAuditWriter,
 ): Promise<ToolResult> {
+  if(turnRequiresHumanApproval(context))context={...context,require_human_approval:true};
   const startedAt = Date.now();
   const tool = registry.get(toolName);
   let outcome: ToolResult;
 
   if (!tool) {
     outcome = failure(toolName, "unknown_tool", "This tool is not registered.");
-  } else if (!registry.listForAgent(context.agent_id).some((candidate) => candidate.name === toolName)) {
+  } else if (!turnAllowsTool(context,toolName)||!registry.listForAgent(context.agent_id).some((candidate) => candidate.name === toolName)) {
     outcome = failure(toolName, "tool_not_allowed", "This tool is not enabled for the current agent.");
   } else {
     const validation = registry.validate(toolName, input);
@@ -69,7 +70,14 @@ export async function executeRegisteredTool(
   } catch {
     // A handler may have completed before audit persistence failed. Do not
     // suggest automatic retry; callers must reconcile any possible side effect.
-    return failure(toolName, "audit_persistence_failed", "The audit record could not be persisted. Reconcile the operation before retrying.");
+    const failed = failure(toolName, "audit_persistence_failed", "The audit record could not be persisted. Reconcile the operation before retrying.");
+    const persisted = operationResultFromToolCall({context,callId:"audit-reconciliation",registeredName:tool?.name,result:outcome});
+    if (outcome.ok && persisted && 'resourceId' in persisted && persisted.resourceId) {
+      // Retain only the already-authorized mutation receipt, not unaudited
+      // read results. This is evidence of persistence, never permission to retry.
+      return {...failed, output:outcome.output};
+    }
+    return failed;
   }
   return outcome;
 }

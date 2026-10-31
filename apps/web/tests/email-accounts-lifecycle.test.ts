@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import {test} from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -42,7 +42,7 @@ test("worker discovery uses the verified provider lifecycle", () => {
 test("provider verification owns cleanup around live provider discovery", () => {
   const source = readFileSync(verificationPath, "utf8");
   assert.match(source, /await provider\.connect\(credentials\)/);
-  assert.match(source, /await provider\.discoverCapabilities\(\)/);
+  assert.match(source, /withProviderRetry\(\(\) => provider\.discoverCapabilities\(\)\)/);
   assert.match(source, /finally/);
   assert.match(source, /await provider\.disconnect\(\)/);
 });
@@ -77,10 +77,8 @@ test("email account API enforces organization authorization and never returns cr
 
 
 test("inbox source contains no escaped-newline literals and sender search remains parameterized", () => {
-  const inboxPath = resolve(__dirname, "../src/app/mail/inbox/inbox-client.tsx");
-  const repositoryPath = resolve(__dirname, "../../packages/db/src/email/repository.ts");
-  const inbox = readFileSync(inboxPath, "utf8");
-  const repository = readFileSync(repositoryPath, "utf8");
-  assert.doesNotMatch(inbox, /\\\\n/);
-  assert.match(repository, /m\\.from_email ILIKE \\$\\$\\{values\\.length\\}/);
+ const inbox=readFileSync(resolve(__dirname,"../src/app/mail/inbox/inbox-client.tsx"),"utf8");
+ const repository=readFileSync(resolve(__dirname,"../../../packages/db/src/email/repository.ts"),"utf8");
+ assert.doesNotMatch(inbox,/\\\\n/);
+ assert.ok(repository.includes('m.from_email ILIKE '+String.fromCharCode(36,36)+'{values.length}'));
 });

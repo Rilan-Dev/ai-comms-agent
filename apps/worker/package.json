@@ -10,12 +10,12 @@
     "build": "tsc",
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/",
+    "lint": "node ../web/node_modules/eslint/bin/eslint.js src/",
     "clean": "rm -rf dist .turbo",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "node --import tsx --test --test-concurrency=1 tests/*.test.ts"
   },
   "dependencies": {
-    "@ai-comms-agent/clara-core": "workspace:*",
+    "@ai-comms-agent/agent-core": "workspace:*",
     "@ai-comms-agent/db": "workspace:*",
     "@ai-comms-agent/shared": "workspace:*",
     "amqplib": "^2.2.0",

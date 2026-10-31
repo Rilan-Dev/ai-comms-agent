@@ -15,7 +15,7 @@ function mockApi(handler: (url: string) => unknown) {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("Clara-style live vendor model discovery", () => {
+describe("Live vendor model discovery", () => {
   it("filters OpenAI advertised IDs by actual capability, not a hard-coded list", async () => {
     const fetchMock = mockApi(() => ({
       data: [
@@ -160,7 +160,7 @@ describe("realtime voice selection and relay integration", () => {
 
   it("uses the configured model through the authenticated session and relay", () => {
     const session = readFileSync(resolve(__dirname, "../src/app/api/voice/session/route.ts"), "utf8");
-    const resolver = readFileSync(resolve(__dirname, "../../../packages/clara-core/src/runtime.ts"), "utf8");
+    const resolver = readFileSync(resolve(__dirname, "../../../packages/agent-core/src/runtime.ts"), "utf8");
     const relay = readFileSync(resolve(__dirname, "../src/lib/voice/provider-relay-init.ts"), "utf8");
     expect(session).toContain("purpose='realtime' AND enabled=true");
     expect(session).toContain("providerModelResult.rows[0]?.model");
@@ -176,9 +176,9 @@ describe("realtime voice selection and relay integration", () => {
     expect(selector).toContain('catalogSource === "documented"');
     expect(selector).toContain("Previously saved model");
     expect(setup).toContain("Realtime speech-recognition model");
-    expect(setup).toContain("ElevenLabs Conversational AI agents are a separate integration");
-    expect(setup).toContain('status === "active" ? "key enabled" : status');
-    expect(setup).toContain("API key saved (enabled; model not yet verified)");
+    expect(setup).toContain("not ElevenLabs Conversational AI agents");
+    expect(setup).toContain('savedKeyStatus === "active" ? "Credentials enabled"');
+    expect(setup).toContain("A saved key does not guarantee a live session.");
   });
 });
 
@@ -197,7 +197,7 @@ describe("provider-setup safety and truthful status", () => {
     const remove = setup.slice(setup.indexOf("async function deleteProvider()"));
     expect(choose).toContain('setApiKey("");');
     expect(setup).toContain("onClick={() => chooseProvider(p)}");
-    expect(setup).toContain("onChange={(e) => chooseProvider(e.target.value)}");
+    expect(setup).toContain('onClick={() => chooseProvider("")}');
     expect(remove).toContain("if (!response.ok)");
     expect(remove.indexOf("if (!response.ok)")).toBeLessThan(remove.indexOf('setNotice("Provider config removed.")'));
     expect(remove).toContain("setCatalogVersion((n) => n + 1)");
