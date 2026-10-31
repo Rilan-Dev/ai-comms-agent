@@ -13,13 +13,26 @@ function validate(input: any) {
   const trigger = input?.trigger && typeof input.trigger === "object" && !Array.isArray(input.trigger) ? input.trigger : null;
   const actions = Array.isArray(input?.actions) ? input.actions : null;
   if (!name || !agentId || !trigger || !actions || actions.length === 0) return { error: "name, agentId, trigger and at least one action are required" };
-  if (actions.length !== 1) return { error: "Exactly one event action is currently supported." };
+  if(actions.length>3)return {error:"Maximum three sequential actions per rule."};
   const event=typeof trigger.event==="string"?trigger.event:trigger.type;
   if(!["email.received","email.action_required","whatsapp.received"].includes(String(event)))return {error:"Unsupported event trigger."};
-  const action=actions[0] as Record<string,unknown>;
-  if(!action||typeof action!=="object"||!["create_draft","generate_summary","send_whatsapp"].includes(String(action.type)))return {error:"Unsupported automation action."};
-  if(action.type==="create_draft"&&!String(event).startsWith("email."))return {error:"Create draft requires an email trigger."};
-  if(action.type==="send_whatsapp"&&(typeof action.to!=="string"||!/^\+[1-9]\d{7,14}$/.test(action.to)))return {error:"WhatsApp automations require an explicit E.164 recipient (human approval still required)."};
+  const types=new Set<string>();
+  for(const raw of actions){
+    if(!raw||typeof raw!=="object"||Array.isArray(raw))return {error:"Invalid action."};
+    const action=raw as Record<string,unknown>,type=String(action.type);
+    if(!["create_draft","generate_summary","send_whatsapp","create_work_item"].includes(type))return {error:"Unsupported automation action."};
+    if(types.has(type))return {error:"Each action can only appear once in a workflow."};
+    types.add(type);
+    if(type==="create_draft"&&!String(event).startsWith("email."))return {error:"Reply drafts require an email trigger."};
+    if(type==="send_whatsapp"&&(typeof action.to!=="string"||!^\+[1-9]\d{7,14}$/.test(action.to)))return {error:"WhatsApp actions require an E.164 recipient and human approval."};
+    if(type==="create_work_item"){
+      if(!["opportunity","service_ticket"].includes(String(action.kind)))return {error:"Select a sales opportunity or service ticket."};
+      if(action.priority!=null&&!["normal","high","urgent"].includes(String(action.priority)))return {error:"Invalid business priority."};
+      if(action.assigneeId!=null&&(typeof action.assigneeId!=="string"||!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(action.assigneeId)))return {error:"Invalid assignee ID."};
+    }
+  }
+  if(types.has("send_whatsapp")&&actions.length!==1)return {error:"WhatsApp approval must remain a standalone action."};
+  if(actions[0]?.type==="create_draft"&&actions.length>1)return {error:"Draft creation must follow summary and work item creation."};
   return { value: { name, agentId, trigger, actions, conditions: input?.conditions && typeof input.conditions === "object" ? input.conditions : {} } };
 }
 

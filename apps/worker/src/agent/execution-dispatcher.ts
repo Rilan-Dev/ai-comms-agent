@@ -51,7 +51,7 @@ export async function dispatchAgentExecution(request:AgentExecutionRequest):Prom
     const fallback=sourceFallback("empty");
     if(fallback)return fallback;
   }
-  const actions=await executeProductActions({ organizationId:request.organizationId, agentId:request.agentId, executionId:request.executionId, output,...(configurationTurn?{configuration:configurationTurn.configuration}:{}) }, request.params);
+  const actions=await executeProductActions({ organizationId:request.organizationId, agentId:request.agentId, executionId:request.executionId, output,source:request.source,...(configurationTurn?{configuration:configurationTurn.configuration}:{}) }, request.params);
   // Provider action failures must never be stored as successful event runs.
   const blocked=actions.find((action)=>action.status==="configuration_required"||action.status==="failed"||action.status==="unsupported");
   if(blocked) return {status:"configuration_required",executionId:request.executionId,reason:String(blocked.reason ?? "Product action failed or requires configuration"),actions};

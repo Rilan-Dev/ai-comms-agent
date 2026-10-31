@@ -1,9 +1,10 @@
-import { createEmailAction, createLocalDraft, getWhatsAppAccountForAgent, PostgresEmailAccountRepository, query, recordAuditEvent,loadActiveAgentConfiguration,type ActiveAgentConfiguration } from "@ai-comms-agent/db";
+import { createBusinessWorkItem, createEmailAction, createLocalDraft, getWhatsAppAccountForAgent, PostgresEmailAccountRepository, query, recordAuditEvent,loadActiveAgentConfiguration,type ActiveAgentConfiguration } from "@ai-comms-agent/db";
 import type { ProductActionResult } from "@ai-comms-agent/shared";
 import {draftReplySourceFromEvent} from "../automation/draft-reply-source";
+import {deriveBusinessEvent} from "../automation/business-source";
 
 type Action = Record<string, unknown>;
-type Context = { organizationId: string; agentId: string; executionId: string; output: string;configuration?:ActiveAgentConfiguration };
+type Context = { organizationId: string; agentId: string; executionId: string; output: string;source?:"automation"|"schedule"|"whatsapp"|"chat";configuration?:ActiveAgentConfiguration };
 
 async function configurationPermits(context:Context,tool:string):Promise<boolean>{
   const frozen=context.configuration;if(!frozen)return true;
@@ -32,6 +33,29 @@ export async function executeProductActions(context: Context, params: Record<str
     if(type==="generate_summary"){
       if(!context.output.trim()){results.push({type,status:"configuration_required",reason:"Agent generated no summary."});continue;}
       results.push({type,status:"completed"});continue;
+    }
+    if(type==="create_work_item"){
+      // No business record may be created from chat text or untrusted scheduled
+      // params. Only the event worker supplies authenticated provider source data.
+      const event=params.event&&typeof params.event==="object"&&!Array.isArray(params.event)?params.event as Record<string,unknown>:{};
+      const source=context.source==="automation"?deriveBusinessEvent(event):null;
+      const kind=stringValue(action.kind);
+      const priority=stringValue(action.priority)??"normal";
+      const assigneeId=stringValue(action.assigneeId);
+      if(!source||!["opportunity","service_ticket"].includes(kind??"")||!["normal","high","urgent"].includes(priority)){
+        results.push({type,status:"configuration_required",reason:"Business work items require a trusted provider event, kind and priority."});continue;
+      }
+      if(assigneeId&&!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(assigneeId)){
+        results.push({type,status:"configuration_required",reason:"Invalid assignee ID."});continue;
+      }
+      const item=await createBusinessWorkItem({
+        organizationId:context.organizationId,agentId:context.agentId,runId:context.executionId,
+        kind:kind as "opportunity"|"service_ticket",eventType:source.eventType,
+        sourceKey:source.sourceKey,title:source.title,description:source.description,
+        contact:source.contact,summary:context.output,priority:priority as "normal"|"high"|"urgent",assigneeId
+      });
+      if(!item){results.push({type,status:"configuration_required",reason:"Agent or assignee is not an active member of this organization, or an idempotency conflict occurred."});continue;}
+      results.push({type,status:"completed",actionId:item.id});continue;
     }
     if(type==="create_draft"){
       if(!await configurationPermits(context,"email.draft.create")){

@@ -161,3 +161,5 @@ export { loadCanonicalBriefingSources, validateCanonicalBriefingRows, requireCla
 export {prepareMailboxFlagPage,completeMailboxFlagPage,withMailboxFlagLease} from './email/flag-reconciliation';
 export {MailboxReadStatePendingError} from './briefings/read-state';
 export {listPendingBriefingWork,deferBriefingWork} from './briefings/work';
+
+export {listBusinessWorkItems,listBusinessAssignees,createBusinessWorkItem,changeBusinessWorkItem,type BusinessWorkItem} from "./business/work-items";

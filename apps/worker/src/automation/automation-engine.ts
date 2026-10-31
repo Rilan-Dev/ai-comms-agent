@@ -64,7 +64,7 @@ export async function evaluateAutomationEvent(event:Event){
       continue;
     }
     try{
-      const result=await dispatchAgentExecution({executionId:runId,organizationId:rule.organizationId,agentId:rule.agentId,source:"automation",intent:"automation.execute",params:{actions:rule.actions,event:event.payload},requestedAt:new Date().toISOString()});
+      const result=await dispatchAgentExecution({executionId:runId,organizationId:rule.organizationId,agentId:rule.agentId,source:"automation",intent:"automation.execute",params:{actions:rule.actions,event:{...event.payload,eventType:event.type}},requestedAt:new Date().toISOString()});
       if(result.status==="configuration_required"){
         await failAutomationRun(runId,result.reason??"Execution denied");failed++;
       }else{
