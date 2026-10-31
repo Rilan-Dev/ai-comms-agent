@@ -102,8 +102,10 @@ export async function GET(request: Request) {
       LIMIT 18
     `, [organizationId, subject.user.id, selectedAgentId, window.from, window.to]) : {rows: [] as (AiTodaySourceRow & {matched_count:string|number})[]};
 
-    const coverage = selectedAgentId ? await query<{connected_mailboxes: number | string; last_sync_at: Date | string | null}>(`
-      SELECT count(*) AS connected_mailboxes,max(COALESCE(e.last_synced_at,e.last_sync_at)) AS last_sync_at
+    const coverage = selectedAgentId ? await query<{connected_mailboxes: number | string; last_sync_at: Date | string | null; oldest_sync_at:Date|string|null; unsynced_mailboxes:number|string}>(`
+      SELECT count(*) AS connected_mailboxes,max(COALESCE(e.last_synced_at,e.last_sync_at)) AS last_sync_at,
+        min(COALESCE(e.last_synced_at,e.last_sync_at)) AS oldest_sync_at,
+        count(*) FILTER(WHERE COALESCE(e.last_synced_at,e.last_sync_at) IS NULL) AS unsynced_mailboxes
       FROM email_accounts e
       WHERE e.organization_id=$1 AND e.status='connected' AND e.deleted_at IS NULL
         AND EXISTS(SELECT 1 FROM briefing_mailbox_grants g
@@ -111,7 +113,7 @@ export async function GET(request: Request) {
           JOIN agents a ON a.id=b.agent_id AND a.organization_id=$1 AND a.status='active'
           WHERE g.organization_id=$1 AND g.user_id=$2 AND g.mailbox_id=e.id
             AND g.revoked_at IS NULL AND b.agent_id=$3 AND b.role IN ('primary','read_only'))
-    `, [organizationId, subject.user.id, selectedAgentId]) : {rows:[] as {connected_mailboxes:number|string;last_sync_at:Date|string|null}[]};
+    `, [organizationId, subject.user.id, selectedAgentId]) : {rows:[] as {connected_mailboxes:number|string;last_sync_at:Date|string|null;oldest_sync_at:Date|string|null;unsynced_mailboxes:number|string}[]};
     const activity = selectedAgentId ? await query<{last_foreground_at:Date|string|null}>(`
       SELECT last_foreground_at FROM user_mail_activity
       WHERE organization_id=$1 AND user_id=$2 AND agent_id=$3
@@ -139,6 +141,8 @@ export async function GET(request: Request) {
       lastVisitAt:aiTodayTimestamp(activity.rows[0]?.last_foreground_at),
       connectedMailboxes: Number(coverage.rows[0]?.connected_mailboxes ?? 0),
       lastSyncAt: aiTodayTimestamp(coverage.rows[0]?.last_sync_at),
+      oldestSyncAt: aiTodayTimestamp(coverage.rows[0]?.oldest_sync_at),
+      unsyncedMailboxes:Number(coverage.rows[0]?.unsynced_mailboxes??0),
       totalMatches: Number(source.rows[0]?.matched_count ?? 0),
       items: source.rows.map(projectAiTodaySource),
       pendingEmailApprovals: approvals ? Number(approvals.rows[0]?.email_pending ?? 0) : null,
