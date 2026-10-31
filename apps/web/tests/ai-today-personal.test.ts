@@ -1,7 +1,7 @@
 import {beforeEach,afterEach,describe,expect,it,vi} from "vitest";
 import {createElement} from "react";
 import {renderToStaticMarkup} from "react-dom/server";
-import {aiTodayBriefingChatHref,aiTodayChatHref,projectAiTodaySource,type AiTodaySnapshot} from "../src/lib/ai-today/snapshot";
+import {aiTodayBriefingChatHref,aiTodayChatHref,projectAiTodaySource,suggestedAiTodayDays,type AiTodaySnapshot} from "../src/lib/ai-today/snapshot";
 import {AiTodaySnapshotView} from "../src/app/overview/ai-today";
 
 const m=vi.hoisted(()=>({authorize:vi.fn(),origin:vi.fn(),record:vi.fn()}));
@@ -48,6 +48,19 @@ describe("personal AI Today foreground access",()=>{
     expect(m.record).not.toHaveBeenCalled();
     m.record.mockRejectedValueOnce(new Error("briefing grant revoked"));
     expect((await POST(visit({organizationId,agentId}))).status).not.toBe(204);
+  });
+});
+
+describe("returning owner catch-up window",()=>{
+  const asOf="2026-10-31T00:00:00Z";
+  it("extends only a recorded absence up to the supported 30-day cap",()=>{
+    expect(suggestedAiTodayDays(null,asOf)).toBe(5);
+    expect(suggestedAiTodayDays("invalid",asOf)).toBe(5);
+    expect(suggestedAiTodayDays("2026-10-30T00:00:00Z",asOf)).toBe(5);
+    expect(suggestedAiTodayDays("2026-10-25T00:00:00Z",asOf)).toBe(7);
+    expect(suggestedAiTodayDays("2026-10-20T00:00:00Z",asOf)).toBe(30);
+    expect(suggestedAiTodayDays("2026-09-01T00:00:00Z",asOf)).toBe(30);
+    expect(suggestedAiTodayDays("2026-11-01T00:00:00Z",asOf)).toBe(5);
   });
 });
 
