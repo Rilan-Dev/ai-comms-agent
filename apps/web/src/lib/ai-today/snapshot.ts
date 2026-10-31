@@ -12,6 +12,16 @@ export function buildAiTodayWindow(days: AiTodayDays, now: Date): {from: string;
   return {from: new Date(now.getTime() - days * 86_400_000).toISOString(), to: now.toISOString()};
 }
 
+/** Expand the initial visit window to cover a real recorded absence, capped at 30
+ * days. Never infer a prior visit when foreground history is unavailable. */
+export function suggestedAiTodayDays(previous:string|null|undefined,asOf:string,minimum:AiTodayDays=5):AiTodayDays {
+  if(!previous)return minimum;
+  const elapsed=Date.parse(asOf)-Date.parse(previous);
+  if(!Number.isFinite(elapsed)||elapsed<=0)return minimum;
+  const required=Math.max(minimum,Math.ceil(elapsed/86_400_000));
+  return AI_TODAY_DAYS.find(value=>value>=required)??30;
+}
+
 export type AiTodaySourceRow = {
   id: string; thread_id: string; email_account_id: string; account_email: string;
   from_address: string | null; subject: string | null; snippet: string | null;
