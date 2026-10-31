@@ -26,7 +26,8 @@ describe("personal AI Today foreground access",()=>{
     expect(response.status).toBe(204);
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(m.authorize).toHaveBeenCalledOnce();
-    expect(m.record).toHaveBeenCalledExactlyOnceWith({organizationId,userId,agentId});
+    expect(m.record).toHaveBeenCalledOnce();
+    expect(m.record).toHaveBeenCalledWith({organizationId,userId,agentId});
   });
   it("refuses forged identifiers, privilege escalation and wrong-origin requests before a DB write",async()=>{
     const {POST}=await import("../src/app/api/ai-today/visit/route");
@@ -75,6 +76,6 @@ describe("personal Chat handoff is bounded, review-only and source-limited",()=>
     expect(html).toContain("Prepare an AI briefing in Chat");
     expect(html).toContain("finance@example.test");
     expect(html).toContain("only from mailboxes both granted");
-    expect(html).toContain("No matching").toBe(false);
+    expect(html).not.toContain("No matching");
   });
 });
