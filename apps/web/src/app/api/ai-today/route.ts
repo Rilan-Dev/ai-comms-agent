@@ -29,9 +29,34 @@ export async function GET(request: Request) {
     // email.read is not implied by organization.read or the current URL.
     const subject = await authorize(request, {organizationId: asOrganizationId(organizationId), permission: "email.read"}, getIdentityAdapter(), getIdentityRepository());
     const access = planOverviewRead(subject.permissions);
+    const requestedAgentId = params.get("agentId");
+    if (requestedAgentId && !uuid.test(requestedAgentId)) return respond({error:"validation_error"},422);
+
+    // AI Today is personal: email.read alone never grants an organization's
+    // entire mailbox collection. Require BOTH an active agent binding and a
+    // non-revoked grant for the authenticated user.
+    const granted = await query<{agent_id:string;agent_name:string;mailbox_id:string}>(`
+      SELECT DISTINCT a.id AS agent_id,a.name AS agent_name,e.id AS mailbox_id
+      FROM briefing_mailbox_grants g
+      JOIN email_accounts e ON e.id=g.mailbox_id AND e.organization_id=g.organization_id
+      JOIN agent_email_accounts b ON b.email_account_id=e.id AND b.role IN ('primary','read_only')
+      JOIN agents a ON a.id=b.agent_id AND a.organization_id=e.organization_id AND a.status='active'
+      WHERE g.organization_id=$1 AND g.user_id=$2 AND g.revoked_at IS NULL
+        AND e.deleted_at IS NULL AND e.status='connected'
+      ORDER BY a.name,a.id,e.id
+    `,[organizationId,subject.user.id]);
+    const choiceMap = new Map<string,{id:string;name:string;mailboxCount:number}>();
+    for(const row of granted.rows){
+      const current = choiceMap.get(row.agent_id);
+      if(current) current.mailboxCount++;
+      else choiceMap.set(row.agent_id,{id:row.agent_id,name:row.agent_name,mailboxCount:1});
+    }
+    const agents = [...choiceMap.values()];
+    if(requestedAgentId && !choiceMap.has(requestedAgentId)) return respond({error:"forbidden"},403);
+    const selectedAgentId = requestedAgentId ?? agents[0]?.id ?? null;
     const now = new Date();
     const window = buildAiTodayWindow(days, now);
-    const source = await query<AiTodaySourceRow & {matched_count: string | number}>(`
+    const source = selectedAgentId ? await query<AiTodaySourceRow & {matched_count: string | number}>(`
       WITH scoped AS (
         SELECT m.id, m.thread_id, m.email_account_id, a.email_address AS account_email,
           COALESCE(m.from_email, m.from_name, '') AS from_address, m.subject, m.snippet,
@@ -50,12 +75,21 @@ export async function GET(request: Request) {
         LEFT JOIN email_folders f ON f.id=m.folder_id AND f.email_account_id=m.email_account_id
         WHERE m.organization_id = $1 AND a.organization_id = $1
           AND a.deleted_at IS NULL AND a.status='connected'
+          AND EXISTS (
+            SELECT 1 FROM briefing_mailbox_grants g
+            JOIN agent_email_accounts b ON b.email_account_id=g.mailbox_id
+            JOIN agents scoped_agent ON scoped_agent.id=b.agent_id
+            WHERE g.organization_id=$1 AND g.user_id=$2 AND g.mailbox_id=a.id
+              AND g.revoked_at IS NULL AND b.agent_id=$3
+              AND b.role IN ('primary','read_only')
+              AND scoped_agent.organization_id=$1 AND scoped_agent.status='active'
+          )
           AND m.is_draft = false
           AND (
             (f.id IS NOT NULL AND (f.role='inbox' OR UPPER(f.provider_folder_id)='INBOX'))
             OR (a.provider <> 'imap_smtp' AND m.folder_id IS NULL AND m.is_sent = false)
           )
-          AND m.received_at >= $2::timestamptz AND m.received_at <= $3::timestamptz
+          AND m.received_at >= $4::timestamptz AND m.received_at <= $5::timestamptz
           AND (m.is_read = false OR m.action_required = true OR m.is_starred = true)
       )
       SELECT id, thread_id, email_account_id, account_email, from_address, subject, snippet,
@@ -66,12 +100,22 @@ export async function GET(request: Request) {
         WHEN (importance_score BETWEEN 0.7 AND 1 OR importance_score >= 70) THEN 2 ELSE 3 END,
         received_at DESC NULLS LAST, id DESC
       LIMIT 18
-    `, [organizationId, window.from, window.to]);
+    `, [organizationId, subject.user.id, selectedAgentId, window.from, window.to]) : {rows: [] as (AiTodaySourceRow & {matched_count:string|number})[]};
 
-    const coverage = await query<{connected_mailboxes: number | string; last_sync_at: Date | string | null}>(`
-      SELECT count(*) AS connected_mailboxes, max(COALESCE(last_synced_at,last_sync_at)) AS last_sync_at
-      FROM email_accounts WHERE organization_id=$1 AND status='connected' AND deleted_at IS NULL
-    `, [organizationId]);
+    const coverage = selectedAgentId ? await query<{connected_mailboxes: number | string; last_sync_at: Date | string | null}>(`
+      SELECT count(*) AS connected_mailboxes,max(COALESCE(e.last_synced_at,e.last_sync_at)) AS last_sync_at
+      FROM email_accounts e
+      WHERE e.organization_id=$1 AND e.status='connected' AND e.deleted_at IS NULL
+        AND EXISTS(SELECT 1 FROM briefing_mailbox_grants g
+          JOIN agent_email_accounts b ON b.email_account_id=g.mailbox_id
+          JOIN agents a ON a.id=b.agent_id AND a.organization_id=$1 AND a.status='active'
+          WHERE g.organization_id=$1 AND g.user_id=$2 AND g.mailbox_id=e.id
+            AND g.revoked_at IS NULL AND b.agent_id=$3 AND b.role IN ('primary','read_only'))
+    `, [organizationId, subject.user.id, selectedAgentId]) : {rows:[] as {connected_mailboxes:number|string;last_sync_at:Date|string|null}[]};
+    const activity = selectedAgentId ? await query<{last_foreground_at:Date|string|null}>(`
+      SELECT last_foreground_at FROM user_mail_activity
+      WHERE organization_id=$1 AND user_id=$2 AND agent_id=$3
+    `,[organizationId,subject.user.id,selectedAgentId]) : {rows:[] as {last_foreground_at:Date|string|null}[]};
 
     // Only schedules created by the current authenticated user; never expose
     // coworkers' task names, prompts, recipients or execution errors.
@@ -91,6 +135,8 @@ export async function GET(request: Request) {
 
     const snapshot: AiTodaySnapshot = {
       windowDays: days, asOf: window.to,
+      agentId:selectedAgentId, agents,
+      lastVisitAt:aiTodayTimestamp(activity.rows[0]?.last_foreground_at),
       connectedMailboxes: Number(coverage.rows[0]?.connected_mailboxes ?? 0),
       lastSyncAt: aiTodayTimestamp(coverage.rows[0]?.last_sync_at),
       totalMatches: Number(source.rows[0]?.matched_count ?? 0),
