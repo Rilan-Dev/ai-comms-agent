@@ -1,7 +1,7 @@
 "use client";
 import {useEffect,useState} from "react";
 import Link from "next/link";
-import {aiTodayBriefingChatHref,aiTodayChatHref, type AiTodayDays, type AiTodaySnapshot} from "@/lib/ai-today/snapshot";
+import {aiTodayBriefingChatHref,aiTodayChatHref,suggestedAiTodayDays, type AiTodayDays, type AiTodaySnapshot} from "@/lib/ai-today/snapshot";
 
 const windows = [1,5,7,30] as const;
 const priorityLabel:Record<AiTodaySnapshot["items"][number]["priority"],string> = {
@@ -15,6 +15,7 @@ const time = (value: string | null) => value ? new Date(value).toLocaleString() 
 export function AiToday({organizationId}:{organizationId:string}) {
   const [days,setDays]=useState<AiTodayDays>(5);
   const [agentId,setAgentId]=useState("");
+  const [manualWindow,setManualWindow]=useState(false);
   const [visitError,setVisitError]=useState("");
   const [reload,setReload]=useState(0);
   const [snapshot,setSnapshot]=useState<AiTodaySnapshot|null>(null);
@@ -22,7 +23,7 @@ export function AiToday({organizationId}:{organizationId:string}) {
   const [loading,setLoading]=useState(true);
   useEffect(()=>{
     const controller=new AbortController();
-    setSnapshot(null);setError("");setLoading(true);
+    setSnapshot(null);setError("");setVisitError("");setLoading(true);
     const params=new URLSearchParams({organizationId,days:String(days)});
     if(agentId)params.set("agentId",agentId);
     void fetch(`/api/ai-today?${params}`,{cache:"no-store",signal:controller.signal})
@@ -36,6 +37,12 @@ export function AiToday({organizationId}:{organizationId:string}) {
       })
       .then(data=>{
         if(controller.signal.aborted)return;
+        // Respect an explicit choice; otherwise include the user's last real
+        // absence without silently reading beyond the supported 30-day cap.
+        if(!manualWindow){
+          const recommended=suggestedAiTodayDays(data.snapshot.lastVisitAt,data.snapshot.asOf);
+          if(recommended!==days){setDays(recommended);return;}
+        }
         setSnapshot(data.snapshot);
         // Persist a foreground visit after capturing the previous visit.
         if(data.snapshot.agentId)void fetch("/api/ai-today/visit",{
@@ -48,7 +55,7 @@ export function AiToday({organizationId}:{organizationId:string}) {
       .catch(err=>{if(!controller.signal.aborted)setError(err instanceof Error?err.message:"AI Today is unavailable.");})
       .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
     return()=>controller.abort();
-  },[organizationId,days,agentId,reload]);
+  },[organizationId,days,agentId,reload,manualWindow]);
   return <section aria-labelledby="ai-today-title" className="workspace-panel p-5 sm:p-7">
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div><p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Executive command center · Phase 1</p>
@@ -65,7 +72,7 @@ export function AiToday({organizationId}:{organizationId:string}) {
     {visitError&&<p className="mt-2 text-xs text-muted-foreground" role="status">{visitError}</p>}
     <div className="mt-5 flex flex-wrap items-center gap-2" role="group" aria-label="Lookback window">
       {windows.map(value=><button key={value} type="button" aria-pressed={days===value}
-        onClick={()=>setDays(value)} className={`rounded-lg border px-3 py-2 text-xs font-semibold ${days===value?"border-primary bg-secondary":"hover:bg-secondary"}`}>{value===1?"Last 24 hours":`Last ${value} days`}</button>)}
+        onClick={()=>{setManualWindow(true);setDays(value);}} className={`rounded-lg border px-3 py-2 text-xs font-semibold ${days===value?"border-primary bg-secondary":"hover:bg-secondary"}`}>{value===1?"Last 24 hours":`Last ${value} days`}</button>)}
     </div>
     {loading&&<p role="status" className="mt-5 text-sm text-muted-foreground">Checking connected inbox sources…</p>}
     {error&&<div role="alert" className="mt-5 rounded-lg border p-4 text-sm"><p>{error}</p><Link href="/mail/inbox" className="mt-3 inline-block font-semibold underline">Open inbox</Link></div>}
@@ -79,6 +86,8 @@ export function AiTodaySnapshotView({snapshot}:{snapshot:AiTodaySnapshot}){
       <span>Source-backed · {snapshot.connectedMailboxes} connected mailbox{snapshot.connectedMailboxes===1?"":"es"} · Snapshot {time(snapshot.asOf)}</span>
       <span>{snapshot.lastSyncAt?`Latest recorded sync: ${time(snapshot.lastSyncAt)}`:"Sync freshness not available"}</span>
       <span>{snapshot.lastVisitAt?`Previous visit: ${time(snapshot.lastVisitAt)}`:"No previous visit recorded"}</span>
+      {snapshot.lastVisitAt && Date.parse(snapshot.asOf)-Date.parse(snapshot.lastVisitAt)>30*86_400_000&&
+        <span role="status">Your previous visit was over 30 days ago; older messages require an Inbox search.</span>}
     </div>
     <div className="grid gap-3 sm:grid-cols-3">
       <Link href="/mail/inbox" className="rounded-xl border bg-secondary/30 p-4 hover:bg-secondary"><p className="text-xs text-muted-foreground">Relevant message sources</p><p className="mt-2 font-display text-2xl font-semibold">{snapshot.totalMatches}</p><p className="mt-1 text-xs text-muted-foreground">In selected window · View inbox</p></Link>
