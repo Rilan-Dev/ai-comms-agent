@@ -1,5 +1,6 @@
 import { createEmailAction, createLocalDraft, getWhatsAppAccountForAgent, PostgresEmailAccountRepository, query, recordAuditEvent,loadActiveAgentConfiguration,type ActiveAgentConfiguration } from "@ai-comms-agent/db";
 import type { ProductActionResult } from "@ai-comms-agent/shared";
+import {draftReplySourceFromEvent} from "../automation/draft-reply-source";
 
 type Action = Record<string, unknown>;
 type Context = { organizationId: string; agentId: string; executionId: string; output: string;configuration?:ActiveAgentConfiguration };
@@ -38,7 +39,10 @@ export async function executeProductActions(context: Context, params: Record<str
       }
       const event=params.event && typeof params.event==="object" && !Array.isArray(params.event)?params.event as Record<string,unknown>:{};
       const emailAccountId=stringValue(action.emailAccountId)??stringValue(event.emailAccountId);
-      const recipient=stringValue(action.to)??stringValue(event.from);
+      // The actual incoming sender takes precedence over any optional rule recipient.
+      // Never silently address an inbound reply draft to an unrelated configured contact.
+      const replySource=draftReplySourceFromEvent(event);
+      const recipient=replySource?.recipient??stringValue(action.to);
       if(!emailAccountId||!recipient||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)){
        results.push({type,status:"configuration_required",reason:"Draft requires a connected email account and a valid recipient."});continue;
       }
@@ -61,7 +65,7 @@ export async function executeProductActions(context: Context, params: Record<str
        results.push({type,status:"configuration_required",reason:"No generated content to save as a draft."});continue;
       }
       const subject=stringValue(action.subject)??("Re: "+(stringValue(event.subject)??"Message requiring attention"));
-      const draft=await createLocalDraft({organizationId:context.organizationId,emailAccountId,to:[recipient],subject:subject.slice(0,240),bodyText:context.output.slice(0,100000)});
+      const draft=await createLocalDraft({organizationId:context.organizationId,emailAccountId,to:[recipient],subject:subject.slice(0,240),bodyText:context.output.slice(0,100000),...(replySource?.replyToMessageId?{replyToMessageId:replySource.replyToMessageId}:{})});
       results.push({type,status:"completed",actionId:String(draft.id)});continue;
     }
 
